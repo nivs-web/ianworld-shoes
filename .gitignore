@@ -7,11 +7,12 @@ dist/
 .env.local
 .env.*.local
 
-# 에셋 파이프라인 산출물 (tools 스크립트로 재생성 가능)
-public/assets/characters/
-public/assets/shoes/
-public/assets/ui/
-public/assets/bg/
+# 원본 아트 (수백 MB, tools 스크립트의 입력) — 로컬에만 둔다
+etc/
+
+# ※ public/assets/ 는 **커밋한다**.
+#   tools 스크립트로 재생성할 수는 있지만 그러려면 etc/ 원본이 필요하고,
+#   etc/ 는 저장소에 없다. Vercel 빌드가 스프라이트 없이 돌면 안 되므로 산출물을 넣는다.
 
 # OS
 .DS_Store
@@ -26,3 +27,8 @@ desktop.ini
 # 로그
 npm-debug.log*
 yarn-error.log*
+
+# 로컬 푸시 도우미 (세션에서 직접 푸시가 막혀 있어 쓰는 임시 수단)
+push-to-github.bat
+push-log.txt
+commit-msg.txt

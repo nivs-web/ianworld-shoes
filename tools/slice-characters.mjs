@@ -139,6 +139,80 @@ function downsample(reader, x0, y0, lw, lh) {
   return { buf, w: lw, h: lh };
 }
 
+/**
+ * 발 앵커 — 스프라이트 **하단 N줄**에서 불투명 픽셀의 x 범위를 잰다.
+ * 신발을 캐릭터 발에 정확히 얹으려면 캐릭터마다 다른 발 위치를 알아야 한다.
+ * (2026-08-14 추가 — 신발이 발에서 어긋나 맨발이 비치던 문제)
+ * @returns {{x0:number,x1:number,cx:number,w:number,top:number}|null} 배치 후 캔버스 좌표계
+ */
+/**
+ * 맨발 영역을 **살색으로** 찾는다 (2026-08-15 개정).
+ *
+ * 신발을 신으면 맨발이 1도트도 보이면 안 된다. 그러려면 "발이 어디서 시작하는지"를
+ * 정확히 알아야 하는데, 캐릭터마다 바지 길이·다리 굵기가 달라 고정 행수로는 안 된다.
+ * → 얼굴에서 살색을 뽑고, 아래에서 위로 올라가며 **그 행의 불투명 픽셀 중 살색 비율**이
+ *   임계치 이상인 동안을 발로 본다.
+ *
+ * 맨다리 캐릭터(치마·반바지)는 무릎까지 살색이라 위로 무한정 올라간다 →
+ * 아래 5~9행으로 클램프한다. 인게임 신발 높이가 19도트(원본 약 12행)라 넉넉히 덮는다.
+ */
+function footAnchor(buf, w, h) {
+  const MIN_ROWS = 5;
+  const MAX_ROWS = 9;
+
+  // ① 얼굴 영역(위 25~50%)에서 가장 흔한 살색을 찾는다
+  const tally = new Map();
+  for (let y = (h * 0.25) | 0; y < (h * 0.5) | 0; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (buf[i + 3] === 0) continue;
+      const r = buf[i], g = buf[i + 1], b = buf[i + 2];
+      if (!(r > 150 && r > g && g > b && r - b > 25)) continue; // 살색 후보
+      const k = (r << 16) | (g << 8) | b;
+      tally.set(k, (tally.get(k) ?? 0) + 1);
+    }
+  }
+  let skin = null, best = 0;
+  for (const [k, n] of tally) if (n > best) { best = n; skin = k; }
+
+  const near = (i) => {
+    if (skin === null) return false;
+    const r = buf[i], g = buf[i + 1], b = buf[i + 2];
+    const sr = (skin >> 16) & 255, sg = (skin >> 8) & 255, sb = skin & 255;
+    // 음영까지 잡도록 넉넉하게 (발등은 그늘이 져서 더 어둡다)
+    return Math.abs(r - sr) < 70 && Math.abs(g - sg) < 70 && Math.abs(b - sb) < 70 && r > g && g >= b;
+  };
+
+  // ② 아래에서 위로 — 살색이 과반인 행이 이어지는 동안이 발
+  let top = h;
+  for (let y = h - 1; y >= h - MAX_ROWS; y--) {
+    let opaque = 0, skinN = 0;
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (buf[i + 3] === 0) continue;
+      opaque++;
+      if (near(i)) skinN++;
+    }
+    if (opaque === 0) { top = y; continue; } // 빈 줄도 발 위쪽 경계로 인정
+    if (skinN * 2 < opaque) break;
+    top = y;
+  }
+  top = Math.min(top, h - MIN_ROWS);
+  top = Math.max(top, h - MAX_ROWS);
+
+  // ③ 발 좌우 중심 (발 영역의 불투명 픽셀 기준)
+  let x0 = w, x1 = -1;
+  for (let y = top; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (buf[(y * w + x) * 4 + 3] === 0) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+    }
+  }
+  if (x1 < 0) return null;
+  return { x0, x1, cx: Math.round((x0 + x1) / 2), w: x1 - x0 + 1, top };
+}
+
 /** 논리 픽셀 이미지에서 알파가 있는 영역의 바운딩 박스 */
 function alphaBBox(img) {
   let x0 = img.w,
@@ -288,11 +362,14 @@ async function main() {
       await savePng(out, T.w, T.h, resolve(OUT_DIR, file));
 
       const placed = { x0: bb.x0 + offsetX, x1: bb.x1 + offsetX };
+      const foot = footAnchor(out, T.w, T.h);
       meta[char.id].cuts[cut] = {
         file,
         w: T.w,
         h: T.h,
         content: { x: placed.x0, w: bb.w, h: bb.h },
+        /** 발 앵커 (배치 후 캔버스 좌표) — 신발 위치 계산에 쓴다 */
+        foot: foot ? { cx: foot.cx, w: foot.w, top: foot.top } : null,
         bodyRight: cut === 'side' ? (bodyBBox(img)?.x1 ?? bb.x1) + offsetX : undefined,
         source: { x: cx0, y: ry0, w: pw, h: ph },
       };

@@ -106,8 +106,8 @@ export const REVIVE = {
   shoesPerRevive: 20,
   /** 부활 시 회복되는 게이지 */
   gaugeOnRevive: GAUGE_MAX,
-  /** 부활 선택 제한 시간(초) */
-  decisionSeconds: 3,
+  /** 부활 선택 제한 시간(초) — 3초는 하트를 누를 틈이 없어 10초로 늘렸다 (2026-08-14) */
+  decisionSeconds: 10,
   /** 멀티에서는 부활 없음 */
   enabledInMulti: false,
 };
@@ -228,4 +228,38 @@ export const NICKNAME = {
   maxLength: 4,
   /** 완성형 한글만 허용 */
   pattern: /^[가-힣]{2,4}$/,
+};
+
+// ─────────────────────────────────────────────
+// 사운드 (기획서 §9-7) — 오디오 파일 0개, 전부 Web Audio 합성
+// ─────────────────────────────────────────────
+export const AUDIO = {
+  masterVolume: 0.85,
+  /** BGM은 SFX보다 확실히 낮게 — 계단 밟는 "착!" 이 리듬의 기준이다 */
+  bgmVolume: 0.30,
+  sfxVolume: 0.55,
+
+  /** BGM 트랙 교체 — 100층마다 다음 트랙, 10번 이후로는 유지 */
+  bgmFloorsPerTrack: 100,
+  bgmTrackCount: 10,
+  /** 스케줄러: 이 간격으로 깨어나 이만큼 앞을 미리 예약한다 */
+  schedulerTickMs: 25,
+  scheduleAheadSec: 0.12,
+
+  /** 함성(sfx_shout) 발동 규칙 — 매 칸마다 지르면 시끄럽다 (기획서 §9-7-1) */
+  shout: {
+    /** N연속 무실수 상승마다 1회 */
+    streak: 3,
+    /** 이 티어 이하(=희귀)면 연속 수와 무관하게 무조건 */
+    tierAlways: 2,
+    /** 연발 방지 최소 간격(ms) */
+    minGapMs: 250,
+  },
+
+  /** 캐릭터별 함성 기본 피치 배수 — 10명이 각자 다른 목소리로 들린다 */
+  voicePitch: {
+    ian: 0.85, denny: 0.85, kyungtae: 0.85, charles: 0.85, tony: 0.85,
+    lisa: 1.2, maho: 1.2, jenny: 1.2, rose: 1.2,
+    ipo: 1.35,
+  },
 };

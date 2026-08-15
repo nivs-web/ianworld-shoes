@@ -22,7 +22,7 @@
 | 사운드 | **Web Audio API 직접 합성** | 오디오 파일 0개. 8bit 칩튠을 코드로 생성 |
 | 인증 | **Firebase Auth (Google)** | |
 | DB | **Firestore** (계정/도감/랭킹) + **Realtime Database** (멀티 룸) | 랭킹은 쿼리, 멀티는 저지연 |
-| 배포 | **Vercel** ← GitHub `nivs-web/find_shoes` | main push = 자동 배포 |
+| 배포 | **Vercel** ← GitHub `nivs-web/ianworld_shoes` | main push = 자동 배포 |
 | PWA | manifest + service worker (수동 작성) | |
 
 > **금지**: React / Phaser / PixiJS / Tailwind / 애니메이션 라이브러리(GSAP 등).
@@ -47,13 +47,15 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 ```
 - 논리 캔버스는 **정확히 180 × 320**. 절대 바꾸지 않는다.
 - 확정 상수 (레퍼런스 「무한의 계단」 스크린샷 실측 기준, 2026-08-14):
-  계단 블록 **36×19**(사용자 제작 돌블록 아트), 수직 간격 **25**, 수평 간격 **32**, 발끝 y **212**,
+  계단 블록 **32×13**(사용자 제작 돌블록 아트, 원본 160×65 비율 그대로), 수직 간격 **20**, 수평 간격 **30**, 발끝 y **212**,
   캐릭터 원본 35×50 → **1.5배**로 렌더(53×75), 조작 버튼 **48×48** @ y266.
   · 실측 환산: 원본 839×1489 이미지 = 논리 180×320 (1논리px = 4.65px)
   · 배율 1.5는 비정수지만 목적지 크기를 반올림 + 스무딩 off 라 nearest 확대가 된다.
     캔버스→화면 확대는 여전히 정수배이므로 §3-1 규칙은 지켜진다.
 - 신발은 **마스터 50×30 체계** (2026-08-13 개정): 마스터 50×30(도감) → 계단용 25×15(정수 ½) → 착용용 15×9(근사).
   도감에서 신발을 탭하면 마스터를 3×~4×로 키운 상세 팝업이 뜬다. 기획서 §9-3 참조.
+- 폰트는 **갈무리11 볼드**(OFL-1.1) 를 빌드 타임에 도트로 구운 `src/data/font.generated.json` 만 쓴다.
+  `ctx.fillText` 는 어떤 경우에도 금지 — 안티앨리어싱을 끌 수 없다. 글리프 높이 11px, 배율은 정수만.
 - 화면 표시는 **정수배 스케일만** (`scale = Math.floor(min(vw/180, vh/320))`, 최소 1).
 - 오프스크린 버퍼가 있어도 **모든** 컨텍스트에 `imageSmoothingEnabled = false` 를 건다.
 
@@ -102,7 +104,7 @@ function loop(now) {
 ## 4. 디렉터리 구조
 
 ```
-find_shoes/
+ianworld_shoes/
 ├─ CLAUDE.md                     ← 이 파일
 ├─ index.html                    ← 단일 진입점 (SPA)
 ├─ vite.config.js
@@ -134,7 +136,9 @@ find_shoes/
 │  ├─ downscale-bg.mjs           ← 배경 포스터 → 패널 크롭 → 180폭 축소 → 32색 양자화
 │  ├─ bg-panels.json             ← 배경 패널 좌표 (수동 지정)
 │  ├─ _bg-qa.mjs                 ← (진단) 포스터에 좌표 격자 얹기
-│  └─ _bg-preview.mjs            ← (진단) 변환 결과를 게임처럼 쌓아 미리보기
+│  ├─ _bg-preview.mjs            ← (진단) 변환 결과를 게임처럼 쌓아 미리보기
+│  ├─ _shoes-preview.mjs         ← (진단) 신발 아틀라스를 체크무늬 위에 확대 — 투명 구멍 육안 확인
+│  └─ _shoes-holes-qa.mjs        ← (진단) 130개 전수 내부 구멍 검사 (0이어야 통과)
 │
 └─ src/
    ├─ main.js                    ← 부트: 캔버스 셋업, 라우터 시작
@@ -146,6 +150,7 @@ find_shoes/
    │  ├─ sprite.js               ← 스프라이트/아틀라스 드로우 (정수 좌표 강제)
    │  ├─ anim.js                 ← 프레임 시퀀서 (8~12FPS)
    │  ├─ scene.js                ← 씬 스택 (push/pop/replace)
+   │  ├─ pixelfont.js            ← 비트맵 폰트 렌더 (fillText 금지, font.generated.json 사용)
    │  ├─ assets.js               ← 로더 + 진행률
    │  └─ rng.js                  ← 시드 기반 난수 (멀티 동기화용)
    │
@@ -201,9 +206,11 @@ find_shoes/
 | `etc/신발자료/신발130개.png` | `build-shoe-atlas.mjs` | `shoes_atlas.png` (160×140) + `src/data/shoes.json` |
 | `etc/백그라운드건물/*.png` (16) | `downscale-bg.mjs` | `build_01~16_{road,floor1,tile}.png` (48장) |
 | `etc/200층이상배경/*.png` (4) | `downscale-bg.mjs` | `floor200/300/400/500.png` (각 180×320) |
-| `etc/신발자료/newdesign.png` | `slice-newdesign.mjs` | `shoes_master.png` / `shoes_game.png` / `shoe_icon.png` |
+| `etc/신발자료/newdesign.png` | `slice-newdesign.mjs` | `shoes_master.png` / `shoes_game.png` / `shoes_worn.png` / `shoe_icon.png` |
 | `etc/인터페이스 버튼.png` | `slice-buttons.mjs` | `ui/btn_{turn,left,up,right}.png` (48×48) |
-| `etc/UI/계단.png` | `slice-stair.mjs` | `ui/stair.png` (36×19) |
+| `etc/UI/계단.png` | `slice-stair.mjs` | `ui/stair.png` (32×13) |
+| `etc/게이지바.png` · `etc/일시정지.png` | `build-hud-ui.mjs` | `ui/gauge_frame.png` (146×18) · `ui/btn_pause.png` (18×18) |
+| `node_modules/galmuri/…/Galmuri11-Bold.ttf` | `build-font.mjs` | `src/data/font.generated.json` (11px 비트맵 폰트) |
 
 **축소 규칙은 원본의 성격에 따라 다르다.**
 
@@ -308,7 +315,7 @@ chore(assets): 신발 아틀라스 재생성
 - [x] 확정: 신발 등장 완전 균등 / 함성 효과음 칩튠 합성
 - [x] **기획 사양 전체 확정 → 기획서 v1.0**
 - [x] **M0 프로젝트 세팅** — Vite 빌드 통과, 180×320 정수배 캔버스, 고정 타임스텝 루프,
-      입력(선입력 버퍼 2), 스프라이트/애니 모듈, 5×7 비트맵 폰트, 씬 스택, 시드 RNG, PWA 셸
+      입력(선입력 버퍼 2), 스프라이트/애니 모듈, 비트맵 폰트, 씬 스택, 시드 RNG, PWA 셸
 - [x] **M1 에셋 파이프라인 완료**
   - [x] 캐릭터 10명 × 3컷 = 30장 — 7×7 블록 중심 샘플링으로 무손실 복원, 배경 투명, 바닥 정렬
   - [x] **신발 130종 완료 (마스터 50×30 체계)** — `tools/generate-shoes.mjs` 가 사용자 제공 스니커즈
@@ -321,7 +328,45 @@ chore(assets): 신발 아틀라스 재생성
       배경 3층 레이어 스크롤 + 100층 구름 + 200층↑ 풀스크린 교체, 조작 3모드, 로컬 최고기록.
       브라우저 봇 테스트 통과(30칸 등반·신발 5개 획득·사망 연출·재시작).
       main.js는 임시로 게임 직행 — M5에서 로그인→포털→로비 흐름으로 교체.
+- [x] **2026-08-14 마감 수정 6건**
+  - [x] 계단 블록을 사용자 개정 아트(160×65)에 맞춰 **32×13**으로 되돌림 (간격 30×20)
+  - [x] 착용 신발 **0.7배(28×17)** + `characters.generated.json` 의 `cuts[*].foot.cx` 로 발 위치 정렬 → 맨발 노출 0
+  - [x] 부활 카운트다운 **3초 → 10초** (기획서 §5-6)
+  - [x] **엘리베이터(500층 스킵)** 기획 확정 — 기획서 §5-8-1 신설 (해금 500층 / 1회 신발 50켤레)
+  - [x] 계단 가독성 — 1px 외곽선 + 드롭섀도로 배경색과 겹쳐도 또렷하게 (`PAL.stairOutline/stairShadow`)
+  - [x] 신발 내부 투명 구멍 **130개 전수 제거** (`fillHoles()` — 원본 해상도 85,898px + 축소 후 재검사, QA 스크립트로 0 확인)
+- [x] **2026-08-14 HUD 폰트 개편** — 5×7 자체 제작 폰트 → **갈무리11 볼드**(OFL-1.1) 비트맵 폰트.
+      계단 수 ×4(20×28) → ×2(14×22, 레퍼런스와 동일), 신발·부활 수 ×2 → ×1.
+      HUD를 **행 분리**(아이콘 19~34 / 계단 수 37~59)로 재설계해 자릿수가 늘어도 겹치지 않는다.
+      일시정지·부활·게임오버 패널도 11px 폰트에 맞춰 y좌표 전면 재조정.
+- [x] **2026-08-15 HUD 아트 교체** — 사용자 신규 아트(`etc/게이지바.png` · `etc/일시정지.png`)를
+      `tools/build-hud-ui.mjs` 가 **팔레트만 뽑고 형태는 도트로 재작도**해 `gauge_frame.png`(146×18) ·
+      `btn_pause.png`(18×18) 생성. 원본이 렌더 일러스트(고유색 6,186개)라 축소하면 1px 테두리가
+      뭉개지므로 lanczos가 아니라 재작도를 택했다. 게이지 채움은 이미지에 굽지 않고 런타임 사각형.
+      게이지 높이가 12→18로 커져 HUD 행을 3~21 / 23~38 / 41~63 으로 재배치.
+- [x] **2026-08-15 계단 위 신발 위치** — 밑창이 돌블록을 2도트 파고들어 계단을 가렸다 →
+      `SHOE.stairOffsetY: -1` 로 올려 계단 **위에 얹힌** 모양으로 수정.
+- [x] **2026-08-15 착용 신발 개편** — 맨발 노출을 구조적으로 불가능하게 만들었다.
+  - [x] 착용 전용 아틀라스 `shoes_worn.png` 신설 (31×19 = 알맹이 29×17 + **1도트 진회색 외곽선**,
+        원본 크롭에서 직접 렌더). game 아틀라스를 0.7배로 줄여 그리던 방식은 가장자리가 들쭉날쭉했다.
+  - [x] 크기 이전 대비 **1.1배** — 신발이 확실히 눈에 띄는 게 이 게임의 핵심
+  - [x] **신발을 신으면 캐릭터 컷의 맨발 영역을 아예 그리지 않는다** (`Player.drawCut`).
+        덮는 방식은 로우컷 신발에서 반드시 삐져나온다. 발을 안 그리면 어떤 신발이든 노출 0.
+  - [x] 발 시작 행을 **살색 판정**으로 컷마다 측정 (`footAnchor()`, 맨다리 캐릭터는 5~9행 클램프)
+  - [x] 캐릭터 4명 × 신발 3종 × 좌우 = 전수 육안 검증 (`tools/_foot-qa.mjs`)
+- [x] **M4 사운드 완료 (2026-08-15)** — 오디오 파일 **0개**, 전부 Web Audio 합성.
+  - [x] `audio.js` 컨텍스트 싱글턴 + 마스터/BGM/SFX 3버스 + 첫 제스처 unlock + 탭 전환 시 suspend
+  - [x] `synth.js` 펄스파(듀티 12.5/25/50%) PeriodicWave, 결정적 노이즈 버퍼, 엔벨로프,
+        지수 스윕, 비브라토 LFO, 밴드패스 포먼트 직렬
+  - [x] `sfx.js` 효과음 **17종** (기획서 §9-7 표 전량). 상승음은 ±2반음 교차해 "착착착" 리듬
+  - [x] `sfx_shout` 칩튠 함성 — 노이즈 어택 → 피치 벤드 → 포먼트 2단(F1 700 / F2 1200→1800)
+        → 비브라토 6Hz. 캐릭터별 피치 ×0.85 / ×1.2 / ×1.35 실측 확인 (301 / 431 / 484Hz)
+  - [x] `bgm.js` 10트랙 룩어헤드 시퀀서. BPM 120→200, 리드·베이스·아르페지오·드럼 4레이어.
+        **100층마다 다음 마디에서** 교체 (곡 중간에 튀면 귀에 거슬린다)
+  - [x] 검증: SFX 20종 + BGM 10트랙 전부 피크 측정 통과(무음 0 · 클리핑 0),
+        층수 점프 0/100/250/500/900/1500 → 트랙 1/2/3/6/10/10 확인
 - [ ] M3 잔여(도감 영구 저장은 M5 Firebase와 함께) · M4~M8 (기획서 §11-1 참조)
+- [ ] **엘리베이터 구현**은 로비(S04)가 생기는 M5에서 함께 (기획만 확정, 코드 없음)
 
 ### 에셋 원본 성격 (중요)
 
@@ -346,7 +391,7 @@ chore(assets): 신발 아틀라스 재생성
 
 | 항목 | 값 |
 |------|-----|
-| GitHub | `https://github.com/nivs-web/find_shoes` |
+| GitHub | `https://github.com/nivs-web/ianworld_shoes` |
 | 배포 | Vercel (GitHub import 완료, main 자동 배포) |
 | Firebase 프로젝트 | `[빈칸 — 프로젝트 ID]` |
 | 도메인 | `[빈칸 — 커스텀 도메인 사용 여부]` |

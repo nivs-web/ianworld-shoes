@@ -1,97 +1,64 @@
 /**
- * 비트맵 픽셀 폰트 — 5×7 글리프를 사각형으로 직접 찍는다.
+ * 비트맵 픽셀 폰트 — 갈무리11 볼드(Galmuri11-Bold, quiple, OFL-1.1).
  *
- * ctx.fillText는 무조건 안티앨리어싱이 걸리므로 절대 쓰지 않는다.
- * 한글 라벨은 빌드 타임에 이미지로 굽는다 (tools/build-text-atlas.mjs).
- * 여기서는 숫자·영문·기호만 다룬다 — 스코어, 게이지, 코드 입력 등.
+ * ctx.fillText는 무조건 안티앨리어싱이 걸리므로 절대 쓰지 않는다. (CLAUDE.md §3-1)
+ * 글리프는 빌드 타임에 `tools/build-font.mjs` 가 TTF에서 픽셀 격자로 굳혀
+ * `src/data/font.generated.json` 에 비트마스크로 저장한다.
+ * 여기서는 그 비트를 fillRect로 한 도트씩 찍기만 한다 —
+ * 색·외곽선·그림자를 자유롭게 주고, 배율은 정수만 곱한다.
+ *
+ * 폰트를 바꾸려면 build-font.mjs 의 SRC/H만 고치고 다시 굽는다.
  */
 
 import { getCtx } from './canvas.js';
+import FONT from '../data/font.generated.json';
 
-export const GLYPH_W = 5;
-export const GLYPH_H = 7;
+/** 글리프 상자 높이 (베이스라인 포함) */
+export const GLYPH_H = FONT.h;
+/** 숫자 고정폭 — mono 모드에서 쓰는 셀 폭 */
+export const DIGIT_W = FONT.glyphs['0'].w;
 
-/** 각 글리프는 7개의 5비트 행. 왼쪽 비트가 x=0. */
-const G = {
-  '0': [0x0e, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0e],
-  '1': [0x04, 0x0c, 0x04, 0x04, 0x04, 0x04, 0x0e],
-  '2': [0x0e, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1f],
-  '3': [0x1f, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0e],
-  '4': [0x02, 0x06, 0x0a, 0x12, 0x1f, 0x02, 0x02],
-  '5': [0x1f, 0x10, 0x1e, 0x01, 0x01, 0x11, 0x0e],
-  '6': [0x06, 0x08, 0x10, 0x1e, 0x11, 0x11, 0x0e],
-  '7': [0x1f, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08],
-  '8': [0x0e, 0x11, 0x11, 0x0e, 0x11, 0x11, 0x0e],
-  '9': [0x0e, 0x11, 0x11, 0x0f, 0x01, 0x02, 0x0c],
-  A: [0x0e, 0x11, 0x11, 0x1f, 0x11, 0x11, 0x11],
-  B: [0x1e, 0x11, 0x11, 0x1e, 0x11, 0x11, 0x1e],
-  C: [0x0e, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0e],
-  D: [0x1e, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1e],
-  E: [0x1f, 0x10, 0x10, 0x1e, 0x10, 0x10, 0x1f],
-  F: [0x1f, 0x10, 0x10, 0x1e, 0x10, 0x10, 0x10],
-  G: [0x0e, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0f],
-  H: [0x11, 0x11, 0x11, 0x1f, 0x11, 0x11, 0x11],
-  I: [0x0e, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0e],
-  J: [0x07, 0x02, 0x02, 0x02, 0x02, 0x12, 0x0c],
-  K: [0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11],
-  L: [0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1f],
-  M: [0x11, 0x1b, 0x15, 0x15, 0x11, 0x11, 0x11],
-  N: [0x11, 0x19, 0x15, 0x13, 0x11, 0x11, 0x11],
-  O: [0x0e, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0e],
-  P: [0x1e, 0x11, 0x11, 0x1e, 0x10, 0x10, 0x10],
-  Q: [0x0e, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0d],
-  R: [0x1e, 0x11, 0x11, 0x1e, 0x14, 0x12, 0x11],
-  S: [0x0f, 0x10, 0x10, 0x0e, 0x01, 0x01, 0x1e],
-  T: [0x1f, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04],
-  U: [0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0e],
-  V: [0x11, 0x11, 0x11, 0x11, 0x11, 0x0a, 0x04],
-  W: [0x11, 0x11, 0x11, 0x15, 0x15, 0x1b, 0x11],
-  X: [0x11, 0x11, 0x0a, 0x04, 0x0a, 0x11, 0x11],
-  Y: [0x11, 0x11, 0x0a, 0x04, 0x04, 0x04, 0x04],
-  Z: [0x1f, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1f],
-  ' ': [0, 0, 0, 0, 0, 0, 0],
-  '.': [0, 0, 0, 0, 0, 0x0c, 0x0c],
-  ',': [0, 0, 0, 0, 0x0c, 0x0c, 0x08],
-  ':': [0, 0x0c, 0x0c, 0, 0x0c, 0x0c, 0],
-  '-': [0, 0, 0, 0x1f, 0, 0, 0],
-  '/': [0x01, 0x01, 0x02, 0x04, 0x08, 0x10, 0x10],
-  '!': [0x04, 0x04, 0x04, 0x04, 0x04, 0, 0x04],
-  '?': [0x0e, 0x11, 0x01, 0x02, 0x04, 0, 0x04],
-  '+': [0, 0x04, 0x04, 0x1f, 0x04, 0x04, 0],
-  '*': [0, 0x11, 0x0a, 0x1f, 0x0a, 0x11, 0],
-  '(': [0x02, 0x04, 0x08, 0x08, 0x08, 0x04, 0x02],
-  ')': [0x08, 0x04, 0x02, 0x02, 0x02, 0x04, 0x08],
-  '%': [0x11, 0x01, 0x02, 0x04, 0x08, 0x10, 0x11],
-};
+const MISSING = FONT.glyphs['?'];
+
+function glyph(ch) {
+  return FONT.glyphs[ch] ?? MISSING;
+}
 
 /**
- * 문자열의 픽셀 폭. (글자 사이 1px 간격 포함)
- * @param {string} text @param {number} [scale]
+ * 문자열의 픽셀 폭.
+ * @param {string} str
+ * @param {number} [scale]
+ * @param {boolean} [mono] 숫자 고정폭 (스코어처럼 자릿수가 바뀌어도 흔들리면 안 되는 곳)
  */
-export function measure(text, scale = 1) {
-  if (!text.length) return 0;
-  return (text.length * (GLYPH_W + 1) - 1) * scale;
+export function measure(str, scale = 1, mono = false) {
+  const s = String(str).toUpperCase();
+  if (!s.length) return 0;
+  let w = 0;
+  for (const ch of s) w += mono ? DIGIT_W : glyph(ch).w;
+  return (w + FONT.tracking * (s.length - 1)) * scale;
 }
 
 /**
  * 픽셀 텍스트를 그린다. 좌표·배율 모두 정수여야 한다.
- * @param {string} text
- * @param {number} x @param {number} y 좌상단
+ * @param {string} str
+ * @param {number} x @param {number} y 좌상단 (글리프 상자 기준)
  * @param {object} [opt]
  * @param {string} [opt.color] 글자색
- * @param {string} [opt.shadow] 그림자색 (1px 오른쪽 아래)
- * @param {string} [opt.outline] 외곽선색 (8방향)
+ * @param {string} [opt.shadow] 그림자색 (오른쪽 아래 1도트)
+ * @param {string} [opt.outline] 외곽선색 (8방향 1도트)
  * @param {number} [opt.scale] 정수 배율
  * @param {'left'|'center'|'right'} [opt.align]
+ * @param {boolean} [opt.mono] 고정폭
  */
 export function text(str, x, y, opt = {}) {
   const s = Math.max(1, opt.scale | 0 || 1);
   const color = opt.color ?? '#ffffff';
   const up = String(str).toUpperCase();
+  const mono = !!opt.mono;
 
   let ox = Math.floor(x);
   const oy = Math.floor(y);
-  const w = measure(up, s);
+  const w = measure(up, s, mono);
   if (opt.align === 'center') ox -= w >> 1;
   else if (opt.align === 'right') ox -= w;
 
@@ -99,34 +66,41 @@ export function text(str, x, y, opt = {}) {
     for (let dy = -s; dy <= s; dy += s) {
       for (let dx = -s; dx <= s; dx += s) {
         if (dx === 0 && dy === 0) continue;
-        blit(up, ox + dx, oy + dy, s, opt.outline);
+        blit(up, ox + dx, oy + dy, s, opt.outline, mono);
       }
     }
   } else if (opt.shadow) {
-    blit(up, ox + s, oy + s, s, opt.shadow);
+    blit(up, ox + s, oy + s, s, opt.shadow, mono);
   }
 
-  blit(up, ox, oy, s, color);
+  blit(up, ox, oy, s, color, mono);
 }
 
-function blit(str, x, y, s, color) {
+function blit(str, x, y, s, color, mono) {
   const ctx = getCtx();
   ctx.fillStyle = color;
   let cx = x;
   for (const ch of str) {
-    const g = G[ch];
-    if (g) {
-      for (let row = 0; row < GLYPH_H; row++) {
-        const bits = g[row];
-        if (!bits) continue;
-        for (let col = 0; col < GLYPH_W; col++) {
-          // 왼쪽 비트가 x=0 이므로 (GLYPH_W-1-col) 자리를 본다
-          if (bits & (1 << (GLYPH_W - 1 - col))) {
-            ctx.fillRect(cx + col * s, y + row * s, s, s);
-          }
+    const g = glyph(ch);
+    // 고정폭에서는 좁은 글자('1' 등)를 셀 가운데로 민다
+    const pad = mono ? (DIGIT_W - g.w) >> 1 : 0;
+    for (let row = 0; row < GLYPH_H; row++) {
+      const bits = g.r[row];
+      if (!bits) continue;
+      let run = 0;
+      for (let col = 0; col < g.w; col++) {
+        // 왼쪽 비트가 x=0
+        if (bits & (1 << (g.w - 1 - col))) {
+          run++;
+          continue;
+        }
+        if (run) {
+          ctx.fillRect(cx + (pad + col - run) * s, y + row * s, run * s, s);
+          run = 0;
         }
       }
+      if (run) ctx.fillRect(cx + (pad + g.w - run) * s, y + row * s, run * s, s);
     }
-    cx += (GLYPH_W + 1) * s;
+    cx += ((mono ? DIGIT_W : g.w) + FONT.tracking) * s;
   }
 }

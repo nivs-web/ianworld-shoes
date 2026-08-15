@@ -100,6 +100,11 @@ export class Stairs {
       const sy = CHAR.footY - k * STAIR.gapY;
       if (sy < -STAIR.h - 40 || sy > 340) continue;
 
+      // ── 가독성 보강: 드롭섀도 + 어두운 외곽선 ──
+      // 배경(벽돌/나무)과 계단(회색 돌) 색이 겹쳐도 계단이 또렷하게 떠 보이게 한다.
+      rect(sx + 2, sy + 3, STAIR.w, STAIR.h, PAL.stairShadow);
+      rect(sx - 1, sy - 1, STAIR.w + 2, STAIR.h + 2, PAL.stairOutline);
+
       // 계단 블록 — 사용자 제작 돌블록 스프라이트 (에셋 로드 전에는 사각형 폴백)
       if (block) {
         draw(block, sx, sy);
@@ -117,7 +122,7 @@ export class Stairs {
         const dw = st.shoeW * S;
         const dh = st.shoeH * S;
         const shx = this.xs[i] - camX + CENTER_X - (dw >> 1);
-        const shy = sy - dh + 2;
+        const shy = sy - dh + SHOE.stairOffsetY;
         const sxA = col * st.cellW + 1;
         const syA = row * st.cellH + 1;
         if (this.dirs[i] === 1) {

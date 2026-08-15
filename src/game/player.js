@@ -17,6 +17,7 @@ import { img } from '../core/assets.js';
 import { getCtx } from '../core/canvas.js';
 import { drawScaled, drawScaledFlipped, drawFrameAt, drawFrameAtFlipped } from '../core/sprite.js';
 import shoesData from '../data/shoes.json';
+import charMeta from '../data/characters.generated.json';
 
 export const P_STATE = { INTRO: 0, IDLE: 1, EFFECT: 2, STARE: 3, FALL: 4, DEAD: 5 };
 
@@ -151,18 +152,17 @@ export class Player {
           const h = Math.round(CHAR.dh * 1.2);
           drawStretched(front, cx - (w >> 1), CHAR.footY - h, w, h);
         } else {
-          drawScaled(front, cx - (CHAR.dw >> 1), CHAR.footY - CHAR.dh, CHAR.w, CHAR.h, S);
+          this.drawCut(front, cx - (CHAR.dw >> 1), CHAR.footY - CHAR.dh, CHAR.w, CHAR.h, S, 'front');
         }
-        this.renderWornShoe(cx, CHAR.footY);
+        this.renderWornShoe(cx, CHAR.footY, 'front');
         break;
       }
       case P_STATE.IDLE: {
         if (!side) break;
         const x = cx - (CHAR.dw >> 1);
         const y = CHAR.footY - CHAR.dh;
-        if (this.facing === 1) drawScaled(side, x, y, CHAR.w, CHAR.h, S);
-        else drawScaledFlipped(side, x, y, CHAR.w, CHAR.h, S);
-        this.renderWornShoe(cx, CHAR.footY);
+        this.drawCut(side, x, y, CHAR.w, CHAR.h, S, 'side');
+        this.renderWornShoe(cx, CHAR.footY, 'side');
         break;
       }
       case P_STATE.EFFECT: {
@@ -170,9 +170,8 @@ export class Player {
         const off = this.climbOffsetY();
         const x = cx - (CHAR.jumpDw >> 1);
         const y = CHAR.footY - CHAR.jumpDh + off;
-        if (this.facing === 1) drawScaled(jump, x, y, CHAR.jumpW, CHAR.jumpH, S);
-        else drawScaledFlipped(jump, x, y, CHAR.jumpW, CHAR.jumpH, S);
-        this.renderWornShoe(cx, CHAR.footY + off);
+        this.drawCut(jump, x, y, CHAR.jumpW, CHAR.jumpH, S, 'jump');
+        this.renderWornShoe(cx, CHAR.footY + off, 'jump');
         break;
       }
       case P_STATE.STARE: {
@@ -199,14 +198,66 @@ export class Player {
   }
 
   /**
-   * 착용 신발 — game 아틀라스 40×24 (2026-08-14: 이전 23×14의 약 1.7배로 확대).
-   * 원본 신발은 **오른쪽을 향하므로** 왼쪽을 볼 때만 반전한다.
+   * 캐릭터 컷을 그린다. **신발을 신고 있으면 맨발 영역을 통째로 잘라내고 그린다.**
+   *
+   * 신발 스프라이트로 발을 "덮는" 방식은 신발 실루엣이 발보다 작거나 좁으면
+   * 발가락·발등·발목이 삐져나온다(= 버그). 반대로 발 자체를 안 그리면
+   * 어떤 신발이든 맨발이 1도트도 나올 수 없다. 잘린 단면은 신발이 더 위에서
+   * 시작하므로 가려진다.
+   *
+   * @param {'front'|'side'|'jump'} cut
    */
-  renderWornShoe(cx, footY) {
+  drawCut(image, x, y, w, h, scale, cut) {
+    const flip = cut !== 'front' && this.facing !== 1;
+    if (this.shoe === null) {
+      if (flip) drawScaledFlipped(image, x, y, w, h, scale);
+      else drawScaled(image, x, y, w, h, scale);
+      return;
+    }
+    const rows = this.footCut(cut); // 이 행부터 아래는 발 → 그리지 않는다
+    if (flip) drawFrameAtFlipped(image, 0, 0, w, rows, x, y, scale);
+    else drawFrameAt(image, 0, 0, w, rows, x, y, scale);
+  }
+
+  /** 발이 시작하는 원본 행. 슬라이서 측정값을 쓰되 최소 7행은 반드시 잘라낸다. */
+  footCut(cut) {
+    const srcH = cut === 'jump' ? CHAR.jumpH : CHAR.h;
+    const m = charMeta[this.charId]?.cuts?.[cut]?.foot;
+    return Math.min(m ? m.top : srcH - 7, srcH - 7);
+  }
+
+  /**
+   * 컷 안에서 발이 있는 x(원본 스프라이트 좌표)를 화면 x로 환산한다.
+   * 캐릭터마다 발 위치가 미세하게 다르므로 슬라이서가 기록한 foot.cx 를 쓴다.
+   * (characters.generated.json — tools/slice-characters.mjs footAnchor())
+   * @param {'front'|'side'|'jump'} cut
+   * @param {number} cx 캐릭터 중심 화면 x
+   */
+  footScreenX(cut, cx) {
+    const S = CHAR.scale;
+    const isJump = cut === 'jump';
+    const srcW = isJump ? CHAR.jumpW : CHAR.w;
+    const dw = isJump ? CHAR.jumpDw : CHAR.dw;
+    const left = cx - (dw >> 1);
+    const meta = charMeta[this.charId]?.cuts?.[cut]?.foot;
+    const fcx = meta ? meta.cx : srcW >> 1;
+    // 반전 렌더는 translate(left+dw) 후 scale(-1,1) 이므로 x가 뒤집힌다
+    const flipped = cut !== 'front' && this.facing !== 1;
+    return flipped ? left + dw - Math.round(fcx * S) : left + Math.round(fcx * S);
+  }
+
+  /**
+   * 착용 신발 — **전용 아틀라스 `shoes_worn`(31×19, 1도트 진회색 외곽선)** 을 1:1로 그린다.
+   * (2026-08-15: game 아틀라스를 0.7배로 줄여 그리던 방식은 가장자리가 들쭉날쭉했다.
+   *  원본에서 직접 렌더한 착용 전용 크기 + 외곽선으로 바꿔 "장착된" 느낌을 준다.)
+   * 원본 신발은 **오른쪽을 향하므로** 왼쪽을 볼 때만 반전한다.
+   * @param {'front'|'side'|'jump'} cut 현재 그려진 캐릭터 컷
+   */
+  renderWornShoe(cx, footY, cut = 'side') {
     if (this.shoe === null) return;
-    const w = img('shoes_game');
+    const w = img('shoes_worn');
     if (!w) return;
-    const m = shoesData.game;
+    const m = shoesData.worn;
     const S = SHOE.wornRenderScale;
     const col = this.shoe % 10;
     const row = (this.shoe / 10) | 0;
@@ -214,8 +265,12 @@ export class Player {
     const sy = row * m.cellH + 1;
     const dw = Math.round(m.shoeW * S);
     const dh = Math.round(m.shoeH * S);
-    const dx = cx - (dw >> 1) + (this.facing === 1 ? 4 : -4);
-    const dy = footY - dh + 2;
+    // 신발 중심을 발 중심에 맞추되, 발끝(진행 방향)이 살짝 더 나오게 1px 민다
+    const fx = this.footScreenX(cut, cx);
+    const lean = cut === 'front' ? 0 : this.facing === 1 ? 1 : -1;
+    const dx = fx - (dw >> 1) + lean;
+    // 신발 밑창이 발끝 라인(=계단 윗면)에 닿는다 (외곽선 1도트만큼 아래로)
+    const dy = footY - dh + SHOE.wornOffsetY;
 
     if (this.popLeft > 0) {
       const mul = this.popLeft > 6 ? 1.5 : this.popLeft > 3 ? 1.25 : 1.0;
@@ -229,9 +284,9 @@ export class Player {
   }
 
   renderFlyingShoe(x, y, flip) {
-    const w = img('shoes_game');
+    const w = img('shoes_worn');
     if (!w || this.deadShoe === null) return;
-    const m = shoesData.game;
+    const m = shoesData.worn;
     const S = SHOE.wornRenderScale;
     const col = this.deadShoe % 10;
     const row = (this.deadShoe / 10) | 0;

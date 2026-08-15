@@ -6,6 +6,7 @@
 import { INPUT } from '../config/balance.js';
 import { CONTROLS } from '../config/layout.js';
 import { toLogical, getCanvas } from './canvas.js';
+import { unlock } from '../audio/audio.js';
 
 export const BTN = { LEFT: 'L', RIGHT: 'R' };
 
@@ -18,6 +19,20 @@ let enabled = false;
 
 /** 임의 콜백 — HUD의 일시정지 버튼 등 캔버스 안 버튼을 처리한다. */
 let tapHandler = null;
+
+/**
+ * 브라우저는 사용자 제스처 없이는 소리를 내지 않는다.
+ * 어떤 입력이든 들어오면 그 자리에서 오디오를 깨운다. (제스처 핸들러 안이어야 한다)
+ */
+function wakeAudio() {
+  if (unlock()) onFirstGesture.forEach((f) => f());
+}
+
+/** @type {Function[]} 오디오가 처음 열릴 때 한 번 부를 콜백 (BGM 시작 등) */
+const onFirstGesture = [];
+export function onAudioReady(fn) {
+  onFirstGesture.push(fn);
+}
 
 function push(btn) {
   const now = performance.now();
@@ -36,6 +51,7 @@ function hit(rect, x, y) {
 }
 
 function handlePointerDown(lx, ly) {
+  wakeAudio();
   if (hit(CONTROLS.left, lx, ly)) {
     held.L = true;
     push(BTN.LEFT);
@@ -85,6 +101,7 @@ function onMouseUp() {
 
 function onKeyDown(e) {
   if (!enabled || e.repeat) return;
+  wakeAudio();
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
     held.L = true;
     push(BTN.LEFT);

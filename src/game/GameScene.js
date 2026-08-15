@@ -22,6 +22,10 @@ import { Background } from './background.js';
 import { renderHud, hitPause } from './hud.js';
 import { PauseOverlay, ReviveOverlay, GameOverOverlay } from './overlays.js';
 import { PAL } from './palette.js';
+import * as Sfx from '../audio/sfx.js';
+import * as Bgm from '../audio/bgm.js';
+import { AUDIO, SHOE_RARE_TIER_MAX } from '../config/balance.js';
+import shoesData from '../data/shoes.json';
 
 export class GameScene {
   /**
@@ -52,6 +56,11 @@ export class GameScene {
     this.revives = 0;
     this.reviveEarned = 0; // 이미 지급한 부활 수 (20개마다 1개)
     this.overlayDone = false;
+    /** 함성 발동용 — 실수 없이 연속으로 오른 칸 수 (기획서 §9-7-1) */
+    this.stepStreak = 0;
+    // 판이 시작되면 1번 트랙부터 (재시작 포함). 오디오가 아직 잠겨 있으면 조용히 무시된다.
+    Bgm.forceTrack(1);
+    Bgm.startBgm();
 
     // 인트로: 정면 → 팝 → 대기 → 첫 계단 방향으로 전환 (기획서: 시작인터페이스)
     this.player.introFacing = this.stairs.nextDir(0);
@@ -68,6 +77,7 @@ export class GameScene {
       { key: `${this.charId}_side`, url: `/assets/characters/${this.charId}_side.png` },
       { key: `${this.charId}_jump`, url: `/assets/characters/${this.charId}_jump.png` },
       { key: 'shoes_game', url: '/assets/shoes/shoes_game.png' },
+      { key: 'shoes_worn', url: '/assets/shoes/shoes_worn.png' },
       { key: 'shoe_icon', url: '/assets/shoes/shoe_icon.png' },
       { key: `${pick.id}_road`, url: a.road },
       { key: `${pick.id}_floor1`, url: a.floor1 },
@@ -78,6 +88,8 @@ export class GameScene {
       { key: 'btn_up', url: '/assets/ui/btn_up.png' },
       { key: 'btn_left', url: '/assets/ui/btn_left.png' },
       { key: 'btn_right', url: '/assets/ui/btn_right.png' },
+      { key: 'gauge_frame', url: '/assets/ui/gauge_frame.png' },
+      { key: 'btn_pause', url: '/assets/ui/btn_pause.png' },
     ];
     this.ready = false;
     loadAll(list).then(() => {
@@ -150,12 +162,26 @@ export class GameScene {
     this.floor++;
     this.player.climb(need);
     this.gauge = Math.min(GAUGE_MAX, this.gauge + this.diff.stepReward);
+    Sfx.playStep();
+    Bgm.setFloor(this.floor);
+
+    // 함성 — 매 칸마다 지르면 시끄러우니 N연속 무실수마다 1회
+    this.stepStreak++;
+    if (this.stepStreak % AUDIO.shout.streak === 0) Sfx.playShout(this.charId);
 
     // 신발 획득
     const shoe = this.stairs.takeShoe(this.floor);
     if (shoe !== undefined) {
       this.player.wear(shoe);
       this.shoesFound++;
+      // 1·2티어는 특별 징글 + 함성 무조건 (연속 수와 무관)
+      const tier = shoesData.shoes[shoe]?.tier ?? 5;
+      if (tier <= SHOE_RARE_TIER_MAX) {
+        Sfx.play('sfx_shoe_rare');
+        Sfx.playShout(this.charId);
+      } else {
+        Sfx.play('sfx_shoe_get');
+      }
       this.gauge = Math.min(GAUGE_MAX, this.gauge + this.diff.shoeReward);
       // 부활 지급 (싱글 전용, 신발 20개당 1개)
       const earned = Math.floor(this.shoesFound / REVIVE.shoesPerRevive);
@@ -167,11 +193,15 @@ export class GameScene {
   }
 
   die() {
+    if (this.player.dying) return;
+    this.stepStreak = 0;
+    Sfx.play('sfx_death');
     this.player.die();
   }
 
   /** 부활 (ReviveOverlay에서 호출) */
   doRevive() {
+    Sfx.play('sfx_revive');
     this.revives--;
     this.gauge = REVIVE.gaugeOnRevive;
     this.player.state = P_STATE.IDLE;
@@ -190,7 +220,10 @@ export class GameScene {
     const btn = consumeInput();
     if (btn) this.action(btn);
 
+    const prevState = this.player.state;
     this.player.update();
+    // STARE → FALL 로 넘어가는 그 순간에 추락음 (죽자마자 내면 좌절 3음과 겹친다)
+    if (prevState === P_STATE.STARE && this.player.state === P_STATE.FALL) Sfx.play('sfx_fall');
     if (this.player.inIntro) return; // 인트로 동안은 게이지 정지
 
     // 게이지
@@ -214,6 +247,7 @@ export class GameScene {
   }
 
   finish() {
+    Bgm.stopBgm();
     // 최고기록 (M6 전까지 로컬 저장)
     const key = `sf_best_${this.diff.id}`;
     const best = Number(localStorage.getItem(key) ?? 0);

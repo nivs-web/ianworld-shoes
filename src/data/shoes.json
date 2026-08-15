@@ -18,6 +18,15 @@
     "shoeW": 40,
     "shoeH": 24
   },
+  "worn": {
+    "file": "shoes_worn.png",
+    "w": 330,
+    "h": 273,
+    "cellW": 33,
+    "cellH": 21,
+    "shoeW": 31,
+    "shoeH": 19
+  },
   "icon": {
     "file": "shoe_icon.png",
     "w": 21,

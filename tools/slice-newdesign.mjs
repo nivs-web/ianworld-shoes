@@ -32,6 +32,17 @@ const TOTAL = 130;
 const MASTER = { w: 50, h: 30, cellW: 52, cellH: 32, colors: 16 };
 const GAME = { w: 40, h: 24, cellW: 42, cellH: 26, colors: 14 };
 const ICON = { w: 24, h: 15, colors: 10 };
+/**
+ * 착용(캐릭터 발) 전용 — 2026-08-15 신설.
+ *
+ * 예전엔 game 아틀라스(40×24)를 런타임에 0.7배로 줄여 그렸다. 비정수 축소라
+ * 가장자리 도트가 들쭉날쭉해 "경계가 흐린" 느낌이 났다. 그래서 **원본 크롭에서
+ * 착용 크기로 직접 렌더**하고, 캐릭터 위에 얹혀도 형태가 또렷하도록
+ * **1도트 진회색 외곽선**을 두른다. (신발 찾기 게임이라 신발이 눈에 띄어야 한다)
+ *
+ * 신발 알맹이 29×17 + 외곽선 1도트 = 총 31×19 (이전 28×17의 약 1.1배)
+ */
+const WORN = { w: 29, h: 17, colors: 12, outline: [0x3a, 0x3a, 0x42, 255], cellW: 33, cellH: 21 };
 
 /**
  * HUD 아이콘으로 쓸 신발의 **아틀라스 인덱스** (티어순 정렬 후 기준).
@@ -43,6 +54,68 @@ const MIN_SRC_H = 90;
 const MIN_SRC_AREA = 6000;
 
 // ─────────────────────────────────────────────
+
+/**
+ * 내부 구멍 메우기 (2026-08-14).
+ *
+ * 블롭 검출이 "배경색과 비슷한 픽셀"을 전부 배경으로 보기 때문에,
+ * 신발 안쪽의 밝은 면(흰 미드솔·밝은 갑피)이 배경색과 겹치면 그 부분이
+ * 통째로 뚫려서 계단이 비쳐 보인다. 테두리에서 도달 가능한 투명 픽셀만
+ * "바깥"으로 인정하고, 나머지 투명 픽셀은 이웃 색으로 메운다.
+ *
+ * @returns {number} 메운 픽셀 수
+ */
+function fillHoles(buf, w, h) {
+  const n = w * h;
+  const outside = new Uint8Array(n);
+  const stack = [];
+  const push = (i) => {
+    if (!outside[i] && buf[i * 4 + 3] === 0) {
+      outside[i] = 1;
+      stack.push(i);
+    }
+  };
+  for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+  while (stack.length) {
+    const p = stack.pop();
+    const x = p % w;
+    const y = (p / w) | 0;
+    if (x > 0) push(p - 1);
+    if (x < w - 1) push(p + 1);
+    if (y > 0) push(p - w);
+    if (y < h - 1) push(p + w);
+  }
+
+  let remaining = [];
+  for (let i = 0; i < n; i++) if (buf[i * 4 + 3] === 0 && !outside[i]) remaining.push(i);
+  const total = remaining.length;
+  if (!total) return 0;
+
+  // 구멍 가장자리부터 이웃 불투명 색 평균으로 한 겹씩 채워 들어간다
+  while (remaining.length) {
+    const next = [];
+    const writes = [];
+    for (const p of remaining) {
+      const x = p % w;
+      let r = 0, g = 0, b = 0, c = 0;
+      for (const q of [p - 1, p + 1, p - w, p + w]) {
+        if (q < 0 || q >= n) continue;
+        if (Math.abs((q % w) - x) > 1) continue;
+        if (buf[q * 4 + 3] !== 255) continue;
+        r += buf[q * 4]; g += buf[q * 4 + 1]; b += buf[q * 4 + 2]; c++;
+      }
+      if (c) writes.push([p, (r / c) | 0, (g / c) | 0, (b / c) | 0]);
+      else next.push(p);
+    }
+    if (!writes.length) break; // 더 못 채움 (이론상 발생하지 않음)
+    for (const [p, r, g, b] of writes) {
+      buf[p * 4] = r; buf[p * 4 + 1] = g; buf[p * 4 + 2] = b; buf[p * 4 + 3] = 255;
+    }
+    remaining = next;
+  }
+  return total;
+}
 
 /** 원본 크롭 → 지정 크기 RGBA (비율 유지, 알파 이진화) */
 async function renderAt(crop, bw, bh, maxW, maxH, colors) {
@@ -58,7 +131,46 @@ async function renderAt(crop, bw, bh, maxW, maxH, colors) {
     .toBuffer();
   const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   for (let i = 3; i < data.length; i += 4) data[i] = data[i] >= 128 ? 255 : 0;
+  // 축소·이진화 과정에서 새로 생긴 내부 구멍도 막는다
+  fillHoles(data, info.width, info.height);
   return { buf: data, w: info.width, h: info.height };
+}
+
+/**
+ * 스프라이트 둘레에 1도트 외곽선을 두른다 (8방향 팽창).
+ * 반환 스프라이트는 상하좌우로 1도트씩 커진다.
+ */
+function addOutline(spr, color) {
+  const w = spr.w + 2;
+  const h = spr.h + 2;
+  const buf = Buffer.alloc(w * h * 4, 0);
+  const set = (x, y, r, g, b) => {
+    const i = (y * w + x) * 4;
+    buf[i] = r; buf[i + 1] = g; buf[i + 2] = b; buf[i + 3] = 255;
+  };
+  // 원본을 (1,1)에 얹는다
+  for (let y = 0; y < spr.h; y++) {
+    for (let x = 0; x < spr.w; x++) {
+      const si = (y * spr.w + x) * 4;
+      if (spr.buf[si + 3] === 0) continue;
+      set(x + 1, y + 1, spr.buf[si], spr.buf[si + 1], spr.buf[si + 2]);
+    }
+  }
+  // 빈 칸 중 알맹이와 8방향으로 닿는 곳을 외곽선으로
+  const solid = (x, y) => x >= 0 && y >= 0 && x < w && y < h && buf[(y * w + x) * 4 + 3] === 255;
+  const ring = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (buf[(y * w + x) * 4 + 3] === 255) continue;
+      let touch = false;
+      for (let dy = -1; dy <= 1 && !touch; dy++)
+        for (let dx = -1; dx <= 1 && !touch; dx++)
+          if ((dx || dy) && solid(x + dx, y + dy)) touch = true;
+      if (touch) ring.push([x, y]);
+    }
+  }
+  for (const [x, y] of ring) set(x, y, color[0], color[1], color[2]);
+  return { buf, w, h };
 }
 
 /** 화려함 점수: 색상 다양성 + 고유 색 수 + 평균 채도 */
@@ -193,6 +305,7 @@ async function main() {
 
   // ── 원본 크롭 보관 (모든 출력 크기를 여기서 직접 만든다) ──
   const crops = [];
+  let holePixels = 0;
   for (const b of ordered) {
     const bw = b.maxX - b.minX + 1;
     const bh = b.maxY - b.minY + 1;
@@ -207,8 +320,11 @@ async function main() {
       crop[di + 2] = data[si + 2];
       crop[di + 3] = 255;
     }
+    // 원본 해상도에서 먼저 구멍을 메운다 — 축소 전에 막아야 색이 자연스럽다
+    holePixels += fillHoles(crop, bw, bh);
     crops.push({ crop, bw, bh });
   }
+  if (holePixels) console.log(`내부 투명 구멍 메움: ${holePixels}px (원본 해상도 기준)`);
 
   if (crops.length < TOTAL) throw new Error(`신발 ${crops.length}개 — ${TOTAL}개 미달`);
   const picked = crops.slice(0, TOTAL);
@@ -241,6 +357,10 @@ async function main() {
   const GAH = ROWS * GAME.cellH;
   const gameAtlas = Buffer.alloc(GAW * GAH * 4, 0);
 
+  const WAW = COLS * WORN.cellW;
+  const WAH = ROWS * WORN.cellH;
+  const wornAtlas = Buffer.alloc(WAW * WAH * 4, 0);
+
   const shoes = [];
   const tierCount = {};
   const TIER_LABEL = ['', '스페셜', '레어', '트라이', '투톤', '베이식'];
@@ -256,6 +376,11 @@ async function main() {
     const src = picked[m.srcIndex];
     const g = await renderAt(src.crop, src.bw, src.bh, GAME.w, GAME.h, GAME.colors);
     blit(gameAtlas, GAW, g, index, GAME.cellW, GAME.cellH, GAME.w, GAME.h);
+
+    // 착용용도 원본에서 직접 렌더 + 진회색 외곽선
+    const wRaw = await renderAt(src.crop, src.bw, src.bh, WORN.w, WORN.h, WORN.colors);
+    const wOut = addOutline(wRaw, WORN.outline);
+    blit(wornAtlas, WAW, wOut, index, WORN.cellW, WORN.cellH, WORN.w + 2, WORN.h + 2);
 
     shoes.push({
       id: `t${tier}_${String(tierCount[tier]).padStart(3, '0')}`,
@@ -273,6 +398,8 @@ async function main() {
     .png({ compressionLevel: 9 }).toFile(resolve(OUT_DIR, 'shoes_master.png'));
   await sharp(gameAtlas, { raw: { width: GAW, height: GAH, channels: 4 } })
     .png({ compressionLevel: 9 }).toFile(resolve(OUT_DIR, 'shoes_game.png'));
+  await sharp(wornAtlas, { raw: { width: WAW, height: WAH, channels: 4 } })
+    .png({ compressionLevel: 9 }).toFile(resolve(OUT_DIR, 'shoes_worn.png'));
 
   // ── HUD 아이콘 ──
   const iconAt = Math.min(ICON_ATLAS_INDEX, order.length - 1);
@@ -286,6 +413,7 @@ async function main() {
     source: 'etc/신발자료/newdesign.png',
     master: { file: 'shoes_master.png', w: MAW, h: MAH, cellW: MASTER.cellW, cellH: MASTER.cellH, shoeW: MASTER.w, shoeH: MASTER.h },
     game: { file: 'shoes_game.png', w: GAW, h: GAH, cellW: GAME.cellW, cellH: GAME.cellH, shoeW: GAME.w, shoeH: GAME.h },
+    worn: { file: 'shoes_worn.png', w: WAW, h: WAH, cellW: WORN.cellW, cellH: WORN.cellH, shoeW: WORN.w + 2, shoeH: WORN.h + 2 },
     icon: { file: 'shoe_icon.png', w: icon.w, h: icon.h },
     tiers: [
       { tier: 1, name: 'MAXIMAL', count: 5, prob: 0.05, offset: 0 },
@@ -299,7 +427,7 @@ async function main() {
   await writeFile(OUT_JSON, JSON.stringify(meta, null, 2) + '\n', 'utf8');
 
   console.log('티어 배정:', JSON.stringify(tierCount));
-  console.log(`  master ${MAW}×${MAH} / game ${GAW}×${GAH} / icon ${icon.w}×${icon.h}`);
+  console.log(`  master ${MAW}×${MAH} / game ${GAW}×${GAH} / worn ${WAW}×${WAH} / icon ${icon.w}×${icon.h}`);
 }
 
 main().catch((e) => {

@@ -2,7 +2,7 @@
  * 계단 블록 슬라이서
  *
  *   입력: etc/UI/계단.png  (2770×1504 돌블록 렌더 — 어두운 테두리 + 회색 면 + 얼룩)
- *   출력: public/assets/ui/stair.png  (36×19)
+ *   출력: public/assets/ui/stair.png  (32×13)
  *
  * 원본이 매끈한 렌더라 [불투명 영역 크롭 → lanczos 축소 → 12색 양자화]로 도트화한다.
  * 출력 크기는 layout.js STAIR.w / STAIR.h 와 반드시 일치해야 한다.
@@ -18,8 +18,8 @@ const SRC = resolve(ROOT, 'etc/UI/계단.png');
 const OUT_DIR = resolve(ROOT, 'public/assets/ui');
 
 /** layout.js STAIR 과 일치 */
-const OUT_W = 36;
-const OUT_H = 19;
+const OUT_W = 32;
+const OUT_H = 13;
 const COLORS = 12;
 
 async function main() {

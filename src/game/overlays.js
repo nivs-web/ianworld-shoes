@@ -8,7 +8,8 @@
 import * as Scene from '../core/scene.js';
 import { consumeInput, clearInput, setTapHandler, BTN } from '../core/input.js';
 import { rect, strokeRect } from '../core/sprite.js';
-import { text } from '../core/pixelfont.js';
+import { text, GLYPH_H } from '../core/pixelfont.js';
+import * as Sfx from '../audio/sfx.js';
 import { VIEW_W, VIEW_H, GAMEOVER } from '../config/layout.js';
 import { REVIVE } from '../config/balance.js';
 import { PAL } from './palette.js';
@@ -67,18 +68,18 @@ export class PauseOverlay {
 
   update() {
     const btn = consumeInput();
-    if (btn === BTN.LEFT) Scene.pop();
-    else if (btn === BTN.RIGHT) this.restart();
+    if (btn === BTN.LEFT) { Sfx.play('sfx_menu_back'); Scene.pop(); }
+    else if (btn === BTN.RIGHT) { Sfx.play('sfx_menu_select'); this.restart(); }
   }
 
   render() {
     dim();
     panelBox(30, 100, 120, 136);
-    text('PAUSE', 90, 116, { color: PAL.textShadow, scale: 2, align: 'center' });
+    text('PAUSE', 90, 112, { color: PAL.textShadow, scale: 2, align: 'center' });
     button(40, 150, 100, 30, true);
-    text('GO!', 90, 160, { color: PAL.text, scale: 1, align: 'center' });
+    text('GO!', 90, 150 + ((30 - GLYPH_H) >> 1), { color: PAL.text, scale: 1, align: 'center' });
     button(40, 190, 100, 30, false);
-    text('RETRY', 90, 200, { color: PAL.text, scale: 1, align: 'center' });
+    text('RETRY', 90, 190 + ((30 - GLYPH_H) >> 1), { color: PAL.text, scale: 1, align: 'center' });
   }
 }
 
@@ -117,6 +118,7 @@ export class ReviveOverlay {
   }
 
   decline() {
+    Sfx.play('sfx_menu_back');
     Scene.pop();
     this.game.finish();
   }
@@ -133,7 +135,7 @@ export class ReviveOverlay {
     panelBox(16, 110, 148, 116);
     // 카운트다운 숫자
     const sec = Math.ceil(this.left / 60);
-    text(String(sec), 90, 124, { color: PAL.goRed, scale: 3, align: 'center' });
+    text(String(sec), 90, 120, { color: PAL.goRed, scale: 3, align: 'center', mono: true });
 
     // 하트 = 부활
     button(24, 170, 60, 40, true);
@@ -142,7 +144,7 @@ export class ReviveOverlay {
     button(96, 170, 60, 40, false);
     xmark(126, 184);
 
-    text(`X${this.game.revives}`, 90, 152, { color: PAL.textShadow, align: 'center' });
+    text(`X${this.game.revives}`, 90, 156, { color: PAL.textShadow, align: 'center' });
   }
 }
 
@@ -215,27 +217,28 @@ export class GameOverOverlay {
     dim();
 
     text('GAME OVER', GAMEOVER.title.x, GAMEOVER.title.y, {
-      color: PAL.goRed, outline: '#3A0A0A', scale: 2, align: 'center',
+      color: PAL.goRed, outline: '#3A0A0A', scale: GAMEOVER.title.scale, align: 'center',
     });
 
     const p = GAMEOVER.panel;
     panelBox(p.x, p.y, p.w, p.h);
 
-    text('SCORE', 90, p.y + 14, { color: PAL.accent, scale: 1, align: 'center' });
+    text('SCORE', 90, GAMEOVER.label.y, { color: PAL.accent, scale: 1, align: 'center' });
     text(String(this.game.floor), GAMEOVER.score.x, GAMEOVER.score.y, {
-      color: '#2E7D4F', outline: '#123020', scale: GAMEOVER.score.scale, align: 'center',
+      color: '#2E7D4F', outline: '#123020', scale: GAMEOVER.score.scale, align: 'center', mono: true,
     });
 
     // BEST 바
-    rect(p.x + 12, GAMEOVER.best.y - 4, p.w - 24, 16, PAL.panelDark);
-    strokeRect(p.x + 12, GAMEOVER.best.y - 4, p.w - 24, 16, PAL.line);
+    const bh = GAMEOVER.best.barH;
+    rect(p.x + 12, GAMEOVER.best.y - 4, p.w - 24, bh, PAL.panelDark);
+    strokeRect(p.x + 12, GAMEOVER.best.y - 4, p.w - 24, bh, PAL.line);
     text('BEST', p.x + 18, GAMEOVER.best.y, { color: PAL.textShadow });
     text(String(this.best), p.x + p.w - 18, GAMEOVER.best.y, {
       color: PAL.goRed, align: 'right',
     });
 
     // 찾은 신발 요약
-    text(`SHOES ${this.game.shoesFound}`, 90, GAMEOVER.best.y + 18, {
+    text(`SHOES ${this.game.shoesFound}`, 90, GAMEOVER.shoes.y, {
       color: PAL.textShadow, align: 'center',
     });
 
@@ -243,7 +246,7 @@ export class GameOverOverlay {
       const b1 = GAMEOVER.btnHome;
       const b2 = GAMEOVER.btnRetry;
       button(b1.x, b1.y, b1.w, b1.h, false);
-      text('HOME', b1.x + (b1.w >> 1), b1.y + 14, { color: PAL.text, align: 'center' });
+      text('HOME', b1.x + (b1.w >> 1), b1.y + ((b1.h - GLYPH_H) >> 1), { color: PAL.text, align: 'center' });
       button(b2.x, b2.y, b2.w, b2.h, true);
       // ▶ 재시작 삼각형
       const cx = b2.x + (b2.w >> 1) - 4;

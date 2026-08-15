@@ -16,40 +16,55 @@ import { PAL } from './palette.js';
  */
 export function renderHud(s) {
   // ── 시간 게이지 ──
+  // 프레임은 사용자 아트를 도트로 다시 찍은 스프라이트(gauge_frame.png),
+  // 채움만 런타임 사각형 — 이래야 어떤 비율에서도 도트가 깨지지 않는다.
   const g = HUD.gauge;
   const f = HUD.gaugeFill;
-  rect(g.x, g.y, g.w, g.h, PAL.gaugeBg);
-  strokeRect(g.x, g.y, g.w, g.h, PAL.panelDark);
-  strokeRect(g.x + 1, g.y + 1, g.w - 2, g.h - 2, PAL.line);
   const ratio = Math.max(0, s.gauge) / GAUGE_MAX;
   const fillW = Math.round(f.w * ratio);
-  rect(f.x, f.y, fillW, f.h, ratio < 0.3 ? PAL.gaugeWarn : PAL.gaugeFill);
+  const frame = img('gauge_frame');
+  if (frame) {
+    draw(frame, g.x, g.y);
+  } else {
+    rect(g.x, g.y, g.w, g.h, PAL.uiFace);
+    strokeRect(g.x, g.y, g.w, g.h, PAL.uiOutline);
+    rect(f.x, f.y, f.w, f.h, PAL.gaugeBg);
+  }
+  if (fillW > 0) rect(f.x, f.y, fillW, f.h, ratio < 0.3 ? PAL.gaugeWarn : PAL.gaugeFill);
 
   // ── 일시정지 버튼 ──
   const p = HUD.pause;
-  rect(p.x, p.y, p.w, p.h, PAL.panel);
-  strokeRect(p.x, p.y, p.w, p.h, PAL.line);
-  rect(p.x + 5, p.y + 4, 3, 10, PAL.accent);
-  rect(p.x + 10, p.y + 4, 3, 10, PAL.accent);
+  const pauseImg = img('btn_pause');
+  if (pauseImg) {
+    draw(pauseImg, p.x, p.y);
+  } else {
+    rect(p.x, p.y, p.w, p.h, PAL.uiFace);
+    strokeRect(p.x, p.y, p.w, p.h, PAL.uiOutline);
+    rect(p.x + 4, p.y + 5, 4, 9, PAL.accent);
+    rect(p.x + 10, p.y + 5, 4, 9, PAL.accent);
+  }
 
-  // ── 좌상단: 신발 아이콘 + 찾은 수 ──
+  // ── 좌상단(아이콘 행): 신발 아이콘 + 찾은 수 ──
   const icon = img('shoe_icon');
   if (icon) draw(icon, HUD.shoesIcon.x, HUD.shoesIcon.y);
   text(`${s.shoesFound}`, HUD.shoesLabel.x, HUD.shoesLabel.y, {
-    color: PAL.text, outline: PAL.textShadow, scale: 2,
+    color: PAL.text, outline: PAL.textShadow, scale: HUD.shoesLabel.scale, mono: true,
   });
 
-  // ── 우상단: 부활 하트 + 수 ──
+  // ── 우상단(같은 행): 부활 하트 + 수 ──
   if (s.revives > 0) {
-    drawHeartIcon(HUD.reviveLabel.x - 22, HUD.reviveLabel.y);
+    drawHeartIcon(HUD.reviveHeart.x, HUD.reviveHeart.y);
     text(`${s.revives}`, HUD.reviveLabel.x, HUD.reviveLabel.y, {
-      color: PAL.text, shadow: PAL.textShadow, align: 'right',
+      color: PAL.text, outline: PAL.textShadow, scale: HUD.reviveLabel.scale,
+      align: HUD.reviveLabel.align, mono: true,
     });
   }
 
-  // ── 중앙: 계단 수 (대형) ──
+  // ── 중앙(아래 행): 계단 수 ──
+  // mono: 자릿수가 바뀌어도 가운데 정렬이 흔들리지 않게 고정폭으로 찍는다.
   text(String(s.floor), HUD.score.x, HUD.score.y, {
-    color: PAL.text, outline: PAL.textShadow, scale: HUD.score.scale, align: 'center',
+    color: PAL.text, outline: PAL.textShadow, scale: HUD.score.scale,
+    align: HUD.score.align, mono: true,
   });
 
   // ── 조작 버튼 ──

@@ -4,17 +4,28 @@
  */
 
 export const PAL = {
-  // 신발 상자 계단
-  boxFace: '#E8D9B8',
-  boxSide: '#C9B48A',
-  boxLid: '#F2E8CE',
-  boxTape: '#D9885A',
-  boxLine: '#8A6B42',
+  // 계단 블록 (에셋 로드 전 폴백용)
+  boxFace: '#B4B4B4',
+  boxSide: '#7A7A86',
+  boxLid: '#D0D0D0',
+  boxTape: '#5A5A66',
+  boxLine: '#2A2A34',
 
-  // HUD
-  gaugeFill: '#E8501F',
+  /**
+   * 계단 가독성 보강 (2026-08-14).
+   * 배경 색과 계단 색이 비슷하면 계단이 묻혀버린다 →
+   * 어두운 외곽선 1px + 오른쪽아래 드롭섀도로 항상 떠 보이게 한다.
+   */
+  stairOutline: '#141019',
+  stairShadow: 'rgba(10, 6, 14, 0.45)',
+
+  // HUD — 색은 사용자 원본(etc/게이지바.png, etc/일시정지.png)에서 뽑았다 (2026-08-15)
+  gaugeFill: '#CD4421',
   gaugeWarn: '#F2C23C',
-  gaugeBg: '#4A3428',
+  gaugeBg: '#554334',
+  uiOutline: '#600F09',
+  uiFace: '#FFDD8E',
+  uiShade: '#CCA977',
   panel: '#F5D9A0',
   panelDark: '#C99A52',
   line: '#6B3F1D',

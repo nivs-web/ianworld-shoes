@@ -8,16 +8,19 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "assets": "npm run assets:chars && npm run assets:shoes && npm run assets:bg && npm run assets:ui",
+    "assets": "npm run assets:chars && npm run assets:shoes && npm run assets:bg && npm run assets:ui && npm run assets:font",
     "assets:chars": "node tools/slice-characters.mjs",
     "assets:shoes": "node tools/slice-newdesign.mjs",
     "assets:bg": "node tools/downscale-bg.mjs",
-    "assets:ui": "node tools/slice-buttons.mjs && node tools/slice-stair.mjs"
+    "assets:ui": "node tools/slice-buttons.mjs && node tools/slice-stair.mjs && node tools/build-hud-ui.mjs",
+    "assets:font": "node tools/build-font.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"
   },
   "devDependencies": {
+    "galmuri": "^2.40.3",
+    "opentype.js": "^2.0.0",
     "playwright": "^1.49.1",
     "sharp": "^0.33.5",
     "vite": "^6.0.7"

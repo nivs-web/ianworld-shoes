@@ -4,9 +4,13 @@
  */
 
 import { initCanvas } from './core/canvas.js';
-import { initInput, setInputEnabled } from './core/input.js';
+import { initInput, setInputEnabled, onAudioReady } from './core/input.js';
 import { startLoop, stopLoop, bindVisibility } from './core/loop.js';
 import * as Scene from './core/scene.js';
+import * as Audio from './audio/audio.js';
+import * as Sfx from './audio/sfx.js';
+import * as Bgm from './audio/bgm.js';
+
 import { GameScene } from './game/GameScene.js';
 
 // 오버레이에서 재시작할 때 순환 import를 피하기 위한 전역 훅
@@ -23,19 +27,22 @@ async function boot() {
   initCanvas();
   initInput();
   setInputEnabled(true);
+  // 컨텍스트만 만들어 둔다 — 실제 재생은 첫 입력(제스처)에서 열린다
+  Audio.initAudio();
+  onAudioReady(() => Bgm.startBgm());
 
   const scene = new GameScene({ difficulty: 'normal', charId: 'ian', controlMode: 1 });
   Scene.push(scene);
 
   // 개발/테스트 훅
-  window.__dbg = { Scene, scene };
+  window.__dbg = { Scene, scene, Audio, Sfx, Bgm };
 
   const update = (dt) => Scene.updateCurrent(dt);
   const render = () => Scene.renderAll();
   startLoop(update, render);
   bindVisibility(
-    () => stopLoop(),
-    () => startLoop(update, render)
+    () => { stopLoop(); Audio.suspendAudio(); },
+    () => { startLoop(update, render); Audio.resumeAudio(); }
   );
 
   hideBoot();
