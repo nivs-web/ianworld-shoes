@@ -6,7 +6,7 @@
  * 어느 기기에서 먼저 찾았든 기록이 사라지지 않는다.
  */
 
-import { getFirebase, configured } from './firebase.js';
+import { getStore, configured } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import shoesData from '../data/shoes.json';
@@ -33,7 +33,7 @@ function active() {
 export async function pushFound(indices) {
   const u = active();
   if (!u || !indices.length) return;
-  const fb = await getFirebase();
+  const fb = await getStore();
   if (!fb) return;
 
   const local = L.loadCollection();
@@ -61,7 +61,7 @@ export async function pushFound(indices) {
 export async function pullAndMerge() {
   const u = active();
   if (!u) return L.dexUnique();
-  const fb = await getFirebase();
+  const fb = await getStore();
   if (!fb) return L.dexUnique();
 
   const snap = await fb.storeMod.getDocs(colRef(fb, u.uid));

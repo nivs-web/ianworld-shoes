@@ -2,13 +2,15 @@ node_modules/
 dist/
 .vite/
 
-# 환경변수 (Firebase 키) — 절대 커밋 금지
+# 환경변수 (Firebase 키) — 절대 커밋 금지.
+# .env.example (값 없는 템플릿) 만 예외로 커밋한다.
+#
+# ※ 2026-08-15: `firebase.env` 가 이 목록에 없어서 실제 키가 커밋된 적이 있다.
+#    이름이 조금만 달라도 빠져나가므로 .env 로 끝나는 건 전부 막는다.
 .env
-.env.local
-.env.*.local
-
-# 원격 도구가 .env 를 직접 못 써서 이 이름으로 전달한다.
-# 폴더에서 .env 로 이름만 바꿔 쓰면 된다.
+*.env
+.env.*
+!.env.example
 firebase.env.txt
 
 # 원본 아트 (수백 MB, tools 스크립트의 입력) — 로컬에만 둔다
