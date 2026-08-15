@@ -24,16 +24,19 @@
  * `vercel.json` 이 `/__/auth/*` 를 firebaseapp.com 으로 프록시하므로, authDomain 을
  * 우리 호스트로 바꾸면 로그인 핸들러가 **같은 출처**가 되어 칸막이가 사라진다.
  *
- * 다만 켜기 전에 **콘솔 작업 2개가 반드시 선행**되어야 한다(안 하면 로그인이 아예 막힌다):
- *   1. Firebase → Authentication → 설정 → 승인된 도메인에 우리 호스트 추가
- *   2. Google Cloud → API 및 서비스 → 사용자 인증 정보 → 해당 OAuth 클라이언트 →
- *      승인된 리디렉션 URI 에 `https://<우리호스트>/__/auth/handler` 추가
- * 그래서 기본값은 꺼짐이고, 준비가 끝나면 `VITE_FIREBASE_SELF_AUTH=1` 로 켠다.
+ * **선행 조건은 2026-08-15 에 전부 끝났고 실측으로 확인했다** (CLAUDE.md §9-0-10):
+ *   1. Firebase → Authentication → 승인된 도메인에 `ianworld-shoes.vercel.app`
+ *   2. Google Cloud → OAuth 클라이언트 → 승인된 리디렉션 URI 에
+ *      `https://ianworld-shoes.vercel.app/__/auth/handler`
+ *      (기존 firebaseapp.com 항목은 그대로 두고 **추가**했다 — 지우면 기존 경로가 끊긴다)
+ *   3. `vercel.json` 의 `/__/auth/*` 프록시 배포
+ * 그래서 이제 **기본값이 켜짐**이다. 새 도메인을 붙일 때는 위 2·3을 먼저 해야 한다.
+ * 급히 되돌려야 하면 `VITE_FIREBASE_SELF_AUTH=0` 으로 끌 수 있다.
  */
 function resolveAuthDomain() {
   const fromEnv = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
-  const selfHost = import.meta.env.VITE_FIREBASE_SELF_AUTH === '1';
-  if (!selfHost || typeof location === 'undefined') return fromEnv;
+  const flag = import.meta.env.VITE_FIREBASE_SELF_AUTH;
+  if (flag === '0' || typeof location === 'undefined') return fromEnv;
   // 개발 서버(localhost)에는 프록시가 없으므로 손대지 않는다
   if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return fromEnv;
   return location.host;

@@ -788,6 +788,39 @@ partitioning). 구글이 돌려준 자격증명이 `firebaseapp.com` 칸에 갇�
 | 이름만 갱신(syncIdentity) | 허용 |
 | **기록 삭제 시도** | 거부 |
 
+## 9-0-10. 로그인 완전 복구 — 실전 검증 완료 (2026-08-15)
+
+§9-0-9 의 처방을 끝까지 적용하고 **배포본에서 직접 재현해 확인**했다.
+
+### 콘솔 작업 (완료)
+
+- **Google Cloud → OAuth 클라이언트** `9232620026-grk44t...`
+  - 승인된 리디렉션 URI 에 `https://ianworld-shoes.vercel.app/__/auth/handler` **추가**
+  - 승인된 JavaScript 원본에 `https://ianworld-shoes.vercel.app` **추가**
+  - ⚠ 기존 `find-shoes-f5c55.firebaseapp.com` 항목은 **지우지 않고 남겼다.**
+    지우면 예전 경로가 즉시 끊긴다. 이 화면은 접근성 트리에 값이 안 보이고
+    자리표시자만 보이므로, **반드시 스크린샷으로 기존 값을 확인한 뒤 `URI 추가`** 로 늘려야 한다.
+    빈 칸인 줄 알고 덮어쓰면 전체 로그인이 죽는다.
+- **RTDB 규칙 게시** (M7 rooms/userRooms)
+- 프로젝트 소유자는 `info@nivs.com` **한 명**뿐이다. 다른 계정으로 Cloud Console 에
+  들어가면 프로젝트가 아예 안 보인다.
+
+### 실전 검증 — 같은 출처, 같은 코드, authDomain 만 다름
+
+| authDomain | `getRedirectResult()` (ianworld-shoes.vercel.app 에서 실행) |
+|---|---|
+| `find-shoes-f5c55.firebaseapp.com` | **null** (오류도 없음) |
+| `ianworld-shoes.vercel.app` (+프록시+OAuth URI) | **실제 계정 반환** |
+
+이걸로 원인·처방이 둘 다 증명됐다. 그래서 `resolveAuthDomain()` 의 **기본값을 켜짐으로**
+바꿨다 — Vercel 환경변수를 따로 넣을 필요가 없다.
+
+### 새 도메인을 붙일 때 반드시 할 것
+
+커스텀 도메인을 연결하면 authDomain 도 그 도메인이 된다. **먼저** ① Firebase 승인된 도메인
+② OAuth 리디렉션 URI `https://<새도메인>/__/auth/handler` ③ `vercel.json` 프록시 —
+셋을 해 두지 않으면 그 도메인에서 로그인이 통째로 막힌다. 급하면 `VITE_FIREBASE_SELF_AUTH=0`.
+
 ## 9-1. 배포에서 두 번 데인 것 (2026-08-15)
 
 배포가 M4에서 멈춰 있었다. 원인이 **두 개**였고 둘 다 조용히 실패했다.
