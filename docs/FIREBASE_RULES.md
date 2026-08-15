@@ -101,3 +101,38 @@ Vercel → 프로젝트 → Settings → **Environment Variables** 에 `.env.exa
 같은 이름으로 등록한다. `VITE_` 접두사가 없으면 브라우저 번들에 들어가지 않는다.
 
 등록 후에는 **재배포해야** 반영된다 (환경변수는 빌드 시점에 박힌다).
+
+
+---
+
+## 색인 (명예의 전당)
+
+명예의 전당은 **집계 서버 없이 클라이언트 쿼리로** 돈다 (Cloud Functions 는 유료 요금제가 필요).
+그래서 Firestore 복합 색인이 필요하다.
+
+가장 쉬운 방법: 앱에서 각 탭을 **한 번씩 눌러 본다.** 색인이 없으면 브라우저 콘솔에
+`https://console.firebase.google.com/.../firestore/indexes?create_composite=...` 링크가 찍히고,
+그 링크를 누르면 필요한 색인이 자동으로 채워진 채 생성 화면이 열린다. 만드는 데 1~2분 걸린다.
+
+직접 만들려면 콘솔 → Firestore → **색인** → 복합 색인 추가:
+
+| 컬렉션 | 필드 순서 |
+|--------|-----------|
+| `scores` | `difficulty` 오름차순, `wk` 오름차순, `stairs` **내림차순** |
+| `scores` | `difficulty` 오름차순, `mo` 오름차순, `stairs` **내림차순** |
+| `scores` | `difficulty` 오름차순, `yr` 오름차순, `stairs` **내림차순** |
+| `scores` | `uid` 오름차순, `difficulty` 오름차순, `wk` 오름차순, `stairs` **내림차순** |
+| `scores` | `uid` 오름차순, `difficulty` 오름차순, `mo` 오름차순, `stairs` **내림차순** |
+| `scores` | `uid` 오름차순, `difficulty` 오름차순, `yr` 오름차순, `stairs` **내림차순** |
+
+뒤 세 개는 "내가 100위 밖일 때 하단에 내 기록을 고정"하는 조회용이다.
+
+**신발왕·역대 탭은 색인이 필요 없다.** `users` 를 단일 필드(`shoesOwned`,
+`bestByDifficulty.easy` 등)로 정렬하는데, 단일 필드 색인은 Firestore 가 자동으로 만든다.
+
+### 왜 기간을 문자열로 저장하나
+
+`createdAt >= 이번주시작` 같은 부등호를 쓰면 Firestore 는 **부등호를 건 필드로 먼저 정렬**하라고
+요구한다. 그러면 "계단 수 상위 100명"을 뽑을 수 없다. 그래서 제출할 때
+`wk: '2026-W33'` · `mo: '2026-08'` · `yr: '2026'` 을 미리 박아 둔다 — 등호 비교라
+계단 수로 바로 정렬할 수 있다.

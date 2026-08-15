@@ -10,6 +10,7 @@ import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { NICKNAME } from '../config/balance.js';
 import * as Dex from './collection.js';
+import * as Rank from './leaderboard.js';
 
 export const get = L.loadProfile;
 export const dexUnique = L.dexUnique;
@@ -56,6 +57,8 @@ async function pushRemote(patchObj) {
 export async function pullAll() {
   const p = await pullRemote();
   await Dex.pullAndMerge().catch(() => {});
+  // 오프라인 동안 쌓인 기록을 이제 올린다
+  Rank.flushQueued().catch(() => {});
   return p;
 }
 
@@ -125,8 +128,18 @@ export function finishRun(result) {
   }).catch(() => {});
   // 도감은 별도 컬렉션이라 따로 올린다 (실패해도 로컬에는 이미 있다)
   Dex.pushFound(result.shoeIndices).catch(() => {});
-  // M6에서 랭킹 서버로 보낼 큐
-  L.queueScore({ stairs: result.floor, difficulty: result.difficulty, shoesFound: result.shoeIndices.length });
+  /**
+   * 명예의 전당 제출. 먼저 큐에 넣고 바로 올린다 —
+   * 성공하면 큐에서 빠지고, 실패하면 남아서 다음 접속에 다시 올라간다.
+   * 넣기 전에 올리면 앱이 그 사이에 닫혔을 때 기록이 통째로 사라진다.
+   */
+  const entry = {
+    stairs: result.floor,
+    difficulty: result.difficulty,
+    shoesFound: result.shoeIndices.length,
+  };
+  L.queueScore(entry);
+  Rank.flushQueued().catch(() => {});
   return r;
 }
 
