@@ -423,6 +423,39 @@ chore(assets): 신발 아틀라스 재생성
 
 ---
 
+## 9-1. 배포에서 두 번 데인 것 (2026-08-15)
+
+배포가 M4에서 멈춰 있었다. 원인이 **두 개**였고 둘 다 조용히 실패했다.
+
+**(1) 레포가 두 개였다.**
+Vercel은 `nivs-web/ianworld_shoes`(언더바)를 보고 있었는데
+`push-to-github.bat` 은 `nivs-web/ianworld-shoes`(하이픈)로 밀고 있었다.
+빌드가 실패한 게 아니라 **트리거 자체가 안 걸려서** 배포 목록에 흔적조차 없었다.
+"푸시 성공 = 배포됨"이 아니다. 확인은 반드시 Vercel 배포 목록의 **커밋 해시**로 한다.
+
+**(2) `vercel.json` 에 주석을 달았다.**
+```
+The `vercel.json` schema validation failed: `headers[0]` should NOT have additional property `//`
+```
+`headers[]` 항목은 `additionalProperties: false` 라 `source` · `headers` · `has` · `missing`
+넷만 허용한다. JSON에 주석을 넣으려고 쓴 `"//"` 키가 스키마 위반이다.
+**vercel.json 에는 어떤 형태의 주석도 넣지 않는다.** 설명은 여기 CLAUDE.md 에 적는다.
+
+원래 `"//"` 에 적어 뒀던 캐시 규칙의 근거:
+- `/assets/` 중 **Vite 번들** — 파일명에 콘텐츠 해시가 붙는다(`index-DE7J_FI8.js`).
+  내용이 바뀌면 이름도 바뀌므로 1년 immutable 이 안전하다.
+- `/assets/{characters,shoes,bg,ui}/` — **게임 스프라이트**. 파일명이 `ian_side.png` 처럼
+  고정이라 내용이 바뀌어도 URL이 그대로다. 여기에 immutable 을 걸면 스프라이트를 고쳐도
+  이미 방문한 브라우저는 1년 동안 옛 그림을 본다. 그래서 `max-age=0, must-revalidate` 로
+  매번 재검증한다(변경 없으면 304, 본문 0바이트라 비용도 거의 없다).
+
+**콘솔 쪽 설정은 전부 정상이었다** (실측 확인):
+API 키 유효 · Google 로그인 ENABLED · 승인된 도메인에 `ianworld-shoes.vercel.app` 포함 ·
+Firestore 생성됨(비로그인 읽기 → `PERMISSION_DENIED` = 규칙 적용됨) · RTDB 200 ·
+Vercel 환경변수 8개 등록됨.
+
+---
+
 ## 10. 외부 연결
 
 | 항목 | 값 |
