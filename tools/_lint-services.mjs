@@ -28,6 +28,29 @@ function walk(dir, out = []) {
 }
 
 const problems = [];
+
+/**
+ * 짝이 맞아야 하는 호출들.
+ *
+ * `signInWithRedirect` 만 부르고 `getRedirectResult` 를 안 부르면, 구글에서
+ * 돌아와도 로그인이 **끝나지 않는다.** 화면은 넘어가는데 계정이 안 붙어서
+ * 프로필·도감·순위표가 서버에 한 줄도 안 올라간다. 게다가 팝업이 막히는
+ * 모바일에서는 이 경로가 기본이라 사실상 모바일 전체가 죽는다.
+ * 실제로 그렇게 배포돼 있었고, 증상이 "명예의 전당이 안 나온다"였다.
+ */
+const MUST_PAIR = [
+  ['signInWithRedirect', 'getRedirectResult',
+   '리다이렉트 로그인은 돌아온 뒤 getRedirectResult() 로 마무리해야 완성된다'],
+];
+{
+  const all = walk('src').map((f) => readFileSync(f, 'utf8')).join('\n');
+  for (const [a, b, hint] of MUST_PAIR) {
+    if (new RegExp(`\\b${a}\\s*\\(`).test(all) && !new RegExp(`\\b${b}\\s*\\(`).test(all)) {
+      problems.push(`X ${a}() 를 쓰면서 ${b}() 를 안 부른다\n     ${hint}`);
+    }
+  }
+}
+
 for (const file of walk('src')) {
   if (file.endsWith('services/firebase.js')) continue; // 정의 파일 자체는 제외
   const src = readFileSync(file, 'utf8');

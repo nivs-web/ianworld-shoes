@@ -85,10 +85,51 @@ export const getStore = (() => {
     const fb = await getFirebase();
     if (!fb) return null;
     const storeMod = await import('firebase/firestore');
-    return { ...fb, db: storeMod.getFirestore(fb.app), storeMod };
+    /**
+     * `getFirestore()` 가 아니라 `initializeFirestore()` 를 쓰는 이유:
+     * **자동 롱폴링 감지**를 켜야 한다.
+     *
+     * Firestore 웹 SDK 는 REST 가 아니라 WebChannel(스트리밍)로 붙는다. 이 경로는
+     * 광고 차단 확장·회사망·일부 통신망 중간장비에서 조용히 막히는 일이 잦다.
+     * 막히면 **읽기는 로컬 캐시로 답하고 쓰기는 영원히 pending 으로 남는다** —
+     * 예외가 안 나므로 `.catch()` 도 안 걸리고, 화면은 멀쩡한데 서버에는
+     * 아무것도 안 올라간다. 로그인(Auth)은 평범한 HTTPS라 멀쩡히 되는 게 함정이다.
+     *
+     * autoDetectLongPolling 은 스트리밍이 막힌 걸 감지하면 롱폴링으로 갈아탄다.
+     * 정상 환경에서는 기존과 똑같이 동작하므로 켜 두는 쪽이 손해가 없다.
+     */
+    const db = storeMod.initializeFirestore(fb.app, {
+      experimentalAutoDetectLongPolling: true,
+    });
+    return { ...fb, db, storeMod };
   }, 'firestore');
   return () => (configured() ? load() : Promise.resolve(null));
 })();
+
+/**
+ * 원격 쓰기에 **시한**을 건다.
+ *
+ * Firestore 의 쓰기 프라미스는 서버에 닿아야 resolve 한다. 못 닿으면 reject 가
+ * 아니라 **영원히 pending** 이다. 그래서 시간을 안 걸면 "실패했다"는 사실 자체를
+ * 알 수 없고, 큐에 넣고 재시도하는 장치가 전부 무력해진다.
+ * 시한이 지나면 거절해서, 호출한 쪽이 큐에 남기고 다음에 다시 올리게 한다.
+ * (SDK 는 그 뒤에도 자기 대기열에 들고 있다가 연결이 돌아오면 마저 보낸다.
+ *  문서 ID가 고정이라 두 번 써도 결과가 같다.)
+ */
+export const WRITE_TIMEOUT_MS = 12000;
+
+export function withTimeout(promise, ms = WRITE_TIMEOUT_MS, label = 'firestore') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => {
+        const e = new Error(`${label} 응답 없음 (${ms}ms) — 연결이 막혔을 수 있습니다`);
+        e.code = 'deadline-exceeded';
+        reject(e);
+      }, ms)
+    ),
+  ]);
+}
 
 /**
  * Realtime Database — **멀티플레이(M7)에서만** 쓴다.

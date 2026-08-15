@@ -90,12 +90,22 @@ export default function HallOfFame(nav) {
           )
         : null;
 
+      /**
+       * 비어 보이는 이유를 **구분해서** 말한다.
+       * 예전에는 로그인이 풀렸든 연결이 막혔든 전부 "아직 기록이 없습니다"였다.
+       * 그 한 줄 때문에 순위표가 왜 안 나오는지 아무도 알 수 없었다.
+       */
+      const REASON = {
+        auth: S.rankNeedLogin,
+        offline: S.networkError,
+        failed: S.rankLoadFailed,
+      };
+
       let body;
       if (state.loading) {
         body = el('div.hint', S.loading);
-      } else if (!state.data) {
-        // 로그인·네트워크가 안 될 때. 게임은 계속 되므로 실패를 조용히 알리기만 한다
-        body = el('div.hint', S.networkError);
+      } else if (!state.data || state.data.error) {
+        body = el('div.hint', REASON[state.data?.error] ?? S.networkError);
       } else if (!state.data.rows.length) {
         body = el('div.hint', S.noRankYet);
       } else {

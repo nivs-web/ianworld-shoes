@@ -103,6 +103,12 @@ export const S = {
   tabAllTime: '역대',
   myRank: '내 순위',
   noRankYet: '아직 기록이 없습니다',
+  /**
+   * 순위표가 비어 보이는 이유는 셋인데 예전에는 전부 '아직 기록이 없습니다' 였다.
+   * 그래서 로그인이 덜 됐는지·연결이 막혔는지·진짜 아무도 안 했는지 알 수가 없었다.
+   */
+  rankNeedLogin: '로그인이 풀렸습니다. 오락실 화면에서 다시 로그인해주세요',
+  rankLoadFailed: '순위를 불러오지 못했습니다. 잠시 후 다시 시도해주세요',
   rankUnitStairs: '칸',
   rankUnitShoes: '켤레',
 

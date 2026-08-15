@@ -5,7 +5,7 @@
  * 네트워크가 끊겨도 화면은 멈추지 않는다. (CLAUDE.md §6-4 "모든 쓰기는 실패를 가정한다")
  */
 
-import { getStore, configured } from './firebase.js';
+import { getStore, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { NICKNAME } from '../config/balance.js';
@@ -56,7 +56,7 @@ async function pushRemote(patchObj) {
   if (!configured() || !u || u.guest) return;
   const fb = await getStore();
   if (!fb) return;
-  await fb.storeMod.setDoc(userDoc(fb, u.uid), patchObj, { merge: true });
+  await withTimeout(fb.storeMod.setDoc(userDoc(fb, u.uid), patchObj, { merge: true }), undefined, '계정 저장');
 }
 
 /** 로그인 직후 — 프로필과 도감을 함께 끌어내린다 */
@@ -81,11 +81,13 @@ export async function pullRemote() {
   const fb = await getStore();
   if (!fb) return L.loadProfile();
 
-  const snap = await fb.storeMod.getDoc(userDoc(fb, u.uid));
+  const snap = await withTimeout(fb.storeMod.getDoc(userDoc(fb, u.uid)), undefined, '계정 읽기');
   if (!snap.exists()) {
     // 첫 로그인 — 지금까지의 로컬 기록을 그대로 올린다
     const local = L.loadProfile();
-    await fb.storeMod.setDoc(userDoc(fb, u.uid), { ...local, uid: u.uid, email: u.email }, { merge: true });
+    await withTimeout(
+      fb.storeMod.setDoc(userDoc(fb, u.uid), { ...local, uid: u.uid, email: u.email }, { merge: true }),
+      undefined, '계정 최초 생성');
     return local;
   }
   const remote = snap.data();

@@ -342,6 +342,11 @@ export function takeQueuedScores() {
   return q;
 }
 
+/** 아직 못 올린 판이 몇 개인가 (진단용) */
+export function loadPendingCount() {
+  return read(KEY.pending, []).length;
+}
+
 // ─────────────────────────────────────────────
 // 기간별 최고기록 흔적 (M6 랭킹)
 // ─────────────────────────────────────────────

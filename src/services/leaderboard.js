@@ -27,7 +27,7 @@
  *     자기 기록을 낮출 수 없다. (`docs/FIREBASE_RULES.md`)
  */
 
-import { getStore, configured } from './firebase.js';
+import { getStore, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { LEADERBOARD } from '../config/balance.js';
@@ -73,7 +73,7 @@ export async function submitScore(entry) {
     if (stairs <= L.periodBest(id)) continue;
 
     try {
-      await fb.storeMod.setDoc(fb.storeMod.doc(fb.db, 'scores', id), {
+      await withTimeout(fb.storeMod.setDoc(fb.storeMod.doc(fb.db, 'scores', id), {
         uid: u.uid,
         nickname: p.nickname ?? '',
         characterId: p.selectedCharacter ?? '',
@@ -85,7 +85,7 @@ export async function submitScore(entry) {
         key,
         [period.field]: key,
         updatedAt: fb.storeMod.serverTimestamp(),
-      });
+      }), undefined, '기록 제출');
       L.notePeriodBest(id, stairs, keep);
     } catch (e) {
       /**
@@ -156,7 +156,7 @@ export async function syncIdentity() {
       const id = scoreDocId(u.uid, difficulty, period.keyOf());
       if (!L.hasPeriodBest(id)) continue;
       try {
-        await fb.storeMod.updateDoc(fb.storeMod.doc(fb.db, 'scores', id), patch);
+        await withTimeout(fb.storeMod.updateDoc(fb.storeMod.doc(fb.db, 'scores', id), patch), undefined, '이름 동기화');
         n++;
       } catch {
         // 문서가 없거나 규칙에 막혔다 — 순위표가 조금 늦게 맞을 뿐 게임에는 지장 없다
@@ -176,12 +176,18 @@ export async function syncIdentity() {
  * 순위표 한 장.
  * @param {'shoeking'|'alltime'|'weekly'|'monthly'|'yearly'} tab
  * @param {'easy'|'normal'|'hard'} [difficulty] 신발왕에는 쓰이지 않는다
- * @returns {Promise<{rows:Row[], me:Row|null}|null>} null = 연결 불가(오프라인·미로그인)
+ * @returns {Promise<{rows:Row[], me:Row|null, error:string|null}>}
+ *   error: null 성공 / 'auth' 로그인 안 됨 / 'offline' 연결 불가 / 'failed' 조회 실패.
+ *   **왜 비었는지 구분해서 돌려준다** — 예전에는 셋 다 null 이라 화면이
+ *   전부 "아직 기록이 없습니다"로 거짓말을 했다.
  */
+const fail = (error) => ({ rows: [], me: null, error });
+
 export async function fetchBoard(tab, difficulty) {
-  if (!configured()) return null;
+  if (!configured()) return fail('offline');
+  if (!currentUser()) return fail('auth');
   const fb = await getStore();
-  if (!fb) return null;
+  if (!fb) return fail('offline');
   const { collection, query, orderBy, where, limit, getDocs } = fb.storeMod;
   const top = LEADERBOARD.topN;
 
@@ -193,7 +199,7 @@ export async function fetchBoard(tab, difficulty) {
       const snap = await getDocs(
         query(collection(fb.db, 'users'), orderBy(field, 'desc'), limit(top))
       );
-      if (offline(snap)) return null;
+      if (offline(snap)) return fail('offline');
       rows = snap.docs.map((d) => {
         const v = d.data();
         return {
@@ -215,7 +221,7 @@ export async function fetchBoard(tab, difficulty) {
           limit(top)
         )
       );
-      if (offline(snap)) return null;
+      if (offline(snap)) return fail('offline');
       rows = snap.docs.map((d) => {
         const v = d.data();
         return {
@@ -233,11 +239,11 @@ export async function fetchBoard(tab, difficulty) {
     const u = currentUser();
     const mine = rows.find((r) => r.uid === u?.uid);
     const me = mine ?? (u ? await myRow(fb, tab, difficulty, u) : null);
-    return { rows, me };
+    return { rows, me, error: null };
   } catch (e) {
     // 색인이 없으면 Firestore 가 만들 링크를 콘솔에 찍어 준다
-    console.warn('[랭킹] 조회 실패', e);
-    return null;
+    console.warn('[랭킹] 조회 실패', e?.code, e);
+    return fail(e?.code === 'permission-denied' ? 'auth' : 'failed');
   }
 }
 
