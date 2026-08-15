@@ -7,7 +7,7 @@
 
 import * as Scene from '../core/scene.js';
 import { clear } from '../core/canvas.js';
-import { consumeInput, clearInput, setTapHandler, BTN } from '../core/input.js';
+import { consumeInput, clearInput, setTapHandler, setPauseHandler, BTN } from '../core/input.js';
 import { loadAll, img } from '../core/assets.js';
 import { randomSeed, Rng } from '../core/rng.js';
 import { text } from '../core/pixelfont.js';
@@ -19,7 +19,7 @@ import { BUILDINGS, buildingAssets, floorAsset, FLOOR_BACKGROUNDS } from '../dat
 import { Stairs } from './stairs.js';
 import { Player, P_STATE } from './player.js';
 import { Background } from './background.js';
-import { renderHud, hitPause } from './hud.js';
+import { renderHud } from './hud.js';
 import { PauseOverlay, ReviveOverlay, GameOverOverlay } from './overlays.js';
 import { PAL } from './palette.js';
 import { get as getProfile } from '../services/profile.js';
@@ -107,28 +107,34 @@ export class GameScene {
     });
 
     clearInput();
-    setTapHandler((x, y) => {
-      if (hitPause(x, y) && !this.player.dying) {
-        Scene.push(new PauseOverlay(this));
-        return true;
-      }
-      return false;
-    });
+    this.bindInput();
   }
 
   resume() {
     clearInput();
-    setTapHandler((x, y) => {
-      if (hitPause(x, y) && !this.player.dying) {
-        Scene.push(new PauseOverlay(this));
-        return true;
-      }
-      return false;
-    });
+    this.bindInput();
+  }
+
+  /**
+   * 인게임 입력 연결.
+   *
+   * 좌우 판정은 input.js 가 **화면 절반**으로 처리한다(layout.TOUCH). 여기서는
+   * "일시정지"만 맡는다 — 화면 상단 탭·ESC·게임패드 Start 가 전부 이 하나로 모인다.
+   * tapHandler 를 비독점(exclusive=false)으로 두어야 나머지 영역이 좌우로 흘러간다.
+   */
+  bindInput() {
+    const pause = () => {
+      if (this.player.dying) return;
+      if (Scene.current() !== this) return; // 이미 오버레이가 떠 있다
+      Scene.push(new PauseOverlay(this));
+    };
+    setPauseHandler(pause);
+    setTapHandler(null, false);
   }
 
   exit() {
     setTapHandler(null);
+    setPauseHandler(null);
   }
 
   // ── 입력 → 행동 ──────────────────────────────
@@ -268,11 +274,23 @@ export class GameScene {
     return Math.max(p.bestByDifficulty?.[this.diff.id] ?? 0, this.floor);
   }
 
-  /** @param {'home'|'retry'} action */
+  /**
+   * 판을 떠난다 — 결과를 반영하고 로비로 돌아가거나 새 판을 연다.
+   *
+   * onFinish 가 없으면 **나갈 방법이 사라진다**. 예전에 일시정지 '맵바꾸기'가
+   * onFinish 없이 새 GameScene 을 만들어서, 그 뒤로 죽어도 로비로 못 나가는
+   * 버그가 있었다. 조용히 무시하지 말고 소리를 내게 둔다.
+   *
+   * @param {'home'|'retry'} action
+   */
   leave(action) {
     Bgm.stopBgm();
     const result = { floor: this.floor, difficulty: this.diff.id, shoeIndices: this.shoeIndices };
-    if (this.onFinish) this.onFinish(result, action);
+    if (!this.onFinish) {
+      console.error('[game] onFinish 가 없어 로비로 돌아갈 수 없다 — GameScene 생성부를 확인할 것');
+      return;
+    }
+    this.onFinish(result, action);
   }
 
   // ── 렌더 ─────────────────────────────────────

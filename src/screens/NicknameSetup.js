@@ -6,7 +6,8 @@
 import S from '../config/strings.ko.js';
 import { el, button, screen, title } from './ui.js';
 import { validateNickname, isNicknameTaken, saveNickname } from '../services/profile.js';
-import { continueAsGuest, currentUser, setNickname } from '../services/auth.js';
+import { setNickname } from '../services/auth.js';
+import { NICKNAME } from '../config/balance.js';
 import Portal from './Portal.js';
 
 export default function NicknameSetup(nav) {
@@ -16,11 +17,11 @@ export default function NicknameSetup(nav) {
     render() {
       const input = el('input.nick-input', {
         type: 'text',
-        maxlength: 4,
+        maxlength: NICKNAME.maxLength,
         autocomplete: 'off',
         autocapitalize: 'off',
         spellcheck: 'false',
-        placeholder: '○○○',
+        placeholder: '○'.repeat(NICKNAME.minLength),
       });
       const msg = el('div.hint', S.nicknameRule);
       const ok = button(S.confirm, submit, { primary: true });
@@ -54,8 +55,7 @@ export default function NicknameSetup(nav) {
         }
 
         saveNickname(v);
-        if (currentUser()) setNickname(v);
-        else continueAsGuest(v);
+        setNickname(v);
         nav.replace(Portal);
       }
 

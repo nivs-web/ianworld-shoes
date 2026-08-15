@@ -25,33 +25,25 @@ const clickText = async (t) => {
   await el.click();
   await p.waitForTimeout(450);
 };
-/** Firebase 설정 유무에 따라 첫 화면 버튼 문구가 달라진다 — 있는 쪽을 누른다 */
-const clickAny = async (...texts) => {
-  for (const t of texts) {
-    const el = p.locator(`button:has-text("${t}")`).first();
-    if (await el.count() && await el.isVisible()) { await el.click(); await p.waitForTimeout(450); return t; }
-  }
-  throw new Error(`버튼을 찾지 못했다: ${texts.join(' / ')}`);
-};
 const text = () => p.locator('#ui').innerText();
 
 await shot('01_splash');
 console.log('S01', JSON.stringify((await text()).split('\n').slice(0, 5)));
 
-// 닉네임 — 게스트로 진입 (설정이 있으면 '로그인 없이 시작')
-console.log('첫 화면 진입 버튼:', await clickAny('로그인 없이 시작', '터치해서 시작'));
-await shot('02_nickname');
-await p.fill('.nick-input', 'ㄱ');           // 잘못된 입력
-await clickText('확인');
-console.log('닉네임 오류 문구:', (await p.locator('.hint').first().innerText()).trim());
-await p.fill('.nick-input', '이안');
-await clickText('확인');
-await p.waitForTimeout(400);
-
-await shot('03_portal');
-console.log('S03', JSON.stringify((await text()).split('\n').slice(0, 3)));
-
-await clickText('터치해서 시작');
+/**
+ * 로그인은 구글 계정이 필요해 자동화로 통과할 수 없다 (게스트 모드는 없앴다).
+ * 그래서 프로필만 심고 __dbg 훅으로 로비를 직접 연다 — 이 QA가 보려는 건
+ * 로그인 자체가 아니라 그 뒤의 화면들이다.
+ */
+await p.evaluate(() => {
+  localStorage.setItem('sf_profile', JSON.stringify({
+    nickname: '이안', uid: 'tester', selectedCharacter: 'ian',
+    unlockedCharacters: ['ian', 'denny', 'lisa', 'ipo', 'charles'],
+    difficulty: 'easy', controlMode: 1, walletVersion: 1, shoesByIndex: {},
+  }));
+  window.__dbg.nav.reset(window.__dbg.screens.Lobby);
+});
+await p.waitForTimeout(500);
 await shot('04_lobby');
 console.log('S04', JSON.stringify((await text()).split('\n').filter(Boolean).slice(0, 6)));
 

@@ -18,13 +18,13 @@ export default function Portal(nav) {
       const p = getProfile();
       return screen(
         el('div.portal-head', null, [
-          el('div.portal-logo', S.portalTitle),
-          el('div.portal-user', `${S.playerName} : ${p.nickname || '게스트'}`),
+          el('img.portal-logo', { src: '/assets/ui/logo_portal.png', alt: S.portalTitle }),
+          el('div.portal-user', `${S.playerName} : ${p.nickname}`),
         ]),
         ...CARDS.map((c) =>
           el('div.game-card', null, [
             el('div.game-card-title', c.title),
-            el('div.game-card-sub', `${S.myCollection} ${p.shoesOwned}${S.collectionUnit}`),
+            el('div.game-card-sub', S.totalShoesCount(p.shoesOwned)),
             button(S.touchToStart, () => nav.push(c.screen()), { primary: true }),
           ])
         ),

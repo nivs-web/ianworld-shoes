@@ -1,9 +1,9 @@
 /**
  * S01 스플래시 / 로그인.
  *
- * Firebase가 설정돼 있으면 구글 로그인을, 없으면 바로 시작을 보여준다.
- * 어느 쪽이든 **여기서 막히지 않는다** — 로그인은 기기 간 이어하기 수단이지
- * 플레이의 전제가 아니다.
+ * **이 게임은 멀티플레이라 로그인이 전제다.** (2026-08-15)
+ * 게스트는 uid 가 전부 'guest' 라 서버에서 두 사람이 한 사람으로 취급되고,
+ * 방·랭킹 보안 규칙도 전부 `auth != null` 기준이다. 그래서 게스트 진입로를 없앴다.
  */
 
 import S from '../config/strings.ko.js';
@@ -26,7 +26,9 @@ const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
 export default function SplashLogin(nav) {
-  /** 로그인/게스트 진입 후 닉네임 유무에 따라 분기 */
+  let busy = false;
+
+  /** 로그인 후 닉네임 유무에 따라 분기 */
   function enter() {
     const p = getProfile();
     if (!p.nickname) nav.replace(NicknameSetup);
@@ -34,6 +36,8 @@ export default function SplashLogin(nav) {
   }
 
   async function onGoogle() {
+    if (busy) return;
+    busy = true;
     try {
       const u = await signInGoogle();
       if (!u) return; // 리다이렉트 진행 중
@@ -41,6 +45,8 @@ export default function SplashLogin(nav) {
       enter();
     } catch {
       toast(S.loginFailed);
+    } finally {
+      busy = false;
     }
   }
 
@@ -57,23 +63,22 @@ export default function SplashLogin(nav) {
     render() {
       const signedIn = !!currentUser();
       /**
-       * Firebase가 켜져 있어도 **로그인을 강제하지 않는다.**
-       * 구글 로그인만 내걸면 팝업이 막힌 브라우저·오프라인·계정 없는 사람이
-       * 그대로 막힌다. 로그인은 기기 간 이어하기 수단일 뿐이다.
+       * Firebase 설정이 없으면 로그인 자체가 불가능하다. 예전에는 이 경우 게스트로
+       * 흘려보냈지만 이제는 들어갈 길이 없으므로, 빈 화면 대신 이유를 적어 준다.
        */
-      const needsLogin = canSignIn() && !signedIn;
+      const blocked = !canSignIn();
+
       return screen(
         el('div.splash', null, [
           el('div.splash-logo', S.portalTitle),
           el('div.splash-sub', S.gameTitle),
         ]),
         el('div.spacer'),
-        needsLogin ? button(S.loginGoogle, onGoogle, { primary: true }) : null,
-        needsLogin
-          ? button(S.loginGuest, enter)
-          : button(S.touchToStart, enter, { primary: true }),
+        signedIn
+          ? button(S.touchToStart, enter, { primary: true })
+          : button(S.loginGoogle, onGoogle, { primary: true, disabled: blocked }),
         !isStandalone() ? button(S.installShortcut, onInstall) : null,
-        el('div.hint', needsLogin ? S.loginWhy : S.loginNone)
+        el('div.hint', blocked ? S.loginUnavailable : signedIn ? S.loginWhy : S.loginRequired)
       );
     },
   };

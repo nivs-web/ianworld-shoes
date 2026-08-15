@@ -113,8 +113,7 @@ function drawHeartIcon(x, y) {
   rect(x + 4, y + 7, 2, 1, c);
 }
 
-/** 일시정지 버튼 히트 판정 */
-export function hitPause(x, y) {
-  const p = HUD.pause;
-  return x >= p.x - 4 && x <= p.x + p.w + 4 && y >= p.y - 4 && y <= p.y + p.h + 4;
-}
+/**
+ * 일시정지 버튼은 이제 **위치 안내용 그림**이다.
+ * 판정은 상단 밴드 전체(layout.TOUCH.pauseBelowY)라 여기서 따로 히트 검사를 하지 않는다.
+ */

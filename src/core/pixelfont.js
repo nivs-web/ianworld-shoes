@@ -49,8 +49,11 @@ export function measure(str, scale = 1, mono = false) {
  * @param {number} [opt.scale] 정수 배율
  * @param {'left'|'center'|'right'} [opt.align]
  * @param {boolean} [opt.mono] 고정폭
+ * @param {CanvasRenderingContext2D} [opt.ctx] 그릴 대상 (기본: 게임 캔버스).
+ *   DOM 화면에서도 같은 글자를 쓰려고 열어 뒀다 — screens/pixelText.js 참고.
  */
 export function text(str, x, y, opt = {}) {
+  const ctx = opt.ctx ?? getCtx();
   const s = Math.max(1, opt.scale | 0 || 1);
   const color = opt.color ?? '#ffffff';
   const up = String(str).toUpperCase();
@@ -66,18 +69,17 @@ export function text(str, x, y, opt = {}) {
     for (let dy = -s; dy <= s; dy += s) {
       for (let dx = -s; dx <= s; dx += s) {
         if (dx === 0 && dy === 0) continue;
-        blit(up, ox + dx, oy + dy, s, opt.outline, mono);
+        blit(ctx, up, ox + dx, oy + dy, s, opt.outline, mono);
       }
     }
   } else if (opt.shadow) {
-    blit(up, ox + s, oy + s, s, opt.shadow, mono);
+    blit(ctx, up, ox + s, oy + s, s, opt.shadow, mono);
   }
 
-  blit(up, ox, oy, s, color, mono);
+  blit(ctx, up, ox, oy, s, color, mono);
 }
 
-function blit(str, x, y, s, color, mono) {
-  const ctx = getCtx();
+function blit(ctx, str, x, y, s, color, mono) {
   ctx.fillStyle = color;
   let cx = x;
   for (const ch of str) {

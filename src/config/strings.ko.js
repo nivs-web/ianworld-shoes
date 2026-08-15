@@ -11,25 +11,25 @@ export const S = {
   // ── S01 로그인 ────────────────────────────
   touchToStart: '터치해서 시작',
   loginGoogle: 'Google로 시작하기',
-  loginGuest: '로그인 없이 시작',
+  loginRequired: '이 게임은 멀티플레이입니다. Google 계정으로 시작해주세요',
+  loginUnavailable: '지금은 로그인 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요',
   installShortcut: '바로가기 아이콘 만들기',
   installIosGuide: '공유 버튼 → "홈 화면에 추가"를 눌러주세요',
   installDone: '홈 화면에 추가되었습니다',
   loginFailed: '로그인에 실패했습니다. 다시 시도해주세요',
-  loginWhy: '로그인하면 다른 기기에서도 도감을 이어서 볼 수 있습니다',
-  loginNone: '로그인 없이 이 기기에 기록이 저장됩니다',
+  loginWhy: '기록과 도감은 계정에 저장되어 어느 기기에서든 이어집니다',
 
   // ── S02 닉네임 ────────────────────────────
   nicknamePrompt: '캐릭터 이름을 입력하세요',
-  nicknameRule: '한글 2자~4자로 입력해주세요',
+  nicknameRule: '한글 2자~5자로 입력해주세요',
   nicknameTaken: '이미 사용 중인 이름입니다',
-  nicknameInvalid: '한글 2자~4자만 사용할 수 있습니다',
+  nicknameInvalid: '한글 2자~5자만 사용할 수 있습니다',
   confirm: '확인',
 
   // ── S04 로비 ──────────────────────────────
-  backToPortal: '오락실 이안월드로 돌아가기',
+  backToPortal: '오락실 화면으로 돌아가기',
   bestRecord: '최고기록',
-  bestRecordUnit: '칸 계단',
+  bestRecordUnit: '계단',
   myCollection: '내 신발 도감',
   collectionUnit: '켤레',
   playerName: '플레이어 이름',
@@ -52,7 +52,7 @@ export const S = {
   elevatorCost: (n) => `신발 ${n}켤레가 사라집니다`,
 
   // ── S05 캐릭터 선택 ────────────────────────
-  select: 'SELECT',
+  select: '선택',
   buyCharacter: '캐릭터 구매하기',
   /** @param {number} n 필요한 신발 수 */
   needShoes: (n) => `* 신발 ${n}개 필요 *`,
@@ -64,6 +64,20 @@ export const S = {
   // ── S06 신발 도감 ──────────────────────────
   collectionTitle: '나의 신발 컬렉션',
   totalShoes: '총 신발 갯수',
+  /** 같은 신발을 여러 켤레 들고 있을 때만 표기한다 (1켤레는 아무것도 안 쓴다) */
+  ownedPairs: (n) => `${n}켤레 보유`,
+  /** 주운 횟수 — 보유 켤레와 다르다. 신발을 써도 이 숫자는 줄지 않는다 */
+  foundTimes: (n) => `${n}회 획득`,
+  /** 중복 포함 보유 켤레 — 130으로 나누면 안 된다 */
+  totalShoesCount: (n) => `총 신발 갯수 ${n}개`,
+  /** 종류 수 — 이쪽이 130 기준이다 */
+  dexProgress: (have, all) => `신발 종류 도감 ${have}/${all}개 완성`,
+
+  // ── 뱃지 ───────────────────────────────────
+  badgeDexTop: '도감',
+  badgeDexBottom: '완성',
+  badgeStairsUnit: '계단',
+  badgeEmptyHint: '뱃지 진열대',
   /** @param {number} t 티어 @param {number} have 보유 @param {number} all 전체 */
   tierCount: (t, have, all) => `${t}티어 신발(${have}/${all}개)`,
   tierTab: (t) => `${t}티어`,
@@ -94,15 +108,20 @@ export const S = {
   hudRevive: (n) => `부활 ${n}`,
 
   // ── S10 일시정지 ───────────────────────────
+  // 캔버스에 그리는 문구도 전부 여기에 있어야 한다.
+  // tools/build-font.mjs 가 **문자열 리터럴의 한글만** 골라 비트맵으로 굽기 때문에,
+  // 다른 파일에 한글을 직접 쓰면 그 글자는 화면에서 조용히 안 그려진다.
   paused: '일시정지',
-  resume: '계속하기',
-  restart: '다시하기',
-  toLobby: '로비로',
+  resume: '재개',
+  restart: '맵바꾸기',
+  toLobby: '로비로나가기',
 
   // ── S11 게임 오버 ──────────────────────────
-  gameOver: 'GAME OVER',
-  score: 'SCORE',
-  best: 'BEST',
+  gameOver: '게임오버',
+  score: '계단수',
+  best: '최고계단',
+  /** @param {number} n 이번 판에 주운 켤레 수 */
+  shoesFound: (n) => `신발획득 ${n}`,
 
   // ── S12 부활 ───────────────────────────────
   reviveTitle: '부활하시겠습니까?',

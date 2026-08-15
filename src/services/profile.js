@@ -20,6 +20,23 @@ function userDoc(fb, uid) {
   return fb.storeMod.doc(fb.db, 'users', uid);
 }
 
+/**
+ * 지갑 병합 — 신발별로 **많은 쪽**을 남긴다.
+ *
+ * 예전에는 `shoesOwned` 만 max 로 합치고 `shoesByTier` 는 원격 값을 통째로 덮어써서
+ * 합계와 티어별이 서로 안 맞을 수 있었다. 이제 신발별 보유량 하나만 병합하고
+ * 합계·티어별은 거기서 다시 계산하니 세 숫자가 어긋날 수가 없다.
+ *
+ * max 인 이유: 기기 A에서 주운 신발이 기기 B의 오래된 값에 덮여 사라지면 안 된다.
+ * 대신 한쪽에서 쓴 신발이 되살아날 수는 있다 — 잃는 쪽보다 낫다고 봤다.
+ */
+function mergeWallet(a = {}, b = {}) {
+  const out = { ...a };
+  for (const [k, n] of Object.entries(b)) out[k] = Math.max(out[k] ?? 0, n ?? 0);
+  for (const k of Object.keys(out)) if (!(out[k] > 0)) delete out[k];
+  return out;
+}
+
 /** 로컬을 먼저 고치고, 원격에는 조용히 밀어 올린다 */
 export function patch(patchObj) {
   const p = L.patchProfile(patchObj);
@@ -63,9 +80,11 @@ export async function pullRemote() {
     ...local,
     ...remote,
     bestStairs: Math.max(local.bestStairs ?? 0, remote.bestStairs ?? 0),
-    shoesOwned: Math.max(local.shoesOwned ?? 0, remote.shoesOwned ?? 0),
     totalPlays: Math.max(local.totalPlays ?? 0, remote.totalPlays ?? 0),
+    // 지갑은 신발별 보유량이 진실이고 합계는 거기서 나온다 (아래 reconcile)
+    shoesByIndex: mergeWallet(local.shoesByIndex, remote.shoesByIndex),
   };
+  L.reconcile(merged);
   L.saveProfile(merged);
   return merged;
 }
@@ -86,6 +105,7 @@ export function buyCharacter(id) {
       unlockedCharacters: r.profile.unlockedCharacters,
       shoesOwned: r.profile.shoesOwned,
       shoesByTier: r.profile.shoesByTier,
+      shoesByIndex: r.profile.shoesByIndex,
     }).catch(() => {});
   }
   return r;
@@ -101,6 +121,7 @@ export function finishRun(result) {
     totalPlays: r.profile.totalPlays,
     shoesOwned: r.profile.shoesOwned,
     shoesByTier: r.profile.shoesByTier,
+    shoesByIndex: r.profile.shoesByIndex,
   }).catch(() => {});
   // 도감은 별도 컬렉션이라 따로 올린다 (실패해도 로컬에는 이미 있다)
   Dex.pushFound(result.shoeIndices).catch(() => {});

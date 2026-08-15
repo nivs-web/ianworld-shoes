@@ -10,9 +10,10 @@ import { consumeInput, clearInput, setTapHandler, BTN } from '../core/input.js';
 import { rect, strokeRect } from '../core/sprite.js';
 import { text, GLYPH_H } from '../core/pixelfont.js';
 import * as Sfx from '../audio/sfx.js';
-import { VIEW_W, VIEW_H, GAMEOVER } from '../config/layout.js';
+import { VIEW_W, VIEW_H, GAMEOVER, PAUSE } from '../config/layout.js';
 import { REVIVE } from '../config/balance.js';
 import { PAL } from './palette.js';
+import S from '../config/strings.ko.js';
 
 function dim() {
   rect(0, 0, VIEW_W, VIEW_H, PAL.dim);
@@ -39,47 +40,66 @@ const inRect = (px, py, x, y, w, h) => px >= x && px <= x + w && py >= y && py <
 export class PauseOverlay {
   constructor(game) {
     this.game = game;
+    /** 키보드용 커서. 터치는 직접 누르므로 이 값과 무관하다. */
+    this.sel = 0;
+  }
+
+  /** 화면에 보이는 순서대로 */
+  get items() {
+    return [
+      { label: S.resume, run: () => { Sfx.play('sfx_menu_back'); Scene.pop(); } },
+      { label: S.restart, run: () => { Sfx.play('sfx_menu_select'); this.restart(); } },
+      { label: S.toLobby, run: () => { Sfx.play('sfx_menu_back'); this.game.leave('home'); } },
+    ];
   }
 
   enter() {
     clearInput();
     setTapHandler((x, y) => {
-      if (inRect(x, y, 40, 150, 100, 30)) {
-        Scene.pop(); // 계속하기
-        return true;
-      }
-      if (inRect(x, y, 40, 190, 100, 30)) {
-        this.restart();
-        return true;
-      }
-      return false;
-    });
+      const hit = PAUSE.btnY.findIndex((by) => inRect(x, y, PAUSE.btnX, by, PAUSE.btnW, PAUSE.btnH));
+      if (hit < 0) return false;
+      this.items[hit].run();
+      return true;
+    }, true);
   }
 
   exit() {
     setTapHandler(null);
   }
 
+  /** 새 맵 — 이번 판 결과를 먼저 반영하고 같은 설정으로 다시 연다 */
   restart() {
-    // 게임 씬 교체 (새 시드)
-    const { GameScene } = window.__gameModule;
-    Scene.reset(new GameScene({ difficulty: this.game.diff.id, charId: this.game.charId, controlMode: this.game.controlMode }));
+    this.game.leave('retry');
   }
 
+  /**
+   * 입력이 좌/우 둘뿐인데 항목은 셋이라, **왼쪽=커서 이동 / 오른쪽=선택**으로 나눴다.
+   * 선택된 칸을 강조해 두면 어느 쪽이 눌리는지 눈으로 보인다.
+   */
   update() {
     const btn = consumeInput();
-    if (btn === BTN.LEFT) { Sfx.play('sfx_menu_back'); Scene.pop(); }
-    else if (btn === BTN.RIGHT) { Sfx.play('sfx_menu_select'); this.restart(); }
+    if (btn === BTN.LEFT) {
+      this.sel = (this.sel + 1) % this.items.length;
+      Sfx.play('sfx_menu_move');
+    } else if (btn === BTN.RIGHT) {
+      this.items[this.sel].run();
+    }
   }
 
   render() {
     dim();
-    panelBox(30, 100, 120, 136);
-    text('PAUSE', 90, 112, { color: PAL.textShadow, scale: 2, align: 'center' });
-    button(40, 150, 100, 30, true);
-    text('GO!', 90, 150 + ((30 - GLYPH_H) >> 1), { color: PAL.text, scale: 1, align: 'center' });
-    button(40, 190, 100, 30, false);
-    text('RETRY', 90, 190 + ((30 - GLYPH_H) >> 1), { color: PAL.text, scale: 1, align: 'center' });
+    const p = PAUSE.panel;
+    panelBox(p.x, p.y, p.w, p.h);
+    text(S.paused, PAUSE.title.x, PAUSE.title.y, {
+      color: PAL.textShadow, scale: PAUSE.title.scale, align: 'center',
+    });
+    this.items.forEach((it, i) => {
+      const y = PAUSE.btnY[i];
+      button(PAUSE.btnX, y, PAUSE.btnW, PAUSE.btnH, i === this.sel);
+      text(it.label, PAUSE.btnX + (PAUSE.btnW >> 1), y + ((PAUSE.btnH - GLYPH_H) >> 1), {
+        color: PAL.text, scale: 1, align: 'center',
+      });
+    });
   }
 }
 
@@ -105,7 +125,7 @@ export class ReviveOverlay {
         return true;
       }
       return false;
-    });
+    }, true);
   }
 
   exit() {
@@ -192,7 +212,7 @@ export class GameOverOverlay {
         return true;
       }
       return false;
-    });
+    }, true);
   }
 
   exit() {
@@ -201,11 +221,7 @@ export class GameOverOverlay {
 
   /** 다시하기 — 이번 판 결과를 먼저 반영하고 같은 설정으로 새 판을 연다 */
   restart() {
-    const g = this.game;
-    if (g.onFinish) { g.leave('retry'); return; }
-    // M5 이전 경로(로비 없이 직행) 폴백
-    const { GameScene } = window.__gameModule;
-    Scene.reset(new GameScene({ difficulty: g.diff.id, charId: g.charId, controlMode: g.controlMode }));
+    this.game.leave('retry');
   }
 
   update() {
@@ -215,20 +231,22 @@ export class GameOverOverlay {
       return;
     }
     const btn = consumeInput();
-    if (btn) this.restart();
+    // 버튼이 세로 2단이라 좌=위(로비) / 우=아래(맵바꾸기)로 나눴다
+    if (btn === BTN.LEFT) { Sfx.play('sfx_menu_back'); this.game.leave('home'); }
+    else if (btn === BTN.RIGHT) this.restart();
   }
 
   render() {
     dim();
 
-    text('GAME OVER', GAMEOVER.title.x, GAMEOVER.title.y, {
+    text(S.gameOver, GAMEOVER.title.x, GAMEOVER.title.y, {
       color: PAL.goRed, outline: '#3A0A0A', scale: GAMEOVER.title.scale, align: 'center',
     });
 
     const p = GAMEOVER.panel;
     panelBox(p.x, p.y, p.w, p.h);
 
-    text('SCORE', 90, GAMEOVER.label.y, { color: PAL.accent, scale: 1, align: 'center' });
+    text(S.score, 90, GAMEOVER.label.y, { color: PAL.accent, scale: 1, align: 'center' });
     text(String(this.game.floor), GAMEOVER.score.x, GAMEOVER.score.y, {
       color: '#2E7D4F', outline: '#123020', scale: GAMEOVER.score.scale, align: 'center', mono: true,
     });
@@ -237,26 +255,24 @@ export class GameOverOverlay {
     const bh = GAMEOVER.best.barH;
     rect(p.x + 12, GAMEOVER.best.y - 4, p.w - 24, bh, PAL.panelDark);
     strokeRect(p.x + 12, GAMEOVER.best.y - 4, p.w - 24, bh, PAL.line);
-    text('BEST', p.x + 18, GAMEOVER.best.y, { color: PAL.textShadow });
+    text(S.best, p.x + 18, GAMEOVER.best.y, { color: PAL.textShadow });
     text(String(this.best), p.x + p.w - 18, GAMEOVER.best.y, {
       color: PAL.goRed, align: 'right',
     });
 
     // 찾은 신발 요약
-    text(`SHOES ${this.game.shoesFound}`, 90, GAMEOVER.shoes.y, {
+    text(S.shoesFound(this.game.shoesFound), 90, GAMEOVER.shoes.y, {
       color: PAL.textShadow, align: 'center',
     });
 
     if (this.delay <= 0) {
-      const b1 = GAMEOVER.btnHome;
-      const b2 = GAMEOVER.btnRetry;
-      button(b1.x, b1.y, b1.w, b1.h, false);
-      text('HOME', b1.x + (b1.w >> 1), b1.y + ((b1.h - GLYPH_H) >> 1), { color: PAL.text, align: 'center' });
-      button(b2.x, b2.y, b2.w, b2.h, true);
-      // ▶ 재시작 삼각형
-      const cx = b2.x + (b2.w >> 1) - 4;
-      const cy = b2.y + (b2.h >> 1);
-      for (let i = 0; i < 6; i++) rect(cx + i, cy - 6 + i, 2, 12 - i * 2, '#FFF');
+      for (const [b, label, on] of [
+        [GAMEOVER.btnHome, S.toLobby, false],
+        [GAMEOVER.btnRetry, S.restart, true],
+      ]) {
+        button(b.x, b.y, b.w, b.h, on);
+        text(label, b.x + (b.w >> 1), b.y + ((b.h - GLYPH_H) >> 1), { color: PAL.text, align: 'center' });
+      }
     }
   }
 }

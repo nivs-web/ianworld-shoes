@@ -51,6 +51,17 @@ export function defaultProfile() {
     difficulty: DEFAULT_DIFFICULTY,
     shoesOwned: 0,
     shoesByTier: { t1: 0, t2: 0, t3: 0, t4: 0, t5: 0 },
+    /**
+     * 신발별 **보유 켤레** — 도감(sf_collection)과 다른 것이다.
+     *   도감 count = 지금까지 주운 누적 횟수. 절대 줄지 않는다. (기획서 §5-2)
+     *   여기 값   = 지금 들고 있는 수. 캐릭터 구매·엘리베이터로 줄어든다.
+     * 셋(shoesOwned / shoesByTier / shoesByIndex)은 항상 서로 맞아야 하고,
+     * 맞추는 책임은 이 파일에만 있다. 화면은 읽기만 한다.
+     * @type {Record<string, number>}
+     */
+    shoesByIndex: {},
+    /** 0 = 신발별 보유량이 없던 옛 구조. loadProfile 이 한 번 복원한다 */
+    walletVersion: 0,
     bestStairs: 0,
     bestByDifficulty: { easy: 0, normal: 0, hard: 0 },
     totalStairs: 0,
@@ -62,7 +73,70 @@ export function defaultProfile() {
 }
 
 export function loadProfile() {
-  return { ...defaultProfile(), ...read(KEY.profile, {}) };
+  const p = { ...defaultProfile(), ...read(KEY.profile, {}) };
+  if (p.walletVersion !== WALLET_VERSION) {
+    migrateWallet(p);
+    saveProfile(p); // 한 번만 돌면 되는 계산이라 결과를 굳힌다
+    return p;
+  }
+  /**
+   * 합계·티어별은 **읽을 때마다** 신발별 보유량에서 다시 만든다.
+   * 쓰기 시점에만 맞추면, 원격에서 내려온 문서나 손으로 고친 저장값처럼
+   * 밖에서 들어온 프로필이 어긋난 채로 화면에 뜬다. 130개 훑는 계산이라 공짜다.
+   */
+  return reconcile(p);
+}
+
+/** 지갑 구조 버전. 올리면 다음 실행 때 migrateWallet 이 한 번 더 돈다. */
+const WALLET_VERSION = 1;
+
+/**
+ * shoesByIndex 가 생기기 전(2026-08-15 이전)에 만들어진 프로필을 채워 넣는다.
+ *
+ * 근거: 도감 count 는 "주운 횟수"라 **항상 보유 수 이상**이다. 그래서 도감을 출발점으로
+ * 잡고 티어별 보유 수(shoesByTier)에 맞을 때까지 깎으면 원래 지갑이 복원된다.
+ * 깎는 순서는 소비 규칙과 같다 — 많이 가진 신발부터.
+ *
+ * "비어 있으면 복원"이 아니라 **버전 표시**로 판단한다. 신발을 전부 써서 지갑이
+ * 정상적으로 빈 사람까지 매번 다시 계산하게 되기 때문이다.
+ */
+function migrateWallet(p) {
+  const dex = read(KEY.collection, {});
+  const held = {};
+  for (const [k, rec] of Object.entries(dex)) held[k] = rec?.count ?? 1;
+
+  for (const t of SHOE_TIERS) {
+    const keys = Object.keys(held).filter((k) => tierOf(Number(k)) === t.tier);
+    const target = p.shoesByTier?.[`t${t.tier}`] ?? 0;
+    let have = keys.reduce((n, k) => n + held[k], 0);
+    while (have > target) {
+      // 가장 많이 가진 신발부터 한 켤레씩 (동점이면 index 작은 쪽 — 결과가 매번 같아야 한다)
+      const k = keys.reduce((a, b) => (held[b] > held[a] ? b : a));
+      if (!held[k]) break;
+      held[k]--;
+      if (!held[k]) delete held[k];
+      have--;
+    }
+  }
+
+  p.shoesByIndex = held;
+  p.walletVersion = WALLET_VERSION;
+  reconcile(p); // 도감이 모자란 손상된 프로필이면 여기서 숫자끼리 아귀를 맞춘다
+  return p;
+}
+
+/** shoesByIndex 를 진실로 삼아 합계·티어별을 다시 계산한다 */
+export function reconcile(p) {
+  const byTier = { t1: 0, t2: 0, t3: 0, t4: 0, t5: 0 };
+  let total = 0;
+  for (const [k, n] of Object.entries(p.shoesByIndex ?? {})) {
+    if (!(n > 0)) continue;
+    byTier[`t${tierOf(Number(k))}`] += n;
+    total += n;
+  }
+  p.shoesByTier = byTier;
+  p.shoesOwned = total;
+  return p;
 }
 
 export function saveProfile(p) {
@@ -127,30 +201,50 @@ export function tierOf(shoeIndex) {
 export function addShoes(indices) {
   const p = loadProfile();
   for (const i of indices) {
-    const t = `t${tierOf(i)}`;
-    p.shoesByTier[t] = (p.shoesByTier[t] ?? 0) + 1;
-    p.shoesOwned++;
+    const k = String(i);
+    p.shoesByIndex[k] = (p.shoesByIndex[k] ?? 0) + 1;
   }
+  reconcile(p);
   saveProfile(p);
   return p;
 }
 
+/** @param {number} shoeIndex → 지금 들고 있는 켤레 수 */
+export function heldOf(shoeIndex) {
+  return loadProfile().shoesByIndex?.[String(shoeIndex)] ?? 0;
+}
+
 /**
  * 신발 차감 — **높은 티어부터** 소진한다. (기획서 §5-8 "티어가 높은 신발부터 사라집니다")
+ *
+ * 같은 티어 안에서는 **많이 가진 신발부터** 뺀다. 종류를 지키는 쪽이 도감 게임에 맞고,
+ * 동점이면 index 작은 쪽으로 고정해 같은 상황에서 항상 같은 결과가 나오게 했다.
+ *
  * @param {number} n 차감할 켤레 수
  * @returns {boolean} 성공 여부 (부족하면 아무것도 건드리지 않는다)
  */
 export function consumeShoes(n) {
   const p = loadProfile();
   if (p.shoesOwned < n) return false;
+
   let left = n;
-  for (const t of ['t1', 't2', 't3', 't4', 't5']) {
+  for (const t of SHOE_TIERS) {
     if (left <= 0) break;
-    const take = Math.min(left, p.shoesByTier[t] ?? 0);
-    p.shoesByTier[t] -= take;
-    left -= take;
+    const keys = Object.keys(p.shoesByIndex).filter((k) => tierOf(Number(k)) === t.tier);
+    while (left > 0 && keys.length) {
+      let pick = null;
+      for (const k of keys) {
+        if (!(p.shoesByIndex[k] > 0)) continue;
+        if (pick === null || p.shoesByIndex[k] > p.shoesByIndex[pick]) pick = k;
+      }
+      if (pick === null) break;
+      p.shoesByIndex[pick]--;
+      if (!p.shoesByIndex[pick]) delete p.shoesByIndex[pick];
+      left--;
+    }
   }
-  p.shoesOwned -= n - left;
+
+  reconcile(p);
   saveProfile(p);
   return left === 0;
 }

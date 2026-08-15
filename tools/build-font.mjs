@@ -15,8 +15,8 @@
  */
 
 import opentype from 'opentype.js';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -25,9 +25,37 @@ const OUT = resolve(ROOT, 'src/data/font.generated.json');
 
 /** 갈무리11 = 11px 몸통. 베이스라인 기준 위로 11px가 글리프 상자다. */
 const H = 11;
-const CHARS =
+const ASCII =
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
   " .,:;-_/\\!?+*=<>()[]%'\"#&@~^|`$";
+
+/**
+ * 한글은 11,172자를 전부 구우면 3MB가 넘는다. 그래서 **코드가 실제로 쓰는 글자만** 굽는다.
+ *
+ * 수집 기준은 `src/**` 의 **문자열 리터럴** 안에 있는 한글이다. 주석은 제외한다 —
+ * 이 저장소는 주석이 전부 한글이라 같이 긁으면 쓰지도 않는 글자가 배로 늘어난다.
+ *
+ * 자동 수집인 이유: 목록을 손으로 관리하면 새 문구를 추가한 날 그 글자만
+ * 캔버스에서 조용히 안 그려진다. 빈 화면은 원인을 찾기 제일 어려운 종류의 버그다.
+ */
+const LITERAL = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g;
+
+function collectHangul(dir, out = new Set()) {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) collectHangul(p, out);
+    else if (name.endsWith('.js')) {
+      const src = readFileSync(p, 'utf8');
+      for (const lit of src.match(LITERAL) ?? []) {
+        for (const ch of lit.match(/[가-힣]/g) ?? []) out.add(ch);
+      }
+    }
+  }
+  return out;
+}
+
+const HANGUL = [...collectHangul(resolve(ROOT, 'src'))].sort();
+const CHARS = ASCII + HANGUL.join('');
 
 // ─────────────────────────────────────────────
 
@@ -105,5 +133,12 @@ writeFileSync(
 );
 
 const sample = ['0', '8', 'A'].map((c) => `${c}:${glyphs[c].w}px`).join(' ');
-console.log(`폰트 ${CHARS.length}자 → ${H}px 높이, 최대 폭 ${maxW}  (${sample})`);
+console.log(`폰트 ${CHARS.length}자 (아스키 ${ASCII.length} + 한글 ${HANGUL.length}) → ${H}px 높이, 최대 폭 ${maxW}  (${sample})`);
+
+// 한글 글리프가 통째로 비면(=폰트에 없음) 화면에 아무것도 안 그려진다. 조용히 넘기지 않는다.
+const blank = HANGUL.filter((c) => glyphs[c].r.every((row) => row === 0));
+if (blank.length) {
+  console.error(`  [!] 빈 글리프 ${blank.length}자: ${blank.slice(0, 20).join('')}`);
+  process.exit(1);
+}
 console.log(`  → ${OUT}`);

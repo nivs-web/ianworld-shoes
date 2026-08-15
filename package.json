@@ -5,15 +5,17 @@
   "type": "module",
   "description": "오락실 이안월드 - 신발을 찾아서 (레트로 도트 계단 게임)",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "npm run assets:font && vite",
+    "//build": "폰트를 먼저 굽는다. 문구를 고치고 다시 굽는 걸 잊으면 그 글자만 '?'로 나온다 — 실제로 '맵바꾸기'가 '?바꾸기'로 배포될 뻔했다.",
+    "build": "npm run assets:font && vite build",
     "preview": "vite preview",
     "assets": "npm run assets:chars && npm run assets:shoes && npm run assets:bg && npm run assets:ui && npm run assets:font",
     "assets:chars": "node tools/slice-characters.mjs",
     "assets:shoes": "node tools/slice-newdesign.mjs",
     "assets:bg": "node tools/downscale-bg.mjs",
     "assets:ui": "node tools/slice-buttons.mjs && node tools/slice-stair.mjs && node tools/build-hud-ui.mjs",
-    "assets:font": "node tools/build-font.mjs"
+    "assets:font": "node tools/build-font.mjs",
+    "qa:wallet": "node --import ./tools/_json-import.mjs tools/_wallet-qa.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"
