@@ -9,8 +9,14 @@
   ],
   "headers": [
     {
-      "source": "/assets/(.*)",
+      "//": "Vite 번들 — 파일명에 콘텐츠 해시가 붙는다(index-DfYUVZal.js). 내용이 바뀌면 이름도 바뀌므로 영구 캐시가 안전하다.",
+      "source": "/assets/((?!characters/|shoes/|bg/|ui/).*)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "//": "게임 스프라이트 — 파일명이 ian_side.png 처럼 고정이라 내용이 바뀌어도 URL이 그대로다. 여기에 immutable을 걸면 스프라이트를 고쳐도 이미 방문한 브라우저는 1년 동안 옛 그림을 본다. 그래서 매번 재검증한다(변경 없으면 304, 본문 전송 0바이트).",
+      "source": "/assets/(characters|shoes|bg|ui)/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
       "source": "/sw.js",
