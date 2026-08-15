@@ -16,6 +16,7 @@ const KEY = {
   settings: 'sf_settings',
   pending: 'sf_pendingScores',
   periodBest: 'sf_periodBest',
+  settled: 'sf_settledMatches',
 };
 
 function read(key, fallback) {
@@ -345,6 +346,65 @@ export function takeQueuedScores() {
 /** 아직 못 올린 판이 몇 개인가 (진단용) */
 export function loadPendingCount() {
   return read(KEY.pending, []).length;
+}
+
+// ─────────────────────────────────────────────
+// 멀티 정산 (M7)
+// ─────────────────────────────────────────────
+
+/**
+ * 지정한 신발을 **정확히 그것만** 뺀다 — 멀티 패배 정산용.
+ *
+ * `consumeShoes()` 와 다르다. 그쪽은 캐릭터 구매용이라 높은 티어부터 깎지만,
+ * 멀티 패배는 무작위로 뽑힌 그 신발이 그대로 나가야 한다(기획서 §5-7).
+ * 도감은 건드리지 않는다 — 종류 기록은 남고 수량만 줄어든다.
+ *
+ * @param {number[]} indices
+ * @returns {number[]} 실제로 빠진 신발들 (없던 건 조용히 빠진다)
+ */
+export function removeShoesByIndex(indices = []) {
+  const p = loadProfile();
+  const gone = [];
+  for (const i of indices) {
+    const k = String(i);
+    if ((p.shoesByIndex[k] ?? 0) <= 0) continue;
+    p.shoesByIndex[k] -= 1;
+    if (p.shoesByIndex[k] <= 0) delete p.shoesByIndex[k];
+    gone.push(Number(i));
+  }
+  reconcile(p);
+  saveProfile(p);
+  return gone;
+}
+
+/**
+ * 이미 정산한 방 목록. **같은 방을 두 번 정산하면 안 된다.**
+ * 결과는 여러 경로로 도착할 수 있다 — 게임 직후 화면, 다음 접속의 미정산 청산,
+ * 승자가 패자별로 나눠 받는 경우까지. 그래서 방+상대 단위로 도장을 찍는다.
+ */
+export function isSettled(tag) {
+  return !!read(KEY.settled, {})[tag];
+}
+
+export function markSettled(tag) {
+  const m = read(KEY.settled, {});
+  m[tag] = Date.now();
+  // 무한 증식 방지 — 최근 200건만 남긴다
+  const keys = Object.keys(m);
+  if (keys.length > 200) {
+    keys.sort((a, b) => m[a] - m[b]).slice(0, keys.length - 200).forEach((k) => delete m[k]);
+  }
+  write(KEY.settled, m);
+  return m;
+}
+
+/** 멀티 전적 */
+export function recordMatch(won) {
+  const p = loadProfile();
+  if (won) p.multiWins = (p.multiWins ?? 0) + 1;
+  else p.multiLosses = (p.multiLosses ?? 0) + 1;
+  saveProfile(p);
+  return p;
 }
 
 // ─────────────────────────────────────────────

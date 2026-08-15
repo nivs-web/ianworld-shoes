@@ -111,6 +111,25 @@ const NEEDS_REDIRECT = new Set([
 ]);
 
 /**
+ * 리다이렉트 로그인을 **써도 되는 환경인가.**
+ *
+ * 로그인 핸들러가 우리 도메인과 다른 사이트면(기본값 `*.firebaseapp.com`),
+ * 요즘 브라우저의 저장소 칸막이 때문에 돌아와도 자격증명이 사라진다.
+ * 그 상태에서 리다이렉트를 태우면 **사용자는 구글까지 갔다가 아무 일도 없이
+ * 로그인 화면으로 돌아온다** — 오류도 안 뜨니 "눌러도 아무 반응이 없다"가 된다.
+ * 실제로 이 게임이 그 상태였다. 그럴 바엔 차라리 팝업을 허용해 달라고 말하는 게 낫다.
+ * (services/firebase.js 의 `resolveAuthDomain` 주석 참고)
+ */
+function redirectIsUsable(fb) {
+  try {
+    const handler = fb?.auth?.config?.authDomain ?? '';
+    return typeof location !== 'undefined' && handler === location.host;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 구글 로그인. 모바일에서는 팝업이 막히는 일이 잦아 리다이렉트로 폴백한다.
  * 리다이렉트 뒤처리는 `initAuth` 의 `getRedirectResult` 가 맡는다 — 그게 없으면
  * 구글에서 돌아와도 로그인이 끝나지 않는다.
@@ -125,6 +144,12 @@ export async function signInGoogle() {
     return adopt(res.user);
   } catch (e) {
     if (NEEDS_REDIRECT.has(e?.code)) {
+      if (!redirectIsUsable(fb)) {
+        // 리다이렉트를 태워도 빈손으로 돌아온다 — 헛걸음시키지 말고 사실대로 말한다
+        const blocked = new Error('popup-required');
+        blocked.code = 'app/popup-required';
+        throw blocked;
+      }
       await fb.authMod.signInWithRedirect(fb.auth, provider);
       return null; // 페이지가 구글로 넘어간다. 돌아오면 initAuth 가 이어받는다
     }

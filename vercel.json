@@ -5,7 +5,8 @@
   "installCommand": "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/((?!assets/|icons/|manifest.webmanifest|sw.js).*)", "destination": "/index.html" }
+    { "source": "/__/auth/:path*", "destination": "https://find-shoes-f5c55.firebaseapp.com/__/auth/:path*" },
+    { "source": "/((?!assets/|icons/|manifest.webmanifest|sw.js|__/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

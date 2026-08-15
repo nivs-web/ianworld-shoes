@@ -93,22 +93,58 @@ service cloud.firestore {
 {
   "rules": {
     "rooms": {
+      ".read": "auth != null",
+      ".indexOn": ["open"],
       "$code": {
-        ".read": "auth != null",
-        ".write": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && data.child('state').val() == 'waiting'))",
+
+        "hostUid":    { ".validate": "!data.exists() || data.val() == auth.uid" },
+        "seed":       { ".validate": "newData.isNumber() && (!data.exists() || data.val() == newData.val())" },
+        "difficulty": { ".validate": "newData.val() == 'easy' || newData.val() == 'normal' || newData.val() == 'hard'" },
+        "state":      { ".validate": "newData.val() == 'waiting' || newData.val() == 'countdown' || newData.val() == 'playing' || newData.val() == 'finished'" },
+        "maxPlayers": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 4" },
+
         "players": {
           "$uid": {
-            ".write": "auth != null && auth.uid == $uid"
+            ".write": "auth != null && auth.uid == $uid",
+            "stairs":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+            "shoesFound": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "alive":      { ".validate": "newData.isBoolean()" }
+          }
+        },
+
+        "result": {
+          "given": {
+            "$uid": { ".write": "auth != null && auth.uid == $uid" }
           }
         }
+      }
+    },
+
+    "userRooms": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
       }
     }
   }
 }
 ```
 
-방 자체는 참가자면 같이 쓰되, **players/{uid} 는 본인만** 고칠 수 있다.
-남의 진행도(계단 수)를 조작해 승패를 뒤집는 걸 막는 최소선이다.
+**왜 이렇게 잘게 쪼갰나**
+
+- `players/{uid}` 는 **본인만** 쓴다. 남의 계단 수를 고쳐 승패를 뒤집는 걸 막는 최소선이다.
+- `$code` 쓰기는 **이미 방에 있는 사람**이거나 **대기 중인 방에 자기를 넣는 경우**만
+  허용한다. 아무나 남의 방 상태를 `finished` 로 바꿔 게임을 끊을 수 없다.
+- `seed` 는 **한 번 정해지면 못 바꾼다**(`data.val() == newData.val()`). 시드가 바뀌면
+  사람마다 다른 계단이 나와서 승부 자체가 성립하지 않는다.
+- `hostUid` 는 자기 자신으로만 쓸 수 있다 — 남을 방장으로 만들어 놓고 조종할 수 없다.
+- `result/given/{uid}` 는 **패자 본인만** 쓴다. 내가 내놓은 신발 목록을 승자가 읽어 가는
+  구조라(§5-7 정산), 남이 대신 써 주면 없는 신발이 생긴다.
+- `rooms/.indexOn: ["open"]` 은 자동 매칭 쿼리(`open == true`)용이다.
+  없으면 RTDB 가 전체를 훑고 콘솔에 경고를 찍는다.
+- `userRooms/{uid}` 는 **내가 참가한 방 목록**이다. 정산을 안 하고 앱을 꺼도
+  다음 접속에 여기서 미정산 방을 찾아 청산한다. 본인만 읽고 쓴다.
 
 ---
 

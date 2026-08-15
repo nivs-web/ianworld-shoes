@@ -13,6 +13,8 @@ export const S = {
   loginGoogle: 'Google로 시작하기',
   loginRequired: '이 게임은 멀티플레이입니다. Google 계정으로 시작해주세요',
   loginUnavailable: '지금은 로그인 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요',
+  /** 팝업이 막혔는데 리다이렉트도 못 쓰는 환경 — 헛걸음 대신 사실대로 알린다 */
+  loginPopupBlocked: '브라우저가 로그인 창을 막았습니다. 팝업을 허용하고 다시 눌러주세요',
   installShortcut: '바로가기 아이콘 만들기',
   installIosGuide: '공유 버튼 → "홈 화면에 추가"를 눌러주세요',
   installDone: '홈 화면에 추가되었습니다',

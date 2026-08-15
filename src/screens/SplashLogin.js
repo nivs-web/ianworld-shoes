@@ -43,8 +43,10 @@ export default function SplashLogin(nav) {
       if (!u) return; // 리다이렉트 진행 중
       await pullAll();
       enter();
-    } catch {
-      toast(S.loginFailed);
+    } catch (e) {
+      // 왜 안 됐는지 말해 준다. '로그인 실패' 한 줄로는 사용자가 할 수 있는 게 없다
+      toast(e?.code === 'app/popup-required' ? S.loginPopupBlocked : S.loginFailed, 3200);
+      console.warn('[로그인] 실패', e?.code, e);
     } finally {
       busy = false;
     }
