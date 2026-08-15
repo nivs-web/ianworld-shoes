@@ -7,6 +7,21 @@ import { defineConfig } from 'vite';
  */
 const BUILD_ID = (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 8) || Date.now().toString(36);
 
+/**
+ * ★ 환경변수 앞뒤 공백을 **굽기 전에** 잘라 낸다. (CLAUDE.md §9-0-13)
+ *
+ * 버셀 대시보드에 값을 붙여 넣을 때 줄바꿈이 딸려 들어간 적이 있다.
+ * `VITE_FIREBASE_PROJECT_ID` 가 `"find-shoes-f5c55\n"` 으로 번들에 박히면서
+ * 파이어스토어 요청이 전부 `projects/find-shoes-f5c55%0A/...` 로 나갔고,
+ * 서버가 스트리밍 채널을 503으로 끊어 **명예의 전당이 통째로 죽어 있었다.**
+ * 콘솔에는 멀쩡한 이름으로 찍혀서 눈으로는 찾을 수가 없다.
+ */
+for (const [k, v] of Object.entries(process.env)) {
+  if (!k.startsWith('VITE_') || typeof v !== 'string' || v === v.trim()) continue;
+  console.warn(`[build] ${k} 앞뒤에 공백/줄바꿈이 있어 잘라냈습니다 — 배포 환경변수도 다시 저장하세요`);
+  process.env[k] = v.trim();
+}
+
 export default defineConfig({
   base: '/',
   define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },

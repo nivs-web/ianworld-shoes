@@ -42,15 +42,55 @@ function resolveAuthDomain() {
   return location.host;
 }
 
+/**
+ * ★ **환경변수는 반드시 다듬어서 쓴다.** (2026-08-15, CLAUDE.md §9-0-13)
+ *
+ * 버셀 환경변수에 붙은 **줄바꿈 하나** 때문에 파이어스토어가 통째로 죽어 있었다.
+ * `VITE_FIREBASE_PROJECT_ID` 가 `"find-shoes-f5c55\n"` 으로 구워져서 모든 요청이
+ * `projects/find-shoes-f5c55%0A/databases/(default)` 로 나갔고, 백엔드가 스트리밍
+ * 채널을 503으로 끊었다. SDK 는 오류를 던지지 않고 **그냥 응답을 안 준다** —
+ * 12초 뒤 우리 타임아웃만 터진다. 증상은 "명예의 전당이 안 나온다" 였다.
+ *
+ * 눈으로는 절대 안 보인다. 콘솔에도 `find-shoes-f5c55` 로 멀쩡히 찍힌다.
+ * 그래서 값을 믿지 않고 전부 `trim()` 하고, 모양이 이상하면 소리를 지른다.
+ */
+const clean = (v) => (typeof v === 'string' ? v.trim() : v);
+
 const CFG = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: resolveAuthDomain(),
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  apiKey: clean(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: clean(resolveAuthDomain()),
+  projectId: clean(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: clean(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: clean(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: clean(import.meta.env.VITE_FIREBASE_APP_ID),
+  databaseURL: clean(import.meta.env.VITE_FIREBASE_DATABASE_URL),
 };
+
+/**
+ * 다듬는 것만으로는 부족하다 — **다듬어야 했다는 사실 자체를 알려야** 다음 사람이 안 당한다.
+ * 값마다 허용 모양을 정해 두고 어긋나면 경고한다. (게임은 그대로 계속된다)
+ */
+{
+  const RAW = {
+    VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
+    VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    VITE_FIREBASE_STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID,
+    VITE_FIREBASE_DATABASE_URL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  };
+  const dirty = Object.entries(RAW).filter(([, v]) => typeof v === 'string' && v !== v.trim());
+  if (dirty.length) {
+    console.warn(
+      `[firebase] 환경변수에 공백·줄바꿈이 섞여 있습니다: ${dirty.map(([k]) => k).join(', ')}\n` +
+        '          코드에서 잘라내고 계속하지만, 배포 환경변수를 다시 저장해 주세요.'
+    );
+  }
+  // 프로젝트 ID 는 소문자·숫자·하이픈만 쓴다. 여기가 어긋나면 파이어스토어가 전부 막힌다
+  if (CFG.projectId && !/^[a-z0-9-]+$/.test(CFG.projectId)) {
+    console.error(`[firebase] projectId 모양이 잘못됐습니다: ${JSON.stringify(CFG.projectId)}`);
+  }
+}
 
 /** 최소한 이 둘이 있어야 의미가 있다 */
 export function configured() {

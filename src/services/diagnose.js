@@ -30,6 +30,14 @@ export async function selftest() {
   // 1. 빌드에 Firebase 설정이 박혀 있는가 (Vercel 환경변수)
   if (!step('설정값', configured(), projectId() ?? '없음 — VITE_FIREBASE_* 미설정')) return steps;
 
+  /**
+   * 1-1. **값의 모양까지 본다.** 여기가 이 함수의 존재 이유에 가깝다.
+   * `projectId` 끝에 줄바꿈 하나가 붙어 있어서 파이어스토어가 통째로 죽어 있던 적이 있다.
+   * 콘솔에 찍으면 멀쩡해 보이므로 반드시 **따옴표째** 보여 준다. (CLAUDE.md §9-0-13)
+   */
+  const pid = projectId();
+  if (!step('projectId 모양', /^[a-z0-9-]+$/.test(pid), JSON.stringify(pid))) return steps;
+
   // 2. 지금 로그인 상태인가
   const u = currentUser();
   if (!step('로그인', !!u && !u.guest, u ? `uid=${u.uid}` : '로그인 안 됨')) return steps;
