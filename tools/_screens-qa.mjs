@@ -3,10 +3,27 @@
  *   node tools/_screens-qa.mjs
  */
 import { chromium } from 'playwright';
+import { existsSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+/**
+ * 크로미움 위치. 예전엔 `/opt/pw-browsers/chromium` 을 그대로 박아 뒀는데
+ * 그 경로는 환경이 바뀌면 사라진다(실제로 사라졌다). 찾아보고, 없으면
+ * 플레이라이트 기본값에 맡긴다 — 윈도우에서도 그대로 돌아간다.
+ */
+function chromePath() {
+  const dir = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
+  if (!existsSync(dir)) return undefined;
+  for (const n of readdirSync(dir).filter((n) => n.startsWith('chromium-')).sort().reverse()) {
+    const p = resolve(dir, n, 'chrome-linux/chrome');
+    if (existsSync(p)) return p;
+  }
+  return existsSync(resolve(dir, 'chromium')) ? resolve(dir, 'chromium') : undefined;
+}
 
 const URL = 'http://127.0.0.1:4173/';
 const b = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
+  executablePath: chromePath(),
   args: ['--autoplay-policy=no-user-gesture-required'],
 });
 const p = await b.newPage({ viewport: { width: 420, height: 820 } });

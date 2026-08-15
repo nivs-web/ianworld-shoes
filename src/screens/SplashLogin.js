@@ -13,20 +13,16 @@ import { pullAll, get as getProfile } from '../services/profile.js';
 import { toast } from './ui.js';
 import NicknameSetup from './NicknameSetup.js';
 import Portal from './Portal.js';
-
-/** 설치 프롬프트 — 크롬 계열은 beforeinstallprompt, iOS는 안내만 */
-let deferredInstall = null;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredInstall = e;
-});
-
-const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
-const isStandalone = () =>
-  window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+import { canInstall, promptInstall, isStandalone, onInstallChange } from '../services/pwa.js';
 
 export default function SplashLogin(nav) {
   let busy = false;
+
+  /**
+   * 설치 가능 신호는 **화면을 그린 뒤에** 온다 (브라우저가 조건을 다 확인한 다음이라
+   * 보통 1초쯤 늦다). 그래서 구독해 두고 도착하면 버튼을 다시 그린다.
+   */
+  const off = onInstallChange(() => nav.refresh());
 
   /** 로그인 후 닉네임 유무에 따라 분기 */
   function enter() {
@@ -52,16 +48,15 @@ export default function SplashLogin(nav) {
     }
   }
 
-  function onInstall() {
-    if (deferredInstall) {
-      deferredInstall.prompt();
-      deferredInstall = null;
-      return;
-    }
-    toast(isIos() ? S.installIosGuide : S.installDone, 2600);
+  async function onInstall() {
+    const r = await promptInstall();
+    // 사파리에는 설치 프롬프트가 없다 — 어디를 눌러야 하는지 알려 주는 게 전부다
+    if (r === 'ios') toast(S.installIosGuide, 3200);
+    else if (r === 'accepted') toast(S.installDone, 2600);
   }
 
   return {
+    onLeave() { off(); },
     render() {
       const signedIn = !!currentUser();
       /**
@@ -79,7 +74,9 @@ export default function SplashLogin(nav) {
         signedIn
           ? button(S.touchToStart, enter, { primary: true })
           : button(S.loginGoogle, onGoogle, { primary: true, disabled: blocked }),
-        !isStandalone() ? button(S.installShortcut, onInstall) : null,
+        // 이미 홈 화면에서 돌고 있거나 이 브라우저가 설치를 지원하지 않으면 아예 감춘다.
+        // 눌러도 아무 일 없는 버튼은 고장으로 보인다.
+        !isStandalone() && canInstall() ? button(S.installShortcut, onInstall) : null,
         el('div.hint', blocked ? S.loginUnavailable : signedIn ? S.loginWhy : S.loginRequired)
       );
     },

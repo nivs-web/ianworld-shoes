@@ -117,22 +117,17 @@ export const getStore = (() => {
     if (!fb) return null;
     const storeMod = await import('firebase/firestore');
     /**
-     * `getFirestore()` 가 아니라 `initializeFirestore()` 를 쓰는 이유:
-     * **자동 롱폴링 감지**를 켜야 한다.
+     * 그냥 `getFirestore()` 다.
      *
-     * Firestore 웹 SDK 는 REST 가 아니라 WebChannel(스트리밍)로 붙는다. 이 경로는
-     * 광고 차단 확장·회사망·일부 통신망 중간장비에서 조용히 막히는 일이 잦다.
-     * 막히면 **읽기는 로컬 캐시로 답하고 쓰기는 영원히 pending 으로 남는다** —
-     * 예외가 안 나므로 `.catch()` 도 안 걸리고, 화면은 멀쩡한데 서버에는
-     * 아무것도 안 올라간다. 로그인(Auth)은 평범한 HTTPS라 멀쩡히 되는 게 함정이다.
-     *
-     * autoDetectLongPolling 은 스트리밍이 막힌 걸 감지하면 롱폴링으로 갈아탄다.
-     * 정상 환경에서는 기존과 똑같이 동작하므로 켜 두는 쪽이 손해가 없다.
+     * 한때 `initializeFirestore(app, { experimentalAutoDetectLongPolling: true })` 를
+     * 썼다. "WebChannel 이 막혀서 쓰기가 안 올라간다"는 가설 때문이었는데,
+     * **그 가설은 틀렸다** — 진짜 원인은 로그인이었다(§9-0-9). 그런데 자동 감지는
+     * 첫 연결에서 스트리밍이 되는지 **실패를 기다려 보는** 단계를 넣기 때문에,
+     * 멀쩡한 회선에서도 첫 조회가 눈에 띄게 늦어진다. 실제로 명예의 전당이
+     * "누르고 10초쯤 뒤에 뜬다"는 증상으로 돌아왔다.
+     * 없어진 문제를 위한 대비를 남겨 두고 매번 값을 치를 이유가 없다.
      */
-    const db = storeMod.initializeFirestore(fb.app, {
-      experimentalAutoDetectLongPolling: true,
-    });
-    return { ...fb, db, storeMod };
+    return { ...fb, db: storeMod.getFirestore(fb.app), storeMod };
   }, 'firestore');
   return () => (configured() ? load() : Promise.resolve(null));
 })();

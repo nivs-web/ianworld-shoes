@@ -671,3 +671,34 @@
   color: var(--c-panel-dark);
   padding-bottom: 3px;
 }
+
+/* ── 멀티 (S13~S18) ─────────────────────────────
+   방 코드는 친구한테 불러 줘야 해서 크고 자간을 벌린다.
+   숫자 패드는 <input type=number> 대신인데, 모바일 키보드가 화면 절반을
+   덮고 기종마다 자판이 달라 도트 화면이 통째로 흐트러지기 때문이다. */
+.room-code {
+  font-size: 28px; letter-spacing: 8px; text-align: center;
+  color: var(--btn-hilite-on); margin: 6px 0 10px;
+}
+.code-row { display: flex; justify-content: center; gap: 8px; margin: 10px 0; }
+.code-slot {
+  width: 30px; height: 40px; line-height: 40px; text-align: center; font-size: 22px;
+  color: var(--btn-outline); background: var(--btn-face);
+  box-shadow: 0 -2px 0 0 var(--btn-outline), 0 2px 0 0 var(--btn-outline),
+              -2px 0 0 0 var(--btn-outline), 2px 0 0 0 var(--btn-outline);
+}
+.code-slot.on { background: var(--btn-face-on); color: var(--btn-hilite); }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+.keypad .pbtn { padding: 10px 0; font-size: 18px; }
+
+.player-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.player-row { display: flex; align-items: center; gap: 6px; padding: 3px 4px; }
+.player-row.me { background: rgba(255, 221, 142, 0.16); }
+.player-name { flex: 1; }
+.tag-host { font-size: 10px; color: var(--btn-hilite-on); }
+.tag-ready { font-size: 10px; opacity: 0.5; }
+.tag-ready.on { opacity: 1; color: var(--btn-hilite-on); }
+
+.settle { text-align: center; margin: 10px 0; }
+.settle-head { font-size: 16px; color: var(--btn-hilite-on); margin-bottom: 4px; }
+.warn { text-align: center; margin: 8px 0; color: var(--btn-face-on); }

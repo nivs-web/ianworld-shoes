@@ -1,7 +1,15 @@
 import { defineConfig } from 'vite';
 
+/**
+ * 배포마다 달라지는 값. 서비스 워커를 `sw.js?v=…` 로 등록할 때 쓴다 —
+ * 이게 없으면 브라우저는 sw.js 를 같은 파일로 보고 낡은 캐시를 계속 쓴다.
+ * 버셀에서는 커밋 해시가 있으니 그걸 쓰고(같은 배포는 같은 값), 로컬은 시간으로 때운다.
+ */
+const BUILD_ID = (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 8) || Date.now().toString(36);
+
 export default defineConfig({
   base: '/',
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   server: {
     host: true,
     port: 5173,

@@ -1,0 +1,60 @@
+/**
+ * S15 멀티 코드 입력 — 4자리 숫자 패드.
+ *
+ * `<input type=number>` 를 쓰지 않는다. 모바일 키보드가 화면 절반을 덮고,
+ * 기종마다 다른 자판이 올라와서 도트 화면이 통째로 흐트러진다.
+ * 숫자 10개 + 지우기면 되는 일이라 패드를 직접 그린다.
+ */
+
+import S from '../../config/strings.ko.js';
+import { el, button, backButton, screen, title, toast } from '../ui.js';
+import { MULTI } from '../../config/balance.js';
+import * as Room from '../../services/multiplayer.js';
+import WaitingRoom from './WaitingRoom.js';
+
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '←', '0', '↵'];
+
+export default function CodeInput(nav) {
+  let code = '';
+  let busy = false;
+
+  async function submit() {
+    if (busy || code.length !== MULTI.codeLength) return;
+    busy = true;
+    nav.refresh();
+    const r = await Room.joinRoom(code);
+    busy = false;
+    if (r === 'ok') return nav.replace(WaitingRoom, { code });
+    toast({ full: S.roomFull, started: S.roomAlreadyStarted, notfound: S.roomNotFound }[r] ?? S.networkError);
+    code = '';
+    nav.refresh();
+  }
+
+  function press(k) {
+    if (busy) return;
+    if (k === '←') code = code.slice(0, -1);
+    else if (k === '↵') return submit();
+    else if (code.length < MULTI.codeLength) code += k;
+    nav.refresh();
+    // 다 채우면 알아서 들어간다 — 확인 버튼을 또 찾게 하지 않는다
+    if (code.length === MULTI.codeLength) submit();
+  }
+
+  return {
+    render() {
+      /** 빈 칸은 밑줄로 — 몇 자리 남았는지 보여야 한다 */
+      const slots = Array.from({ length: MULTI.codeLength }, (_, i) =>
+        el('div.code-slot', { class: code[i] ? 'on' : '' }, code[i] ?? '')
+      );
+
+      return screen(
+        title(S.enterCode),
+        el('div.code-row', null, slots),
+        el('div.keypad', null, KEYS.map((k) => button(k, () => press(k), { class: 'key' }))),
+        busy ? el('div.hint', S.loading) : null,
+        el('div.spacer'),
+        backButton(S.back, () => nav.back())
+      );
+    },
+  };
+}

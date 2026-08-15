@@ -181,7 +181,7 @@ export async function syncIdentity() {
  *   **왜 비었는지 구분해서 돌려준다** — 예전에는 셋 다 null 이라 화면이
  *   전부 "아직 기록이 없습니다"로 거짓말을 했다.
  */
-const fail = (error) => ({ rows: [], me: null, error });
+const fail = (error) => ({ rows: [], me: null, error, mePromise: null });
 
 export async function fetchBoard(tab, difficulty) {
   if (!configured()) return fail('offline');
@@ -235,11 +235,21 @@ export async function fetchBoard(tab, difficulty) {
 
     rows.forEach((r, i) => { r.rank = i + 1; });
 
-    // 100위 밖이면 하단 고정 행을 위해 내 값을 따로 구한다 (순위는 알 수 없어 null)
+    /**
+     * 100위 밖이면 하단 고정 행을 위해 내 값을 따로 구한다 (순위는 알 수 없어 null).
+     *
+     * **이걸 기다렸다가 목록을 그리면 안 된다.** 조회가 한 번 더 나가는데,
+     * 순위표는 이미 손에 있다. 기다리면 "눌렀는데 한참 뒤에 뜬다"가 된다.
+     * 그래서 목록은 즉시 돌려주고 내 줄은 `mePromise` 로 따로 흘려보낸다.
+     */
     const u = currentUser();
     const mine = rows.find((r) => r.uid === u?.uid);
-    const me = mine ?? (u ? await myRow(fb, tab, difficulty, u) : null);
-    return { rows, me, error: null };
+    return {
+      rows,
+      me: mine ?? null,
+      error: null,
+      mePromise: mine || !u ? null : myRow(fb, tab, difficulty, u).catch(() => null),
+    };
   } catch (e) {
     // 색인이 없으면 Firestore 가 만들 링크를 콘솔에 찍어 준다
     console.warn('[랭킹] 조회 실패', e?.code, e);

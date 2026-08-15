@@ -398,6 +398,25 @@ export function markSettled(tag) {
   return m;
 }
 
+/**
+ * 멀티에 한 번이라도 들어간 적이 있는가.
+ * 접속할 때 RTDB(192KB)를 받을지 말지를 이걸로 가른다 — 싱글만 하는 사람은 안 받는다.
+ */
+export function everPlayedMulti() {
+  const p = loadProfile();
+  if ((p.multiWins ?? 0) + (p.multiLosses ?? 0) > 0) return true;
+  return Object.keys(read(KEY.settled, {})).length > 0 || !!p.joinedMultiAt;
+}
+
+/** 방에 들어간 순간 남기는 흔적 (아직 정산 기록이 없어도 청산 대상이 되게) */
+export function noteMultiJoin() {
+  const p = loadProfile();
+  if (p.joinedMultiAt) return p;
+  p.joinedMultiAt = Date.now();
+  saveProfile(p);
+  return p;
+}
+
 /** 멀티 전적 */
 export function recordMatch(won) {
   const p = loadProfile();

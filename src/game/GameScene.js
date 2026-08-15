@@ -27,6 +27,8 @@ import * as Sfx from '../audio/sfx.js';
 import * as Bgm from '../audio/bgm.js';
 import { AUDIO, SHOE_RARE_TIER_MAX, bgmTrackAt } from '../config/balance.js';
 import shoesData from '../data/shoes.json';
+import * as Room from '../services/multiplayer.js';
+import { multiHud } from './multiHud.js';
 
 export class GameScene {
   /**
@@ -48,6 +50,15 @@ export class GameScene {
     this.controlMode = opt.controlMode ?? 1;
     this.startFloor = opt.startFloor ?? 0;
     this.onFinish = opt.onFinish ?? null;
+    /**
+     * 멀티일 때만 채워진다: { code, startAt }.
+     * `startAt` 은 **서버 시각 기준 절대값**이라, 각자 자기 시계 오차를 빼고
+     * 그 순간에 출발하면 네 명이 같은 계단에서 시작한다.
+     */
+    this.multi = opt.multi ?? null;
+    this.opponents = [];
+    this.countdownMs = 0;
+    this.roomUnsub = null;
     this.ready = false;
   }
 
@@ -55,8 +66,12 @@ export class GameScene {
     this.stairs = new Stairs(
       this.seed,
       { gapMin: this.diff.shoeGapMin, gapMax: this.diff.shoeGapMax },
-      // 도감을 100종 넘게 모았으면 1·2티어가 5분의 1로 줄어든다 (balance.DEX_LATE_GAME)
-      tierWeights(dexUnique())
+      /**
+       * 도감을 100종 넘게 모았으면 1·2티어가 5분의 1로 줄어든다 (balance.DEX_LATE_GAME).
+       * **멀티에서는 끈다** — 각자의 도감을 반영하면 같은 시드인데도 사람마다
+       * 다른 신발이 나와서 승부가 성립하지 않는다.
+       */
+      tierWeights(this.multi ? 0 : dexUnique())
     );
     this.player = new Player(this.charId);
     this.floor = this.startFloor;
@@ -110,6 +125,47 @@ export class GameScene {
 
     clearInput();
     this.bindInput();
+    if (this.multi) this.enterMulti();
+  }
+
+  /** 멀티 전용 준비 — 출발 시각 맞추기 + 상대 진행도 구독 */
+  enterMulti() {
+    this.countdownMs = Math.max(0, (this.multi.startAt ?? 0) - Date.now());
+    Room.msUntilStart(this.multi.startAt ?? 0).then((ms) => {
+      // 서버 시계로 다시 잰다. 내 시계가 몇 초 어긋나 있어도 여기서 바로잡힌다
+      this.countdownMs = Math.max(0, ms);
+    });
+    this.roomUnsub = Room.subscribeRoom(this.multi.code, (r) => {
+      if (!r) return;
+      const uid = this.multi.myUid;
+      this.opponents = Object.entries(r.players ?? {})
+        .filter(([id]) => id !== uid)
+        .map(([id, v]) => ({ id, ...v }));
+      /**
+       * **누구든 한 명이 죽으면 전원 종료** (기획서 §5-7).
+       * 내가 살아 있어도 여기서 끝난다 — 그게 이 게임의 승부 방식이다.
+       */
+      if (!this.player?.dead && !this.overlayDone && Object.values(r.players ?? {}).some((v) => v.alive === false)) {
+        this.overlayDone = true;
+        this.endMulti();
+      }
+    });
+  }
+
+  /** 멀티 종료 — 부활 없이 곧장 정산으로 (기획서 §5-6 '멀티는 부활 없음') */
+  endMulti() {
+    Bgm.stopBgm();
+    this.roomUnsub?.();
+    this.roomUnsub = null;
+    Room.publishProgress(this.multi.code, {
+      stairs: this.floor, shoesFound: this.shoesFound, alive: !this.player?.dead,
+    }, true);
+    this.onFinish?.(null, 'multi');
+  }
+
+  exitMulti() {
+    this.roomUnsub?.();
+    this.roomUnsub = null;
   }
 
   resume() {
@@ -137,6 +193,7 @@ export class GameScene {
   exit() {
     setTapHandler(null);
     setPauseHandler(null);
+    this.exitMulti();
   }
 
   // ── 입력 → 행동 ──────────────────────────────
@@ -236,6 +293,17 @@ export class GameScene {
   update() {
     if (!this.ready) return;
 
+    /**
+     * 멀티 출발 게이트. 카운트다운이 남아 있으면 **입력도 게이지도 멈춘다** —
+     * 먼저 누른 사람이 먼저 출발하면 같은 시드를 쓰는 의미가 없다.
+     * 남은 시간은 서버 시각 기준으로 재 뒀다(enterMulti).
+     */
+    if (this.multi && this.countdownMs > 0) {
+      this.countdownMs -= 1000 / 60;
+      clearInput();
+      return;
+    }
+
     const btn = consumeInput();
     if (btn) this.action(btn);
 
@@ -254,9 +322,26 @@ export class GameScene {
       }
     }
 
+    // 진행도 전송 (스로틀은 multiplayer.js 안에 있다)
+    if (this.multi && !this.player.dead) {
+      Room.publishProgress(this.multi.code, {
+        stairs: this.floor, shoesFound: this.shoesFound, alive: true,
+      });
+    }
+
     // 사망 처리 → 부활 or 게임오버
     if (this.player.dead && !this.overlayDone) {
       this.overlayDone = true;
+      /**
+       * 멀티는 부활이 없고(기획서 §5-6), 내가 죽는 순간 **방 전체가 끝난다**.
+       * 그래서 게임오버 오버레이를 띄우지 않고 곧장 정산 화면으로 넘어간다 —
+       * 여기서 '다시하기'를 보여 주면 남들은 이미 결과 화면인데 나만 딴 판을 하게 된다.
+       */
+      if (this.multi) {
+        Room.reportDeath(this.multi.code, { stairs: this.floor, shoesFound: this.shoesFound });
+        this.endMulti();
+        return;
+      }
       if (this.revives > 0) {
         Scene.push(new ReviveOverlay(this));
       } else {
@@ -314,9 +399,11 @@ export class GameScene {
       gauge: this.gauge,
       floor: this.floor,
       shoesFound: this.shoesFound,
-      revives: this.revives,
+      // 멀티는 부활이 없으므로 부활 칸 자체를 그리지 않는다 (기획서 §5-6)
+      revives: this.multi ? 0 : this.revives,
       controlMode: this.controlMode,
     });
+    if (this.multi) multiHud(this);
   }
 }
 

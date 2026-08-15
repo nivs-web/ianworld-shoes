@@ -183,5 +183,126 @@ L.resetAll(); mem.clear();
   eq('패', p.multiLosses, 1);
 }
 
+// ─────────────────────────────────────────────
+console.log('13) 정산 흐름 전체 시뮬레이션 — 신발이 생기지도 사라지지도 않는다');
+{
+  /**
+   * multiSettle.js 는 firebase 를 타서 노드에서 못 부른다. 그래서 **같은 순서**로
+   * 지갑 원시연산과 규칙을 조합해 돌린다. 검증 대상은 "누가 뭘 몇 개 주고받나"다.
+   *
+   * 각 플레이어를 독립된 로컬 저장소로 흉내 낸다 — 실제로도 각자 자기 기기에서
+   * 자기 것만 정산하기 때문이다.
+   */
+  const worlds = new Map();
+  const use = (who) => {
+    if (!worlds.has(who)) worlds.set(who, new Map());
+    mem.clear();
+    for (const [k, v] of worlds.get(who)) mem.set(k, v);
+    return () => { const m = new Map(); for (const [k, v] of mem) m.set(k, v); worlds.set(who, m); };
+  };
+
+  const players = ['u_win', 'u_a', 'u_b', 'u_c'];
+  // 넷 다 같은 신발 6켤레로 시작
+  for (const who of players) {
+    const save = use(who);
+    L.resetAll(); mem.clear();
+    // 빈 상태에서 한 번 읽어 지갑 구조 마이그레이션을 먼저 끝낸다.
+    // 실제 앱도 부팅 때 loadProfile 이 먼저 돌아서 판을 시작할 땐 이미 끝나 있다.
+    L.loadProfile();
+    L.commitRun({ floor: 10, difficulty: 'normal', shoeIndices: [1, 1, 2, 3, 4, 5] });
+    save();
+  }
+  const totalBefore = players.reduce((sum, who) => { use(who); return sum + L.loadProfile().shoesOwned; }, 0);
+  eq('시작 총량 (4명 × 6켤레)', totalBefore, 24);
+
+  const rankings = players;                       // u_win 이 1등
+  const counts = M.settlementCounts(rankings);
+  const room = 'r0001';
+  const given = {};
+
+  // ── 패자 3명이 각자 자기 것만 정산 ──
+  for (const loser of rankings.slice(1)) {
+    const save = use(loser);
+    if (!L.isSettled(room + ':pay')) {
+      const picked = M.pickPenaltyShoes(L.loadProfile().shoesByIndex, 1, rng(loser.length * 7));
+      given[loser] = L.removeShoesByIndex(picked);
+      L.recordMatch(false);
+      L.markSettled(room + ':pay');
+    }
+    save();
+  }
+  eq('패자 3명이 각각 1켤레씩 내놓음', Object.values(given).map((g) => g.length), [1, 1, 1]);
+
+  // ── 승자가 걷는다 ──
+  {
+    const save = use('u_win');
+    for (const loser of rankings.slice(1)) {
+      if (L.isSettled(`${room}:take:${loser}`)) continue;
+      L.addShoes(given[loser]);
+      for (const i of given[loser]) L.recordShoe(i);
+      L.markSettled(`${room}:take:${loser}`);
+    }
+    L.recordMatch(true);
+    eq('승자 몫이 표와 일치', L.loadProfile().shoesOwned - 6, MULTI.winnerReward[4]);
+    eq('승자 몫이 계산과 일치', L.loadProfile().shoesOwned - 6, counts.u_win);
+    save();
+  }
+
+  // ── 총량 보존 ──
+  const totalAfter = players.reduce((sum, who) => { use(who); return sum + L.loadProfile().shoesOwned; }, 0);
+  eq('정산 후 총량 그대로 (이동만 일어난다)', totalAfter, totalBefore);
+  { use('u_a'); eq('패자는 1켤레 줄었다', L.loadProfile().shoesOwned, 5); }
+  { use('u_win'); eq('승자는 3켤레 늘었다', L.loadProfile().shoesOwned, 9); }
+
+  // ── 같은 정산을 두 번 돌려도 변화 없음 ──
+  for (const loser of rankings.slice(1)) {
+    const save = use(loser);
+    if (!L.isSettled(room + ':pay')) { L.removeShoesByIndex([1]); L.markSettled(room + ':pay'); }
+    save();
+  }
+  {
+    const save = use('u_win');
+    for (const loser of rankings.slice(1)) {
+      if (L.isSettled(`${room}:take:${loser}`)) continue;
+      L.addShoes(given[loser]);
+    }
+    save();
+  }
+  const totalTwice = players.reduce((sum, who) => { use(who); return sum + L.loadProfile().shoesOwned; }, 0);
+  eq('두 번 돌려도 총량 동일', totalTwice, totalBefore);
+  { use('u_win'); eq('승자 지갑도 그대로', L.loadProfile().shoesOwned, 9); }
+  { use('u_b'); eq('패자 지갑도 그대로', L.loadProfile().shoesOwned, 5); }
+
+  // ── 승자 도감: 없던 종류를 받으면 새로 등록된다 ──
+  {
+    const save = use('u_win');
+    const before = L.dexUnique();
+    L.addShoes([99]); L.recordShoe(99);
+    eq('받은 신발이 도감에 새로 오른다', L.dexUnique(), before + 1);
+    save();
+  }
+}
+
+// ─────────────────────────────────────────────
+console.log('14) 미정산 회피 — 패자가 앱을 꺼도 승자는 받고, 패자는 다음에 청산된다');
+{
+  mem.clear(); L.resetAll();
+  L.loadProfile();   // 위와 같은 이유 — 마이그레이션 먼저
+  L.commitRun({ floor: 5, difficulty: 'easy', shoeIndices: [7, 7, 8] });
+  const room = 'r0002';
+  // 1차: 정산 전에 앱이 꺼졌다고 치면 도장이 없다
+  eq('도장 없음', L.isSettled(room + ':pay'), false);
+  eq('지갑 그대로', L.loadProfile().shoesOwned, 3);
+  // 2차 접속: 청산이 돈다
+  const picked = M.pickPenaltyShoes(L.loadProfile().shoesByIndex, 1, rng(3));
+  L.removeShoesByIndex(picked);
+  L.markSettled(room + ':pay');
+  eq('뒤늦게 차감됨', L.loadProfile().shoesOwned, 2);
+  eq('그 뒤로는 다시 안 깎인다', (() => {
+    if (!L.isSettled(room + ':pay')) L.removeShoesByIndex([7]);
+    return L.loadProfile().shoesOwned;
+  })(), 2);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

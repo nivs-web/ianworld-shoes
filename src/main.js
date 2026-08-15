@@ -20,6 +20,8 @@ import Lobby from './screens/Lobby.js';
 import { initAuth, onUserChanged } from './services/auth.js';
 import { get as getProfile, pullAll } from './services/profile.js';
 import { selftest } from './services/diagnose.js';
+import { sweepUnsettled } from './services/multiSettle.js';
+import { initPwa } from './services/pwa.js';
 
 // 오버레이/로비에서 새 판을 열 때 순환 import를 피하기 위한 전역 훅
 window.__gameModule = { GameScene };
@@ -32,6 +34,13 @@ function hideBoot() {
 }
 
 async function boot() {
+  /**
+   * 서비스 워커·설치 프롬프트. **가장 먼저** 부른다 —
+   * `beforeinstallprompt` 는 부팅 직후 한 번 오고 다시 오지 않아서,
+   * 늦게 듣기 시작하면 그 판에서는 설치 버튼을 못 띄운다. (services/pwa.js)
+   */
+  initPwa();
+
   initCanvas();
   initInput();
   setInputEnabled(false); // 첫 화면은 DOM이다 — 게임 입력은 인게임에서만 켠다
@@ -81,6 +90,11 @@ async function boot() {
     if (synced) return;
     synced = true;
     pullAll().catch((e) => console.warn('[sync] 서버 동기화 실패 — 로컬로 계속합니다', e));
+    /**
+     * 멀티 미정산 청산. 지는 순간 앱을 꺼서 차감을 피하는 걸 막고,
+     * 승자가 늦게 올라온 신발을 마저 받게 한다. (services/multiSettle.js)
+     */
+    sweepUnsettled().catch(() => {});
   };
 
   const u = await initAuth();

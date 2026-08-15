@@ -18,6 +18,7 @@ import CharacterSelect from './CharacterSelect.js';
 import Collection from './Collection.js';
 import HallOfFame from './HallOfFame.js';
 import Controls from './Controls.js';
+import MultiMenu from './multi/MultiMenu.js';
 import Portal from './Portal.js';
 import { startGame } from './startGame.js';
 
@@ -88,7 +89,7 @@ export default function Lobby(nav) {
 
         el('div.row', null, [
           button(S.playSingle, () => startGame(nav, {}), { primary: true }),
-          button(S.playMulti, () => toast(S.comingSoon)),
+          button(S.playMulti, () => nav.push(MultiMenu)),
         ]),
 
         elevatorUnlocked

@@ -38,6 +38,12 @@ function mergeWallet(a = {}, b = {}) {
   return out;
 }
 
+/**
+ * 이름 병합 — **빈 값은 절대 이기지 못한다.**
+ * 원격이 비어 있으면 로컬을 쓰고, 둘 다 있으면 원격(다른 기기에서 바꿨을 수 있다).
+ */
+const pickName = (local, remote) => (remote || local || '');
+
 /** 뱃지 도장 병합 — 0은 "아직"이라 절대 이기지 못한다 */
 function earliestStamp(a, b) {
   const list = [a, b].filter((v) => v > 0);
@@ -69,6 +75,17 @@ export async function pullAll() {
    */
   const stamped = L.ensureDexBadge();
   if (stamped.dexBadgeAt) pushRemote({ dexBadgeAt: stamped.dexBadgeAt }).catch(() => {});
+  /**
+   * 이름 되살리기 — 이미 빈 이름으로 박제된 계정 문서를 고친다.
+   * 이 사람들은 판을 한 번 더 돌기 전까지 순위표에 `???` 로 보인다.
+   */
+  if (stamped.nickname) {
+    pushRemote({
+      nickname: stamped.nickname,
+      nicknameLower: stamped.nickname.toLowerCase(),
+      selectedCharacter: stamped.selectedCharacter ?? '',
+    }).catch(() => {});
+  }
   // 오프라인 동안 쌓인 기록을 이제 올린다
   Rank.flushQueued().catch(() => {});
   return stamped;
@@ -96,6 +113,18 @@ export async function pullRemote() {
   const merged = {
     ...local,
     ...remote,
+    /**
+     * ★ 이름은 **빈 값이 이기면 안 된다.**
+     *
+     * `...remote` 가 `...local` 을 덮으므로, 원격 문서의 닉네임이 빈 문자열이면
+     * 로컬 닉네임까지 지워졌다. 계정 문서는 **첫 로그인 시점**에 만들어지는데
+     * 그때는 아직 닉네임을 정하기 전이라 `''` 로 박히는 경로가 있다 — 그 뒤로
+     * 이름이 영영 빈 채로 남고, 명예의 전당에는 `???` 로 나온다.
+     * (실제 증상: 순위표 아이디가 전부 물음표)
+     */
+    nickname: pickName(local.nickname, remote.nickname),
+    nicknameLower: pickName(local.nicknameLower, remote.nicknameLower),
+    selectedCharacter: remote.selectedCharacter || local.selectedCharacter,
     bestStairs: Math.max(local.bestStairs ?? 0, remote.bestStairs ?? 0),
     totalPlays: Math.max(local.totalPlays ?? 0, remote.totalPlays ?? 0),
     // 지갑은 신발별 보유량이 진실이고 합계는 거기서 나온다 (아래 reconcile)
@@ -147,6 +176,17 @@ export function buyCharacter(id) {
 export function finishRun(result) {
   const r = L.commitRun(result);
   pushRemote({
+    /**
+     * ★ 이름·캐릭터를 **매 판마다 같이 올린다.**
+     *
+     * 신발왕·역대 탭은 `users` 문서의 이름을 그대로 읽는다. 그런데 이 필드를
+     * 쓰는 곳이 `saveNickname` 하나뿐이라, 그 한 번이 실패하면(예전에 로그인이
+     * 깨져 있던 동안 실제로 그랬다) 계정 문서의 이름이 영영 빈 채로 남는다.
+     * 판이 끝날 때마다 같이 실어 보내면 저절로 복구된다.
+     */
+    nickname: r.profile.nickname ?? '',
+    nicknameLower: (r.profile.nickname ?? '').toLowerCase(),
+    selectedCharacter: r.profile.selectedCharacter ?? '',
     bestStairs: r.profile.bestStairs,
     bestByDifficulty: r.profile.bestByDifficulty,
     totalStairs: r.profile.totalStairs,

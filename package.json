@@ -6,18 +6,21 @@
   "description": "오락실 이안월드 - 신발을 찾아서 (레트로 도트 계단 게임)",
   "scripts": {
     "dev": "npm run assets:font && vite",
-    "//build": "폰트를 먼저 굽는다. 문구를 고치고 다시 굽는 걸 잊으면 그 글자만 '?'로 나온다 — 실제로 '맵바꾸기'가 '?바꾸기'로 배포될 뻔했다.",
-    "build": "npm run assets:font && vite build",
+    "//build": "폰트를 먼저 굽는다. 문구를 고치고 다시 굽는 걸 잊으면 그 글자만 '?'로 나온다 — 실제로 '맵바꾸기'가 '?바꾸기'로 배포될 뻔했다. 아이콘도 여기서 굽는다: 파일이 하나라도 없으면 크롬이 설치 배너를 아예 안 띄운다.",
+    "build": "npm run assets:font && npm run assets:icons && vite build",
     "preview": "vite preview",
-    "assets": "npm run assets:chars && npm run assets:shoes && npm run assets:bg && npm run assets:ui && npm run assets:font",
+    "assets": "npm run assets:chars && npm run assets:shoes && npm run assets:bg && npm run assets:ui && npm run assets:font && npm run assets:icons",
     "assets:chars": "node tools/slice-characters.mjs",
     "assets:shoes": "node tools/slice-newdesign.mjs",
     "assets:bg": "node tools/downscale-bg.mjs",
     "assets:ui": "node tools/slice-buttons.mjs && node tools/slice-stair.mjs && node tools/build-hud-ui.mjs",
     "assets:font": "node tools/build-font.mjs",
+    "assets:icons": "node tools/build-icons.mjs",
     "qa:wallet": "node --import ./tools/_json-import.mjs tools/_wallet-qa.mjs",
     "qa:rank": "node --import ./tools/_json-import.mjs tools/_rank-qa.mjs",
-    "qa:multi": "node --import ./tools/_json-import.mjs tools/_multi-qa.mjs"
+    "qa:multi": "node --import ./tools/_json-import.mjs tools/_multi-qa.mjs",
+    "//qa:pwa": "dist/ 를 실제로 띄우고 선을 뽑아 본다 — 반드시 npm run build 뒤에 돌린다.",
+    "qa:pwa": "node tools/_pwa-qa.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"

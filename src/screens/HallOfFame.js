@@ -37,14 +37,36 @@ export default function HallOfFame(nav) {
   /** 늦게 도착한 응답이 최신 화면을 덮어쓰지 않게 하는 표식 */
   let reqId = 0;
 
+  /**
+   * 이미 받아 둔 탭은 다시 부르지 않는다.
+   * 탭을 왔다 갔다 할 때마다 조회가 나가면 느리기도 하고 읽기 할당량도 축낸다.
+   * (새로 고침이 필요하면 화면을 다시 열면 된다 — 인스턴스와 함께 캐시도 사라진다)
+   */
+  const cache = new Map();
+  const keyOf = (t, d) => `${t}:${TABS.find((x) => x.id === t).byDifficulty ? d : '-'}`;
+
   function load() {
     const my = ++reqId;
+    const key = keyOf(tabId, diff);
+    const hit = cache.get(key);
+    if (hit) { state = { loading: false, data: hit }; return; }
+
     state = { loading: true, data: null };
     const tab = TABS.find((t) => t.id === tabId);
     fetchBoard(tabId, tab.byDifficulty ? diff : undefined).then((data) => {
       if (my !== reqId) return; // 탭을 이미 옮겼다
+      if (!data.error) cache.set(key, data);
       state = { loading: false, data };
       nav.refresh();
+      /**
+       * 내 줄은 늦게 와도 된다 — 순위표를 먼저 보여 주고, 도착하면 아래에 붙인다.
+       * 이걸 기다렸다 그리면 목록이 있는데도 화면이 비어 있는 시간이 생긴다.
+       */
+      data.mePromise?.then((me) => {
+        if (my !== reqId || !me) return;
+        data.me = me;
+        nav.refresh();
+      });
     });
   }
 
