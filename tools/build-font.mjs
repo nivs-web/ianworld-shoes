@@ -38,7 +38,16 @@ const ASCII =
  * 자동 수집인 이유: 목록을 손으로 관리하면 새 문구를 추가한 날 그 글자만
  * 캔버스에서 조용히 안 그려진다. 빈 화면은 원인을 찾기 제일 어려운 종류의 버그다.
  */
-const LITERAL = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g;
+/**
+ * 문자열과 주석을 **한 번에** 훑고 문자열만 남긴다.
+ *
+ * 주석을 먼저 지우고 문자열을 찾으면 `'https://...'` 의 `//` 부터 줄 끝이 날아간다.
+ * 반대로 문자열만 찾으면 주석 안에 따옴표로 인용한 말("이 값은 힌트다" 같은)이
+ * 문자열로 잡혀 쓰지도 않는 글자가 슬금슬금 늘어난다 — 실제로 그렇게 6자가 섞였다.
+ * 하나의 교대(alternation)로 왼쪽부터 훑으면 둘 다 제자리에서 잡힌다.
+ */
+const TOKEN = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
+const isComment = (t) => t.startsWith('//') || t.startsWith('/*');
 
 function collectHangul(dir, out = new Set()) {
   for (const name of readdirSync(dir)) {
@@ -46,8 +55,9 @@ function collectHangul(dir, out = new Set()) {
     if (statSync(p).isDirectory()) collectHangul(p, out);
     else if (name.endsWith('.js')) {
       const src = readFileSync(p, 'utf8');
-      for (const lit of src.match(LITERAL) ?? []) {
-        for (const ch of lit.match(/[가-힣]/g) ?? []) out.add(ch);
+      for (const tok of src.match(TOKEN) ?? []) {
+        if (isComment(tok)) continue;
+        for (const ch of tok.match(/[가-힣]/g) ?? []) out.add(ch);
       }
     }
   }

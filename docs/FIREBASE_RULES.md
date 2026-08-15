@@ -33,16 +33,45 @@ service cloud.firestore {
       allow read, write: if isMe(uid);
     }
 
-    // 랭킹 원장 — 제출은 되지만 **고칠 수는 없다**.
-    // update/delete 를 열어두면 자기 기록을 나중에 올려칠 수 있다.
+    // 랭킹 — 문서 한 장 = 한 사람의 그 기간·그 난이도 최고기록.
+    //
+    // 문서 ID를 uid_난이도_기간키 로 못 박는 게 이 규칙의 핵심이다.
+    // ID를 자유롭게 두면 한 사람이 문서를 여러 장 만들어 순위표를 도배할 수 있다.
+    // (예전처럼 판마다 한 장씩 쌓는다면 클라이언트가 uid로 접어야 하는데,
+    //  그건 300건을 읽어야 하고 닉네임을 바꿔도 옛 이름이 그대로 남는다.)
     match /scores/{scoreId} {
       allow read: if true;
-      allow create: if signedIn()
-                    && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.stairs is int
-                    && request.resource.data.stairs >= 0
-                    && request.resource.data.stairs <= 100000;
-      allow update, delete: if false;
+
+      function d() { return request.resource.data; }
+
+      // 기간 필드는 셋 중 **하나만** 들어간다. 셋을 다 넣으면 주간 색인이 연간 문서까지 훑는다.
+      function periodOk() {
+        return (d().period == 'wk' && d().wk == d().key)
+            || (d().period == 'mo' && d().mo == d().key)
+            || (d().period == 'yr' && d().yr == d().key);
+      }
+
+      function valid() {
+        return d().uid == request.auth.uid
+            && scoreId == d().uid + '_' + d().difficulty + '_' + d().key
+            && d().difficulty in ['easy', 'normal', 'hard']
+            && d().key is string
+            && d().stairs is int
+            && d().stairs >= 0
+            && d().stairs <= 100000
+            && periodOk();
+      }
+
+      allow create: if signedIn() && valid();
+
+      // 덮어쓰기는 **점수가 내려가지 않을 때만**. 같은 값도 통과시키는 건
+      // 닉네임·캐릭터만 고치는 갱신(leaderboard.syncIdentity)이 지나가야 하기 때문이다.
+      allow update: if signedIn() && valid()
+                    && d().stairs >= resource.data.stairs
+                    && d().difficulty == resource.data.difficulty
+                    && d().key == resource.data.key;
+
+      allow delete: if false;
     }
 
     // 집계 캐시 — 읽기 전용. 쓰기는 서버(Cloud Functions)만.
@@ -116,19 +145,20 @@ Vercel → 프로젝트 → Settings → **Environment Variables** 에 `.env.exa
 
 직접 만들려면 콘솔 → Firestore → **색인** → 복합 색인 추가:
 
-| 컬렉션 | 필드 순서 |
-|--------|-----------|
-| `scores` | `difficulty` 오름차순, `wk` 오름차순, `stairs` **내림차순** |
-| `scores` | `difficulty` 오름차순, `mo` 오름차순, `stairs` **내림차순** |
-| `scores` | `difficulty` 오름차순, `yr` 오름차순, `stairs` **내림차순** |
-| `scores` | `uid` 오름차순, `difficulty` 오름차순, `wk` 오름차순, `stairs` **내림차순** |
-| `scores` | `uid` 오름차순, `difficulty` 오름차순, `mo` 오름차순, `stairs` **내림차순** |
-| `scores` | `uid` 오름차순, `difficulty` 오름차순, `yr` 오름차순, `stairs` **내림차순** |
-
-뒤 세 개는 "내가 100위 밖일 때 하단에 내 기록을 고정"하는 조회용이다.
+| 컬렉션 | 필드 순서 | 쓰이는 곳 |
+|--------|-----------|-----------|
+| `scores` | `difficulty` 오름차순, `wk` 오름차순, `stairs` **내림차순** | 주간 탭 |
+| `scores` | `difficulty` 오름차순, `mo` 오름차순, `stairs` **내림차순** | 월간 탭 |
+| `scores` | `difficulty` 오름차순, `yr` 오름차순, `stairs` **내림차순** | 연간 탭 |
 
 **신발왕·역대 탭은 색인이 필요 없다.** `users` 를 단일 필드(`shoesOwned`,
 `bestByDifficulty.easy` 등)로 정렬하는데, 단일 필드 색인은 Firestore 가 자동으로 만든다.
+
+**하단 '내 순위'도 색인이 필요 없다.** 문서 ID가 `uid_난이도_기간키` 로 정해져 있어
+쿼리가 아니라 문서 하나를 바로 읽는다.
+
+> 2026-08-15까지 `uid` 가 앞에 붙은 색인 3개를 더 만들어 뒀다. 원장을 기간별 한 장으로
+> 바꾸면서 쓸 일이 없어졌지만, 남아 있어도 해가 없어 지우지 않았다.
 
 ### 왜 기간을 문자열로 저장하나
 
@@ -136,3 +166,7 @@ Vercel → 프로젝트 → Settings → **Environment Variables** 에 `.env.exa
 요구한다. 그러면 "계단 수 상위 100명"을 뽑을 수 없다. 그래서 제출할 때
 `wk: '2026-W33'` · `mo: '2026-08'` · `yr: '2026'` 을 미리 박아 둔다 — 등호 비교라
 계단 수로 바로 정렬할 수 있다.
+
+기간 필드는 문서마다 **하나만** 넣는다. 셋을 다 넣으면 주간 색인에 연간·월간 문서까지
+실려서 읽을 일 없는 문서를 훑게 된다. 없는 필드는 색인에 아예 안 실리므로,
+`wk` 만 가진 문서는 주간 쿼리에만 걸린다.

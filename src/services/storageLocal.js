@@ -15,6 +15,7 @@ const KEY = {
   collection: 'sf_collection',
   settings: 'sf_settings',
   pending: 'sf_pendingScores',
+  periodBest: 'sf_periodBest',
 };
 
 function read(key, fallback) {
@@ -299,6 +300,52 @@ export function takeQueuedScores() {
   const q = read(KEY.pending, []);
   write(KEY.pending, []);
   return q;
+}
+
+// ─────────────────────────────────────────────
+// 기간별 최고기록 흔적 (M6 랭킹)
+// ─────────────────────────────────────────────
+
+/**
+ * "이 기간 문서에 내가 얼마를 올려 뒀는가"를 기억한다.
+ *
+ * 순위표 문서는 사람×난이도×기간마다 한 장이고 **점수가 오를 때만** 덮어쓴다.
+ * 이 기록이 없으면 판이 끝날 때마다 세 장을 무조건 다시 써서, 대부분은
+ * 규칙에 막히면서 헛되이 쓰기 한도만 먹는다.
+ *
+ * 어디까지나 **아낌용 힌트**다. 다른 기기에서 더 높은 기록을 올렸다면 여기 값은
+ * 낮게 남아 있지만, 그때는 규칙이 막아 주므로 결과가 틀어지지는 않는다.
+ * @type {Record<string, number>}
+ */
+export function loadPeriodBest() {
+  return read(KEY.periodBest, {});
+}
+
+export function periodBest(docId) {
+  return loadPeriodBest()[docId] ?? -1;
+}
+
+export function hasPeriodBest(docId) {
+  return docId in loadPeriodBest();
+}
+
+/**
+ * @param {string[]} keepKeys 지금 기간의 키들 — 여기 없는 항목은 버린다.
+ *   지난 주·지난 달 문서는 어떤 화면에도 안 나오므로 들고 있을 이유가 없다.
+ */
+export function notePeriodBest(docId, stairs, keepKeys = null) {
+  const m = loadPeriodBest();
+  m[docId] = Math.max(m[docId] ?? 0, stairs | 0);
+  write(KEY.periodBest, keepKeys ? prunePeriodBest(m, keepKeys) : m);
+  return m;
+}
+
+export function prunePeriodBest(map, keepKeys) {
+  const out = {};
+  for (const [id, v] of Object.entries(map)) {
+    if (keepKeys.some((k) => id.endsWith(`_${k}`))) out[id] = v;
+  }
+  return out;
 }
 
 /** 테스트·초기화용 */

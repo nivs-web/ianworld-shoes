@@ -15,7 +15,8 @@
     "assets:bg": "node tools/downscale-bg.mjs",
     "assets:ui": "node tools/slice-buttons.mjs && node tools/slice-stair.mjs && node tools/build-hud-ui.mjs",
     "assets:font": "node tools/build-font.mjs",
-    "qa:wallet": "node --import ./tools/_json-import.mjs tools/_wallet-qa.mjs"
+    "qa:wallet": "node --import ./tools/_json-import.mjs tools/_wallet-qa.mjs",
+    "qa:rank": "node --import ./tools/_json-import.mjs tools/_rank-qa.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"

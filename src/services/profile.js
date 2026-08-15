@@ -98,7 +98,16 @@ export async function pullRemote() {
 
 export const setDifficulty = (d) => patch({ difficulty: d });
 export const setControlMode = (m) => patch({ controlMode: m });
-export const setCharacter = (id) => patch({ selectedCharacter: id });
+
+/**
+ * 캐릭터 교체. 순위표에 박혀 있는 얼굴도 같이 갈아 준다 —
+ * 로비에서는 새 캐릭터인데 주간 순위표에만 옛 얼굴이 남으면 남의 기록처럼 보인다.
+ */
+export function setCharacter(id) {
+  const p = patch({ selectedCharacter: id });
+  Rank.syncIdentity().catch(() => { /* 다음 기록 제출 때 맞춰진다 */ });
+  return p;
+}
 
 /** @returns {{ok:boolean, profile:object}} */
 export function buyCharacter(id) {
@@ -178,7 +187,16 @@ export async function isNicknameTaken(nickname) {
   return Promise.race([check, timeout]);
 }
 
+/**
+ * 닉네임 저장.
+ *
+ * 이름을 바꾸면 **이미 올라간 이번 주·달·해 기록의 이름도 함께 고친다.**
+ * 신발 200켤레를 내고 바꿨는데 순위표에 옛 이름이 그대로면 산 게 아니다.
+ * (`leaderboard.syncIdentity` — 고칠 문서는 최대 9장이라 부담이 없다)
+ */
 export function saveNickname(nickname) {
   const v = nickname.trim();
-  return patch({ nickname: v, nicknameLower: v.toLowerCase() });
+  const p = patch({ nickname: v, nicknameLower: v.toLowerCase() });
+  Rank.syncIdentity().catch(() => { /* 다음 기록 제출 때 맞춰진다 */ });
+  return p;
 }
