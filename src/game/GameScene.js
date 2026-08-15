@@ -64,7 +64,7 @@ export class GameScene {
     this.started = false; // 첫 입력부터 게이지가 줄기 시작
     this.shoesFound = 0;
     this.revives = 0;
-    this.reviveEarned = 0; // 이미 지급한 부활 수 (20개마다 1개)
+    this.reviveEarned = 0; // 이미 지급한 부활 수 (balance.REVIVE.shoesPerRevive 개마다 1개)
     this.overlayDone = false;
     /** 함성 발동용 — 실수 없이 연속으로 오른 칸 수 (기획서 §9-7-1) */
     this.stepStreak = 0;
@@ -202,7 +202,7 @@ export class GameScene {
         Sfx.play('sfx_shoe_get');
       }
       this.gauge = Math.min(GAUGE_MAX, this.gauge + this.diff.shoeReward);
-      // 부활 지급 (싱글 전용, 신발 20개당 1개)
+      // 부활 지급 (싱글 전용, 신발 REVIVE.shoesPerRevive 개당 1개)
       const earned = Math.floor(this.shoesFound / REVIVE.shoesPerRevive);
       if (earned > this.reviveEarned) {
         this.revives += earned - this.reviveEarned;

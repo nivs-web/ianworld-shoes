@@ -1,16 +1,20 @@
 /**
  * 뱃지 정의 — 로비 캐릭터 옆 진열대 2칸.
  *
- *   1칸 도감완성 : **지금 들고 있는 종류**가 130종 전부일 때. 신발을 써서 한 종류라도
- *                  0켤레가 되면 그 순간 빠진다 (다시 모으면 다시 달린다).
+ *   1칸 도감완성 : 도감 130종을 **한 번이라도** 채웠으면 영구히 달린다.
  *   2칸 계단     : 최고기록이 넘긴 단계 중 **가장 높은 하나**. 최고기록은 줄지 않으므로
  *                  한 번 달면 안 뺏긴다.
+ *
+ * **둘 다 절대 뺏기지 않는다.** 뱃지는 "지금 상태"가 아니라 "해낸 적 있음"의 증표다.
+ * 도감완성을 예전처럼 *지금 들고 있는 종류*로 세면, 130종을 다 모은 사람이
+ * 캐릭터를 사거나 엘리베이터를 탈 때마다 훈장을 뺏긴다 — 훈장을 지키려고
+ * 신발을 못 쓰게 되니 게임이 거꾸로 돈다.
  *
  * 조건 판정은 전부 여기 순수 함수로 둔다 — 화면은 결과만 그린다.
  */
 
 import S from '../config/strings.ko.js';
-import { STAIR_BADGE_STEPS, DEX_BADGE_REQUIRED } from '../config/balance.js';
+import { STAIR_BADGE_STEPS } from '../config/balance.js';
 
 /** 뱃지 등급 — 색만 다르다. 오래 판 사람이 한눈에 구분되게. */
 export const RANK = { BRONZE: 'bronze', SILVER: 'silver', GOLD: 'gold' };
@@ -43,12 +47,17 @@ export const DEX_BADGE = {
 
 /**
  * 지금 달고 있는 뱃지 2칸. 없는 칸은 null (빈 진열대를 그린다).
+ *
+ * 도감완성은 `profile.dexBadgeAt` **도장 하나만** 본다. 도장은 도감이 130종에
+ * 닿는 순간 찍히고 그 뒤로는 지워지지 않는다 (services/storageLocal.js `stampDexBadge`).
+ * 여기서 도감을 다시 세지 않는 이유가 그것이다 — 세는 순간 "지금 상태"에 의존하게 되고,
+ * 데이터가 잠깐 비면 뱃지가 깜빡인다.
+ *
  * @param {object} profile
  * @returns {[object|null, object|null]}
  */
 export function badgeSlots(profile) {
-  const heldTypes = Object.values(profile.shoesByIndex ?? {}).filter((n) => n > 0).length;
-  const dex = heldTypes >= DEX_BADGE_REQUIRED ? DEX_BADGE : null;
+  const dex = profile.dexBadgeAt ? DEX_BADGE : null;
 
   const best = profile.bestStairs ?? 0;
   let stairs = null;

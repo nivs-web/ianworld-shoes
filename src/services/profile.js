@@ -38,6 +38,12 @@ function mergeWallet(a = {}, b = {}) {
   return out;
 }
 
+/** 뱃지 도장 병합 — 0은 "아직"이라 절대 이기지 못한다 */
+function earliestStamp(a, b) {
+  const list = [a, b].filter((v) => v > 0);
+  return list.length ? Math.min(...list) : 0;
+}
+
 /** 로컬을 먼저 고치고, 원격에는 조용히 밀어 올린다 */
 export function patch(patchObj) {
   const p = L.patchProfile(patchObj);
@@ -57,9 +63,15 @@ async function pushRemote(patchObj) {
 export async function pullAll() {
   const p = await pullRemote();
   await Dex.pullAndMerge().catch(() => {});
+  /**
+   * 도감을 합친 **뒤에** 뱃지 도장을 확인한다. 다른 기기에서 채운 종류가 지금 막
+   * 내려왔을 수 있고, 개정 전에 이미 130종을 채운 사람은 도장이 아예 없다.
+   */
+  const stamped = L.ensureDexBadge();
+  if (stamped.dexBadgeAt) pushRemote({ dexBadgeAt: stamped.dexBadgeAt }).catch(() => {});
   // 오프라인 동안 쌓인 기록을 이제 올린다
   Rank.flushQueued().catch(() => {});
-  return p;
+  return stamped;
 }
 
 /** 로그인 직후 — 원격 값이 있으면 로컬로 끌어내린다 */
@@ -86,6 +98,12 @@ export async function pullRemote() {
     totalPlays: Math.max(local.totalPlays ?? 0, remote.totalPlays ?? 0),
     // 지갑은 신발별 보유량이 진실이고 합계는 거기서 나온다 (아래 reconcile)
     shoesByIndex: mergeWallet(local.shoesByIndex, remote.shoesByIndex),
+    /**
+     * 뱃지 도장은 **한쪽에만 있어도 남긴다.** 0(없음)이 살아남으면
+     * 아직 못 딴 기기에 로그인했을 때 훈장이 사라진다.
+     * 둘 다 있으면 **이른 쪽** — 처음 해낸 시각이 진실이다.
+     */
+    dexBadgeAt: earliestStamp(local.dexBadgeAt, remote.dexBadgeAt),
   };
   L.reconcile(merged);
   L.saveProfile(merged);
@@ -134,6 +152,7 @@ export function finishRun(result) {
     shoesOwned: r.profile.shoesOwned,
     shoesByTier: r.profile.shoesByTier,
     shoesByIndex: r.profile.shoesByIndex,
+    dexBadgeAt: r.profile.dexBadgeAt ?? 0,
   }).catch(() => {});
   // 도감은 별도 컬렉션이라 따로 올린다 (실패해도 로컬에는 이미 있다)
   Dex.pushFound(result.shoeIndices).catch(() => {});

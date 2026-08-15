@@ -150,22 +150,61 @@ localStorage.setItem('sf_profile', JSON.stringify({
 }
 
 // ─────────────────────────────────────────────
-console.log('10) 뱃지 — 도감완성은 "지금 들고 있는 종류"로 판정한다');
+console.log('10) 뱃지 — 도감완성은 한 번 따면 절대 안 사라진다');
 const { badgeSlots } = await import('../src/data/badges.js');
 {
   const full = {}; for (let i = 0; i < 130; i++) full[i] = 1;
-  const [dex1, stair1] = badgeSlots({ shoesByIndex: full, bestStairs: 0 });
-  eq('130종 보유 → 도감완성', dex1?.id, 'dex_complete');
+
+  // 신발을 아무리 많이 들고 있어도 **도장이 없으면** 뱃지가 아니다
+  eq('130켤레 보유 + 도장 없음 → 뱃지 없음', badgeSlots({ shoesByIndex: full, bestStairs: 0 })[0], null);
+
+  const [dex1, stair1] = badgeSlots({ shoesByIndex: full, bestStairs: 0, dexBadgeAt: 1 });
+  eq('도장 있음 → 도감완성', dex1?.id, 'dex_complete');
   eq('최고기록 0 → 계단 뱃지 없음', stair1, null);
 
-  // 한 종류를 캐릭터 구매로 써서 0켤레가 되면 그 순간 빠진다
+  // 여기가 이번 수정의 핵심이다 — 신발을 전부 써도 뱃지는 남는다
+  eq('신발 0켤레여도 유지', badgeSlots({ shoesByIndex: {}, bestStairs: 0, dexBadgeAt: 1 })[0]?.id, 'dex_complete');
   const spent = { ...full }; delete spent[7];
-  eq('129종 → 뱃지 뺏김', badgeSlots({ shoesByIndex: spent, bestStairs: 0 })[0], null);
+  eq('129종으로 줄어도 유지', badgeSlots({ shoesByIndex: spent, bestStairs: 0, dexBadgeAt: 1 })[0]?.id, 'dex_complete');
+  eq('지갑 정보 자체가 없어도 유지', badgeSlots({ bestStairs: 0, dexBadgeAt: 1 })[0]?.id, 'dex_complete');
+}
 
-  // 여러 켤레가 있으면 한 켤레 써도 유지된다
-  const spare = { ...full, 7: 2 };
-  const spareUsed = { ...spare, 7: 1 };
-  eq('2켤레 중 1켤레 사용 → 유지', badgeSlots({ shoesByIndex: spareUsed, bestStairs: 0 })[0]?.id, 'dex_complete');
+console.log('10-2) 뱃지 도장 — 도감이 130종에 닿는 순간 찍히고 다시 안 지워진다');
+L.resetAll(); mem.clear();
+{
+  eq('처음엔 도장 없음', L.loadProfile().dexBadgeAt, 0);
+
+  // 129종까지는 안 찍힌다
+  L.commitRun({ floor: 10, difficulty: 'easy', shoeIndices: Array.from({ length: 129 }, (_, i) => i) });
+  eq('129종 → 아직', L.loadProfile().dexBadgeAt, 0);
+  eq('129종 → 뱃지 없음', badgeSlots(L.loadProfile())[0], null);
+
+  // 마지막 한 종류를 주우면 찍힌다
+  L.commitRun({ floor: 10, difficulty: 'easy', shoeIndices: [129] });
+  const at = L.loadProfile().dexBadgeAt;
+  eq('130종 → 도장', at > 0, true);
+  eq('130종 → 뱃지', badgeSlots(L.loadProfile())[0]?.id, 'dex_complete');
+
+  // 신발을 전부 써 버려도 도장은 그대로
+  L.consumeShoes(L.loadProfile().shoesOwned);
+  eq('신발 전량 소진', L.loadProfile().shoesOwned, 0);
+  eq('도장은 그대로', L.loadProfile().dexBadgeAt, at);
+  eq('뱃지도 그대로', badgeSlots(L.loadProfile())[0]?.id, 'dex_complete');
+
+  // 판을 더 돌아도 시각이 덧씌워지지 않는다 (처음 해낸 시각이 진실이다)
+  L.commitRun({ floor: 5, difficulty: 'easy', shoeIndices: [0] });
+  eq('시각 불변', L.loadProfile().dexBadgeAt, at);
+}
+
+console.log('10-3) 개정 전에 도감을 채운 사람 구제 — ensureDexBadge');
+{
+  // 도감은 130종인데 도장만 없는 상태를 손으로 만든다
+  const p = L.loadProfile();
+  delete p.dexBadgeAt;
+  L.saveProfile(p);
+  eq('도장 지워진 상태', L.loadProfile().dexBadgeAt, 0);
+  eq('되찾음', L.ensureDexBadge().dexBadgeAt > 0, true);
+  eq('저장까지 됨', L.loadProfile().dexBadgeAt > 0, true);
 }
 
 console.log('11) 계단 뱃지 — 넘긴 것 중 가장 높은 하나만');

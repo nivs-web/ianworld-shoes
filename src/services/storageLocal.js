@@ -7,7 +7,7 @@
  * 모든 상태의 원본은 항상 로컬에 있고, Firebase는 동기화 대상일 뿐이다.
  */
 
-import { DEFAULT_DIFFICULTY, UNLOCK_COST, SHOE_TIERS } from '../config/balance.js';
+import { DEFAULT_DIFFICULTY, UNLOCK_COST, SHOE_TIERS, DEX_BADGE_REQUIRED } from '../config/balance.js';
 import { DEFAULT_CHARACTER, FREE_CHARACTERS } from '../data/characters.js';
 
 const KEY = {
@@ -70,6 +70,11 @@ export function defaultProfile() {
     multiWins: 0,
     multiLosses: 0,
     elevatorUses: 0,
+    /**
+     * 도감완성 뱃지를 **딴 시각**(ms). 0 = 아직.
+     * 한 번 찍히면 어떤 경우에도 지우지 않는다 — `stampDexBadge` 주석 참고.
+     */
+    dexBadgeAt: 0,
   };
 }
 
@@ -281,9 +286,44 @@ export function commitRun(result) {
   if (result.floor > p.bestStairs) p.bestStairs = result.floor;
   const d = result.difficulty;
   if (result.floor > (p.bestByDifficulty[d] ?? 0)) p.bestByDifficulty[d] = result.floor;
+  stampDexBadge(p);
   saveProfile(p);
 
   return { profile: p, newDex };
+}
+
+/**
+ * 도감완성 뱃지는 **한 번 따면 영원히 남는다.** (2026-08-15 개정)
+ *
+ * 예전에는 "지금 들고 있는 종류가 130종"으로 판정했다. 그러면 캐릭터를 사거나
+ * 엘리베이터를 타서 신발이 한 켤레라도 빠지는 순간 뱃지가 사라졌다 —
+ * 130종을 다 모은 사람이 신발을 쓸 때마다 훈장을 뺏기는 셈이라 쓸 수가 없다.
+ *
+ * 이제 기준은 **도감**이다. 도감은 "주운 적 있는가"라서 절대 줄지 않는다(기획서 §5-2).
+ * 게다가 판정 결과를 프로필에 도장으로 찍어 둔다 — 도감 데이터가 어떤 이유로든
+ * 비어 버려도(기기 교체 중 동기화 실패 등) 뱃지는 남는다.
+ *
+ * `dexBadgeAt` 은 딴 시각(ms). 한 번 값이 들어가면 **다시 지우지 않는다.**
+ */
+export function stampDexBadge(p) {
+  if (p.dexBadgeAt) return p;                       // 이미 땄다 — 다시 볼 필요 없다
+  if (dexUnique() < DEX_BADGE_REQUIRED) return p;
+  p.dexBadgeAt = Date.now();
+  return p;
+}
+
+/**
+ * 도감이 이미 130종인데 도장이 없는 프로필을 구제한다.
+ * 개정 전에 도감을 다 채운 사람은 `dexBadgeAt` 이 없다 —
+ * 그 사람들이 판을 한 번 더 돌아야 뱃지를 되찾는 건 말이 안 된다.
+ */
+export function ensureDexBadge() {
+  const p = loadProfile();
+  if (p.dexBadgeAt) return p;
+  if (dexUnique() < DEX_BADGE_REQUIRED) return p;
+  p.dexBadgeAt = Date.now();
+  saveProfile(p);
+  return p;
 }
 
 // ─────────────────────────────────────────────
