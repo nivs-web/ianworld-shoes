@@ -97,6 +97,36 @@ export const SHOE_TIERS = [
 
 export const SHOE_TOTAL = 130;
 
+/**
+ * 도감 후반 난이도 (2026-08-15).
+ *
+ * 조금만 플레이해도 도감이 다 차 버린다는 피드백. 앞부분은 지금처럼 술술 채워지되
+ * **막바지만** 어렵게 만들고 싶었다. 그래서 확률을 처음부터 낮추지 않고,
+ * 종류를 `afterUniqueTypes` 만큼 모은 뒤부터 1·2티어 등장 확률에 `factor` 를 곱한다.
+ *
+ * 왜 1·2티어인가: 그 15종이 가장 희귀해서 마지막까지 남는 칸이다.
+ * 초반에는 이 보정이 걸리지 않으므로 100종까지는 체감이 그대로다.
+ */
+export const DEX_LATE_GAME = {
+  afterUniqueTypes: 100,
+  tiers: [1, 2],
+  factor: 0.2, // 5분의 1
+};
+
+/**
+ * 이번 판에 쓸 티어별 등장 가중치.
+ * 정규화하지 않는다 — rng.weighted 가 합으로 나눠 쓰므로 비율만 맞으면 된다.
+ *
+ * @param {number} dexUnique 지금까지 모은 **종류** 수
+ * @returns {number[]} SHOE_TIERS 순서의 가중치
+ */
+export function tierWeights(dexUnique) {
+  const late = dexUnique >= DEX_LATE_GAME.afterUniqueTypes;
+  return SHOE_TIERS.map((t) =>
+    late && DEX_LATE_GAME.tiers.includes(t.tier) ? t.prob * DEX_LATE_GAME.factor : t.prob
+  );
+}
+
 /** 1·2티어 획득 시 특별 연출/함성 발동 */
 export const SHOE_RARE_TIER_MAX = 2;
 
@@ -252,6 +282,8 @@ export const NICKNAME = {
   maxLength: 5,
   /** 완성형 한글만 허용 */
   pattern: /^[가-힣]{2,5}$/,
+  /** 최초 설정은 무료, **변경**은 유료 (신발 켤레) */
+  changeCost: 200,
 };
 
 // ─────────────────────────────────────────────

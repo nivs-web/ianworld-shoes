@@ -18,24 +18,57 @@
   padding: 8px 0;
 }
 
-/* 나무판 느낌의 픽셀 버튼 */
+/*
+ * 픽셀 버튼 — 인게임 게이지바(etc/게이지바.png)의 테두리를 그대로 옮겼다.
+ *
+ * 구조도 색도 tools/build-hud-ui.mjs 가 원본에서 뽑은 것과 같다:
+ *   2도트 진한 외곽선 → 크림색 면 → 위 1도트 하이라이트 / 아래 1도트 그늘
+ *
+ * 모서리는 **십자 모양 그림자 4장**으로 만든다. 위아래·좌우로 2px씩 뻗은 사각형이
+ * 겹치면 네 귀퉁이만 비는데, 그게 도트 UI 특유의 깎인 모서리다.
+ * border-radius 로는 안티앨리어싱이 걸려 이 느낌이 안 난다.
+ */
+:root {
+  --btn-outline: #600F09;   /* 원본 외곽선 */
+  --btn-face: #FFDD8E;      /* 크림 */
+  --btn-hilite: #FEFFFB;    /* 윗면 빛 */
+  --btn-shade: #CCA977;     /* 아랫면 그늘 */
+  --btn-face-on: #CD4421;   /* 게이지 채움색 = 강조 버튼 */
+  --btn-hilite-on: #F2C23C;
+  --btn-shade-on: #7E2410;
+}
+
 .pbtn {
   position: relative;
   display: block;
   width: 100%;
-  padding: 12px;
+  padding: 11px 12px;
   font-size: 15px;
   font-weight: bold;
-  color: var(--c-text);
-  background: var(--c-panel);
-  border: 3px solid var(--c-line);
-  box-shadow: inset -3px -3px 0 var(--c-panel-dark);
+  letter-spacing: 0.5px;
+  color: #3A1F0C;
+  background: var(--btn-face);
+  border: 0;
+  margin: 2px 0;
+  box-shadow:
+    0 -2px 0 0 var(--btn-outline),
+    0 2px 0 0 var(--btn-outline),
+    -2px 0 0 0 var(--btn-outline),
+    2px 0 0 0 var(--btn-outline),
+    inset 0 2px 0 0 var(--btn-hilite),
+    inset 0 -3px 0 0 var(--btn-shade);
   cursor: pointer;
 }
 
+/* 눌리면 빛과 그늘이 뒤집힌다 — 판이 안으로 들어간 것처럼 */
 .pbtn:active {
-  transform: translateY(2px);
-  box-shadow: inset 3px 3px 0 var(--c-panel-dark);
+  transform: translateY(1px);
+  box-shadow:
+    0 -2px 0 0 var(--btn-outline),
+    0 2px 0 0 var(--btn-outline),
+    -2px 0 0 0 var(--btn-outline),
+    2px 0 0 0 var(--btn-outline),
+    inset 0 3px 0 0 var(--btn-shade);
 }
 
 .pbtn[disabled] {
@@ -44,9 +77,25 @@
 }
 
 .pbtn.primary {
-  background: var(--c-accent);
-  color: var(--c-text-light);
-  box-shadow: inset -3px -3px 0 var(--c-accent-dark);
+  background: var(--btn-face-on);
+  color: #FFF4D6;
+  box-shadow:
+    0 -2px 0 0 var(--btn-outline),
+    0 2px 0 0 var(--btn-outline),
+    -2px 0 0 0 var(--btn-outline),
+    2px 0 0 0 var(--btn-outline),
+    inset 0 2px 0 0 var(--btn-hilite-on),
+    inset 0 -3px 0 0 var(--btn-shade-on);
+}
+
+.pbtn.primary:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 -2px 0 0 var(--btn-outline),
+    0 2px 0 0 var(--btn-outline),
+    -2px 0 0 0 var(--btn-outline),
+    2px 0 0 0 var(--btn-outline),
+    inset 0 3px 0 0 var(--btn-shade-on);
 }
 
 /* 난이도 3분할 */
@@ -65,9 +114,15 @@
 }
 
 .seg .pbtn.on {
-  background: var(--c-accent);
-  color: var(--c-text-light);
-  box-shadow: inset -3px -3px 0 var(--c-accent-dark);
+  background: var(--btn-face-on);
+  color: #FFF4D6;
+  box-shadow:
+    0 -2px 0 0 var(--btn-outline),
+    0 2px 0 0 var(--btn-outline),
+    -2px 0 0 0 var(--btn-outline),
+    2px 0 0 0 var(--btn-outline),
+    inset 0 2px 0 0 var(--btn-hilite-on),
+    inset 0 -3px 0 0 var(--btn-shade-on);
 }
 
 /* 상태 패널 (캐릭터 + 기록) */
@@ -115,6 +170,12 @@
   align-items: center;
   gap: 4px;
   white-space: nowrap;   /* '최고기 / 록' 으로 쪼개지느니 넘치는 편이 낫다 */
+}
+
+/* 비트맵 숫자는 글리프 아래 여백이 있어 옆 글자보다 가라앉아 보인다 → 살짝 올린다 */
+.stat-best .px-text {
+  position: relative;
+  top: -3px;
 }
 
 .px-text {
@@ -248,18 +309,28 @@
 }
 
 .nick-input {
-  width: 180px;
+  width: 200px;
   padding: 12px;
   font-family: inherit;
   font-size: 24px;
   text-align: center;
-  letter-spacing: 6px;
+  /* 자간 0 — 6px를 주니 두 글자가 서로 남처럼 떨어져 보였다 */
+  letter-spacing: 0;
   color: var(--c-text);
   background: var(--c-panel);
-  border: 3px solid var(--c-line);
+  border: 2px solid var(--btn-outline);
+  box-shadow: inset 0 2px 0 0 var(--btn-shade);
   outline: none;
+  /* 빈 칸에는 아무것도 안 쓰고 커서만 깜박이게 (placeholder 제거) */
+  caret-color: var(--c-accent);
   user-select: text;
   -webkit-user-select: text;
+}
+
+.rename-current {
+  text-align: center;
+  font-size: 13px;
+  color: var(--c-text-light);
 }
 
 .hint.bad {

@@ -17,12 +17,20 @@ export const S = {
   installIosGuide: '공유 버튼 → "홈 화면에 추가"를 눌러주세요',
   installDone: '홈 화면에 추가되었습니다',
   loginFailed: '로그인에 실패했습니다. 다시 시도해주세요',
+  logout: '로그아웃',
+  logoutConfirm: '로그아웃 하시겠습니까?',
   loginWhy: '기록과 도감은 계정에 저장되어 어느 기기에서든 이어집니다',
 
   // ── S02 닉네임 ────────────────────────────
   nicknamePrompt: '캐릭터 이름을 입력하세요',
   nicknameRule: '한글 2자~5자로 입력해주세요',
   nicknameTaken: '이미 사용 중인 이름입니다',
+  renameTitle: '캐릭터 닉네임 변경하기',
+  renamePrompt: '변경할 이름을 입력하세요',
+  renameCost: (n) => `* 닉네임 변경은 신발 ${n}개가 필요합니다`,
+  renameNeedShoes: (n) => `신발이 부족합니다 (${n}개 필요)`,
+  renameSame: '지금 쓰는 이름과 같습니다',
+  renameDone: '닉네임을 바꿨습니다',
   nicknameInvalid: '한글 2자~5자만 사용할 수 있습니다',
   confirm: '확인',
 
@@ -33,12 +41,15 @@ export const S = {
   myCollection: '내 신발 도감',
   collectionUnit: '켤레',
   playerName: '플레이어 이름',
+  myShoesOwned: (n) => `나의 신발 보유량 ${n}켤레`,
+  myDexProgress: (have, all) => `나의 신발 도감 ${have}/${all}켤레`,
   difficultyTitle: '게임난이도(신발의 등장 빈도가 달라집니다)',
   difficultyEasy: '쉬움',
   difficultyNormal: '보통',
   difficultyHard: '어려움',
   menuCollection: '나의 신발 컬렉션',
   menuCharacter: '캐릭터 바꾸기',
+  menuRename: '캐릭터 닉네임 변경하기',
   menuHallOfFame: '명예의 전당',
   menuControls: '조작법 변경',
   playSingle: '싱글게임',
@@ -113,7 +124,7 @@ export const S = {
   // 다른 파일에 한글을 직접 쓰면 그 글자는 화면에서 조용히 안 그려진다.
   paused: '일시정지',
   resume: '재개',
-  restart: '맵바꾸기',
+  restart: '게임재개',
   toLobby: '로비로나가기',
 
   // ── S11 게임 오버 ──────────────────────────

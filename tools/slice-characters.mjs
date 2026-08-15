@@ -276,6 +276,63 @@ function compose(img, targetW, targetH, offsetX, offsetY) {
   return out;
 }
 
+/**
+ * 스펙클(구멍) 메우기 — **몸 안쪽에 뚫린 투명 점**을 이웃 색으로 채운다.
+ *
+ * 왜 생기나: 7×7 블록의 중심 한 점만 집는 방식이라(무손실 복원의 대가),
+ * 원본에서 머리카락 삐침처럼 얇은 선이 지나가는 칸은 중심이 하필 배경색일 때가 있다.
+ * 그 칸만 투명해져서 인게임에서는 그 구멍으로 배경이 비친다.
+ * 실제로 이포·경태·토니의 머리와 얼굴에서 눈에 띄었다 (30장 합계 495점).
+ *
+ * 왜 "얼굴색"이 아니라 이웃 평균인가: 구멍은 얼굴만이 아니라 머리카락·옷에도 난다.
+ * 한 가지 색으로 채우면 검은 머리 한가운데에 살구색 점이 박힌다.
+ * 주변 색의 평균을 쓰면 어디에 뚫렸든 그 자리에 맞는 색이 들어간다.
+ *
+ * 판정 기준을 패스마다 다르게 준다.
+ *   1패스: 8이웃 중 **5개 이상** 불투명 → 실제로 뚫린 점을 넉넉히 잡는다
+ *   2·3패스: **6개 이상** → 1패스가 메운 자리 때문에 새로 둘러싸인 점만 마저 닫는다
+ *
+ * 왜 계속 5로 두지 않나: 채운 점이 다음 판정의 이웃이 되므로, 5를 반복하면
+ * 겨드랑이·다리 사이처럼 오목한 자리를 타고 번져 실루엣이 부풀어 오른다.
+ * (실측: 5로 8패스 = 1102점이 메워졌는데 그중 상당수가 몸 바깥이었다)
+ *
+ * @returns {number} 메운 픽셀 수
+ */
+function fillSpeckles(buf, w, h) {
+  const at = (x, y) => (y * w + x) * 4;
+  const opaque = (x, y) => x >= 0 && y >= 0 && x < w && y < h && buf[at(x, y) + 3] > 0;
+  let filled = 0;
+
+  for (let pass = 0; pass < 3; pass++) {
+    const need = pass === 0 ? 5 : 6;
+    const todo = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (opaque(x, y)) continue;
+        let n = 0, r = 0, g = 0, b = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (!dx && !dy) continue;
+            if (!opaque(x + dx, y + dy)) continue;
+            const o = at(x + dx, y + dy);
+            r += buf[o]; g += buf[o + 1]; b += buf[o + 2];
+            n++;
+          }
+        }
+        if (n >= need) todo.push([x, y, (r / n) | 0, (g / n) | 0, (b / n) | 0]);
+      }
+    }
+    if (!todo.length) break;
+    // 한 패스 안에서는 동시에 적용한다 — 순서에 따라 결과가 달라지면 안 된다
+    for (const [x, y, r, g, b] of todo) {
+      const o = at(x, y);
+      buf[o] = r; buf[o + 1] = g; buf[o + 2] = b; buf[o + 3] = 255;
+    }
+    filled += todo.length;
+  }
+  return filled;
+}
+
 async function savePng(buf, w, h, path) {
   await sharp(buf, { raw: { width: w, height: h, channels: 4 } })
     .png({ compressionLevel: 9, palette: true })
@@ -285,6 +342,7 @@ async function savePng(buf, w, h, path) {
 // ─────────────────────────────────────────────
 
 async function main() {
+  let speckles = 0; // 메운 투명 점 수 (아래 fillSpeckles)
   await mkdir(OUT_DIR, { recursive: true });
   await mkdir(dirname(OUT_JSON), { recursive: true });
 
@@ -358,6 +416,8 @@ async function main() {
       }
 
       const out = compose(img, T.w, T.h, offsetX, offsetY);
+      // 배치까지 끝난 뒤에 메운다 — compose 가 잘라 낸 자리에도 구멍이 남을 수 있다
+      speckles += fillSpeckles(out, T.w, T.h);
       const file = `${char.id}_${cut}.png`;
       await savePng(out, T.w, T.h, resolve(OUT_DIR, file));
 
@@ -390,6 +450,7 @@ async function main() {
 
   await writeFile(OUT_JSON, JSON.stringify(meta, null, 2) + '\n', 'utf8');
   console.log(`\n캐릭터 ${ORDER.length}명 × 3컷 = ${ORDER.length * 3}장 생성`);
+  console.log(`몸 안쪽 투명 점 ${speckles}개를 이웃 색으로 메웠다`);
   console.log(`  → ${OUT_DIR}`);
   console.log(`  → ${OUT_JSON}`);
   if (warnings) console.log(`경고 ${warnings}건`);

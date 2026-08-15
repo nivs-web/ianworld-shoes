@@ -112,17 +112,17 @@ console.log('로비 복귀:', (await p.locator('#ui').innerText()).split('\n').f
 await shot('06_back_to_lobby');
 
 /**
- * 사용자가 신고한 그 순서 — 일시정지 → 맵바꾸기 → 사망 → 로비로나가기.
- * 예전에는 '맵바꾸기'가 onFinish 없는 새 GameScene 을 만들어서, 그 뒤로는
+ * 사용자가 신고한 그 순서 — 일시정지 → 게임재개 → 사망 → 로비로나가기.
+ * 예전에는 '게임재개'가 onFinish 없는 새 GameScene 을 만들어서, 그 뒤로는
  * 죽어도 로비로 나갈 방법이 사라졌다.
  */
-console.log('— 일시정지 → 맵바꾸기 → 사망 → 로비 —');
+console.log('— 일시정지 → 게임재개 → 사망 → 로비 —');
 await p.locator('button:has-text("싱글게임")').click();
 await p.waitForTimeout(2600);
 await tapAt(90, 50);                       // 일시정지
 await p.waitForTimeout(300);
 // 입력 디바운스(16ms)와 프레임당 1개 소비 때문에 연타하면 씹힌다 — 사이를 띄운다
-await p.keyboard.press('ArrowLeft');       // 커서: 재개 → 맵바꾸기
+await p.keyboard.press('ArrowLeft');       // 커서: 재개 → 게임재개
 await p.waitForTimeout(250);
 await p.keyboard.press('ArrowRight');      // 선택
 await p.waitForTimeout(2600);

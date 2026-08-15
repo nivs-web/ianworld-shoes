@@ -12,7 +12,7 @@ import { loadAll, img } from '../core/assets.js';
 import { randomSeed, Rng } from '../core/rng.js';
 import { text } from '../core/pixelfont.js';
 import {
-  DIFFICULTY, GAUGE_MAX, drainAt, REVIVE, SHOE_TIERS,
+  DIFFICULTY, GAUGE_MAX, drainAt, REVIVE, SHOE_TIERS, tierWeights,
 } from '../config/balance.js';
 import { STAIR, CENTER_X, VIEW_W, VIEW_H } from '../config/layout.js';
 import { BUILDINGS, buildingAssets, floorAsset, FLOOR_BACKGROUNDS } from '../data/backgrounds.js';
@@ -22,7 +22,7 @@ import { Background } from './background.js';
 import { renderHud } from './hud.js';
 import { PauseOverlay, ReviveOverlay, GameOverOverlay } from './overlays.js';
 import { PAL } from './palette.js';
-import { get as getProfile } from '../services/profile.js';
+import { get as getProfile, dexUnique } from '../services/profile.js';
 import * as Sfx from '../audio/sfx.js';
 import * as Bgm from '../audio/bgm.js';
 import { AUDIO, SHOE_RARE_TIER_MAX, bgmTrackAt } from '../config/balance.js';
@@ -52,10 +52,12 @@ export class GameScene {
   }
 
   enter() {
-    this.stairs = new Stairs(this.seed, {
-      gapMin: this.diff.shoeGapMin,
-      gapMax: this.diff.shoeGapMax,
-    });
+    this.stairs = new Stairs(
+      this.seed,
+      { gapMin: this.diff.shoeGapMin, gapMax: this.diff.shoeGapMax },
+      // 도감을 100종 넘게 모았으면 1·2티어가 5분의 1로 줄어든다 (balance.DEX_LATE_GAME)
+      tierWeights(dexUnique())
+    );
     this.player = new Player(this.charId);
     this.floor = this.startFloor;
     this.gauge = GAUGE_MAX;

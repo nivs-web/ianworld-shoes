@@ -18,10 +18,14 @@ export class Stairs {
   /**
    * @param {number} seed
    * @param {{gapMin:number,gapMax:number}} shoeGap 신발 등장 간격
+   * @param {number[]} [tierWeights] 티어별 등장 가중치. 도감 진행도에 따라 달라진다.
+   *   **밖에서 받는 이유**: 멀티플레이는 두 사람이 같은 계단·같은 신발을 봐야 한다.
+   *   여기서 각자의 도감을 읽어 버리면 화면이 갈라진다. 방장이 정한 값을 넘기면 된다.
    */
-  constructor(seed, shoeGap) {
+  constructor(seed, shoeGap, tierWeights) {
     this.rng = new Rng(seed);
     this.shoeGap = shoeGap;
+    this.tierWeights = tierWeights ?? SHOE_TIERS.map((t) => t.prob);
     /** @type {number[]} dirs[i] = 계단 i-1 → i 방향 (+1 오른쪽 / -1 왼쪽). dirs[0]은 미사용 */
     this.dirs = [0];
     /** @type {number[]} xs[i] = 계단 i의 월드 x (중심) */
@@ -49,7 +53,7 @@ export class Stairs {
 
   /** 티어 확률 → 티어 내 균등 (기획서 §5-5) */
   rollShoe() {
-    const t = this.rng.weighted(SHOE_TIERS.map((x) => x.prob));
+    const t = this.rng.weighted(this.tierWeights);
     const tier = SHOE_TIERS[t];
     return tier.offset + this.rng.int(0, tier.count - 1);
   }

@@ -21,7 +21,6 @@ export default function NicknameSetup(nav) {
         autocomplete: 'off',
         autocapitalize: 'off',
         spellcheck: 'false',
-        placeholder: '○'.repeat(NICKNAME.minLength),
       });
       const msg = el('div.hint', S.nicknameRule);
       const ok = button(S.confirm, submit, { primary: true });

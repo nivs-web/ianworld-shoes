@@ -16,6 +16,7 @@ import { pixelBadge } from './pixelBadge.js';
 import { badgeSlots } from '../data/badges.js';
 import CharacterSelect from './CharacterSelect.js';
 import Collection from './Collection.js';
+import NicknameChange from './NicknameChange.js';
 import Controls from './Controls.js';
 import Portal from './Portal.js';
 import { startGame } from './startGame.js';
@@ -67,7 +68,8 @@ export default function Lobby(nav) {
               }),
               el('span', S.bestRecordUnit),
             ]),
-            el('div', `${S.myCollection} ${dexUnique()}/${SHOE_TOTAL}${S.collectionUnit}`),
+            el('div', S.myShoesOwned(p.shoesOwned)),
+            el('div', S.myDexProgress(dexUnique(), SHOE_TOTAL)),
             el('div', `${S.playerName} : ${p.nickname}`),
           ]),
           el('div.badges', null, slots.map((b) => pixelBadge(b))),
@@ -81,6 +83,7 @@ export default function Lobby(nav) {
 
         button(S.menuCollection, () => nav.push(Collection)),
         button(S.menuCharacter, () => nav.push(CharacterSelect)),
+        button(S.menuRename, () => nav.push(NicknameChange)),
         button(S.menuHallOfFame, () => toast(S.comingSoon)),
         button(S.menuControls, () => nav.push(Controls)),
 

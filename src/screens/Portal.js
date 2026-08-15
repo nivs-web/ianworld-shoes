@@ -4,15 +4,28 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, screen } from './ui.js';
+import { el, button, backButton, screen, confirmDialog } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
+import { signOut } from '../services/auth.js';
 import Lobby from './Lobby.js';
+import SplashLogin from './SplashLogin.js';
 
 const CARDS = [
   { id: 'find_shoes', title: S.gameTitle, screen: () => Lobby, ready: true },
 ];
 
 export default function Portal(nav) {
+  /**
+   * 로그아웃은 여기(오락실 화면)에만 둔다.
+   * 게임 안에 두면 판 도중에 눌릴 수 있고, 로비는 이미 버튼이 많다.
+   * 계정 상태를 바꾸는 일이라 한 번 되묻는다.
+   */
+  async function onLogout() {
+    if (!(await confirmDialog({ message: S.logoutConfirm, yes: S.yes, no: S.no }))) return;
+    await signOut();
+    nav.reset(SplashLogin);
+  }
+
   return {
     render() {
       const p = getProfile();
@@ -28,7 +41,8 @@ export default function Portal(nav) {
             button(S.touchToStart, () => nav.push(c.screen()), { primary: true }),
           ])
         ),
-        el('div.spacer')
+        el('div.spacer'),
+        backButton(S.logout, onLogout)
       );
     },
   };
