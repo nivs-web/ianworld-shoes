@@ -1,0 +1,542 @@
+{
+  "denny": {
+    "ko": "데니",
+    "cuts": {
+      "front": {
+        "file": "denny_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 6,
+          "w": 23,
+          "h": 50
+        },
+        "source": {
+          "x": 261,
+          "y": 52,
+          "w": 161,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "denny_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 6,
+          "w": 23,
+          "h": 50
+        },
+        "bodyRight": 28,
+        "source": {
+          "x": 611,
+          "y": 52,
+          "w": 161,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "denny_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 4,
+          "w": 32,
+          "h": 47
+        },
+        "source": {
+          "x": 947,
+          "y": 52,
+          "w": 224,
+          "h": 350
+        }
+      }
+    }
+  },
+  "maho": {
+    "ko": "마호",
+    "cuts": {
+      "front": {
+        "file": "maho_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 6,
+          "w": 23,
+          "h": 50
+        },
+        "source": {
+          "x": 261,
+          "y": 428,
+          "w": 161,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "maho_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 4,
+          "w": 26,
+          "h": 50
+        },
+        "bodyRight": 29,
+        "source": {
+          "x": 597,
+          "y": 428,
+          "w": 182,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "maho_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 5,
+          "w": 32,
+          "h": 47
+        },
+        "source": {
+          "x": 947,
+          "y": 428,
+          "w": 224,
+          "h": 350
+        }
+      }
+    }
+  },
+  "kyungtae": {
+    "ko": "경태",
+    "cuts": {
+      "front": {
+        "file": "kyungtae_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 4,
+          "w": 26,
+          "h": 50
+        },
+        "source": {
+          "x": 247,
+          "y": 804,
+          "w": 182,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "kyungtae_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 7,
+          "w": 21,
+          "h": 50
+        },
+        "bodyRight": 27,
+        "source": {
+          "x": 618,
+          "y": 804,
+          "w": 147,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "kyungtae_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 2,
+          "w": 33,
+          "h": 47
+        },
+        "source": {
+          "x": 940,
+          "y": 804,
+          "w": 231,
+          "h": 350
+        }
+      }
+    }
+  },
+  "lisa": {
+    "ko": "리사",
+    "cuts": {
+      "front": {
+        "file": "lisa_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 7,
+          "w": 21,
+          "h": 50
+        },
+        "source": {
+          "x": 268,
+          "y": 1180,
+          "w": 147,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "lisa_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 7,
+          "w": 20,
+          "h": 50
+        },
+        "bodyRight": 26,
+        "source": {
+          "x": 618,
+          "y": 1180,
+          "w": 140,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "lisa_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 3,
+          "w": 31,
+          "h": 47
+        },
+        "source": {
+          "x": 954,
+          "y": 1180,
+          "w": 217,
+          "h": 350
+        }
+      }
+    }
+  },
+  "ian": {
+    "ko": "이안",
+    "cuts": {
+      "front": {
+        "file": "ian_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 5,
+          "w": 24,
+          "h": 50
+        },
+        "source": {
+          "x": 254,
+          "y": 1556,
+          "w": 168,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "ian_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 5,
+          "w": 24,
+          "h": 50
+        },
+        "bodyRight": 28,
+        "source": {
+          "x": 604,
+          "y": 1556,
+          "w": 168,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "ian_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 5,
+          "w": 31,
+          "h": 47
+        },
+        "source": {
+          "x": 940,
+          "y": 1556,
+          "w": 217,
+          "h": 350
+        }
+      }
+    }
+  },
+  "ipo": {
+    "ko": "이포",
+    "cuts": {
+      "front": {
+        "file": "ipo_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 4,
+          "w": 26,
+          "h": 50
+        },
+        "source": {
+          "x": 247,
+          "y": 1932,
+          "w": 182,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "ipo_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 6,
+          "w": 22,
+          "h": 50
+        },
+        "bodyRight": 27,
+        "source": {
+          "x": 611,
+          "y": 1932,
+          "w": 154,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "ipo_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 7,
+          "w": 28,
+          "h": 47
+        },
+        "source": {
+          "x": 947,
+          "y": 1932,
+          "w": 196,
+          "h": 350
+        }
+      }
+    }
+  },
+  "charles": {
+    "ko": "찰스",
+    "cuts": {
+      "front": {
+        "file": "charles_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 7,
+          "w": 20,
+          "h": 50
+        },
+        "source": {
+          "x": 268,
+          "y": 2308,
+          "w": 140,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "charles_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 8,
+          "w": 18,
+          "h": 50
+        },
+        "bodyRight": 25,
+        "source": {
+          "x": 625,
+          "y": 2308,
+          "w": 126,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "charles_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 3,
+          "w": 30,
+          "h": 47
+        },
+        "source": {
+          "x": 954,
+          "y": 2308,
+          "w": 210,
+          "h": 350
+        }
+      }
+    }
+  },
+  "rose": {
+    "ko": "로제",
+    "cuts": {
+      "front": {
+        "file": "rose_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 6,
+          "w": 22,
+          "h": 50
+        },
+        "source": {
+          "x": 261,
+          "y": 2684,
+          "w": 154,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "rose_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 7,
+          "w": 20,
+          "h": 50
+        },
+        "bodyRight": 26,
+        "source": {
+          "x": 618,
+          "y": 2684,
+          "w": 140,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "rose_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 2,
+          "w": 32,
+          "h": 47
+        },
+        "source": {
+          "x": 947,
+          "y": 2684,
+          "w": 224,
+          "h": 350
+        }
+      }
+    }
+  },
+  "jenny": {
+    "ko": "제니",
+    "cuts": {
+      "front": {
+        "file": "jenny_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 4,
+          "w": 26,
+          "h": 50
+        },
+        "source": {
+          "x": 247,
+          "y": 3060,
+          "w": 182,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "jenny_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 6,
+          "w": 23,
+          "h": 50
+        },
+        "bodyRight": 28,
+        "source": {
+          "x": 611,
+          "y": 3060,
+          "w": 161,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "jenny_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 4,
+          "w": 32,
+          "h": 46
+        },
+        "source": {
+          "x": 947,
+          "y": 3060,
+          "w": 224,
+          "h": 350
+        }
+      }
+    }
+  },
+  "tony": {
+    "ko": "토니",
+    "cuts": {
+      "front": {
+        "file": "tony_front.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 7,
+          "w": 21,
+          "h": 50
+        },
+        "source": {
+          "x": 268,
+          "y": 3436,
+          "w": 147,
+          "h": 350
+        }
+      },
+      "side": {
+        "file": "tony_side.png",
+        "w": 35,
+        "h": 50,
+        "content": {
+          "x": 7,
+          "w": 21,
+          "h": 50
+        },
+        "bodyRight": 27,
+        "source": {
+          "x": 618,
+          "y": 3436,
+          "w": 147,
+          "h": 350
+        }
+      },
+      "jump": {
+        "file": "tony_jump.png",
+        "w": 50,
+        "h": 50,
+        "content": {
+          "x": 4,
+          "w": 31,
+          "h": 47
+        },
+        "source": {
+          "x": 947,
+          "y": 3436,
+          "w": 217,
+          "h": 350
+        }
+      }
+    }
+  }
+}

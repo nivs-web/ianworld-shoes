@@ -1,0 +1,94 @@
+/* 픽셀 렌더링 규칙 — 이 파일의 값은 건드리지 않는다. (CLAUDE.md §3-1) */
+
+:root {
+  /* 레퍼런스 이미지에서 뽑은 팔레트 */
+  --c-bg: #0d0a08;
+  --c-panel: #f5d9a0;
+  --c-panel-dark: #c99a52;
+  --c-line: #6b3f1d;
+  --c-accent: #d94f2b;
+  --c-accent-dark: #8c2a14;
+  --c-text: #3a1f0c;
+  --c-text-light: #fff4d6;
+  --c-good: #7ac74f;
+  --c-gauge: #e8501f;
+  --c-gauge-bg: #4a3428;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-bg);
+}
+
+/* 핵심: 정수배로 확대된 캔버스가 절대 뭉개지지 않게 한다 */
+#game {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  display: block;
+  /* GPU 리샘플링이 끼어들지 않도록 변형을 걸지 않는다 */
+  transform: none;
+}
+
+/* DOM 화면(로비/메뉴) 레이어 */
+#ui {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+#ui.active {
+  display: flex;
+}
+
+body.ui-mode #stage {
+  display: none;
+}
+
+/* 부팅 로딩 */
+#boot {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--c-bg);
+  z-index: 100;
+  transition: opacity 0.2s linear;
+}
+
+#boot.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-logo {
+  font-size: 18px;
+  letter-spacing: 2px;
+  color: var(--c-panel);
+}
+
+.boot-bar {
+  width: 160px;
+  height: 8px;
+  border: 2px solid var(--c-panel-dark);
+  background: var(--c-gauge-bg);
+}
+
+.boot-bar i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--c-gauge);
+}

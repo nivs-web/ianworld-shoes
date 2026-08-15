@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.vite/
+
+# 환경변수 (Firebase 키) — 절대 커밋 금지
+.env
+.env.local
+.env.*.local
+
+# 에셋 파이프라인 산출물 (tools 스크립트로 재생성 가능)
+public/assets/characters/
+public/assets/shoes/
+public/assets/ui/
+public/assets/bg/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+
+# 로그
+npm-debug.log*
+yarn-error.log*

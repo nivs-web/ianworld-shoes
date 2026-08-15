@@ -1,0 +1,55 @@
+/* 모바일 세로 전용 리셋. 상하 여백 없이 화면을 꽉 채운다. (기획서 §7-1) */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  /* dvh: 모바일 브라우저 주소창 유무와 무관하게 실제 보이는 높이 */
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #0d0a08;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  /* 노치/홈바 영역까지 사용하되 안전영역은 변수로 노출 */
+  padding: 0;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  display: block;
+  touch-action: none;
+}
+
+img {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+input {
+  user-select: text;
+  -webkit-user-select: text;
+}

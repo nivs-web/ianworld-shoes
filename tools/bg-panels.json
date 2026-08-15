@@ -1,0 +1,360 @@
+{
+  "_readme": [
+    "배경 포스터에서 잘라낼 패널 좌표. 원본 이미지의 픽셀 단위 { left, top, width, height }.",
+    "건물 포스터는 3개 = [도로, 1층, 2·3층 반복] 순서. 층수 배경은 1개.",
+    "여기에 항목이 있으면 자동 검출을 건너뛴다.",
+    "포스터를 다시 그리면 tools/_bg-qa.mjs 로 좌표 격자를 얹어 보고 이 값을 고친다."
+  ],
+  "Gemini_Generated_Image_36itl336itl336it.png": [
+    {
+      "left": 50,
+      "top": 425,
+      "width": 420,
+      "height": 240
+    },
+    {
+      "left": 500,
+      "top": 310,
+      "width": 325,
+      "height": 355
+    },
+    {
+      "left": 901,
+      "top": 245,
+      "width": 412,
+      "height": 420
+    }
+  ],
+  "Gemini_Generated_Image_3u80w73u80w73u80.png": [
+    {
+      "left": 90,
+      "top": 865,
+      "width": 780,
+      "height": 470
+    },
+    {
+      "left": 1000,
+      "top": 590,
+      "width": 760,
+      "height": 745
+    },
+    {
+      "left": 1860,
+      "top": 575,
+      "width": 740,
+      "height": 760
+    }
+  ],
+  "Gemini_Generated_Image_4hqod4hqod4hqod4.png": [
+    {
+      "left": 55,
+      "top": 385,
+      "width": 425,
+      "height": 275
+    },
+    {
+      "left": 500,
+      "top": 290,
+      "width": 380,
+      "height": 370
+    },
+    {
+      "left": 930,
+      "top": 240,
+      "width": 390,
+      "height": 420
+    }
+  ],
+  "Gemini_Generated_Image_6c32en6c32en6c32.png": [
+    {
+      "left": 90,
+      "top": 780,
+      "width": 780,
+      "height": 555
+    },
+    {
+      "left": 1000,
+      "top": 590,
+      "width": 760,
+      "height": 745
+    },
+    {
+      "left": 1800,
+      "top": 500,
+      "width": 820,
+      "height": 835
+    }
+  ],
+  "Gemini_Generated_Image_fhe9y2fhe9y2fhe9.png": [
+    {
+      "left": 90,
+      "top": 855,
+      "width": 780,
+      "height": 485
+    },
+    {
+      "left": 1000,
+      "top": 590,
+      "width": 760,
+      "height": 750
+    },
+    {
+      "left": 1802,
+      "top": 500,
+      "width": 806,
+      "height": 840
+    }
+  ],
+  "Gemini_Generated_Image_g8dbu5g8dbu5g8db.png": [
+    {
+      "left": 90,
+      "top": 940,
+      "width": 780,
+      "height": 400
+    },
+    {
+      "left": 1000,
+      "top": 590,
+      "width": 760,
+      "height": 750
+    },
+    {
+      "left": 1890,
+      "top": 590,
+      "width": 706,
+      "height": 750
+    }
+  ],
+  "Gemini_Generated_Image_hkz65phkz65phkz6.png": [
+    {
+      "left": 50,
+      "top": 425,
+      "width": 290,
+      "height": 235
+    },
+    {
+      "left": 504,
+      "top": 280,
+      "width": 360,
+      "height": 385
+    },
+    {
+      "left": 912,
+      "top": 240,
+      "width": 404,
+      "height": 420
+    }
+  ],
+  "Gemini_Generated_Image_izwcxfizwcxfizwc.png": [
+    {
+      "left": 90,
+      "top": 855,
+      "width": 780,
+      "height": 485
+    },
+    {
+      "left": 1000,
+      "top": 700,
+      "width": 760,
+      "height": 640
+    },
+    {
+      "left": 1890,
+      "top": 590,
+      "width": 722,
+      "height": 750
+    }
+  ],
+  "Gemini_Generated_Image_jibtkojibtkojibt.png": [
+    {
+      "left": 90,
+      "top": 855,
+      "width": 780,
+      "height": 485
+    },
+    {
+      "left": 1000,
+      "top": 590,
+      "width": 760,
+      "height": 750
+    },
+    {
+      "left": 1790,
+      "top": 500,
+      "width": 830,
+      "height": 840
+    }
+  ],
+  "Gemini_Generated_Image_kvba4zkvba4zkvba.png": [
+    {
+      "left": 30,
+      "top": 385,
+      "width": 300,
+      "height": 275
+    },
+    {
+      "left": 500,
+      "top": 305,
+      "width": 380,
+      "height": 355
+    },
+    {
+      "left": 912,
+      "top": 245,
+      "width": 406,
+      "height": 415
+    }
+  ],
+  "Gemini_Generated_Image_le6ye4le6ye4le6y.png": [
+    {
+      "left": 190,
+      "top": 855,
+      "width": 680,
+      "height": 485
+    },
+    {
+      "left": 1000,
+      "top": 590,
+      "width": 760,
+      "height": 750
+    },
+    {
+      "left": 1860,
+      "top": 500,
+      "width": 760,
+      "height": 840
+    }
+  ],
+  "Gemini_Generated_Image_m94norm94norm94n.png": [
+    {
+      "left": 40,
+      "top": 855,
+      "width": 960,
+      "height": 555
+    },
+    {
+      "left": 1000,
+      "top": 600,
+      "width": 760,
+      "height": 740
+    },
+    {
+      "left": 1890,
+      "top": 400,
+      "width": 750,
+      "height": 935
+    }
+  ],
+  "Gemini_Generated_Image_nmqbkpnmqbkpnmqb.png": [
+    {
+      "left": 50,
+      "top": 425,
+      "width": 285,
+      "height": 235
+    },
+    {
+      "left": 490,
+      "top": 305,
+      "width": 390,
+      "height": 355
+    },
+    {
+      "left": 900,
+      "top": 245,
+      "width": 420,
+      "height": 415
+    }
+  ],
+  "Gemini_Generated_Image_pbrwm3pbrwm3pbrw (1).png": [
+    {
+      "left": 30,
+      "top": 385,
+      "width": 305,
+      "height": 275
+    },
+    {
+      "left": 490,
+      "top": 305,
+      "width": 390,
+      "height": 355
+    },
+    {
+      "left": 895,
+      "top": 245,
+      "width": 425,
+      "height": 420
+    }
+  ],
+  "Gemini_Generated_Image_s6bx9zs6bx9zs6bx.png": [
+    {
+      "left": 50,
+      "top": 425,
+      "width": 285,
+      "height": 235
+    },
+    {
+      "left": 490,
+      "top": 305,
+      "width": 390,
+      "height": 355
+    },
+    {
+      "left": 900,
+      "top": 245,
+      "width": 420,
+      "height": 415
+    }
+  ],
+  "Gemini_Generated_Image_uj1a91uj1a91uj1a (1).png": [
+    {
+      "left": 55,
+      "top": 425,
+      "width": 285,
+      "height": 235
+    },
+    {
+      "left": 490,
+      "top": 305,
+      "width": 390,
+      "height": 355
+    },
+    {
+      "left": 910,
+      "top": 245,
+      "width": 406,
+      "height": 415
+    }
+  ],
+  "200층이상.png": [
+    {
+      "left": 1092,
+      "top": 288,
+      "width": 568,
+      "height": 1015
+    }
+  ],
+  "300층이상.png": [
+    {
+      "left": 776,
+      "top": 213,
+      "width": 429,
+      "height": 726
+    }
+  ],
+  "400층이상.png": [
+    {
+      "left": 120,
+      "top": 232,
+      "width": 526,
+      "height": 944
+    }
+  ],
+  "500층이상.png": [
+    {
+      "left": 1092,
+      "top": 268,
+      "width": 578,
+      "height": 962
+    }
+  ]
+}

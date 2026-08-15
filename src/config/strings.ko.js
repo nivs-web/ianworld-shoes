@@ -1,0 +1,138 @@
+/**
+ * 화면에 보이는 모든 한국어 문구. 다른 파일에 한글을 직접 쓰지 않는다.
+ * 기획서에 명시된 문구는 토씨 하나 바꾸지 않는다. (CLAUDE.md §6-2)
+ */
+
+export const S = {
+  // ── 브랜드 ────────────────────────────────
+  portalTitle: '오락실 이안월드',
+  gameTitle: '신발을 찾아서',
+
+  // ── S01 로그인 ────────────────────────────
+  touchToStart: '터치해서 시작',
+  loginGoogle: 'Google로 시작하기',
+  installShortcut: '바로가기 아이콘 만들기',
+  installIosGuide: '공유 버튼 → "홈 화면에 추가"를 눌러주세요',
+  installDone: '홈 화면에 추가되었습니다',
+  loginFailed: '로그인에 실패했습니다. 다시 시도해주세요',
+
+  // ── S02 닉네임 ────────────────────────────
+  nicknamePrompt: '캐릭터 이름을 입력하세요',
+  nicknameRule: '한글 2자~4자로 입력해주세요',
+  nicknameTaken: '이미 사용 중인 이름입니다',
+  nicknameInvalid: '한글 2자~4자만 사용할 수 있습니다',
+  confirm: '확인',
+
+  // ── S04 로비 ──────────────────────────────
+  backToPortal: '오락실 이안월드로 돌아가기',
+  bestRecord: '최고기록',
+  bestRecordUnit: '칸 계단',
+  myCollection: '내 신발 도감',
+  collectionUnit: '켤레',
+  playerName: '플레이어 이름',
+  difficultyTitle: '게임난이도(신발의 등장 빈도가 달라집니다)',
+  difficultyEasy: '쉬움',
+  difficultyNormal: '보통',
+  difficultyHard: '어려움',
+  menuCollection: '나의 신발 컬렉션',
+  menuCharacter: '캐릭터 바꾸기',
+  menuHallOfFame: '명예의 전당',
+  menuControls: '조작법 변경',
+  playSingle: '싱글게임',
+  playMulti: '멀티게임',
+
+  // ── S05 캐릭터 선택 ────────────────────────
+  select: 'SELECT',
+  buyCharacter: '캐릭터 구매하기',
+  /** @param {number} n 필요한 신발 수 */
+  needShoes: (n) => `* 신발 ${n}개 필요 *`,
+  purchaseWarning: '티어가 높은 신발부터 사라집니다',
+  purchaseConfirm: '구매하시겠습니까?',
+  purchaseDone: '구매 완료!',
+  purchaseFailed: '신발이 부족합니다',
+
+  // ── S06 신발 도감 ──────────────────────────
+  collectionTitle: '나의 신발 컬렉션',
+  totalShoes: '총 신발 갯수',
+  /** @param {number} t 티어 @param {number} have 보유 @param {number} all 전체 */
+  tierCount: (t, have, all) => `${t}티어 신발(${have}/${all}개)`,
+  tierTab: (t) => `${t}티어`,
+  notFoundYet: '???',
+
+  // ── S07 명예의 전당 ────────────────────────
+  hallTitle: '명예의 전당',
+  tabShoeKing: '신발왕',
+  tabWeekly: '주간',
+  tabMonthly: '월간',
+  tabYearly: '연간',
+  tabAllTime: '역대',
+  myRank: '내 순위',
+  noRankYet: '아직 기록이 없습니다',
+  rankUnitStairs: '칸',
+  rankUnitShoes: '켤레',
+
+  // ── S08 조작법 ─────────────────────────────
+  controlsTitle: '조작법 변경',
+  controlMode1: '방향전환 - 상승',
+  controlMode2: '상승 - 방향전환',
+  controlMode3: '우상승 - 좌상승',
+
+  // ── S09 인게임 HUD ─────────────────────────
+  /** @param {number} n */
+  hudShoes: (n) => `찾은신발 ${n}`,
+  /** @param {number} n */
+  hudRevive: (n) => `부활 ${n}`,
+
+  // ── S10 일시정지 ───────────────────────────
+  paused: '일시정지',
+  resume: '계속하기',
+  restart: '다시하기',
+  toLobby: '로비로',
+
+  // ── S11 게임 오버 ──────────────────────────
+  gameOver: 'GAME OVER',
+  score: 'SCORE',
+  best: 'BEST',
+
+  // ── S12 부활 ───────────────────────────────
+  reviveTitle: '부활하시겠습니까?',
+  reviveYes: '부활하기',
+  reviveNo: '포기',
+
+  // ── S13~S18 멀티 ───────────────────────────
+  multiTitle: '멀티게임',
+  createRoom: '방 만들기',
+  joinRoom: '방 입장',
+  createPrivateRoom: '비밀방 만들기',
+  enterCode: '4자리 코드를 입력하세요',
+  roomCode: '방 코드',
+  ready: '레디',
+  cancelReady: '레디 취소',
+  startGame: '시작하기',
+  waitingHost: '방장이 시작하기를 기다리는 중',
+  waitingPlayers: '다른 플레이어를 기다리는 중',
+  hostOnlyDifficulty: '방장만 난이도를 설정할 수 있습니다',
+  roomNotFound: '방을 찾을 수 없습니다',
+  roomFull: '방이 가득 찼습니다',
+  go: 'GO!',
+
+  notEnoughShoesToPlay: '신발이 1켤레 이하면 게임에 참가할 수 없습니다',
+  notEnoughShoesGuide: '신발을 모아서 게임에 참여하세요',
+
+  won: '1등을 하셨습니다',
+  /** @param {number} n 뺏어온 켤레 수 */
+  wonReward: (n) => `게임의 승리로 ${n}켤레의 신발을 뺏어왔습니다`,
+  lost: '내 소중한 신발 1켤레를 뺏겼습니다',
+
+  // ── 공통 ───────────────────────────────────
+  loading: '불러오는 중...',
+  back: '뒤로',
+  close: '닫기',
+  cancel: '취소',
+  yes: '예',
+  no: '아니오',
+  networkError: '네트워크 연결을 확인해주세요',
+  saveFailed: '저장에 실패했습니다. 다시 접속하면 자동으로 반영됩니다',
+};
+
+export default S;
