@@ -22,7 +22,7 @@
 | 사운드 | **Web Audio API 직접 합성** | 오디오 파일 0개. 8bit 칩튠을 코드로 생성 |
 | 인증 | **Firebase Auth (Google)** | |
 | DB | **Firestore** (계정/도감/랭킹) + **Realtime Database** (멀티 룸) | 랭킹은 쿼리, 멀티는 저지연 |
-| 배포 | **Vercel** ← GitHub `nivs-web/ianworld_shoes` | main push = 자동 배포 |
+| 배포 | **Vercel** ← GitHub `nivs-web/ianworld-shoes` | main push = 자동 배포 |
 | PWA | manifest + service worker (수동 작성) | |
 
 > **금지**: React / Phaser / PixiJS / Tailwind / 애니메이션 라이브러리(GSAP 등).
@@ -104,7 +104,7 @@ function loop(now) {
 ## 4. 디렉터리 구조
 
 ```
-ianworld_shoes/
+ianworld-shoes/
 ├─ CLAUDE.md                     ← 이 파일
 ├─ index.html                    ← 단일 진입점 (SPA)
 ├─ vite.config.js
@@ -391,7 +391,7 @@ chore(assets): 신발 아틀라스 재생성
 
 | 항목 | 값 |
 |------|-----|
-| GitHub | `https://github.com/nivs-web/ianworld_shoes` |
+| GitHub | `https://github.com/nivs-web/ianworld-shoes` |
 | 배포 | Vercel (GitHub import 완료, main 자동 배포) |
 | Firebase 프로젝트 | `[빈칸 — 프로젝트 ID]` |
 | 도메인 | `[빈칸 — 커스텀 도메인 사용 여부]` |
