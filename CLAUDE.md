@@ -365,6 +365,37 @@ chore(assets): 신발 아틀라스 재생성
         **100층마다 다음 마디에서** 교체 (곡 중간에 튀면 귀에 거슬린다)
   - [x] 검증: SFX 20종 + BGM 10트랙 전부 피크 측정 통과(무음 0 · 클리핑 0),
         층수 점프 0/100/250/500/900/1500 → 트랙 1/2/3/6/10/10 확인
+- [x] **M5 화면·계정 1차 (2026-08-15)** — 로그인 → 포털 → 로비 → 인게임 → 로비 흐름 완성.
+  - [x] `services/` 계층: `firebase.js`(설정 없으면 자동 비활성 + **동적 import** 라 미설정 시 번들 0KB),
+        `auth.js`(구글 로그인 / 게스트), `profile.js`, `storageLocal.js`
+  - [x] **원본은 항상 로컬**. Firebase는 뒤에서 밀어 올리고 끌어내리기만 한다 →
+        키가 없어도, 네트워크가 끊겨도 게임이 그대로 돌아간다
+  - [x] 화면 S01 로그인 · S02 닉네임(한글 2~4자 검증) · S03 포털 · S04 로비 ·
+        S05 캐릭터 선택/구매 · S06 도감(티어탭+확대팝업) · S08 조작법
+  - [x] **엘리베이터 구현** — 500층 해금, 누르는 즉시 신발 50켤레 차감, 500층에서 시작
+  - [x] 게임오버 HOME → 로비 복귀 + 결과 반영 / RETRY → 결과 반영 후 새 판
+        (다시하기를 눌렀다고 방금 주운 신발이 사라지면 안 된다)
+  - [x] `docs/FIREBASE_RULES.md` — 콘솔에 붙여넣을 Firestore·RTDB 보안 규칙
+  - [x] 브라우저 전 흐름 검증 (`tools/_screens-qa.mjs`) — 11화면 스크린샷, 콘솔 에러 0
+  - 잡은 버그: `nav.refresh()` 가 화면 인스턴스를 다시 만들어 도감 티어탭·캐릭터 index가
+    초기화되던 문제 → refresh는 render만 다시 돌리도록 분리
+  - [x] `collection.js` 도감 동기화 — **합집합 병합**(최초 획득일은 이른 쪽, 누적 횟수는 큰 쪽).
+        도감은 사라지면 안 되므로 어느 기기에서 먼저 찾았든 기록이 유지된다.
+        게스트로 모은 도감도 로그인 시 자동으로 올라간다.
+  - [x] `firebase.js` — 설정이 **절반만** 채워지면 콘솔 경고. "설정한 줄 알았는데 게스트로 돌던" 상황 방지
+- [x] **2026-08-15 Firebase 실제 연결** — 웹 앱 설정 6개 값 전부 확보, `.env` 완성.
+  - [x] SDK를 **쓰는 시점별로 3분할**. 한 덩어리면 로그인 한 번에 Firestore까지 딸려온다.
+        `getFirebase()` app+auth(71KB gz, 부팅) / `getStore()` +firestore(93KB gz, 로그인 후) /
+        `getRtdb()` +database(M7 방 입장). `vite.config.js` manualChunks도 같은 기준으로 쪼갬.
+        초기 로딩 208KB gz → **98KB gz**.
+  - [x] `initAuth()` **3초 타임아웃** — 네트워크가 느리면 로컬 상태로 먼저 화면을 띄우고,
+        세션이 뒤늦게 확인되면 `onUserChanged` 로 갱신한다. 부팅이 SDK를 기다리다 멈추면 안 된다.
+  - [x] S01에 **`로그인 없이 시작`** 추가 — Firebase가 켜지자 구글 로그인만 남아
+        팝업 차단·오프라인·계정 없는 사람이 막히는 상태가 됐다. 로그인은 전제가 아니다.
+  - [x] 닉네임 중복 확인은 **로그인 사용자에게만**. 게스트 닉네임은 서버에 없으니 겹쳐도 무해하고,
+        막으면 이득 없이 Firestore 93KB만 받게 된다. 4초 타임아웃도 걸었다.
+  - [x] 검증: 설정을 켠 채로 **네트워크가 없는 환경**에서 전 흐름 QA 통과 (`errors []`).
+        Firestore 불통에도 도감 2/130 · 최고기록 12 · 난이도 저장이 전부 로컬에 남았다.
 - [ ] M3 잔여(도감 영구 저장은 M5 Firebase와 함께) · M4~M8 (기획서 §11-1 참조)
 - [ ] **엘리베이터 구현**은 로비(S04)가 생기는 M5에서 함께 (기획만 확정, 코드 없음)
 
@@ -379,9 +410,14 @@ chore(assets): 신발 아틀라스 재생성
 | `백그라운드건물/*.png` (16장) | 렌더 일러스트 + 설명 포스터 | 패널 크롭 → 축소 → 양자화 |
 | `200층이상배경/*.png` | 렌더 일러스트 + 설명 포스터, 규격이 180×**320** | 패널 크롭 필요 |
 
-**남은 미정값 2개** (개발 환경 값. M0~M4 착수에는 불필요)
-- Firebase 프로젝트 ID + 웹 앱 설정 → M5에 필요
+**남은 미정값**
 - 커스텀 도메인 사용 여부 → M8에 필요
+
+**콘솔에서 켜야 하는 것** (코드는 준비 완료, 이게 안 되면 로그인만 실패한다)
+- Authentication > Sign-in method > **Google 사용 설정**
+- Authentication > Settings > 승인된 도메인에 **`ianworld-shoes.vercel.app`** 추가
+- Firestore 데이터베이스 생성 (위치 **`asia-northeast3`**) + `docs/FIREBASE_RULES.md` 규칙 붙여넣기
+- Vercel 환경변수에 `VITE_FIREBASE_*` 7개 등록 (없으면 배포본은 게스트 모드로 돈다)
 
 **다음 작업**: `src/config/balance.js` · `layout.js` 초안 작성 → M0 (Vite + Vercel + 180×320 캔버스).
 
@@ -393,5 +429,7 @@ chore(assets): 신발 아틀라스 재생성
 |------|-----|
 | GitHub | `https://github.com/nivs-web/ianworld-shoes` |
 | 배포 | Vercel (GitHub import 완료, main 자동 배포) |
-| Firebase 프로젝트 | `[빈칸 — 프로젝트 ID]` |
+| Firebase 프로젝트 | `find-shoes-f5c55` (RTDB 주소에서 확정) |
+| Realtime DB | `https://find-shoes-f5c55-default-rtdb.asia-southeast1.firebasedatabase.app` (asia-southeast1) |
+| Firebase 설정 | `.env` 에 6개 값 전부 채움 (2026-08-15). Vercel 환경변수에도 동일하게 등록 필요 |
 | 도메인 | `[빈칸 — 커스텀 도메인 사용 여부]` |

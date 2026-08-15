@@ -7,6 +7,10 @@ dist/
 .env.local
 .env.*.local
 
+# 원격 도구가 .env 를 직접 못 써서 이 이름으로 전달한다.
+# 폴더에서 .env 로 이름만 바꿔 쓰면 된다.
+firebase.env.txt
+
 # 원본 아트 (수백 MB, tools 스크립트의 입력) — 로컬에만 둔다
 etc/
 

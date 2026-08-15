@@ -22,9 +22,10 @@ import { Background } from './background.js';
 import { renderHud, hitPause } from './hud.js';
 import { PauseOverlay, ReviveOverlay, GameOverOverlay } from './overlays.js';
 import { PAL } from './palette.js';
+import { get as getProfile } from '../services/profile.js';
 import * as Sfx from '../audio/sfx.js';
 import * as Bgm from '../audio/bgm.js';
-import { AUDIO, SHOE_RARE_TIER_MAX } from '../config/balance.js';
+import { AUDIO, SHOE_RARE_TIER_MAX, bgmTrackAt } from '../config/balance.js';
 import shoesData from '../data/shoes.json';
 
 export class GameScene {
@@ -34,12 +35,19 @@ export class GameScene {
    * @param {string} [opt.charId]
    * @param {number} [opt.seed]
    * @param {number} [opt.controlMode] 1|2|3
+   * @param {number} [opt.startFloor] 엘리베이터로 건너뛴 시작 층수 (기획서 §5-8-1)
+   * @param {(result:object, action:'home'|'retry')=>void} [opt.onFinish]
+   *        판이 끝났을 때. 'home'이면 로비로, 'retry'면 같은 설정으로 새 판.
+   *        어느 쪽이든 **결과는 먼저 계정에 반영된다** — 다시하기를 눌렀다고
+   *        방금 주운 신발이 사라지면 안 된다.
    */
   constructor(opt = {}) {
     this.diff = DIFFICULTY[opt.difficulty ?? 'normal'];
     this.charId = opt.charId ?? 'ian';
     this.seed = opt.seed ?? randomSeed();
     this.controlMode = opt.controlMode ?? 1;
+    this.startFloor = opt.startFloor ?? 0;
+    this.onFinish = opt.onFinish ?? null;
     this.ready = false;
   }
 
@@ -49,7 +57,7 @@ export class GameScene {
       gapMax: this.diff.shoeGapMax,
     });
     this.player = new Player(this.charId);
-    this.floor = 0;
+    this.floor = this.startFloor;
     this.gauge = GAUGE_MAX;
     this.started = false; // 첫 입력부터 게이지가 줄기 시작
     this.shoesFound = 0;
@@ -58,12 +66,14 @@ export class GameScene {
     this.overlayDone = false;
     /** 함성 발동용 — 실수 없이 연속으로 오른 칸 수 (기획서 §9-7-1) */
     this.stepStreak = 0;
+    /** 이번 판에 주운 신발 index 목록 — 판이 끝나면 도감·자산에 반영한다 */
+    this.shoeIndices = [];
     // 판이 시작되면 1번 트랙부터 (재시작 포함). 오디오가 아직 잠겨 있으면 조용히 무시된다.
-    Bgm.forceTrack(1);
+    Bgm.forceTrack(bgmTrackAt(this.floor) + 1);
     Bgm.startBgm();
 
     // 인트로: 정면 → 팝 → 대기 → 첫 계단 방향으로 전환 (기획서: 시작인터페이스)
-    this.player.introFacing = this.stairs.nextDir(0);
+    this.player.introFacing = this.stairs.nextDir(this.floor);
     this.player.facing = this.player.introFacing;
 
     // 배경: 16종 중 랜덤 1종
@@ -174,6 +184,7 @@ export class GameScene {
     if (shoe !== undefined) {
       this.player.wear(shoe);
       this.shoesFound++;
+      this.shoeIndices.push(shoe);
       // 1·2티어는 특별 징글 + 함성 무조건 (연속 수와 무관)
       const tier = shoesData.shoes[shoe]?.tier ?? 5;
       if (tier <= SHOE_RARE_TIER_MAX) {
@@ -248,11 +259,20 @@ export class GameScene {
 
   finish() {
     Bgm.stopBgm();
-    // 최고기록 (M6 전까지 로컬 저장)
-    const key = `sf_best_${this.diff.id}`;
-    const best = Number(localStorage.getItem(key) ?? 0);
-    if (this.floor > best) localStorage.setItem(key, String(this.floor));
-    Scene.push(new GameOverOverlay(this, Math.max(best, this.floor)));
+    Scene.push(new GameOverOverlay(this, this.bestSoFar()));
+  }
+
+  /** 게임오버 패널에 띄울 BEST — 이번 판을 포함한 값 */
+  bestSoFar() {
+    const p = getProfile();
+    return Math.max(p.bestByDifficulty?.[this.diff.id] ?? 0, this.floor);
+  }
+
+  /** @param {'home'|'retry'} action */
+  leave(action) {
+    Bgm.stopBgm();
+    const result = { floor: this.floor, difficulty: this.diff.id, shoeIndices: this.shoeIndices };
+    if (this.onFinish) this.onFinish(result, action);
   }
 
   // ── 렌더 ─────────────────────────────────────

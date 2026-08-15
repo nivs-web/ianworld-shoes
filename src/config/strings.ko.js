@@ -11,10 +11,13 @@ export const S = {
   // ── S01 로그인 ────────────────────────────
   touchToStart: '터치해서 시작',
   loginGoogle: 'Google로 시작하기',
+  loginGuest: '로그인 없이 시작',
   installShortcut: '바로가기 아이콘 만들기',
   installIosGuide: '공유 버튼 → "홈 화면에 추가"를 눌러주세요',
   installDone: '홈 화면에 추가되었습니다',
   loginFailed: '로그인에 실패했습니다. 다시 시도해주세요',
+  loginWhy: '로그인하면 다른 기기에서도 도감을 이어서 볼 수 있습니다',
+  loginNone: '로그인 없이 이 기기에 기록이 저장됩니다',
 
   // ── S02 닉네임 ────────────────────────────
   nicknamePrompt: '캐릭터 이름을 입력하세요',
@@ -40,6 +43,13 @@ export const S = {
   menuControls: '조작법 변경',
   playSingle: '싱글게임',
   playMulti: '멀티게임',
+
+  // ── S04 엘리베이터 (기획서 §5-8-1) ─────────
+  elevatorButton: '엘리베이터 (500층부터)',
+  elevatorLocked: '500층 이상 도달 시 이용할 수 있습니다',
+  elevatorConfirm: '엘리베이터를 타고 500층부터 시작합니다',
+  /** @param {number} n 차감 켤레 수 */
+  elevatorCost: (n) => `신발 ${n}켤레가 사라집니다`,
 
   // ── S05 캐릭터 선택 ────────────────────────
   select: 'SELECT',
@@ -126,6 +136,7 @@ export const S = {
 
   // ── 공통 ───────────────────────────────────
   loading: '불러오는 중...',
+  comingSoon: '준비 중입니다',
   back: '뒤로',
   close: '닫기',
   cancel: '취소',

@@ -183,7 +183,8 @@ export class GameOverOverlay {
       const b1 = GAMEOVER.btnHome;
       const b2 = GAMEOVER.btnRetry;
       if (inRect(x, y, b1.x, b1.y, b1.w, b1.h)) {
-        this.restart(); // M5 전까지 홈 = 재시작
+        Sfx.play('sfx_menu_back');
+        this.game.leave('home');
         return true;
       }
       if (inRect(x, y, b2.x, b2.y, b2.w, b2.h)) {
@@ -198,9 +199,13 @@ export class GameOverOverlay {
     setTapHandler(null);
   }
 
+  /** 다시하기 — 이번 판 결과를 먼저 반영하고 같은 설정으로 새 판을 연다 */
   restart() {
+    const g = this.game;
+    if (g.onFinish) { g.leave('retry'); return; }
+    // M5 이전 경로(로비 없이 직행) 폴백
     const { GameScene } = window.__gameModule;
-    Scene.reset(new GameScene({ difficulty: this.game.diff.id, charId: this.game.charId, controlMode: this.game.controlMode }));
+    Scene.reset(new GameScene({ difficulty: g.diff.id, charId: g.charId, controlMode: g.controlMode }));
   }
 
   update() {

@@ -104,10 +104,11 @@
   text-align: center;
 }
 
-/* 도감 그리드 */
+/* 도감 그리드 — 3열. 스프라이트를 2배(100×60)로 보여주려면 셀이 그만큼 넓어야 한다.
+   5열이면 셀이 74px라 신발이 잘린다. 신발을 보는 게 이 화면의 전부다. */
 .dex-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
 
@@ -120,8 +121,11 @@
   border: 2px solid var(--c-line);
 }
 
-.dex-cell.locked {
-  filter: brightness(0) opacity(0.35);
+/* 미획득 신발.
+   brightness(0)만 걸면 어두운 배경 위 검정이라 아예 안 보인다.
+   invert 로 밝은 실루엣을 만들어 "찾아야 할 자리"가 보이게 한다. */
+.dex-cell.locked .shoe-spr {
+  filter: brightness(0) invert(1) opacity(0.22);
 }
 
 .dex-cell img {
@@ -159,4 +163,294 @@
 
 .rank-row .name {
   flex: 1;
+}
+
+/* ─────────────────────────────────────────────
+   M5 화면 추가분 (2026-08-15)
+   ───────────────────────────────────────────── */
+
+/* S01 스플래시 */
+.splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 48px 0 24px;
+}
+
+.splash-logo {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--c-panel);
+  letter-spacing: 2px;
+}
+
+.splash-sub {
+  font-size: 16px;
+  color: var(--c-accent);
+}
+
+/* S02 닉네임 */
+.nick-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.nick-input {
+  width: 180px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 24px;
+  text-align: center;
+  letter-spacing: 6px;
+  color: var(--c-text);
+  background: var(--c-panel);
+  border: 3px solid var(--c-line);
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.hint.bad {
+  color: var(--c-accent);
+}
+
+/* S03 포털 */
+.portal-head {
+  text-align: center;
+  padding: 24px 0 8px;
+}
+
+.portal-logo {
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--c-panel);
+  letter-spacing: 2px;
+}
+
+.portal-user {
+  font-size: 12px;
+  color: var(--c-panel-dark);
+  padding-top: 4px;
+}
+
+.game-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: rgba(245, 217, 160, 0.12);
+  border: 3px solid var(--c-line);
+}
+
+.game-card-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--c-accent);
+}
+
+.game-card-sub {
+  font-size: 12px;
+  color: var(--c-text-light);
+}
+
+/* S04 로비 */
+.lobby-logo {
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--c-accent);
+  letter-spacing: 1px;
+  padding: 6px 0;
+}
+
+.diff-title {
+  font-size: 12px;
+  color: var(--c-text-light);
+  text-align: center;
+}
+
+.pbtn.dim {
+  opacity: 0.55;
+}
+
+/* S05 캐릭터 선택 */
+.char-stage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.char-figure img {
+  width: 105px;
+  height: 150px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* 잠금 캐릭터는 생김새를 숨긴다 — 궁금해야 사고 싶어진다 (기획서 §5-8).
+   단 실루엣 자체는 보여야 하므로 어두운 배경에서도 뜨도록 밝게 뒤집는다. */
+.char-figure.locked img {
+  filter: brightness(0) invert(1) opacity(0.3);
+}
+
+.arrow {
+  width: 44px;
+  height: 60px;
+  font-size: 20px;
+  color: var(--c-text);
+  background: var(--c-panel);
+  border: 3px solid var(--c-line);
+  cursor: pointer;
+}
+
+.arrow:active {
+  transform: translateY(2px);
+}
+
+.char-name {
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--c-panel);
+}
+
+.char-count {
+  text-align: center;
+  font-size: 12px;
+  color: var(--c-panel-dark);
+}
+
+.buy-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* S06 도감 */
+.dex-total,
+.dex-tier-count {
+  text-align: center;
+  font-size: 13px;
+  color: var(--c-text-light);
+}
+
+.tier-tabs .pbtn {
+  padding: 8px 2px;
+  font-size: 12px;
+}
+
+.shoe-spr {
+  display: block;
+  image-rendering: pixelated;
+  background-repeat: no-repeat;
+}
+
+
+.shoe-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background: var(--c-panel);
+  border: 4px solid var(--c-line);
+  color: var(--c-text);
+}
+
+.shoe-name {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.shoe-meta {
+  font-size: 12px;
+  color: var(--c-line);
+}
+
+/* S08 조작법 */
+.ctrl-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(245, 217, 160, 0.08);
+  border: 2px solid var(--c-line);
+}
+
+.ctrl-card.on {
+  border-color: var(--c-accent);
+  background: rgba(217, 79, 43, 0.15);
+}
+
+.ctrl-label {
+  font-size: 14px;
+  color: var(--c-text-light);
+  text-align: center;
+}
+
+.ctrl-preview {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.ctrl-preview img {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+}
+
+/* 공통 다이얼로그 / 토스트 */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(13, 10, 8, 0.78);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  padding: 16px;
+  background: var(--c-panel);
+  border: 4px solid var(--c-line);
+  color: var(--c-text);
+}
+
+.dialog-msg {
+  font-size: 15px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.dialog-detail {
+  font-size: 12px;
+  text-align: center;
+  color: var(--c-line);
+  white-space: pre-line;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 15%;
+  transform: translateX(-50%);
+  z-index: 300;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--c-text-light);
+  background: rgba(13, 10, 8, 0.92);
+  border: 2px solid var(--c-panel-dark);
+  pointer-events: none;
 }
