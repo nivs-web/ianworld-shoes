@@ -24,7 +24,7 @@ import * as L from './storageLocal.js';
 import * as Room from './multiplayer.js';
 import { currentUser } from './auth.js';
 import { patch } from './profile.js';
-import { pickPenaltyShoes, owedBy, outOfRound, foundShoesTotal, rollFoundShoe } from './matchRules.js';
+import { pickPenaltyShoes, owedBy, outOfRound, foundShoesTotal, foundOf, rollFoundShoe } from './matchRules.js';
 import { MULTI } from '../config/balance.js';
 
 /** 도장 이름 — 방 하나에서 "내가 낸 것"과 "누구한테서 받은 것"을 따로 센다 */
@@ -233,8 +233,14 @@ export async function settleRoom(code, room = null) {
     paid,
     took,
     pending,
-    /** 이 판에서 내가 잃은 총량 (기본 + 부활 비용) — 결과 화면 문구용 */
-    lost: won ? 0 : Math.max(owed, already.length + paid.length),
+    /**
+     * 이 판에서 내가 잃은 총량 — 결과 화면의 `내 소중한 신발 N켤레를 뺏겼습니다` 용.
+     *
+     * 판돈(기본 1 + 부활 20×N)**에 더해, 판 중에 내가 주운 신발도 센다** (2026-08-19).
+     * 진 사람의 습득분은 지갑에 들어오지 않고 그대로 승자에게 가므로(`foundShoesTotal`),
+     * 사용자 입장에서는 그것도 똑같이 뺏긴 것이다 — 안 세면 숫자가 실제보다 작게 보인다.
+     */
+    lost: won ? 0 : Math.max(owed, already.length + paid.length) + foundOf(r, u.uid),
   };
 }
 

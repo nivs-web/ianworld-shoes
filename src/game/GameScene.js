@@ -225,9 +225,8 @@ export class GameScene {
         // 이름 대신 **자리 색**으로 부른다 — 인게임에는 아이디가 없고, 색이 곧 신원이다
         const color = S.slotColorName[o.slot] ?? S.slotColorName[0];
         if ((o.revives ?? 0) > (was.revives ?? 0)) {
-          // 부활 알림만 짧은 색 이름을 쓴다 — "노랑, 1등 부활" (2026-08-19)
-          const colorShort = S.slotColorShort[o.slot] ?? S.slotColorShort[0];
-          this.notify(S.someoneRevived(colorShort));
+          // 낙사·기권 알림과 **같은 색 이름**을 쓴다 — "노란색 1등 부활!" (2026-08-19)
+          this.notify(S.someoneRevived(color));
           Sfx.play('sfx_revive');
         } else if (was.alive !== false && o.alive === false) {
           this.notify(S.someoneFell(color));

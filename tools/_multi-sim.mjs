@@ -754,6 +754,36 @@ console.log('\nS22) 판 도중 주운 신발도 1등이 가져간다 — 개수�
   eq('총량이 주운 개수(5)만큼 늘었다 — 사라지지 않고 승자에게 새로 갔다', w.total(code), before + 5);
 }
 
+console.log('\nS22-b) ★ 패자가 **먼저 방을 나가도** 주운 신발이 승자에게 간다 (2026-08-19 신고)');
+{
+  /**
+   * S22 는 패자가 방에 **남아 있는** 상태에서만 검사해서 통과했다. 그런데 실제 대전에서는
+   * 패자가 결과 화면에서 곧장 나간다(`leaveRoom` 이 `players/<uid>` 를 통째로 지운다).
+   * `shoesFound` 는 `players` 안에만 있으므로, 그 순간 **승자가 셀 근거가 사라진다.**
+   * 사용자가 "게임 중에 먹은 신발이 어디로 사라지는지 모르겠다"고 여러 번 신고한 게 이것이다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 }); // 패자, 판 중에 5개 주웠다
+  const B = w.player('B', { shoes: 20 }); // 승자
+  const code = await startRound(w, A, [B]);
+  const before = w.total(code);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 10, shoesFound: 5 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 40, shoesFound: 3 }, true));
+  await A.act(() => Room.reportDeath(code, { stairs: 10, shoesFound: 5 }));
+  advance((MULTI.reviveWindowSeconds + 1) * 1000);
+
+  // 패자가 **먼저** 결과 화면을 보고 그대로 나간다 (실제 사용자 행동)
+  await resultScreen(A, code, { leave: true });
+  // 그 뒤에야 승자가 정산한다
+  await resultScreen(B, code, { leave: false });
+  await reboot(B);
+
+  eq('계단 높은 B 가 1등', w.db.read(`rooms/${code}/result/rankings`), ['B', 'A']);
+  eq('패자가 나갔어도 주운 5개가 승자에게 갔다', B.wallet(), 26);
+  eq('총량이 주운 개수(5)만큼 늘었다', w.total(code), before + 5);
+}
+
 console.log('\nS23) 판 도중 주운 신발 — 승자 자신의 몫은 중복으로 세지 않는다');
 {
   const w = new World();

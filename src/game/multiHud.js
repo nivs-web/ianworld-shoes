@@ -78,7 +78,7 @@ const GAP_Y = 64;
 const POT_Y = 252;
 /** 알림은 판돈 바로 위에서 위로 쌓인다 */
 const TICKER_Y = 232;
-const LINE_H = 9;
+const LINE_H = 13;   // 11px 글자 기준 (7px 시절 9)
 /**
  * 알림은 **레이스 게이지를 피해** 왼쪽에만 쓴다.
  * 게이지는 오른쪽 세로 기둥(150~178)을 위아래로 통째로 쓰기 때문에,
@@ -456,8 +456,13 @@ function drawGapLine(scene) {
     .filter(([, v]) => !v?.waiting)
     .reduce((m, [, v]) => Math.max(m, v.stairs ?? 0), 0);
   const 차이 = 최고 - (scene.floor | 0);
+  /**
+   * 7px + 그림자 → **11px + 외곽선** (2026-08-19 사용자 요청).
+   * 외곽선은 글리프를 8방향으로 한 번 더 찍으므로 배경색이 무엇이든 글자가 뜬다.
+   * 폭은 미리 쟀다: `1등까지 15계단 남음` = 112px < 180. (tools/_measure.mjs)
+   */
   textCached(차이 > 0 ? S.gapFromFirst(차이) : S.keepingFirst, CENTER_X, GAP_Y, {
-    color: 차이 > 0 ? PAL.gaugeWarn : PAL.text, align: 'center', small: true, shadow: PAL.textShadow,
+    color: 차이 > 0 ? PAL.gaugeWarn : PAL.text, align: 'center', outline: PAL.textShadow,
   });
 }
 
@@ -474,8 +479,9 @@ function drawPot(scene) {
   if (!room) return;
   if (scene.potRoom !== room) { scene.potRoom = room; scene.potText = S.potLine(potShoes(room)); }
   if (!scene.potText) return;
+  // 11px + 외곽선. `1등하면 신발 146켤레!` = 125px < 180 (미리 재 봤다)
   textCached(scene.potText, CENTER_X, POT_Y, {
-    color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow });
+    color: PAL.text, align: 'center', outline: PAL.textShadow });
 }
 
 /**
@@ -498,7 +504,7 @@ function drawTicker(scene) {
   }
   lines.slice(-3).forEach((line, i, arr) => {
     textCached(line, TICKER_CX, TICKER_Y - (arr.length - 1 - i) * LINE_H, {
-      color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow });
+      color: PAL.text, align: 'center', outline: PAL.textShadow });
   });
 }
 
@@ -509,7 +515,9 @@ function wrap(msg, maxW) {
   let cur = '';
   for (const w of words) {
     const next = cur ? `${cur} ${w}` : w;
-    if (measure(next, 1, false, true) <= maxW) { cur = next; continue; }
+    // ★ 알림이 11px 로 커졌으므로 **재는 것도 11px** 이어야 한다 (2026-08-19).
+    //   7px 로 재면 안 접히고 게이지 위로 올라탄다.
+    if (measure(next, 1, false, false) <= maxW) { cur = next; continue; }
     if (cur) out.push(cur);
     cur = w;
   }

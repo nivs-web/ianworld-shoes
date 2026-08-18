@@ -60,7 +60,7 @@ export const S = {
   difficultyHard: '어려움',
   menuCollection: '신발 도감',
   menuCharacter: '캐릭터 변경',
-  menuRename: '캐릭터 닉네임 변경하기',
+  menuRename: '닉네임 변경하기',
   menuHallOfFame: '명예의 전당',
   menuControls: '조작법 변경',
   /** 로비 메뉴 표기 — 안에 조작법 변경 + 음향 설정을 담는다 (2026-08-19) */
@@ -232,7 +232,8 @@ export const S = {
   /** 인게임 하단 — 이 판에 걸린 신발 */
   potLine: (n) => `1등하면 신발 ${n}켤레!`,
   /** 사망 화면 — 이겼을 때 가져갈 양을 크게 */
-  potWin: (n) => `승리시 신발 ${n}켤레 !`,
+  /** 사망 화면 상금 — 인게임 하단과 **같은 문구**로 통일한다 (2026-08-19) */
+  potWin: (n) => `1등하면 신발 ${n}켤레!`,
   /** 레이스 게이지 등수 — 1등만 크게·희게, 나머지는 노랗게 */
   rankTag: (n) => `${n}등`,
   /** 계단 숫자 아래 — 따라잡아야 할 거리 */
@@ -241,8 +242,8 @@ export const S = {
   /** 사망 후 부활 선택 화면 */
   fellTitle: '계단에서 떨어졌습니다',
   /** 부활 버튼은 두 줄이다 — 7px 폰트로도 한 줄이면 170px 라 패널(148)을 넘는다 */
-  reviveWith1: (n) => `신발 ${n}개 써서`,
-  reviveWith2: () => '1위로 부활',
+  /** 사망 화면 부활 버튼 — 한 줄, 큰 글씨 (2026-08-19 사용자 요청) */
+  reviveWith: (n) => `신발 ${n}개로 부활`,
   reviveShort: (n) => `부활 (신발 ${n})`,
   reviveNeed: (need, have) => `신발 ${need}켤레가 필요합니다 (지금 ${have}켤레)`,
   reviveMaxed: '부활을 모두 썼습니다',
@@ -260,9 +261,9 @@ export const S = {
    */
   slotColorName: ['빨강색', '노란색', '파랑색', '초록색'],
   /** 부활 알림 전용 — "노랑, 1등 부활" 처럼 짧게(2026-08-19) */
-  slotColorShort: ['빨강', '노랑', '파랑', '초록'],
   someoneFell: (color) => `${color}이 떨어졌다!`,
-  someoneRevived: (colorShort) => `${colorShort}, 1등 부활`,
+  /** 부활 알림 — 자리 색 + 간결하게. 인게임엔 아이디가 없어 색이 곧 신원이다 */
+  someoneRevived: (colorName) => `${colorName} 1등 부활!`,
   someoneOut: (color) => `${color}이 포기했다!`,
   /** 결과 화면 */
   waitingOthers: '다른 사람들이 아직 오르고 있습니다',

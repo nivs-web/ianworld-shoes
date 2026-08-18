@@ -83,9 +83,15 @@ export default function Lobby(nav) {
            * 그 자리는 이제 멀티 전적이 쓰고, 캐릭터 이름은 **그림 바로 아래 노란 글씨**로
            * 붙인다 — 누구를 고르고 있는지는 그림 옆이 가장 읽기 쉽다.
            */
+          /**
+           * 그림 아래 이름은 **캐릭터 이름이 아니라 내 닉네임**이다 (2026-08-19 정정).
+           * 로그인하고 직접 정한 2~5자 아이디가 "나"를 가리키는 이름이고, 캐릭터 이름은
+           * 캐릭터 변경 화면에서 고를 때만 필요하다. 로비에서 내 이름이 안 보이면
+           * 어느 계정으로 들어와 있는지 알 길이 없다.
+           */
           el('div.char-cell', null, [
             el('img', { src: characterSprite(ch.id, 'front'), alt: ch.ko }),
-            el('div.char-name', ch.ko),
+            el('div.char-name', p.nickname || '???'),
           ]),
           el('div.stats', null, [
             // 최고기록 숫자만 인게임 계단 수와 같은 글꼴·외곽선으로 (기획 요청)

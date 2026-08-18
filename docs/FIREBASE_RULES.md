@@ -275,6 +275,11 @@ service cloud.firestore {
               ".validate": "newData.isString() && newData.parent().parent().parent().child('players').hasChild(newData.val())"
             }
           },
+          "found": {
+            "$uid": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+            }
+          },
           "given": {
             "$uid": {
               ".write": "auth != null && auth.uid == $uid && (root.child('rooms').child($code).child('result').child('rankings').exists() || !newData.exists())",
@@ -366,6 +371,16 @@ service cloud.firestore {
   "아는 사람끼리만" 을 보장하려면 코드 해시로 조회하는 구조가 필요하다.
 - `userRooms/{uid}` 는 **내가 참가한 방 목록**이다. 정산을 안 하고 앱을 꺼도
   다음 접속에 여기서 미정산 방을 찾아 청산한다. 본인만 읽고 쓴다.
+
+### `result/found` — 판 중에 주운 신발 개수 (2026-08-19)
+
+`finalizeResult` 가 순위와 **함께** 박는다. 이 값이 `players` 에만 있던 동안에는
+패자가 방을 나가는 순간(`leaveRoom` 이 `players/<uid>` 를 지운다) 승자가 셀 근거가
+사라져서, "판 중에 주운 신발은 1등이 가져간다"는 규칙이 조용히 0을 세고 있었다.
+`rankings`·`given` 과 같은 이유로 **결과는 자립해야 한다.**
+
+`$other: false` 때문에 **규칙에 안 적으면 결과 확정 자체가 통째로 거부된다** —
+그러면 판이 영영 안 끝난다. 새 필드를 넣을 때 가장 조심할 지점이다.
 
 ### 대기방 참가자 카드 — 보유신발·승률 (2026-08-19)
 

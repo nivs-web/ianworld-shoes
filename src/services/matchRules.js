@@ -321,7 +321,29 @@ export function playersInRound(players) {
  * 승자 자신의 몫은 뺀다 — 승자는 이미 자기 `runResult.shoeIndices` 로 정확한 신발을
  * 받는다(`finishRun`). 여기서 또 세면 자기 것을 두 번 받는다.
  */
+/**
+ * 이 판에서 **한 사람이** 계단에서 주운 신발 수.
+ *
+ * `result.found` 를 **먼저** 본다. `players` 는 그 사람이 방을 나가면 통째로 사라지므로
+ * (`leaveRoom`) 정산 시점에는 못 믿는다 — 그것 때문에 "주운 신발이 승자에게 안 간다"는
+ * 신고가 반복됐다. `found` 는 `finalizeResult` 가 순위와 함께 박아 두므로 남는다.
+ *
+ * `players` 폴백은 **이 기능 이전에 끝난 방**과 옛 클라이언트가 확정한 방을 위한 것이다.
+ */
+export function foundOf(room, uid) {
+  const saved = room?.result?.found?.[uid];
+  if (typeof saved === 'number') return Math.max(0, saved);
+  return Math.max(0, room?.players?.[uid]?.shoesFound ?? 0);
+}
+
+/** 나(=`excludeUid`)를 뺀 나머지가 이 판에서 주운 신발 총합 — 1등이 가져갈 몫 */
 export function foundShoesTotal(room, excludeUid) {
+  const found = room?.result?.found;
+  // 결과에 박혀 있으면 그것이 진실이다. 사람이 방을 나갔어도 값이 남는다.
+  if (found && typeof found === 'object') {
+    return Object.entries(found)
+      .reduce((sum, [uid, n]) => sum + (uid === excludeUid ? 0 : Math.max(0, n ?? 0)), 0);
+  }
   return playersInRound(room?.players).reduce(
     (sum, p) => sum + (p.uid === excludeUid ? 0 : (p.shoesFound ?? 0)),
     0

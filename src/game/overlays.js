@@ -457,16 +457,33 @@ export class MultiDeathOverlay {
 
     // 판돈은 이 화면의 핵심 정보다 — 얼마가 걸려 있는지 알아야 걸지 말지 정한다
     // 상금은 크게(11px), 내 지갑은 한 단계 작게(7px) — 무엇이 중요한지 크기로 말한다
-    text(S.potWin(potShoes(this.game.room)), 90, 150, { color: PAL.gaugeWarn, align: 'center' });
+    /**
+     * 상금 줄 — 인게임 하단과 **같은 문구**(`1등하면 신발 N켤레!`)에 외곽선을 둘러
+     * 배경 위에서도 읽히게 한다. (2026-08-19)
+     *
+     * 그 아래 있던 `나의 남은 신발 N켤레` 줄은 **지웠다** — 어두운 색(textShadow)이라
+     * 배경에 묻혀 "검은 숫자만 떠 있는" 것처럼 보였고, 부활 여부는 버튼이 활성인지로
+     * 이미 알 수 있어서 정보가 겹쳤다(사용자 요청).
+     */
+    text(S.potWin(potShoes(this.game.room)), 90, 152, {
+      color: PAL.gaugeWarn, outline: PAL.textShadow, align: 'center' });
     const have = getProfile().shoesOwned ?? 0;
-    text(S.myShoes(have), 90, 164, { color: PAL.textShadow, align: 'center', small: true });
 
     const 가능 = canRevive(this.me) && have >= MULTI.reviveCost && !this.busy;
     button(16, 178, 148, 34, 가능);
-    // 한 줄로 쓰면 170px 라 패널(148)을 넘는다 — 두 줄로 나눈다
-    const c = 가능 ? PAL.text : PAL.textShadow;
-    text(S.reviveWith1(MULTI.reviveCost), 90, 183, { color: c, align: 'center', small: true });
-    text(S.reviveWith2(), 90, 194, { color: c, align: 'center', small: true });
+    /**
+     * 못 누르는 상태(신발 부족·부활 소진)도 **읽히기는 해야 한다.**
+     * 예전엔 어두운 `textShadow` 색이라 어두운 버튼 위에서 글자가 뭉개져 보였다
+     * (미리보기로 확인). 흐린 회색 + 어두운 외곽선이면 "꺼져 있지만 읽힌다".
+     */
+    const c = 가능 ? PAL.text : PAL.deadGray;
+    /**
+     * 부활 버튼 문구 — 두 줄 7px 이던 것을 **한 줄 11px + 외곽선**으로 바꿨다.
+     * (`신발 20개 써서 / 1위로 부활` → `신발 20개로 부활`, 2026-08-19 사용자 요청)
+     * 11px 는 7px 대비 두 단계 위다(이 게임의 폰트는 두 벌뿐이라 그게 최대 단계다).
+     */
+    text(S.reviveWith(MULTI.reviveCost), 90, 189, {
+      color: c, outline: PAL.textShadow, align: 'center' });
 
     button(16, 220, 148, 26, false);
     text(S.quitRound, 90, 227, { color: PAL.text, align: 'center' });

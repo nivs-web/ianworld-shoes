@@ -1002,7 +1002,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     [...String(t).toUpperCase()].reduce((a, c) => a + ((F7.glyphs[c]?.w ?? F7.glyphs['?'].w) + F7.tracking), 0);
   for (const [name, t] of [
     ['판돈', S.potLine(484)],
-    ['부활 알림', S.someoneRevived(S.slotColorShort[1])],  // 실제 호출: 짧은 색 이름 (2026-08-19)
+    ['부활 알림', S.someoneRevived(S.slotColorName[1])],  // 실제 호출: 자리 색 이름 (2026-08-19 4차)
     ['낙사 알림', S.someoneFell('빨강색')],
     ['포기 알림', S.someoneOut('초록색')],
   ]) {
@@ -1052,10 +1052,12 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('비밀방 입장 문구', S.enterByCode, '비밀방 입장');
 
   // ④ 로비 — 캐릭터 이름 · 멀티 전적
-  has('캐릭터 칸에 이름', lobby, "el('div.char-name', ch.ko)");
+  // 4차에서 캐릭터 이름 → **내 닉네임**으로 바뀌었다 (사용자 지적)
+  has('캐릭터 칸에 닉네임', lobby, "el('div.char-name', p.nickname || '???')");
   has('멀티 전적 줄', lobby, 'S.myMultiRecord(');
   eq('플레이어 이름 줄 삭제', lobby.includes('S.playerName'), false);
-  has('캐릭터 칸 폭 73px (이전 56 대비 +30%)', css, 'width: 73px;');
+  // 좁은 폰에서 뱃지가 밀리지 않게 73 → 66 으로 줄였다 (4차)
+  has('캐릭터 칸 폭 66px', css, 'width: 66px;');
 
   // ⑤ 게이지 — 한 칸 5계단, 내 얼굴도 받는다
   eq('한 칸 = 5계단', MULTI.raceStairsPerTick, 5);
@@ -1067,10 +1069,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ⑥ 말풍선은 삭제됐다 — 위 26번 그룹에서 "없다"를 이미 확인한다. 여기서는 중복 확인 안 함.
 
   // ⑦ 문구
-  eq('부활 버튼 1줄', S.reviveWith1(20), '신발 20개 써서');
-  eq('부활 버튼 2줄', S.reviveWith2(), '1위로 부활');
-  eq('사망 화면 상금', S.potWin(30), '승리시 신발 30켤레 !');
-  eq('사망 화면 내 지갑', S.myShoes(4), '나의 남은 신발 4켤레');
+  // 4차: 두 줄 7px → 한 줄 11px, 상금 문구는 인게임과 통일, 남은 신발 줄은 삭제
+  eq('부활 버튼 한 줄', S.reviveWith(20), '신발 20개로 부활');
+  eq('사망 화면 상금 = 인게임과 같은 문구', S.potWin(30), '1등하면 신발 30켤레!');
   has('사망 화면이 상금을 크게', ov, 'S.potWin(potShoes(this.game.room))');
 }
 
@@ -1088,11 +1089,11 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const ms = read('../src/services/multiSettle.js');
 
   // ① 부활 알림 — 색 이름만 짧게, "이" 조사와 "!" 를 뗐다
-  eq('노랑 부활', S.someoneRevived(S.slotColorShort[1]), '노랑, 1등 부활');
-  eq('빨강 부활', S.someoneRevived(S.slotColorShort[0]), '빨강, 1등 부활');
-  eq('파랑 부활', S.someoneRevived(S.slotColorShort[2]), '파랑, 1등 부활');
-  eq('초록 부활', S.someoneRevived(S.slotColorShort[3]), '초록, 1등 부활');
-  has('GameScene 은 짧은 색으로 알린다', gs, 'S.someoneRevived(colorShort)');
+  eq('노랑 부활', S.someoneRevived(S.slotColorName[1]), '노란색 1등 부활!');
+  eq('빨강 부활', S.someoneRevived(S.slotColorName[0]), '빨강색 1등 부활!');
+  eq('파랑 부활', S.someoneRevived(S.slotColorName[2]), '파랑색 1등 부활!');
+  eq('초록 부활', S.someoneRevived(S.slotColorName[3]), '초록색 1등 부활!');
+  has('GameScene 은 자리 색 이름으로 알린다', gs, 'this.notify(S.someoneRevived(color))');
 
   // ② 죽어서 카운트다운 중이면 등수 글자도 회색 + 작게
   has('죽으면 등수도 dead 플래그를 받는다', mh, 'dead: countdown != null');
@@ -1342,6 +1343,67 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ⑩ 숫자패드 엔터 — 기호는 숫자보다 커야 엔터처럼 보인다
   has('엔터/지우기 전용 클래스', fs.readFileSync('src/screens/multi/CodeInput.js', 'utf8'), 'key-enter');
   has('기호 키를 키웠다', css, '.keypad .key-enter');
+}
+
+{
+  console.log('\n33) ★ 판 중 주운 신발이 승자에게 — 방을 나가도 살아남는다 · 문구/레이아웃 (2026-08-19 4차)');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const st = fs.readFileSync('src/config/strings.ko.js', 'utf8');
+  const mp = fs.readFileSync('src/services/multiplayer.js', 'utf8');
+  const mr = fs.readFileSync('src/services/matchRules.js', 'utf8');
+  const ms = fs.readFileSync('src/services/multiSettle.js', 'utf8');
+
+  /**
+   * ★ 반복 신고의 진짜 원인: `shoesFound` 가 `players/<uid>` 에만 있었고 `leaveRoom` 이
+   * 그 노드를 통째로 지운다. 패자가 결과 화면에서 먼저 나가면(실제 사용자 행동) 승자가
+   * 셀 근거가 사라져 0을 세고 있었다. 그래서 **결과에 못 박는다.**
+   */
+  has('finalizeResult 가 주운 개수를 결과에 남긴다', mp, "'result/found': found");
+  has('결과의 found 를 우선해서 센다', mr, 'const found = room?.result?.found;');
+  has('사람이 나가도 결과 값으로 센다', mr, 'export function foundOf');
+  has('players 는 폴백으로만', mr, 'room?.players?.[uid]?.shoesFound');
+  has('정산이 상대 습득분을 더한다', ms, 'foundShoesTotal(r, u.uid)');
+  // 뺏긴 켤레 수에 내가 주운 몫도 합산 (사용자 요청)
+  has('뺏긴 수에 내 습득분 합산', ms, '+ foundOf(r, u.uid)');
+  // 규칙에 없으면 결과 확정이 통째로 거부된다 ($other:false)
+  {
+    const doc = fs.readFileSync('docs/FIREBASE_RULES.md', 'utf8');
+    const i = doc.indexOf('## Realtime Database');
+    const json = /```json\n([\s\S]*?)\n```/.exec(doc.slice(i))[1];
+    const rules = JSON.parse(json).rules;
+    eq('규칙에 result/found 가 있다', !!rules.rooms.$code.result.found, true);
+  }
+
+  // 문구
+  has('부활 버튼 한 줄', st, 'reviveWith: (n) => `신발 ${n}개로 부활`');
+  no('옛 두 줄 부활 문구 제거', st, 'reviveWith2');
+  has('사망 화면 상금도 같은 문구', st, 'potWin: (n) => `1등하면 신발 ${n}켤레!`');
+  has('부활 알림 색 이름 + 느낌표', st, 'someoneRevived: (colorName) => `${colorName} 1등 부활!`');
+  has('닉네임 변경하기', st, "menuRename: '닉네임 변경하기'");
+
+  // 인게임 가독성 — 7px(small) 를 버리고 11px + 외곽선
+  const mh = fs.readFileSync('src/game/multiHud.js', 'utf8');
+  for (const [label, fn] of [['거리/유지중', 'drawGapLine'], ['판돈', 'drawPot'], ['알림', 'drawTicker']]) {
+    const body = new RegExp(`function ${fn}\\(scene\\) \\{([\\s\\S]*?)\\n\\}`).exec(mh)?.[1] ?? '';
+    eq(`${label} 본문을 찾았다`, body.length > 0, true);
+    eq(`${label} — 11px (small 아님)`, /small:\s*true/.test(body), false);
+    eq(`${label} — 외곽선`, /outline:/.test(body), true);
+  }
+  has('알림 접기도 11px 로 잰다', mh, 'measure(next, 1, false, false)');
+
+  const ov = fs.readFileSync('src/game/overlays.js', 'utf8');
+  has('사망 화면 부활 문구 한 줄 11px', ov, 'S.reviveWith(MULTI.reviveCost), 90, 189');
+  no('사망 화면의 남은 신발 줄 제거', ov, 'S.myShoes(');
+
+  // 로비
+  const lobby = fs.readFileSync('src/screens/Lobby.js', 'utf8');
+  has('그림 아래는 닉네임', lobby, "el('div.char-name', p.nickname || '???')");
+  const css = fs.readFileSync('src/styles/screens.css', 'utf8');
+  const panel = /^\.panel \{([\s\S]*?)\n\}/m.exec(css)?.[1] ?? '';
+  has('패널은 줄바꿈 금지 (뱃지가 안 밀린다)', panel, 'flex-wrap: nowrap');
+  eq('캐릭터 칸 폭 10% 축소', /\.char-cell \{[\s\S]*?width: (\d+)px/.exec(css)?.[1], '66');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

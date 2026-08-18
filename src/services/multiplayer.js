@@ -940,9 +940,26 @@ export async function finalizeResult(code) {
 
   // 순위도 종료 판정과 **같은 '지금'** 을 봐야 한다 — 신호가 끊긴 사람을 위로 올리면 안 된다
   const ranked = rankPlayers(players, Date.now() + serverOffsetSync());
+
+  /**
+   * ★ **판 중에 주운 신발 개수를 결과에 못 박는다.** (2026-08-19, 반복 신고 끝에 원인 확인)
+   *
+   * 이 값은 지금까지 `players/<uid>/shoesFound` 에만 있었다. 그런데 **`leaveRoom` 은
+   * `players/<uid>` 를 통째로 지운다** — 패자가 결과 화면에서 먼저 나가는 순간(실제
+   * 사용자 행동이다) 승자가 셀 근거가 사라져서, "게임 중 주운 신발이 승자에게 간다"는
+   * 기능이 조용히 0을 세고 있었다. 시뮬레이터 S22 는 패자를 방에 남겨 둔 채 검사해서
+   * 그동안 통과했다(S22-b 가 그 구멍을 재현한다).
+   *
+   * `rankings` · `given` 과 같은 이유로 **결과는 자립해야 한다** — 사람이 방을 떠나도
+   * 정산에 필요한 값은 `result` 안에 남아 있어야 한다.
+   */
+  const found = {};
+  for (const p of players) found[p.uid] = Math.max(0, p.shoesFound ?? 0);
+
   try {
     await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
       state: 'finished',
+      'result/found': found,
       /**
        * ★ **끝난 방은 그 자리에서 매칭 창에서 내린다.** (2026-08-18)
        * 매칭은 `open == true` 인 방을 **앞 12개**만 훑는다(`SCAN_LIMIT`). 끝난 방이
