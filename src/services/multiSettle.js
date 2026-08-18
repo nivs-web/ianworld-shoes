@@ -161,6 +161,21 @@ export async function settleRoom(code, room = null) {
  *
  * @returns {Promise<number>} 실제로 정산된 방 수
  */
+/**
+ * 못 받은 신발을 언제까지 기다릴까. 패자가 앱을 아예 안 켜면 영영 안 온다 —
+ * 그 방에 계속 남아 있으면 `userRooms` 가 20칸을 다 채워 정작 새 방이 밀려난다.
+ */
+const GIVE_UP_MS = 3 * 24 * 60 * 60 * 1000;
+
+/** 방이 끝난 지 ms 가 지났나 (읽기 실패는 '아니다'로 본다 — 성급히 포기하지 않는다) */
+async function olderThan(code, ms) {
+  try {
+    const room = await Room.readRoom(code);
+    const endedAt = room?.result?.endedAt ?? 0;
+    return endedAt > 0 && Date.now() - endedAt > ms;
+  } catch { return false; }
+}
+
 export async function sweepUnsettled() {
   const u = currentUser();
   if (!u || u.guest) return 0;
@@ -177,6 +192,16 @@ export async function sweepUnsettled() {
       // 승자는 패자가 늦게 올릴 수 있으니 payTag 가 찍혔어도 다시 훑는다
       const res = await settleRoom(code);
       if (res && (res.paid.length || res.took.length)) n++;
+      /**
+       * ★ **볼일이 끝난 방에서는 빠져 나온다.** (2026-08-18)
+       * 판을 끝낸 사람이 방에 계속 남아 있으면 그 방은 `players` 가 있어 아무도 못 지우고,
+       * 매칭이 훑는 `open == true` 앞 12칸을 시체가 차지한다. 받을 게 남았으면(`pending`)
+       * 남아 있어야 나중에 걷을 수 있으므로 그때만 남긴다.
+       */
+      if (res && (!res.pending || await olderThan(code, GIVE_UP_MS))) {
+        await Room.leaveRoom(code).catch(() => {});
+        await Room.forgetRoom(code).catch(() => {});
+      }
     }
   } catch { /* 다음 접속에 다시 시도한다 */ }
   return n;

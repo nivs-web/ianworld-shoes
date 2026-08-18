@@ -144,6 +144,32 @@ function armDisconnect(fb, code) {
 /** 대기방에서 등록한 자동 이탈을 취소한다 (@see armDisconnect) */
 const disconnectRefs = new Map();
 
+/** 방을 떠났으니 예약도 지운다 — 남겨 두면 다음 방의 예약과 헷갈린다 */
+function clearDisconnect(fb, code) {
+  const ref = disconnectRefs.get(code);
+  if (!ref) return;
+  disconnectRefs.delete(code);
+  try { fb.dbMod.onDisconnect(ref).cancel().catch(() => {}); } catch { /* 무시 */ }
+}
+
+/**
+ * ★ **판이 끝나면 자동 이탈을 다시 켠다.** (2026-08-18)
+ *
+ * `holdRoomSeat` 가 게임 시작 때 예약을 껐는데 **다시 켜는 곳이 없었다.** 그래서
+ * 한 판을 끝낸 사람이 탭을 닫으면 그 방에 영원히 남는다. 결과 화면에서 로비로
+ * 나가도 `leaveRoom` 을 안 불렀으니(그것도 이번에 고쳤다) 방은 `open:true` 인 채
+ * 시체로 쌓였고, 매칭은 `open==true` 인 앞 12개만 훑으므로 **시체 12개면 전원이
+ * 새 방만 파게 된다** — 폰 세 대가 전부 방장이 되던 그 증상이다.
+ */
+export async function rearmRoomSeat(code) {
+  const fb = await rt();
+  if (!fb) return;
+  const mine = (await readOnce(fb, path(ROOMS, code, 'players', fb.uid))).val;
+  if (!mine) return;                 // 이미 방에 없다
+  if (disconnectRefs.has(code)) return;
+  armDisconnect(fb, code);
+}
+
 /**
  * 게임이 시작되면 자동 이탈을 **취소한다.** 판이 도는 중에 잠깐 끊겼다고
  * 참가자가 사라지면 순위·정산에서 통째로 빠져 버린다.
@@ -315,7 +341,24 @@ export async function resetRoom(code) {
   const read = await readOnce(fb, path(ROOMS, code));
   const room = read.val;
   if (!room) return false;
-  if (room.state === 'waiting') return true;
+  if (room.state === 'waiting') return 'ok';
+
+  /**
+   * ★ **아직 아무도 못 걷은 신발이 있으면 지우지 않는다.** (2026-08-18)
+   *
+   * 이 함수는 `result` 를 통째로 지우는데 그 안에 패자가 내놓은 `given` 이 들어 있다.
+   * 패자는 자기 지갑에서 **먼저 빼고** 올리므로, 승자가 걷기 전에 지워지면 그 신발은
+   * 게임에서 증발한다. 특히 **패자 본인이** '방에 남기'를 누르면 100% 이 경우다 —
+   * 정산은 승자만 걷어 가기 때문이다.
+   *
+   * 승자가 걷었는지는 서버의 `result/settled` 비트마스크가 안다. 걷힐 때까지
+   * 잠깐 미루면 되고, 패자가 아예 안 냈으면 `given` 자체가 없으니 바로 통과한다.
+   */
+  const rank = room.result?.rankings ?? [];
+  const given = room.result?.given ?? {};
+  const mask = Number(room.result?.settled?.[rank[0]] ?? 0);
+  const 미수령 = rank.slice(1).some((uid, i) => Array.isArray(given[uid]) && !(mask & (1 << i)));
+  if (미수령) return 'pending';
 
   const players = {};
   for (const [uid, v] of Object.entries(room.players ?? {})) {
@@ -337,7 +380,7 @@ export async function resetRoom(code) {
       result: null,
       startAt: null,
     }), undefined, '다음 판 준비');
-    return true;
+    return 'ok';
   } catch {
     return false;
   }
@@ -598,8 +641,14 @@ export function resetProgressThrottle() {
 export async function reportDeath(code, { stairs, shoesFound }) {
   const fb = await rt();
   if (!fb) return;
+  /**
+   * ★ `reachedAt` 만 **보정 안 한 폰 시계**였다. (2026-08-18)
+   * 동점이면 이 값이 순위를 가르는데, 시계가 3분 느린 폰은 항상 이기고 빠른 폰은
+   * 항상 진다. 다른 시각(`createdAt`·`startAt`)은 전부 서버 보정을 쓴다.
+   */
+  const offset = await serverOffset(fb);
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
-    stairs: stairs | 0, shoesFound: shoesFound | 0, alive: false, reachedAt: Date.now(),
+    stairs: stairs | 0, shoesFound: shoesFound | 0, alive: false, reachedAt: nowOn(fb, offset),
   }), undefined, '사망 보고').catch(() => {});
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { state: 'finished' }), undefined, '방 종료').catch(() => {});
 }
@@ -638,6 +687,14 @@ export async function finalizeResult(code) {
   try {
     await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
       state: 'finished',
+      /**
+       * ★ **끝난 방은 그 자리에서 매칭 창에서 내린다.** (2026-08-18)
+       * 매칭은 `open == true` 인 방을 **앞 12개**만 훑는다(`SCAN_LIMIT`). 끝난 방이
+       * `open:true` 로 남아 있으면 코드가 작은 순으로 그 12칸을 영구히 차지하고,
+       * 그 뒤로는 모두가 "들어갈 방이 없다"며 새 방만 판다. `resetRoom` 이 다음 판을
+       * 열 때 다시 `true` 로 올린다.
+       */
+      open: false,
       'result/rankings': rankPlayers(players),
       'result/endedAt': Date.now(),
     }), undefined, '결과 확정');
@@ -657,41 +714,52 @@ export async function leaveRoom(code) {
   if (!fb) return;
 
   /**
-   * ★ **나가기도 트랜잭션이 아니다.** (2026-08-16)
+   * ★ **나가기와 뒷정리를 한 번의 쓰기로 묶는다.** (2026-08-18)
    *
-   * 실측에서 `뒤로` 를 눌러도 방에 그대로 남아 있었다 — 트랜잭션이 빈 캐시를 보고
-   * `if (!cur) return` 으로 중단됐기 때문이다. 나간 사람이 계속 남으면 방이 찬 것처럼
-   * 보여서 **다른 사람이 못 들어온다.** 매칭이 망가지는 직접적인 경로다.
+   * 예전에는 ① 내 노드를 지우고 ② 그 다음에 방장 승계·`open` 갱신을 썼다.
+   * ②는 **항상 401 로 거부됐다** — 그 시점엔 내가 `players` 에 없어서 방 규칙의
+   * 네 조건이 하나도 안 맞는다. 실측:
    *
-   * 나가는 건 **내 참가자 노드 하나를 지우는 일**이다. 그 뒤에 방을 다시 읽어
-   * 뒷정리(빈 방 삭제 · 방장 승계 · open 갱신)를 한다.
+   *   players/나 DELETE → 200,  이어서 rooms/코드 PATCH{hostUid} → 401
+   *
+   * 결과가 고약했다. **떠난 사람이 계속 방장**이라 남은 사람들에겐 시작 버튼이
+   * 영영 안 뜨고(`WaitingRoom` 은 `hostUid == 내uid` 로만 판단한다), 4/4 라서
+   * `open:false` 가 된 방은 한 명이 빠져도 `true` 로 못 돌아가 **목록에서 사라진다.**
+   * 즉 방 하나가 통째로 죽는다.
+   *
+   * 하나의 update 로 보내면 `.write` 는 **예전 데이터**로 평가되어 내가 아직
+   * 참가자이므로 통과하고, `hostUid` 검증은 **새 데이터**를 보므로 "옛 방장이
+   * 이제 참가자에 없다"가 성립해 승계가 허용된다. 실측으로 200 을 확인했다.
    */
-  try {
-    await withTimeout(
-      fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid))),
-      undefined, '방 나가기'
-    );
-  } catch {
-    return;   // 못 지웠으면 뒷정리도 의미가 없다
-  }
-
   const room = (await readOnce(fb, path(ROOMS, code))).val;
   if (!room) return;
-  const left = Object.keys(room.players ?? {});
+  if (!room.players?.[fb.uid]) return;   // 이미 빠져 있다
 
-  // 아무도 안 남았으면 방을 치운다 (규칙이 '참가자 0명인 방'의 삭제를 허용한다)
-  if (!left.length) {
-    await withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code))), undefined, '빈 방 정리').catch(() => {});
+  const rest = Object.entries(room.players)
+    .filter(([uid]) => uid !== fb.uid)
+    .sort((a, b) => (a[1]?.joinedAt ?? 0) - (b[1]?.joinedAt ?? 0) || a[0].localeCompare(b[0]));
+
+  clearDisconnect(fb, code);
+
+  // 아무도 안 남으면 방째로 치운다 (규칙이 '참가자 0명인 방'의 삭제를 허용한다)
+  if (!rest.length) {
+    try {
+      await withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid))), undefined, '방 나가기');
+      await withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code))), undefined, '빈 방 정리');
+    } catch { /* 남아도 sweepEmptyRooms 가 치운다 */ }
     return;
   }
-  // 내가 방장이었으면 남은 사람에게 넘긴다 — 안 넘기면 아무도 시작을 못 누른다
-  const patch = {};
-  if (!room.players?.[room.hostUid]) patch.hostUid = left[0];
-  const 자리있음 = left.length < (room.maxPlayers ?? MULTI.maxPlayers);
-  if (!room.isPrivate && room.open !== 자리있음) patch.open = 자리있음;
-  if (Object.keys(patch).length) {
-    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), patch), undefined, '방 정리').catch(() => {});
-  }
+
+  const patch = { [path('players', fb.uid)]: null };
+  // 내가 방장이었으면 **가장 오래 있던 사람**에게 넘긴다 (누가 계산해도 같은 답)
+  if (room.hostUid === fb.uid) patch.hostUid = rest[0][0];
+  const 자리있음 = rest.length < (room.maxPlayers ?? MULTI.maxPlayers);
+  if (!room.isPrivate && room.state !== 'finished' && room.open !== 자리있음) patch.open = 자리있음;
+
+  await withTimeout(
+    fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), patch),
+    undefined, '방 나가기'
+  ).catch(() => {});
 }
 
 /**
@@ -702,6 +770,19 @@ export async function leaveRoom(code) {
  * 읽었다 — 무료 요금제 읽기 할당량에 그대로 꽂힌다. 정산이 밀리는 건 길어야 며칠이라
  * 최근 것만 봐도 충분하다.
  */
+/**
+ * ★ **다 끝난 방 기록을 지운다.** (2026-08-18)
+ * 이 목록은 접속할 때마다 훑는 청산 대상이다. 정산까지 끝난 방이 계속 남아 있으면
+ * 매 접속마다 쓸모없는 RTDB 왕복이 늘어나고, 20개가 차면 정작 미정산 방이 밀려난다.
+ */
+export async function forgetRoom(code) {
+  const fb = await rt();
+  if (!fb) return;
+  try {
+    await withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(MY_ROOMS, fb.uid, code))), undefined, '방 기록 정리');
+  } catch { /* 남아도 다음에 다시 시도한다 */ }
+}
+
 export async function myRoomCodes(limit = 20) {
   const fb = await rt();
   if (!fb) return [];

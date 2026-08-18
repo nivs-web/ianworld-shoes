@@ -19,11 +19,28 @@ const KEY = {
   settled: 'sf_settledMatches',
 };
 
+/**
+ * ★ **깨진 값을 조용히 버리지 않는다.** (2026-08-18)
+ *
+ * 예전에는 `JSON.parse` 가 실패하면 그냥 기본값을 돌려줬고, `loadProfile` 은 그
+ * 기본값을 **곧바로 저장까지** 했다(`migrateWallet` → `saveProfile`). 즉 저장이
+ * 반쯤 끊긴 한 번의 사고로 최고기록·도감·닉네임이 **복구 불가능하게** 사라진다.
+ * 이제 원본을 `<키>.bak` 으로 옮겨 두고 로그를 남긴다 — 최소한 되살릴 수는 있어야 한다.
+ * (덮어쓰기는 한 번만 한다. 두 번째 사고가 백업을 잡아먹으면 의미가 없다)
+ */
 function read(key, fallback) {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(key);
+    raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
-  } catch {
+  } catch (e) {
+    if (raw) {
+      try {
+        const bak = `${key}.bak`;
+        if (!localStorage.getItem(bak)) localStorage.setItem(bak, raw);
+      } catch { /* 자리가 없으면 어쩔 수 없다 */ }
+      console.warn(`[저장소] ${key} 가 깨져 기본값으로 시작합니다. 원본은 ${key}.bak 에 남겼습니다.`, e);
+    }
     return fallback;
   }
 }

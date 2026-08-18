@@ -7,6 +7,14 @@
  *
  * 패자가 아직 신발을 안 내놨으면(앱을 껐거나 느림) 승자 화면에 "나중에 들어온다"고
  * 적는다. 0켤레라고 써 놓고 조용히 나중에 채우면 속은 기분이 든다.
+ *
+ * ## 이 화면은 **방을 정리하는 자리**이기도 하다 (2026-08-18)
+ *
+ * 예전에는 여기서 나가도 방에 그대로 남았다. `leaveRoom` 호출부가 대기방 하나뿐이라
+ * 판을 끝낸 사람들이 전부 시체로 쌓였고, 매칭은 `open == true` 인 방 앞 12개만
+ * 훑으므로 **시체 12개면 모두가 새 방만 파게 된다.** 그래서 나갈 때 방에서도 빠지고,
+ * 탭을 그냥 닫는 경우를 위해 자동 이탈 예약도 다시 켠다(`rearmRoomSeat`).
+ * 단 **아직 못 받은 신발이 있으면 남는다** — 방을 나가면 규칙상 그 신발을 영영 못 걷는다.
  */
 
 import S from '../../config/strings.ko.js';
@@ -20,6 +28,10 @@ import MultiMenu from './MultiMenu.js';
 import WaitingRoom from './WaitingRoom.js';
 import Lobby from '../Lobby.js';
 
+/** 패자가 신발을 올리는 데 걸리는 시간은 보통 1~2초다. 그 창만 덮으면 된다. */
+const POLL_MS = 2000;
+const POLL_MAX = 5;
+
 export default function MultiResult(nav, params = {}) {
   const code = params.code;
   /** 이번 판의 성과 (계단·주운 신발). 승자만 계정에 반영한다 — 기획서 §5-9 */
@@ -31,8 +43,17 @@ export default function MultiResult(nav, params = {}) {
   let gone = false;
   /** '방에 남기'를 두 번 누르지 않게 */
   let staying = false;
+  /** 방에 남기로 했으면 화면을 떠날 때 방에서 빠지면 안 된다 */
+  let keepSeat = false;
+  let pollTimer = null;
+  let polls = 0;
 
   (async () => {
+    /**
+     * 판이 끝났으니 **자동 이탈 예약을 다시 켠다.** 게임 시작 때 `holdRoomSeat` 가
+     * 껐는데 다시 켜는 곳이 없어서, 결과 화면에서 탭을 닫으면 그 방에 영원히 남았다.
+     */
+    Room.rearmRoomSeat(code).catch(() => {});
     room = await Room.readRoom(code);
     settle = await settleRoom(code, room).catch(() => null);
     /**
@@ -53,10 +74,53 @@ export default function MultiResult(nav, params = {}) {
     if (settle?.pending) room = await Room.readRoom(code);
     done = true;
     if (!gone) nav.refresh();
+    // 패자가 몇 초 늦게 올린다 — 그동안 몇 번 더 걷어 본다
+    if (settle?.pending) poll();
   })();
 
+  /**
+   * ★ **못 받은 신발을 몇 초 동안 다시 걷어 본다.** (2026-08-18)
+   *
+   * 예전에는 화면이 뜰 때 딱 한 번만 걷었다. 패자는 보통 1~2초 뒤에 올리므로
+   * 거의 항상 "잠시 후 들어옵니다"가 뜨고, 그 상태로 '방에 남기'를 누르면
+   * `result` 가 지워져 **그 신발이 증발했다.** 여기서 미리 걷어 두면 그 창이 닫힌다.
+   */
+  function poll() {
+    if (gone || polls >= POLL_MAX) return;
+    polls++;
+    pollTimer = setTimeout(async () => {
+      const next = await settleRoom(code).catch(() => null);
+      if (gone) return;
+      if (next) {
+        settle = {
+          ...next,
+          took: [...(settle?.took ?? []), ...next.took],
+          won: settle?.won ?? next.won,
+        };
+        room = await Room.readRoom(code);
+        if (gone) return;
+        nav.refresh();
+      }
+      if (!next || next.pending) poll();
+    }, POLL_MS);
+  }
+
+  /**
+   * 화면을 떠나며 방에서도 빠진다 — **단, 받을 게 남았으면 남는다.**
+   * 방을 나가면 규칙상 `result/settled` 도장을 못 찍어 그 신발을 영영 못 걷는다.
+   */
+  function releaseSeat() {
+    if (keepSeat) return;
+    if (settle?.won && settle.pending) return;
+    Room.leaveRoom(code).catch(() => {});
+  }
+
   return {
-    onLeave() { gone = true; },
+    onLeave() {
+      gone = true;
+      clearTimeout(pollTimer);
+      releaseSeat();
+    },
     render() {
       /**
        * 로딩 중에도 **나갈 길을 준다.** 예전에는 "로딩 중" 한 줄만 있는 화면을 돌려줘서,
@@ -118,23 +182,20 @@ export default function MultiResult(nav, params = {}) {
           nav.refresh();
           /**
            * ★ **되돌리기 전에 한 번 더 걷는다.** (2026-08-18)
-           *
-           * `resetRoom` 은 `result` 를 통째로 지운다 — 그 안에 패자가 내놓은
-           * `given` 이 들어 있다. 화면이 뜬 **직후**에 정산이 한 번 돌지만, 패자가
-           * 그 뒤에 신발을 올리면(보통 몇 초 늦는다) 승자가 '방에 남기'를 누르는
-           * 순간 **아직 아무도 안 받은 신발이 지워진다.** 패자 지갑에서는 이미
-           * 빠져나갔으므로 그 신발은 게임에서 증발한다. 실제로 재현했다:
-           * `given=[9]` 를 올린 직후 '방에 남기' → 승자 보유량 987 그대로, `result` 는 null.
-           *
-           * 지우기 직전에 다시 걷으면 이 창이 닫힌다. 리셋 뒤에 올라오는 신발은
-           * `settleRoom` 이 `rankings` 없이는 아무것도 하지 않으므로 패자도 안 낸다.
+           * `resetRoom` 은 `result` 를 통째로 지운다 — 그 안에 패자가 내놓은 `given` 이
+           * 들어 있다. 승자가 걷기 전에 지우면 그 신발은 게임에서 증발한다.
+           * (서버도 안 걷힌 신발이 있으면 `'pending'` 을 돌려주고 리셋을 거부한다)
            */
-          try { await settleRoom(code); } catch { /* 못 걷어도 리셋은 진행한다 */ }
-          const ok = await Room.resetRoom(code).catch(() => false);
+          try { await settleRoom(code); } catch { /* 못 걷어도 아래에서 막힌다 */ }
+          const r = await Room.resetRoom(code).catch(() => false);
           staying = false;
           if (gone) return;
-          if (ok) return nav.replace(WaitingRoom, { code });
-          toast(S.networkError);
+          if (r === 'ok') {
+            keepSeat = true;            // 다음 판을 하려고 남는 것이다 — 나가면 안 된다
+            return nav.replace(WaitingRoom, { code });
+          }
+          toast(r === 'pending' ? S.resetPending : S.networkError);
+          if (r === 'pending') setTimeout(() => { if (!gone) nav.refresh(); }, 400);
           nav.refresh();
         }, { primary: true, disabled: staying }),
         button(S.playAgain, () => { nav.reset(Lobby); nav.push(MultiMenu); }),

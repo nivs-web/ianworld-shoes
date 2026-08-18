@@ -44,6 +44,12 @@ export function startGame(navigator, opt = {}) {
       controlMode: p.controlMode,
       startFloor,
       onFinish: handleFinish,
+      /**
+       * ★ **죽는 그 순간 계정에 반영한다.** (2026-08-18)
+       * 예전에는 게임오버 화면의 버튼을 눌러야만 저장돼서, 죽자마자 앱을 닫으면
+       * 그 판의 계단·신발·도감이 전부 사라졌다. (`GameScene.finish()` 주석 참고)
+       */
+      onCommit: (result) => { try { finishRun(result); } catch (e) { console.warn('[game] 결과 반영 실패', e); } },
     })
   );
   return true;
@@ -56,7 +62,8 @@ export function startGame(navigator, opt = {}) {
  * @param {'home'|'retry'} action
  */
 export function handleFinish(result, action) {
-  if (result) finishRun(result);
+  // result 가 null 이면 이미 `onCommit` 에서 반영했다는 뜻이다 (이중 집계 방지)
+  if (result) { try { finishRun(result); } catch (e) { console.warn('[game] 결과 반영 실패', e); } }
   if (action === 'retry') {
     startGame(nav, {});   // 전체화면은 유지된다
     return;

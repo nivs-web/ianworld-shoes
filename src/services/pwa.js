@@ -13,6 +13,8 @@
  * 이 파일에서 잡아 두고, 화면은 필요할 때 꺼내 쓴다.
  */
 
+import * as Scene from '../core/scene.js';
+
 /** 빌드마다 달라지는 값 — vite.config.js 의 define 에서 주입한다 */
 const BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev';
 
@@ -109,6 +111,39 @@ function warmCache() {
  * 캐시가 HMR 을 먹어서 고친 코드가 안 나온다. 예전에 실수로 켠 적이 있으면
  * 그 등록이 브라우저에 남아 있으므로 개발 모드에서는 오히려 지워 준다.
  */
+/**
+ * ★ **새 배포를 스스로 알아챈다.** (2026-08-18)
+ *
+ * `reg.update()` 만 믿으면 안 된다. 등록된 스크립트 주소는 설치 당시의
+ * `/sw.js?v=<그때 빌드>` 로 **고정**되고, `public/sw.js` 의 내용은 빌드마다
+ * 완전히 같은 바이트다. 그래서 브라우저는 매번 "바뀐 게 없다"고 판단하고
+ * **새 워커를 영영 안 만든다.** 홈 화면에 설치해 며칠씩 켜 두는 사람은
+ * 그동안 몇 번을 배포하든 옛 번들에 갇힌다.
+ *
+ * 그래서 배포 여부를 직접 본다 — 서버의 `index.html` 이 가리키는 번들 파일 이름이
+ * 지금 돌고 있는 것과 다르면 새 배포다. 이름에 해시가 붙으므로 이 비교는 정확하다.
+ *
+ * **게임 중에는 절대 새로고침하지 않는다.** 판이 날아가는 것보다 옛 번들이 낫다.
+ * 씬 스택이 비어 있을 때(= 로비·목록 같은 DOM 화면) 한 번만 갈아탄다.
+ */
+const RELOADED_TO = 'sf_reloadedTo';
+
+async function checkDeploy() {
+  try {
+    if (Scene.depth() > 0) return;                 // 게임이 돌고 있다 — 손대지 않는다
+    const html = await fetch('/index.html', { cache: 'no-store' }).then((r) => (r.ok ? r.text() : ''));
+    const served = html.match(/\/assets\/index-[A-Za-z0-9_-]+\.js/)?.[0];
+    if (!served) return;
+    const running = [...document.querySelectorAll('script[src]')]
+      .map((el) => new URL(el.src, location.href).pathname)
+      .find((p) => /\/assets\/index-/.test(p));
+    if (!running || served === running) return;    // 같은 판이다
+    if (sessionStorage.getItem(RELOADED_TO) === served) return;  // 이미 한 번 시도했다
+    sessionStorage.setItem(RELOADED_TO, served);
+    location.reload();
+  } catch { /* 못 봐도 게임은 돈다 */ }
+}
+
 export function initPwa() {
   if (!isBrowser || !('serviceWorker' in navigator)) return;
 
@@ -129,6 +164,7 @@ export function initPwa() {
           if (Date.now() - lastCheck < UPDATE_EVERY) return;
           lastCheck = Date.now();
           reg.update().catch(() => {});
+          checkDeploy();
         });
       })
       .catch((e) => console.warn('[pwa] 서비스 워커 등록 실패 — 오프라인 없이 계속합니다', e));

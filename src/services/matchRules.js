@@ -23,10 +23,23 @@ import { MULTI } from '../config/balance.js';
  * @returns {string[]} 1등부터 uid 목록
  */
 export function rankPlayers(players) {
+  /**
+   * ★ **동점이면 살아남은 쪽이 위다.** (2026-08-18)
+   *
+   * 예전에는 성적이 같으면 `reachedAt` 이 이른 쪽이 이겼는데, 그 값은 **죽은 사람만**
+   * 찍힌다(`reportDeath`). 살아 있는 사람은 `Infinity` 라 항상 뒤로 밀렸다.
+   * 그래서 이런 게 성립했다: 카운트다운이 끝나자마자 일시정지 → 나가기.
+   * 전원이 0계단·0신발인 그 순간에 **나간 사람만** `reachedAt` 을 갖게 되어
+   * **1등이 되고 남은 사람들의 신발을 한 켤레씩 걷어 갔다.**
+   *
+   * 이 판의 승부는 "누가 먼저 떨어지느냐"다. 성적이 같다면 떨어진 사람이 아래로 간다.
+   */
+  const survived = (p) => (p.alive === false ? 0 : 1);
   return [...players]
     .sort((a, b) =>
       (b.shoesFound ?? 0) - (a.shoesFound ?? 0) ||
       (b.stairs ?? 0) - (a.stairs ?? 0) ||
+      survived(b) - survived(a) ||
       (a.reachedAt ?? Infinity) - (b.reachedAt ?? Infinity) ||
       String(a.uid).localeCompare(String(b.uid))
     )

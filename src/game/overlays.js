@@ -42,12 +42,36 @@ export class PauseOverlay {
     this.game = game;
     /** 키보드용 커서. 터치는 직접 누르므로 이 값과 무관하다. */
     this.sel = 0;
+    /** 멀티 나가기는 두 번 눌러야 한다 — 한 번은 확인 */
+    this.confirmExit = false;
   }
 
-  /** 화면에 보이는 순서대로 */
+  /**
+   * 화면에 보이는 순서대로.
+   *
+   * ★ **멀티에서는 '다시하기'가 없다.** (2026-08-18)
+   * 화면 위쪽 1/5 을 아무 데나 누르면 일시정지라(`layout.TOUCH.pauseBelowY`) 실수로
+   * 열리기 쉬운데, 거기서 '다시하기'는 새 맵이 아니라 **사망 보고 → 몰수패**였다
+   * (멀티의 `onFinish` 는 `action` 을 무시하므로 '나가기'와 완전히 같다).
+   * 그리고 나가기는 **한 번 더 눌러야** 나간다 — 지고 나서 되돌릴 방법이 없는 행동이다.
+   */
   get items() {
+    const resume = { label: S.resume, run: () => { Sfx.play('sfx_menu_back'); Scene.pop(); } };
+    if (this.game.multi) {
+      return [
+        resume,
+        {
+          label: this.confirmExit ? S.forfeitConfirm : S.forfeit,
+          run: () => {
+            if (!this.confirmExit) { this.confirmExit = true; Sfx.play('sfx_menu_move'); return; }
+            Sfx.play('sfx_menu_back');
+            this.game.leave('home');
+          },
+        },
+      ];
+    }
     return [
-      { label: S.resume, run: () => { Sfx.play('sfx_menu_back'); Scene.pop(); } },
+      resume,
       { label: S.restart, run: () => { Sfx.play('sfx_menu_select'); this.restart(); } },
       { label: S.toLobby, run: () => { Sfx.play('sfx_menu_back'); this.game.leave('home'); } },
     ];
@@ -57,7 +81,8 @@ export class PauseOverlay {
     clearInput();
     setTapHandler((x, y) => {
       const hit = PAUSE.btnY.findIndex((by) => inRect(x, y, PAUSE.btnX, by, PAUSE.btnW, PAUSE.btnH));
-      if (hit < 0) return false;
+      // 멀티는 항목이 둘뿐이라 세 번째 칸을 눌러도 아무 일도 없어야 한다
+      if (hit < 0 || !this.items[hit]) return false;
       this.items[hit].run();
       return true;
     }, true);

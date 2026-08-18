@@ -499,5 +499,73 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('방 이름이 줄어들 수 있다 (min-width: 0)', /min-width:\s*0/.test(roomName), true);
 }
 
+// ── 19) 2026-08-18 검수에서 고친 10건이 되돌아가지 않았는가 ──
+{
+  console.log('\n19) 재발 방지 (2026-08-18)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+
+  const mp = read('../src/services/multiplayer.js');
+  const mr = read('../src/screens/multi/MultiResult.js');
+  const ms = read('../src/services/multiSettle.js');
+  const gs = read('../src/game/GameScene.js');
+  const ov = read('../src/game/overlays.js');
+  const ci = read('../src/screens/multi/CodeInput.js');
+  const sg = read('../src/screens/startGame.js');
+  const sl = read('../src/services/storageLocal.js');
+  const pw = read('../src/services/pwa.js');
+
+  // 1) 나가기는 한 번의 멀티패스 업데이트여야 한다 (지운 뒤에 쓰면 규칙이 401 을 준다)
+  const leave = mp.slice(mp.indexOf('export async function leaveRoom'), mp.indexOf('export async function forgetRoom'));
+  eq('나가기 — 삭제와 뒷정리를 한 번에 쓴다', /\[path\('players', fb\.uid\)\]: null/.test(leave), true);
+  eq('나가기 — 방장 승계를 같은 patch 에 싣는다', /patch\.hostUid/.test(leave), true);
+
+  // 2) 판이 끝나면 매칭 창에서 내려가고, 자동 이탈이 다시 켜진다
+  has('결과 확정 시 open:false', mp, 'open: false');
+  has('자동 이탈 재무장 함수', mp, 'export async function rearmRoomSeat');
+  has('결과 화면이 재무장을 부른다', mr, 'rearmRoomSeat');
+  has('결과 화면이 방에서 빠진다', mr, 'Room.leaveRoom(code)');
+  has('접속 청산이 볼일 끝난 방에서 빠진다', ms, 'Room.leaveRoom(code)');
+
+  // 3) 안 걷힌 신발이 있으면 방을 되돌리지 않는다
+  has("리셋이 'pending' 을 돌려준다", mp, "return 'pending'");
+  has('결과 화면이 pending 을 안내한다', mr, 'S.resetPending');
+
+  // 4) 판이 끝나는 즉시 계정에 반영
+  has('게임이 즉시 반영 콜백을 부른다', gs, 'this.commitRun();');
+  has('싱글이 onCommit 을 넘긴다', sg, 'onCommit:');
+
+  // 5) 종료 재진입 방지
+  has('끝난 판은 update 를 멈춘다', gs, 'if (this.over) return;');
+  has('나가기 재진입 방지', gs, 'if (this.leaving) return;');
+
+  // 6) 멀티 일시정지에는 다시하기가 없다
+  has('멀티 일시정지 — 기권 확인 단계', ov, 'confirmExit');
+
+  // 7) 코드 입장도 대기자를 안다
+  has('코드 입장이 waiting 을 처리한다', ci, "r === 'waiting'");
+
+  // 8) 동점이면 살아남은 쪽이 위
+  eq('동점 — 나간 사람이 1등이 될 수 없다',
+     M.rankPlayers([
+       { uid: 'quit', stairs: 0, shoesFound: 0, alive: false, reachedAt: 100 },
+       { uid: 'stay', stairs: 0, shoesFound: 0, alive: true },
+     ]), ['stay', 'quit']);
+  eq('둘 다 죽었으면 먼저 도달한 쪽이 위',
+     M.rankPlayers([
+       { uid: 'a', stairs: 3, alive: false, reachedAt: 200 },
+       { uid: 'b', stairs: 3, alive: false, reachedAt: 100 },
+     ]), ['b', 'a']);
+  has('사망 보고가 서버 보정 시각을 쓴다', mp, 'reachedAt: nowOn(fb, offset)');
+
+  // 9) 새 배포 감지
+  has('배포 감지 루틴', pw, 'async function checkDeploy');
+  has('게임 중에는 새로고침하지 않는다', pw, 'Scene.depth() > 0');
+
+  // 10) 깨진 저장값 백업
+  has('깨진 저장값을 .bak 으로 남긴다', sl, '.bak');
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

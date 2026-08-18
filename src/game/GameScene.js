@@ -51,6 +51,18 @@ export class GameScene {
     this.startFloor = opt.startFloor ?? 0;
     this.onFinish = opt.onFinish ?? null;
     /**
+     * ★ **판이 끝나는 순간 결과를 계정에 반영한다.** (2026-08-18)
+     * 예전에는 게임오버 화면의 **버튼을 눌러야만** 저장됐다. 죽고 나서 전화가 오거나
+     * 앱을 닫으면 300계단도, 그 판에 주운 신발도 전부 사라졌다. 판이 끝난 그 자리에서
+     * 부르는 콜백을 두고, 나중에 `leave()` 가 또 반영하지 않도록 `committed` 로 막는다.
+     */
+    this.onCommit = opt.onCommit ?? null;
+    this.committed = false;
+    /** 판이 끝났다 — 입력도 게이지도 멈춘다 (결과 확정을 기다리는 동안 계속 돌면 안 된다) */
+    this.over = false;
+    /** `leave()` 재진입 방지 */
+    this.leaving = false;
+    /**
      * 멀티일 때만 채워진다: { code, startAt }.
      * `startAt` 은 **서버 시각 기준 절대값**이라, 각자 자기 시계 오차를 빼고
      * 그 순간에 출발하면 네 명이 같은 계단에서 시작한다.
@@ -81,6 +93,9 @@ export class GameScene {
     this.revives = 0;
     this.reviveEarned = 0; // 이미 지급한 부활 수 (balance.REVIVE.shoesPerRevive 개마다 1개)
     this.overlayDone = false;
+    this.over = false;
+    this.committed = false;
+    this.leaving = false;
     /** 함성 발동용 — 실수 없이 연속으로 오른 칸 수 (기획서 §9-7-1) */
     this.stepStreak = 0;
     /** 이번 판에 주운 신발 index 목록 — 판이 끝나면 도감·자산에 반영한다 */
@@ -176,6 +191,8 @@ export class GameScene {
 
   /** 멀티 종료 — 부활 없이 곧장 정산으로 (기획서 §5-6 '멀티는 부활 없음') */
   endMulti() {
+    if (this.over) return;   // 두 번 부르면 결과 화면이 두 개 뜬다
+    this.over = true;
     Bgm.stopBgm();
     this.roomUnsub?.();
     this.roomUnsub = null;
@@ -315,6 +332,13 @@ export class GameScene {
 
   update() {
     if (!this.ready) return;
+    /**
+     * ★ **끝난 판은 더 돌지 않는다.** (2026-08-18)
+     * 멀티 종료는 `finalizeResult`(RTDB 왕복 두 번)를 기다린 뒤에야 화면이 바뀐다.
+     * 그동안 이 루프가 계속 돌아서 **게이지가 마저 닳아 사망음이 결과 화면 위로 겹쳤고**,
+     * 끝난 뒤의 계단이 서버에 덮어써져 순위표와 방 기록이 어긋났다.
+     */
+    if (this.over) return;
 
     /**
      * 멀티 출발 게이트. 카운트다운이 남아 있으면 **입력도 게이지도 멈춘다** —
@@ -377,7 +401,22 @@ export class GameScene {
 
   finish() {
     Bgm.stopBgm();
-    Scene.push(new GameOverOverlay(this, this.bestSoFar()));
+    /**
+     * ★ **여기서 계정에 반영한다.** (2026-08-18)
+     * 게임오버 패널이 뜬 그 순간이 판의 끝이다. 버튼을 눌러야만 저장하던 예전 구조는
+     * 죽자마자 앱을 닫은 사람의 판을 통째로 버렸다. `bestSoFar()` 가 이번 판을 포함해
+     * 계산하므로 **반영 전에** 먼저 읽는다 — 안 그러면 방금 넣은 기록과 비교하게 된다.
+     */
+    const best = this.bestSoFar();
+    this.commitRun();
+    Scene.push(new GameOverOverlay(this, best));
+  }
+
+  /** 이번 판 결과를 계정에 한 번만 반영한다 */
+  commitRun() {
+    if (this.committed || !this.onCommit) return;
+    this.committed = true;
+    try { this.onCommit(this.resultOf()); } catch (e) { console.warn('[game] 결과 반영 실패', e); }
   }
 
   /** 게임오버 패널에 띄울 BEST — 이번 판을 포함한 값 */
@@ -396,8 +435,18 @@ export class GameScene {
    * @param {'home'|'retry'} action
    */
   leave(action) {
+    /**
+     * ★ **두 번 나가지 않는다.** (2026-08-18)
+     * 멀티에서 결과 확정을 기다리는 사이 일시정지 → 나가기를 누르면 `onFinish` 가
+     * 두 번 불려 **결과 화면이 두 개** 뜨고, 각자 정산을 돌려 패자가 신발을 두 번 냈다
+     * (한 켤레는 아무도 못 받고 증발한다).
+     */
+    if (this.leaving) return;
+    this.leaving = true;
     Bgm.stopBgm();
-    const result = this.resultOf();
+    const result = this.committed ? null : this.resultOf();
+    this.committed = true;
+    this.over = true;
     if (!this.onFinish) {
       console.error('[game] onFinish 가 없어 로비로 돌아갈 수 없다 — GameScene 생성부를 확인할 것');
       return;

@@ -193,6 +193,11 @@ export const S = {
   waitingForNextRound: '다음 판을 기다리는 중',
   nextRound: '다음 판 준비',
   stayInRoom: '방에 남기',
+  /** 패자가 낸 신발을 승자가 아직 못 걷었다 — 지금 방을 되돌리면 그 신발이 증발한다 */
+  resetPending: '신발 정산 중입니다 — 잠시만요',
+  /** 멀티 일시정지: 나가면 곧 패배다. 한 번 더 눌러야 나간다 */
+  forfeit: '기권하고 나가기',
+  forfeitConfirm: '정말 기권할까요? (한 번 더)',
   roomFull: '방이 가득 찼습니다',
   go: 'GO!',
 
