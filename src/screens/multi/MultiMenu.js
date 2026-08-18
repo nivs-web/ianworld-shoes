@@ -15,6 +15,7 @@ import { canJoinMulti } from '../../services/matchRules.js';
 import * as Room from '../../services/multiplayer.js';
 import WaitingRoom from './WaitingRoom.js';
 import CodeInput from './CodeInput.js';
+import RoomList from './RoomList.js';
 import Lobby from '../Lobby.js';
 
 export default function MultiMenu(nav) {
@@ -63,6 +64,11 @@ export default function MultiMenu(nav) {
         button(S.createPrivateRoom, () => guard(() => Room.createRoom({ isPrivate: true, difficulty: p.difficulty })), {
           disabled: !canPlay || busy,
         }),
+        /**
+         * 자동 매칭이 실패해도 **사용자가 직접 고를 길**을 둔다.
+         * 목록이 없으면 "왜 안 되는지" 를 화면에서 알 방법이 전혀 없다.
+         */
+        button(S.roomListTitle, () => nav.push(RoomList), { disabled: !canPlay || busy }),
         button(S.enterByCode, () => nav.push(CodeInput), { disabled: !canPlay || busy }),
 
         !canPlay

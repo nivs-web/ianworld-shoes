@@ -440,5 +440,36 @@ console.log('16) 자동 매칭 — 두 대가 반드시 같은 방으로 모인�
   eq('나중에 만든 폰2 만 옮긴다', 폰2가_옮길까, true);
 }
 
+// ─────────────────────────────────────────────
+console.log('17) 방 목록 · 대기자 (2026-08-16)');
+{
+  const P = (n) => Object.fromEntries(Array.from({length:n},(_,i)=>['u'+i,{}]));
+  const 대기중 = { code:'1111', state:'waiting', hostUid:'h', createdAt:1, players:P(2), maxPlayers:4 };
+  const 게임중 = { code:'2222', state:'playing', hostUid:'h', createdAt:2, players:P(3), maxPlayers:4 };
+  const 만원   = { code:'3333', state:'playing', hostUid:'h', createdAt:3, players:P(4), maxPlayers:4 };
+  const 끝난방 = { code:'4444', state:'finished', hostUid:'h', createdAt:4, players:P(1), maxPlayers:4 };
+
+  eq('대기중 방에는 들어간다', M.hasSeat(대기중, 'me'), true);
+  eq('게임중이어도 자리 있으면 들어간다 (대기자)', M.hasSeat(게임중, 'me'), true);
+  eq('4/4 는 못 들어간다', M.hasSeat(만원, 'me'), false);
+  eq('끝난 방은 후보가 아니다', M.hasSeat(끝난방, 'me'), false);
+  eq('내가 방장인 방은 제외', M.hasSeat({...대기중, hostUid:'me'}, 'me'), false);
+  eq('이미 들어가 있으면 제외', M.hasSeat({...대기중, players:{me:{}}}, 'me'), false);
+
+  // 대기자는 이번 판 사람이 아니다 — 순위·정산에서 통째로 빠져야 한다
+  const players = {
+    a: { stairs: 30, shoesFound: 2 },
+    b: { stairs: 10, shoesFound: 1 },
+    c: { stairs: 0, shoesFound: 0, waiting: true },   // 게임 중에 들어온 사람
+  };
+  const round = M.playersInRound(players);
+  eq('대기자는 이번 판에서 빠진다', round.map((p) => p.uid).sort(), ['a', 'b']);
+  eq('순위에도 안 들어간다', M.rankPlayers(round), ['a', 'b']);
+  eq('정산 대상도 2명뿐', Object.keys(M.settlementCounts(M.rankPlayers(round))).length, 2);
+  // 만약 대기자가 섞이면 — 뛰지도 않았는데 꼴찌가 되어 신발을 뺏긴다
+  const 잘못 = M.rankPlayers(Object.entries(players).map(([uid, v]) => ({ uid, ...v })));
+  eq('(대조) 안 걸러내면 대기자가 꼴찌로 낀다', 잘못.length, 3);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

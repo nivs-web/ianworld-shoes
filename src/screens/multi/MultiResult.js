@@ -10,13 +10,14 @@
  */
 
 import S from '../../config/strings.ko.js';
-import { el, button, backButton, screen, title } from '../ui.js';
+import { el, button, backButton, screen, title, toast } from '../ui.js';
 import { characterById, characterSprite } from '../../data/characters.js';
 import { currentUser } from '../../services/auth.js';
 import { finishRun } from '../../services/profile.js';
 import * as Room from '../../services/multiplayer.js';
 import { settleRoom } from '../../services/multiSettle.js';
 import MultiMenu from './MultiMenu.js';
+import WaitingRoom from './WaitingRoom.js';
 import Lobby from '../Lobby.js';
 
 export default function MultiResult(nav, params = {}) {
@@ -28,6 +29,8 @@ export default function MultiResult(nav, params = {}) {
   let settle = null;
   let done = false;
   let gone = false;
+  /** '방에 남기'를 두 번 누르지 않게 */
+  let staying = false;
 
   (async () => {
     room = await Room.readRoom(code);
@@ -104,7 +107,23 @@ export default function MultiResult(nav, params = {}) {
          * **로비로 돌아갈 길이 사라졌다.** 신발이 2켤레 미만이면 방 입장 버튼도
          * 전부 비활성이라 완전히 갇혔다. (`Lobby.js` 에 같은 함정 기록이 있다)
          */
-        button(S.playAgain, () => { nav.reset(Lobby); nav.push(MultiMenu); }, { primary: true }),
+        /**
+         * ★ **방에 남아 다음 판을 한다.** (2026-08-16)
+         * 게임 중에 들어온 대기자는 이 버튼이 눌려 방이 `waiting` 으로 돌아와야
+         * 비로소 자기 판을 할 수 있다. 누가 눌러도 결과가 같다(이미 대기중이면 무시).
+         */
+        button(S.stayInRoom, async () => {
+          if (staying) return;
+          staying = true;
+          nav.refresh();
+          const ok = await Room.resetRoom(code).catch(() => false);
+          staying = false;
+          if (gone) return;
+          if (ok) return nav.replace(WaitingRoom, { code });
+          toast(S.networkError);
+          nav.refresh();
+        }, { primary: true, disabled: staying }),
+        button(S.playAgain, () => { nav.reset(Lobby); nav.push(MultiMenu); }),
         backButton(S.toLobby, () => nav.reset(Lobby))
       );
     },

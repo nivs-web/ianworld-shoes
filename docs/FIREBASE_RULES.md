@@ -119,12 +119,12 @@ service cloud.firestore {
       ".read": "auth != null",
       ".indexOn": ["open"],
       "$code": {
-        ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && data.child('state').val() == 'waiting') || (!newData.exists() && !data.child('players').hasChildren()))",
+        ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && !data.child('players').child(auth.uid).exists()) || (!newData.exists() && !data.child('players').hasChildren()))",
 
         "code":       { ".validate": "newData.val() == $code" },
         "isPrivate":  { ".validate": "newData.isBoolean() && (!data.exists() || newData.val() == data.val())" },
         "open":       { ".validate": "newData.isBoolean()" },
-        "seed":       { ".validate": "newData.isNumber() && (!data.exists() || data.val() == newData.val())" },
+        "seed":       { ".validate": "newData.isNumber() && (!data.exists() || newData.val() == data.val() || newData.parent().child('state').val() == 'waiting')" },
         "difficulty": { ".validate": "newData.val() == 'easy' || newData.val() == 'normal' || newData.val() == 'hard'" },
         "state":      { ".validate": "newData.val() == 'waiting' || newData.val() == 'countdown' || newData.val() == 'playing' || newData.val() == 'finished'" },
         "maxPlayers": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 4" },
@@ -145,6 +145,7 @@ service cloud.firestore {
             "alive":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
             "joinedAt":    { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "reachedAt":   { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
+            "waiting":     { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
             "$other":      { ".validate": false }
           }
         },
@@ -189,6 +190,13 @@ service cloud.firestore {
 ```
 
 **각 줄의 이유**
+
+- **게임 중인 방에도 들어갈 수 있다** — 입장 조건에서 `state == 'waiting'` 을 뺐다.
+  자리가 남아 있으면 **대기자**(`waiting: true`)로 들어가 다음 판을 기다린다.
+  대기자는 이번 판의 순위·정산에서 통째로 빠진다(`matchRules.playersInRound`).
+  대신 "**내가 아직 없을 때만** 나를 넣을 수 있다"로 좁혔다.
+- **`seed` 는 대기 상태에서만 다시 뽑을 수 있다** — 다음 판을 시작할 때 새 계단이 필요하다.
+  판이 도는 중에는 여전히 못 바꾼다(바뀌면 사람마다 다른 계단이 나와 승부가 성립하지 않는다).
 
 - **`$uid == auth.uid || newData.val() == data.val()`** — 이 규칙의 심장. 잎마다 붙어 있고,
   "내 값만 바꿀 수 있다. 남의 값은 **있는 그대로** 다시 써 넣어야 한다"는 뜻이다.

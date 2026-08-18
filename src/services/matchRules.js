@@ -135,3 +135,30 @@ export function byPreference(a, b) {
     String(a.code).localeCompare(String(b.code))
   );
 }
+
+/**
+ * 자리가 남아 있는가 — **상태는 보지 않는다.** (2026-08-16)
+ *
+ * 게임 중인 방에도 자리가 있으면 **대기자로** 들어간다. 보통의 온라인 게임처럼
+ * 다음 판을 기다리는 것이다. 예전에는 `state !== 'waiting'` 이면 후보에서 빼 버려서,
+ * 먼저 시작한 방이 있어도 "들어갈 데가 없다"며 새 방을 팠다 — 그래서 다들 방장이 됐다.
+ */
+export function hasSeat(room, myUid, maxPlayers = 4) {
+  if (!room || !room.code) return false;
+  if (room.state === 'finished') return false;
+  if (room.hostUid === myUid) return false;
+  if (room.players?.[myUid]) return false;
+  return Object.keys(room.players ?? {}).length < (room.maxPlayers ?? maxPlayers);
+}
+
+/**
+ * **이번 판에 실제로 뛴 사람들.**
+ *
+ * 게임 중에 들어온 대기자(`waiting: true`)는 순위에도 정산에도 들어가면 안 된다.
+ * 뛰지도 않은 판에서 꼴찌가 되어 신발을 뺏기면 그건 그냥 사고다.
+ */
+export function playersInRound(players) {
+  return Object.entries(players ?? {})
+    .filter(([, v]) => !v?.waiting)
+    .map(([uid, v]) => ({ uid, ...v }));
+}

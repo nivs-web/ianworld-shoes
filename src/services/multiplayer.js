@@ -13,7 +13,7 @@ import { getRtdb, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { MULTI } from '../config/balance.js';
-import { makeRoomCode, isRoomCode, rankPlayers, joinable, byPreference } from './matchRules.js';
+import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound } from './matchRules.js';
 
 const ROOMS = 'rooms';
 const MY_ROOMS = 'userRooms';
@@ -224,66 +224,156 @@ export async function joinRoom(code) {
   const fb = await rt();
   if (!fb) return 'error';
   const p = L.loadProfile();
-  const roomRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
 
   /**
-   * ★ **트랜잭션 전에 방을 반드시 한 번 읽는다.** (2026-08-16)
+   * ★ **트랜잭션을 버렸다.** (2026-08-16, 세 번째 시도 만에)
    *
-   * 이게 없어서 **자동 매칭이 통째로 고장나 있었다.** 두 대로 '방 입장'을 눌러도
-   * 서로를 못 찾고 각자 방만 만들었다.
+   * 파이어베이스 트랜잭션은 **로컬 캐시 값으로 먼저 한 번 호출**된다. 남의 방은 캐시에
+   * 없으니 그 값이 `null` 이고, 핸들러가 `undefined` 를 돌려주면 트랜잭션은 서버 값을
+   * 기다리지 않고 **그 자리에서 끝난다.** 그래서 남의 방은 언제나 '없는 방'이었다.
    *
-   * 파이어베이스 트랜잭션은 **클라이언트가 들고 있는 값으로 먼저 한 번 호출**된다.
-   * 한 번도 읽은 적 없는 경로면 그 값은 `null` 이다. 그런데 예전 코드는
-   * `if (!cur) { verdict='notfound'; return; }` 로 **거기서 곧장 중단**했다 —
-   * 핸들러가 `undefined` 를 돌려주면 트랜잭션은 서버 값을 기다리지 않고 그대로 끝난다.
+   * 미리 `get()` 으로 읽어 캐시를 채워 봤지만 소용없었다 — `onlyOnce` 읽기는 리스너가
+   * 곧바로 떨어지고, **리스너가 없으면 RTDB 는 그 경로의 캐시를 버린다.** 진단 훅으로
+   * 확인한 결과가 정확히 그랬다: `readRoom` 은 방을 제대로 읽는데 바로 다음 줄의
+   * `joinRoom` 은 여전히 `notfound` 였다.
    *
-   * 즉 **남의 방은 무조건 '없는 방'으로 판정**됐다. 자동 매칭은 후보를 전부 그렇게
-   * 흘려보내고 마지막 줄의 `createRoom()` 으로 떨어졌고, 코드로 입장도 멀쩡한 코드에
-   * "방을 찾을 수 없습니다"를 띄웠다. 규칙 문제로 보였지만(실제로 규칙도 따로 문제가
-   * 있었다) 이건 전혀 다른 층의 버그다.
-   *
-   * 먼저 읽어 두면 캐시가 채워져 트랜잭션 첫 호출이 진짜 값을 받는다.
-   * 덤으로 정원·상태 판정을 트랜잭션 밖에서 미리 할 수 있어 헛트랜잭션이 줄어든다.
+   * 그래서 방향을 바꿨다. **입장은 내 참가자 노드 하나를 쓰는 일**이다 —
+   * 남의 값을 건드리지 않으므로 애초에 트랜잭션이 필요 없다.
+   * 정원 초과만 쓰고 나서 확인하고, 넘쳤으면 스스로 물러난다.
    */
-  if (!(await waitConnected(fb))) return 'error';   // 연결도 안 된 채 '방 없음'이라 하지 않는다
+  if (!(await waitConnected(fb))) return 'error';
   const read = await readOnce(fb, path(ROOMS, code));
   if (!read.ok) return 'error';                     // 못 읽은 것과 없는 것은 다르다
-  const seen = read.val;
-  if (!seen) return 'notfound';
-  if (!seen.players?.[fb.uid]) {
-    if (seen.state !== 'waiting') return 'started';
-    if (Object.keys(seen.players ?? {}).length >= (seen.maxPlayers ?? MULTI.maxPlayers)) return 'full';
-  }
+  const room = read.val;
+  if (!room) return 'notfound';
+  if (room.players?.[fb.uid]) { await noteMyRoom(fb, code); return 'ok'; }  // 재입장
 
-  let verdict = 'error';
+  const max = room.maxPlayers ?? MULTI.maxPlayers;
+  const n = Object.keys(room.players ?? {}).length;
+  if (n >= max) return 'full';
+
+  /**
+   * ★ **게임 중인 방에는 '대기자'로 들어간다.** (2026-08-16)
+   * 보통의 온라인 게임처럼, 자리가 남아 있으면 일단 들어가서 다음 판을 기다린다.
+   * `waiting: true` 인 사람은 **이번 판의 순위·정산에서 통째로 빠진다** —
+   * 뛰지도 않은 판에서 져서 신발을 뺏기면 안 된다. (matchRules.playersInRound)
+   */
+  const asWaiter = room.state !== 'waiting';
+  const me = { ...meRecord(p), ...(asWaiter ? { waiting: true } : {}) };
+
   try {
-    const res = await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
-      // 읽고 왔는데도 null 이면 그 사이에 방이 사라진 것이다 (드물지만 가능)
-      if (!cur) { verdict = 'notfound'; return; }
-      if (cur.players?.[fb.uid]) { verdict = 'ok'; return cur; } // 재입장
-      if (cur.state !== 'waiting') { verdict = 'started'; return; }
-      const n = Object.keys(cur.players ?? {}).length;
-      if (n >= (cur.maxPlayers ?? MULTI.maxPlayers)) { verdict = 'full'; return; }
-      cur.players = { ...(cur.players ?? {}), [fb.uid]: meRecord(p) };
-      /**
-       * ★ **방장이 사라진 방은 내가 이어받는다.** (2026-08-16)
-       *
-       * 연결이 끊기면 `onDisconnect` 가 그 사람을 방에서 지운다. 그래서 참가자가
-       * 0명인데 `hostUid` 만 남은 빈 방이 생긴다. 그 방에 들어가면 **아무도 방장이
-       * 아니라서 시작 버튼이 영영 안 나온다** — 둘이 만나도 게임을 시작할 수가 없다.
-       * 규칙도 "직전 방장이 이미 없으면 바꿀 수 있다"로 열어 뒀다 (FIREBASE_RULES.md).
-       */
-      if (!cur.players[cur.hostUid]) cur.hostUid = fb.uid;
-      if (n + 1 >= (cur.maxPlayers ?? MULTI.maxPlayers)) cur.open = false;
-      verdict = 'ok';
-      return cur;
-    }), undefined, '방 입장');
-    if (!res.committed && verdict === 'error') verdict = 'full';
+    await withTimeout(
+      fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), me),
+      undefined, '방 입장'
+    );
   } catch {
     return 'error';
   }
-  if (verdict === 'ok') await noteMyRoom(fb, code);
-  return verdict;
+
+  // 정원 확인 — 마지막 한 자리에 둘이 동시에 들어왔을 수 있다
+  const after = (await readOnce(fb, path(ROOMS, code))).val;
+  const seats = Object.entries(after?.players ?? {});
+  if (seats.length > max) {
+    // 늦게 들어온 순으로 물러난다 — 모두가 같은 규칙을 보므로 정확히 초과분만 빠진다
+    const order = seats.sort((a, b) => (a[1].joinedAt ?? 0) - (b[1].joinedAt ?? 0)).map(([u]) => u);
+    if (order.indexOf(fb.uid) >= max) {
+      await withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid))), undefined, '자리 반납').catch(() => {});
+      return 'full';
+    }
+  }
+
+  /**
+   * 방장이 이미 없는 방이면 내가 이어받는다. 안 그러면 **아무도 방장이 아니라서
+   * 시작 버튼이 영영 안 나온다** — 둘이 만나도 게임을 시작할 수가 없다.
+   */
+  if (after && !after.players?.[after.hostUid]) {
+    await withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'hostUid')), fb.uid), undefined, '방장 승계').catch(() => {});
+  }
+  // 정원이 찼으면 목록에서 내린다
+  if (seats.length >= max) {
+    await withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'open')), false), undefined, '정원 마감').catch(() => {});
+  }
+
+  await noteMyRoom(fb, code);
+  return asWaiter ? 'waiting' : 'ok';
+}
+
+
+/**
+ * ★ **다음 판을 위해 방을 되돌린다.** (2026-08-16)
+ *
+ * 판이 끝나면 방은 `finished` 로 굳고 모두가 로비로 흩어졌다. 그러면 게임 중에 들어온
+ * **대기자는 영영 자기 판을 못 한다** — "레디가 풀릴 때까지 기다린다"가 성립하려면
+ * 방이 다시 `waiting` 으로 돌아와야 한다.
+ *
+ * 누가 눌러도 결과가 같아야 하므로 **이미 `waiting` 이면 아무것도 하지 않는다.**
+ * 시드는 새로 뽑는다 — 같은 계단을 두 번 뛰면 외운 사람이 이긴다.
+ */
+export async function resetRoom(code) {
+  const fb = await rt();
+  if (!fb) return false;
+  const read = await readOnce(fb, path(ROOMS, code));
+  const room = read.val;
+  if (!room) return false;
+  if (room.state === 'waiting') return true;
+
+  const players = {};
+  for (const [uid, v] of Object.entries(room.players ?? {})) {
+    // 대기자도 이제 정식 참가자가 된다. 진행도는 전부 초기화한다.
+    players[uid] = {
+      nickname: v.nickname ?? '', characterId: v.characterId ?? 'ian',
+      ready: false, stairs: 0, shoesFound: 0, alive: true, joinedAt: v.joinedAt ?? Date.now(),
+    };
+  }
+  const n = Object.keys(players).length;
+  if (!n) return false;
+  try {
+    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
+      state: 'waiting',
+      open: !room.isPrivate && n < (room.maxPlayers ?? MULTI.maxPlayers),
+      seed: Math.floor(Math.random() * 0x7fffffff),
+      hostUid: players[room.hostUid] ? room.hostUid : Object.keys(players)[0],
+      players,
+      result: null,
+      startAt: null,
+    }), undefined, '다음 판 준비');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 공개 방 목록 — 화면에 그대로 뿌릴 수 있는 모양으로. (2026-08-16)
+ *
+ * 게임 중인 방도 **숨기지 않는다.** 자리가 있으면 대기자로 들어가 다음 판을 기다리는 게
+ * 보통의 온라인 게임이고, 목록에 아무것도 없으면 사용자는 방을 새로 팔 수밖에 없다 —
+ * 그게 "다들 방장만 된다"의 사용자 쪽 원인이기도 했다.
+ */
+export async function listRooms() {
+  const fb = await rt();
+  if (!fb) return [];
+  await waitConnected(fb);
+  const rooms = await scanOpenRooms(fb);
+  const max = MULTI.maxPlayers;
+  return rooms
+    .filter((r) => r && r.code && !r.isPrivate)
+    .map((r) => {
+      const players = Object.values(r.players ?? {});
+      const host = r.players?.[r.hostUid];
+      return {
+        code: r.code,
+        state: r.state,
+        playing: r.state === 'countdown' || r.state === 'playing',
+        count: players.length,
+        max: r.maxPlayers ?? max,
+        hostName: host?.nickname || players[0]?.nickname || '',
+        mine: !!r.players?.[fb.uid],
+        full: players.length >= (r.maxPlayers ?? max),
+        createdAt: r.createdAt ?? 0,
+      };
+    })
+    .sort((a, b) => Number(a.playing) - Number(b.playing) || b.count - a.count || a.createdAt - b.createdAt);
 }
 
 
@@ -344,47 +434,57 @@ async function scanOpenRooms(fb) {
 export async function quickJoin({ difficulty } = {}) {
   const fb = await rt();
   if (!fb) return null;
-  // 연결 전에 훑으면 빈 목록을 보고 곧장 새 방을 판다 — 그게 '전부 방장' 증상이다
   await waitConnected(fb);
 
-  // 1) 이미 열려 있는 방 찾기
-  try {
-    const raw = await scanOpenRooms(fb);
-    sweepEmptyRooms(fb, raw);   // 낡은 빈 방은 지나가는 김에 치운다
-    let rooms = raw.filter((r) => joinable(r, fb.uid, MULTI.maxPlayers)).sort(byPreference);
-    /**
-     * **비어 있으면 한 번 더 본다.** 막 붙은 직후의 빈 목록은 "방이 없다"가 아니라
-     * "아직 못 받았다"일 수 있다. 여기서 성급하게 방을 파면 두 사람이 각자
-     * 방장이 되어 영영 안 만난다 — 실기기에서 정확히 그 증상이 나왔다.
-     */
-    if (!rooms.length) {
-      await new Promise((r) => setTimeout(r, EMPTY_RESCAN_MS));
-      rooms = (await scanOpenRooms(fb)).filter((r) => joinable(r, fb.uid, MULTI.maxPlayers)).sort(byPreference);
-    }
+  /**
+   * ★ **방은 정말 아무 데도 못 들어갈 때만 만든다.** (2026-08-16)
+   *
+   * 순서: ① 대기중이고 자리 있는 방 → ② 게임 중이지만 자리 있는 방(대기자로 입장)
+   *      → ③ 그래도 없으면 새로 만든다.
+   * 예전에는 ②가 없어서, 먼저 시작한 방이 있어도 "들어갈 데가 없다"며 새 방을 팠다.
+   */
+  const pickAndJoin = async (rooms) => {
     for (const r of rooms) {
-      if (await joinRoom(r.code) === 'ok') return r.code;
+      const v = await joinRoom(r.code);
+      if (v === 'ok' || v === 'waiting') return r.code;
     }
+    return null;
+  };
+
+  try {
+    let raw = await scanOpenRooms(fb);
+    sweepEmptyRooms(fb, raw);
+    // 막 붙은 직후의 빈 목록은 "없다"가 아니라 "아직 못 받았다"일 수 있다
+    if (!raw.length) {
+      await new Promise((r) => setTimeout(r, EMPTY_RESCAN_MS));
+      raw = await scanOpenRooms(fb);
+    }
+    const free = raw.filter((r) => hasSeat(r, fb.uid, MULTI.maxPlayers));
+    const 대기중 = free.filter((r) => r.state === 'waiting').sort(byPreference);
+    const 게임중 = free.filter((r) => r.state !== 'waiting').sort(byPreference);
+
+    const got = (await pickAndJoin(대기중)) ?? (await pickAndJoin(게임중));
+    if (got) return got;
   } catch { /* 못 찾으면 새로 판다 */ }
 
-  // 2) 없으면 새로 판다
   const mine = await createRoom({ isPrivate: false, difficulty });
   if (!mine) return null;
 
-  // 3) 같은 순간에 만들어진 방이 있는지 한 번 더 본다 (동시 입장 해소)
+  // 같은 순간에 만들어진 방이 있으면 한쪽만 옮겨 간다 (동시 입장 해소)
   try {
     await new Promise((r) => setTimeout(r, RETRY_SCAN_MS));
     const mineRoom = await readRoom(mine);
-    // 그 사이에 누가 내 방에 들어왔으면 옮길 이유가 없다
     if (Object.keys(mineRoom?.players ?? {}).length > 1) return mine;
 
     const older = (await scanOpenRooms(fb))
-      .filter((r) => joinable(r, fb.uid, MULTI.maxPlayers) && r.code !== mine)
+      .filter((r) => hasSeat(r, fb.uid, MULTI.maxPlayers) && r.code !== mine && r.state === 'waiting')
       .filter((r) => byPreference(r, mineRoom ?? { code: mine, createdAt: Infinity }) < 0)
       .sort(byPreference)[0];
     if (!older) return mine;
 
-    if (await joinRoom(older.code) === 'ok') {
-      await leaveRoom(mine).catch(() => {});   // 내 빈 방은 치운다
+    const v = await joinRoom(older.code);
+    if (v === 'ok' || v === 'waiting') {
+      await leaveRoom(mine).catch(() => {});
       return older.code;
     }
   } catch { /* 옮기기 실패 — 내 방에 그대로 있으면 된다 */ }
@@ -443,8 +543,13 @@ export async function startCountdown(code) {
   if (!fb) return null;
   const offset = await serverOffset(fb);
   const startAt = nowOn(fb, offset) + MULTI.countdownSeconds * 1000;
+  /**
+   * ★ `open` 을 끄지 않는다. (2026-08-16)
+   * 자리가 남아 있으면 게임 중에도 목록에 보여야 대기자가 들어올 수 있다.
+   * 정원이 찼을 때만 `joinRoom` 이 알아서 내린다.
+   */
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
-    state: 'countdown', open: false, startAt,
+    state: 'countdown', startAt,
   }), undefined, '카운트다운').catch(() => {});
   return startAt;
 }
@@ -521,7 +626,7 @@ export async function finalizeResult(code, attempt = 0) {
     const res = await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
       if (!cur) return;
       if (cur.result?.rankings) return cur; // 이미 확정됨 — 덮어쓰지 않는다
-      const players = Object.entries(cur.players ?? {}).map(([uid, v]) => ({ uid, ...v }));
+      const players = playersInRound(cur.players);   // 대기자는 이번 판 사람이 아니다
       if (players.length < MULTI.minPlayers) return cur;
       cur.state = 'finished';
       cur.open = false;

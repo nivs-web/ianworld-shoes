@@ -39,8 +39,13 @@ for (const [label, node] of [['방', room], ['참가자', room.players.$uid], ['
 
 console.log('\n2) 클라이언트가 쓰는 필드가 전부 규칙에 있는가');
 
-/** `createRoom` 이 만드는 방 객체의 최상위 키 */
-const created = [...src.matchAll(/^\s{8}(\w+):/gm)].map((m) => m[1]);
+/**
+ * `createRoom` 이 만드는 방 객체의 최상위 키.
+ * **함수 본문 안에서만** 뽑는다 — 예전엔 파일 전체를 훑어서 화면용 객체(`listRooms`)의
+ * 필드까지 "방 필드"로 오인했다.
+ */
+const createBody = /export async function createRoom[\s\S]*?\n}\n/.exec(src)?.[0] ?? '';
+const created = [...createBody.matchAll(/^\s{8}(\w+):/gm)].map((m) => m[1]);
 for (const k of new Set(created)) {
   if (roomKeys.has(k) || k === 'players') ok(`방.${k}`);
   else bad(`방.${k} — 규칙에 없다 (방 만들기가 통째로 거부된다)`);

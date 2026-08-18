@@ -44,7 +44,13 @@ export default function WaitingRoom(nav, params = {}) {
      * 카운트다운이 걸리는 **순간 전원이 같이 넘어간다.** 방장만 시작 버튼을 누르지만
      * 출발 시각은 방에 적힌 절대 시각이라, 여기서 각자 자기 화면에서 게임으로 들어간다.
      */
-    if (!launched && (r.state === 'countdown' || r.state === 'playing')) {
+    /**
+     * ★ **대기자는 이번 판에 안 들어간다.** (2026-08-16)
+     * 게임 중인 방에 들어온 사람(`waiting: true`)은 다음 판부터 함께한다.
+     * 여기서 같이 출발시키면 시작 시각이 지난 판에 혼자 뛰어들어 순식간에 끝난다.
+     */
+    const meNow = r.players?.[myUid];
+    if (!launched && !meNow?.waiting && (r.state === 'countdown' || r.state === 'playing')) {
       launched = true;
       unsub();
       startMultiGame(nav, { code, room: r });
@@ -93,8 +99,10 @@ export default function WaitingRoom(nav, params = {}) {
       const players = Object.entries(room.players ?? {}).map(([uid, v]) => ({ uid, ...v }));
       const isHost = room.hostUid === myUid;
       const me = players.find((p) => p.uid === myUid);
-      const enough = players.length >= MULTI.minPlayers;
-      const allReady = enough && players.every((p) => p.ready || p.uid === room.hostUid);
+      // 대기자는 인원수에도 레디 판정에도 넣지 않는다 — 이번 판 사람이 아니다
+      const inRound = players.filter((p) => !p.waiting);
+      const enough = inRound.length >= MULTI.minPlayers;
+      const allReady = enough && inRound.every((p) => p.ready || p.uid === room.hostUid);
 
       return screen(
         title(S.roomCode),
@@ -110,7 +118,8 @@ export default function WaitingRoom(nav, params = {}) {
             ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
             el('div.player-name', p.nickname || '???'),
             p.uid === room.hostUid ? el('div.tag-host', S.host) : null,
-            el('div.tag-ready', { class: p.ready ? 'on' : '' }, p.ready ? S.ready : '...'),
+            el('div.tag-ready', { class: p.ready ? 'on' : '' },
+              p.waiting ? S.roomStateWaiting : p.ready ? S.ready : '...'),
           ]);
         })),
 
@@ -121,8 +130,13 @@ export default function WaitingRoom(nav, params = {}) {
           ? segmented(DIFFS, room.difficulty, (v) => Room.setRoomDifficulty(code, v))
           : el('div.hint', `${DIFFS.find((d) => d.value === room.difficulty)?.label ?? ''} · ${S.hostOnlyDifficulty}`),
 
-        // 방장은 레디 대신 시작 버튼을 갖는다 — 자기가 자기를 기다릴 이유가 없다
-        isHost
+        // 게임이 도는 동안 들어온 대기자에게는 레디도 시작도 없다 — 기다리는 게 전부다
+        me?.waiting
+          ? el('div.warn', null, [
+              el('div', S.waitingForNextRound),
+              el('div', S.roomJoinedAsWaiter),
+            ])
+          : isHost
           ? button(S.startGame, () => {
               if (!enough) return toast(S.needMorePlayers);
               if (!allReady) return toast(S.notEveryoneReady);
@@ -130,7 +144,7 @@ export default function WaitingRoom(nav, params = {}) {
             }, { primary: true, class: allReady ? '' : 'dim' })
           : button(me?.ready ? S.cancelReady : S.ready, () => Room.setReady(code, !me?.ready), { primary: !me?.ready }),
 
-        el('div.hint', isHost ? (enough ? S.waitingHostSelf : S.waitingPlayers) : S.waitingHost),
+        me?.waiting ? null : el('div.hint', isHost ? (enough ? S.waitingHostSelf : S.waitingPlayers) : S.waitingHost),
 
         el('div.spacer'),
         backButton(S.back, () => leave(true))

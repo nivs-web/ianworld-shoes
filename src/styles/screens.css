@@ -691,6 +691,23 @@
 .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
 .keypad .pbtn { padding: 10px 0; font-size: 18px; }
 
+/* ── 방 목록 (2026-08-16) ─────────────────────
+   게임 중인 방도 보여 준다. 자리가 있으면 대기자로 들어가 다음 판을 기다린다. */
+.room-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.room-row {
+  display: flex; align-items: center; gap: 6px; padding: 4px 5px;
+  border: 2px solid var(--c-line); background: var(--c-panel);
+}
+.room-row.playing { opacity: 0.82; }
+.room-state {
+  flex: 0 0 auto; font-size: 11px; padding: 1px 4px;
+  color: var(--c-text-light); background: var(--c-line);
+}
+.room-row.playing .room-state { background: var(--c-accent-dark); }
+.room-name { flex: 1 1 auto; color: var(--c-text); font-size: 13px; }
+.room-full { flex: 0 0 auto; color: var(--c-line); font-size: 12px; padding: 0 6px; }
+.room-row .pbtn { flex: 0 0 auto; padding: 3px 10px; font-size: 12px; margin: 0; }
+
 .player-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
 .player-row { display: flex; align-items: center; gap: 6px; padding: 3px 4px; }
 .player-row.me { background: rgba(255, 221, 142, 0.16); }

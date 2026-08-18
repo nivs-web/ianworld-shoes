@@ -149,14 +149,20 @@ export class GameScene {
     this.roomUnsub = Room.subscribeRoom(this.multi.code, (r) => {
       if (!r) return;
       const uid = this.multi.myUid;
+      /**
+       * ★ **대기자(`waiting`)는 이번 판 사람이 아니다.** (2026-08-16)
+       * 게임 중에 들어와 다음 판을 기다리는 사람이다. HUD 에 띄우면 0계단짜리 유령이
+       * 하나 붙고, 아래 '한 명이라도 죽으면 종료' 판정에도 끼어들어 판을 망친다.
+       */
       this.opponents = Object.entries(r.players ?? {})
-        .filter(([id]) => id !== uid)
+        .filter(([id, v]) => id !== uid && !v?.waiting)
         .map(([id, v]) => ({ id, ...v }));
       /**
        * **누구든 한 명이 죽으면 전원 종료** (기획서 §5-7).
        * 내가 살아 있어도 여기서 끝난다 — 그게 이 게임의 승부 방식이다.
        */
-      if (!this.player?.dead && !this.overlayDone && Object.values(r.players ?? {}).some((v) => v.alive === false)) {
+      if (!this.player?.dead && !this.overlayDone &&
+          Object.values(r.players ?? {}).some((v) => !v?.waiting && v.alive === false)) {
         this.overlayDone = true;
         this.endMulti();
       }

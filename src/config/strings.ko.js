@@ -177,6 +177,22 @@ export const S = {
   waitingPlayers: '다른 플레이어를 기다리는 중',
   hostOnlyDifficulty: '방장만 난이도를 설정할 수 있습니다',
   roomNotFound: '방을 찾을 수 없습니다',
+
+  // ── 방 목록 (2026-08-16) ───────────────────
+  roomListTitle: '방 목록',
+  roomListEmpty: '지금 열려 있는 방이 없습니다',
+  roomListEmptyHint: '방을 새로 만들면 다른 사람이 들어옵니다',
+  roomListRefresh: '새로 고치기',
+  roomListLoading: '방을 찾는 중...',
+  roomStateWaiting: '대기중',
+  roomStatePlaying: '게임중',
+  roomRow: (name, n, max) => `${name || '???'} · ${n}/${max}`,
+  roomEnter: '입장',
+  roomFullShort: '만원',
+  roomJoinedAsWaiter: '게임이 끝나면 다음 판부터 함께합니다',
+  waitingForNextRound: '다음 판을 기다리는 중',
+  nextRound: '다음 판 준비',
+  stayInRoom: '방에 남기',
   roomFull: '방이 가득 찼습니다',
   go: 'GO!',
 
