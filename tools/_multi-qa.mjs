@@ -398,5 +398,47 @@ console.log('15) 서버 도장 — 기기를 바꿔도 두 번 걷지 않는다 
 }
 
 
+// ─────────────────────────────────────────────
+console.log('16) 자동 매칭 — 두 대가 반드시 같은 방으로 모인다 (2026-08-16)');
+{
+  /**
+   * 실기기 두 대로 '방 입장'을 눌렀더니 **둘 다 방만 만들었다.** 원인은 둘이었다:
+   *   (a) joinRoom 이 읽지 않은 방에 트랜잭션을 걸어 무조건 '없는 방'으로 판정 (코드에서 수정)
+   *   (b) 동시에 누르면 둘 다 빈 목록을 보고 각자 방을 만든다 → 여기 정렬이 그걸 푼다
+   *
+   * (b) 를 풀려면 **양쪽이 같은 답**을 내야 한다. 한쪽만 옮겨야 만난다 —
+   * 둘 다 옮기면 자리만 바꾸고, 둘 다 안 옮기면 영영 안 만난다.
+   */
+  const P = (n) => Object.fromEntries(Array.from({length:n},(_,i)=>['u'+i,{}]));
+  const A = { code:'1111', state:'waiting', hostUid:'a', createdAt:1000, players:P(1) };
+  const B = { code:'2222', state:'waiting', hostUid:'b', createdAt:2000, players:P(1) };
+
+  eq('먼저 만든 방이 이긴다', [B,A].sort(M.byPreference)[0].code, '1111');
+  eq('양쪽이 같은 답 (A 기준)', [A,B].sort(M.byPreference)[0].code, [B,A].sort(M.byPreference)[0].code);
+
+  const empty = { code:'0000', state:'waiting', hostUid:'c', createdAt:1, players:{} };
+  eq('사람 있는 방이 빈 방보다 먼저', [empty,A].sort(M.byPreference)[0].code, '1111');
+
+  const same1 = { code:'9999', state:'waiting', hostUid:'x', createdAt:5000, players:{} };
+  const same2 = { code:'3333', state:'waiting', hostUid:'y', createdAt:5000, players:{} };
+  eq('시각이 같으면 코드 순', [same1,same2].sort(M.byPreference)[0].code, '3333');
+  eq('순서를 바꿔도 같은 답', [same2,same1].sort(M.byPreference)[0].code, '3333');
+
+  // joinable
+  eq('내 방은 제외', M.joinable({...A, hostUid:'me'}, 'me'), false);
+  eq('시작한 방은 제외', M.joinable({...A, state:'countdown'}, 'me'), false);
+  eq('정원 찬 방은 제외', M.joinable({...A, players:P(4), maxPlayers:4}, 'me'), false);
+  eq('빈 방도 들어갈 수 있다 (유령 방 재사용)', M.joinable(empty, 'me'), true);
+  eq('코드 없는 방은 제외', M.joinable({...A, code:undefined}, 'me'), false);
+
+  // 두 대 동시 생성 시나리오 — 한 명만 움직인다
+  const 폰1 = { code:'5555', state:'waiting', hostUid:'p1', createdAt:1000, players:P(1) };
+  const 폰2 = { code:'6666', state:'waiting', hostUid:'p2', createdAt:1200, players:P(1) };
+  const 폰1이_옮길까 = [폰2].filter((r)=>M.joinable(r,'p1')).filter((r)=>M.byPreference(r,폰1)<0).length > 0;
+  const 폰2가_옮길까 = [폰1].filter((r)=>M.joinable(r,'p2')).filter((r)=>M.byPreference(r,폰2)<0).length > 0;
+  eq('먼저 만든 폰1 은 그대로', 폰1이_옮길까, false);
+  eq('나중에 만든 폰2 만 옮긴다', 폰2가_옮길까, true);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

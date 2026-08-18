@@ -13,7 +13,7 @@ import { getRtdb, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { MULTI } from '../config/balance.js';
-import { makeRoomCode, isRoomCode, rankPlayers } from './matchRules.js';
+import { makeRoomCode, isRoomCode, rankPlayers, joinable, byPreference } from './matchRules.js';
 
 const ROOMS = 'rooms';
 const MY_ROOMS = 'userRooms';
@@ -22,6 +22,11 @@ const MY_ROOMS = 'userRooms';
 const CODE_RETRIES = 8;
 /** 자동 매칭이 훑어볼 공개방 수 */
 const SCAN_LIMIT = 12;
+/**
+ * 방을 만든 뒤 '동시에 만든 사람'이 있는지 다시 볼 때까지 기다리는 시간.
+ * 너무 짧으면 상대 방이 아직 안 보이고, 너무 길면 매칭이 굼떠 보인다.
+ */
+const RETRY_SCAN_MS = 1400;
 
 const path = (...parts) => parts.join('/');
 
@@ -161,9 +166,42 @@ export async function joinRoom(code) {
   const p = L.loadProfile();
   const roomRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
 
+  /**
+   * ★ **트랜잭션 전에 방을 반드시 한 번 읽는다.** (2026-08-16)
+   *
+   * 이게 없어서 **자동 매칭이 통째로 고장나 있었다.** 두 대로 '방 입장'을 눌러도
+   * 서로를 못 찾고 각자 방만 만들었다.
+   *
+   * 파이어베이스 트랜잭션은 **클라이언트가 들고 있는 값으로 먼저 한 번 호출**된다.
+   * 한 번도 읽은 적 없는 경로면 그 값은 `null` 이다. 그런데 예전 코드는
+   * `if (!cur) { verdict='notfound'; return; }` 로 **거기서 곧장 중단**했다 —
+   * 핸들러가 `undefined` 를 돌려주면 트랜잭션은 서버 값을 기다리지 않고 그대로 끝난다.
+   *
+   * 즉 **남의 방은 무조건 '없는 방'으로 판정**됐다. 자동 매칭은 후보를 전부 그렇게
+   * 흘려보내고 마지막 줄의 `createRoom()` 으로 떨어졌고, 코드로 입장도 멀쩡한 코드에
+   * "방을 찾을 수 없습니다"를 띄웠다. 규칙 문제로 보였지만(실제로 규칙도 따로 문제가
+   * 있었다) 이건 전혀 다른 층의 버그다.
+   *
+   * 먼저 읽어 두면 캐시가 채워져 트랜잭션 첫 호출이 진짜 값을 받는다.
+   * 덤으로 정원·상태 판정을 트랜잭션 밖에서 미리 할 수 있어 헛트랜잭션이 줄어든다.
+   */
+  let seen = null;
+  try {
+    const snap = await withTimeout(fb.dbMod.get(roomRef), undefined, '방 확인');
+    seen = snap.val();
+  } catch {
+    return 'error';
+  }
+  if (!seen) return 'notfound';
+  if (!seen.players?.[fb.uid]) {
+    if (seen.state !== 'waiting') return 'started';
+    if (Object.keys(seen.players ?? {}).length >= (seen.maxPlayers ?? MULTI.maxPlayers)) return 'full';
+  }
+
   let verdict = 'error';
   try {
     const res = await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
+      // 읽고 왔는데도 null 이면 그 사이에 방이 사라진 것이다 (드물지만 가능)
       if (!cur) { verdict = 'notfound'; return; }
       if (cur.players?.[fb.uid]) { verdict = 'ok'; return cur; } // 재입장
       if (cur.state !== 'waiting') { verdict = 'started'; return; }
@@ -182,31 +220,66 @@ export async function joinRoom(code) {
   return verdict;
 }
 
+async function scanOpenRooms(fb) {
+  const { ref, query, orderByChild, equalTo, limitToFirst, get } = fb.dbMod;
+  const snap = await withTimeout(
+    get(query(ref(fb.rtdb, ROOMS), orderByChild('open'), equalTo(true), limitToFirst(SCAN_LIMIT))),
+    undefined, '방 찾기'
+  );
+  const rooms = [];
+  snap.forEach((c) => { rooms.push(c.val()); });
+  return rooms;
+}
+
 /**
  * 자동 매칭 — 비어 있는 공개방에 넣고, 없으면 새로 판다.
  *
  * 훑는 중에 남이 먼저 채울 수 있으므로 **실패하면 다음 방으로 넘어간다.**
  * 한 번 실패하고 포기하면 사람이 몰릴수록 매칭이 안 되는 이상한 게임이 된다.
+ *
+ * ★ **동시에 누르면 둘 다 방을 만든다** — 그 상황을 따로 푼다. (2026-08-16)
+ *
+ * 두 사람이 같은 순간에 누르면 **둘 다 빈 목록을 보고 각자 방을 만든다.** 그러면
+ * 서로 대기방에 앉아 영원히 안 만난다. 실기기 두 대로 정확히 이 증상이 나왔다.
+ * 그래서 방을 만든 뒤 **한 번 더 훑어보고**, 나보다 **먼저 만들어진 방**이 있으면
+ * 내 방을 접고 그쪽으로 옮긴다. 판정 기준이 (생성시각, 코드)로 결정적이라
+ * 양쪽이 같은 답을 내고 **정확히 한 명만** 움직인다.
  */
 export async function quickJoin({ difficulty } = {}) {
   const fb = await rt();
   if (!fb) return null;
+
+  // 1) 이미 열려 있는 방 찾기
   try {
-    const { ref, query, orderByChild, equalTo, limitToFirst, get } = fb.dbMod;
-    const snap = await withTimeout(
-      get(query(ref(fb.rtdb, ROOMS), orderByChild('open'), equalTo(true), limitToFirst(SCAN_LIMIT))),
-      undefined, '방 찾기'
-    );
-    const rooms = [];
-    snap.forEach((c) => { rooms.push(c.val()); });
-    // 사람이 많은 방부터 — 빨리 찰수록 빨리 시작한다
-    rooms.sort((a, b) => Object.keys(b.players ?? {}).length - Object.keys(a.players ?? {}).length);
+    const rooms = (await scanOpenRooms(fb)).filter((r) => joinable(r, fb.uid, MULTI.maxPlayers)).sort(byPreference);
     for (const r of rooms) {
-      if (r.hostUid === fb.uid) continue;
       if (await joinRoom(r.code) === 'ok') return r.code;
     }
   } catch { /* 못 찾으면 새로 판다 */ }
-  return createRoom({ isPrivate: false, difficulty });
+
+  // 2) 없으면 새로 판다
+  const mine = await createRoom({ isPrivate: false, difficulty });
+  if (!mine) return null;
+
+  // 3) 같은 순간에 만들어진 방이 있는지 한 번 더 본다 (동시 입장 해소)
+  try {
+    await new Promise((r) => setTimeout(r, RETRY_SCAN_MS));
+    const mineRoom = await readRoom(mine);
+    // 그 사이에 누가 내 방에 들어왔으면 옮길 이유가 없다
+    if (Object.keys(mineRoom?.players ?? {}).length > 1) return mine;
+
+    const older = (await scanOpenRooms(fb))
+      .filter((r) => joinable(r, fb.uid, MULTI.maxPlayers) && r.code !== mine)
+      .filter((r) => byPreference(r, mineRoom ?? { code: mine, createdAt: Infinity }) < 0)
+      .sort(byPreference)[0];
+    if (!older) return mine;
+
+    if (await joinRoom(older.code) === 'ok') {
+      await leaveRoom(mine).catch(() => {});   // 내 빈 방은 치운다
+      return older.code;
+    }
+  } catch { /* 옮기기 실패 — 내 방에 그대로 있으면 된다 */ }
+  return mine;
 }
 
 // ─────────────────────────────────────────────
@@ -327,6 +400,13 @@ export async function finalizeResult(code, attempt = 0) {
   const fb = await rt();
   if (!fb) return null;
   const roomRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
+  /**
+   * 트랜잭션 첫 호출은 **로컬 캐시 값**으로 온다. 이 함수는 `endMulti()` 가 방 구독을
+   * 끊은 뒤에 불리므로 캐시가 이미 비워졌을 수 있고, 그러면 `!cur` 로 중단돼
+   * **순위가 영영 안 박힌다**(= 아무도 정산을 못 한다). 먼저 읽어 캐시를 채운다.
+   * `joinRoom` 이 정확히 이 함정 때문에 자동 매칭을 통째로 죽이고 있었다.
+   */
+  try { await withTimeout(fb.dbMod.get(roomRef), undefined, '방 확인'); } catch { /* 그래도 시도한다 */ }
   try {
     const res = await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
       if (!cur) return;
@@ -366,6 +446,8 @@ export async function leaveRoom(code) {
   const fb = await rt();
   if (!fb) return;
   const roomRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
+  // 여기도 캐시가 비어 있으면 트랜잭션이 첫 호출에서 중단된다 (finalizeResult 주석 참고)
+  try { await withTimeout(fb.dbMod.get(roomRef), undefined, '방 확인'); } catch { /* 무시 */ }
   try {
     await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
       if (!cur) return;

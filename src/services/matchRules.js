@@ -99,3 +99,39 @@ export function makeRoomCode(rand = Math.random) {
 }
 
 export const isRoomCode = (v) => new RegExp(`^\\d{${MULTI.codeLength}}$`).test(String(v ?? ''));
+
+// ─────────────────────────────────────────────
+// 자동 매칭 (2026-08-16)
+// ─────────────────────────────────────────────
+
+/**
+ * 자동 매칭이 고를 수 있는 방인가.
+ * `state` 를 안 보면 이미 시작한 판에 들어가려다 실패하고, 그 실패가 "방이 없다"로
+ * 흘러가 결국 새 방을 판다.
+ */
+export function joinable(room, myUid, maxPlayers = 4) {
+  if (!room || !room.code) return false;
+  if (room.state !== 'waiting') return false;
+  if (room.hostUid === myUid) return false;
+  return Object.keys(room.players ?? {}).length < (room.maxPlayers ?? maxPlayers);
+}
+
+/**
+ * 후보 정렬 — **모두가 같은 순서를 보는 것**이 핵심이다.
+ *
+ * 두 사람이 동시에 '방 입장'을 누르면 각자 방을 만들어 버리는데(둘 다 빈 목록을 본다),
+ * 그때 서로를 찾아 한쪽만 옮겨 가려면 **판정이 결정적**이어야 한다. 양쪽이 다른
+ * 답을 내면 둘 다 옮겨서 자리만 바꾸거나, 둘 다 안 옮겨서 영영 안 만난다.
+ *
+ *   1순위 사람이 있는 방 — 빨리 찰수록 빨리 시작한다
+ *   2순위 먼저 만들어진 방 — 오래 기다린 사람이 먼저 만난다
+ *   3순위 코드 오름차순 — 시각까지 같을 때의 최후 판정 (동점이 없어야 한다)
+ */
+export function byPreference(a, b) {
+  const has = (r) => (Object.keys(r.players ?? {}).length ? 1 : 0);
+  return (
+    has(b) - has(a) ||
+    (a.createdAt ?? 0) - (b.createdAt ?? 0) ||
+    String(a.code).localeCompare(String(b.code))
+  );
+}
