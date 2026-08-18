@@ -21,9 +21,11 @@
 import S from '../../config/strings.ko.js';
 import { el, button, backButton, screen, title, toast } from '../ui.js';
 import { characterById, characterSprite } from '../../data/characters.js';
+import { MULTI } from '../../config/balance.js';
 import { currentUser } from '../../services/auth.js';
 import { finishRun } from '../../services/profile.js';
 import * as Room from '../../services/multiplayer.js';
+import { roundOver } from '../../services/matchRules.js';
 import { settleRoom } from '../../services/multiSettle.js';
 import { hold } from '../../core/hold.js';
 import MultiMenu from './MultiMenu.js';
@@ -49,38 +51,64 @@ export default function MultiResult(nav, params = {}) {
   let keepSeat = false;
   let pollTimer = null;
   let polls = 0;
+  let unsub = () => {};
+  let settled = false;
+  let finalizing = false;
   /** 정산 중에 자동 새로고침이 끼어들면 신발이 공중에 뜬다 */
   const release = hold();
 
-  (async () => {
+  /**
+   * ★ **판이 아직 안 끝났을 수 있다.** (2026-08-18 역전 배틀)
+   *
+   * 예전에는 "누가 죽으면 즉시 종료"라 이 화면이 뜰 때 순위가 이미 확정돼 있었다.
+   * 이제는 내가 먼저 포기하고 나와도 **남은 사람들은 계속 오르고 있다.** 그래서
+   * 방을 **구독**하고, 순위가 박히는 순간 정산으로 넘어간다. 그때까지는
+   * "다른 사람들이 아직 오르고 있습니다" 를 보여 준다 — 빈 순위표보다 정직하다.
+   *
+   * 그리고 **아무도 안 끝냈으면 내가 끝낸다** — 마지막까지 남은 사람이 나갈 때
+   * 순위를 박을 사람이 없으면 판이 영영 안 끝난다(`roundOver` 는 순수 함수라
+   * 누가 계산해도 같은 답이 나온다).
+   */
+  unsub = Room.subscribeRoom(code, async (r) => {
+    if (gone || !r) return;
+    room = r;
+    if (!r.result?.rankings) {
+      const now = Date.now() + Room.serverOffsetSync();
+      if (!finalizing && roundOver(r, now)) {
+        finalizing = true;
+        Room.finalizeResult(code).catch(() => {}).then(() => { finalizing = false; });
+      }
+      done = true;                       // 화면은 그린다 (대기 안내)
+      nav.refresh();
+      return;
+    }
+    if (settled) { nav.refresh(); return; }
+    settled = true;
+    unsub();
+    unsub = () => {};
+    await runSettle();
+  });
+
+  async function runSettle() {
     /**
      * 판이 끝났으니 **자동 이탈 예약을 다시 켠다.** 게임 시작 때 `holdRoomSeat` 가
      * 껐는데 다시 켜는 곳이 없어서, 결과 화면에서 탭을 닫으면 그 방에 영원히 남았다.
      */
     Room.rearmRoomSeat(code).catch(() => {});
-    room = await Room.readRoom(code);
     settle = await settleRoom(code, room).catch(() => null);
     /**
      * ★ **승자의 판 기록을 계정에 반영한다.** (2026-08-16)
-     *
-     * 예전에는 멀티 결과가 어디에도 안 들어갔다 — `finishRun()` 호출부가 싱글 한 곳뿐이라
-     * 한 판에서 30층을 오르고 신발 5개를 주워도 **전부 버려졌고**, 정산으로 뺏어온
-     * 1켤레만 남았다. 기획서 §5-9 는 "멀티 게임: 승자만 기록 반영(방장이 설정한 난이도의
-     * 랭킹으로)" 이므로 승패를 아는 여기서 판단한다.
-     *
-     * 정산보다 **뒤에** 부르는 이유: `finishRun` 이 지갑을 서버로 밀어 올리므로,
-     * 강탈분까지 반영된 뒤에 한 번만 올리는 게 맞다.
+     * `finishRun()` 호출부가 싱글 한 곳뿐이라 멀티 한 판의 계단·신발이 통째로 버려졌다.
+     * 기획서 §5-9 는 "멀티 게임: 승자만 기록 반영" 이므로 승패를 아는 여기서 판단한다.
      */
     if (settle?.won && runResult) {
       try { finishRun(runResult); } catch (e) { console.warn('[multi] 결과 반영 실패', e); }
     }
-    // 정산이 신발을 옮겼을 수 있으니 방을 다시 읽어 최신 given 을 반영한다
     if (settle?.pending) room = await Room.readRoom(code);
     done = true;
     if (!gone) nav.refresh();
-    // 패자가 몇 초 늦게 올린다 — 그동안 몇 번 더 걷어 본다
     if (settle?.pending) poll();
-  })();
+  }
 
   /**
    * ★ **못 받은 신발을 몇 초 동안 다시 걷어 본다.** (2026-08-18)
@@ -140,6 +168,7 @@ export default function MultiResult(nav, params = {}) {
   return {
     onLeave() {
       gone = true;
+      unsub();
       clearTimeout(pollTimer);
       release();
       releaseSeat();
@@ -163,6 +192,16 @@ export default function MultiResult(nav, params = {}) {
       const players = room?.players ?? {};
       const won = settle?.won;
 
+      // 순위가 아직 없다 = 남은 사람들이 계속 오르고 있다 (역전 배틀)
+      if (!rankings.length) {
+        return screen(
+          title(S.multiResultTitle),
+          el('div.warn', null, [el('div', S.waitingOthers)]),
+          el('div.spacer'),
+          backButton(S.toLobby, () => nav.reset(Lobby))
+        );
+      }
+
       return screen(
         title(S.multiResultTitle),
 
@@ -174,6 +213,7 @@ export default function MultiResult(nav, params = {}) {
             ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
             el('div.rank-name', v.nickname || '???'),
             el('div.rank-value', S.multiRowStat(v.shoesFound ?? 0, v.stairs ?? 0)),
+            v.revives ? el('div.tag-host', `+${v.revives * MULTI.reviveCost}`) : null,
           ]);
         })),
 
@@ -181,8 +221,10 @@ export default function MultiResult(nav, params = {}) {
         settle
           ? el('div.settle', null, [
               el('div.settle-head', won ? S.won : S.lost),
-              won && settle.took.length ? el('div', S.wonReward(settle.took.length)) : null,
+              // 판돈을 통째로 가져온다 / 부활 비용까지 합쳐 얼마를 잃었다
+              won && settle.took.length ? el('div', S.wonPot(settle.took.length)) : null,
               won && settle.pending ? el('div.hint', S.rewardPending(settle.pending)) : null,
+              !won && settle.lost ? el('div', S.lostShoes(settle.lost)) : null,
             ])
           : el('div.hint', S.settleLater),
 

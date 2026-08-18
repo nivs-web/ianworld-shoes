@@ -11,8 +11,13 @@ import { rect, strokeRect } from '../core/sprite.js';
 import { text, GLYPH_H } from '../core/pixelfont.js';
 import * as Sfx from '../audio/sfx.js';
 import { VIEW_W, VIEW_H, GAMEOVER, PAUSE } from '../config/layout.js';
-import { REVIVE } from '../config/balance.js';
+import { REVIVE, MULTI } from '../config/balance.js';
 import { PAL } from './palette.js';
+import { get as getProfile } from '../services/profile.js';
+import { potShoes, canRevive } from '../services/matchRules.js';
+import * as Room from '../services/multiplayer.js';
+import { pickPenaltyShoes } from '../services/matchRules.js';
+import * as L from '../services/storageLocal.js';
 import S from '../config/strings.ko.js';
 
 function dim() {
@@ -299,5 +304,128 @@ export class GameOverOverlay {
         text(label, b.x + (b.w >> 1), b.y + ((b.h - GLYPH_H) >> 1), { color: PAL.text, align: 'center' });
       }
     }
+  }
+}
+
+// ─────────────────────────────────────────────
+// 멀티 사망 → 부활 베팅 (2026-08-18 역전 배틀)
+// ─────────────────────────────────────────────
+
+/**
+ * 죽은 순간 20초 동안 뜨는 화면. **판은 아직 안 끝났다** — 남들은 계속 오르고 있다.
+ *
+ * ## 왜 여기서 신발을 빼는가
+ *
+ * "걸었다"는 사실이 **서버에 실물로 남아야** 한다. 그래서 순서가 정해져 있다:
+ *   ① 내 지갑에서 20켤레를 뺀다  ② 방의 항아리(`result/given`)에 올린다  ③ 되살아난다
+ * ②가 실패하면 ①을 되돌린다. 반대로 하면 "살아났는데 안 낸" 상태가 되어
+ * 화면의 판돈과 실제로 받을 신발이 어긋난다 — 그건 사기다.
+ *
+ * ## 시간
+ *
+ * 남은 시간은 **서버 기준 `deadAt`** 에서 잰다. 프레임으로 세면 로딩·백그라운드에서
+ * 멈춰 사람마다 창 길이가 달라진다(카운트다운에서 이미 겪었다 — §9-0-14).
+ */
+export class MultiDeathOverlay {
+  constructor(game) {
+    this.game = game;
+    this.busy = false;
+    this.endAt = Date.now() + MULTI.reviveWindowSeconds * 1000;
+    this.msg = null;
+  }
+
+  enter() {
+    clearInput();
+    setTapHandler((x, y) => {
+      if (this.busy) return true;
+      if (inRect(x, y, 16, 168, 148, 34)) { this.revive(); return true; }
+      if (inRect(x, y, 16, 208, 148, 26)) { this.quit(); return true; }
+      return true;   // 이 화면에서는 좌우 입력이 새면 안 된다
+    }, true);
+  }
+
+  exit() { setTapHandler(null); }
+
+  /** 내 참가자 레코드 (부활 횟수·상한 판정용) */
+  get me() {
+    return this.game.room?.players?.[this.game.multi?.myUid] ?? {};
+  }
+
+  get left() {
+    return Math.max(0, Math.ceil((this.endAt - Date.now()) / 1000));
+  }
+
+  async revive() {
+    if (this.busy) return;
+    const wallet = getProfile();
+    if (!canRevive(this.me)) { this.msg = S.reviveMaxed; return; }
+    if ((wallet.shoesOwned ?? 0) < MULTI.reviveCost) {
+      this.msg = S.reviveNeed(MULTI.reviveCost, wallet.shoesOwned ?? 0);
+      return;
+    }
+    this.busy = true;
+    Sfx.play('sfx_menu_select');
+
+    // ① 지갑에서 먼저 뺀다
+    const picked = pickPenaltyShoes(wallet.shoesByIndex ?? {}, MULTI.reviveCost);
+    if (picked.length < MULTI.reviveCost) {
+      this.busy = false;
+      this.msg = S.reviveNeed(MULTI.reviveCost, picked.length);
+      return;
+    }
+    L.removeShoesByIndex(picked);
+
+    // ② 항아리에 올리고 ③ 되살아난다
+    const floor = await Room.reviveMe(this.game.multi.code, picked).catch(() => null);
+    if (floor == null) {
+      L.addShoes(picked);          // 못 걸었으면 되돌린다 — 판돈은 실물이어야 한다
+      this.busy = false;
+      this.msg = S.networkError;
+      return;
+    }
+    Sfx.play('sfx_revive');
+    Scene.pop();
+    this.game.reviveAt(floor);
+  }
+
+  quit() {
+    if (this.busy) return;
+    this.busy = true;
+    Sfx.play('sfx_menu_back');
+    Room.declineRevive(this.game.multi.code).catch(() => {});
+    Scene.pop();
+    this.game.endMulti();
+  }
+
+  update() {
+    const btn = consumeInput();
+    if (btn === BTN.LEFT) return void this.revive();
+    if (btn === BTN.RIGHT) return void this.quit();
+    // 시간이 다 되면 자동으로 나간다 — 남들을 무한정 기다리게 둘 수 없다
+    if (!this.busy && Date.now() >= this.endAt) this.quit();
+  }
+
+  render() {
+    dim();
+    panelBox(12, 96, 156, 146);
+
+    text(S.fellTitle, 90, 104, { color: PAL.goRed, align: 'center' });
+    text(String(this.left), 90, 118, { color: PAL.text, scale: 3, align: 'center', mono: true });
+
+    // 판돈은 이 화면의 핵심 정보다 — 얼마가 걸려 있는지 알아야 걸지 말지 정한다
+    text(S.potLine(potShoes(this.game.room)), 90, 150, { color: PAL.text, align: 'center', small: true });
+    const have = getProfile().shoesOwned ?? 0;
+    text(`${have}`, 90, 160, { color: PAL.textShadow, align: 'center', small: true, mono: true });
+
+    const 가능 = canRevive(this.me) && have >= MULTI.reviveCost && !this.busy;
+    button(16, 168, 148, 34, 가능);
+    text(S.reviveWith(MULTI.reviveCost), 90, 178, {
+      color: 가능 ? PAL.text : PAL.textShadow, align: 'center', small: true,
+    });
+
+    button(16, 208, 148, 26, false);
+    text(S.quitRound, 90, 215, { color: PAL.text, align: 'center' });
+
+    if (this.msg) text(this.msg, 90, 238, { color: PAL.goRed, align: 'center', small: true });
   }
 }

@@ -193,6 +193,25 @@ export const S = {
   waitingForNextRound: '다음 판을 기다리는 중',
   nextRound: '다음 판 준비',
   stayInRoom: '방에 남기',
+
+  // ── 역전 배틀 (2026-08-18) ─────────────────────
+  /** 인게임 하단 고정 — 지금까지 이 판에 걸린 신발 총량 */
+  potLine: (n) => `이 게임에 걸린 신발 ${n}켤레`,
+  /** 사망 후 부활 선택 화면 */
+  fellTitle: '계단에서 떨어졌습니다',
+  reviveWith: (n) => `신발 ${n}개 써서 1위보다 20칸 앞에서 부활하기`,
+  reviveShort: (n) => `부활 (신발 ${n})`,
+  reviveNeed: (need, have) => `신발 ${need}켤레가 필요합니다 (지금 ${have}켤레)`,
+  reviveMaxed: '부활을 모두 썼습니다',
+  quitRound: '나가기',
+  /** 다른 사람에게 뜨는 알림 (작은 글씨, 몇 초) */
+  someoneFell: (name) => `${name}님이 계단에서 떨어졌습니다`,
+  someoneRevived: (name, n) => `${name}님이 신발 ${n}개를 걸고 20칸 앞으로 부활했습니다`,
+  someoneOut: (name) => `${name}님이 판을 포기했습니다`,
+  /** 결과 화면 */
+  waitingOthers: '다른 사람들이 아직 오르고 있습니다',
+  lostShoes: (n) => `이번 게임에서 신발 ${n}켤레를 잃었습니다`,
+  wonPot: (n) => `걸린 신발 ${n}켤레를 모두 가져왔습니다`,
   /** 패자가 낸 신발을 승자가 아직 못 걷었다 — 지금 방을 되돌리면 그 신발이 증발한다 */
   resetPending: '신발 정산 중입니다 — 잠시만요',
   /** 멀티 일시정지: 나가면 곧 패배다. 한 번 더 눌러야 나간다 */

@@ -37,35 +37,39 @@ function rng(seed) {
 }
 
 // ─────────────────────────────────────────────
-console.log('1) 순위 — 신발 수가 1순위');
-eq('신발 많은 쪽이 1등', M.rankPlayers([
-  { uid: 'a', shoesFound: 2, stairs: 900 },
-  { uid: 'b', shoesFound: 5, stairs: 10 },
+console.log('1) 순위 — 계단 높이가 1순위 (2026-08-18 역전 배틀)');
+/**
+ * 예전에는 주운 신발이 1순위였다. 부활이 생기면서 폐기했다 —
+ * 20켤레를 걸면 **1위보다 20칸 앞**에서 되살아나므로 계단이 곧 승부다.
+ */
+eq('계단 높은 쪽이 1등 (신발은 안 본다)', M.rankPlayers([
+  { uid: 'a', shoesFound: 5, stairs: 10 },
+  { uid: 'b', shoesFound: 0, stairs: 900 },
 ]), ['b', 'a']);
 
-console.log('2) 신발 동률이면 계단 수');
-eq('계단 높은 쪽', M.rankPlayers([
-  { uid: 'a', shoesFound: 3, stairs: 40 },
-  { uid: 'b', shoesFound: 3, stairs: 41 },
+console.log('2) 계단이 같으면 살아남은 쪽');
+eq('죽은 사람보다 위', M.rankPlayers([
+  { uid: 'a', shoesFound: 3, stairs: 40, alive: false, reachedAt: 1 },
+  { uid: 'b', shoesFound: 0, stairs: 40, alive: true },
 ]), ['b', 'a']);
 
-console.log('3) 둘 다 동률이면 먼저 도달한 쪽');
+console.log('3) 둘 다 죽었으면 먼저 도달한 쪽');
 eq('먼저 도달', M.rankPlayers([
-  { uid: 'a', shoesFound: 0, stairs: 7, reachedAt: 2000 },
-  { uid: 'b', shoesFound: 0, stairs: 7, reachedAt: 1000 },
+  { uid: 'a', stairs: 7, alive: false, reachedAt: 2000 },
+  { uid: 'b', stairs: 7, alive: false, reachedAt: 1000 },
 ]), ['b', 'a']);
 eq('도달 시각도 없으면 uid 사전순(결정적)', M.rankPlayers([
-  { uid: 'z', shoesFound: 0, stairs: 0 },
-  { uid: 'a', shoesFound: 0, stairs: 0 },
+  { uid: 'z', stairs: 0 },
+  { uid: 'a', stairs: 0 },
 ]), ['a', 'z']);
 
 console.log('4) 순위는 **누가 계산해도 같아야 한다** (각자 자기 화면에서 계산한다)');
 {
   const players = [
-    { uid: 'c', shoesFound: 1, stairs: 5, reachedAt: 300 },
-    { uid: 'a', shoesFound: 1, stairs: 5, reachedAt: 300 },
-    { uid: 'b', shoesFound: 4, stairs: 2, reachedAt: 100 },
-    { uid: 'd', shoesFound: 1, stairs: 9, reachedAt: 900 },
+    { uid: 'c', shoesFound: 1, stairs: 5, alive: false, reachedAt: 300 },
+    { uid: 'a', shoesFound: 1, stairs: 5, alive: false, reachedAt: 300 },
+    { uid: 'b', shoesFound: 4, stairs: 2, alive: false, reachedAt: 100 },
+    { uid: 'd', shoesFound: 1, stairs: 9, alive: false, reachedAt: 900 },
   ];
   const truth = M.rankPlayers(players);
   // 입력 순서를 24가지로 섞어도 결과가 같아야 한다
@@ -75,7 +79,7 @@ console.log('4) 순위는 **누가 계산해도 같아야 한다** (각자 자�
     arr.forEach((x, i) => permute([...arr.slice(0, i), ...arr.slice(i + 1)], [...cur, x]));
   })(players, []);
   eq('24가지 입력 순서 전부 동일', perms.every((p) => JSON.stringify(M.rankPlayers(p)) === JSON.stringify(truth)), true);
-  eq('그 답', truth, ['b', 'd', 'a', 'c']);
+  eq('그 답 (계단 9 → 5·5 → 2)', truth, ['d', 'a', 'c', 'b']);
 }
 
 // ─────────────────────────────────────────────
@@ -610,6 +614,86 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('초기화 허용에 result 조건이 붙었다', st.includes("child('result').exists()"), true);
   const settled = rules.rules.rooms.$code.result.settled.$uid['.write'];
   eq('도장은 순위가 있는 방에만', settled.includes("child('rankings').exists()"), true);
+}
+
+// ── 21) 역전 배틀 (2026-08-18) ──────────────────
+{
+  console.log('\n21) 역전 배틀 — 부활 베팅');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const W = MULTI.reviveWindowSeconds * 1000;
+
+  // 순위는 계단만 본다 (신발 기준 폐지)
+  eq('신발이 많아도 계단이 낮으면 진다',
+     M.rankPlayers([{ uid: 'a', stairs: 10, shoesFound: 9, alive: false, reachedAt: 1 },
+                    { uid: 'b', stairs: 30, shoesFound: 0, alive: false, reachedAt: 2 }]), ['b', 'a']);
+  eq('같은 계단이면 살아남은 쪽이 위',
+     M.rankPlayers([{ uid: 'dead', stairs: 5, alive: false, reachedAt: 1 },
+                    { uid: 'live', stairs: 5, alive: true }]), ['live', 'dead']);
+
+  // 부활 위치는 **무조건 1위보다 20칸 앞**
+  eq('부활 위치 = 1위 + 20', M.reviveFloor({ players: { a: { stairs: 37 }, b: { stairs: 12 } } }), 57);
+  eq('내가 꼴찌여도 1위 기준', M.reviveFloor({ players: { a: { stairs: 0 }, b: { stairs: 100 } } }), 120);
+
+  // 내야 할 양 = 기본 1 + 20 × 부활
+  eq('부활 0회 → 1켤레', M.owedBy({}), 1);
+  eq('부활 3회 → 61켤레', M.owedBy({ revives: 3 }), 1 + 3 * MULTI.reviveCost);
+  eq('상한 10회', M.canRevive({ revives: 10 }), false);
+  eq('9회면 아직 가능', M.canRevive({ revives: 9 }), true);
+
+  // 판돈은 **항아리에 실제로 든 것**으로 센다 (조작 방지)
+  const 방 = {
+    players: { a: { revives: 1 }, b: {} },
+    result: { given: { a: new Array(20).fill(3) } },
+  };
+  eq('판돈 = 낸 20 + 아직 안 낸 기본 1×2', M.potShoes(방), 22);
+  eq('부활 횟수만 부풀려도 판돈은 안 커진다',
+     M.potShoes({ players: { a: { revives: 9 }, b: {} }, result: { given: {} } }) >= 2, true);
+
+  // 종료 판정
+  const now = 100000;
+  eq('한 명이라도 살아 있으면 안 끝난다',
+     M.roundOver({ players: { a: { alive: true }, b: { alive: false, out: true } } }, now), false);
+  eq('창이 안 지났으면 기다린다',
+     M.roundOver({ players: { a: { alive: false, deadAt: now - 1000 } } }, now), false);
+  eq('창을 넘기면 끝난다',
+     M.roundOver({ players: { a: { alive: false, deadAt: now - W - 1 } } }, now), true);
+  eq('포기하면 즉시 끝난다',
+     M.roundOver({ players: { a: { alive: false, out: true } } }, now), true);
+  eq('부활을 다 썼으면 기다리지 않는다',
+     M.roundOver({ players: { a: { alive: false, deadAt: now, revives: MULTI.maxRevives } } }, now), true);
+  eq('대기자는 판정에서 빠진다',
+     M.roundOver({ players: { a: { alive: false, out: true }, w: { waiting: true, alive: true } } }, now), true);
+  eq('나 말고 다 빠졌다',
+     M.othersAllOut({ players: { me: { alive: true }, b: { alive: false, out: true } } }, 'me', now), true);
+
+  // 클라이언트 연결
+  const gs = read('../src/game/GameScene.js');
+  const ov = read('../src/game/overlays.js');
+  const mh = read('../src/game/multiHud.js');
+  const mp = read('../src/services/multiplayer.js');
+  const ms = read('../src/services/multiSettle.js');
+  const rules = JSON.parse(read('../docs/rtdb-rules.json')).rules.rooms.$code;
+
+  has('죽으면 부활 오버레이', gs, 'new MultiDeathOverlay(this)');
+  has('부활 위치로 되살린다', gs, 'reviveAt(floor)');
+  has('종료는 roundOver 가 정한다', gs, 'roundOver(r, now)');
+  has('순위 확정도 roundOver 를 본다', mp, 'if (!roundOver(room, Date.now() + serverOffsetSync())) return room;');
+  eq('사망 보고가 판을 끝내지 않는다',
+     mp.slice(mp.indexOf('export async function reportDeath'), mp.indexOf('export async function declineRevive'))
+       .includes("'방 종료'"), false);
+  has('부활은 판돈을 먼저 올린다', mp, "'판돈 걸기'");
+  has('포기 알림', mp, 'export async function declineRevive');
+  has('승자가 항아리를 통째로 걷는다', ms, 'rankings.forEach((uid, i)');
+  has('패자는 모자란 만큼만 낸다', ms, 'const short = Math.max(0, owed - already.length)');
+  has('고스트 렌더', mh, 'function drawGhosts');
+  has('레이스 바', mh, 'function drawRaceBar');
+  has('판돈 표시', mh, 'S.potLine');
+  has('작은 폰트 사용', mh, 'small: true');
+  eq('규칙에 revives·deadAt·out 이 있다',
+     ['revives', 'deadAt', 'out'].every((k) => !!rules.players.$uid[k]), true);
+  eq('판돈 상한 220', rules.result.given.$uid['.validate'].includes('220'), true);
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

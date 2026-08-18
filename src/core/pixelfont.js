@@ -18,10 +18,46 @@ export const GLYPH_H = FONT.h;
 /** 숫자 고정폭 — mono 모드에서 쓰는 셀 폭 */
 export const DIGIT_W = FONT.glyphs['0'].w;
 
+/**
+ * ★ **두 번째 폰트 — 갈무리7 + 상용 한글 2,350자.** (2026-08-18)
+ *
+ * 두 가지를 한꺼번에 푼다.
+ *
+ * 1. **더 작은 글자.** 인게임 폰트가 11px 하나뿐이라 `scale: 1` 이 이미 최소였다.
+ *    상대 이름·판돈·알림을 그 크기로 그리면 180×320 안에서 계단이 안 보인다.
+ * 2. **닉네임이 '?' 로 나오던 버그.** 11px 폰트는 코드 문자열에 있는 한글만 굽는데
+ *    (CLAUDE.md §3-1) 닉네임은 사용자가 지은 글자다. 실측하니 `토`·`닙` 이 없어서
+ *    인게임에서 `토토` 가 **`??`** 로 보였다. 작은 폰트만은 KS X 1001 2,350자를 다 굽는다.
+ *
+ * 대신 **필요할 때만 받는다**(gzip 19KB). 싱글만 하는 사람은 받지 않는다.
+ * 아직 안 왔으면 큰 폰트로 그린다 — 글자가 커질 뿐 화면이 비지는 않는다.
+ */
+let SMALL = null;
+let smallLoading = null;
+
+export function loadSmallFont() {
+  if (SMALL) return Promise.resolve(SMALL);
+  if (!smallLoading) {
+    smallLoading = import('../data/font7.generated.json')
+      .then((m) => { SMALL = m.default ?? m; return SMALL; })
+      .catch(() => { smallLoading = null; return null; });
+  }
+  return smallLoading;
+}
+
+/** 작은 폰트가 준비됐나 (레이아웃을 미리 재는 곳에서 본다) */
+export const smallReady = () => !!SMALL;
+
+/** 이 옵션이 실제로 쓸 폰트 */
+const fontOf = (small) => (small && SMALL ? SMALL : FONT);
+
+/** 그 폰트의 글리프 높이 — 줄 간격 계산에 쓴다 */
+export const glyphH = (small) => fontOf(small).h;
+
 const MISSING = FONT.glyphs['?'];
 
-function glyph(ch) {
-  return FONT.glyphs[ch] ?? MISSING;
+function glyph(ch, F = FONT) {
+  return F.glyphs[ch] ?? F.glyphs['?'] ?? MISSING;
 }
 
 /**
@@ -30,12 +66,14 @@ function glyph(ch) {
  * @param {number} [scale]
  * @param {boolean} [mono] 숫자 고정폭 (스코어처럼 자릿수가 바뀌어도 흔들리면 안 되는 곳)
  */
-export function measure(str, scale = 1, mono = false) {
+export function measure(str, scale = 1, mono = false, small = false) {
+  const F = fontOf(small);
   const s = String(str).toUpperCase();
   if (!s.length) return 0;
+  const digitW = F.glyphs['0'].w;
   let w = 0;
-  for (const ch of s) w += mono ? DIGIT_W : glyph(ch).w;
-  return (w + FONT.tracking * (s.length - 1)) * scale;
+  for (const ch of s) w += mono ? digitW : glyph(ch, F).w;
+  return (w + F.tracking * (s.length - 1)) * scale;
 }
 
 /**
@@ -58,10 +96,11 @@ export function text(str, x, y, opt = {}) {
   const color = opt.color ?? '#ffffff';
   const up = String(str).toUpperCase();
   const mono = !!opt.mono;
+  const F = fontOf(opt.small);
 
   let ox = Math.floor(x);
   const oy = Math.floor(y);
-  const w = measure(up, s, mono);
+  const w = measure(up, s, mono, opt.small);
   if (opt.align === 'center') ox -= w >> 1;
   else if (opt.align === 'right') ox -= w;
 
@@ -69,24 +108,25 @@ export function text(str, x, y, opt = {}) {
     for (let dy = -s; dy <= s; dy += s) {
       for (let dx = -s; dx <= s; dx += s) {
         if (dx === 0 && dy === 0) continue;
-        blit(ctx, up, ox + dx, oy + dy, s, opt.outline, mono);
+        blit(ctx, up, ox + dx, oy + dy, s, opt.outline, mono, F);
       }
     }
   } else if (opt.shadow) {
-    blit(ctx, up, ox + s, oy + s, s, opt.shadow, mono);
+    blit(ctx, up, ox + s, oy + s, s, opt.shadow, mono, F);
   }
 
-  blit(ctx, up, ox, oy, s, color, mono);
+  blit(ctx, up, ox, oy, s, color, mono, F);
 }
 
-function blit(ctx, str, x, y, s, color, mono) {
+function blit(ctx, str, x, y, s, color, mono, F = FONT) {
   ctx.fillStyle = color;
+  const digitW = F.glyphs['0'].w;
   let cx = x;
   for (const ch of str) {
-    const g = glyph(ch);
+    const g = glyph(ch, F);
     // 고정폭에서는 좁은 글자('1' 등)를 셀 가운데로 민다
-    const pad = mono ? (DIGIT_W - g.w) >> 1 : 0;
-    for (let row = 0; row < GLYPH_H; row++) {
+    const pad = mono ? (digitW - g.w) >> 1 : 0;
+    for (let row = 0; row < F.h; row++) {
       const bits = g.r[row];
       if (!bits) continue;
       let run = 0;
@@ -103,7 +143,7 @@ function blit(ctx, str, x, y, s, color, mono) {
       }
       if (run) ctx.fillRect(cx + (pad + g.w - run) * s, y + row * s, run * s, s);
     }
-    cx += ((mono ? DIGIT_W : g.w) + FONT.tracking) * s;
+    cx += ((mono ? digitW : g.w) + F.tracking) * s;
   }
 }
 
@@ -130,18 +170,19 @@ function blit(ctx, str, x, y, s, color, mono) {
 const glyphCache = new Map();
 const GLYPH_CACHE_MAX = 96;
 
-function cachedGlyph(ch, s, color, outline, shadow, mono) {
-  const key = `${ch}|${s}|${color}|${outline ?? ''}|${shadow ?? ''}|${mono ? 1 : 0}`;
+function cachedGlyph(ch, s, color, outline, shadow, mono, small) {
+  const F = fontOf(small);
+  const key = `${ch}|${s}|${color}|${outline ?? ''}|${shadow ?? ''}|${mono ? 1 : 0}|${F === FONT ? 'L' : 'S'}`;
   const hit = glyphCache.get(key);
   if (hit) return hit;
 
-  const cell = mono ? DIGIT_W : glyph(ch).w;
+  const cell = mono ? F.glyphs['0'].w : glyph(ch, F).w;
   // 외곽선은 사방으로 1도트(=s픽셀) 삐져나온다 — 그만큼 여백을 준다
   const pad = outline || shadow ? s : 0;
-  const buf = createBuffer(cell * s + pad * 2, GLYPH_H * s + pad * 2);
-  text(ch, pad, pad, { color, outline, shadow, scale: s, mono, ctx: buf.ctx });
+  const buf = createBuffer(cell * s + pad * 2, F.h * s + pad * 2);
+  text(ch, pad, pad, { color, outline, shadow, scale: s, mono, small, ctx: buf.ctx });
 
-  const entry = { canvas: buf.canvas, pad, advance: (cell + FONT.tracking) * s };
+  const entry = { canvas: buf.canvas, pad, advance: (cell + F.tracking) * s };
   // 오래된 것부터 버린다 (Map 은 넣은 순서를 지킨다)
   if (glyphCache.size >= GLYPH_CACHE_MAX) glyphCache.delete(glyphCache.keys().next().value);
   glyphCache.set(key, entry);
@@ -160,14 +201,14 @@ export function textCached(str, x, y, opt = {}) {
   const color = opt.color ?? '#ffffff';
 
   let ox = Math.floor(x);
-  const w = measure(up, s, mono);
+  const w = measure(up, s, mono, opt.small);
   if (opt.align === 'center') ox -= w >> 1;
   else if (opt.align === 'right') ox -= w;
 
   const ctx = opt.ctx ?? getCtx();
   const oy = Math.floor(y);
   for (const ch of up) {
-    const g = cachedGlyph(ch, s, color, opt.outline, opt.shadow, mono);
+    const g = cachedGlyph(ch, s, color, opt.outline, opt.shadow, mono, opt.small);
     ctx.drawImage(g.canvas, ox - g.pad, oy - g.pad);
     ox += g.advance;
   }

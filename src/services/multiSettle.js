@@ -24,7 +24,7 @@ import * as L from './storageLocal.js';
 import * as Room from './multiplayer.js';
 import { currentUser } from './auth.js';
 import { patch } from './profile.js';
-import { pickPenaltyShoes, settlementCounts } from './matchRules.js';
+import { pickPenaltyShoes, owedBy } from './matchRules.js';
 import { MULTI } from '../config/balance.js';
 
 /** 도장 이름 — 방 하나에서 "내가 낸 것"과 "누구한테서 받은 것"을 따로 센다 */
@@ -65,59 +65,65 @@ export async function settleRoom(code, room = null) {
   const myIndex = rankings.indexOf(u.uid);
   if (myIndex < 0) return null;
   const won = myIndex === 0;
-  const counts = settlementCounts(rankings);
   const given = r?.result?.given ?? {};
+  const me = r?.players?.[u.uid] ?? {};
 
   let paid = [];
   let took = [];
 
-  // ── 진 사람: 신발을 골라 내놓는다 ──────────────────
   /**
-   * ★ **낸 적이 있는지는 서버가 안다.** (2026-08-16)
-   * `given[내uid]` 가 있으면 이미 낸 것이다 — 로컬 도장을 볼 필요가 없다.
-   * 예전에는 도장이 localStorage 에만 있어서, 저장소를 지우거나 기기를 바꾸면
-   * **같은 판에서 신발을 또 냈고**(그 신발은 아무도 못 받아 그냥 증발했다),
-   * 반대로 지갑이 아직 안 내려온 상태로 정산이 돌면 "낼 게 없다"고 도장이 찍혀
-   * **패널티를 영구히 면제받는** 구멍도 있었다.
+   * ── 진 사람: **모자란 만큼만** 낸다 ────────────────────────
+   *
+   * 역전 배틀에서는 부활할 때마다 이미 20켤레씩 항아리에 넣었다. 그래서 "냈나 안 냈나"의
+   * 이분법이 아니라 **얼마를 내야 하는데 얼마를 냈나**로 계산한다.
+   *
+   *   내야 할 양 = 기본 1켤레 + 20 × 부활 횟수  (`owedBy`)
+   *   이미 낸 양 = `given[내uid].length`
+   *
+   * 이 뺄셈이라 여러 번 불려도 두 번 내지 않는다 — 서버에 남은 목록이 진실이기 때문이다.
    */
-  const alreadyPaid = Array.isArray(given[u.uid]);
-  if (!won && !alreadyPaid) {
+  const owed = owedBy(me);
+  const already = Array.isArray(given[u.uid]) ? given[u.uid] : [];
+  const short = Math.max(0, owed - already.length);
+  if (!won && short) {
     const wallet = L.loadProfile().shoesByIndex ?? {};
-    const picked = pickPenaltyShoes(wallet, MULTI.loserPenalty);
+    const picked = pickPenaltyShoes(wallet, short);
     /**
      * **지갑이 비어 보이면 아무것도 하지 않는다.** 새 기기 첫 실행처럼 서버에서
      * 아직 안 내려온 상태일 수 있다. 그때 "낼 게 없다"로 넘기면 그게 곧 면제다.
-     * 다음 접속에 다시 시도하면 된다 — 방은 서버에 남아 있다.
      */
     if (picked.length) {
       paid = L.removeShoesByIndex(picked);
-      // **먼저 내 지갑에서 빼고 나서** 목록을 올린다. 반대로 하면 올린 뒤 앱이
-      // 닫혔을 때 승자는 받는데 나는 안 빠진, 신발이 복제된 상태가 된다.
-      const ok = await Room.publishGiven(code, paid);
+      // **먼저 내 지갑에서 빼고 나서** 목록을 올린다 (반대면 신발이 복제된다)
+      const ok = await Room.publishGiven(code, [...already, ...paid]);
       if (!ok) {
-        // 못 올렸으면 되돌린다 — 아무도 못 받는 신발을 버릴 이유가 없다
         L.addShoes(paid);
         paid = [];
       } else if (!L.isSettled(payTag(code))) {
         L.recordMatch(false);
-        L.markSettled(payTag(code)); // 전적 집계용 (신발 이동은 서버가 판정한다)
+        L.markSettled(payTag(code));
       }
     }
   }
 
-  // ── 이긴 사람: 내놓인 신발을 걷는다 ────────────────
+  /**
+   * ── 이긴 사람: **항아리를 통째로 가져간다** ──────────────────
+   *
+   * 역전 배틀의 규칙이다 — 부활 비용까지 전부 승자 몫이다. 내가 건 것도 되돌아온다.
+   * 그래서 비트마스크를 **패자 목록이 아니라 순위 전체**(0번 = 나 자신 포함)에 매긴다.
+   */
   let pending = 0;
   if (won) {
-    const losers = rankings.slice(1);
     let mask = Number(r?.result?.settled?.[u.uid] ?? 0);
     const pickUp = [];
-    let claiming = 0; // 이번에 걷으려는 패자 수
+    let claiming = 0;
 
-    losers.forEach((loser, i) => {
+    rankings.forEach((uid, i) => {
       const bit = 1 << i;
-      if (mask & bit) return;                                   // 이미 걷었다 (서버 기록)
-      const list = given[loser];
-      if (!Array.isArray(list) || !list.length) { pending++; return; } // 아직 안 냈다
+      if (mask & bit) return;                       // 이미 걷었다 (서버 기록)
+      const list = given[uid];
+      const 낼사람 = uid === u.uid ? (me.revives ?? 0) > 0 : true;
+      if (!Array.isArray(list) || !list.length) { if (낼사람) pending++; return; }
       pickUp.push(...list);
       mask |= bit;
       claiming++;
@@ -125,32 +131,35 @@ export async function settleRoom(code, room = null) {
 
     /**
      * **도장을 먼저 서버에 남기고 나서 지갑에 넣는다.** 순서가 반대면 도장 쓰기가
-     * 실패했을 때 다음 접속에 같은 신발을 또 걷어 **복제**된다. 이 순서라면 최악이
-     * "받았어야 할 걸 이번엔 못 받음"이라 총량이 늘지 않는다 — 다음 접속에 다시 걷는다.
+     * 실패했을 때 다음 접속에 같은 신발을 또 걷어 **복제**된다.
      */
     if (claiming) {
       if (await Room.markSettledRemote(code, mask)) {
         L.addShoes(pickUp);
-        /**
-         * 받은 신발이 내 도감에 없던 종류면 **도감에도 새로 등록된다** (기획서 §5-7).
-         * 멀티 승리가 도감을 넓히는 유일한 경로라서 이게 빠지면 재미가 반으로 준다.
-         */
         for (const i of pickUp) L.recordShoe(i);
         took = pickUp;
       } else {
-        pending += claiming; // 도장을 못 남겼다 — 아직 안 받은 셈으로 센다
+        pending += claiming;
       }
     }
 
     if (!L.isSettled(payTag(code))) {
       L.recordMatch(true);
-      L.markSettled(payTag(code)); // 승자에게 payTag 는 '전적 기록함' 표시로 쓴다
+      L.markSettled(payTag(code));
     }
   }
 
   if (paid.length || took.length) pushWallet();
 
-  return { rank: myIndex + 1, won, paid, took, pending, reward: counts[u.uid] ?? 0 };
+  return {
+    rank: myIndex + 1,
+    won,
+    paid,
+    took,
+    pending,
+    /** 이 판에서 내가 잃은 총량 (기본 + 부활 비용) — 결과 화면 문구용 */
+    lost: won ? 0 : Math.max(owed, already.length + paid.length),
+  };
 }
 
 /**

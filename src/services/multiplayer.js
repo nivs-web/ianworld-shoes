@@ -13,7 +13,7 @@ import { getRtdb, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { MULTI } from '../config/balance.js';
-import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound } from './matchRules.js';
+import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound, reviveFloor, canRevive, roundOver } from './matchRules.js';
 
 const ROOMS = 'rooms';
 const MY_ROOMS = 'userRooms';
@@ -47,6 +47,12 @@ async function rt() {
  * 기기 시계는 몇 초씩 어긋나 있는 게 보통이라, 그 차이를 먼저 알아 둔다.
  */
 let offsetCache = null;
+
+/**
+ * 지금까지 잰 서버 시각 보정값 (없으면 0).
+ * 게임 루프처럼 **await 를 걸 수 없는 자리**에서 서버 기준 '지금'을 만들 때 쓴다.
+ */
+export const serverOffsetSync = () => offsetCache ?? 0;
 
 export async function serverOffset(fb) {
   /**
@@ -370,6 +376,7 @@ export async function resetRoom(code) {
   const players = {};
   for (const [uid, v] of Object.entries(room.players ?? {})) {
     // 대기자도 이제 정식 참가자가 된다. 진행도는 전부 초기화한다.
+    // 빠진 키(reachedAt·deadAt·out·revives·waiting)는 **삭제**된다 — 다음 판은 백지에서 시작한다
     players[uid] = {
       nickname: v.nickname ?? '', characterId: v.characterId ?? 'ian',
       ready: false, stairs: 0, shoesFound: 0, alive: true, joinedAt: v.joinedAt ?? Date.now(),
@@ -651,15 +658,83 @@ export async function reportDeath(code, { stairs, shoesFound }) {
   const fb = await rt();
   if (!fb) return;
   /**
-   * ★ `reachedAt` 만 **보정 안 한 폰 시계**였다. (2026-08-18)
-   * 동점이면 이 값이 순위를 가르는데, 시계가 3분 느린 폰은 항상 이기고 빠른 폰은
-   * 항상 진다. 다른 시각(`createdAt`·`startAt`)은 전부 서버 보정을 쓴다.
+   * ★ **죽어도 판은 안 끝난다.** (2026-08-18 역전 배틀)
+   *
+   * 예전에는 여기서 `state: 'finished'` 까지 썼다 — "한 명이 죽으면 전원 종료"가
+   * 대전제였기 때문이다. 이제는 죽은 사람에게 **20초의 부활 창**이 열리고, 그동안
+   * 남은 사람들은 계속 오른다. 판을 끝내는 건 `matchRules.roundOver` 를 관측한
+   * 클라이언트의 `finalizeResult` 다.
+   *
+   * `deadAt` 은 **서버 보정 시각**이다. 폰 시계가 제각각이면 어떤 사람은 5초 만에,
+   * 어떤 사람은 40초 동안 부활 창이 열린다. (오프셋은 세션당 한 번만 잰다)
    */
   const offset = await serverOffset(fb);
+  const at = nowOn(fb, offset);
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
-    stairs: stairs | 0, shoesFound: shoesFound | 0, alive: false, reachedAt: nowOn(fb, offset),
+    stairs: stairs | 0, shoesFound: shoesFound | 0, alive: false, reachedAt: at, deadAt: at,
   }), undefined, '사망 보고').catch(() => {});
-  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { state: 'finished' }), undefined, '방 종료').catch(() => {});
+}
+
+/**
+ * 부활을 포기한다 — 남은 사람들이 **20초를 기다리지 않아도 되게** 알린다.
+ * 이게 없으면 나가기를 눌러도 다른 사람 화면에서는 창이 닫힐 때까지 판이 안 끝난다.
+ */
+export async function declineRevive(code) {
+  const fb = await rt();
+  if (!fb) return;
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
+    out: true,
+  }), undefined, '부활 포기').catch(() => {});
+}
+
+/**
+ * ★ **신발을 걸고 1위보다 앞에서 되살아난다.** (역전 배틀의 심장)
+ *
+ * 순서가 전부다:
+ *   ① 방을 읽어 1위 층수를 확인한다 (내 화면 값은 300ms 낡았을 수 있다)
+ *   ② 판돈을 **먼저 항아리에 올린다** — 올리기 전에 살아나면 공짜 부활이 된다
+ *   ③ 그 다음에 살아난다
+ *
+ * ②가 실패하면 아무 일도 없었던 것으로 만든다(지갑은 호출부가 되돌린다).
+ * 반대 순서였다면 "살아났는데 돈은 안 냈다"가 되어 판돈이 실물과 어긋난다.
+ *
+ * @param {string} code
+ * @param {number[]} indices 이번에 거는 신발 (호출부가 지갑에서 이미 뺐다)
+ * @returns {Promise<number|null>} 되살아날 층수 (실패하면 null)
+ */
+export async function reviveMe(code, indices) {
+  const fb = await rt();
+  if (!fb) return null;
+  const read = await readOnce(fb, path(ROOMS, code));
+  const room = read.val;
+  if (!room) return null;
+  const me = room.players?.[fb.uid];
+  if (!me || !canRevive(me)) return null;
+
+  const floor = reviveFloor(room);
+
+  // ② 판돈 먼저 (있던 목록 뒤에 붙인다 — 부활은 여러 번 할 수 있다)
+  const prev = Array.isArray(room.result?.given?.[fb.uid]) ? room.result.given[fb.uid] : [];
+  const merged = [...prev, ...indices];
+  try {
+    await withTimeout(
+      fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'result', 'given', fb.uid)), merged),
+      undefined, '판돈 걸기'
+    );
+  } catch {
+    return null;
+  }
+
+  // ③ 살아난다
+  const offset = await serverOffset(fb);
+  try {
+    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
+      alive: true, stairs: floor, revives: (me.revives ?? 0) + 1, reachedAt: nowOn(fb, offset), deadAt: 0,
+    }), undefined, '부활');
+  } catch {
+    return null;   // 항아리에는 들어갔다 — 판이 끝나면 승자가 가져간다(내가 이겨도 되돌려받는다)
+  }
+  return floor;
 }
 
 /**
@@ -692,6 +767,16 @@ export async function finalizeResult(code) {
 
   const players = playersInRound(room.players);    // 대기자는 이번 판 사람이 아니다
   if (players.length < MULTI.minPlayers) return room;
+
+  /**
+   * ★ **판이 끝났을 때만 순위를 박는다.** (2026-08-18 역전 배틀)
+   *
+   * 예전에는 부르는 즉시 확정했다 — "한 명이 죽으면 전원 종료"였으니 그래도 됐다.
+   * 이제는 내가 먼저 포기하고 나가도 **남은 사람들은 계속 오르고 있다.** 그때 순위를
+   * 박아 버리면 남의 판을 내가 끝내는 셈이고, 1등도 그 시점 기록으로 굳어 버린다.
+   * 판정은 `roundOver` 한 곳뿐이라 누가 계산해도 같은 답이 나온다.
+   */
+  if (!roundOver(room, Date.now() + serverOffsetSync())) return room;
 
   try {
     await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {

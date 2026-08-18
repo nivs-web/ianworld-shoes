@@ -93,6 +93,16 @@ service cloud.firestore {
 >
 > **(1) 하위 `.write` 는 아예 평가되지 않았다.** RTDB 는 **상위에서 허용하면 하위 `.write` 를
 > 보지 않는다**(shallower rules override deeper). `$code` 에 쓰기를 열어 뒀으므로
+### 역전 배틀 — 새 필드 셋과 판돈 상한 (2026-08-18, 3차)
+
+`players/$uid` 에 `revives`(부활 횟수) · `deadAt`(죽은 서버 시각) · `out`(부활 포기)이 늘었다.
+**규칙에 안 적으면 그 쓰기가 통째로 거부된다**(`$other: false`) — 예전에 이 함정으로
+멀티가 통째로 죽은 적이 있다. 셋 다 "본인 것만, 남의 것은 값이 그대로" 규칙을 따른다.
+`revives` 는 0~10 으로 못 박았다 — 부활 상한(`MULTI.maxRevives`)과 같은 수다.
+
+`result/given/$uid` 의 개수 상한도 4 → **220** 으로 올렸다. 부활 한 번에 20켤레씩
+최대 10번 + 기본 1켤레 = 201켤레가 한 사람의 최대 납부액이다.
+
 ### 정산은 **방을 나간 뒤에도** 끝낼 수 있어야 한다 (2026-08-18, 2차)
 
 판이 끝나면 모두 방에서 나간다 — 안 그러면 시체 방이 매칭 창(`open==true` 앞 12개)을
@@ -186,6 +196,9 @@ service cloud.firestore {
             "joinedAt":    { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "reachedAt":   { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "waiting":     { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
+            "revives":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && ($uid == auth.uid || newData.val() == data.val())" },
+            "deadAt":      { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
+            "out":         { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
             "$other":      { ".validate": false }
           }
         },
@@ -202,7 +215,7 @@ service cloud.firestore {
           "given": {
             "$uid": {
               ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($code).child('result').child('rankings').exists()",
-              ".validate": "!newData.hasChild('4')",
+              ".validate": "!newData.hasChild('220')",
               "$i": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 129 && ($uid == auth.uid || newData.val() == data.val())"
               }

@@ -20,15 +20,17 @@ import { Stairs } from './stairs.js';
 import { Player, P_STATE } from './player.js';
 import { Background } from './background.js';
 import { renderHud } from './hud.js';
-import { PauseOverlay, ReviveOverlay, GameOverOverlay } from './overlays.js';
+import { PauseOverlay, ReviveOverlay, GameOverOverlay, MultiDeathOverlay } from './overlays.js';
 import { PAL } from './palette.js';
 import { get as getProfile, dexUnique } from '../services/profile.js';
 import * as Sfx from '../audio/sfx.js';
 import * as Bgm from '../audio/bgm.js';
-import { AUDIO, SHOE_RARE_TIER_MAX, bgmTrackAt } from '../config/balance.js';
+import { AUDIO, SHOE_RARE_TIER_MAX, bgmTrackAt, MULTI } from '../config/balance.js';
 import shoesData from '../data/shoes.json';
 import * as Room from '../services/multiplayer.js';
-import { multiHud } from './multiHud.js';
+import { roundOver, othersAllOut } from '../services/matchRules.js';
+import S from '../config/strings.ko.js';
+import { multiHud, TICKER_MS } from './multiHud.js';
 
 export class GameScene {
   /**
@@ -69,6 +71,10 @@ export class GameScene {
      */
     this.multi = opt.multi ?? null;
     this.opponents = [];
+    /** 마지막으로 받은 방 스냅샷 — 판돈·부활 위치를 여기서 읽는다 */
+    this.room = null;
+    /** 인게임 알림 큐 (낙사·부활) */
+    this.ticker = [];
     this.countdownMs = 0;
     this.roomUnsub = null;
     this.ready = false;
@@ -96,6 +102,7 @@ export class GameScene {
     this.over = false;
     this.committed = false;
     this.leaving = false;
+    this.ticker = [];
     /** 함성 발동용 — 실수 없이 연속으로 오른 칸 수 (기획서 §9-7-1) */
     this.stepStreak = 0;
     /** 이번 판에 주운 신발 index 목록 — 판이 끝나면 도감·자산에 반영한다 */
@@ -163,25 +170,55 @@ export class GameScene {
     });
     this.roomUnsub = Room.subscribeRoom(this.multi.code, (r) => {
       if (!r) return;
+      this.room = r;
       const uid = this.multi.myUid;
       /**
        * ★ **대기자(`waiting`)는 이번 판 사람이 아니다.** (2026-08-16)
        * 게임 중에 들어와 다음 판을 기다리는 사람이다. HUD 에 띄우면 0계단짜리 유령이
-       * 하나 붙고, 아래 '한 명이라도 죽으면 종료' 판정에도 끼어들어 판을 망친다.
+       * 하나 붙고, 종료 판정에도 끼어들어 판을 망친다.
        */
-      this.opponents = Object.entries(r.players ?? {})
+      const next = Object.entries(r.players ?? {})
         .filter(([id, v]) => id !== uid && !v?.waiting)
         .map(([id, v]) => ({ id, ...v }));
+
       /**
-       * **누구든 한 명이 죽으면 전원 종료** (기획서 §5-7).
-       * 내가 살아 있어도 여기서 끝난다 — 그게 이 게임의 승부 방식이다.
+       * ★ **낙사·부활을 그 자리에서 알려 준다.** (2026-08-18)
+       * 역전이 재미의 전부인데, 상대가 내 앞으로 튀어나온 걸 모르면 역전당한 줄도 모른다.
+       * 판정은 **이전 스냅샷과의 차이**로 한다 — 서버가 이벤트를 주지 않으므로.
        */
-      if (!this.player?.dead && !this.overlayDone &&
-          Object.values(r.players ?? {}).some((v) => !v?.waiting && v.alive === false)) {
-        this.overlayDone = true;
-        this.endMulti();
+      for (const o of next) {
+        const was = this.opponents.find((p) => p.id === o.id);
+        if (!was) continue;
+        if ((o.revives ?? 0) > (was.revives ?? 0)) {
+          this.notify(S.someoneRevived(o.nickname ?? '', MULTI.reviveCost));
+          Sfx.play('sfx_revive');
+        } else if (was.alive !== false && o.alive === false) {
+          this.notify(S.someoneFell(o.nickname ?? ''));
+        } else if (!was.out && o.out) {
+          this.notify(S.someoneOut(o.nickname ?? ''));
+        }
+      }
+      this.opponents = next;
+
+      /**
+       * ★ **판이 끝나는 조건이 바뀌었다.** (2026-08-18)
+       * 예전: 누구든 한 명이 죽으면 전원 종료.
+       * 지금: **전원이 죽고 아무도 부활하지 않을 때**. 그때까지는 각자 계속 오른다.
+       *
+       * 내가 살아 있는데 남들이 전부 빠졌으면 혼자 뛸 이유가 없으므로 거기서 끝낸다.
+       */
+      const now = Date.now() + (Room.serverOffsetSync?.() ?? 0);
+      if (!this.over) {
+        if (roundOver(r, now)) this.endMulti();
+        else if (!this.player?.dead && othersAllOut(r, uid, now)) this.endMulti();
       }
     });
+  }
+
+  /** 인게임 알림 한 줄 — 몇 초 떠 있다 사라진다 (multiHud 가 그린다) */
+  notify(msg) {
+    this.ticker.push({ msg, until: Date.now() + TICKER_MS });
+    if (this.ticker.length > 3) this.ticker.shift();
   }
 
   /** 이번 판의 성과 — 로비/결과 화면이 계정에 반영할 때 쓴다 */
@@ -322,6 +359,35 @@ export class GameScene {
     this.player.die();
   }
 
+  /**
+   * ★ **멀티 부활 — 1위보다 앞 계단에서 되살아난다.** (2026-08-18)
+   *
+   * 계단은 전원이 같은 시드로 만들므로 **어느 층으로든 그냥 옮겨 놓으면 된다**
+   * (엘리베이터가 쓰는 `startFloor` 와 같은 원리다). 게이지는 가득 채운다 —
+   * 20켤레를 걸었는데 반쯤 닳은 게이지로 시작하면 베팅이 성립하지 않는다.
+   *
+   * @param {number} floor 되살아날 층
+   */
+  reviveAt(floor) {
+    this.floor = floor | 0;
+    this.gauge = GAUGE_MAX;
+    /**
+     * `dead`·`dying` 은 **state 에서 파생되는 getter** 다 — 대입하면 그 자리에서 터진다
+     * (ESM 은 strict mode). 되살리려면 상태와 추락 연출 값만 되돌리면 된다.
+     */
+    this.player.state = P_STATE.IDLE;
+    this.player.timer = 0;
+    this.player.fallY = 0;
+    this.player.fallVy = 0;
+    this.player.facing = this.stairs.nextDir(this.floor);
+    this.player.shoe = this.player.deadShoe ?? this.player.shoe;
+    this.player.deadShoe = null;
+    this.overlayDone = false;
+    this.started = true;
+    Bgm.setFloor(this.floor);
+    clearInput();
+  }
+
   /** 부활 (ReviveOverlay에서 호출) */
   doRevive() {
     Sfx.play('sfx_revive');
@@ -393,9 +459,15 @@ export class GameScene {
        * 그래서 게임오버 오버레이를 띄우지 않고 곧장 정산 화면으로 넘어간다 —
        * 여기서 '다시하기'를 보여 주면 남들은 이미 결과 화면인데 나만 딴 판을 하게 된다.
        */
+      /**
+       * ★ **멀티에서 죽으면 20초의 부활 창이 열린다.** (2026-08-18 역전 배틀)
+       * 예전에는 곧장 정산 화면으로 갔다("멀티는 부활 없음"). 이제는 신발을 걸고
+       * **1위보다 20칸 앞**에서 되살아날 수 있다 — 그게 이 게임의 승부다.
+       * 판은 여기서 안 끝난다. 남은 사람들은 계속 오르고 있다.
+       */
       if (this.multi) {
         Room.reportDeath(this.multi.code, { stairs: this.floor, shoesFound: this.shoesFound });
-        this.endMulti();
+        Scene.push(new MultiDeathOverlay(this));
         return;
       }
       if (this.revives > 0) {

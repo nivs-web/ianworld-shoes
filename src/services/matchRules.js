@@ -24,20 +24,19 @@ import { MULTI } from '../config/balance.js';
  */
 export function rankPlayers(players) {
   /**
-   * ★ **동점이면 살아남은 쪽이 위다.** (2026-08-18)
+   * ★ **계단 높이가 전부다.** (2026-08-18 역전 배틀)
    *
-   * 예전에는 성적이 같으면 `reachedAt` 이 이른 쪽이 이겼는데, 그 값은 **죽은 사람만**
-   * 찍힌다(`reportDeath`). 살아 있는 사람은 `Infinity` 라 항상 뒤로 밀렸다.
-   * 그래서 이런 게 성립했다: 카운트다운이 끝나자마자 일시정지 → 나가기.
-   * 전원이 0계단·0신발인 그 순간에 **나간 사람만** `reachedAt` 을 갖게 되어
-   * **1등이 되고 남은 사람들의 신발을 한 켤레씩 걷어 갔다.**
+   * 예전에는 주운 신발이 1순위였는데, 부활이 생기면서 그 기준이 무너졌다 —
+   * 신발 20켤레를 걸고 부활하면 **1위보다 20칸 앞**에서 시작하므로 계단이 곧 승부다.
+   * 판은 "전원이 죽고 아무도 부활하지 않을 때" 끝나므로, 마지막까지 가장 높이 오른
+   * 사람이 이긴 사람이다.
    *
-   * 이 판의 승부는 "누가 먼저 떨어지느냐"다. 성적이 같다면 떨어진 사람이 아래로 간다.
+   * 살아 있는 사람을 위로 두는 항은 남겨 둔다 — 다른 사람이 전부 포기해 마지막 한 명이
+   * 남은 채 판이 끝나는 경우에 그 사람이 1위여야 한다.
    */
   const survived = (p) => (p.alive === false ? 0 : 1);
   return [...players]
     .sort((a, b) =>
-      (b.shoesFound ?? 0) - (a.shoesFound ?? 0) ||
       (b.stairs ?? 0) - (a.stairs ?? 0) ||
       survived(b) - survived(a) ||
       (a.reachedAt ?? Infinity) - (b.reachedAt ?? Infinity) ||
@@ -63,6 +62,69 @@ export function settlementCounts(rankings) {
   out[rankings[0]] = losers.length * MULTI.loserPenalty;
   for (const uid of losers) out[uid] = -MULTI.loserPenalty;
   return out;
+}
+
+// ─────────────────────────────────────────────
+// 역전 배틀 — 판돈과 종료 판정 (2026-08-18)
+// ─────────────────────────────────────────────
+
+/**
+ * **판돈은 항아리에 실제로 들어 있는 것만 센다.**
+ *
+ * `revives` 숫자로 계산하면 조작된 클라이언트가 화면의 판돈만 부풀릴 수 있다.
+ * `result.given` 은 그 사람이 **자기 지갑에서 실제로 뺀** 신발 목록이므로 이걸 세면
+ * 표시와 실물이 항상 일치한다. 아직 안 낸 기본 1켤레는 사람 수로 더해 준다.
+ */
+export function potShoes(room) {
+  const given = room?.result?.given ?? {};
+  const list = playersInRound(room?.players);
+  let n = 0;
+  for (const p of list) {
+    const paid = Array.isArray(given[p.uid]) ? given[p.uid].length : 0;
+    // 낸 것 + 아직 안 낸 몫(기본 1켤레는 판이 끝나야 낸다)
+    n += Math.max(paid, owedBy(p));
+  }
+  return n;
+}
+
+/** 이 사람이 이 판에서 내야 할 총량 = 기본 1 + 부활 비용 × 부활 횟수 */
+export function owedBy(player) {
+  return MULTI.loserPenalty + (player?.revives ?? 0) * MULTI.reviveCost;
+}
+
+/** 부활을 더 할 수 있나 (상한 10회 — 시간 제한이 없으므로 이게 유일한 종료 보장이다) */
+export const canRevive = (player) => (player?.revives ?? 0) < MULTI.maxRevives;
+
+/** 이 사람의 부활 창이 끝났나 */
+export function reviveExpired(player, now) {
+  if (player?.out) return true;
+  if (!canRevive(player)) return true;
+  return now - (player?.deadAt ?? 0) > MULTI.reviveWindowSeconds * 1000;
+}
+
+/**
+ * 판이 끝났나 — **살아 있는 사람이 없고, 죽은 사람이 전부 부활 창을 넘겼거나 포기했을 때.**
+ *
+ * 예전 대전제("한 명이 죽으면 즉시 종료")를 대체한다. 판정을 순수 함수로 둔 이유는
+ * **모두가 같은 답을 내야** 하기 때문이다 — 먼저 관측한 클라이언트가 순위를 못 박는다.
+ */
+export function roundOver(room, now) {
+  const list = playersInRound(room?.players);
+  if (!list.length) return false;
+  return list.every((p) => p.alive === false && reviveExpired(p, now));
+}
+
+/** 나 말고 전원이 판에서 빠졌나 — 마지막 한 명이 혼자 계속 뛸 이유는 없다 */
+export function othersAllOut(room, myUid, now) {
+  const others = playersInRound(room?.players).filter((p) => p.uid !== myUid);
+  if (!others.length) return false;
+  return others.every((p) => p.alive === false && reviveExpired(p, now));
+}
+
+/** 부활 위치 — **무조건 1위보다 `reviveAhead` 칸 앞** */
+export function reviveFloor(room) {
+  const top = playersInRound(room?.players).reduce((m, p) => Math.max(m, p.stairs ?? 0), 0);
+  return top + MULTI.reviveAhead;
 }
 
 /** 기획서 표와 계산이 맞는지 (개발 중 자기검증용) */

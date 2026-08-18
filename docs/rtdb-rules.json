@@ -33,6 +33,9 @@
             "joinedAt":    { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "reachedAt":   { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "waiting":     { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
+            "revives":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && ($uid == auth.uid || newData.val() == data.val())" },
+            "deadAt":      { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
+            "out":         { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
             "$other":      { ".validate": false }
           }
         },
@@ -49,7 +52,7 @@
           "given": {
             "$uid": {
               ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($code).child('result').child('rankings').exists()",
-              ".validate": "!newData.hasChild('4')",
+              ".validate": "!newData.hasChild('220')",
               "$i": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 129 && ($uid == auth.uid || newData.val() == data.val())"
               }
