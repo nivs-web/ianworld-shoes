@@ -64,6 +64,11 @@ export default function RoomList(nav) {
               return el('div.room-row', { class: r.playing ? 'playing' : '' }, [
                 el('div.room-state', 상태),
                 el('div.room-name', S.roomRow(r.code, r.hostName, r.count, r.max)),
+                // 방장의 보유신발 — 대기방 참가자 카드와 같은 배지 (§11, 2026-08-19)
+                el('div.player-shoes', null, [
+                  el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
+                  el('span', S.playerShoesOwned(r.hostShoes ?? 0)),
+                ]),
                 r.full
                   ? el('div.room-full', S.roomFullShort)
                   : button(S.roomEnter, () => enter(r.code), { primary: !r.playing, disabled: busy }),

@@ -273,8 +273,21 @@ export const PURCHASE_CONSUME_ORDER = [1, 2, 3, 4, 5];
 export const FLOOR_EVENTS = {
   /** 이 층부터 구름 오브젝트 등장 */
   cloudsFrom: 100,
-  /** 층수 → 반복 배경 교체 (내림차순으로 평가) */
+  /**
+   * 층수 → 반복 배경 교체 (**내림차순으로 평가** — `floorBackgroundAt` 이 위에서부터
+   * 훑어 첫 번째로 `floor >= from` 인 것을 쓴다. 순서가 뒤집히면 200층 배경이
+   * 1000층까지 계속 나온다).
+   *
+   * 200~500 만 있던 것을 **1000층까지 100층 단위로 세분화**했다 (2026-08-19, 사용자 요청).
+   * 원본은 `etc/floorNNN.png` 이고 `tools/build-floor-bg.mjs` 가 굽는다 —
+   * 그 스크립트는 만들 목록을 **이 배열에서 읽으므로** 여기에 한 줄 더하면 그림도 같이 생긴다.
+   */
   bgSwap: [
+    { from: 1000, key: 'floor1000' },
+    { from: 900, key: 'floor900' },
+    { from: 800, key: 'floor800' },
+    { from: 700, key: 'floor700' },
+    { from: 600, key: 'floor600' },
     { from: 500, key: 'floor500' },
     { from: 400, key: 'floor400' },
     { from: 300, key: 'floor300' },

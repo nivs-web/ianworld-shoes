@@ -479,6 +479,9 @@ export async function listRooms() {
         count: players.length,
         max: r.maxPlayers ?? max,
         hostName: host?.nickname || players[0]?.nickname || '',
+        // 방 목록에도 방장의 보유신발을 보여 준다 (§11, 2026-08-19) — 들어가기 전에
+        // "얼마나 걸 수 있는 상대인지"가 보이는 게 이 게임에서는 방 고르는 기준이 된다
+        hostShoes: host?.shoesOwned ?? players[0]?.shoesOwned ?? 0,
         mine: !!r.players?.[fb.uid],
         full: players.length >= (r.maxPlayers ?? max),
         createdAt: r.createdAt ?? 0,

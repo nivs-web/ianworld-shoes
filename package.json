@@ -28,7 +28,8 @@
     "preview:hud": "node tools/_hud-preview.mjs",
     "assets:bubble": "node tools/build-bubble.mjs",
     "preview:screens": "node tools/_screen-preview.mjs",
-    "preview:result": "node tools/_screen-preview.mjs result"
+    "preview:result": "node tools/_screen-preview.mjs result",
+    "assets:floors": "node tools/build-floor-bg.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"

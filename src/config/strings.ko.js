@@ -227,8 +227,6 @@ export const S = {
   /** 계단 숫자 아래 — 따라잡아야 할 거리 */
   gapFromFirst: (n) => `1등까지 ${n}계단 남음`,
   keepingFirst: '현재 1등 유지중!',
-  /** 1등 머리 위 말풍선 — 이 문자열에서 폰트 글자를 굽는다(tools/build-bubble.mjs) */
-  firstBubble: '1등이닷',
   /** 사망 후 부활 선택 화면 */
   fellTitle: '계단에서 떨어졌습니다',
   /** 부활 버튼은 두 줄이다 — 7px 폰트로도 한 줄이면 170px 라 패널(148)을 넘는다 */

@@ -1186,5 +1186,62 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('팝업이 승률/게임수/보유신발을 보여준다', wr, 'S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0)');
 }
 
+{
+  console.log('\n31) 배포가 죽던 원인 · 층 배경 9종 · 버튼 폰트 · 방 목록 보유신발 (2026-08-19 2차)');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const { FLOOR_EVENTS } = await import('../src/config/balance.js');
+
+  /**
+   * ★ **배포가 조용히 죽던 진짜 원인.** `npm run build` 체인의 `build-bubble.mjs` 가
+   * `etc/` 를 읽는데 `etc/` 는 .gitignore 대상이라 Vercel 에 없다 → sharp 예외 →
+   * 빌드 종료코드 1. 커밋·푸시는 멀쩡한데 **배포만 안 되어서** 고친 게 하나도 반영이
+   * 안 된 것처럼 보였다. 원본이 없으면 커밋된 산출물을 쓰고 넘어가야 한다.
+   */
+  const bubble = fs.readFileSync('tools/build-bubble.mjs', 'utf8');
+  has('빌드 스크립트가 원본 없음을 견딘다', bubble, 'if (!existsSync(SRC))');
+  has('산출물이 있으면 그대로 쓴다', bubble, 'existsSync(OUT)');
+  eq('원본 없다고 곧장 죽지 않는다', /^\s*await sharp\(SRC\)/m.test(bubble.split('if (!existsSync(SRC))')[0]), false);
+  // build 체인이 etc/ 를 읽는 스크립트는 반드시 이 가드를 갖는다
+  const buildChain = JSON.parse(fs.readFileSync('package.json', 'utf8')).scripts.build;
+  for (const m of buildChain.matchAll(/npm run (assets:\w+)/g)) {
+    const script = JSON.parse(fs.readFileSync('package.json', 'utf8')).scripts[m[1]] ?? '';
+    for (const f of script.matchAll(/tools\/([\w-]+\.mjs)/g)) {
+      const src = fs.readFileSync(`tools/${f[1]}`, 'utf8');
+      if (!src.includes('etc/')) continue;          // etc/ 를 안 읽으면 해당 없음
+      eq(`${f[1]} — etc/ 없이도 견딘다`, src.includes('existsSync'), true);
+    }
+  }
+
+  // ② 층 배경 200~1000 (9종) — 표는 내림차순이어야 한다
+  eq('층 배경 9종', FLOOR_EVENTS.bgSwap.length, 9);
+  eq('내림차순 (아니면 200층 배경이 1000층까지 나온다)',
+    FLOOR_EVENTS.bgSwap.every((e, i, a) => i === 0 || a[i - 1].from > e.from), true);
+  eq('1000층까지', FLOOR_EVENTS.bgSwap[0].from, 1000);
+  for (const e of FLOOR_EVENTS.bgSwap) {
+    eq(`${e.key}.png 존재`, fs.existsSync(`public/assets/bg/${e.key}.png`), true);
+  }
+  const floorTool = fs.readFileSync('tools/build-floor-bg.mjs', 'utf8');
+  has('만들 목록을 밸런스 표에서 읽는다 (숫자 이중 관리 금지)', floorTool, 'FLOOR_EVENTS.bgSwap.map');
+  has('이미 도트인 그림은 재양자화하지 않는다', floorTool, 'colors <= COLORS && sized');
+
+  // ③ 로비 메뉴 버튼도 2단계 키웠다 — 사용자가 든 예시가 전부 버튼 라벨이었다
+  const css = fs.readFileSync('src/styles/screens.css', 'utf8');
+  const btn = /\.pbtn\s*\{[\s\S]*?font-size:\s*(\d+)px/.exec(css);
+  eq('버튼 폰트 15px → 19px', btn && Number(btn[1]), 19);
+  const seg = /\.seg \.pbtn\s*\{[^}]*font-size:\s*(\d+)px/.exec(css);
+  eq('난이도 선택은 15px 유지 (셋이 한 줄이라 접힌다)', seg && Number(seg[1]), 15);
+
+  // ④ 방 목록에도 방장 보유신발
+  const mp = fs.readFileSync('src/services/multiplayer.js', 'utf8');
+  has('listRooms 가 방장 보유신발을 싣는다', mp, 'hostShoes:');
+  const rl = fs.readFileSync('src/screens/multi/RoomList.js', 'utf8');
+  has('방 목록에 보유신발 배지', rl, 'S.playerShoesOwned(r.hostShoes ?? 0)');
+
+  // ⑤ 말풍선은 문자열까지 완전히 제거 (폰트에 헛글자를 굽지 않게)
+  const st = fs.readFileSync('src/config/strings.ko.js', 'utf8');
+  eq('말풍선 문자열 잔재 없음', st.includes('1등이닷'), false);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);
