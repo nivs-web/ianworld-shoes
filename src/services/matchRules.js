@@ -122,7 +122,26 @@ export function reviveExpired(player, now) {
  */
 export function outOfRound(player, now) {
   if (player?.out) return true;
-  return player?.alive === false && reviveExpired(player, now);
+  if (player?.alive === false) return reviveExpired(player, now);
+  return isStale(player, now);
+}
+
+/**
+ * ★ **신호가 끊긴 사람은 판에서 빠진 것으로 본다.** (2026-08-19)
+ *
+ * 렉으로 튕긴 사람은 `alive: true` 인 채로 남는다. 그러면 `roundOver` 가 영원히
+ * 거짓이고 → 순위가 안 박히고 → **아무도 정산을 못 한다.** 남은 사람들은 결과 화면에서
+ * "다른 사람들이 아직 오르고 있습니다"만 보고, 항아리에 걸린 신발은 주인을 잃는다.
+ * 사용자가 신고한 "튕기면 신발이 사라진다"가 정확히 이 경로다.
+ *
+ * 판단 근거는 **서버가 찍는 `seenAt`** 이다(5초마다 갱신). 폰 시계가 아니라 서버
+ * 시각이라 시계가 어긋난 기기도 같은 답을 낸다. `seenAt` 이 아예 없으면(옛 클라이언트)
+ * 판정하지 않는다 — 모르는 것을 근거로 남을 판에서 빼면 안 된다.
+ */
+export function isStale(player, now) {
+  const seen = player?.seenAt ?? 0;
+  if (!seen) return false;
+  return now - seen > MULTI.staleSeconds * 1000;
 }
 
 /**

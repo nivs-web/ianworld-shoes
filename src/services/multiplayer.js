@@ -32,6 +32,9 @@ const EMPTY_RESCAN_MS = 900;
 
 const path = (...parts) => parts.join('/');
 
+/** 대기자인가 — 이번 판을 뛰지 않는 사람은 순위·정산에서 통째로 빠진다 */
+const nowaiter = (p) => !!p?.waiting;
+
 async function rt() {
   if (!configured()) return null;
   const u = currentUser();
@@ -74,9 +77,16 @@ export async function serverOffset(fb) {
 
 const nowOn = (fb, offset) => Date.now() + offset;
 
-/** 내 참가자 레코드 초기값 */
-function meRecord(profile) {
+/**
+ * 내 참가자 레코드 초기값.
+ *
+ * `seenAt` 은 **처음부터** 넣는다 — 들어오자마자 튕긴 사람도 기준 시각이 있어야
+ * `matchRules.isStale` 이 판정할 수 있다. 값이 없으면 판정을 안 하므로(모르는 것을
+ * 근거로 남을 빼지 않는다) 그런 사람이 판을 영영 못 끝내게 만든다.
+ */
+function meRecord(profile, fb) {
   return {
+    seenAt: fb ? fb.dbMod.serverTimestamp() : 0,
     nickname: profile.nickname ?? '',
     characterId: profile.selectedCharacter ?? 'ian',
     ready: false,
@@ -118,7 +128,7 @@ export async function createRoom({ isPrivate = false, difficulty } = {}) {
         seed: Math.floor(Math.random() * 0x7fffffff),
         maxPlayers: MULTI.maxPlayers,
         createdAt: nowOn(fb, offset),
-        players: { [fb.uid]: meRecord(p) },
+        players: { [fb.uid]: meRecord(p, fb) },
       };
     }), undefined, '방 만들기');
 
@@ -302,7 +312,7 @@ export async function joinRoom(code) {
    * 뛰지도 않은 판에서 져서 신발을 뺏기면 안 된다. (matchRules.playersInRound)
    */
   const asWaiter = room.state !== 'waiting';
-  const me = { ...meRecord(p), ...(asWaiter ? { waiting: true } : {}) };
+  const me = { ...meRecord(p, fb), ...(asWaiter ? { waiting: true } : {}) };
 
   try {
     await withTimeout(
@@ -380,13 +390,29 @@ export async function resetRoom(code) {
   if (hasUnclaimed(room)) return 'pending';
   if (hasUnpaid(room) && 끝난지 < RESET_WAIT_MS) return 'pending';
 
+  /**
+   * ★ **다음 판에는 지금 이 방을 보고 있는 사람만 데려간다.** (2026-08-19)
+   *
+   * 판이 끝나기 전에 나간 사람은 순위·정산 때문에 방에 남아 있어야 한다(`leaveRoom`).
+   * 그 사람을 그대로 다음 판에 태우면, **자리에 없는 사람이 자동으로 꼴찌가 되어
+   * 신발을 잃는다.** 그래서 생존 신호(`seenAt`)가 살아 있는 사람만 넘긴다 —
+   * 결과 화면·대기방은 신호를 계속 보내므로 자리를 지키고 있으면 절대 안 빠진다.
+   */
+  const 지금 = Date.now() + serverOffsetSync();
+  const 자리에있다 = (uid, v) =>
+    uid === fb.uid || !v?.seenAt || 지금 - v.seenAt <= MULTI.staleSeconds * 1000;
+
   const players = {};
   for (const [uid, v] of Object.entries(room.players ?? {})) {
+    if (!자리에있다(uid, v)) continue;
     // 대기자도 이제 정식 참가자가 된다. 진행도는 전부 초기화한다.
     // 빠진 키(reachedAt·deadAt·out·revives·waiting)는 **삭제**된다 — 다음 판은 백지에서 시작한다
     players[uid] = {
       nickname: v.nickname ?? '', characterId: v.characterId ?? 'ian',
       ready: false, stairs: 0, shoesFound: 0, alive: true, joinedAt: v.joinedAt ?? Date.now(),
+      // ★ 생존 신호도 지금으로 다시 찍는다 — 안 그러면 지난 판의 낡은 값 때문에
+      //   **다음 판이 시작하자마자 전원이 '튕긴 사람'으로 판정된다.** (2026-08-19)
+      seenAt: fb.dbMod.serverTimestamp(),
     };
   }
   const n = Object.keys(players).length;
@@ -645,14 +671,32 @@ const PROGRESS_MS = 300;
 export async function publishProgress(code, { stairs, shoesFound, alive = true }, force = false) {
   const t = Date.now();
   const changed = stairs !== lastSent.stairs || shoesFound !== lastSent.shoesFound;
-  if (!force && (!changed || t - lastSent.at < PROGRESS_MS)) return;
+  if (!force && !changed && t - lastSent.at < MULTI.heartbeatMs) return;
+  if (!force && changed && t - lastSent.at < PROGRESS_MS) return;
   lastSent = { at: t, stairs, shoesFound };
 
   const fb = await rt();
   if (!fb) return;
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
     stairs: stairs | 0, shoesFound: shoesFound | 0, alive: !!alive,
+    seenAt: fb.dbMod.serverTimestamp(),
   }), undefined, '진행도').catch(() => {});
+}
+
+/**
+ * ★ **살아 있다는 신호.** (2026-08-19)
+ *
+ * 진행도만으로는 부족하다 — 일시정지 중이거나 죽어서 부활을 고르는 동안에는
+ * 계단이 안 바뀌어서 아무 쓰기도 안 나간다. 그 사이에 남들이 나를 "튕긴 사람"으로
+ * 보면 억울하게 판에서 빠진다. 그래서 **게임 화면이 살아 있는 동안**은 이 신호를
+ * 따로 보낸다. 반대로 진짜로 튕기면 이 신호가 끊겨 `matchRules.isStale` 이 잡는다.
+ */
+export async function heartbeat(code) {
+  const fb = await rt();
+  if (!fb) return;
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
+    seenAt: fb.dbMod.serverTimestamp(),
+  }), undefined, '생존 신호').catch(() => {});
 }
 
 export function resetProgressThrottle() {
@@ -805,6 +849,12 @@ export async function finalizeResult(code) {
   const room = read.val;
   if (!room) return null;
   if (room.result?.rankings) return room;          // 이미 확정됨 — 먼저 쓴 사람 것을 남긴다
+  /**
+   * ★ **대기 중인 방은 끝낼 수 없다.** (2026-08-19)
+   * 대기방에서는 아무도 진행도를 안 보내므로 생존 신호가 금방 낡는다. 그걸 판 종료로
+   * 읽으면 **아직 시작도 안 한 판의 순위가 박히고 신발이 오간다.**
+   */
+  if (room.state === 'waiting') return null;
 
   const players = playersInRound(room.players);    // 대기자는 이번 판 사람이 아니다
   /**
@@ -880,6 +930,18 @@ const SETTLE_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
  * 이 방을 지우면 안 되나 — **누군가의 신발이 걸려 있으면 지우지 않는다.**
  * 다만 영원히 기다리지는 않는다(일주일).
  */
+/**
+ * 지금 이 순간(서버 시각 기준) 판이 끝났나 — 화면·정산이 같은 답을 보게 하는 통로.
+ *
+ * **대기 중인 방은 절대 '끝난 판'이 아니다.** 대기방에 앉아 있는 사람은 진행도를
+ * 안 보내므로 `seenAt` 이 금방 낡는다. 그 상태를 판 종료로 읽으면 **로비에 앉아
+ * 있다가 갑자기 순위가 박히고 신발을 잃는다.**
+ */
+export function roundOverNow(room) {
+  if (!room || room.state === 'waiting') return false;
+  return roundOver(room, Date.now() + serverOffsetSync());
+}
+
 export function mustKeepRoom(room) {
   /**
    * ★ **순위가 없어도 항아리에 신발이 있으면 못 지운다.** (2026-08-19)
@@ -905,26 +967,62 @@ export function hasUnclaimed(room) {
   const rank = room?.result?.rankings ?? [];
   if (!rank.length) return false;
   const given = room.result?.given ?? {};
-  const mask = Number(room.result?.settled?.[rank[0]] ?? 0);
-  /**
-   * ★ **비트 색인은 `settleRoom` 과 글자 그대로 같아야 한다.** (2026-08-18 재수정)
-   * 역전 배틀에서 승자는 **자기 몫까지** 걷으므로 도장을 `rankings` **전체**에 매긴다.
-   * 여기서만 `slice(1)` 로 세면 한 칸씩 어긋나, 다 걷었는데도 "안 걷혔다"가 되어
-   * '방에 남기'가 영원히 `pending` 으로 막히고(대기자는 갇힌다), 반대로 아직 안 걷힌
-   * 신발을 "걷혔다"고 보고 `result` 를 지워 **신발을 증발**시킨다.
-   */
-  if (rank.some((uid, i) => Array.isArray(given[uid]) && given[uid].length && !(mask & (1 << i)))) return true;
-  /**
-   * ★ **순위에 없는 사람이 건 신발도 있다.** (2026-08-19)
-   * 판 도중에 방에서 빠진 사람(튕김·탈퇴)은 `rankings` 에 못 들어간다(규칙이 참가자만
-   * 허용한다). 그 사람이 부활에 건 신발은 그대로 항아리에 남으므로, 승자가 걷기 전까지
-   * 방을 지워선 안 된다. 승자가 걷으면 `ORPHAN_BIT` 이 찍힌다.
-   */
-  const 남의것 = Object.entries(given).some(([uid, v]) => !rank.includes(uid) && Array.isArray(v) && v.length);
-  return 남의것 && !(mask & ORPHAN_BIT);
+  const 걷은양 = claimedCounts(room, rank[0]);
+  return Object.entries(given).some(
+    ([uid, v]) => Array.isArray(v) && v.length > (걷은양[uid] ?? 0)
+  );
 }
 
-/** 순위에 없는 사람(중도 이탈자)의 판돈을 걷었다는 표시 — 참가자 비트(0~3)와 안 겹친다 */
+/**
+ * ★ **도장은 "걷었다/안 걷었다"가 아니라 "몇 켤레 걷었나"다.** (2026-08-19)
+ *
+ * 예전에는 사람마다 비트 하나였다. 그런데 한 사람이 **두 번에 나눠 낸다** —
+ * 부활할 때 20켤레를 먼저 걸고, 판이 끝난 뒤 기본 1켤레를 마저 낸다. 승자가
+ * 20켤레를 걷으면서 비트를 찍어 버리면 **나중에 올라온 1켤레는 영영 안 걷힌다.**
+ * 시뮬레이터가 정확히 그 1켤레를 잃는 것을 재현했다(`_multi-sim.mjs` S10).
+ *
+ * 그래서 `result/claims/{승자}/{낸사람}` 에 **걷은 켤레 수**를 적는다.
+ * "지금 목록 길이 − 걷은 수" 만큼만 더 걷으므로 몇 번에 나눠 내든 정확히 한 번씩 간다.
+ *
+ * ## 옛 비트마스크(`result/settled`)를 왜 계속 쓰나
+ *
+ * 배포 직후에는 **옛 클라이언트가 아직 돌아다닌다**(PWA 캐시). 옛 코드는
+ * `settled` 를 숫자로 읽으므로, 거기에 맵을 넣으면 `Number({...})` 가 `NaN` 이 되어
+ * **이미 걷은 신발을 처음부터 다시 걷는다 — 신발이 복제된다.** 그래서 새 클라이언트는
+ * 둘 다 쓴다: 옛 클라이언트는 비트를 보고 멈추고, 새 클라이언트는 켤레 수를 보고
+ * 남은 만큼만 걷는다. 잃는 것보다 **불어나는 것이 훨씬 나쁘다.**
+ */
+export function claimedCounts(room, winnerUid) {
+  const given = room?.result?.given ?? {};
+  const rank = room?.result?.rankings ?? [];
+  const counts = room?.result?.claims?.[winnerUid];
+  const out = {};
+  if (counts && typeof counts === 'object') {
+    for (const [uid, n] of Object.entries(counts)) out[uid] = Number(n) || 0;
+    return out;
+  }
+  const mask = Number(room?.result?.settled?.[winnerUid] ?? 0) | 0;
+  if (!mask) return out;
+  for (const [uid, v] of Object.entries(given)) {
+    const i = rank.indexOf(uid);
+    const bit = i >= 0 ? (1 << i) : ORPHAN_BIT;
+    if (mask & bit) out[uid] = Array.isArray(v) ? v.length : 0;   // 옛 도장 = 그때까지 전부 걷음
+  }
+  return out;
+}
+
+/** 옛 클라이언트가 읽을 비트마스크 — 걷은 사람의 자리에 비트를 세운다 */
+export function claimMask(room, counts) {
+  const rank = room?.result?.rankings ?? [];
+  let mask = 0;
+  for (const uid of Object.keys(counts ?? {})) {
+    const i = rank.indexOf(uid);
+    mask |= i >= 0 ? (1 << i) : ORPHAN_BIT;
+  }
+  return mask;
+}
+
+/** (옛 방 해석용) 순위에 없는 사람의 판돈을 걷었다는 비트 */
 export const ORPHAN_BIT = 1 << 15;
 
 /**
@@ -965,9 +1063,32 @@ export async function leaveRoom(code) {
    * 참가자이므로 통과하고, `hostUid` 검증은 **새 데이터**를 보므로 "옛 방장이
    * 이제 참가자에 없다"가 성립해 승계가 허용된다. 실측으로 200 을 확인했다.
    */
-  const room = (await readOnce(fb, path(ROOMS, code))).val;
+  let room = (await readOnce(fb, path(ROOMS, code))).val;
   if (!room) return;
   if (!room.players?.[fb.uid]) return;   // 이미 빠져 있다
+
+  /**
+   * ★ **판이 안 끝났으면 자리를 비우지 않는다.** (2026-08-19)
+   *
+   * 순위(`rankings`)는 **방에 남아 있는 사람만** 담을 수 있다(규칙이 그렇게 막는다).
+   * 그래서 판이 끝나기 전에 방을 나가면 **나는 순위에서 통째로 사라진다** —
+   * 진 사람은 신발을 안 내고, 이긴 사람은 걷을 게 없어진다. 둘 다 나가면
+   * 방까지 지워져 그 판이 통째로 증발한다. 사용자가 신고한
+   * "둘 다 나가기를 눌렀는데 신발이 안 넘어간다"가 정확히 이 경로다.
+   *
+   * 그래서 순서를 뒤집었다 — **나가기 전에 판을 끝낸다.** 끝낼 조건이 안 되면
+   * (아직 뛰는 사람이 있으면) 자리를 지키고 물러난다. 판이 끝나면 그때 나가면 된다.
+   */
+  const 나 = room.players[fb.uid];
+  const 이번판참가자 = !nowaiter(나);
+  const 판진행중 = room.state !== 'waiting' && !room.result?.rankings;
+  if (이번판참가자 && 판진행중) {
+    if (roundOver(room, Date.now() + serverOffsetSync())) {
+      const after = await finalizeResult(code).catch(() => null);
+      if (after) room = after;
+    }
+    if (!room.result?.rankings) return 'kept';
+  }
 
   const rest = Object.entries(room.players)
     .filter(([uid]) => uid !== fb.uid)
@@ -1083,12 +1204,16 @@ export async function reclaimStake(code) {
  * 숫자 하나면 규칙(`settled/$uid` 는 숫자, 본인만 쓰기)도 그대로 쓸 수 있다.
  * @returns {Promise<boolean>} 실제로 서버에 남았는지 — 실패하면 걷으면 안 된다
  */
-export async function markSettledRemote(code, mask) {
+export async function markSettledRemote(code, counts, mask) {
   const fb = await rt();
   if (!fb) return false;
   try {
+    // 옛 비트와 새 켤레 수를 **한 번의 쓰기로** — 하나만 남으면 해석이 갈린다
     await withTimeout(
-      fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'result', 'settled', fb.uid)), mask | 0),
+      fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'result')), {
+        [path('settled', fb.uid)]: mask | 0,
+        [path('claims', fb.uid)]: counts,
+      }),
       undefined, '정산 도장'
     );
     return true;

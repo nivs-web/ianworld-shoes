@@ -175,53 +175,97 @@ service cloud.firestore {
   "rules": {
     "rooms": {
       ".read": "auth != null",
-      ".indexOn": ["open"],
+      ".indexOn": [
+        "open"
+      ],
       "$code": {
         ".write": "auth != null && (data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && !data.child('players').child(auth.uid).exists()) || (!newData.exists() && !data.child('players').hasChildren()))",
-
-        "code":       { ".validate": "newData.val() == $code" },
-        "isPrivate":  { ".validate": "newData.isBoolean() && (!data.exists() || newData.val() == data.val())" },
-        "open":       { ".validate": "newData.isBoolean()" },
-        "seed":       { ".validate": "newData.isNumber() && (!data.exists() || newData.val() == data.val() || newData.parent().child('state').val() == 'waiting')" },
-        "difficulty": { ".validate": "newData.val() == 'easy' || newData.val() == 'normal' || newData.val() == 'hard'" },
-        "state":      { ".validate": "newData.val() == 'waiting' || newData.val() == 'countdown' || newData.val() == 'playing' || newData.val() == 'finished'" },
-        "maxPlayers": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 4" },
-        "createdAt":  { ".validate": "newData.isNumber() && (!data.exists() || newData.val() == data.val())" },
-        "startAt":    { ".validate": "newData.isNumber()" },
-
+        "code": {
+          ".validate": "newData.val() == $code"
+        },
+        "isPrivate": {
+          ".validate": "newData.isBoolean() && (!data.exists() || newData.val() == data.val())"
+        },
+        "open": {
+          ".validate": "newData.isBoolean()"
+        },
+        "seed": {
+          ".validate": "newData.isNumber() && (!data.exists() || newData.val() == data.val() || newData.parent().child('state').val() == 'waiting')"
+        },
+        "difficulty": {
+          ".validate": "newData.val() == 'easy' || newData.val() == 'normal' || newData.val() == 'hard'"
+        },
+        "state": {
+          ".validate": "newData.val() == 'waiting' || newData.val() == 'countdown' || newData.val() == 'playing' || newData.val() == 'finished'"
+        },
+        "maxPlayers": {
+          ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 4"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber() && (!data.exists() || newData.val() == data.val())"
+        },
+        "startAt": {
+          ".validate": "newData.isNumber()"
+        },
         "hostUid": {
           ".validate": "newData.isString() && (!data.exists() || newData.val() == data.val() || !newData.parent().child('players').hasChild(data.val()))"
         },
-
         "players": {
           "$uid": {
             ".validate": "newData.hasChildren(['nickname', 'characterId', 'ready', 'stairs', 'shoesFound', 'alive', 'joinedAt']) && ($uid == auth.uid || data.exists())",
-
-            "nickname":    { ".validate": "newData.isString() && newData.val().length <= 16 && ($uid == auth.uid || newData.val() == data.val())" },
-            "characterId": { ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())" },
-            "ready":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == false && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))" },
-            "stairs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))" },
-            "shoesFound":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))" },
-            "alive":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == true && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))" },
-            "joinedAt":    { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
-            "reachedAt":   { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
-            "waiting":     { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
-            "revives":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && ($uid == auth.uid || newData.val() == data.val())" },
-            "deadAt":      { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
-            "out":         { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
-            "$other":      { ".validate": false }
+            "nickname": {
+              ".validate": "newData.isString() && newData.val().length <= 16 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "characterId": {
+              ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "ready": {
+              ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == false && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
+            },
+            "stairs": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
+            },
+            "shoesFound": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
+            },
+            "alive": {
+              ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == true && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
+            },
+            "joinedAt": {
+              ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "reachedAt": {
+              ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "waiting": {
+              ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "revives": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "deadAt": {
+              ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "out": {
+              ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "$other": {
+              ".validate": false
+            },
+            "seenAt": {
+              ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val() || (data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
+            }
           }
         },
-
         "result": {
-          "endedAt": { ".validate": "newData.isNumber()" },
-
+          "endedAt": {
+            ".validate": "newData.isNumber()"
+          },
           "rankings": {
             "$i": {
               ".validate": "newData.isString() && newData.parent().parent().parent().child('players').hasChild(newData.val())"
             }
           },
-
           "given": {
             "$uid": {
               ".write": "auth != null && auth.uid == $uid && (root.child('rooms').child($code).child('result').child('rankings').exists() || !newData.exists())",
@@ -231,21 +275,29 @@ service cloud.firestore {
               }
             }
           },
-
           "settled": {
             "$uid": {
               ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($code).child('result').child('rankings').exists()",
               ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
             }
           },
-
-          "$other": { ".validate": false }
+          "claims": {
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($code).child('result').child('rankings').exists()",
+              "$from": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 220 && ($uid == auth.uid || newData.val() == data.val())"
+              }
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
         },
-
-        "$other": { ".validate": false }
+        "$other": {
+          ".validate": false
+        }
       }
     },
-
     "userRooms": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",

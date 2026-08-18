@@ -40,6 +40,16 @@ export default function WaitingRoom(nav, params = {}) {
   const release = hold();
   /** 방을 두 번 나가지 않게 (화면 버튼 → onLeave 로 연달아 불린다) */
   let left = false;
+  /**
+   * ★ **대기방에서도 "여기 있다"를 계속 보낸다.** (2026-08-19)
+   * `resetRoom`(다음 판 준비)은 신호가 살아 있는 사람만 데려가고, 종료 판정도 이 신호로
+   * "튕긴 사람"을 가린다. 자리에 앉아 있는 동안 신호가 끊기면 안 된다.
+   */
+  const beat = setInterval(() => {
+    // 방에 내가 남아 있을 때만 — 아니면 유령 노드를 만든다
+    if (!room?.players?.[myUid]) return;
+    Room.heartbeat(code).catch(() => {});
+  }, MULTI.heartbeatMs);
 
   unsub = Room.subscribeRoom(code, (r) => {
     room = r;
@@ -104,6 +114,7 @@ export default function WaitingRoom(nav, params = {}) {
 
   function leave(alsoLeaveRoom = true) {
     unsub();
+    clearInterval(beat);
     clearTimeout(resetTimer);
     release();
     if (alsoLeaveRoom && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
@@ -124,6 +135,7 @@ export default function WaitingRoom(nav, params = {}) {
      */
     onLeave() {
       unsub();
+      clearInterval(beat);
       clearTimeout(resetTimer);
       release();
       if (!launched && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }

@@ -24,7 +24,7 @@ import * as L from './storageLocal.js';
 import * as Room from './multiplayer.js';
 import { currentUser } from './auth.js';
 import { patch } from './profile.js';
-import { pickPenaltyShoes, owedBy } from './matchRules.js';
+import { pickPenaltyShoes, owedBy, outOfRound } from './matchRules.js';
 import { MULTI } from '../config/balance.js';
 
 /** 도장 이름 — 방 하나에서 "내가 낸 것"과 "누구한테서 받은 것"을 따로 센다 */
@@ -64,7 +64,19 @@ function pushWallet() {
 export async function settleRoom(code, room = null) {
   const u = currentUser();
   if (!u || u.guest) return null;
-  const r = room ?? await Room.readRoom(code);
+  let r = room ?? await Room.readRoom(code);
+  /**
+   * ★ **끝날 수 있는 판이면 여기서 끝낸다.** (2026-08-19)
+   *
+   * 순위를 박는 건 지금까지 **화면**의 일이었다. 그래서 둘 다 앱이 죽거나 튕기면
+   * 판이 영영 안 끝나고 — 순위가 없으니 아무도 정산을 못 하고 — 항아리에 걸린
+   * 신발이 주인을 잃었다. 정산이 시작될 때마다 한 번 확인하면, 접속만 해도
+   * (`sweepUnsettled`) 밀린 판이 스스로 정리된다.
+   */
+  if (!r?.result?.rankings && r && Room.roundOverNow(r)) {
+    const after = await Room.finalizeResult(code).catch(() => null);
+    if (after) r = after;
+  }
   const rankings = r?.result?.rankings;
   /**
    * ★ **순위가 없는 방 = 끝나지 않은 판.** 여기 내 판돈이 있으면 **되돌려받는다.** (2026-08-19)
@@ -76,7 +88,10 @@ export async function settleRoom(code, room = null) {
    * 판이 아직 도는 중일 수도 있으므로 **살아 있는 참가자가 하나도 없을 때만** 회수한다.
    */
   if (!rankings?.length) {
-    const 살아있는사람 = Object.values(r?.players ?? {}).some((p) => !p?.waiting && p?.alive !== false);
+    // "아직 뛰는 사람"의 기준은 종료 판정과 **글자 그대로 같아야** 한다 —
+    // 여기만 `alive` 를 보면 튕겨서 신호가 끊긴 사람이 영원히 회수를 막는다
+    const now = Date.now() + Room.serverOffsetSync();
+    const 살아있는사람 = Object.values(r?.players ?? {}).some((p) => !p?.waiting && !outOfRound(p, now));
     if (r && !살아있는사람) {
       const back = await Room.reclaimStake(code).catch(() => null);
       if (back?.length) {
@@ -141,44 +156,48 @@ export async function settleRoom(code, room = null) {
    */
   let pending = 0;
   if (won) {
-    let mask = Number(r?.result?.settled?.[u.uid] ?? 0);
-    const pickUp = [];
-    let claiming = 0;
-
-    rankings.forEach((uid, i) => {
-      const bit = 1 << i;
-      if (mask & bit) return;                       // 이미 걷었다 (서버 기록)
-      const list = given[uid];
-      const 낼사람 = uid === u.uid ? (me.revives ?? 0) > 0 : true;
-      if (!Array.isArray(list) || !list.length) { if (낼사람) pending++; return; }
-      pickUp.push(...list);
-      mask |= bit;
-      claiming++;
-    });
-
     /**
-     * ★ **순위에 없는 사람이 건 신발도 걷는다.** (2026-08-19)
-     * 판 도중 튕겨서 방에서 빠진 사람은 `rankings` 에 못 들어가는데(규칙이 참가자만
-     * 허용한다) 그 사람이 부활에 건 신발은 항아리에 남는다. 안 걷으면 영원히 묶인다.
+     * ★ **얼마를 걷었는지 사람별로 센다.** (2026-08-19)
+     *
+     * 예전에는 사람마다 비트 하나였다. 그런데 한 사람이 **두 번에 나눠 낸다** —
+     * 부활 때 20켤레를 먼저 걸고, 판이 끝난 뒤 기본 1켤레를 마저 낸다. 비트를 먼저
+     * 찍어 버리면 나중에 올라온 1켤레는 **영영 아무에게도 안 간다.** 시뮬레이터가
+     * 그 1켤레가 사라지는 것을 재현했다(`_multi-sim.mjs` S10).
+     *
+     * 이제 "목록 길이 − 이미 걷은 수" 만큼만 더 걷는다. 몇 번에 나눠 내든 정확히 한 번씩.
      */
-    if (!(mask & Room.ORPHAN_BIT)) {
-      const 남은것 = Object.entries(given)
-        .filter(([uid, v]) => !rankings.includes(uid) && Array.isArray(v) && v.length)
-        .flatMap(([, v]) => v);
-      if (남은것.length) { pickUp.push(...남은것); mask |= Room.ORPHAN_BIT; claiming++; }
+    const 걷은양 = Room.claimedCounts(r, u.uid);
+    const pickUp = [];
+    const 다음도장 = {};
+
+    for (const [uid, list] of Object.entries(given)) {
+      if (!Array.isArray(list) || !list.length) continue;
+      const 이미 = 걷은양[uid] ?? 0;
+      const 남은것 = list.slice(이미);
+      if (남은것.length) pickUp.push(...남은것);
+      // 옛 비트 도장을 켤레 수로 옮겨 적는다 — 안 그러면 다음 번에 다시 걷어 복제된다
+      다음도장[uid] = list.length;
+    }
+
+    /** 아직 다 안 낸 사람이 몇 명인가 — 결과 화면이 "잠시 후 들어옵니다"를 쓸 때 쓴다 */
+    for (const uid of rankings) {
+      const p = r?.players?.[uid] ?? {};
+      const 낼양 = uid === u.uid ? (p.revives ?? 0) * MULTI.reviveCost : owedBy(p);
+      const 낸양 = Array.isArray(given[uid]) ? given[uid].length : 0;
+      if (낸양 < 낼양) pending++;
     }
 
     /**
      * **도장을 먼저 서버에 남기고 나서 지갑에 넣는다.** 순서가 반대면 도장 쓰기가
      * 실패했을 때 다음 접속에 같은 신발을 또 걷어 **복제**된다.
      */
-    if (claiming) {
-      if (await Room.markSettledRemote(code, mask)) {
+    if (pickUp.length) {
+      if (await Room.markSettledRemote(code, 다음도장, Room.claimMask(r, 다음도장))) {
         L.addShoes(pickUp);
         for (const i of pickUp) L.recordShoe(i);
         took = pickUp;
       } else {
-        pending += claiming;
+        pending++;
       }
     }
 

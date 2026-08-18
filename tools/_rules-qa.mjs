@@ -52,7 +52,7 @@ for (const k of new Set(created)) {
 }
 
 /** `meRecord()` 가 만드는 참가자 필드 */
-const rec = /function meRecord\(profile\) \{\s*return \{([\s\S]*?)\};/.exec(src)[1];
+const rec = /function meRecord\(profile,[^)]*\) \{\s*return \{([\s\S]*?)\};/.exec(src)[1];
 for (const k of [...rec.matchAll(/(\w+):/g)].map((m) => m[1])) {
   if (playerKeys.has(k)) ok(`참가자.${k}`);
   else bad(`참가자.${k} — 규칙에 없다 (입장이 거부된다)`);
@@ -97,8 +97,17 @@ const givenLeaf = room.result.given.$uid.$i['.validate'] ?? '';
 if (givenLeaf.includes(own)) ok('결과.given 값');
 else bad('결과.given 값 — 남이 신발 목록을 대신 쓸 수 있다');
 const settled = room.result.settled.$uid['.validate'] ?? '';
-if (settled.includes(own)) ok('결과.settled 도장');
+if (settled.includes(own)) ok('결과.settled 도장 (옛 비트마스크)');
 else bad('결과.settled 도장 — 남이 도장을 지울 수 있다');
+/**
+ * 도장이 하나 더 생겼다 — **낸 사람별 '걷은 켤레 수'** (2026-08-19).
+ * 한 사람이 두 번에 나눠 내면(부활 20 + 기본 1) 비트 하나로는 뒷돈을 놓친다.
+ * 옛 비트를 **함께** 쓰는 이유는 배포 직후의 옛 클라이언트다 — 맵을 숫자로 읽으면
+ * `NaN` 이 되어 이미 걷은 신발을 다시 걷는다(복제). 잃는 것보다 불어나는 게 더 나쁘다.
+ */
+const claims = room.result.claims?.$uid?.$from?.['.validate'] ?? '';
+if (claims.includes(own) && claims.includes('isNumber')) ok('결과.claims 켤레 수 도장');
+else bad('결과.claims — 나눠 낸 신발의 뒷부분이 영영 안 걷힌다');
 
 console.log('\n4) 트랜잭션이 통째로 거부되지 않는가 (hostUid 함정)');
 const host = room.hostUid['.validate'] ?? '';

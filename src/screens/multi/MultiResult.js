@@ -56,6 +56,16 @@ export default function MultiResult(nav, params = {}) {
   let finalizing = false;
   /** 정산 중에 자동 새로고침이 끼어들면 신발이 공중에 뜬다 */
   const release = hold();
+  /**
+   * ★ **결과 화면에서도 "여기 있다"를 계속 보낸다.** (2026-08-19)
+   * `resetRoom`(방에 남기)은 신호가 살아 있는 사람만 다음 판에 데려간다. 이게 없으면
+   * 결과를 보고 있는 사이에 상대가 '방에 남기'를 눌러 **나만 방에서 빠진다.**
+   */
+  const beat = setInterval(() => {
+    // 방에 내가 남아 있을 때만 — 아니면 유령 노드를 만든다
+    if (!room?.players?.[myUid]) return;
+    Room.heartbeat(code).catch(() => {});
+  }, MULTI.heartbeatMs);
 
   /**
    * ★ **판이 아직 안 끝났을 수 있다.** (2026-08-18 역전 배틀)
@@ -169,6 +179,7 @@ export default function MultiResult(nav, params = {}) {
     onLeave() {
       gone = true;
       unsub();
+      clearInterval(beat);
       clearTimeout(pollTimer);
       release();
       releaseSeat();

@@ -688,7 +688,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
        .includes("'방 종료'"), false);
   has('부활은 판돈과 되살아나기를 한 번에 쓴다', mp, "path('result', 'given', fb.uid)]: merged");
   has('포기 알림', mp, 'export async function declineRevive');
-  has('승자가 항아리를 통째로 걷는다', ms, 'rankings.forEach((uid, i)');
+  has('승자가 항아리를 통째로 걷는다', ms, 'for (const [uid, list] of Object.entries(given))');
   has('패자는 모자란 만큼만 낸다', ms, 'const short = Math.max(0, owed - already.length)');
   has('고스트 렌더', mh, 'function drawGhosts');
   has('레이스 바', mh, 'function drawRaceBar');
@@ -723,7 +723,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('실패해도 서버를 다시 확인한다', mp, 'after?.alive === true');
 
   // ③ 도장 비트 색인이 정산과 같아야 한다
-  eq('미수령 판정이 순위 전체를 본다', mp.includes('rank.some((uid, i) =>'), true);
+  has('미수령 판정도 켤레 수로 센다', mp, 'v.length > (걷은양[uid] ?? 0)');
   eq('slice(1) 로 세지 않는다', mp.includes("rank.slice(1).some((uid, i) => Array.isArray(given[uid]) && !(mask"), false);
 
   // ④ 판돈 표시가 실제 수령액과 맞는다 (1등은 기본을 안 낸다)
@@ -770,11 +770,12 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('정산이 회수를 부른다', ms, 'Room.reclaimStake(code)');
   eq('서버에서 지운 뒤에 지갑에 넣는다',
     ms.indexOf('Room.reclaimStake(code)') < ms.indexOf('L.addShoes(back)'), true);
-  has('아직 뛰는 사람이 있으면 회수하지 않는다', ms, "p?.alive !== false");
+  has('아직 뛰는 사람이 있으면 회수하지 않는다', ms, '!outOfRound(p, now)');
 
   // ③ 방에서 빠진 사람의 판돈(순위에 못 들어간다)도 승자가 걷는다
-  has('고아 판돈 비트', mp, 'export const ORPHAN_BIT');
-  has('승자가 고아 판돈을 걷는다', ms, '!rankings.includes(uid)');
+  // 순위에 없는 사람(중도 이탈자)의 판돈도 걷는다 — 이제는 `given` 을 통째로 훑으므로 저절로 포함된다
+  has('옛 비트 도장도 읽는다', mp, 'export const ORPHAN_BIT');
+  has('걷을 대상은 순위가 아니라 항아리', ms, 'Object.entries(given)');
 
   // ④ 혼자 남아도 순위를 박는다 — 아니면 결과 화면에서 영원히 갇힌다
   eq('minPlayers 미만이면 포기하지 않는다', mp.includes('players.length < MULTI.minPlayers) return'), false);
@@ -788,6 +789,66 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('판돈은 방이 바뀔 때만 다시 만든다', hud, 'if (scene.potRoom !== room)');
   has('알림 줄바꿈은 한 번만 잰다', hud, 'if (!t.lines) t.lines = wrap(');
   has('글리프 캐시를 늘렸다', pf, 'GLYPH_CACHE_MAX = 320');
+}
+
+// ── 24) 둘 다 나가기 · 튕김 (2026-08-19) ──
+/**
+ * 사용자 신고: **"두 명이 게임 중에 나가기를 눌렀는데 신발이 안 넘어가고 튕긴다."**
+ * 원인은 하나로 모였다 — **판이 안 끝나거나, 끝나기 전에 방을 나가면 순위에서 사라진다.**
+ * 순위(`rankings`)는 방에 남아 있는 사람만 담을 수 있으므로(규칙), 먼저 나간 사람은
+ * 낼 것도 없고 받을 것도 없어진다. 여기서 그 경로들을 못 박는다.
+ * (동작 자체는 `npm run sim:multi` 가 가짜 서버로 12판 넘게 재생하며 검사한다)
+ */
+{
+  console.log('\n24) 둘 다 나가기 · 튕김 (2026-08-19)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const mp = read('../src/services/multiplayer.js');
+  const ms = read('../src/services/multiSettle.js');
+  const mr = read('../src/services/matchRules.js');
+  const gs = read('../src/game/GameScene.js');
+  const res = read('../src/screens/multi/MultiResult.js');
+  const wr = read('../src/screens/multi/WaitingRoom.js');
+
+  // ① 판이 안 끝났으면 자리를 비우지 않는다 (순위에서 사라지면 정산이 통째로 증발한다)
+  has('나가기 전에 판을 끝내 본다', mp, 'if (이번판참가자 && 판진행중)');
+  has('못 끝내면 자리를 지킨다', mp, "if (!room.result?.rankings) return 'kept';");
+
+  // ② 정산이 시작될 때마다 "끝낼 수 있는 판인지" 본다 — 접속만 해도 밀린 판이 풀린다
+  has('정산이 판을 끝낸다', ms, 'Room.roundOverNow(r)');
+  has('대기 중인 방은 끝난 판이 아니다', mp, "if (!room || room.state === 'waiting') return false;");
+  has('대기 중인 방에는 순위를 못 박는다', mp, "if (room.state === 'waiting') return null;");
+
+  // ③ 튕긴 사람 — 신호가 끊기면 판에서 빠진 것으로 본다
+  has('생존 신호', mp, 'export async function heartbeat(code)');
+  has('진행도에도 신호를 싣는다', mp, 'seenAt: fb.dbMod.serverTimestamp()');
+  has('들어올 때부터 기준 시각이 있다', mp, 'function meRecord(profile, fb)');
+  has('끊김 판정', mr, 'export function isStale(player, now)');
+  has('종료 판정이 끊김을 본다', mr, 'return isStale(player, now);');
+  eq('모르는 사람은 빼지 않는다 (seenAt 이 없으면 판정 안 함)',
+    M.isStale({}, Date.now() + 10 ** 9), false);
+  eq('신호가 살아 있으면 안 뺀다', M.isStale({ seenAt: Date.now() }, Date.now() + 1000), false);
+  eq('오래 끊기면 뺀다',
+    M.isStale({ seenAt: 0 + 1 }, 1 + MULTI.staleSeconds * 1000 + 1), true);
+
+  // ④ 신호는 일시정지·부활 선택 중에도 간다 (그때는 계단이 안 바뀌어 쓰기가 없다)
+  has('게임 화면이 주기적으로 보낸다', gs, 'MULTI.heartbeatMs');
+  has('결과 화면도 보낸다', res, 'Room.heartbeat(code)');
+  has('대기방도 보낸다', wr, 'Room.heartbeat(code)');
+  has('방에 없으면 안 보낸다 (유령 노드 방지)', gs, 'if (!this.room?.players?.[this.multi.myUid]) return;');
+
+  // ⑤ 다음 판 — 낡은 신호를 새로 찍고, 자리에 없는 사람은 데려가지 않는다
+  has('되돌릴 때 신호를 새로 찍는다', mp, 'seenAt: fb.dbMod.serverTimestamp(),\n    };');
+  has('자리에 없는 사람은 다음 판에 안 태운다', mp, 'if (!자리에있다(uid, v)) continue;');
+
+  // ⑥ 나눠 낸 신발 — 켤레 수 도장(새) + 비트 도장(옛 클라이언트 보호)을 한 번에 쓴다
+  has('켤레 수 도장', mp, 'export function claimedCounts(room, winnerUid)');
+  has('옛 비트도 함께', mp, "[path('settled', fb.uid)]: mask | 0,");
+  has('한 번의 쓰기로', mp, "[path('claims', fb.uid)]: counts,");
+
+  // ⑦ 이미 끝난 판이면 화면도 즉시 끝낸다
+  has('순위가 박히면 게임을 끝낸다', gs, "if (r.result?.rankings || r.state === 'finished') this.endMulti();");
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

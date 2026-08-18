@@ -164,6 +164,23 @@ export class GameScene {
      * 로딩이 길든 탭이 가려졌든 남은 시간은 실제 시간대로 흐른다.
      */
     this.startAtLocal = this.multi.startAt ?? 0;
+    /**
+     * ★ **살아 있다는 신호를 5초마다 보낸다.** (2026-08-19)
+     *
+     * 렉으로 튕긴 사람은 서버에 `alive: true` 로 남는다. 그러면 판이 **영원히 안 끝나고**
+     * 순위가 안 박혀 아무도 정산을 못 한다 — 항아리에 걸린 신발까지 통째로 묶인다.
+     * 그래서 "아직 여기 있다"를 주기적으로 알린다.
+     *
+     * 진행도 쓰기로는 부족하다 — 일시정지 중이거나 죽어서 부활을 고르는 20초 동안에는
+     * 계단이 안 바뀌어 아무 쓰기도 안 나간다. 신호는 **씬이 살아 있는 한** 계속 간다.
+     */
+    this.beat = setInterval(() => {
+      if (this.over || this.leaving) return;
+      // **방에 내가 있을 때만 보낸다.** 방이 지워졌거나 내가 빠진 뒤에 쓰면
+      // `players/내uid/seenAt` 하나짜리 유령 노드를 새로 만들 수 있다.
+      if (!this.room?.players?.[this.multi.myUid]) return;
+      Room.heartbeat(this.multi.code).catch(() => {});
+    }, MULTI.heartbeatMs);
     Room.msUntilStart(this.multi.startAt ?? 0).then((ms) => {
       // 서버 시계로 다시 잰다. 내 시계가 몇 초 어긋나 있어도 여기서 바로잡힌다
       this.startAtLocal = Date.now() + Math.max(0, ms);
@@ -209,7 +226,13 @@ export class GameScene {
        */
       const now = Date.now() + (Room.serverOffsetSync?.() ?? 0);
       if (!this.over) {
-        if (roundOver(r, now)) this.endMulti();
+        /**
+         * ★ **순위가 박혔으면 무조건 끝이다.** (2026-08-19)
+         * 내가 잠깐 튕긴 사이에 남들이 판을 끝냈을 수 있다. 그때 내 화면만 계속 돌면
+         * 이미 끝난 판을 혼자 오르다가, 결과 화면에서야 "왜 내 계단이 반영이 안 됐지"가 된다.
+         */
+        if (r.result?.rankings || r.state === 'finished') this.endMulti();
+        else if (roundOver(r, now)) this.endMulti();
         else if (!this.player?.dead && othersAllOut(r, uid, now)) this.endMulti();
       }
     });
@@ -233,6 +256,8 @@ export class GameScene {
     Bgm.stopBgm();
     this.roomUnsub?.();
     this.roomUnsub = null;
+    clearInterval(this.beat);
+    this.beat = null;
     Room.publishProgress(this.multi.code, {
       stairs: this.floor, shoesFound: this.shoesFound, alive: !this.player?.dead,
     }, true);
@@ -252,6 +277,8 @@ export class GameScene {
   exitMulti() {
     this.roomUnsub?.();
     this.roomUnsub = null;
+    clearInterval(this.beat);
+    this.beat = null;
   }
 
   resume() {
