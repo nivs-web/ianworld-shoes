@@ -41,7 +41,7 @@ async function rt() {
  */
 export async function serverOffset(fb) {
   try {
-    const snap = await fb.dbMod.get(fb.dbMod.ref(fb.rtdb, '.info/serverTimeOffset'));
+    const snap = await withTimeout(fb.dbMod.get(fb.dbMod.ref(fb.rtdb, '.info/serverTimeOffset')), undefined, '서버 시각');
     return snap.val() ?? 0;
   } catch {
     return 0;
@@ -109,9 +109,45 @@ export async function createRoom({ isPrivate = false, difficulty } = {}) {
 /** 내가 들어간 방을 기록해 둔다 — 정산을 안 하고 껐을 때 여기서 찾아 청산한다 */
 async function noteMyRoom(fb, code) {
   L.noteMultiJoin();   // 접속 시 청산 대상이 되도록 로컬에도 흔적을 남긴다
+  armDisconnect(fb, code);
   try {
-    await fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(MY_ROOMS, fb.uid, code)), Date.now());
+    await withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(MY_ROOMS, fb.uid, code)), Date.now()), undefined, '방 기록');
   } catch { /* 없어도 게임은 된다 */ }
+}
+
+/**
+ * ★ **탭을 닫으면 방에서 자동으로 빠진다.** (2026-08-16)
+ *
+ * 저장소 전체에 `onDisconnect` 가 한 건도 없었다. `leaveRoom` 은 사용자가 `뒤로` 를
+ * 눌러야만 돌기 때문에, 탭을 그냥 닫거나 네트워크가 끊기면 `open:true` 인 1인 방이
+ * **영구히** 남았다. 자동 매칭은 `open == true` 인 방을 앞에서 12개만 훑고 **인원이
+ * 많은 순**으로 고르므로, 유령 방이 12개만 쌓여도 **모든 사용자의 자동 매칭이
+ * 유령 방에 갇힌다.** 사람이 자연스럽게 이탈하는 것만으로도 쌓인다.
+ *
+ * RTDB 서버가 연결이 끊긴 걸 감지하면 대신 지워 준다 — 클라이언트가 죽어도 동작한다.
+ */
+function armDisconnect(fb, code) {
+  try {
+    const meRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid));
+    fb.dbMod.onDisconnect(meRef).remove().catch(() => {});
+    disconnectRefs.set(code, meRef);
+  } catch { /* 지원이 안 되면 그냥 예전처럼 동작한다 */ }
+}
+
+/** 대기방에서 등록한 자동 이탈을 취소한다 (@see armDisconnect) */
+const disconnectRefs = new Map();
+
+/**
+ * 게임이 시작되면 자동 이탈을 **취소한다.** 판이 도는 중에 잠깐 끊겼다고
+ * 참가자가 사라지면 순위·정산에서 통째로 빠져 버린다.
+ */
+export async function holdRoomSeat(code) {
+  const ref = disconnectRefs.get(code);
+  if (!ref) return;
+  disconnectRefs.delete(code);
+  const fb = await rt();
+  if (!fb) return;
+  try { await fb.dbMod.onDisconnect(ref).cancel(); } catch { /* 무시 */ }
 }
 
 /**
@@ -177,22 +213,33 @@ export async function quickJoin({ difficulty } = {}) {
 // 대기방
 // ─────────────────────────────────────────────
 
-/** 방 변화를 구독한다. @returns {() => void} 해제 함수 */
+/**
+ * 방 변화를 구독한다. @returns {() => void} 해제 함수
+ *
+ * ★ **붙기 전에 끊을 수 있다.** (2026-08-16)
+ * RTDB 모듈은 동적 import 라 구독이 한 박자 늦게 붙는다. 그 사이에 화면을 나가면
+ * 예전 코드는 아직 비어 있는 `off()`(아무것도 안 하는 함수)를 부르고, **그 뒤에**
+ * 리스너가 붙어서 영영 안 떨어졌다. 대기방에 들어가자마자 `뒤로` 를 누르면 재현된다.
+ * 떠난 화면을 계속 다시 그리려 들고, RTDB 연결도 계속 물고 있는다.
+ */
 export function subscribeRoom(code, cb) {
-  let off = () => {};
+  let off = null;
+  let cancelled = false;
   rt().then((fb) => {
+    if (cancelled) return;
     if (!fb) return cb(null);
     const r = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
     const unsub = fb.dbMod.onValue(r, (s) => cb(s.val()), () => cb(null));
+    if (cancelled) { unsub(); return; }   // 붙는 사이에 이미 나갔다
     off = unsub;
   });
-  return () => off();
+  return () => { cancelled = true; off?.(); off = null; };
 }
 
 export async function setReady(code, ready) {
   const fb = await rt();
   if (!fb) return;
-  await fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid, 'ready')), !!ready)
+  await withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid, 'ready')), !!ready), undefined, '레디')
     .catch(() => {});
 }
 
@@ -200,7 +247,7 @@ export async function setReady(code, ready) {
 export async function setRoomDifficulty(code, difficulty) {
   const fb = await rt();
   if (!fb) return;
-  await fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { difficulty }).catch(() => {});
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { difficulty }), undefined, '난이도').catch(() => {});
 }
 
 /**
@@ -214,9 +261,9 @@ export async function startCountdown(code) {
   if (!fb) return null;
   const offset = await serverOffset(fb);
   const startAt = nowOn(fb, offset) + MULTI.countdownSeconds * 1000;
-  await fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
     state: 'countdown', open: false, startAt,
-  }).catch(() => {});
+  }), undefined, '카운트다운').catch(() => {});
   return startAt;
 }
 
@@ -247,9 +294,9 @@ export async function publishProgress(code, { stairs, shoesFound, alive = true }
 
   const fb = await rt();
   if (!fb) return;
-  await fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
     stairs: stairs | 0, shoesFound: shoesFound | 0, alive: !!alive,
-  }).catch(() => {});
+  }), undefined, '진행도').catch(() => {});
 }
 
 export function resetProgressThrottle() {
@@ -263,10 +310,10 @@ export function resetProgressThrottle() {
 export async function reportDeath(code, { stairs, shoesFound }) {
   const fb = await rt();
   if (!fb) return;
-  await fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
     stairs: stairs | 0, shoesFound: shoesFound | 0, alive: false, reachedAt: Date.now(),
-  }).catch(() => {});
-  await fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { state: 'finished' }).catch(() => {});
+  }), undefined, '사망 보고').catch(() => {});
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { state: 'finished' }), undefined, '방 종료').catch(() => {});
 }
 
 /**
@@ -276,7 +323,7 @@ export async function reportDeath(code, { stairs, shoesFound }) {
  * 하고, 쓰기는 트랜잭션으로 **이미 적혀 있으면 건드리지 않는다.** 네 명이 동시에
  * 적으러 와도 처음 것 하나만 남는다.
  */
-export async function finalizeResult(code) {
+export async function finalizeResult(code, attempt = 0) {
   const fb = await rt();
   if (!fb) return null;
   const roomRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
@@ -293,6 +340,19 @@ export async function finalizeResult(code) {
     }), undefined, '결과 확정');
     return res.snapshot?.val() ?? null;
   } catch {
+    /**
+     * ★ **한 번은 다시 시도한다.** (2026-08-16)
+     *
+     * 이 트랜잭션은 방 노드 **전체**를 다시 쓴다. 그런데 규칙이 "남의 값은 그대로여야
+     * 한다"고 요구하므로, 내가 읽은 뒤 쓰기 전에 **상대의 마지막 진행도가 서버에 닿으면**
+     * 내가 쓰는 값이 낡아서 거부된다. 판이 끝나는 순간은 모두가 마지막 보고를 밀어 올리는
+     * 시점이라 실제로 겹칠 수 있다. 순위가 안 박히면 아무도 정산을 못 하므로,
+     * 짧게 쉬고 최신 값으로 한 번 더 시도한다. (모두가 부르므로 보통은 누군가 성공한다)
+     */
+    if (attempt === 0) {
+      await new Promise((r) => setTimeout(r, 400));
+      return finalizeResult(code, 1);
+    }
     return null;
   }
 }
@@ -307,7 +367,7 @@ export async function leaveRoom(code) {
   if (!fb) return;
   const roomRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
   try {
-    await fb.dbMod.runTransaction(roomRef, (cur) => {
+    await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
       if (!cur) return;
       if (cur.state !== 'waiting') return cur; // 시작한 판은 빠져나가도 기록이 남아야 한다
       delete cur.players?.[fb.uid];
@@ -316,19 +376,56 @@ export async function leaveRoom(code) {
       if (cur.hostUid === fb.uid) cur.hostUid = Object.keys(cur.players)[0];
       cur.open = !cur.isPrivate;
       return cur;
-    });
+    }), undefined, '방 나가기');
   } catch { /* 못 지워도 open=false 라 매칭에는 안 걸린다 */ }
 }
 
-/** 내가 들어갔던 방 목록 (미정산 청산용) */
-export async function myRoomCodes() {
+/**
+ * 내가 들어갔던 방 목록 (미정산 청산용) — **최근 것부터, 최대 `limit` 개.**
+ *
+ * 예전에는 전부 돌려줬고 `sweepUnsettled` 가 그걸 통째로 순회했다. 방은 어디서도
+ * 지워지지 않으므로 오래 즐긴 사람일수록 **접속할 때마다 지금까지의 모든 방**을
+ * 읽었다 — 무료 요금제 읽기 할당량에 그대로 꽂힌다. 정산이 밀리는 건 길어야 며칠이라
+ * 최근 것만 봐도 충분하다.
+ */
+export async function myRoomCodes(limit = 20) {
   const fb = await rt();
   if (!fb) return [];
   try {
-    const snap = await fb.dbMod.get(fb.dbMod.ref(fb.rtdb, path(MY_ROOMS, fb.uid)));
-    return Object.keys(snap.val() ?? {}).filter(isRoomCode);
+    const snap = await withTimeout(fb.dbMod.get(fb.dbMod.ref(fb.rtdb, path(MY_ROOMS, fb.uid))), undefined, '내 방 목록');
+    return Object.entries(snap.val() ?? {})
+      .filter(([code]) => isRoomCode(code))
+      .sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0))
+      .slice(0, limit)
+      .map(([code]) => code);
   } catch {
     return [];
+  }
+}
+
+/**
+ * 정산 도장을 **서버에** 남긴다 — `result/settled/{uid}` (승자가 걷어간 패자 비트마스크).
+ *
+ * 예전에는 도장이 localStorage 에만 있었다. 그런데 재정산의 입력인 `userRooms` 와
+ * `result.given` 은 RTDB 에 영구히 남는다. 그래서 **기기를 바꾸거나 저장소를 지우면**
+ * 승자가 같은 신발을 다시 걷어 지갑이 불어났고, 도장이 200건에서 잘려 나가는
+ * 150판 즈음부터는 **가만히 있어도** 같은 일이 벌어졌다.
+ *
+ * 비트마스크인 이유: 패자가 여러 명일 때 **아무 순서로나** 걷어도 idempotent 해야 한다.
+ * 숫자 하나면 규칙(`settled/$uid` 는 숫자, 본인만 쓰기)도 그대로 쓸 수 있다.
+ * @returns {Promise<boolean>} 실제로 서버에 남았는지 — 실패하면 걷으면 안 된다
+ */
+export async function markSettledRemote(code, mask) {
+  const fb = await rt();
+  if (!fb) return false;
+  try {
+    await withTimeout(
+      fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'result', 'settled', fb.uid)), mask | 0),
+      undefined, '정산 도장'
+    );
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -336,7 +433,7 @@ export async function readRoom(code) {
   const fb = await rt();
   if (!fb) return null;
   try {
-    const snap = await fb.dbMod.get(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)));
+    const snap = await withTimeout(fb.dbMod.get(fb.dbMod.ref(fb.rtdb, path(ROOMS, code))), undefined, '방 읽기');
     return snap.val();
   } catch {
     return null;

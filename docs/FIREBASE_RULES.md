@@ -89,6 +89,29 @@ service cloud.firestore {
 
 콘솔 → Realtime Database → **규칙** 탭 → 전체 교체 → 게시
 
+> ### ★ 2026-08-16 전면 교체 — 예전 규칙은 두 군데가 근본적으로 틀렸다
+>
+> **(1) 하위 `.write` 는 아예 평가되지 않았다.** RTDB 는 **상위에서 허용하면 하위 `.write` 를
+> 보지 않는다**(shallower rules override deeper). `$code` 에 쓰기를 열어 뒀으므로
+> `players/$uid/.write`(본인만) 와 `result/given/$uid/.write`(패자 본인만) 두 방어선은
+> 방에 들어온 사람에게 **존재하지 않았다.** 방 하나 만들고 콘솔에서
+> `set(ref(db,'rooms/<code>'), {...})` 한 줄이면 가짜 참가자를 넣고 `result.given` 에
+> 신발 수백 켤레를 적어 지갑과 도감을 통째로 채울 수 있었다.
+>
+> **(2) `hostUid` 검증식이 정상 동작을 막고 있었다.** `!data.exists() || data.val() == auth.uid`
+> 는 **기존 값이 나여야** 통과다. 그런데 입장·이탈·결과확정은 전부 방 노드 전체를 다시 쓰는
+> 트랜잭션이라 `hostUid` 가 늘 쓰기에 포함된다 → **방장이 아닌 사람은 입장 자체가 거부**된다.
+>
+> **고친 방식: `.write` 대신 `.validate` 로 잠근다.**
+> `.validate` 는 `.write` 와 달리 **쓰이는 모든 노드에서 각각 평가된다**(상위가 하위를 덮지 않는다).
+> 그래서 잎(leaf)마다 `내 것이거나, 값이 그대로여야 한다` 를 걸었다:
+> ```
+> $uid == auth.uid || newData.val() == data.val()
+> ```
+> 방 전체를 다시 쓰는 트랜잭션은 남의 값을 **그대로** 넣으므로 통과하고,
+> 남의 계단 수를 고치거나 가짜 참가자를 끼워 넣는 쓰기는 정확히 여기서 걸린다.
+> 클라이언트 코드는 한 줄도 안 바꿔도 된다.
+
 ```json
 {
   "rules": {
@@ -98,26 +121,61 @@ service cloud.firestore {
       "$code": {
         ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && data.child('state').val() == 'waiting'))",
 
-        "hostUid":    { ".validate": "!data.exists() || data.val() == auth.uid" },
+        "code":       { ".validate": "newData.val() == $code" },
+        "isPrivate":  { ".validate": "newData.isBoolean() && (!data.exists() || newData.val() == data.val())" },
+        "open":       { ".validate": "newData.isBoolean()" },
         "seed":       { ".validate": "newData.isNumber() && (!data.exists() || data.val() == newData.val())" },
         "difficulty": { ".validate": "newData.val() == 'easy' || newData.val() == 'normal' || newData.val() == 'hard'" },
         "state":      { ".validate": "newData.val() == 'waiting' || newData.val() == 'countdown' || newData.val() == 'playing' || newData.val() == 'finished'" },
         "maxPlayers": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 4" },
+        "createdAt":  { ".validate": "newData.isNumber() && (!data.exists() || newData.val() == data.val())" },
+        "startAt":    { ".validate": "newData.isNumber()" },
+
+        "hostUid": {
+          ".validate": "newData.isString() && (!data.exists() || newData.val() == data.val() || !newData.parent().child('players').hasChild(data.val()))"
+        },
 
         "players": {
+          ".validate": "newData.numChildren() <= newData.parent().child('maxPlayers').val()",
           "$uid": {
-            ".write": "auth != null && auth.uid == $uid",
-            "stairs":     { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
-            "shoesFound": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "alive":      { ".validate": "newData.isBoolean()" }
+            "nickname":    { ".validate": "newData.isString() && newData.val().length <= 16 && ($uid == auth.uid || newData.val() == data.val())" },
+            "characterId": { ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())" },
+            "ready":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
+            "stairs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val())" },
+            "shoesFound":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val())" },
+            "alive":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
+            "joinedAt":    { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
+            "reachedAt":   { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
+            "$other":      { ".validate": false }
           }
         },
 
         "result": {
+          "endedAt": { ".validate": "newData.isNumber()" },
+
+          "rankings": {
+            "$i": {
+              ".validate": "newData.isString() && newData.parent().parent().parent().child('players').hasChild(newData.val())"
+            }
+          },
+
           "given": {
-            "$uid": { ".write": "auth != null && auth.uid == $uid" }
-          }
-        }
+            "$uid": {
+              ".validate": "newData.numChildren() <= 4",
+              "$i": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 129 && ($uid == auth.uid || newData.val() == data.val())"
+              }
+            }
+          },
+
+          "settled": {
+            "$uid": { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" }
+          },
+
+          "$other": { ".validate": false }
+        },
+
+        "$other": { ".validate": false }
       }
     },
 
@@ -131,18 +189,37 @@ service cloud.firestore {
 }
 ```
 
-**왜 이렇게 잘게 쪼갰나**
+**각 줄의 이유**
 
-- `players/{uid}` 는 **본인만** 쓴다. 남의 계단 수를 고쳐 승패를 뒤집는 걸 막는 최소선이다.
-- `$code` 쓰기는 **이미 방에 있는 사람**이거나 **대기 중인 방에 자기를 넣는 경우**만
-  허용한다. 아무나 남의 방 상태를 `finished` 로 바꿔 게임을 끊을 수 없다.
-- `seed` 는 **한 번 정해지면 못 바꾼다**(`data.val() == newData.val()`). 시드가 바뀌면
-  사람마다 다른 계단이 나와서 승부 자체가 성립하지 않는다.
-- `hostUid` 는 자기 자신으로만 쓸 수 있다 — 남을 방장으로 만들어 놓고 조종할 수 없다.
-- `result/given/{uid}` 는 **패자 본인만** 쓴다. 내가 내놓은 신발 목록을 승자가 읽어 가는
-  구조라(§5-7 정산), 남이 대신 써 주면 없는 신발이 생긴다.
-- `rooms/.indexOn: ["open"]` 은 자동 매칭 쿼리(`open == true`)용이다.
-  없으면 RTDB 가 전체를 훑고 콘솔에 경고를 찍는다.
+- **`$uid == auth.uid || newData.val() == data.val()`** — 이 규칙의 심장. 잎마다 붙어 있고,
+  "내 값만 바꿀 수 있다. 남의 값은 **있는 그대로** 다시 써 넣어야 한다"는 뜻이다.
+  방 전체를 다시 쓰는 트랜잭션(입장·이탈·결과확정)은 통과하고, 남의 계단 수를 고치는 쓰기는 막힌다.
+  **가짜 참가자 삽입도 여기서 막힌다** — 남의 `$uid` 인데 `data` 가 없으면
+  `newData.val() == data.val()` 이 `숫자 == null` 이라 거짓이다.
+- **`hostUid`** — 값이 그대로거나, 최초 생성이거나, **직전 방장이 이미 방에 없을 때만** 바꿀 수 있다.
+  방장이 나갔을 때 남은 사람에게 넘기는 정상 동작(`leaveRoom`)은 통과하고, 방장이 멀쩡한데
+  가로채는 건 막힌다. 예전 규칙이 입장 자체를 막던 문제도 여기서 풀린다.
+- **`players/.validate` 정원** — 서버가 직접 인원수를 센다. 클라이언트 트랜잭션이 뚫려도 5인 방이 안 된다.
+- **`rankings/$i` 는 실재하는 참가자여야 한다** — 가짜 uid 를 1등에 박고 정산을 돌리는 경로를 끊는다.
+  위의 가짜 참가자 차단과 짝을 이룬다.
+- **`given/$uid` 는 4개 이하, 값은 0~129**(신발 130종) — 패널티는 1켤레지만 여유를 뒀다.
+  예전에는 길이·값 제한이 아예 없어 수백 켤레를 적을 수 있었다.
+- **`settled/$uid`** — 정산 도장(§9-0-14). 로컬에만 두면 저장소를 지우거나 기기를 바꿀 때
+  같은 방이 다시 정산돼 신발이 복제된다. 본인만 찍고, 남의 도장은 못 지운다.
+- **`$other: false`** — 규칙에 없는 키는 아예 못 쓴다. 오타나 미래의 실수가 조용히 통과하지 않는다.
+- **`seed` · `createdAt` · `isPrivate` 는 생성 후 불변**. 시드가 바뀌면 사람마다 다른 계단이 나와
+  승부가 성립하지 않는다.
+- `rooms/.indexOn: ["open"]` 은 자동 매칭 쿼리(`open == true`)용. 없으면 전체를 훑고 경고가 뜬다.
+
+**남아 있는 한계 (알고 두는 것)**
+
+- 방에 들어온 사람이 **다른 참가자를 지울** 수는 있다. `.validate` 는 삭제되는 노드에서는
+  돌지 않기 때문이다. 신발이 생기지는 않으므로(정산 대상에서 빠질 뿐) 치명은 아니다.
+  완전히 막으려면 방 전체 트랜잭션을 없애고 `players` 서브트리만 트랜잭션해야 한다 —
+  클라이언트 구조 변경이 필요해 다음 판으로 미뤘다.
+- `rooms/.read` 가 로그인 사용자 전체에 열려 있어 **비밀방 코드가 비밀이 아니다.**
+  방 목록을 훑으면 코드를 알 수 있다. 참가 자체는 정원·상태 규칙이 막지만,
+  "아는 사람끼리만" 을 보장하려면 코드 해시로 조회하는 구조가 필요하다.
 - `userRooms/{uid}` 는 **내가 참가한 방 목록**이다. 정산을 안 하고 앱을 꺼도
   다음 접속에 여기서 미정산 방을 찾아 청산한다. 본인만 읽고 쓴다.
 

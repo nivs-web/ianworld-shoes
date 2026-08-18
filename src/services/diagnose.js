@@ -11,7 +11,7 @@
  * 어차피 평소에도 일어나야 하는 일이고, 점수를 새로 지어내지 않는다.
  */
 
-import { getStore, configured, projectId } from './firebase.js';
+import { getStore, configured, projectId, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import * as Rank from './leaderboard.js';
@@ -49,13 +49,13 @@ export async function selftest() {
   // 4. 계정 문서 쓰기 — 규칙(users)이 살아 있는지 본다
   try {
     const p = L.loadProfile();
-    await fb.storeMod.setDoc(
+    await withTimeout(fb.storeMod.setDoc(
       fb.storeMod.doc(fb.db, 'users', u.uid),
       { uid: u.uid, nickname: p.nickname ?? '', nicknameLower: (p.nickname ?? '').toLowerCase(),
         selectedCharacter: p.selectedCharacter ?? '', shoesOwned: p.shoesOwned ?? 0,
         bestStairs: p.bestStairs ?? 0, bestByDifficulty: p.bestByDifficulty ?? {} },
       { merge: true }
-    );
+    ), undefined, '계정 문서 쓰기');
     step('계정 문서 쓰기', true);
   } catch (e) {
     step('계정 문서 쓰기', false, why(e));

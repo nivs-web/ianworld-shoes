@@ -7,6 +7,7 @@
  */
 
 import { setInputEnabled } from '../core/input.js';
+import { closeTopOverlay, closeAllOverlays } from './ui.js';
 
 /** @typedef {{render:(nav:object)=>HTMLElement, onLeave?:()=>void}} Screen */
 
@@ -32,6 +33,8 @@ export function toCanvas() {
 function draw(keepScroll = false) {
   const r = root();
   if (!r || !live) return;
+  // 다시 그리기 전에 떠 있는 팝업을 치운다 — 남으면 새 화면 위에 얹혀 버린다
+  closeAllOverlays();
   const y = r.scrollTop;
   r.innerHTML = '';
   r.append(live.render(nav));
@@ -100,7 +103,13 @@ export const nav = {
 export function bindHardwareBack() {
   history.pushState({ sf: true }, '');
   window.addEventListener('popstate', () => {
-    if (stack.length > 1) nav.back();
+    /**
+     * ★ **팝업이 떠 있으면 뒤로가기는 팝업부터 닫는다.** (2026-08-16)
+     * 팝업은 `document.body` 에 붙어 라우터 바깥에 있었다. 그래서 도감에서 신발
+     * 팝업을 열고 뒤로가기를 누르면 **뒤의 화면만 바뀌고 팝업은 로비 위에 남았고**,
+     * 구매 확인 다이얼로그는 떠난 화면의 구매를 끝까지 실행했다. (screens/ui.js)
+     */
+    if (!closeTopOverlay() && stack.length > 1) nav.back();
     history.pushState({ sf: true }, '');
   });
 }

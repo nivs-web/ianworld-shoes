@@ -9,6 +9,7 @@ import { get as getProfile, finishRun } from '../services/profile.js';
 import { ELEVATOR } from '../config/balance.js';
 import * as L from '../services/storageLocal.js';
 import * as Scene from '../core/scene.js';
+import { enterFullscreen, exitFullscreen, lockPortrait } from '../core/fullscreen.js';
 import { nav } from './router.js';
 import Lobby from './Lobby.js';
 
@@ -26,6 +27,13 @@ export function startGame(navigator, opt = {}) {
     L.patchProfile({ elevatorUses: (p.elevatorUses ?? 0) + 1 });
     startFloor = ELEVATOR.startFloor;
   }
+
+  /**
+   * 전체화면 요청은 **클릭 핸들러 안**에서 곧바로 해야 브라우저가 받아 준다.
+   * await 하지 않는 이유도 같다 — 기다렸다 부르면 제스처 컨텍스트를 벗어난다.
+   * 실패해도(아이폰 등) 게임은 그대로 시작한다.
+   */
+  enterFullscreen().then((ok) => { if (ok) lockPortrait(); });
 
   const { GameScene } = window.__gameModule;
   navigator.toCanvas();
@@ -49,6 +57,16 @@ export function startGame(navigator, opt = {}) {
  */
 export function handleFinish(result, action) {
   if (result) finishRun(result);
-  if (action === 'retry') startGame(nav, {});
-  else nav.reset(Lobby);
+  if (action === 'retry') {
+    startGame(nav, {});   // 전체화면은 유지된다
+    return;
+  }
+  exitFullscreen();       // 로비는 브라우저 UI가 있는 편이 낫다
+  /**
+   * ★ **씬 스택을 반드시 비운다.** (2026-08-16)
+   * 이게 없어서 로비·도감을 보는 내내 죽은 GameScene 을 60fps 로 계속 그리고 있었다.
+   * 자세한 내용은 core/scene.js 의 `clear()` 주석.
+   */
+  Scene.clear();
+  nav.reset(Lobby);
 }

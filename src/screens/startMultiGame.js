@@ -21,6 +21,8 @@ export function startMultiGame(nav, { code, room }) {
 
   const { GameScene } = window.__gameModule;
   Room.resetProgressThrottle();
+  // 판이 시작됐다 — 잠깐 끊겼다고 방에서 빠지면 안 된다 (multiplayer.js armDisconnect)
+  Room.holdRoomSeat(code).catch(() => {});
   nav.toCanvas();
 
   Scene.reset(new GameScene({
@@ -29,14 +31,24 @@ export function startMultiGame(nav, { code, room }) {
     controlMode: p.controlMode,
     seed: room.seed,          // ★ 전원 동일
     multi: { code, startAt: room.startAt ?? 0, myUid: currentUser()?.uid },
-    onFinish: async () => {
+    /**
+     * @param {{floor:number,difficulty:string,shoeIndices:number[]}|null} result
+     *
+     * ★ **판 결과를 결과 화면까지 들고 간다.** (2026-08-16)
+     * 예전에는 `onFinish` 가 인자를 아예 안 받아서, 멀티 한 판에서 주운 신발도
+     * 도달한 계단도 **통째로 버려졌다.** `finishRun()` 호출부가 싱글 한 곳뿐이었다.
+     * 기획서 §5-9 는 "멀티 게임: 승자만 기록 반영" 이므로, 반영 여부는
+     * 승패를 아는 결과 화면(`MultiResult`)이 판단한다.
+     */
+    onFinish: async (result) => {
       exitFullscreen();
       /**
        * 결과 확정은 **모두가 부른다.** 트랜잭션이라 처음 것 하나만 남고,
        * 방장이 먼저 나가버려도 순위가 안 나오는 일이 없다.
        */
       await Room.finalizeResult(code).catch(() => null);
-      nav.reset(MultiResult, { code });
+      Scene.clear(); // 판은 끝났다 — 씬을 비운다 (안 그러면 결과 화면 뒤에서 계속 돈다)
+      nav.reset(MultiResult, { code, result });
     },
   }));
   return true;

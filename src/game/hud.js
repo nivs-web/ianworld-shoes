@@ -6,7 +6,8 @@
 import { GAUGE_MAX } from '../config/balance.js';
 import { HUD, CONTROLS } from '../config/layout.js';
 import { rect, strokeRect, draw } from '../core/sprite.js';
-import { text } from '../core/pixelfont.js';
+// HUD 는 매 프레임 그린다 — 외곽선 글자는 반드시 캐시본을 쓴다 (pixelfont.js 주석)
+import { textCached } from '../core/pixelfont.js';
 import { isHeld, BTN } from '../core/input.js';
 import { img } from '../core/assets.js';
 import { PAL } from './palette.js';
@@ -47,14 +48,14 @@ export function renderHud(s) {
   // ── 좌상단(아이콘 행): 신발 아이콘 + 찾은 수 ──
   const icon = img('shoe_icon');
   if (icon) draw(icon, HUD.shoesIcon.x, HUD.shoesIcon.y);
-  text(`${s.shoesFound}`, HUD.shoesLabel.x, HUD.shoesLabel.y, {
+  textCached(`${s.shoesFound}`, HUD.shoesLabel.x, HUD.shoesLabel.y, {
     color: PAL.text, outline: PAL.textShadow, scale: HUD.shoesLabel.scale, mono: true,
   });
 
   // ── 우상단(같은 행): 부활 하트 + 수 ──
   if (s.revives > 0) {
     drawHeartIcon(HUD.reviveHeart.x, HUD.reviveHeart.y);
-    text(`${s.revives}`, HUD.reviveLabel.x, HUD.reviveLabel.y, {
+    textCached(`${s.revives}`, HUD.reviveLabel.x, HUD.reviveLabel.y, {
       color: PAL.text, outline: PAL.textShadow, scale: HUD.reviveLabel.scale,
       align: HUD.reviveLabel.align, mono: true,
     });
@@ -62,7 +63,7 @@ export function renderHud(s) {
 
   // ── 중앙(아래 행): 계단 수 ──
   // mono: 자릿수가 바뀌어도 가운데 정렬이 흔들리지 않게 고정폭으로 찍는다.
-  text(String(s.floor), HUD.score.x, HUD.score.y, {
+  textCached(String(s.floor), HUD.score.x, HUD.score.y, {
     color: PAL.text, outline: PAL.textShadow, scale: HUD.score.scale,
     align: HUD.score.align, mono: true,
   });

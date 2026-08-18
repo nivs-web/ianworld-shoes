@@ -18,6 +18,9 @@ import { NICKNAME } from '../config/balance.js';
 import * as L from '../services/storageLocal.js';
 
 export default function CharacterSelect(nav) {
+  /** 입력 중인 닉네임과 안내 문구 — 다시 그려도 살아남아야 한다 */
+  let draftNick = '';
+  let draftMsg = '';
   let index = Math.max(0, CHARACTERS.findIndex((c) => c.id === getProfile().selectedCharacter));
   let renaming = false;
 
@@ -36,8 +39,19 @@ export default function CharacterSelect(nav) {
       autocapitalize: 'off',
       spellcheck: 'false',
     });
-    const msg = el('div.hint', S.renamePrompt);
-    const fail = (t) => { msg.textContent = t; msg.classList.add('bad'); };
+    /**
+     * ★ **입력값과 안내 문구를 화면 인스턴스가 들고 있는다.** (2026-08-16)
+     *
+     * `nav.refresh()` 는 `#ui` 를 통째로 다시 그린다(router.js). 탭·index 같은 상태는
+     * 인스턴스 변수라 살아남았는데, **입력값만은 DOM 안에만 있었다.** 그래서 닉네임을
+     * 절반쯤 치다가 캐릭터 화살표(`◀`/`▶`)를 한 번 누르면 **입력이 통째로 사라졌다.**
+     * 200켤레짜리 유료 기능인데 왜 지워졌는지 알 방법도 없었다(문구도 같이 초기화).
+     */
+    input.value = draftNick;
+    input.addEventListener('input', () => { draftNick = input.value; });
+    const msg = el('div.hint', draftMsg || S.renamePrompt);
+    if (draftMsg) msg.classList.add('bad');
+    const fail = (t) => { draftMsg = t; msg.textContent = t; msg.classList.add('bad'); };
 
     async function submit() {
       if (renaming) return;
@@ -61,12 +75,22 @@ export default function CharacterSelect(nav) {
       if (!L.consumeShoes(cost)) return fail(S.renameNeedShoes(cost));
       saveNickname(v);
       setNickname(v);
+      draftNick = '';
+      draftMsg = '';
       Sfx.play('sfx_purchase');
       toast(S.renameDone);
       nav.refresh();
     }
 
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    /**
+     * `isComposing` 검사가 없으면 **한글 조합 중 Enter** 가 제출로 새어 들어간다.
+     * 크롬은 조합 중 `key` 가 `'Process'` 로 와서 무반응, 사파리 계열은 조합 확정 전
+     * 값으로 제출돼 "형식이 올바르지 않다"가 뜬다. 둘 다 사용자 잘못이 아니다.
+     */
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+      submit();
+    });
 
     return el('div.rename-box', null, [
       el('div.rename-title', S.menuRename),

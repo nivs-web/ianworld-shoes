@@ -8,7 +8,7 @@
  */
 
 import { getFirebase, configured } from './firebase.js';
-import { loadProfile, patchProfile } from './storageLocal.js';
+import { loadProfile, patchProfile, resetAll } from './storageLocal.js';
 
 /** @type {{uid:string,nickname:string,email:string,guest:boolean}|null} */
 let current = null;
@@ -38,12 +38,34 @@ export function currentUser() {
  * 그 상태를 확인했다.
  */
 function adopt(u) {
+  if (u) dropForeignData(u.uid);
   current = u
     ? { uid: u.uid, nickname: loadProfile().nickname, email: u.email ?? '', guest: false }
     : null;
   if (u) patchProfile({ uid: u.uid, email: u.email ?? '' });
   emit();
   return current;
+}
+
+/**
+ * ★ **다른 계정의 데이터를 물려받지 않는다.** (2026-08-16)
+ *
+ * 로컬 저장이 원본인 구조라(§6-4) 계정이 바뀌어도 지갑·도감·기록이 그대로 남아 있었다.
+ * A로 신발 80켤레를 모으고 로그아웃한 뒤 B로 로그인하면:
+ *   1. `uid` 만 갈아끼워져 **A의 재산이 B의 것이 된다**
+ *   2. 남아 있는 A의 닉네임 때문에 닉네임 설정 화면을 건너뛰어 B가 A 이름으로 들어간다
+ *   3. B가 신규 계정이면 `pullRemote` 의 최초 생성 분기가 **A의 로컬을 통째로 B 문서로 업로드**한다
+ *      — 서버까지 오염되고, 명예의 전당에 같은 기록이 두 계정으로 올라간다
+ *
+ * 그래서 **로그인 시점에** 저장된 uid 와 다르면 로컬을 비우고 시작한다.
+ * 로그아웃을 거치지 않고 계정만 바뀌는 경로(세션 복원, 다른 기기 로그인)까지 함께 막힌다.
+ * 비우고 나면 곧바로 `pullAll()` 이 그 계정의 진짜 데이터를 서버에서 당겨온다.
+ */
+function dropForeignData(uid) {
+  const prev = loadProfile().uid;
+  if (!prev || prev === uid || prev === 'guest') return;
+  console.warn('[auth] 계정이 바뀌어 로컬 데이터를 비웁니다', prev, '→', uid);
+  resetAll();
 }
 
 export const isGuest = () => !!current?.guest;
@@ -160,6 +182,13 @@ export async function signInGoogle() {
   }
 }
 
+/**
+ * 로그아웃.
+ *
+ * **로컬 저장은 일부러 안 지운다.** 같은 계정으로 다시 들어오는 경우가 훨씬 흔한데,
+ * 여기서 지워 버리면 마지막 판이 아직 서버에 안 올라갔을 때(오프라인·쓰기 실패)
+ * 그대로 사라진다. 계정이 **바뀌는** 경우는 로그인 시점의 `dropForeignData()` 가 잡는다.
+ */
 export async function signOut() {
   const fb = await getFirebase();
   if (fb) await fb.authMod.signOut(fb.auth);

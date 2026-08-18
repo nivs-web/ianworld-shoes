@@ -240,7 +240,7 @@ export async function isNicknameTaken(nickname) {
       fb.storeMod.where('nicknameLower', '==', nickname.trim().toLowerCase()),
       fb.storeMod.limit(1)
     );
-    const snap = await fb.storeMod.getDocs(q);
+    const snap = await withTimeout(fb.storeMod.getDocs(q), undefined, '닉네임 중복 확인');
     return snap.docs.some((d) => d.id !== u.uid);
   })();
 

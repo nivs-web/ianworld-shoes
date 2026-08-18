@@ -6,7 +6,16 @@
  * 어느 기기에서 먼저 찾았든 기록이 사라지지 않는다.
  */
 
-import { getStore, configured } from './firebase.js';
+/**
+ * ★ **원격 호출은 전부 `withTimeout` 으로 감싼다.** (2026-08-16)
+ *
+ * 파이어스토어는 연결이 막히면 **거절하지 않고 영원히 기다린다**(CLAUDE.md §9-0-7).
+ * `profile.js` · `leaderboard.js` 는 그래서 전부 감쌌는데 이 파일만 빠져 있었다.
+ * 그 결과 파이어스토어가 막히는 환경에서 로그인하면 `pullAll()` → `pullAndMerge()` 의
+ * `getDocs` 가 안 끝나고, `SplashLogin.onGoogle` 의 `finally { busy = false }` 에
+ * 도달하지 못해 **로그인 버튼이 완전히 죽었다.** 새로 고치는 것 말고는 방법이 없었다.
+ */
+import { getStore, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import shoesData from '../data/shoes.json';
@@ -51,7 +60,7 @@ export async function pushFound(indices) {
       count: rec.count,
     }, { merge: true });
   }
-  await batch.commit();
+  await withTimeout(batch.commit(), undefined, '도감 올리기');
 }
 
 /**
@@ -64,7 +73,7 @@ export async function pullAndMerge() {
   const fb = await getStore();
   if (!fb) return L.dexUnique();
 
-  const snap = await fb.storeMod.getDocs(colRef(fb, u.uid));
+  const snap = await withTimeout(fb.storeMod.getDocs(colRef(fb, u.uid)), undefined, '도감 읽기');
   const local = L.loadCollection();
   const merged = { ...local };
   const onlyLocal = [];

@@ -130,10 +130,21 @@ export class GameScene {
 
   /** 멀티 전용 준비 — 출발 시각 맞추기 + 상대 진행도 구독 */
   enterMulti() {
-    this.countdownMs = Math.max(0, (this.multi.startAt ?? 0) - Date.now());
+    /**
+     * ★ **출발 시각은 "언제"이지 "몇 프레임 뒤"가 아니다.** (2026-08-16)
+     *
+     * 예전에는 남은 시간을 한 번 재 두고 매 프레임 `1000/60` 씩 깎았다. 그런데
+     * `update()` 는 에셋 로딩 중이면 그 앞에서 통째로 멈추고(`if (!this.ready) return`),
+     * 탭이 가려져도 루프 자체가 선다. 그래서 **캐시가 빈 기기는 로딩에 쓴 5초만큼
+     * 늦게 출발했다** — 같은 시드로 같은 계단을 보는 의미가 사라진다.
+     *
+     * 지금은 **내 시계 기준 절대 시각**을 하나 잡아 두고 매 프레임 다시 뺀다.
+     * 로딩이 길든 탭이 가려졌든 남은 시간은 실제 시간대로 흐른다.
+     */
+    this.startAtLocal = this.multi.startAt ?? 0;
     Room.msUntilStart(this.multi.startAt ?? 0).then((ms) => {
       // 서버 시계로 다시 잰다. 내 시계가 몇 초 어긋나 있어도 여기서 바로잡힌다
-      this.countdownMs = Math.max(0, ms);
+      this.startAtLocal = Date.now() + Math.max(0, ms);
     });
     this.roomUnsub = Room.subscribeRoom(this.multi.code, (r) => {
       if (!r) return;
@@ -152,6 +163,11 @@ export class GameScene {
     });
   }
 
+  /** 이번 판의 성과 — 로비/결과 화면이 계정에 반영할 때 쓴다 */
+  resultOf() {
+    return { floor: this.floor, difficulty: this.diff.id, shoeIndices: this.shoeIndices };
+  }
+
   /** 멀티 종료 — 부활 없이 곧장 정산으로 (기획서 §5-6 '멀티는 부활 없음') */
   endMulti() {
     Bgm.stopBgm();
@@ -160,7 +176,8 @@ export class GameScene {
     Room.publishProgress(this.multi.code, {
       stairs: this.floor, shoesFound: this.shoesFound, alive: !this.player?.dead,
     }, true);
-    this.onFinish?.(null, 'multi');
+    // 결과를 넘긴다 — 예전에는 null 이라 이 판의 신발·계단이 통째로 버려졌다
+    this.onFinish?.(this.resultOf(), 'multi');
   }
 
   exitMulti() {
@@ -298,10 +315,12 @@ export class GameScene {
      * 먼저 누른 사람이 먼저 출발하면 같은 시드를 쓰는 의미가 없다.
      * 남은 시간은 서버 시각 기준으로 재 뒀다(enterMulti).
      */
-    if (this.multi && this.countdownMs > 0) {
-      this.countdownMs -= 1000 / 60;
-      clearInput();
-      return;
+    if (this.multi) {
+      this.countdownMs = Math.max(0, (this.startAtLocal ?? 0) - Date.now());
+      if (this.countdownMs > 0) {
+        clearInput();
+        return;
+      }
     }
 
     const btn = consumeInput();
@@ -372,10 +391,26 @@ export class GameScene {
    */
   leave(action) {
     Bgm.stopBgm();
-    const result = { floor: this.floor, difficulty: this.diff.id, shoeIndices: this.shoeIndices };
+    const result = this.resultOf();
     if (!this.onFinish) {
       console.error('[game] onFinish 가 없어 로비로 돌아갈 수 없다 — GameScene 생성부를 확인할 것');
       return;
+    }
+    /**
+     * ★ **멀티에서 중도 이탈은 곧 사망이다.** (2026-08-16)
+     *
+     * 예전에는 일시정지 → `로비로나가기` 가 `reportDeath()` 없이 곧장 `finalizeResult()`
+     * 로 갔다. 순위 확정은 **먼저 부른 사람이 그 시점 진행도로 못 박는** 트랜잭션이라,
+     * 신발 하나 먼저 줍고 일시정지(내 게이지만 멈춘다) → 나가기 = **이기고 도망**이었다.
+     * 게다가 내 `alive` 가 `true` 로 남아 **남은 사람은 자기가 죽을 때까지 방이 안 끝났다.**
+     *
+     * 그래서 나가기 전에 죽었다고 알리고 구독을 끊는다. 그러면 남은 사람들 화면도
+     * 정상적으로 종료되고, 순위도 내 실제 진행도로 매겨진다.
+     */
+    if (this.multi) {
+      Room.reportDeath(this.multi.code, { stairs: this.floor, shoesFound: this.shoesFound })
+        .catch(() => {});
+      this.exitMulti();
     }
     this.onFinish(result, action);
   }

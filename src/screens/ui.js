@@ -85,10 +85,56 @@ export function screen(...children) {
   return el('div.screen', null, children.flat());
 }
 
+/**
+ * ★ **떠 있는 팝업을 라우터가 알 수 있게 등록한다.** (2026-08-16)
+ *
+ * 팝업은 `#ui` 가 아니라 `document.body` 에 붙는다(화면 전체를 덮어야 하니까).
+ * 그래서 라우터는 존재를 몰랐고 두 가지 사고가 났다:
+ *
+ *   1. 도감에서 신발 팝업을 열고 **안드로이드 뒤로가기**를 누르면, 팝업이 닫히는 게 아니라
+ *      뒤에서 화면만 로비로 바뀌고 **팝업은 로비 위에 그대로 남았다**(화면 전체를 덮은 채).
+ *   2. 캐릭터 구매 확인 다이얼로그에서 뒤로가기 → 로비 → 거기서 `확인` 을 누르면
+ *      이미 떠난 화면의 구매가 끝까지 실행됐다. **취소한 줄 알았는데 신발이 빠져 있다.**
+ *
+ * 그래서 열려 있는 팝업을 여기 모아 두고, `router.js` 가 뒤로가기와 화면 전환에서 처리한다.
+ */
+const openOverlays = [];
+
+/** 지금 떠 있는 팝업이 있으면 맨 위 하나를 닫는다. @returns {boolean} 닫았는가 */
+export function closeTopOverlay() {
+  const top = openOverlays[openOverlays.length - 1];
+  if (!top) return false;
+  top.close();
+  return true;
+}
+
+/** 화면이 바뀔 때 남아 있는 팝업을 전부 치운다 */
+export function closeAllOverlays() {
+  while (openOverlays.length) openOverlays.pop().close();
+}
+
+/** 팝업을 띄우고 등록한다. `close` 는 여러 번 불려도 안전해야 한다 */
+export function presentOverlay(node, onClose) {
+  const entry = {
+    close() {
+      const i = openOverlays.indexOf(entry);
+      if (i >= 0) openOverlays.splice(i, 1);
+      node.remove();
+      onClose?.();
+    },
+  };
+  openOverlays.push(entry);
+  document.body.append(node);
+  return entry.close;
+}
+
 /** 간단한 확인 다이얼로그. Promise<boolean> */
 export function confirmDialog({ message, detail, yes, no }) {
   return new Promise((resolve) => {
-    const close = (v) => { overlay.remove(); resolve(v); };
+    let settled = false;
+    // 뒤로가기로 닫히면 '취소' 로 본다 — 확인은 사용자가 직접 눌러야 한다
+    const finish = (v) => { if (settled) return; settled = true; resolve(v); };
+    const close = (v) => { finish(v); dismiss(); };
     const overlay = el('div.dialog-overlay', null, [
       el('div.dialog', null, [
         el('div.dialog-msg', message),
@@ -99,7 +145,7 @@ export function confirmDialog({ message, detail, yes, no }) {
         ]),
       ]),
     ]);
-    document.body.append(overlay);
+    const dismiss = presentOverlay(overlay, () => finish(false));
   });
 }
 

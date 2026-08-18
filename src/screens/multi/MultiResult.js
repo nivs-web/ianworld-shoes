@@ -13,6 +13,7 @@ import S from '../../config/strings.ko.js';
 import { el, button, backButton, screen, title } from '../ui.js';
 import { characterById, characterSprite } from '../../data/characters.js';
 import { currentUser } from '../../services/auth.js';
+import { finishRun } from '../../services/profile.js';
 import * as Room from '../../services/multiplayer.js';
 import { settleRoom } from '../../services/multiSettle.js';
 import MultiMenu from './MultiMenu.js';
@@ -20,23 +21,53 @@ import Lobby from '../Lobby.js';
 
 export default function MultiResult(nav, params = {}) {
   const code = params.code;
+  /** 이번 판의 성과 (계단·주운 신발). 승자만 계정에 반영한다 — 기획서 §5-9 */
+  const runResult = params.result ?? null;
   const myUid = currentUser()?.uid;
   let room = null;
   let settle = null;
   let done = false;
+  let gone = false;
 
   (async () => {
     room = await Room.readRoom(code);
     settle = await settleRoom(code, room).catch(() => null);
+    /**
+     * ★ **승자의 판 기록을 계정에 반영한다.** (2026-08-16)
+     *
+     * 예전에는 멀티 결과가 어디에도 안 들어갔다 — `finishRun()` 호출부가 싱글 한 곳뿐이라
+     * 한 판에서 30층을 오르고 신발 5개를 주워도 **전부 버려졌고**, 정산으로 뺏어온
+     * 1켤레만 남았다. 기획서 §5-9 는 "멀티 게임: 승자만 기록 반영(방장이 설정한 난이도의
+     * 랭킹으로)" 이므로 승패를 아는 여기서 판단한다.
+     *
+     * 정산보다 **뒤에** 부르는 이유: `finishRun` 이 지갑을 서버로 밀어 올리므로,
+     * 강탈분까지 반영된 뒤에 한 번만 올리는 게 맞다.
+     */
+    if (settle?.won && runResult) {
+      try { finishRun(runResult); } catch (e) { console.warn('[multi] 결과 반영 실패', e); }
+    }
     // 정산이 신발을 옮겼을 수 있으니 방을 다시 읽어 최신 given 을 반영한다
     if (settle?.pending) room = await Room.readRoom(code);
     done = true;
-    nav.refresh();
+    if (!gone) nav.refresh();
   })();
 
   return {
+    onLeave() { gone = true; },
     render() {
-      if (!done) return screen(title(S.multiResultTitle), el('div.hint', S.loading));
+      /**
+       * 로딩 중에도 **나갈 길을 준다.** 예전에는 "로딩 중" 한 줄만 있는 화면을 돌려줘서,
+       * 방을 읽는 사이 연결이 끊기면(지하철·엘리베이터) 버튼이 0개인 화면에 갇혔다.
+       * 이 화면은 `nav.reset` 으로 들어와 깊이가 1이라 하드웨어 뒤로도 안 먹는다.
+       */
+      if (!done) {
+        return screen(
+          title(S.multiResultTitle),
+          el('div.hint', S.loading),
+          el('div.spacer'),
+          backButton(S.toLobby, () => nav.reset(Lobby))
+        );
+      }
 
       const rankings = room?.result?.rankings ?? [];
       const players = room?.players ?? {};
@@ -66,7 +97,14 @@ export default function MultiResult(nav, params = {}) {
           : el('div.hint', S.settleLater),
 
         el('div.spacer'),
-        button(S.playAgain, () => nav.reset(MultiMenu), { primary: true }),
+        /**
+         * ★ **로비를 스택 바닥에 깔고 그 위에 멀티 메뉴를 얹는다.** (2026-08-16)
+         * 예전에는 `nav.reset(MultiMenu)` 라 스택에 멀티 메뉴 하나만 남았고,
+         * 거기서 `뒤로` 를 누르면 `router.js` 가 깊이 1에서는 아무것도 안 해서
+         * **로비로 돌아갈 길이 사라졌다.** 신발이 2켤레 미만이면 방 입장 버튼도
+         * 전부 비활성이라 완전히 갇혔다. (`Lobby.js` 에 같은 함정 기록이 있다)
+         */
+        button(S.playAgain, () => { nav.reset(Lobby); nav.push(MultiMenu); }, { primary: true }),
         backButton(S.toLobby, () => nav.reset(Lobby))
       );
     },

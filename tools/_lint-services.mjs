@@ -51,6 +51,33 @@ const MUST_PAIR = [
   }
 }
 
+/**
+ * 원격 호출은 **반드시 `withTimeout` 으로 감싼다.**
+ *
+ * 파이어스토어는 연결이 막히면 거절하지 않고 **영원히 기다린다**(CLAUDE.md §9-0-7).
+ * `await` 가 안 끝나니 `finally` 도 안 돌고, 화면은 버튼이 죽은 채로 멈춘다.
+ * 실제로 `collection.js` 하나만 이걸 빠뜨려서, 파이어스토어가 막히는 환경에서
+ * **로그인 버튼이 영구히 죽는** 상태로 배포돼 있었다. 사람이 매번 기억할 수 없으므로 여기서 막는다.
+ */
+const REMOTE_CALLS = [
+  'getDoc', 'getDocs', 'setDoc', 'updateDoc', 'deleteDoc', 'addDoc',
+  'commit', 'runTransaction',
+  'dbMod.get', 'dbMod.set', 'dbMod.update', 'dbMod.remove',
+];
+for (const file of walk('src/services')) {
+  if (file.endsWith('firebase.js')) continue; // withTimeout 을 정의하는 파일
+  const lines = readFileSync(file, 'utf8').split('\n');
+  lines.forEach((line, i) => {
+    if (line.trim().startsWith('*') || line.trim().startsWith('//')) return; // 주석
+    const hit = REMOTE_CALLS.find((c) => line.includes(`${c}(`));
+    if (!hit) return;
+    // 여러 줄로 쓴 경우가 있어 앞 두 줄까지 같이 본다
+    const near = lines.slice(Math.max(0, i - 2), i + 1).join('\n');
+    if (near.includes('withTimeout')) return;
+    problems.push(`X ${file}:${i + 1}: ${hit}() 가 withTimeout 없이 불린다\n     ${line.trim()}`);
+  });
+}
+
 for (const file of walk('src')) {
   if (file.endsWith('services/firebase.js')) continue; // 정의 파일 자체는 제외
   const src = readFileSync(file, 'utf8');

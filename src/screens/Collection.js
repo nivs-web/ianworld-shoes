@@ -6,7 +6,7 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, backButton, screen, title } from './ui.js';
+import { el, button, backButton, screen, title, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
 import { SHOE_TIERS, SHOE_TOTAL } from '../config/balance.js';
 import { SHOE } from '../config/layout.js';
@@ -35,7 +35,9 @@ function shoeSprite(shoe, scale) {
 }
 
 function detailPopup(shoe, record, held) {
-  const close = () => overlay.remove();
+  // 라우터가 알 수 있게 등록해서 띄운다 — 뒤로가기로 닫히게 하려면 필요하다 (ui.js)
+  let dismiss = () => {};
+  const close = () => dismiss();
   const overlay = el('div.dialog-overlay', { onclick: close }, [
     el('div.shoe-detail', { onclick: (e) => e.stopPropagation() }, [
       shoeSprite(shoe, SHOE.dexPopupScale),
@@ -49,7 +51,7 @@ function detailPopup(shoe, record, held) {
       button(S.close, close, { sfx: 'sfx_menu_back' }),
     ]),
   ]);
-  document.body.append(overlay);
+  dismiss = presentOverlay(overlay);
 }
 
 export default function Collection(nav) {

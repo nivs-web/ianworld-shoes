@@ -15,6 +15,7 @@ import { canJoinMulti } from '../../services/matchRules.js';
 import * as Room from '../../services/multiplayer.js';
 import WaitingRoom from './WaitingRoom.js';
 import CodeInput from './CodeInput.js';
+import Lobby from '../Lobby.js';
 
 export default function MultiMenu(nav) {
   let busy = false;
@@ -66,7 +67,12 @@ export default function MultiMenu(nav) {
           : null,
 
         el('div.spacer'),
-        backButton(S.back, () => nav.back())
+        /**
+         * 깊이가 1이면 `nav.back()` 은 아무것도 안 한다(router.js). 결과 화면에서
+         * 넘어온 경우가 그랬는데, 그 함정은 MultiResult 쪽에서 고쳤다. 여기서도
+         * 한 겹 더 막아 둔다 — 뒤로가 안 먹는 화면은 사용자에게 그냥 고장이다.
+         */
+        backButton(S.back, () => (nav.depth() > 1 ? nav.back() : nav.reset(Lobby)))
       );
     },
   };

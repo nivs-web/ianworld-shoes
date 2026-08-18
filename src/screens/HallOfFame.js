@@ -84,6 +84,17 @@ export default function HallOfFame(nav) {
   }
 
   return {
+    /**
+     * ★ **떠난 뒤에 도착한 응답이 남의 화면을 건드리지 않게 한다.** (2026-08-16)
+     *
+     * `reqId` 는 원래 **같은 화면 안에서 탭을 옮긴 경우**만 막았다. 화면을 아예 떠난
+     * 경우는 `my === reqId` 가 그대로 참이라 `nav.refresh()` 가 실행됐고,
+     * `router.draw()` 는 "지금 살아 있는 화면"을 다시 그린다. 느린 회선에서
+     * 순위표를 열었다 닫고 캐릭터 화면에서 닉네임을 입력하던 중에 응답이 도착하면
+     * **입력하던 글자가 소리 없이 사라졌다.** 여기서 번호만 올려도 두 콜백이 다 빠져나간다.
+     */
+    onLeave() { reqId++; },
+
     render() {
       const tab = TABS.find((t) => t.id === tabId);
       const me = getProfile();

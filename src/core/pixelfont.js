@@ -10,7 +10,7 @@
  * 폰트를 바꾸려면 build-font.mjs 의 SRC/H만 고치고 다시 굽는다.
  */
 
-import { getCtx } from './canvas.js';
+import { getCtx, createBuffer } from './canvas.js';
 import FONT from '../data/font.generated.json';
 
 /** 글리프 상자 높이 (베이스라인 포함) */
@@ -104,5 +104,71 @@ function blit(ctx, str, x, y, s, color, mono) {
       if (run) ctx.fillRect(cx + (pad + g.w - run) * s, y + row * s, run * s, s);
     }
     cx += ((mono ? DIGIT_W : g.w) + FONT.tracking) * s;
+  }
+}
+
+// ─────────────────────────────────────────────
+// 글자 캐시 — HUD 처럼 매 프레임 찍는 글자용
+// ─────────────────────────────────────────────
+
+/**
+ * ★ **외곽선은 렌더 비용을 정확히 9배로 만든다.** (2026-08-16)
+ *
+ * `outline` 이 켜지면 `blit()` 이 8방향 + 본체 = **글리프를 9번** 찍는다.
+ * HUD 의 세 텍스트(계단수·신발수·부활수)가 전부 외곽선을 쓰는데, 폰트 비트마스크로
+ * 실제 `fillRect` 호출 수를 세어 보니 **프레임당 666회**(계단수 333 + 신발수 216 +
+ * 부활 117) 였다. 초당 4만 번이다. 180×320 캔버스에서 이건 중저가 안드로이드의
+ * 60fps 를 깨는 크기다.
+ *
+ * 그런데 이 글자들은 **거의 안 바뀐다** — 계단수는 한 칸 오를 때만, 신발수·부활수는
+ * 주울 때만 바뀐다. 그래서 **글자 하나씩 오프스크린 버퍼에 구워 두고** 그 뒤로는
+ * `drawImage` 만 한다. "999" 는 fillRect 333회 → drawImage 3회가 된다.
+ *
+ * 문자열이 아니라 **글자 단위로** 캐시하는 이유: 계단수는 매 층 달라지므로 문자열로
+ * 캐시하면 층마다 캔버스를 새로 만든다. 글자 단위면 숫자 10개만 구우면 끝이다.
+ */
+const glyphCache = new Map();
+const GLYPH_CACHE_MAX = 96;
+
+function cachedGlyph(ch, s, color, outline, shadow, mono) {
+  const key = `${ch}|${s}|${color}|${outline ?? ''}|${shadow ?? ''}|${mono ? 1 : 0}`;
+  const hit = glyphCache.get(key);
+  if (hit) return hit;
+
+  const cell = mono ? DIGIT_W : glyph(ch).w;
+  // 외곽선은 사방으로 1도트(=s픽셀) 삐져나온다 — 그만큼 여백을 준다
+  const pad = outline || shadow ? s : 0;
+  const buf = createBuffer(cell * s + pad * 2, GLYPH_H * s + pad * 2);
+  text(ch, pad, pad, { color, outline, shadow, scale: s, mono, ctx: buf.ctx });
+
+  const entry = { canvas: buf.canvas, pad, advance: (cell + FONT.tracking) * s };
+  // 오래된 것부터 버린다 (Map 은 넣은 순서를 지킨다)
+  if (glyphCache.size >= GLYPH_CACHE_MAX) glyphCache.delete(glyphCache.keys().next().value);
+  glyphCache.set(key, entry);
+  return entry;
+}
+
+/**
+ * `text()` 와 같은 결과를 내지만 **글자를 미리 구워 두고 붙인다.**
+ * 매 프레임 그리는 곳(HUD)에만 쓴다. 한 번만 그리는 화면은 `text()` 로 충분하다.
+ */
+export function textCached(str, x, y, opt = {}) {
+  const up = String(str).toUpperCase();
+  if (!up.length) return;
+  const s = Math.max(1, opt.scale | 0 || 1);
+  const mono = !!opt.mono;
+  const color = opt.color ?? '#ffffff';
+
+  let ox = Math.floor(x);
+  const w = measure(up, s, mono);
+  if (opt.align === 'center') ox -= w >> 1;
+  else if (opt.align === 'right') ox -= w;
+
+  const ctx = opt.ctx ?? getCtx();
+  const oy = Math.floor(y);
+  for (const ch of up) {
+    const g = cachedGlyph(ch, s, color, opt.outline, opt.shadow, mono);
+    ctx.drawImage(g.canvas, ox - g.pad, oy - g.pad);
+    ox += g.advance;
   }
 }

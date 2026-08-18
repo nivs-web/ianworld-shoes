@@ -20,7 +20,9 @@
     "qa:rank": "node --import ./tools/_json-import.mjs tools/_rank-qa.mjs",
     "qa:multi": "node --import ./tools/_json-import.mjs tools/_multi-qa.mjs",
     "//qa:pwa": "dist/ 를 실제로 띄우고 선을 뽑아 본다 — 반드시 npm run build 뒤에 돌린다.",
-    "qa:pwa": "node tools/_pwa-qa.mjs"
+    "qa:pwa": "node tools/_pwa-qa.mjs",
+    "//qa:rules": "RTDB 규칙과 클라이언트가 쓰는 필드가 어긋나지 않는지. 규칙이 미지의 키를 거부하므로 필드를 하나 추가하고 규칙에 안 적으면 멀티가 통째로 막힌다.",
+    "qa:rules": "node tools/_rules-qa.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"

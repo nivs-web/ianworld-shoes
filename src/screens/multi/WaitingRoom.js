@@ -29,6 +29,8 @@ export default function WaitingRoom(nav, params = {}) {
   let room = null;
   let unsub = () => {};
   let launched = false;
+  /** 방을 두 번 나가지 않게 (화면 버튼 → onLeave 로 연달아 불린다) */
+  let left = false;
 
   unsub = Room.subscribeRoom(code, (r) => {
     room = r;
@@ -53,16 +55,40 @@ export default function WaitingRoom(nav, params = {}) {
 
   function leave(alsoLeaveRoom = true) {
     unsub();
-    if (alsoLeaveRoom) Room.leaveRoom(code).catch(() => {});
+    if (alsoLeaveRoom && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
     nav.reset(Lobby);
   }
 
   return {
-    /** 라우터가 화면을 버릴 때 불러 준다 — 구독을 여기서 반드시 끊는다 */
-    onLeave() { unsub(); },
+    /**
+     * 라우터가 화면을 버릴 때 불러 준다 — 구독을 여기서 반드시 끊는다.
+     *
+     * ★ **방에서도 나가야 한다.** (2026-08-16)
+     * 예전에는 `unsub()` 만 했다. 화면의 `뒤로` 버튼은 `leave(true)` 라 괜찮았지만,
+     * **안드로이드 하드웨어 뒤로가기**는 `nav.back()` → `mount()` → `onLeave()` 만 타서
+     * 방에는 그대로 남았다. 남은 사람들 화면에는 영원히 `...`(레디 안 함)로 보이고,
+     * 전원 레디가 안 되니 **방장이 시작을 눌러도 안 시작된다.** 4인 방이면 자리 하나가 죽는다.
+     *
+     * `launched` 일 때는 나가면 안 된다 — 그건 게임으로 들어간 것이지 이탈이 아니다.
+     */
+    onLeave() {
+      unsub();
+      if (!launched && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
+    },
 
     render() {
-      if (!room) return screen(title(S.roomCode), el('div.hint', S.loading));
+      /**
+       * 로딩 중에도 **나갈 길을 준다.** 방을 읽는 사이 연결이 끊기면
+       * (`onValue` 는 오프라인이면 콜백 자체가 안 온다) 버튼이 하나도 없는 화면에 갇혔다.
+       */
+      if (!room) {
+        return screen(
+          title(S.roomCode),
+          el('div.hint', S.loading),
+          el('div.spacer'),
+          backButton(S.back, () => leave(true))
+        );
+      }
 
       const players = Object.entries(room.players ?? {}).map(([uid, v]) => ({ uid, ...v }));
       const isHost = room.hostUid === myUid;

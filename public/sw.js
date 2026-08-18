@@ -139,7 +139,7 @@ async function cacheFirst(req, name, max) {
  * 캐시로 즉시 그리고, 뒤에서 새로 받아 다음을 준비한다.
  * 캐시에 없으면 어쩔 수 없이 기다린다 (첫 실행).
  */
-async function staleWhileRevalidate(req, name, max) {
+async function staleWhileRevalidate(req, name, max, event) {
   const c = await caches.open(name);
   const hit = await c.match(req);
   const fresh = fetch(req)
@@ -148,6 +148,13 @@ async function staleWhileRevalidate(req, name, max) {
       return res;
     })
     .catch(() => null);
+  /**
+   * ★ **뒤에서 도는 갱신을 `waitUntil` 로 붙잡아 둔다.** (2026-08-16)
+   * 캐시가 맞으면 `respondWith` 가 곧바로 끝나고, 그 순간부터 브라우저는 서비스
+   * 워커를 **언제든 죽일 수 있다.** 붙잡아 두지 않으면 `cache.put` 전에 워커가 죽어
+   * 갱신이 유실된다 — 도트를 고쳐 배포해도 특정 그림만 옛 것으로 남는 이유가 이거다.
+   */
+  event?.waitUntil?.(fresh);
   if (hit) return hit; // fresh 는 백그라운드에서 계속 돈다
   return (await fresh) || dead();
 }
@@ -189,8 +196,8 @@ self.addEventListener('fetch', (e) => {
   if (req.mode === 'navigate') return e.respondWith(docFirst(req));
 
   const p = url.pathname;
-  if (IS_ART(p)) return e.respondWith(staleWhileRevalidate(req, ART, 400));
+  if (IS_ART(p)) return e.respondWith(staleWhileRevalidate(req, ART, 400, e));
   if (IS_BUILD(p)) return e.respondWith(cacheFirst(req, BUILD, 120));
-  if (p === '/manifest.webmanifest') return e.respondWith(staleWhileRevalidate(req, SHELL, 20));
+  if (p === '/manifest.webmanifest') return e.respondWith(staleWhileRevalidate(req, SHELL, 20, e));
   // 나머지(/sw.js 등)는 브라우저에 맡긴다
 });

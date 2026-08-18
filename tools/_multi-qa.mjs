@@ -304,5 +304,99 @@ console.log('14) 미정산 회피 — 패자가 앱을 꺼도 승자는 받고, 
   })(), 2);
 }
 
+
+// ─────────────────────────────────────────────
+console.log('15) 서버 도장 — 기기를 바꿔도 두 번 걷지 않는다 (2026-08-16)');
+{
+  /**
+   * 예전 구조의 구멍을 그대로 재현한다.
+   *
+   * 정산 도장이 **localStorage 에만** 있었는데, 재정산의 입력인 `userRooms` 와
+   * `result.given` 은 RTDB 에 영구히 남는다. 그래서 저장소를 지우거나 기기를 바꾸면
+   * 승자가 같은 `given` 을 다시 걷어 **신발이 복제**됐고, 패자는 이미 낸 신발을 또 내
+   * (그 신발은 아무도 못 받으므로) **증발**시켰다.
+   *
+   * 새 구조에서는 방 문서가 판정한다:
+   *   · 패자 — `given[내uid]` 가 있으면 이미 낸 것이다
+   *   · 승자 — `settled[내uid]` 비트마스크에 그 패자 비트가 서 있으면 이미 걷은 것이다
+   * 둘 다 **서버에 있으므로** 기기를 바꿔도 그대로 남는다.
+   */
+  const room = { result: { rankings: ['u_win', 'u_a', 'u_b'], given: {}, settled: {} } };
+  const R = room.result;
+
+  // multiSettle.js 의 판정부만 그대로 옮겨 온 것 (파이어베이스를 안 타는 순수 로직)
+  const payStep = (uid, wallet) => {
+    if (Array.isArray(R.given[uid])) return [];          // 서버가 "이미 냈다"고 말한다
+    const picked = M.pickPenaltyShoes(wallet, MULTI.loserPenalty, rng(uid.length * 11));
+    if (!picked.length) return [];                        // 지갑이 안 내려왔다 — 다음에 다시
+    R.given[uid] = picked;
+    return picked;
+  };
+  const takeStep = (uid) => {
+    const losers = R.rankings.slice(1);
+    let mask = Number(R.settled[uid] ?? 0);
+    const got = [];
+    losers.forEach((loser, i) => {
+      const bit = 1 << i;
+      if (mask & bit) return;
+      const list = R.given[loser];
+      if (!Array.isArray(list) || !list.length) return;
+      got.push(...list);
+      mask |= bit;
+    });
+    R.settled[uid] = mask;
+    return got;
+  };
+
+  const walletA = { 1: 2, 2: 1 };
+  eq('패자 A 가 1켤레 낸다', payStep('u_a', walletA).length, 1);
+  eq('같은 기기에서 또 불러도 안 낸다', payStep('u_a', walletA).length, 0);
+  eq('저장소를 지운 새 기기에서도 안 낸다', payStep('u_a', walletA).length, 0);
+
+  eq('패자 B 도 1켤레', payStep('u_b', { 5: 3 }).length, 1);
+  eq('승자가 두 명분을 걷는다', takeStep('u_win').length, 2);
+  eq('바로 또 걷어도 0개', takeStep('u_win').length, 0);
+  eq('기기를 바꿔도 0개 (서버 마스크가 살아 있다)', takeStep('u_win').length, 0);
+  eq('마스크는 패자 2명분 비트', R.settled.u_win, 0b11);
+
+  // 늦게 낸 패자 — 순서가 뒤죽박죽이어도 정확히 한 번씩만
+  const room2 = { result: { rankings: ['w', 'x', 'y', 'z'], given: {}, settled: {} } };
+  const R2 = room2.result;
+  const take2 = (uid) => {
+    const losers = R2.rankings.slice(1);
+    let mask = Number(R2.settled[uid] ?? 0);
+    const got = [];
+    losers.forEach((loser, i) => {
+      const bit = 1 << i;
+      if (mask & bit) return;
+      const list = R2.given[loser];
+      if (!Array.isArray(list) || !list.length) return;
+      got.push(...list); mask |= bit;
+    });
+    R2.settled[uid] = mask;
+    return got;
+  };
+  R2.given.y = [50];                       // 가운데 패자만 먼저 냈다
+  eq('가운데 패자만 먼저 내도 그것만 걷는다', take2('w'), [50]);
+  R2.given.x = [10]; R2.given.z = [90];    // 나머지가 나중에 냈다
+  eq('나머지는 나중에 정확히 한 번', take2('w').sort(), [10, 90]);
+  eq('또 걷으면 0개', take2('w').length, 0);
+  eq('마스크는 패자 3명 전부', R2.settled.w, 0b111);
+
+  // 지갑이 아직 안 내려온 상태에서 정산이 돌면 — 면제가 아니라 보류여야 한다
+  const R3 = { rankings: ['a', 'b'], given: {}, settled: {} };
+  const payEmpty = (uid, wallet) => {
+    if (Array.isArray(R3.given[uid])) return [];
+    const picked = M.pickPenaltyShoes(wallet, MULTI.loserPenalty, rng(5));
+    if (!picked.length) return [];
+    R3.given[uid] = picked;
+    return picked;
+  };
+  eq('빈 지갑이면 아무것도 안 낸다', payEmpty('b', {}).length, 0);
+  eq('도장도 안 찍힌다 (면제 아님)', R3.given.b === undefined, true);
+  eq('지갑이 내려온 뒤 정상 차감', payEmpty('b', { 3: 1 }).length, 1);
+}
+
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

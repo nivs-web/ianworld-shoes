@@ -112,10 +112,19 @@ export async function flushQueued() {
   const u = currentUser();
   if (!configured() || !u || u.guest) return 0;
 
-  const queued = L.takeQueuedScores();
+  /**
+   * ★ **큐를 먼저 비우지 않는다.** (2026-08-16)
+   *
+   * 예전에는 `takeQueuedScores()` 로 통째로 꺼내고(=비우고) 하나씩 올린 뒤
+   * 실패한 것만 되돌려 넣었다. 그런데 한 건에 최대 12초(타임아웃)가 걸리므로
+   * 여러 건이면 전송에만 1분이 넘게 걸린다. **그 사이에 앱을 닫으면 대기 중이던
+   * 기록이 통째로 사라졌다** — 오프라인에서 열심히 쌓은 기록일수록 잘 날아간다.
+   *
+   * 지금은 읽기만 하고, **성공한 것만** 하나씩 지운다.
+   */
+  const queued = L.peekQueuedScores();
   if (!queued.length) return 0;
 
-  const failed = [];
   let sent = 0;
   for (const q of queued) {
     const ok = await submitScore({
@@ -124,10 +133,10 @@ export async function flushQueued() {
       shoesFound: q.shoesFound,
       at: q.queuedAt,
     });
-    if (ok) sent++;
-    else failed.push(q);
+    if (!ok) continue;
+    sent++;
+    L.dropQueuedScores([q]);   // 한 건 성공할 때마다 곧바로 지운다
   }
-  for (const q of failed) L.queueScore(q);
   return sent;
 }
 
@@ -196,9 +205,9 @@ export async function fetchBoard(tab, difficulty) {
     if (tab === 'shoeking' || tab === 'alltime') {
       // 계정 문서를 바로 정렬한다 — 계정당 한 줄이라 접을 필요가 없다
       const field = tab === 'shoeking' ? 'shoesOwned' : `bestByDifficulty.${difficulty}`;
-      const snap = await getDocs(
+      const snap = await withTimeout(getDocs(
         query(collection(fb.db, 'users'), orderBy(field, 'desc'), limit(top))
-      );
+      ), undefined, '순위표 조회');
       if (offline(snap)) return fail('offline');
       rows = snap.docs.map((d) => {
         const v = d.data();
@@ -212,7 +221,7 @@ export async function fetchBoard(tab, difficulty) {
     } else {
       // 문서 하나 = 사람 하나의 그 기간 최고기록. 중복이 없으니 그대로 상위 100장이다
       const period = PERIOD_BY_TAB[tab];
-      const snap = await getDocs(
+      const snap = await withTimeout(getDocs(
         query(
           collection(fb.db, 'scores'),
           where('difficulty', '==', difficulty),
@@ -220,7 +229,7 @@ export async function fetchBoard(tab, difficulty) {
           orderBy('stairs', 'desc'),
           limit(top)
         )
-      );
+      ), undefined, '순위표 조회');
       if (offline(snap)) return fail('offline');
       rows = snap.docs.map((d) => {
         const v = d.data();
@@ -277,6 +286,6 @@ async function myRow(fb, tab, difficulty, u) {
 
   const period = PERIOD_BY_TAB[tab];
   const id = scoreDocId(u.uid, difficulty, period.keyOf());
-  const snap = await fb.storeMod.getDoc(fb.storeMod.doc(fb.db, 'scores', id));
+  const snap = await withTimeout(fb.storeMod.getDoc(fb.storeMod.doc(fb.db, 'scores', id)), undefined, '내 순위');
   return { ...base, value: snap.exists() ? (snap.data().stairs ?? 0) : 0 };
 }

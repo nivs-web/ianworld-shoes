@@ -333,7 +333,12 @@ export function ensureDexBadge() {
 
 export function queueScore(entry) {
   const q = read(KEY.pending, []);
-  q.push({ ...entry, queuedAt: Date.now() });
+  /**
+   * ★ `queuedAt` 은 **이미 있으면 건드리지 않는다.** (2026-08-16)
+   * 되돌려 넣을 때 지금 시각으로 덮으면 기간 키(주/월/년)가 다시 계산돼,
+   * 연말에 못 올린 기록이 **다음 해 랭킹으로** 올라간다.
+   */
+  q.push({ queuedAt: Date.now(), ...entry });
   write(KEY.pending, q.slice(-50)); // 무한 증식 방지
 }
 
@@ -341,6 +346,18 @@ export function takeQueuedScores() {
   const q = read(KEY.pending, []);
   write(KEY.pending, []);
   return q;
+}
+
+/** 큐를 **비우지 않고** 읽는다 (전송에 성공한 것만 지우려고) */
+export function peekQueuedScores() {
+  return read(KEY.pending, []);
+}
+
+/** 성공한 항목만 큐에서 뺀다 — 전송 중에 앱이 꺼져도 나머지가 남는다 */
+export function dropQueuedScores(sent) {
+  if (!sent.length) return;
+  const gone = new Set(sent.map((q) => JSON.stringify(q)));
+  write(KEY.pending, read(KEY.pending, []).filter((q) => !gone.has(JSON.stringify(q))));
 }
 
 /** 아직 못 올린 판이 몇 개인가 (진단용) */
