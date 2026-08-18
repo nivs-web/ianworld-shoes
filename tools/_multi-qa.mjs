@@ -1166,8 +1166,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('로비 메뉴가 설정으로 바뀌었다', lobby, 'S.menuSettings, () => nav.push(Settings)');
   const settingsScreen = fs.readFileSync('src/screens/Settings.js', 'utf8');
   has('설정 화면 안에 조작법 변경이 남아 있다', settingsScreen, 'S.menuControls, () => nav.push(Controls)');
-  has('설정 화면이 BGM on/off', settingsScreen, "Audio.setEnabled('bgm', v)");
-  has('설정 화면이 SFX on/off', settingsScreen, "Audio.setEnabled('sfx', v)");
+  // 음향 토글은 2026-08-19 3차에서 [사운드 설정] 하위 화면으로 옮겼다 (사용자 요청)
+  const soundScreen = fs.readFileSync('src/screens/SoundSettings.js', 'utf8');
+  has('사운드 화면이 BGM on/off', soundScreen, "Audio.setEnabled('bgm', v)");
+  has('사운드 화면이 SFX on/off', soundScreen, "Audio.setEnabled('sfx', v)");
 
   // ⑥ 로비/메뉴 화면 타이틀 폰트 2단계(+4px) 확대 (§9) — title() 헬퍼 하나로 전체 화면에 적용
   const css = fs.readFileSync('src/styles/screens.css', 'utf8');
@@ -1182,7 +1184,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('resetRoom 이 다음 판에도 스냅샷을 옮긴다', mp, 'shoesOwned: v.shoesOwned ?? 0');
   const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
   has('대기방에 보유신발 배지', wr, 'S.playerShoesOwned(p.shoesOwned ?? 0)');
-  has('이름을 누르면 팝업', wr, 'onclick: () => playerStatPopup(p)');
+  has('이름을 누르면 팝업', wr, 'onclick: () => playerStatPopup(p, slot)');
   has('팝업이 승률/게임수/보유신발을 보여준다', wr, 'S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0)');
 }
 
@@ -1199,9 +1201,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
    * 안 된 것처럼 보였다. 원본이 없으면 커밋된 산출물을 쓰고 넘어가야 한다.
    */
   const bubble = fs.readFileSync('tools/build-bubble.mjs', 'utf8');
-  has('빌드 스크립트가 원본 없음을 견딘다', bubble, 'if (!existsSync(SRC))');
-  has('산출물이 있으면 그대로 쓴다', bubble, 'existsSync(OUT)');
-  eq('원본 없다고 곧장 죽지 않는다', /^\s*await sharp\(SRC\)/m.test(bubble.split('if (!existsSync(SRC))')[0]), false);
+  has('빌드 스크립트가 원본 없음을 견딘다', bubble, 'if (!existsSync(src))');
+  has('산출물이 있으면 그대로 쓴다', bubble, 'existsSync(out)');
+  eq('원본 없다고 곧장 죽지 않는다', /^\s*await sharp\(src\)/m.test(bubble.split('if (!existsSync(src))')[0]), false);
   // build 체인이 etc/ 를 읽는 스크립트는 반드시 이 가드를 갖는다
   const buildChain = JSON.parse(fs.readFileSync('package.json', 'utf8')).scripts.build;
   for (const m of buildChain.matchAll(/npm run (assets:\w+)/g)) {
@@ -1241,6 +1243,105 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ⑤ 말풍선은 문자열까지 완전히 제거 (폰트에 헛글자를 굽지 않게)
   const st = fs.readFileSync('src/config/strings.ko.js', 'utf8');
   eq('말풍선 문자열 잔재 없음', st.includes('1등이닷'), false);
+}
+
+{
+  console.log('\n32) 13건 배치 — 문구·설치안내·명예의전당 sticky·입장속도·표·렌더순서·깃발 (2026-08-19 3차)');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const st = fs.readFileSync('src/config/strings.ko.js', 'utf8');
+  const css = fs.readFileSync('src/styles/screens.css', 'utf8');
+
+  // ① 문구
+  has('로비 승률 문구', st, 'myMultiRecord: (wins, games) => `멀티게임 ${wins}승 / ${games}게임`');
+  has('캐릭터 변경', st, "menuCharacter: '캐릭터 변경'");
+  has('멀티 안내 문구', st, "multiBetHint: '멀티 게임을 위해서는, 신발 1켤레가 필요합니다'");
+  has('비밀방 생성', st, "createPrivateRoom: '비밀방 생성'");
+  has('사운드 설정 메뉴명', st, "menuSound: '사운드 설정'");
+
+  // ② 모바일 설치 안내 — 안드로이드에 Ctrl+D 가 나가면 안 된다
+  const pwa = fs.readFileSync('src/services/pwa.js', 'utf8');
+  has('안드로이드 판별', pwa, 'export const isAndroid');
+  has('모바일 판별', pwa, 'export const isMobile');
+  has('프롬프트 없으면 플랫폼별로 갈린다', pwa, "isIos() ? 'ios' : isMobile() ? 'android' : 'unavailable'");
+  const portal = fs.readFileSync('src/screens/Portal.js', 'utf8');
+  has('포털이 안드로이드 안내를 쓴다', portal, "r === 'android'");
+  has('안드로이드 안내 문구', st, 'installAndroidGuide');
+
+  /**
+   * ③ ★ 명예의 전당 11위 겹침 — 원인은 **중복 정의된 옛 `.rank-row.me` 의
+   * `position: sticky`** 였다. 뒤 규칙이 색만 덮고 position 은 안 덮어서 살아남았다.
+   * 같은 클래스를 쓰는 멀티 결과 화면도 같이 앓았다.
+   */
+  /**
+   * 주석을 걷어내고 본다 — 이 파일에는 **고친 내력을 적은 주석**에 `position: sticky` 와
+   * `.rank-row.me {` 가 그대로 인용돼 있다. 원문 그대로 훑으면 그 설명글이 걸려서
+   * "아직 안 고쳐졌다"는 거짓 실패가 난다(처음에 실제로 그랬다).
+   */
+  const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  no('내 순위 줄에 sticky 가 없다', cssCode, 'position: sticky');
+  eq('.rank-row.me 정의는 하나뿐', (cssCode.match(/\.rank-row\.me\s*\{/g) ?? []).length, 1);
+  eq('.rank-row 정의는 하나뿐', (cssCode.match(/^\.rank-row\s*\{/gm) ?? []).length, 1);
+
+  // ④ 방 입장 속도 — 왕복·대기 줄이기
+  const mp = fs.readFileSync('src/services/multiplayer.js', 'utf8');
+  has('스캔한 방을 재사용해 왕복을 줄인다', mp, 'export async function joinRoom(code, known)');
+  has('후보마다 스캔값을 넘긴다', mp, 'joinRoom(r.code, r)');
+  has('연결이 따뜻하면 재스캔 대기를 건너뛴다', mp, 'Date.now() - connectedAt < CONNECTION_WARM_MS');
+  eq('동시생성 확인 대기 단축', /RETRY_SCAN_MS = (\d+)/.exec(mp)?.[1], '700');
+  const lobby = fs.readFileSync('src/screens/Lobby.js', 'utf8');
+  has('로비에서 미리 붙인다', lobby, 'prewarmMultiIfReturning()');
+  has('싱글만 하는 사람에겐 안 붙인다 (192KB 회귀 방지)', lobby, 'if (!everPlayedMulti()) return;');
+
+  // ⑤ 대기방 표 + 캐릭터 카드
+  has('참가자 목록이 grid 표', css, 'grid-template-columns: 22px 24px 5.2em auto minmax(0, 1fr) auto;');
+  has('태그 전용 칸', css, '.player-tags');
+  has('남는 폭을 먹는 완충 칸', css, '.player-gap');
+  const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
+  has('태그를 한 칸에 묶었다', wr, "el('div.player-tags'");
+  has('카드에 캐릭터 그림', wr, 'player-card-face');
+
+  // ⑥ 렌더 순서 — 고스트가 내 캐릭터 뒤로
+  const gs = fs.readFileSync('src/game/GameScene.js', 'utf8');
+  const iGhost = gs.indexOf('multiGhosts(this)');
+  const iPlayer = gs.indexOf('this.player.render(');
+  const iHud = gs.indexOf('multiHud(this)');
+  eq('고스트 → 내 캐릭터 → HUD 순서', iGhost > 0 && iGhost < iPlayer && iPlayer < iHud, true);
+  const mh = fs.readFileSync('src/game/multiHud.js', 'utf8');
+  has('고스트가 별도 진입점으로 분리됐다', mh, 'export function multiGhosts');
+  // multiHud **함수 본문만** 잘라서 본다 — 파일 뒤쪽의 `function drawGhosts` 정의가
+  // 같이 걸리면 거짓 실패가 난다
+  const hudBody = /export function multiHud\(scene\) \{([\s\S]*?)\n\}/.exec(mh)?.[1] ?? '';
+  eq('multiHud 본문을 찾았다', hudBody.length > 0, true);
+  no('multiHud 는 더 이상 고스트를 안 그린다', hudBody, 'drawGhosts');
+  has('multiGhosts 가 고스트를 그린다', /export function multiGhosts\(scene\) \{([\s\S]*?)\n\}/.exec(mh)?.[1] ?? '', 'drawGhosts');
+
+  // ⑦ 게이지 겹침 최대 2
+  has('겹침 상한 상수', mh, 'const MAX_STACK = 2');
+  has('상한을 넘으면 안 그린다', mh, 'if (dx === null) continue;');
+
+  // ⑧ 패배 깃발 — 승리와 같은 규격
+  eq('패배 깃발 파일', fs.existsSync('public/assets/ui/defeat_flag.png'), true);
+  const mr = fs.readFileSync('src/screens/multi/MultiResult.js', 'utf8');
+  has('패배 화면에 깃발', mr, 'defeat_flag.png');
+  has('승리창과 짝을 이루는 줄', mr, 'S.loseSub');
+  for (const k of ['.defeat-flag', '.defeat-lost']) has(`${k} 스타일`, css, k);
+  const bubble = fs.readFileSync('tools/build-bubble.mjs', 'utf8');
+  has('두 깃발을 같은 규격으로 굽는다', bubble, "label: '패배 깃발'");
+
+  // ⑨ 설정 하위 구조 + 싱글 배경
+  const settings = fs.readFileSync('src/screens/Settings.js', 'utf8');
+  for (const m of ['S.menuControls', 'S.menuSound', 'S.menuSingleBg']) has(`설정에 ${m}`, settings, m);
+  const bg = fs.readFileSync('src/screens/BgSettings.js', 'utf8');
+  has('배경 16종 + 랜덤', bg, 'BUILDINGS.map');
+  has('멀티에는 적용 안 함(주석으로 못 박음)', bg, '멀티는');
+  has('싱글에서만 강제 배경', gs, '!this.multi && this.forcedBuilding');
+  has('startGame 이 설정을 전달', fs.readFileSync('src/screens/startGame.js', 'utf8'), 'buildingId: p.singleBg');
+
+  // ⑩ 숫자패드 엔터 — 기호는 숫자보다 커야 엔터처럼 보인다
+  has('엔터/지우기 전용 클래스', fs.readFileSync('src/screens/multi/CodeInput.js', 'utf8'), 'key-enter');
+  has('기호 키를 키웠다', css, '.keypad .key-enter');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

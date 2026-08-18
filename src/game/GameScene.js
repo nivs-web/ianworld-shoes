@@ -30,7 +30,7 @@ import shoesData from '../data/shoes.json';
 import * as Room from '../services/multiplayer.js';
 import { roundOver, othersAllOut, slotIndex } from '../services/matchRules.js';
 import S from '../config/strings.ko.js';
-import { multiHud, TICKER_MS } from './multiHud.js';
+import { multiHud, multiGhosts, TICKER_MS } from './multiHud.js';
 
 export class GameScene {
   /**
@@ -70,6 +70,12 @@ export class GameScene {
      * 그 순간에 출발하면 네 명이 같은 계단에서 시작한다.
      */
     this.multi = opt.multi ?? null;
+    /**
+     * 싱글 전용 배경 지정 (설정 → 싱글게임 배경설정, 2026-08-19).
+     * `null`/'random' 이면 예전처럼 시드로 뽑는다. **멀티에서는 무시한다** —
+     * 네 사람이 서로 다른 건물을 보면 같은 판이 아니게 된다.
+     */
+    this.forcedBuilding = opt.buildingId && opt.buildingId !== 'random' ? opt.buildingId : null;
     this.opponents = [];
     /** 마지막으로 받은 방 스냅샷 — 판돈·부활 위치를 여기서 읽는다 */
     this.room = null;
@@ -115,8 +121,11 @@ export class GameScene {
     this.player.introFacing = this.stairs.nextDir(this.floor);
     this.player.facing = this.player.introFacing;
 
-    // 배경: 16종 중 랜덤 1종
-    const pick = new Rng(this.seed ^ 0x5eed).pick(BUILDINGS);
+    // 배경: 기본은 16종 중 랜덤 1종. 싱글에서 사용자가 골라 뒀으면 그것을 쓴다.
+    const chosen = !this.multi && this.forcedBuilding
+      ? BUILDINGS.find((b) => b.id === this.forcedBuilding)
+      : null;
+    const pick = chosen ?? new Rng(this.seed ^ 0x5eed).pick(BUILDINGS);
     this.bg = new Background(pick.id);
 
     // 에셋 로드 (캐시돼 있으면 즉시)
@@ -612,6 +621,12 @@ export class GameScene {
 
     this.bg.render(this.floor);
     this.stairs.render(this.floor, camX);
+    /**
+     * ★ 상대 고스트는 **내 캐릭터보다 먼저** 그린다 (2026-08-19) — 같은 계단에 겹쳤을 때
+     * 반투명한 남이 나를 덮으면 내 위치를 놓친다. 나중에 그린 것이 위에 얹히므로
+     * 순서가 곧 우선순위다. (multiHud.js `multiGhosts` 주석)
+     */
+    if (this.multi) multiGhosts(this);
     this.player.render(camX, this.stairs.worldX(this.floor));
     renderHud({
       gauge: this.gauge,

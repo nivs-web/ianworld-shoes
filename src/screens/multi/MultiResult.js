@@ -308,9 +308,18 @@ export default function MultiResult(nav, params = {}) {
               ]),
               settle?.pending ? el('div.hint', S.rewardPending(settle.pending)) : null,
             ])
-          : el('div.defeat', null, [
+          : /**
+             * 패배창도 **승리창과 같은 뼈대**로 짠다 (2026-08-19, 사용자 요청):
+             *   깃발 → 큰 문구 → 작은 문구 → 숫자 줄 → (패배만) 팁 상자
+             * 같은 자리에 같은 크기로 놓여야 승/패가 "같은 화면의 두 얼굴"로 읽힌다.
+             * 색만 반대다 — 승리는 노랑/초록, 패배는 붉은 계열.
+             */
+            el('div.defeat', null, [
+              el('img.defeat-flag', { src: '/assets/ui/defeat_flag.png', alt: S.loseBig }),
               el('div.defeat-big', S.loseBig),
-              el('div.defeat-sub', S.loseTaken(settle?.lost ?? myOwed())),
+              el('div.defeat-sub', S.loseSub),
+              // 기획서에 못 박힌 문구라 토씨를 바꾸지 않는다 (§6-2)
+              el('div.defeat-lost', S.loseTaken(settle?.lost ?? myOwed())),
               el('div.tip', null, [
                 el('div.tip-head', S.tipTitle),
                 el('div', S.tipBody1),

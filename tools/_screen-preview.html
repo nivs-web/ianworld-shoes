@@ -47,7 +47,7 @@ const scene = {
     { id: 'b', characterId: 'denny', slot: 1, stairs: 143, revives: 1, alive: true },
     { id: 'c', characterId: 'rose', slot: 2, stairs: 108, revives: 4, alive: false, deadAt: now - 3000 },
   ],
-  ticker: [{ msg: S.someoneRevived(S.slotColorName[1]), until: now + 9e5 }],
+  ticker: [{ msg: S.someoneRevived(S.slotColorShort[1]), until: now + 9e5 }],
   best: 432, over: false, leaving: false,
 };
 
@@ -55,6 +55,23 @@ const panels = [
   ['인게임 HUD + 멀티 게이지', () => { renderHud(scene); multiHud(scene); }],
   ['내가 1등 (말풍선)', () => { renderHud(scene); multiHud({ ...scene, floor: 200, room: { ...room, players: { ...room.players, a: { stairs: 200, alive: true, revives: 2 } } } }); }],
   ['1등 · 왼쪽 보기', () => { renderHud(scene); multiHud({ ...scene, floor: 200, player: { facing: -1 }, room: { ...room, players: { ...room.players, a: { stairs: 200, alive: true, revives: 2 } } } }); }],
+  ['3명 겹침 (최대 2개)', () => {
+    const 겹침 = {
+      ...scene,
+      opponents: [
+        { id: 'b', characterId: 'denny', slot: 1, stairs: 129, revives: 1, alive: true },
+        { id: 'c', characterId: 'rose', slot: 2, stairs: 128, revives: 2, alive: true },
+        { id: 'd', characterId: 'ian', slot: 3, stairs: 127, revives: 0, alive: true },
+      ],
+      room: { ...room, players: {
+        a: { stairs: 128, alive: true, revives: 2 },
+        b: { stairs: 129, alive: true, revives: 1 },
+        c: { stairs: 128, alive: true, revives: 2 },
+        d: { stairs: 127, alive: true, revives: 0 },
+      } },
+    };
+    renderHud(겹침); multiHud(겹침);
+  }],
   ['카운트다운', () => { renderHud(scene); multiHud({ ...scene, countdownMs: 2400 }); }],
   ['일시정지 (싱글)', () => { renderHud(scene); new PauseOverlay({ ...scene, multi: null }).render(); }],
   ['일시정지 (멀티)', () => { renderHud(scene); new PauseOverlay(scene).render(); }],

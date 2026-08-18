@@ -56,9 +56,13 @@ const victory = el('div.screen', null, [
 
 const defeat = el('div.screen', null, [
   el('div.screen-title', S.multiResultTitle),
+  // ※ MultiResult.js 의 패배 블록과 **같은 구조**로 유지할 것 — 어긋나면 이 미리보기가
+  //    거짓말을 한다(2026-08-19에 실제로 그랬다: 깃발을 넣었는데 여기만 옛 모양이었다)
   el('div.defeat', null, [
+    el('img.defeat-flag', { src: '/assets/ui/defeat_flag.png', alt: S.loseBig }),
     el('div.defeat-big', S.loseBig),
-    el('div.defeat-sub', S.loseTaken(21)),
+    el('div.defeat-sub', S.loseSub),
+    el('div.defeat-lost', S.loseTaken(21)),
     el('div.tip', null, [
       el('div.tip-head', S.tipTitle),
       el('div', S.tipBody1),

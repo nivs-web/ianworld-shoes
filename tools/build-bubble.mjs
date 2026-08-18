@@ -27,25 +27,34 @@
 import sharp from 'sharp';
 import { mkdirSync, existsSync } from 'node:fs';
 
-const SRC = 'etc/승리깃발.png';
-const OUT = 'public/assets/ui/victory_flag.png';
 const FLAG_W = 168;
 const FLAG_H = 252;
 
+/**
+ * 승/패 두 장을 **같은 규격으로** 굽는다 (2026-08-19에 패배 깃발 추가).
+ * 크기가 다르면 결과 화면에서 승·패 레이아웃이 미묘하게 어긋난다 — 같은 자리에
+ * 같은 크기로 놓여야 "같은 화면의 두 얼굴"로 읽힌다.
+ */
+const FLAGS = [
+  { label: '승리 깃발', src: 'etc/승리깃발.png', out: 'public/assets/ui/victory_flag.png' },
+  { label: '패배 깃발', src: 'etc/패배깃발.png', out: 'public/assets/ui/defeat_flag.png' },
+];
+
 mkdirSync('public/assets/ui', { recursive: true });
 
-if (!existsSync(SRC)) {
-  if (existsSync(OUT)) {
-    // 배포 환경(Vercel)의 정상 경로다. 커밋된 산출물을 그대로 쓴다.
-    console.log(`승리 깃발: 원본(${SRC}) 없음 — 커밋된 ${OUT} 을 그대로 사용`);
-  } else {
-    console.error(`승리 깃발: 원본(${SRC})도 산출물(${OUT})도 없습니다.`);
-    process.exit(1);
+let failed = 0;
+for (const { label, src, out } of FLAGS) {
+  if (!existsSync(src)) {
+    if (existsSync(out)) {
+      // 배포 환경(Vercel)의 정상 경로다. 커밋된 산출물을 그대로 쓴다.
+      console.log(`${label}: 원본(${src}) 없음 — 커밋된 ${out} 을 그대로 사용`);
+    } else {
+      console.error(`${label}: 원본(${src})도 산출물(${out})도 없습니다.`);
+      failed++;
+    }
+    continue;
   }
-} else {
-  await sharp(SRC)
-    .resize(FLAG_W, FLAG_H, { kernel: 'lanczos3' })
-    .png()
-    .toFile(OUT);
-  console.log(`승리 깃발: ${OUT} (${FLAG_W}×${FLAG_H})`);
+  await sharp(src).resize(FLAG_W, FLAG_H, { kernel: 'lanczos3' }).png().toFile(out);
+  console.log(`${label}: ${out} (${FLAG_W}×${FLAG_H})`);
 }
+if (failed) process.exit(1);

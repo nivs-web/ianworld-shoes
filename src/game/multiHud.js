@@ -116,13 +116,30 @@ function ensureAssets(list, myCharId) {
 /**
  * @param {object} scene GameScene
  */
-export function multiHud(scene) {
+/** 공통 준비 — 폰트·에셋. 두 진입점 중 먼저 불린 쪽에서 한 번만 실제로 일한다. */
+function prepare(scene) {
   if (!smallReady()) loadSmallFont();
   const list = (scene.opponents ?? []).slice(0, 3);
   // 상대 목록 객체는 방 갱신 때만 새로 만들어진다 — 그때만 에셋을 확인하면 된다
   if (scene.assetsFor !== scene.opponents) { scene.assetsFor = scene.opponents; ensureAssets(list, scene.charId); }
+  return list;
+}
 
-  drawGhosts(scene, list);
+/**
+ * ★ **상대 고스트만 따로 그린다 — 내 캐릭터보다 *먼저*.** (2026-08-19, 사용자 요청)
+ *
+ * 예전에는 고스트가 `multiHud()` 안에 있었고, 그건 `player.render()` **뒤에** 불렸다.
+ * 그래서 상대와 같은 계단에 서면 **반투명한 남이 내 캐릭터를 덮어** 내가 어디 있는지
+ * 순간 헷갈렸다. 캔버스는 나중에 그린 것이 위에 얹히므로, 순서를 갈라서 고친다.
+ * (`GameScene.render` 가 이걸 player 앞에, `multiHud` 를 뒤에 부른다)
+ */
+export function multiGhosts(scene) {
+  drawGhosts(scene, prepare(scene));
+}
+
+/** 게이지·문구 등 **항상 맨 위**에 있어야 하는 것들 (고스트는 여기 없다 — 위 참조) */
+export function multiHud(scene) {
+  const list = prepare(scene);
   drawRaceGauge(scene, list);
   drawGapLine(scene);
   drawPot(scene);
@@ -218,24 +235,35 @@ function drawRaceGauge(scene, list) {
   const now = Date.now() + serverOffsetSync();
 
   /**
-   * ★ **겹치면 왼쪽으로 비켜 세운다.** (2026-08-19)
+   * ★ **겹치면 왼쪽으로 비켜 세우되, 최대 2명까지만.** (2026-08-19)
+   *
    * 눈금 간격은 9도트인데 얼굴 상자는 22도트다 — 20칸 안쪽으로 붙으면 서로를 가린다.
    * 자리는 **내가 항상 맨 오른쪽**이고, 늦게 놓이는 사람이 한 칸씩 왼쪽으로 물러난다.
+   *
+   * 그런데 셋이 겹치면 세 번째가 **화면 안쪽으로 44도트나 튀어나와** 계단과 캐릭터를
+   * 가렸다(사용자 신고 — "가로로 길게 튀어나와서 게임에 방해"). 그래서 비켜서는 건
+   * **한 칸까지만** 허용하고, 그 이상 겹치는 사람은 아예 그리지 않는다 —
+   * 앞사람 뒤에 가려진 것으로 본다. 어차피 정보는 등수 숫자가 들고 있고,
+   * 이 자리는 "누가 앞서는가"를 한눈에 보는 곳이지 전원 명부가 아니다.
    */
+  const MAX_STACK = 2;
   const 놓인자리 = [{ y: RACE_CY }];
-  const 비켜서기 = (y) => {
+  const 자리잡기 = (y) => {
     const n = 놓인자리.filter((p) => Math.abs(p.y - y) < CELL).length;
     놓인자리.push({ y });
-    return n * (CELL - 4);
+    // n = 0 제자리 / 1 한 칸 왼쪽 / 2 이상은 뒤에 숨는다
+    return n >= MAX_STACK ? null : -n * (CELL - 4);
   };
 
   // 상대 먼저, 나는 마지막에 — 겹치면 내가 위에 보여야 한다
   const tags = [];
   for (const o of list) {
     const cy = yOf(o.stairs | 0);
+    const dx = 자리잡기(cy);
+    if (dx === null) continue;                 // 앞사람 뒤에 완전히 가려진다
     tags.push(drawRacer({
       charId: o.characterId, slot: o.slot, revives: o.revives | 0,
-      cy, dx: -비켜서기(cy), alive: o.alive !== false, rank: rank[o.id],
+      cy, dx, alive: o.alive !== false, rank: rank[o.id],
       countdown: reviveLeft(o, now) }));
   }
   tags.push(drawRacer({

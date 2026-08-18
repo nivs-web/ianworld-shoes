@@ -42,6 +42,8 @@ export function startGame(navigator, opt = {}) {
       difficulty: p.difficulty,
       charId: p.selectedCharacter,
       controlMode: p.controlMode,
+      // 설정 → 싱글게임 배경설정. 'random' 이면 GameScene 이 시드로 뽑는다 (2026-08-19)
+      buildingId: p.singleBg,
       startFloor,
       onFinish: handleFinish,
       /**

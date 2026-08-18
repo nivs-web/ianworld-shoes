@@ -24,16 +24,25 @@ import Lobby from '../Lobby.js';
 const RESET_RETRY_MS = 2500;
 
 /**
- * 참가자 이름을 누르면 뜨는 승률/보유신발 팝업. (2026-08-19, §11)
- * `p` 는 `players/$uid` 스냅샷 — nickname·shoesOwned·multiWins·multiLosses.
+ * 참가자 이름을 누르면 뜨는 카드. (2026-08-19, §11 → §9 에서 캐릭터 그림 추가)
+ * `p` 는 `players/$uid` 스냅샷 — nickname·characterId·shoesOwned·multiWins·multiLosses.
+ *
+ * 그림을 같이 보여 주는 이유: 인게임에는 아이디가 없고 **자리 색과 캐릭터 생김새**가
+ * 신원의 전부다. 대기방에서 "이 사람이 저 캐릭터구나"를 붙여 둬야 판이 시작된 뒤에
+ * 화면에서 상대를 찾을 수 있다.
  */
-function playerStatPopup(p) {
+function playerStatPopup(p, slot) {
   let dismiss = () => {};
   const close = () => dismiss();
   const games = (p.multiWins ?? 0) + (p.multiLosses ?? 0);
+  const ch = characterById(p.characterId);
   const overlay = el('div.dialog-overlay', { onclick: close }, [
     el('div.dialog', { onclick: (e) => e.stopPropagation() }, [
+      // 자리 색 테두리를 그대로 둘러 — 인게임 레이스 게이지와 같은 신호를 쓴다
+      el('div.player-card-face', { style: { '--slot': SLOT_COLORS[slot] ?? SLOT_COLORS[0] } },
+        ch ? [el('img', { src: characterSprite(ch.id, 'front'), alt: ch.ko })] : []),
       el('div.dialog-msg', p.nickname || '???'),
+      ch ? el('div.player-card-char', ch.ko) : null,
       el('div.dialog-detail', S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0)),
       button(S.close, close, { sfx: 'sfx_menu_back' }),
     ]),
@@ -200,6 +209,13 @@ export default function WaitingRoom(nav, params = {}) {
         el('div.player-list', null, players.map((p) => {
           const ch = characterById(p.characterId);
           const slot = slotIndex(room.players, p.uid);
+          /**
+           * ★ **표(grid) 로 고정한다.** (2026-08-19, §9·§10)
+           * 예전엔 flex 라서 `레디` 태그가 `...` ↔ `레디` 로 바뀔 때마다 폭이 달라졌고,
+           * 그만큼 **보유신발 배지가 좌우로 밀렸다**(사용자 신고). 이제 앞쪽 칸은 전부
+           * 고정폭이고 남는 폭은 이름 뒤의 빈 칸이 먹으므로, 태그가 어떻게 바뀌든
+           * 신발 배지는 **항상 같은 자리**에 있다.
+           */
           return el('div.player-row', { class: p.uid === myUid ? 'me' : '' }, [
             el('div.slot-box', {
               text: String(slot + 1),
@@ -207,15 +223,19 @@ export default function WaitingRoom(nav, params = {}) {
               style: { background: SLOT_COLORS[slot] ?? SLOT_COLORS[0], color: slot === 1 ? '#3A1F0C' : '#FFF4D6' },
             }),
             ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
-            // 이름을 누르면 승률/보유신발 팝업 (§11, 2026-08-19)
-            el('div.player-name', { text: p.nickname || '???', onclick: () => playerStatPopup(p) }),
+            // 이름을 누르면 캐릭터 그림 + 승률/보유신발 카드 (§9·§11)
+            el('div.player-name', { text: p.nickname || '???', onclick: () => playerStatPopup(p, slot) }),
             el('div.player-shoes', null, [
               el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
               el('span', S.playerShoesOwned(p.shoesOwned ?? 0)),
             ]),
-            p.uid === room.hostUid ? el('div.tag-host', S.host) : null,
-            el('div.tag-ready', { class: p.ready ? 'on' : '' },
-              p.waiting ? S.roomStateWaiting : p.ready ? S.ready : '...'),
+            el('div.player-gap'),
+            // 태그는 **마지막 칸 안에서만** 늘었다 줄었다 한다 — 앞칸을 밀지 않는다
+            el('div.player-tags', null, [
+              p.uid === room.hostUid ? el('div.tag-host', S.host) : null,
+              el('div.tag-ready', { class: p.ready ? 'on' : '' },
+                p.waiting ? S.roomStateWaiting : p.ready ? S.ready : '...'),
+            ]),
           ]);
         })),
 

@@ -147,6 +147,8 @@ export async function pullRemote() {
 
 export const setDifficulty = (d) => patch({ difficulty: d });
 export const setControlMode = (m) => patch({ controlMode: m });
+/** 싱글 게임 배경 — 'random' 또는 BUILDINGS 의 id (2026-08-19) */
+export const setSingleBg = (id) => patch({ singleBg: id });
 
 /**
  * 캐릭터 교체. 순위표에 박혀 있는 얼굴도 같이 갈아 준다 —

@@ -1,41 +1,26 @@
 /**
- * S08b 설정 — 예전엔 로비 메뉴가 곧바로 [조작법 변경] 화면이었다. (2026-08-19)
+ * S08b 설정 — **메뉴 목록만** 둔다. 실제 조작은 각 하위 화면이 한다. (2026-08-19)
  *
- * 여기 하나로 모으고 안에 [조작법 변경] 과 [음향 설정](BGM·SFX 개별 on/off)을 둔다.
- * 소리 on/off 인프라(audio/audio.js `getSettings/setEnabled`)는 이미 있었는데
- * **꺼내 쓰는 화면이 없었다** — 저장·복원·게인 반영은 전부 되는데 버튼이 없던 상태.
+ * 처음에는 음향 토글을 이 화면에 바로 박았는데, 사용자 요청으로 [조작법 변경] 과
+ * 같은 층의 항목([사운드 설정])으로 끌어올렸다. 항목이 늘어도(배경설정이 그 예다)
+ * 이 화면은 버튼 목록 그대로라 구조가 안 무너진다.
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, backButton, segmented, screen, title } from './ui.js';
-import * as Audio from '../audio/audio.js';
+import { el, button, backButton, screen, title } from './ui.js';
 import Controls from './Controls.js';
-
-const ON_OFF = [
-  { value: true, label: S.settingsOn },
-  { value: false, label: S.settingsOff },
-];
+import SoundSettings from './SoundSettings.js';
+import BgSettings from './BgSettings.js';
 
 export default function Settings(nav) {
   return {
     render() {
-      const s = Audio.getSettings();
       return screen(
         title(S.settingsTitle),
 
         button(S.menuControls, () => nav.push(Controls)),
-
-        el('div.settings-section', null, [
-          el('div.settings-label', S.menuSound),
-          el('div.settings-row', null, [
-            el('span.settings-row-label', S.soundBgm),
-            segmented(ON_OFF, s.bgmEnabled, (v) => { Audio.setEnabled('bgm', v); nav.refresh(); }),
-          ]),
-          el('div.settings-row', null, [
-            el('span.settings-row-label', S.soundSfx),
-            segmented(ON_OFF, s.sfxEnabled, (v) => { Audio.setEnabled('sfx', v); nav.refresh(); }),
-          ]),
-        ]),
+        button(S.menuSound, () => nav.push(SoundSettings)),
+        button(S.menuSingleBg, () => nav.push(BgSettings)),
 
         el('div.spacer'),
         backButton(S.back, () => nav.back())

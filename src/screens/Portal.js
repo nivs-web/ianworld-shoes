@@ -35,8 +35,10 @@ export default function Portal(nav) {
    */
   async function onInstall() {
     const r = await promptInstall();
-    if (r === 'ios') toast(S.installIosGuide, 3200);
-    else if (r === 'accepted') toast(S.installDone, 2600);
+    if (r === 'accepted') toast(S.installDone, 2600);
+    else if (r === 'ios') toast(S.installIosGuide, 3600);
+    // 안드로이드에서 프롬프트가 아직 안 왔을 때 — PC용 Ctrl+D 안내가 나가면 안 된다
+    else if (r === 'android') toast(S.installAndroidGuide, 3600);
     else if (r === 'unavailable') toast(S.installBookmarkGuide, 3200);
   }
 

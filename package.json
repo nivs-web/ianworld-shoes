@@ -29,7 +29,8 @@
     "assets:bubble": "node tools/build-bubble.mjs",
     "preview:screens": "node tools/_screen-preview.mjs",
     "preview:result": "node tools/_screen-preview.mjs result",
-    "assets:floors": "node tools/build-floor-bg.mjs"
+    "assets:floors": "node tools/build-floor-bg.mjs",
+    "preview:room": "node tools/_screen-preview.mjs room"
   },
   "dependencies": {
     "firebase": "^11.1.0"

@@ -7,6 +7,7 @@
 import S from '../config/strings.ko.js';
 import { el, button, backButton, segmented, screen, toast, confirmDialog } from './ui.js';
 import { get as getProfile, setDifficulty, dexUnique } from '../services/profile.js';
+import { everPlayedMulti } from '../services/storageLocal.js';
 import { characterById, characterSprite } from '../data/characters.js';
 import { SHOE_TOTAL } from '../config/balance.js';
 import { ELEVATOR } from '../config/balance.js';
@@ -28,7 +29,24 @@ const DIFFS = [
   { value: 'hard', label: S.difficultyHard },
 ];
 
+/**
+ * ★ **멀티를 해 본 사람은 로비에서 미리 붙여 둔다.** (2026-08-19, 입장 체감속도)
+ *
+ * 예전에는 멀티 메뉴를 연 순간에야 `prewarm()` 이 돌았다. 그런데 거기서 '방 입장'까지는
+ * 몇 백 ms 만에 눌리는 일이 많아서, **RTDB 청크(192KB)를 받고 웹소켓을 여는 시간이
+ * 그대로 버튼 누른 뒤의 대기**로 나타났다. 로비에서 미리 시작하면 그 시간이 사용자가
+ * 화면을 보는 동안 지나간다.
+ *
+ * **멀티를 한 번도 안 한 사람에게는 절대 부르지 않는다** — 싱글만 하는 사람이 192KB를
+ * 받게 되는 건 예전에 고친 회귀다(§9-0-11).
+ */
+function prewarmMultiIfReturning() {
+  if (!everPlayedMulti()) return;
+  import('../services/multiplayer.js').then((M) => M.prewarm()).catch(() => {});
+}
+
 export default function Lobby(nav) {
+  prewarmMultiIfReturning();
   return {
     render() {
       const p = getProfile();

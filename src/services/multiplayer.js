@@ -25,10 +25,24 @@ const SCAN_LIMIT = 12;
 /**
  * 방을 만든 뒤 '동시에 만든 사람'이 있는지 다시 볼 때까지 기다리는 시간.
  * 너무 짧으면 상대 방이 아직 안 보이고, 너무 길면 매칭이 굼떠 보인다.
+ *
+ * 1400 → **700** (2026-08-19). "방 입장이 굼뜨다"는 신고의 가장 큰 몫이 이 대기였다 —
+ * 방이 하나도 없는 시간대에는 **반드시** 이 경로를 타기 때문이다(만들고 → 기다리고 → 확인).
+ * 이 값이 필요한 이유는 '같은 순간에 만든 상대 방이 목록에 보이기까지의 전파 지연'인데,
+ * RTDB 전파는 보통 100~200ms 라 700ms 면 충분하다. 놓치더라도 손해는
+ * "잠깐 방이 둘"뿐이고, 상대가 목록에서 내 방을 보고 들어오면 그대로 합쳐진다.
  */
-const RETRY_SCAN_MS = 1400;
+const RETRY_SCAN_MS = 700;
 /** 첫 스캔이 비었을 때 한 번 더 볼 때까지 기다리는 시간 */
 const EMPTY_RESCAN_MS = 900;
+/**
+ * 연결이 붙은 시각. **막 붙은 직후의 빈 목록만** 의심하면 되므로,
+ * 이미 한참 전에 붙어 있었다면(=멀티 메뉴에서 `prewarm` 이 미리 잡아 둔 보통의 경우)
+ * 빈 목록은 진짜 빈 것이다 → 재스캔 대기(0.9초)를 통째로 건너뛴다. (2026-08-19)
+ */
+let connectedAt = 0;
+/** 붙은 지 이 시간이 지났으면 목록을 믿는다 */
+const CONNECTION_WARM_MS = 1500;
 
 const path = (...parts) => parts.join('/');
 
@@ -250,7 +264,11 @@ export async function waitConnected(fb, ms = 6000) {
     const timer = setTimeout(() => finish(false), ms);
     let off = null;
     try {
-      off = fb.dbMod.onValue(fb.dbMod.ref(fb.rtdb, '.info/connected'), (s) => { if (s.val() === true) finish(true); });
+      off = fb.dbMod.onValue(fb.dbMod.ref(fb.rtdb, '.info/connected'), (s) => {
+        if (s.val() !== true) return;
+        if (!connectedAt) connectedAt = Date.now();   // 언제 붙었는지 기억한다 (재스캔 판단용)
+        finish(true);
+      });
     } catch { finish(false); }
   });
 }
@@ -282,7 +300,18 @@ export async function readOnce(fb, path_, ms = 8000) {
  * 누르면, 그냥 쓰기로는 둘 다 들어가 5인 방이 된다.
  * @returns {'ok'|'full'|'notfound'|'started'|'error'}
  */
-export async function joinRoom(code) {
+/**
+ * @param {string} code
+ * @param {object} [known] **방금 스캔해서 이미 손에 든** 방 객체. 있으면 서버를 다시
+ *   읽지 않는다 (2026-08-19, 입장 체감속도 개선).
+ *
+ *   자동 매칭은 후보를 훑기 직전에 `scanOpenRooms` 로 방들을 통째로 받아 온다.
+ *   그런데 `joinRoom` 이 후보마다 `readOnce` 로 **같은 경로를 한 번 더 왕복**해서,
+ *   후보가 셋이면 왕복이 셋 더 붙었다. 스캔 값이 몇백 ms 낡을 수는 있지만
+ *   **정원 초과는 쓰고 나서 다시 확인해 스스로 물러나므로**(아래) 낡은 값으로
+ *   판단해도 안전하다 — 그게 이 함수의 원래 안전장치다.
+ */
+export async function joinRoom(code, known) {
   const fb = await rt();
   if (!fb) return 'error';
   const p = L.loadProfile();
@@ -304,9 +333,12 @@ export async function joinRoom(code) {
    * 정원 초과만 쓰고 나서 확인하고, 넘쳤으면 스스로 물러난다.
    */
   if (!(await waitConnected(fb))) return 'error';
-  const read = await readOnce(fb, path(ROOMS, code));
-  if (!read.ok) return 'error';                     // 못 읽은 것과 없는 것은 다르다
-  const room = read.val;
+  let room = known;
+  if (!room) {
+    const read = await readOnce(fb, path(ROOMS, code));
+    if (!read.ok) return 'error';                   // 못 읽은 것과 없는 것은 다르다
+    room = read.val;
+  }
   if (!room) return 'notfound';
   if (room.players?.[fb.uid]) { await noteMyRoom(fb, code); return 'ok'; }  // 재입장
 
@@ -561,9 +593,10 @@ export async function quickJoin({ difficulty } = {}) {
    *      → ③ 그래도 없으면 새로 만든다.
    * 예전에는 ②가 없어서, 먼저 시작한 방이 있어도 "들어갈 데가 없다"며 새 방을 팠다.
    */
+  // 스캔으로 이미 받아 둔 방 객체를 그대로 넘긴다 — 후보마다 서버를 다시 읽지 않는다
   const pickAndJoin = async (rooms) => {
     for (const r of rooms) {
-      const v = await joinRoom(r.code);
+      const v = await joinRoom(r.code, r);
       if (v === 'ok' || v === 'waiting') return r.code;
     }
     return null;
@@ -572,8 +605,13 @@ export async function quickJoin({ difficulty } = {}) {
   try {
     let raw = await scanOpenRooms(fb);
     sweepEmptyRooms(fb, raw);
-    // 막 붙은 직후의 빈 목록은 "없다"가 아니라 "아직 못 받았다"일 수 있다
-    if (!raw.length) {
+    /**
+     * 막 붙은 직후의 빈 목록은 "없다"가 아니라 "아직 못 받았다"일 수 있다.
+     * 하지만 **붙은 지 한참 지났으면 빈 목록은 진짜 빈 것**이다 — 그때까지
+     * 0.9초를 세는 건 순수한 낭비다. 멀티 메뉴가 `prewarm()` 으로 미리 붙여 두므로
+     * 보통은 이 조건에 걸려 건너뛴다. (2026-08-19)
+     */
+    if (!raw.length && Date.now() - connectedAt < CONNECTION_WARM_MS) {
       await new Promise((r) => setTimeout(r, EMPTY_RESCAN_MS));
       raw = await scanOpenRooms(fb);
     }

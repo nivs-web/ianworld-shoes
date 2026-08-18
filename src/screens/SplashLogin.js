@@ -13,7 +13,7 @@ import { pullAll, get as getProfile } from '../services/profile.js';
 import { toast } from './ui.js';
 import NicknameSetup from './NicknameSetup.js';
 import Portal from './Portal.js';
-import { canInstall, promptInstall, isStandalone, onInstallChange } from '../services/pwa.js';
+import { canInstall, promptInstall, isStandalone, onInstallChange, isMobile } from '../services/pwa.js';
 
 export default function SplashLogin(nav) {
   let busy = false;
@@ -50,9 +50,11 @@ export default function SplashLogin(nav) {
 
   async function onInstall() {
     const r = await promptInstall();
-    // 사파리에는 설치 프롬프트가 없다 — 어디를 눌러야 하는지 알려 주는 게 전부다
-    if (r === 'ios') toast(S.installIosGuide, 3200);
-    else if (r === 'accepted') toast(S.installDone, 2600);
+    // 프롬프트가 없는 환경에는 **그 기기에 맞는** 방법을 알려 준다 (2026-08-19)
+    if (r === 'accepted') toast(S.installDone, 2600);
+    else if (r === 'ios') toast(S.installIosGuide, 3600);
+    else if (r === 'android') toast(S.installAndroidGuide, 3600);
+    else if (r === 'unavailable') toast(S.installBookmarkGuide, 3200);
   }
 
   return {
@@ -74,9 +76,14 @@ export default function SplashLogin(nav) {
         signedIn
           ? button(S.touchToStart, enter, { primary: true })
           : button(S.loginGoogle, onGoogle, { primary: true, disabled: blocked }),
-        // 이미 홈 화면에서 돌고 있거나 이 브라우저가 설치를 지원하지 않으면 아예 감춘다.
-        // 눌러도 아무 일 없는 버튼은 고장으로 보인다.
-        !isStandalone() && canInstall() ? button(S.installShortcut, onInstall) : null,
+        /**
+         * 이미 홈 화면 앱으로 돌고 있으면 감춘다.
+         * **모바일에서는 프롬프트가 아직 안 왔어도 보여 준다** (2026-08-19) —
+         * 그 경우 눌러도 아무 일 없는 게 아니라 "메뉴 → 홈 화면에 추가" 를 알려 주므로
+         * 버튼이 제 역할을 한다. 예전엔 `canInstall()` 로 막아서, 정작 홈 화면 추가가
+         * 가장 필요한 안드로이드 사용자에게 버튼이 아예 안 보이는 경우가 있었다.
+         */
+        !isStandalone() && (canInstall() || isMobile()) ? button(S.installShortcut, onInstall) : null,
         el('div.hint', blocked ? S.loginUnavailable : signedIn ? S.loginWhy : S.loginRequired)
       );
     },

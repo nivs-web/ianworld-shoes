@@ -61,7 +61,18 @@ export default function CodeInput(nav) {
       return screen(
         title(S.enterCode),
         el('div.code-row', null, slots),
-        el('div.keypad', null, KEYS.map((k) => button(k, () => press(k), { class: 'key' }))),
+        /**
+         * ★ 지우기(←)·입장(↵) 은 **숫자와 다른 크기·색**으로 그린다. (2026-08-19)
+         * 예전엔 셋 다 18px 라 화살표 글리프가 숫자보다 작아 보였고, 엔터 칸이
+         * "엔터처럼 안 보인다"는 신고가 있었다. 기호는 같은 글자 크기라도 실제로
+         * 차지하는 획이 훨씬 작아서, 숫자와 같은 값을 주면 작아 보이는 게 정상이다.
+         */
+        el('div.keypad', null, KEYS.map((k) =>
+          button(k, () => press(k), {
+            class: k === '↵' ? 'key key-enter' : k === '←' ? 'key key-back' : 'key',
+            primary: k === '↵',
+          })
+        )),
         busy ? el('div.hint', S.loading) : null,
         el('div.spacer'),
         backButton(S.back, () => nav.back())

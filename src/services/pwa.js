@@ -23,6 +23,20 @@ const isBrowser = typeof window !== 'undefined' && typeof navigator !== 'undefin
 
 export const isIos = () => isBrowser && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
+/**
+ * 안드로이드인가. **iOS 가 아닌 모바일**을 여기서 가른다 (2026-08-19).
+ *
+ * 이걸 나눠야 하는 이유: 설치 프롬프트(`beforeinstallprompt`)를 아직 못 받았을 때
+ * 무슨 말을 해 줄지가 완전히 달라진다. 예전에는 "iOS 냐 아니냐" 둘로만 갈라서,
+ * **안드로이드 크롬 사용자에게 `Ctrl+D` 로 즐겨찾기하라는 PC 안내**가 나갔다
+ * (사용자 신고 — 폰에는 Ctrl 키가 없다).
+ */
+export const isAndroid = () => isBrowser && /android/i.test(navigator.userAgent);
+
+/** 터치 기반 모바일 전반 (설치 안내 문구를 고를 때 PC 와 갈라야 한다) */
+export const isMobile = () =>
+  isBrowser && (isIos() || isAndroid() || /mobile/i.test(navigator.userAgent));
+
 /** 홈 화면에서 실행 중인가 (안드로이드 display-mode / iOS 전용 플래그) */
 export const isStandalone = () =>
   isBrowser &&
@@ -45,11 +59,16 @@ export const canInstall = () => !!deferred || (isIos() && !isStandalone() && !in
 
 /**
  * 설치를 띄운다.
- * @returns {Promise<'accepted'|'dismissed'|'ios'|'unavailable'>}
- *   'ios' 는 프롬프트가 없는 사파리 — 화면이 안내 문구를 대신 띄워야 한다는 뜻이다.
+ * @returns {Promise<'accepted'|'dismissed'|'ios'|'android'|'unavailable'>}
+ *   'ios'     프롬프트가 없는 사파리 — 공유 → 홈 화면에 추가 안내
+ *   'android' 크롬인데 아직 프롬프트를 못 받았다 — ⋮ 메뉴 안내 (2026-08-19)
+ *   'unavailable' 진짜 PC 브라우저 — 즐겨찾기 안내
+ *
+ * ★ 예전에는 iOS 가 아니면 전부 'unavailable' 이라, **안드로이드 폰에 `Ctrl+D`
+ *   안내가 나갔다.** 폰에는 Ctrl 키가 없다. 플랫폼을 셋으로 가른다.
  */
 export async function promptInstall() {
-  if (!deferred) return isIos() ? 'ios' : 'unavailable';
+  if (!deferred) return isIos() ? 'ios' : isMobile() ? 'android' : 'unavailable';
   const e = deferred;
   deferred = null; // 한 번 쓴 이벤트는 재사용할 수 없다
   emit();

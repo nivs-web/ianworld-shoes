@@ -15,10 +15,11 @@ const page = await browser.newPage({ viewport: { width: 1200, height: 1100 }, de
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-const target = process.argv[2] === 'result' ? '_result-preview' : '_screen-preview';
+const TARGETS = { result: '_result-preview', room: '_room-preview' };
+const target = TARGETS[process.argv[2]] ?? '_screen-preview';
 await page.goto(`http://127.0.0.1:${PORT}/tools/${target}.html`, { waitUntil: 'networkidle' });
 await page.waitForFunction('window.__ready === true', null, { timeout: 20000 }).catch(() => {});
-const out = process.argv[2] === 'result' ? 'tools/_out/result.png' : 'tools/_out/screens.png';
+const out = `tools/_out/${process.argv[2] && TARGETS[process.argv[2]] ? process.argv[2] : 'screens'}.png`;
 await page.screenshot({ path: out, fullPage: true });
 await browser.close();
 vite.kill();

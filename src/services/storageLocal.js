@@ -68,6 +68,11 @@ export function defaultProfile() {
     unlockedCharacters: [...FREE_CHARACTERS],
     controlMode: 1,
     difficulty: DEFAULT_DIFFICULTY,
+    /**
+     * 싱글 게임 배경 (2026-08-19). `'random'` 이면 판마다 시드로 뽑는다(기존 동작).
+     * **멀티에는 적용하지 않는다** — 모두가 같은 건물을 봐야 하므로 방 시드가 정한다.
+     */
+    singleBg: 'random',
     shoesOwned: 0,
     shoesByTier: { t1: 0, t2: 0, t3: 0, t4: 0, t5: 0 },
     /**

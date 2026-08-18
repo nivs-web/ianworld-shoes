@@ -1,0 +1,54 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<style>body{background:#1b1410;display:flex;gap:14px;padding:14px;align-items:flex-start}
+.frame{width:360px;background:#0d0a08;padding:10px;border:2px solid #4a3b2a}
+figcaption{color:#9a8f7d;font-size:12px;text-align:center;padding-top:6px}</style>
+</head><body><script type="module">
+import S from '/src/config/strings.ko.js';
+import { el } from '/src/screens/ui.js';
+import { SLOT_COLORS } from '/src/game/palette.js';
+
+/** WaitingRoom.js 의 참가자 행과 **같은 구조**로 유지할 것 */
+const row = (p, slot, isMe, isHost) =>
+  el('div.player-row', { class: isMe ? 'me' : '' }, [
+    el('div.slot-box', { text: String(slot + 1),
+      style: { background: SLOT_COLORS[slot], color: slot === 1 ? '#3A1F0C' : '#FFF4D6' } }),
+    el('img.rank-face', { src: `/assets/characters/${p.ch}_front.png`, alt: '' }),
+    el('div.player-name', { text: p.name }),
+    el('div.player-shoes', null, [
+      el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
+      el('span', S.playerShoesOwned(p.shoes)),
+    ]),
+    el('div.player-gap'),
+    el('div.player-tags', null, [
+      isHost ? el('div.tag-host', S.host) : null,
+      el('div.tag-ready', { class: p.ready ? 'on' : '' }, p.ready ? S.ready : '...'),
+    ]),
+  ]);
+
+const cases = [
+  ['레디 섞임 (배지가 밀리면 실패)', [
+    { name: '이안', ch: 'ian', shoes: 146, ready: true },
+    { name: '데니', ch: 'denny', shoes: 7, ready: false },
+    { name: '다섯글자님', ch: 'rose', shoes: 1203, ready: true },
+    { name: '로', ch: 'ian', shoes: 0, ready: false },
+  ]],
+  ['전원 레디', [
+    { name: '이안', ch: 'ian', shoes: 146, ready: true },
+    { name: '데니', ch: 'denny', shoes: 7, ready: true },
+    { name: '다섯글자님', ch: 'rose', shoes: 1203, ready: true },
+    { name: '로', ch: 'ian', shoes: 0, ready: true },
+  ]],
+];
+for (const [cap, list] of cases) {
+  const f = el('div.frame');
+  f.append(el('div.screen-title', S.multiRoomTitle(1234)));
+  f.append(el('div.player-list', null, list.map((p, i) => row(p, i, i === 0, i === 0))));
+  const fig = document.createElement('figure');
+  fig.append(f, Object.assign(document.createElement('figcaption'), { textContent: cap }));
+  document.body.append(fig);
+}
+window.__ready = true;
+</script></body></html>

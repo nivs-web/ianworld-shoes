@@ -18,7 +18,12 @@ export const S = {
   installShortcut: '앱 바로가기 만들기',
   installIosGuide: '공유 버튼 → "홈 화면에 추가"를 눌러주세요',
   installDone: '홈 화면에 추가되었습니다',
-  /** PC — 설치 프롬프트도 iOS 안내도 안 되는 브라우저(파이어폭스 등)의 마지막 수단 */
+  /**
+   * 안드로이드 크롬인데 설치 프롬프트가 아직 안 왔을 때 (2026-08-19).
+   * 예전엔 이 경우에도 PC용 Ctrl+D 안내가 나가서 폰 사용자가 막혔다.
+   */
+  installAndroidGuide: '브라우저 메뉴(⋮) → "홈 화면에 추가"를 눌러주세요',
+  /** PC — 설치 프롬프트도 모바일도 아닌 브라우저(파이어폭스 등)의 마지막 수단 */
   installBookmarkGuide: 'Ctrl+D (Mac은 Cmd+D)를 눌러 즐겨찾기에 추가해주세요',
   loginFailed: '로그인에 실패했습니다. 다시 시도해주세요',
   logout: '로그아웃',
@@ -46,7 +51,7 @@ export const S = {
   collectionUnit: '켤레',
   playerName: '플레이어 이름',
   /** 로비 — 캐릭터 이름 자리에 있던 줄을 멀티 전적으로 바꿨다 (2026-08-19) */
-  myMultiRecord: (wins, games) => `나의 멀티게임 승률 ${wins}승 / ${games}게임`,
+  myMultiRecord: (wins, games) => `멀티게임 ${wins}승 / ${games}게임`,
   myShoesOwned: (n) => `나의 신발 보유량 ${n}켤레`,
   myDexProgress: (have, all) => `나의 신발 도감 ${have}/${all}켤레`,
   difficultyTitle: '게임난이도를 높이면, 신발도 많이 등장합니다',
@@ -54,7 +59,7 @@ export const S = {
   difficultyNormal: '보통',
   difficultyHard: '어려움',
   menuCollection: '신발 도감',
-  menuCharacter: '캐릭터 바꾸기',
+  menuCharacter: '캐릭터 변경',
   menuRename: '캐릭터 닉네임 변경하기',
   menuHallOfFame: '명예의 전당',
   menuControls: '조작법 변경',
@@ -128,11 +133,17 @@ export const S = {
 
   // ── S08b 설정 (2026-08-19) ──────────────────
   settingsTitle: '설정',
-  menuSound: '음향 설정',
+  /** 설정 하위 메뉴명 — 사용자가 지정한 표기 (2026-08-19) */
+  menuSound: '사운드 설정',
   soundBgm: '배경음악',
   soundSfx: '효과음',
   settingsOn: '켜짐',
   settingsOff: '꺼짐',
+  /** 설정 하위 메뉴 (2026-08-19) */
+  menuSingleBg: '싱글게임 배경설정',
+  singleBgHint: '싱글게임에서 사용할 배경을 고릅니다 (멀티는 방마다 정해집니다)',
+  bgRandom: '랜덤',
+  soundHint: '끄면 이 기기에서만 적용됩니다',
 
   // ── S09 인게임 HUD ─────────────────────────
   /** @param {number} n */
@@ -165,10 +176,10 @@ export const S = {
   multiTitle: '멀티게임 로비',
   createRoom: '방 만들기',
   joinRoom: '방 입장',
-  createPrivateRoom: '비밀방 만들기',
+  createPrivateRoom: '비밀방 생성',
   enterByCode: '비밀방 입장',
   enterCode: '4자리 코드를 입력하세요',
-  multiBetHint: '이기면 신발을 뺏어오고, 지면 1켤레를 뺏깁니다',
+  multiBetHint: '멀티 게임을 위해서는, 신발 1켤레가 필요합니다',
   publicRoomHint: '자동으로 만들어진 방입니다. 다른 사람이 곧 들어옵니다',
   host: '방장',
   roomSlots: (n, max) => `참가자 ${n}/${max}명`,
@@ -263,6 +274,8 @@ export const S = {
   wonPotShoes: (n) => `신발 ${n}개`,
   wonPotPost: '를 모두 가져왔습니다',
   loseBig: '게임에서 패배하였습니다',
+  /** 승리창의 '1등을 축하합니다' 와 짝을 이루는 줄 — 좌우 대칭을 맞춘다 (2026-08-19) */
+  loseSub: '다음 판에 다시 도전해보세요',
   /** 기획서 §5-7 문구 그대로 */
   loseTaken: (n) => `내 소중한 신발 ${n}켤레를 뺏겼습니다`,
   tipTitle: '부활을 아껴쓰세요.',
