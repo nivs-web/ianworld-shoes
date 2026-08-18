@@ -27,6 +27,8 @@ const SCAN_LIMIT = 12;
  * 너무 짧으면 상대 방이 아직 안 보이고, 너무 길면 매칭이 굼떠 보인다.
  */
 const RETRY_SCAN_MS = 1400;
+/** 첫 스캔이 비었을 때 한 번 더 볼 때까지 기다리는 시간 */
+const EMPTY_RESCAN_MS = 900;
 
 const path = (...parts) => parts.join('/');
 
@@ -155,6 +157,64 @@ export async function holdRoomSeat(code) {
   try { await fb.dbMod.onDisconnect(ref).cancel(); } catch { /* 무시 */ }
 }
 
+
+/**
+ * 멀티 메뉴에 들어가는 순간 **미리 붙여 둔다.**
+ *
+ * RTDB 는 첫 사용 시점에 청크(192KB)를 받고 웹소켓을 새로 연다. 그 사이에
+ * `방 입장` 을 누르면 스캔이 빈 목록을 보고 곧장 새 방을 판다 — 실기기 세 대가
+ * 전부 방장이 된 증상의 정체다. 메뉴를 여는 순간 붙여 두면 누를 때는 이미 준비돼 있다.
+ * 실패해도 아무 일도 일어나지 않는다.
+ */
+export function prewarm() {
+  rt().then((fb) => { if (fb) waitConnected(fb, 10000); }).catch(() => {});
+}
+
+/**
+ * ★ **RTDB 가 붙었는지 먼저 확인한다.** (2026-08-16)
+ *
+ * `get()` 은 서버에 못 닿으면 **오류를 던지지 않고 캐시 값을 돌려준다.** 캐시가 비어
+ * 있으면 그 값은 `null` 이다. 그러면 `joinRoom` 은 "방이 없다"로 판정하고,
+ * 자동 매칭은 후보를 전부 흘려보낸 뒤 새 방을 판다 — **연결이 덜 됐을 뿐인데
+ * 화면에는 "방을 찾을 수 없습니다"가 뜨고 다들 방장이 된다.**
+ *
+ * `.info/connected` 는 SDK 가 로컬에서 관리하는 값이라 즉시 답한다.
+ * 붙을 때까지 잠깐 기다렸다 시작하면 이 오판 자체가 사라진다.
+ */
+export async function waitConnected(fb, ms = 6000) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; off?.(); clearTimeout(timer); resolve(v); };
+    const timer = setTimeout(() => finish(false), ms);
+    let off = null;
+    try {
+      off = fb.dbMod.onValue(fb.dbMod.ref(fb.rtdb, '.info/connected'), (s) => { if (s.val() === true) finish(true); });
+    } catch { finish(false); }
+  });
+}
+
+/**
+ * 값 하나를 **서버에서** 읽는다.
+ *
+ * `get()` 대신 `onValue(..., {onlyOnce:true})` 를 쓰는 이유: `get()` 은 못 닿으면
+ * 조용히 캐시(=null)를 돌려주는데, 이쪽은 **연결이 끊겨 있으면 콜백 자체가 안 온다.**
+ * 그래서 "값이 없다"와 "못 읽었다"를 구별할 수 있다 — 이 구별이 없어서 멀티가
+ * 통째로 오작동했다.
+ * @returns {Promise<{ok:boolean, val:any}>}
+ */
+export async function readOnce(fb, path_, ms = 8000) {
+  const r = fb.dbMod.ref(fb.rtdb, path_);
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; clearTimeout(timer); resolve(v); };
+    const timer = setTimeout(() => finish({ ok: false, val: null }), ms);
+    try {
+      fb.dbMod.onValue(r, (s) => finish({ ok: true, val: s.val() }),
+        () => finish({ ok: false, val: null }), { onlyOnce: true });
+    } catch { finish({ ok: false, val: null }); }
+  });
+}
+
 /**
  * 방에 들어간다. **트랜잭션이어야 한다** — 정원이 1자리 남았는데 두 명이 동시에
  * 누르면, 그냥 쓰기로는 둘 다 들어가 5인 방이 된다.
@@ -185,13 +245,10 @@ export async function joinRoom(code) {
    * 먼저 읽어 두면 캐시가 채워져 트랜잭션 첫 호출이 진짜 값을 받는다.
    * 덤으로 정원·상태 판정을 트랜잭션 밖에서 미리 할 수 있어 헛트랜잭션이 줄어든다.
    */
-  let seen = null;
-  try {
-    const snap = await withTimeout(fb.dbMod.get(roomRef), undefined, '방 확인');
-    seen = snap.val();
-  } catch {
-    return 'error';
-  }
+  if (!(await waitConnected(fb))) return 'error';   // 연결도 안 된 채 '방 없음'이라 하지 않는다
+  const read = await readOnce(fb, path(ROOMS, code));
+  if (!read.ok) return 'error';                     // 못 읽은 것과 없는 것은 다르다
+  const seen = read.val;
   if (!seen) return 'notfound';
   if (!seen.players?.[fb.uid]) {
     if (seen.state !== 'waiting') return 'started';
@@ -208,6 +265,15 @@ export async function joinRoom(code) {
       const n = Object.keys(cur.players ?? {}).length;
       if (n >= (cur.maxPlayers ?? MULTI.maxPlayers)) { verdict = 'full'; return; }
       cur.players = { ...(cur.players ?? {}), [fb.uid]: meRecord(p) };
+      /**
+       * ★ **방장이 사라진 방은 내가 이어받는다.** (2026-08-16)
+       *
+       * 연결이 끊기면 `onDisconnect` 가 그 사람을 방에서 지운다. 그래서 참가자가
+       * 0명인데 `hostUid` 만 남은 빈 방이 생긴다. 그 방에 들어가면 **아무도 방장이
+       * 아니라서 시작 버튼이 영영 안 나온다** — 둘이 만나도 게임을 시작할 수가 없다.
+       * 규칙도 "직전 방장이 이미 없으면 바꿀 수 있다"로 열어 뒀다 (FIREBASE_RULES.md).
+       */
+      if (!cur.players[cur.hostUid]) cur.hostUid = fb.uid;
       if (n + 1 >= (cur.maxPlayers ?? MULTI.maxPlayers)) cur.open = false;
       verdict = 'ok';
       return cur;
@@ -218,6 +284,36 @@ export async function joinRoom(code) {
   }
   if (verdict === 'ok') await noteMyRoom(fb, code);
   return verdict;
+}
+
+
+/**
+ * 참가자가 0명인 **오래된** 빈 방을 치운다. (2026-08-16)
+ *
+ * 연결이 끊기면 `onDisconnect` 가 그 사람을 방에서 빼는데, 마지막 한 명이 그렇게
+ * 빠지면 아무도 없는 방이 `open:true` 인 채로 남는다. 그 방은 멤버가 없으니
+ * **누구도 못 지우던 상태**였다(규칙을 고쳐 이제 누구나 지울 수 있다).
+ * 그냥 두면 자동 매칭이 훑는 12칸을 갉아먹어 진짜 방이 안 보인다.
+ *
+ * **막 만들어진 빈 방은 건드리지 않는다** — 지금 막 들어가려는 사람이 있을 수 있다.
+ * 실패해도 아무 일도 없다(남이 먼저 치웠거나, 그 사이 사람이 들어왔거나).
+ */
+const STALE_EMPTY_MS = 3 * 60 * 1000;
+function sweepEmptyRooms(fb, rooms) {
+  const now = Date.now();
+  const dead = rooms
+    .filter((r) => r && r.code && !Object.keys(r.players ?? {}).length && now - (r.createdAt ?? now) > STALE_EMPTY_MS)
+    .slice(0, 5);
+  for (const r of dead) {
+    withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, r.code))), undefined, '빈 방 정리').catch(() => {});
+  }
+  return dead.length;
+}
+
+export async function scanRooms(fb) {
+  fb = fb ?? await rt();
+  if (!fb) return [];
+  return scanOpenRooms(fb);
 }
 
 async function scanOpenRooms(fb) {
@@ -248,10 +344,23 @@ async function scanOpenRooms(fb) {
 export async function quickJoin({ difficulty } = {}) {
   const fb = await rt();
   if (!fb) return null;
+  // 연결 전에 훑으면 빈 목록을 보고 곧장 새 방을 판다 — 그게 '전부 방장' 증상이다
+  await waitConnected(fb);
 
   // 1) 이미 열려 있는 방 찾기
   try {
-    const rooms = (await scanOpenRooms(fb)).filter((r) => joinable(r, fb.uid, MULTI.maxPlayers)).sort(byPreference);
+    const raw = await scanOpenRooms(fb);
+    sweepEmptyRooms(fb, raw);   // 낡은 빈 방은 지나가는 김에 치운다
+    let rooms = raw.filter((r) => joinable(r, fb.uid, MULTI.maxPlayers)).sort(byPreference);
+    /**
+     * **비어 있으면 한 번 더 본다.** 막 붙은 직후의 빈 목록은 "방이 없다"가 아니라
+     * "아직 못 받았다"일 수 있다. 여기서 성급하게 방을 파면 두 사람이 각자
+     * 방장이 되어 영영 안 만난다 — 실기기에서 정확히 그 증상이 나왔다.
+     */
+    if (!rooms.length) {
+      await new Promise((r) => setTimeout(r, EMPTY_RESCAN_MS));
+      rooms = (await scanOpenRooms(fb)).filter((r) => joinable(r, fb.uid, MULTI.maxPlayers)).sort(byPreference);
+    }
     for (const r of rooms) {
       if (await joinRoom(r.code) === 'ok') return r.code;
     }
@@ -406,7 +515,8 @@ export async function finalizeResult(code, attempt = 0) {
    * **순위가 영영 안 박힌다**(= 아무도 정산을 못 한다). 먼저 읽어 캐시를 채운다.
    * `joinRoom` 이 정확히 이 함정 때문에 자동 매칭을 통째로 죽이고 있었다.
    */
-  try { await withTimeout(fb.dbMod.get(roomRef), undefined, '방 확인'); } catch { /* 그래도 시도한다 */ }
+  await waitConnected(fb);
+  await readOnce(fb, path(ROOMS, code));
   try {
     const res = await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
       if (!cur) return;
@@ -447,7 +557,7 @@ export async function leaveRoom(code) {
   if (!fb) return;
   const roomRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
   // 여기도 캐시가 비어 있으면 트랜잭션이 첫 호출에서 중단된다 (finalizeResult 주석 참고)
-  try { await withTimeout(fb.dbMod.get(roomRef), undefined, '방 확인'); } catch { /* 무시 */ }
+  await readOnce(fb, path(ROOMS, code));
   try {
     await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
       if (!cur) return;
@@ -515,8 +625,8 @@ export async function readRoom(code) {
   const fb = await rt();
   if (!fb) return null;
   try {
-    const snap = await withTimeout(fb.dbMod.get(fb.dbMod.ref(fb.rtdb, path(ROOMS, code))), undefined, '방 읽기');
-    return snap.val();
+    const read = await readOnce(fb, path(ROOMS, code));
+    return read.val;
   } catch {
     return null;
   }

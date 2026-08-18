@@ -119,7 +119,7 @@ service cloud.firestore {
       ".read": "auth != null",
       ".indexOn": ["open"],
       "$code": {
-        ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && data.child('state').val() == 'waiting'))",
+        ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && data.child('state').val() == 'waiting') || (!newData.exists() && !data.child('players').hasChildren()))",
 
         "code":       { ".validate": "newData.val() == $code" },
         "isPrivate":  { ".validate": "newData.isBoolean() && (!data.exists() || newData.val() == data.val())" },
@@ -213,6 +213,11 @@ service cloud.firestore {
 - **`seed` · `createdAt` · `isPrivate` 는 생성 후 불변**. 시드가 바뀌면 사람마다 다른 계단이 나와
   승부가 성립하지 않는다.
 - `rooms/.indexOn: ["open"]` 은 자동 매칭 쿼리(`open == true`)용. 없으면 전체를 훑고 경고가 뜬다.
+
+- **참가자가 0명인 방은 누구나 지울 수 있다** (`!newData.exists() && !data.child('players').hasChildren()`).
+  연결이 끊기면 `onDisconnect` 가 그 사람을 방에서 빼는데, 마지막 한 명이 나가면 **참가자 0명짜리
+  빈 방**이 남는다. 그 방은 방 멤버가 아무도 없으니 예전 규칙으로는 **누구도 지울 수 없었다** —
+  영원히 쌓여서 자동 매칭이 훑는 12칸을 갉아먹는다. 지우는 것 말고는 아무것도 못 하므로 안전하다.
 
 **남아 있는 한계 (알고 두는 것)**
 

@@ -20,6 +20,12 @@ import Lobby from '../Lobby.js';
 export default function MultiMenu(nav) {
   let busy = false;
 
+  /**
+   * 화면을 여는 순간 RTDB 연결을 미리 잡아 둔다. 누를 때 붙기 시작하면
+   * 스캔이 빈 목록을 보고 새 방을 파 버린다 (multiplayer.js prewarm 주석).
+   */
+  Room.prewarm();
+
   /** 방을 잡는 동안 두 번 눌리면 방이 두 개 생긴다 */
   async function guard(fn) {
     if (busy) return;

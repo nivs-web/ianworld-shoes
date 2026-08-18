@@ -63,7 +63,33 @@ async function boot() {
    * `selftest()` 는 원격 저장이 어디서 막히는지 콘솔에 찍어 준다 —
    * 모든 원격 쓰기가 실패를 삼키기 때문에 이게 없으면 원인을 알 길이 없다.
    */
-  window.__dbg = { Scene, Audio, Sfx, Bgm, nav, profile: getProfile, screens: { Lobby, SplashLogin }, selftest };
+  /**
+   * 멀티는 실패가 **조용하다** — 방이 없는 건지, 연결이 안 된 건지, 규칙에 막힌 건지
+   * 화면만 봐서는 구별이 안 된다. 실제로 그 구별이 안 돼서 며칠을 헤맸다.
+   * 그래서 콘솔에서 직접 찔러 볼 수 있게 열어 둔다: `await __dbg.multi.diagnose()`
+   */
+  window.__dbg = {
+    Scene, Audio, Sfx, Bgm, nav, profile: getProfile, screens: { Lobby, SplashLogin }, selftest,
+    multi: {
+      raw: () => import('./services/multiplayer.js'),
+      async diagnose(code) {
+        const M = await import('./services/multiplayer.js');
+        const fb = await (await import('./services/firebase.js')).getRtdb();
+        const out = { rtdb: !!fb };
+        if (!fb) return out;
+        out.연결 = await M.waitConnected({ ...fb, uid: '' });
+        out.방목록 = (await M.scanRooms()).map((r) => ({
+          code: r.code, state: r.state, open: r.open,
+          인원: Object.keys(r.players ?? {}).length, host: String(r.hostUid).slice(0, 8),
+        }));
+        if (code) {
+          out.방읽기 = await M.readRoom(code);
+          out.입장결과 = await M.joinRoom(code);
+        }
+        return out;
+      },
+    },
+  };
 
   hideBoot();
 
