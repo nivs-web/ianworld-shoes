@@ -105,6 +105,33 @@ const host = room.hostUid['.validate'] ?? '';
 if (host.includes('newData.val() == data.val()')) ok('hostUid — 값이 그대로면 통과 (입장·이탈·결과확정이 산다)');
 else bad('hostUid — 값이 그대로여도 거부된다. 방장이 아니면 입장 자체가 막힌다');
 
+console.log('\n5) 다음 판 준비(resetRoom)가 규칙에 막히지 않는가 (2026-08-18)');
+/**
+ * `resetRoom` 은 **남의 칸까지** 초기값으로 되돌린다. 규칙이 "내 것이거나 값이 그대로"
+ * 뿐이면, 상대가 한 계단이라도 올랐을 때 리셋이 통째로 거부된다 → 같은 방에서
+ * 두 번째 판을 영영 못 한다. (§9-0-19)
+ */
+const RESET_OK = {
+  ready: 'newData.val() == false',
+  stairs: 'newData.val() == 0',
+  shoesFound: 'newData.val() == 0',
+  alive: 'newData.val() == true',
+};
+for (const [k, init] of Object.entries(RESET_OK)) {
+  const v = room.players.$uid[k]?.['.validate'] ?? '';
+  const waiting = v.includes("child('state').val() == 'waiting'");
+  if (v.includes(init) && waiting) ok(`참가자.${k} — 방이 waiting 으로 갈 때 초기값으로 되돌릴 수 있다`);
+  else bad(`참가자.${k} — 남의 값을 초기화 못 한다. '방에 남기'가 401 로 죽는다`);
+}
+
+console.log('\n6) 참가자 노드가 객체인지 검사하는가 (가짜 인원 방지)');
+const uidNode = room.players.$uid['.validate'] ?? '';
+if (uidNode.includes('hasChildren') && uidNode.includes('nickname')) {
+  ok('참가자 노드 — 원시값(players/남의uid: true)으로 인원을 부풀릴 수 없다');
+} else {
+  bad('참가자 노드 — 원시값을 쓰면 필드 검증이 전부 건너뛰어진다 (가짜 만원 방 가능)');
+}
+
 console.log('');
 if (fails) { console.error(`규칙 검사 실패 — ${fails}건`); process.exit(1); }
 console.log('규칙과 클라이언트가 일치한다');

@@ -22,12 +22,14 @@
 
         "players": {
           "$uid": {
+            ".validate": "newData.hasChildren(['nickname', 'characterId', 'ready', 'stairs', 'shoesFound', 'alive', 'joinedAt']) && ($uid == auth.uid || data.exists())",
+
             "nickname":    { ".validate": "newData.isString() && newData.val().length <= 16 && ($uid == auth.uid || newData.val() == data.val())" },
             "characterId": { ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())" },
-            "ready":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
-            "stairs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val())" },
-            "shoesFound":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val())" },
-            "alive":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
+            "ready":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == false && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
+            "stairs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
+            "shoesFound":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
+            "alive":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == true && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
             "joinedAt":    { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "reachedAt":   { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "waiting":     { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },

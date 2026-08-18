@@ -471,5 +471,33 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('(대조) 안 걸러내면 대기자가 꼴찌로 낀다', 잘못.length, 3);
 }
 
+// ── 18) 결과 화면이 신발을 흘리지 않는가 · 목록 줄이 안 터지는가 (2026-08-18) ──
+{
+  console.log('\n18) 결과 화면 · 방 목록 (2026-08-18)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+
+  /**
+   * `resetRoom` 은 `result` 를 통째로 지운다 — 그 안에 패자가 내놓은 `given` 이 있다.
+   * 승자가 그걸 걷기 전에 '방에 남기'를 누르면 **신발이 증발한다**(패자 지갑에서는 이미 빠졌다).
+   */
+  const mr = read('../src/screens/multi/MultiResult.js');
+  const stay = mr.slice(mr.indexOf('S.stayInRoom'));
+  const settleAt = stay.indexOf('settleRoom(');
+  const resetAt = stay.indexOf('resetRoom(');
+  eq("'방에 남기' 는 지우기 전에 정산을 한 번 더 돈다",
+     settleAt >= 0 && settleAt < resetAt, true);
+
+  /**
+   * `.pbtn` 은 로비용이라 `width: 100%` 다. 목록 행에서 폭을 안 되돌리면 버튼이
+   * 행 전체를 먹고, 이름이 한 글자씩 세로로 접히며 행이 화면 밖으로 나간다.
+   */
+  const css = read('../src/styles/screens.css');
+  const rowBtn = (css.match(/\.room-row \.pbtn \{[^}]*\}/s) ?? [''])[0];
+  const roomName = (css.match(/\.room-name \{[^}]*\}/s) ?? [''])[0];
+  eq('목록 버튼이 width 를 되돌린다', /width:\s*auto/.test(rowBtn), true);
+  eq('방 이름이 줄어들 수 있다 (min-width: 0)', /min-width:\s*0/.test(roomName), true);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

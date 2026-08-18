@@ -704,9 +704,21 @@
   color: var(--c-text-light); background: var(--c-line);
 }
 .room-row.playing .room-state { background: var(--c-accent-dark); }
-.room-name { flex: 1 1 auto; color: var(--c-text); font-size: 13px; }
+.room-name {
+  /* ★ min-width:0 이 없으면 flex 항목이 안 줄어든다 — 이름이 한 글자씩 세로로 접힌다 */
+  flex: 1 1 auto; min-width: 0; color: var(--c-text); font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .room-full { flex: 0 0 auto; color: var(--c-line); font-size: 12px; padding: 0 6px; }
-.room-row .pbtn { flex: 0 0 auto; padding: 3px 10px; font-size: 12px; margin: 0; }
+/* ★ **버튼 폭을 반드시 되돌린다.** (2026-08-18)
+   `.pbtn` 은 로비용이라 `width: 100%` 다. 목록 행에 그대로 들어가면 버튼 하나가
+   행 전체 폭을 먹고 `flex: 0 0 auto` 라 줄지도 않아서, 방 이름은 23px 로 뭉개지고
+   행은 화면 밖으로 1500px 넘게 삐져나갔다(가로 스크롤바가 생긴다). 폰에서는
+   목록이 통째로 깨져 보인다. 폭 지정이 빠진 것이 원인이었다. */
+.room-row .pbtn {
+  flex: 0 0 auto; width: auto; padding: 3px 10px; font-size: 12px; margin: 0;
+  white-space: nowrap;
+}
 
 .player-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
 .player-row { display: flex; align-items: center; gap: 6px; padding: 3px 4px; }

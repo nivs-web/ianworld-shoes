@@ -93,6 +93,26 @@ service cloud.firestore {
 >
 > **(1) 하위 `.write` 는 아예 평가되지 않았다.** RTDB 는 **상위에서 허용하면 하위 `.write` 를
 > 보지 않는다**(shallower rules override deeper). `$code` 에 쓰기를 열어 뒀으므로
+### 다음 판 준비는 남의 칸도 **0으로만** 되돌릴 수 있다 (2026-08-18)
+
+`resetRoom` 은 방 전체를 한 번에 되돌린다 — 모두의 `stairs·shoesFound·ready·alive` 를
+초기값으로 적는다. 그런데 필드 규칙이 `$uid == auth.uid || 값이 그대로` 뿐이라,
+**상대가 한 계단이라도 올랐으면 그 update 가 통째로 거부됐다**(401). 상대가 한 판도
+안 뛴 방에서만 우연히 통과해서 테스트에서 안 보였다. 증상은 '방에 남기'를 눌러도
+"네트워크 오류" 토스트만 뜨고 **같은 방에서 두 번째 판을 영영 못 하는 것.**
+
+그래서 남의 칸이라도 **초기값으로 되돌리는 것만** 허용한다 — 그것도 같은 쓰기에서
+방이 `waiting` 으로 돌아갈 때만(`newData.parent().parent().parent().child('state')`).
+점수를 **올려** 주는 조작은 여전히 불가능하고, 남의 진행도를 지우려면 판 자체를
+끝내야 하므로 이득이 없다.
+
+### `players/$uid` 는 **객체여야 한다** (2026-08-18)
+
+`players/{남의uid}: true` 처럼 **원시값**을 쓰면 필드 규칙이 하나도 안 걸린다
+(자식이 없으니 평가할 게 없다). 실제로 REST 로 넣어 봤더니 200 이 떨어졌고,
+`Object.keys(players).length` 로 세는 인원이 늘어나 **방을 가짜로 만원**으로 만들 수 있었다.
+그래서 `$uid` 노드 자체에 필수 자식 검사를 걸었다.
+
 > `players/$uid/.write`(본인만) 와 `result/given/$uid/.write`(패자 본인만) 두 방어선은
 > 방에 들어온 사람에게 **존재하지 않았다.** 방 하나 만들고 콘솔에서
 > `set(ref(db,'rooms/<code>'), {...})` 한 줄이면 가짜 참가자를 넣고 `result.given` 에
@@ -137,12 +157,14 @@ service cloud.firestore {
 
         "players": {
           "$uid": {
+            ".validate": "newData.hasChildren(['nickname', 'characterId', 'ready', 'stairs', 'shoesFound', 'alive', 'joinedAt']) && ($uid == auth.uid || data.exists())",
+
             "nickname":    { ".validate": "newData.isString() && newData.val().length <= 16 && ($uid == auth.uid || newData.val() == data.val())" },
             "characterId": { ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())" },
-            "ready":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
-            "stairs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val())" },
-            "shoesFound":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val())" },
-            "alive":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
+            "ready":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == false && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
+            "stairs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
+            "shoesFound":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
+            "alive":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == true && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
             "joinedAt":    { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "reachedAt":   { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "waiting":     { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },

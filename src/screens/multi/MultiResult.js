@@ -116,6 +116,20 @@ export default function MultiResult(nav, params = {}) {
           if (staying) return;
           staying = true;
           nav.refresh();
+          /**
+           * ★ **되돌리기 전에 한 번 더 걷는다.** (2026-08-18)
+           *
+           * `resetRoom` 은 `result` 를 통째로 지운다 — 그 안에 패자가 내놓은
+           * `given` 이 들어 있다. 화면이 뜬 **직후**에 정산이 한 번 돌지만, 패자가
+           * 그 뒤에 신발을 올리면(보통 몇 초 늦는다) 승자가 '방에 남기'를 누르는
+           * 순간 **아직 아무도 안 받은 신발이 지워진다.** 패자 지갑에서는 이미
+           * 빠져나갔으므로 그 신발은 게임에서 증발한다. 실제로 재현했다:
+           * `given=[9]` 를 올린 직후 '방에 남기' → 승자 보유량 987 그대로, `result` 는 null.
+           *
+           * 지우기 직전에 다시 걷으면 이 창이 닫힌다. 리셋 뒤에 올라오는 신발은
+           * `settleRoom` 이 `rankings` 없이는 아무것도 하지 않으므로 패자도 안 낸다.
+           */
+          try { await settleRoom(code); } catch { /* 못 걷어도 리셋은 진행한다 */ }
           const ok = await Room.resetRoom(code).catch(() => false);
           staying = false;
           if (gone) return;
