@@ -65,16 +65,18 @@ const RANK_X = RACE_CX - (CELL >> 1) - 3;
 /** 1등 말풍선 */
 const BUBBLE = { w: 38, h: 24 };
 
-/** 판돈 줄 — 조작 버튼(266~314) 위 */
+/** 판돈 줄 — **조작 버튼 위**(266~314). 7px 글자라 252~259 를 차지한다 */
 const POT_Y = 252;
 /** 알림은 판돈 바로 위에서 위로 쌓인다 */
 const TICKER_Y = 232;
+const LINE_H = 9;
 /**
  * 알림은 **레이스 게이지를 피해** 왼쪽에만 쓴다.
  * 게이지는 오른쪽 세로 기둥(150~178)을 위아래로 통째로 쓰기 때문에,
  * 가운데 정렬로 두면 글자가 눈금·얼굴 위로 올라탄다(미리보기로 확인).
  */
-const TICKER_W = RACE_CX - (CELL >> 1) - 6;
+// 알림은 오른쪽 레이스 게이지(150~178)를 피해 왼쪽에 쓴다
+const TICKER_W = RACE_CX - (CELL >> 1) - 4;
 const TICKER_CX = TICKER_W >> 1;
 
 /** 상대 캐릭터 스프라이트는 내 것과 다르다 — 처음 보이는 순간에 받아 둔다 */
@@ -221,13 +223,11 @@ function drawRaceGauge(scene, list) {
     tags.push(drawRacer({
       charId: o.characterId, slot: o.slot, revives: o.revives | 0,
       cy, dx: -비켜서기(cy), alive: o.alive !== false, rank: rank[o.id],
-      countdown: reviveLeft(o, now),
-    }));
+      countdown: reviveLeft(o, now) }));
   }
   tags.push(drawRacer({
     charId: scene.charId, slot: scene.mySlot, revives: scene.myRevives | 0,
-    cy: RACE_CY, alive: true, rank: rank[scene.multi?.myUid], isMe: true,
-  }));
+    cy: RACE_CY, alive: true, rank: rank[scene.multi?.myUid], isMe: true }));
   /**
    * 등수는 **얼굴을 다 그린 뒤에** 찍는다. 가까이 붙은 사람들은 서로 비켜서 있어서
    * 먼저 찍으면 옆 사람 상자에 깔린다(미리보기로 확인).
@@ -339,8 +339,7 @@ function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, count
   // 남은 부활 시간 — 얼굴 위에 크게
   if (countdown != null) {
     textCached(String(countdown), x + (CELL >> 1), y + 6, {
-      color: PAL.text, outline: PAL.textShadow, align: 'center', mono: true, scale: 1,
-    });
+      color: PAL.text, outline: PAL.textShadow, align: 'center', mono: true, scale: 1 });
   }
 
   return { rank, x, y, dx };
@@ -368,8 +367,7 @@ function drawRankTag(rank, x, y, 겹침) {
     textCached(label, px, py, { color: '#FFFFFF', outline: PAL.textShadow, align, scale: 1 });
   } else {
     textCached(label, px, py, {
-      color: PAL.gaugeWarn, outline: PAL.textShadow, align, small: true, scale: 1,
-    });
+      color: PAL.gaugeWarn, outline: PAL.textShadow, align, small: true, scale: 1 });
   }
 }
 
@@ -456,8 +454,7 @@ function drawPot(scene) {
   if (scene.potRoom !== room) { scene.potRoom = room; scene.potText = S.potLine(potShoes(room)); }
   if (!scene.potText) return;
   textCached(scene.potText, CENTER_X, POT_Y, {
-    color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow,
-  });
+    color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow });
 }
 
 /**
@@ -479,9 +476,8 @@ function drawTicker(scene) {
     lines.push(...t.lines);
   }
   lines.slice(-3).forEach((line, i, arr) => {
-    textCached(line, TICKER_CX, TICKER_Y - (arr.length - 1 - i) * 9, {
-      color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow,
-    });
+    textCached(line, TICKER_CX, TICKER_Y - (arr.length - 1 - i) * LINE_H, {
+      color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow });
   });
 }
 
@@ -510,8 +506,7 @@ function drawCountdown(scene) {
    */
   // 캐시를 태운다 — 배율 6 + 외곽선이면 글자 하나가 프레임당 fillRect 수백 번이다(§9-0-25)
   textCached(n > 0 ? String(n) : S.go, VIEW_W >> 1, 130, {
-    scale: n > 0 ? 6 : 4, color: PAL.text, outline: PAL.textShadow, align: 'center', mono: true,
-  });
+    scale: n > 0 ? 6 : 4, color: PAL.text, outline: PAL.textShadow, align: 'center', mono: true });
 }
 
 /**

@@ -213,13 +213,15 @@ export class GameScene {
       for (const o of next) {
         const was = this.opponents.find((p) => p.id === o.id);
         if (!was) continue;
+        // 이름 대신 **자리 색**으로 부른다 — 인게임에는 아이디가 없고, 색이 곧 신원이다
+        const color = S.slotColorName[o.slot] ?? S.slotColorName[0];
         if ((o.revives ?? 0) > (was.revives ?? 0)) {
-          this.notify(S.someoneRevived(o.nickname ?? '', MULTI.reviveCost));
+          this.notify(S.someoneRevived(color));
           Sfx.play('sfx_revive');
         } else if (was.alive !== false && o.alive === false) {
-          this.notify(S.someoneFell(o.nickname ?? ''));
+          this.notify(S.someoneFell(color));
         } else if (!was.out && o.out) {
-          this.notify(S.someoneOut(o.nickname ?? ''));
+          this.notify(S.someoneOut(color));
         }
       }
       this.opponents = next;

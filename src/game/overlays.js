@@ -72,8 +72,7 @@ export class PauseOverlay {
             if (!this.confirmExit) { this.confirmExit = true; Sfx.play('sfx_menu_move'); return; }
             Sfx.play('sfx_menu_back');
             this.game.leave('home');
-          },
-        },
+          } },
       ];
     }
     return [
@@ -120,16 +119,19 @@ export class PauseOverlay {
   render() {
     dim();
     const p = PAUSE.panel;
-    panelBox(p.x, p.y, p.w, p.h);
+    /**
+     * 패널 높이는 **항목 수에 맞춘다.** 멀티는 [재개 · 기권하고 나가기] 두 개뿐이라
+     * 고정 높이로 두면 아래가 텅 빈다 (미리보기로 확인, 2026-08-19).
+     */
+    const 마지막 = PAUSE.btnY[this.items.length - 1] + PAUSE.btnH;
+    panelBox(p.x, p.y, p.w, 마지막 + 12 - p.y);
     text(S.paused, PAUSE.title.x, PAUSE.title.y, {
-      color: PAL.textShadow, scale: PAUSE.title.scale, align: 'center',
-    });
+      color: PAL.textShadow, scale: PAUSE.title.scale, align: 'center' });
     this.items.forEach((it, i) => {
       const y = PAUSE.btnY[i];
       button(PAUSE.btnX, y, PAUSE.btnW, PAUSE.btnH, i === this.sel);
       text(it.label, PAUSE.btnX + (PAUSE.btnW >> 1), y + ((PAUSE.btnH - GLYPH_H) >> 1), {
-        color: PAL.text, scale: 1, align: 'center',
-      });
+        color: PAL.text, scale: 1, align: 'center' });
     });
   }
 }
@@ -271,16 +273,14 @@ export class GameOverOverlay {
     dim();
 
     text(S.gameOver, GAMEOVER.title.x, GAMEOVER.title.y, {
-      color: PAL.goRed, outline: '#3A0A0A', scale: GAMEOVER.title.scale, align: 'center',
-    });
+      color: PAL.goRed, outline: '#3A0A0A', scale: GAMEOVER.title.scale, align: 'center' });
 
     const p = GAMEOVER.panel;
     panelBox(p.x, p.y, p.w, p.h);
 
     text(S.score, 90, GAMEOVER.label.y, { color: PAL.accent, scale: 1, align: 'center' });
     text(String(this.game.floor), GAMEOVER.score.x, GAMEOVER.score.y, {
-      color: '#2E7D4F', outline: '#123020', scale: GAMEOVER.score.scale, align: 'center', mono: true,
-    });
+      color: '#2E7D4F', outline: '#123020', scale: GAMEOVER.score.scale, align: 'center', mono: true });
 
     // BEST 바
     const bh = GAMEOVER.best.barH;
@@ -288,13 +288,11 @@ export class GameOverOverlay {
     strokeRect(p.x + 12, GAMEOVER.best.y - 4, p.w - 24, bh, PAL.line);
     text(S.best, p.x + 18, GAMEOVER.best.y, { color: PAL.textShadow });
     text(String(this.best), p.x + p.w - 18, GAMEOVER.best.y, {
-      color: PAL.goRed, align: 'right',
-    });
+      color: PAL.goRed, align: 'right' });
 
     // 찾은 신발 요약
     text(S.shoesFound(this.game.shoesFound), 90, GAMEOVER.shoes.y, {
-      color: PAL.textShadow, align: 'center',
-    });
+      color: PAL.textShadow, align: 'center' });
 
     if (this.delay <= 0) {
       for (const [b, label, on] of [
@@ -455,7 +453,7 @@ export class MultiDeathOverlay {
     // 판돈은 이 화면의 핵심 정보다 — 얼마가 걸려 있는지 알아야 걸지 말지 정한다
     text(S.potLine(potShoes(this.game.room)), 90, 150, { color: PAL.text, align: 'center', small: true });
     const have = getProfile().shoesOwned ?? 0;
-    text(`${have}`, 90, 160, { color: PAL.textShadow, align: 'center', small: true, mono: true });
+    text(S.myShoes(have), 90, 160, { color: PAL.textShadow, align: 'center', small: true });
 
     const 가능 = canRevive(this.me) && have >= MULTI.reviveCost && !this.busy;
     button(16, 168, 148, 34, 가능);

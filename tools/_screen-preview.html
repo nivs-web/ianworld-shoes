@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>인게임 화면 미리보기 (진단 전용)</title>
+<style>
+ body{margin:0;background:#1b1b22;color:#ddd;font:12px monospace;display:flex;flex-wrap:wrap;gap:8px;padding:8px}
+ figure{margin:0}figcaption{text-align:center;padding:2px}
+ canvas{image-rendering:pixelated;width:180px;height:320px;background:#243a52}
+</style></head><body>
+<script type="module">
+/**
+ * 캔버스 화면을 한 장에 모아 찍는다 — 폰트를 바꾸면 **모든 줄의 자리가 틀어지므로**
+ * 눈으로 한 번에 봐야 한다. 실기기 두 대가 필요한 화면(멀티)까지 여기서 확인한다.
+ */
+import { initCanvas, clear, getCtx } from '/src/core/canvas.js';
+import { loadAll, img } from '/src/core/assets.js';
+import { renderHud } from '/src/game/hud.js';
+import { multiHud } from '/src/game/multiHud.js';
+import { PauseOverlay, GameOverOverlay, ReviveOverlay, MultiDeathOverlay } from '/src/game/overlays.js';
+import S from '/src/config/strings.ko.js';
+
+const chars = ['ian', 'denny', 'rose', 'tony'];
+await loadAll([
+  ...chars.flatMap((id) => [
+    { key: `${id}_face`, url: `/assets/characters/${id}_face.png` },
+    { key: `${id}_front`, url: `/assets/characters/${id}_front.png` },
+  ]),
+  { key: 'bubble_first', url: '/assets/ui/bubble_first.png' },
+  { key: 'gauge_frame', url: '/assets/ui/gauge_frame.png' },
+  { key: 'btn_pause', url: '/assets/ui/btn_pause.png' },
+  { key: 'shoe_icon', url: '/assets/shoes/shoe_icon.png' },
+  { key: 'btn_turn', url: '/assets/ui/btn_turn.png' },
+  { key: 'btn_up', url: '/assets/ui/btn_up.png' },
+]).catch((e) => console.warn(e));
+
+const now = Date.now();
+const room = { players: {
+  a: { stairs: 128, alive: true, revives: 2 },
+  b: { stairs: 300, alive: true, revives: 1 },
+  c: { stairs: 40, alive: false, revives: 4, deadAt: now - 3000 },
+}, result: { given: { a: new Array(40).fill(1), b: new Array(24).fill(1) } } };
+
+const scene = {
+  floor: 128, charId: 'ian', mySlot: 0, myRevives: 2, multi: { myUid: 'a' },
+  countdownMs: 0, shoesFound: 7, revives: 2, gauge: 700, controlMode: 1, room,
+  stairs: { worldX: (f) => f * 30, nextDir: () => 1, ensure() {} },
+  opponents: [
+    { id: 'b', characterId: 'denny', slot: 1, stairs: 300, revives: 1, alive: true },
+    { id: 'c', characterId: 'rose', slot: 2, stairs: 40, revives: 4, alive: false, deadAt: now - 3000 },
+  ],
+  ticker: [{ msg: S.someoneRevived(S.slotColorName[1]), until: now + 9e5 }],
+  best: 432, over: false, leaving: false,
+};
+
+const panels = [
+  ['인게임 HUD + 멀티 게이지', () => { renderHud(scene); multiHud(scene); }],
+  ['카운트다운', () => { renderHud(scene); multiHud({ ...scene, countdownMs: 2400 }); }],
+  ['일시정지 (싱글)', () => { renderHud(scene); new PauseOverlay({ ...scene, multi: null }).render(); }],
+  ['일시정지 (멀티)', () => { renderHud(scene); new PauseOverlay(scene).render(); }],
+  ['게임오버', () => { renderHud(scene); const o = new GameOverOverlay(scene); o.delay = 0; o.best = 432; o.render(); }],
+  ['부활 (싱글)', () => { renderHud(scene); const o = new ReviveOverlay({ ...scene, revives: 3 }); o.timer = 7000; o.render(); }],
+  ['멀티 사망', () => { renderHud(scene); multiHud(scene); new MultiDeathOverlay(scene).render(); }],
+];
+
+for (const [name, draw] of panels) {
+  const fig = document.createElement('figure');
+  const cv = document.createElement('canvas');
+  cv.id = 'game'; cv.width = 180; cv.height = 320;
+  fig.append(cv, Object.assign(document.createElement('figcaption'), { textContent: name }));
+  document.body.append(fig);
+  initCanvas();
+  clear('#243a52');
+  try { draw(); } catch (e) { console.error(name, e); }
+  cv.removeAttribute('id');
+}
+window.__ready = true;
+</script></body></html>

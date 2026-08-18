@@ -6,7 +6,6 @@
 <script type="module">
 import { initCanvas, clear, getCanvas } from '/src/core/canvas.js';
 import { loadAll } from '/src/core/assets.js';
-import { loadSmallFont } from '/src/core/pixelfont.js';
 import { multiHud } from '/src/game/multiHud.js';
 
 initCanvas();
@@ -15,7 +14,6 @@ await loadAll(chars.flatMap((id) => [
   { key: `${id}_face`, url: `/assets/characters/${id}_face.png` },
   { key: `${id}_front`, url: `/assets/characters/${id}_front.png` },
 ]).concat([{ key: 'bubble_first', url: '/assets/ui/bubble_first.png' }])).catch(() => {});
-await loadSmallFont().catch(() => {});
 
 const now = Date.now();
 const scene = {

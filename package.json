@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "npm run assets:font && vite",
     "//build": "폰트를 먼저 굽는다. 문구를 고치고 다시 굽는 걸 잊으면 그 글자만 '?'로 나온다 — 실제로 '맵바꾸기'가 '?바꾸기'로 배포될 뻔했다. 아이콘도 여기서 굽는다: 파일이 하나라도 없으면 크롬이 설치 배너를 아예 안 띄운다.",
-    "build": "npm run assets:font && npm run assets:icons && vite build",
+    "build": "npm run assets:font && npm run assets:bubble && npm run assets:icons && vite build",
     "preview": "vite preview",
     "assets": "npm run assets:chars && npm run assets:shoes && npm run assets:bg && npm run assets:ui && npm run assets:font && npm run assets:icons",
     "assets:chars": "node tools/slice-characters.mjs && node tools/build-faces.mjs",
@@ -26,12 +26,14 @@
     "qa:rules": "node tools/_rules-qa.mjs",
     "sim:multi": "node --import ./tools/_sim-loader.mjs tools/_multi-sim.mjs",
     "preview:hud": "node tools/_hud-preview.mjs",
-    "assets:bubble": "node tools/build-bubble.mjs"
+    "assets:bubble": "node tools/build-bubble.mjs",
+    "preview:screens": "node tools/_screen-preview.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"
   },
   "devDependencies": {
+    "@kfonts/neodgm": "^0.5.0",
     "galmuri": "^2.40.3",
     "opentype.js": "^2.0.0",
     "playwright": "^1.49.1",

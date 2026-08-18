@@ -12,17 +12,22 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import sharp from 'sharp';
+import S from '../src/config/strings.ko.js';
+
+/** 문구는 strings.ko.js 가 유일한 출처 — 폰트도 거기서 글자를 긁어 굽는다 */
+const TEXT = S.firstBubble;
 
 const SRC = 'etc/1등이닷.png';
 const OUT = 'public/assets/ui/bubble_first.png';
-/** 말풍선 크기 (논리 픽셀) — 글자 폭 31 + 좌우 여백 */
+/** 말풍선 크기 (논리 픽셀) — 갈무리7 로 '1등이닷' = 28도트 + 좌우 여백 */
 const W = 38;
 const H = 24;
 /** 꼬리가 차지하는 아래쪽 높이 */
 const TAIL_H = 6;
 const INK = [33, 20, 37];
-const TEXT = '1등이닷';
 
+
+// 인게임 알림과 **같은 7px 폰트**로 굽는다 — 말풍선만 다른 글씨체면 눈에 띈다
 const font = JSON.parse(readFileSync('src/data/font7.generated.json', 'utf8'));
 
 const { data: sd, info } = await sharp(SRC).ensureAlpha().raw().toBuffer({ resolveWithObject: true });

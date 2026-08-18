@@ -23,7 +23,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = resolve(ROOT, 'node_modules/galmuri/dist/Galmuri11-Bold.ttf');
 const OUT = resolve(ROOT, 'src/data/font.generated.json');
 
-/** 갈무리11 = 11px 몸통. 베이스라인 기준 위로 11px가 글리프 상자다. */
+/**
+ * 갈무리11 = 11px 몸통. 베이스라인 기준 위로 11px가 글리프 상자다.
+ *
+ * ★ **Neo둥근모 16px 로 갈아탔다가 되돌렸다.** (2026-08-19)
+ * 16px 는 또렷하지만 **도트 게임의 아기자기한 맛이 사라진다** — 글자가 화면을 차지하는
+ * 비중이 커서 계단·캐릭터보다 UI가 먼저 눈에 들어왔다. 인게임은 갈무리(11px + 7px)로
+ * 되돌리고, **로비 등 DOM 화면만 Neo둥근모**를 쓴다(reset.css).
+ */
 const H = 11;
 const ASCII =
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ' +

@@ -1,3 +1,18 @@
+/**
+ * ★ **DOM 화면도 인게임과 같은 폰트를 쓴다.** (2026-08-19)
+ *
+ * 예전에는 `Courier New` 라 한글이 시스템 고딕으로 떨어졌다 — 캔버스(도트)와
+ * 로비(안티앨리어싱 고딕)가 완전히 다른 게임처럼 보였다.
+ * Neo둥근모는 인게임 비트맵 폰트의 원본과 **같은 서체**다(OFL-1.1).
+ * 글자 크기는 16의 배수로 두는 게 가장 또렷하다.
+ */
+@font-face {
+  font-family: 'Neo둥근모';
+  src: url('/assets/fonts/neodgm.woff2') format('woff2');
+  font-display: swap;
+  font-weight: 400;
+}
+
 /* 모바일 세로 전용 리셋. 상하 여백 없이 화면을 꽉 채운다. (기획서 §7-1) */
 
 *,
@@ -22,7 +37,7 @@ body {
   overscroll-behavior: none;
   background: #0d0a08;
   color: #fff;
-  font-family: 'Courier New', monospace;
+  font-family: 'Neo둥근모', 'Courier New', monospace;
   /* 노치/홈바 영역까지 사용하되 안전영역은 변수로 노출 */
   padding: 0;
 }

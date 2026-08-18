@@ -698,6 +698,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('레이스 게이지', mh, 'function drawRaceGauge');
   has('판돈 표시', mh, 'S.potLine');
   has('작은 폰트 사용', mh, 'small: true');
+  has('매 프레임 글자는 캐시본', mh, 'textCached(');
   eq('규칙에 revives·deadAt·out 이 있다',
      ['revives', 'deadAt', 'out'].every((k) => !!rules.players.$uid[k]), true);
   eq('판돈 상한 220', rules.result.given.$uid['.validate'].includes('220'), true);
@@ -883,7 +884,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('상대 층수 글자도 없다', mh.includes('multiOpponentStat'), false);
 
   // ③ 레이스 게이지 — 나는 정중앙 고정, 한 칸 = 계단 10칸
-  has('내 자리는 상수 (움직이지 않는다)', mh, 'cy: RACE_CY, alive: true, rank: rank[scene.multi?.myUid], isMe: true,');
+  has('내 자리는 상수 (움직이지 않는다)', mh, 'cy: RACE_CY, alive: true, rank: rank[scene.multi?.myUid], isMe: true');
   has('눈금은 나와의 차이', mh, 'const 칸 = Math.round((floor - 나) / MULTI.raceStairsPerTick);');
   has('끝을 넘으면 붙는다', mh, 'Math.max(-MULTI.raceTicks, Math.min(MULTI.raceTicks, 칸))');
   eq('위아래 10칸', MULTI.raceTicks, 10);
@@ -968,6 +969,43 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('말풍선 에셋', mh, "url: '/assets/ui/bubble_first.png'");
   eq('말풍선 파일이 있다',
     fs.existsSync(new URL('../public/assets/ui/bubble_first.png', import.meta.url)), true);
+}
+
+// ── 27) 폰트 (2026-08-19, 되돌림) ──
+/**
+ * Neo둥근모 16px 한 벌로 바꿨다가 **인게임만 갈무리로 되돌렸다** — 또렷하긴 한데
+ * 도트 게임의 아기자기함이 사라졌다는 판단. 로비 등 DOM 화면은 Neo둥근모를 유지한다.
+ * 되돌린 상태가 다시 흔들리지 않게 양쪽을 못 박는다.
+ */
+{
+  console.log('\n27) 폰트 — 인게임 갈무리 / DOM Neo둥근모');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const F = JSON.parse(read('../src/data/font.generated.json'));
+  const F7 = JSON.parse(read('../src/data/font7.generated.json'));
+  const S = (await import('../src/config/strings.ko.js')).default;
+  const mh = read('../src/game/multiHud.js');
+  const css = read('../src/styles/reset.css');
+
+  eq('인게임 큰 폰트는 갈무리11', [F.h, F.source.includes('Galmuri11')], [11, true]);
+  eq('인게임 작은 폰트는 갈무리7 + 상용한글', [F7.h, Object.keys(F7.glyphs).length > 2000], [7, true]);
+  has('작은 폰트를 멀티에서 받는다', mh, 'if (!smallReady()) loadSmallFont();');
+  has('판돈·알림은 작은 폰트', mh, 'small: true');
+  has('DOM 화면은 Neo둥근모', css, "font-family: 'Neo둥근모'");
+
+  /** 7px 폰트 기준 글자 폭 — 인게임 한 줄(180)에 들어가는지 */
+  const width7 = (t) =>
+    [...String(t).toUpperCase()].reduce((a, c) => a + ((F7.glyphs[c]?.w ?? F7.glyphs['?'].w) + F7.tracking), 0);
+  for (const [name, t] of [
+    ['판돈', S.potLine(484)],
+    ['부활 알림', S.someoneRevived('노란색')],
+    ['낙사 알림', S.someoneFell('빨강색')],
+    ['포기 알림', S.someoneOut('초록색')],
+  ]) {
+    const w = width7(t);
+    eq(`${name} 한 줄에 들어간다 (${w}px)`, w <= 180, true);
+  }
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
