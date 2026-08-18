@@ -561,7 +561,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
        { uid: 'a', stairs: 3, alive: false, reachedAt: 200 },
        { uid: 'b', stairs: 3, alive: false, reachedAt: 100 },
      ]), ['b', 'a']);
-  has('사망 보고가 서버 보정 시각을 쓴다', mp, 'reachedAt: nowOn(fb, offset)');
+  has('사망 보고가 서버 보정 시각을 쓴다', mp, 'const at = nowOn(fb, offset);');
 
   // 9) 새 배포 감지
   has('배포 감지 루틴', pw, 'async function checkDeploy');
@@ -647,7 +647,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     players: { a: { revives: 1 }, b: {} },
     result: { given: { a: new Array(20).fill(3) } },
   };
-  eq('판돈 = 낸 20 + 아직 안 낸 기본 1×2', M.potShoes(방), 22);
+  // 1등은 기본 1켤레를 안 내므로 기본 몫은 **인원 − 1** 이다
+  eq('판돈 = 건 20 + 기본 (2−1)', M.potShoes(방), 21);
   eq('부활 횟수만 부풀려도 판돈은 안 커진다',
      M.potShoes({ players: { a: { revives: 9 }, b: {} }, result: { given: {} } }) >= 2, true);
 
@@ -683,7 +684,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('사망 보고가 판을 끝내지 않는다',
      mp.slice(mp.indexOf('export async function reportDeath'), mp.indexOf('export async function declineRevive'))
        .includes("'방 종료'"), false);
-  has('부활은 판돈을 먼저 올린다', mp, "'판돈 걸기'");
+  has('부활은 판돈과 되살아나기를 한 번에 쓴다', mp, "path('result', 'given', fb.uid)]: merged");
   has('포기 알림', mp, 'export async function declineRevive');
   has('승자가 항아리를 통째로 걷는다', ms, 'rankings.forEach((uid, i)');
   has('패자는 모자란 만큼만 낸다', ms, 'const short = Math.max(0, owed - already.length)');
@@ -694,6 +695,47 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('규칙에 revives·deadAt·out 이 있다',
      ['revives', 'deadAt', 'out'].every((k) => !!rules.players.$uid[k]), true);
   eq('판돈 상한 220', rules.result.given.$uid['.validate'].includes('220'), true);
+}
+
+// ── 22) 역전 배틀 2차 — 적대적 검토에서 나온 구멍 ──
+{
+  console.log('\n22) 역전 배틀 — 되돌아가면 안 되는 것들');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const mp = read('../src/services/multiplayer.js');
+  const gs = read('../src/game/GameScene.js');
+  const ov = read('../src/game/overlays.js');
+
+  // ① 마지막 생존자가 판을 끝내도 종료 판정이 성립해야 한다
+  eq('살아서 끝낸 사람도 판정에 포함',
+     M.roundOver({ players: { a: { alive: true, out: true }, b: { alive: false, out: true } } }, 1), true);
+  eq('아직 뛰는 사람이 있으면 아니다',
+     M.roundOver({ players: { a: { alive: true }, b: { alive: false, out: true } } }, 1), false);
+  has('끝낼 때 out 도장을 찍는다', gs, 'Room.markOut(this.multi.code)');
+
+  // ② 판돈과 부활은 한 번의 쓰기 (실패해도 복제되지 않는다)
+  const revive = mp.slice(mp.indexOf('export async function reviveMe'), mp.indexOf('export async function finalizeResult'));
+  eq('부활은 멀티패스 업데이트 하나', revive.includes('dbMod.update') && !revive.includes('dbMod.set'), true);
+  has('끝난 판에는 못 건다', mp, "if (room.result?.rankings || room.state === 'finished') return null;");
+  has('실패해도 서버를 다시 확인한다', mp, 'after?.alive === true');
+
+  // ③ 도장 비트 색인이 정산과 같아야 한다
+  eq('미수령 판정이 순위 전체를 본다', mp.includes('rank.some((uid, i) =>'), true);
+  eq('slice(1) 로 세지 않는다', mp.includes("rank.slice(1).some((uid, i) => Array.isArray(given[uid]) && !(mask"), false);
+
+  // ④ 판돈 표시가 실제 수령액과 맞는다 (1등은 기본을 안 낸다)
+  eq('2인 · 아무도 안 걸었으면 1켤레', M.potShoes({ players: { a: {}, b: {} }, result: {} }), 1);
+  eq('2인 · 한 명이 20 걸었으면 21', M.potShoes({
+    players: { a: { revives: 1 }, b: {} }, result: { given: { a: new Array(20).fill(1) } },
+  }), 21);
+
+  // ⑤ 부활 창은 서버 시각 기준
+  has('창을 deadAt 기준으로 잡는다', ov, 'serverOffsetSync()');
+  // ⑥ 지갑을 즉시 밀어 올린다 (max 병합이 되돌리지 못하게)
+  has('부활 직후 지갑 동기화', ov, 'syncWallet()');
+  // ⑦ 안 낸 패자가 있으면 잠깐 기다렸다 되돌린다
+  has('미납부도 리셋을 잠시 막는다', mp, 'hasUnpaid(room) && 끝난지 < RESET_WAIT_MS');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

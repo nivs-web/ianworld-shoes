@@ -115,12 +115,17 @@ async function boot() {
   const syncOnce = () => {
     if (synced) return;
     synced = true;
-    pullAll().catch((e) => console.warn('[sync] 서버 동기화 실패 — 로컬로 계속합니다', e));
     /**
-     * 멀티 미정산 청산. 지는 순간 앱을 꺼서 차감을 피하는 걸 막고,
-     * 승자가 늦게 올라온 신발을 마저 받게 한다. (services/multiSettle.js)
+     * ★ **순서가 중요하다 — 당겨온 다음에 청산한다.** (2026-08-18)
+     *
+     * 둘을 동시에 띄우면 `pullAll` 이 **청산 전에 뜬 스냅샷**으로 지갑을 병합해 저장하므로,
+     * 그 사이에 끝난 정산(신발 차감·수령)이 로컬에서 조용히 되돌아간다. 지갑 병합은
+     * 신발별 **max** 라 서버의 옛 값이 이기고, 항아리에는 그 신발이 그대로 있어
+     * **같은 신발이 두 곳에 존재**하게 된다.
      */
-    sweepUnsettled().catch(() => {});
+    pullAll()
+      .catch((e) => console.warn('[sync] 서버 동기화 실패 — 로컬로 계속합니다', e))
+      .then(() => sweepUnsettled().catch(() => {}));
   };
 
   const u = await initAuth();

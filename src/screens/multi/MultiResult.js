@@ -25,7 +25,7 @@ import { MULTI } from '../../config/balance.js';
 import { currentUser } from '../../services/auth.js';
 import { finishRun } from '../../services/profile.js';
 import * as Room from '../../services/multiplayer.js';
-import { roundOver } from '../../services/matchRules.js';
+import { roundOver, potShoes } from '../../services/matchRules.js';
 import { settleRoom } from '../../services/multiSettle.js';
 import { hold } from '../../core/hold.js';
 import MultiMenu from './MultiMenu.js';
@@ -192,11 +192,31 @@ export default function MultiResult(nav, params = {}) {
       const players = room?.players ?? {};
       const won = settle?.won;
 
-      // 순위가 아직 없다 = 남은 사람들이 계속 오르고 있다 (역전 배틀)
+      /**
+       * 순위가 아직 없다 = 남은 사람들이 계속 오르고 있다 (역전 배틀).
+       *
+       * ★ **그냥 기다리라고만 하면 답답하다.** 내가 먼저 나온 판이 어떻게 흘러가는지
+       * 보이는 편이 낫다 — 지금 누가 몇 계단인지, 걸린 신발이 얼마인지 실시간으로 보여 준다.
+       * (방을 구독하고 있으므로 값은 저절로 갱신된다)
+       */
       if (!rankings.length) {
+        const live = Object.entries(players)
+          .filter(([, v]) => !v.waiting)
+          .sort((a, b) => (b[1].stairs ?? 0) - (a[1].stairs ?? 0));
         return screen(
           title(S.multiResultTitle),
           el('div.warn', null, [el('div', S.waitingOthers)]),
+          el('div.hint', S.potLine(potShoes(room))),
+          el('div.rank-list', null, live.map(([uid, v], i) => {
+            const ch = characterById(v.characterId);
+            return el('div.rank-row', { class: uid === myUid ? 'me' : '' }, [
+              el('div.rank-no', String(i + 1)),
+              ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
+              el('div.rank-name', v.nickname || '???'),
+              el('div.rank-value', S.multiRowStat(v.shoesFound ?? 0, v.stairs ?? 0)),
+              v.alive === false ? el('div.tag-out', S.lost) : null,
+            ]);
+          })),
           el('div.spacer'),
           backButton(S.toLobby, () => nav.reset(Lobby))
         );
@@ -213,7 +233,8 @@ export default function MultiResult(nav, params = {}) {
             ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
             el('div.rank-name', v.nickname || '???'),
             el('div.rank-value', S.multiRowStat(v.shoesFound ?? 0, v.stairs ?? 0)),
-            v.revives ? el('div.tag-host', `+${v.revives * MULTI.reviveCost}`) : null,
+            // 이 판에 얼마를 걸었는지 (부활 비용) — 방장 태그와 구분되는 색이어야 한다
+            v.revives ? el('div.tag-bet', `+${v.revives * MULTI.reviveCost}`) : null,
           ]);
         })),
 

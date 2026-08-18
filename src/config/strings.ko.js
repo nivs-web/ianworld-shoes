@@ -199,7 +199,9 @@ export const S = {
   potLine: (n) => `이 게임에 걸린 신발 ${n}켤레`,
   /** 사망 후 부활 선택 화면 */
   fellTitle: '계단에서 떨어졌습니다',
-  reviveWith: (n) => `신발 ${n}개 써서 1위보다 20칸 앞에서 부활하기`,
+  /** 부활 버튼은 두 줄이다 — 7px 폰트로도 한 줄이면 170px 라 패널(148)을 넘는다 */
+  reviveWith1: (n) => `신발 ${n}개를 걸고`,
+  reviveWith2: (n) => `1위보다 ${n}칸 앞에서 부활`,
   reviveShort: (n) => `부활 (신발 ${n})`,
   reviveNeed: (need, have) => `신발 ${need}켤레가 필요합니다 (지금 ${have}켤레)`,
   reviveMaxed: '부활을 모두 썼습니다',

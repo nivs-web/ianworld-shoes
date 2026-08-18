@@ -371,7 +371,14 @@ export async function resetRoom(code) {
    * 승자가 걷었는지는 서버의 `result/settled` 비트마스크가 안다. 걷힐 때까지
    * 잠깐 미루면 되고, 패자가 아예 안 냈으면 `given` 자체가 없으니 바로 통과한다.
    */
+  /**
+   * 아직 안 걷힌 신발이 있으면 지우면 안 된다(증발한다). 그리고 **아직 안 낸 패자**가
+   * 있으면 잠깐 기다린다 — 지우는 순간 그 사람의 빚(최대 201켤레)이 통째로 면제된다.
+   * 영원히 기다리지는 않는다: 끝난 지 3분이 지나면 안 온 것으로 본다.
+   */
+  const 끝난지 = Date.now() - (room.result?.endedAt ?? 0);
   if (hasUnclaimed(room)) return 'pending';
+  if (hasUnpaid(room) && 끝난지 < RESET_WAIT_MS) return 'pending';
 
   const players = {};
   for (const [uid, v] of Object.entries(room.players ?? {})) {
@@ -447,6 +454,8 @@ export async function listRooms() {
  * 실패해도 아무 일도 없다(남이 먼저 치웠거나, 그 사이 사람이 들어왔거나).
  */
 const STALE_EMPTY_MS = 3 * 60 * 1000;
+/** 안 낸 패자를 기다려 주는 시간 (그 뒤에는 방을 되돌린다) */
+const RESET_WAIT_MS = 3 * 60 * 1000;
 function sweepEmptyRooms(fb, rooms) {
   const now = Date.now();
   const dead = rooms
@@ -679,6 +688,10 @@ export async function reportDeath(code, { stairs, shoesFound }) {
  * 부활을 포기한다 — 남은 사람들이 **20초를 기다리지 않아도 되게** 알린다.
  * 이게 없으면 나가기를 눌러도 다른 사람 화면에서는 창이 닫힐 때까지 판이 안 끝난다.
  */
+export async function markOut(code) {
+  return declineRevive(code);
+}
+
 export async function declineRevive(code) {
   const fb = await rt();
   if (!fb) return;
@@ -710,31 +723,49 @@ export async function reviveMe(code, indices) {
   if (!room) return null;
   const me = room.players?.[fb.uid];
   if (!me || !canRevive(me)) return null;
+  /**
+   * ★ **끝난 판에는 못 건다.** (2026-08-18 재수정)
+   * 시계가 어긋나거나 내 창이 아슬아슬할 때, 남이 이미 순위를 박은 뒤에 20켤레를
+   * 올릴 수 있었다. 그 신발은 **아무도 안 걷는다**(승자의 수령 루프는 순위가 확정될 때
+   * 이미 도장을 찍었다) — 그대로 증발한다.
+   */
+  if (room.result?.rankings || room.state === 'finished') return null;
 
   const floor = reviveFloor(room);
-
-  // ② 판돈 먼저 (있던 목록 뒤에 붙인다 — 부활은 여러 번 할 수 있다)
   const prev = Array.isArray(room.result?.given?.[fb.uid]) ? room.result.given[fb.uid] : [];
   const merged = [...prev, ...indices];
+
+  /**
+   * ★ **판돈과 부활을 한 번의 쓰기로 묶는다.** (2026-08-18 재수정)
+   *
+   * 처음에는 ① 판돈 올리고 ② 되살아나는 두 단계였다. ②가 실패하면 호출부가 지갑을
+   * 되돌리는데 **판돈은 이미 항아리에 들어가 있다** — 신발 20켤레가 무에서 창조된다.
+   * (`withTimeout` 은 거절만 할 뿐 RTDB 쓰기를 취소하지 못하므로 ①의 실패도 같은 함정이다)
+   *
+   * 멀티패스 업데이트는 **전부 되거나 전부 안 된다.** 그래서 그 창이 아예 사라진다.
+   */
+  const offset = await serverOffset(fb);
+  const patch = {
+    [path('result', 'given', fb.uid)]: merged,
+    [path('players', fb.uid, 'alive')]: true,
+    [path('players', fb.uid, 'stairs')]: floor,
+    [path('players', fb.uid, 'revives')]: (me.revives ?? 0) + 1,
+    [path('players', fb.uid, 'reachedAt')]: nowOn(fb, offset),
+    [path('players', fb.uid, 'deadAt')]: 0,
+    [path('players', fb.uid, 'out')]: null,
+  };
   try {
-    await withTimeout(
-      fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'result', 'given', fb.uid)), merged),
-      undefined, '판돈 걸기'
-    );
+    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), patch), undefined, '부활');
+    return floor;
   } catch {
+    /**
+     * 시한이 지났다고 **안 들어간 건 아니다.** RTDB 는 큐에 들고 있다가 연결이 돌아오면
+     * 마저 보낸다. 그대로 환불하면 그때 복제가 된다 — 그래서 서버를 다시 읽어 확인한다.
+     */
+    const after = (await readOnce(fb, path(ROOMS, code, 'players', fb.uid))).val;
+    if (after?.alive === true && (after.revives ?? 0) > (me.revives ?? 0)) return floor;
     return null;
   }
-
-  // ③ 살아난다
-  const offset = await serverOffset(fb);
-  try {
-    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
-      alive: true, stairs: floor, revives: (me.revives ?? 0) + 1, reachedAt: nowOn(fb, offset), deadAt: 0,
-    }), undefined, '부활');
-  } catch {
-    return null;   // 항아리에는 들어갔다 — 판이 끝나면 승자가 가져간다(내가 이겨도 되돌려받는다)
-  }
-  return floor;
 }
 
 /**
@@ -843,7 +874,14 @@ export function hasUnclaimed(room) {
   if (!rank.length) return false;
   const given = room.result?.given ?? {};
   const mask = Number(room.result?.settled?.[rank[0]] ?? 0);
-  return rank.slice(1).some((uid, i) => Array.isArray(given[uid]) && !(mask & (1 << i)));
+  /**
+   * ★ **비트 색인은 `settleRoom` 과 글자 그대로 같아야 한다.** (2026-08-18 재수정)
+   * 역전 배틀에서 승자는 **자기 몫까지** 걷으므로 도장을 `rankings` **전체**에 매긴다.
+   * 여기서만 `slice(1)` 로 세면 한 칸씩 어긋나, 다 걷었는데도 "안 걷혔다"가 되어
+   * '방에 남기'가 영원히 `pending` 으로 막히고(대기자는 갇힌다), 반대로 아직 안 걷힌
+   * 신발을 "걷혔다"고 보고 `result` 를 지워 **신발을 증발**시킨다.
+   */
+  return rank.some((uid, i) => Array.isArray(given[uid]) && given[uid].length && !(mask & (1 << i)));
 }
 
 /**

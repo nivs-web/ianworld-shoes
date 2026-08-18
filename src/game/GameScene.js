@@ -236,6 +236,15 @@ export class GameScene {
     Room.publishProgress(this.multi.code, {
       stairs: this.floor, shoesFound: this.shoesFound, alive: !this.player?.dead,
     }, true);
+    /**
+     * ★ **판에서 손을 뗐다는 도장을 반드시 찍는다.** (2026-08-18 재수정)
+     *
+     * 마지막까지 살아남아 판을 끝낸 사람은 `alive: true` 로 남는다. 종료 판정이
+     * "전원 죽었나"만 보던 시절에는 그 한 명 때문에 **판이 영원히 안 끝났다** —
+     * 모두가 결과 화면에서 "다른 사람들이 아직 오르고 있습니다"를 보며 굳는다.
+     * 죽어서 끝났든 살아서 끝났든, 나갈 때 이 도장을 찍으면 남들이 기다리지 않는다.
+     */
+    Room.markOut(this.multi.code).catch(() => {});
     // 결과를 넘긴다 — 예전에는 null 이라 이 판의 신발·계단이 통째로 버려졌다
     this.onFinish?.(this.resultOf(), 'multi');
   }
@@ -544,6 +553,8 @@ export class GameScene {
     if (this.multi) {
       Room.reportDeath(this.multi.code, { stairs: this.floor, shoesFound: this.shoesFound })
         .catch(() => {});
+      // 기권은 부활할 생각이 없다는 뜻이다 — 안 찍으면 남들이 20초를 헛기다린다
+      Room.markOut(this.multi.code).catch(() => {});
       this.exitMulti();
     }
     this.onFinish(result, action);

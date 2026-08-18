@@ -28,7 +28,7 @@
  * 상용 한글 2,350자를 통째로 담고 있고, 멀티에 들어올 때만 받는다.
  */
 
-import { text, textCached, loadSmallFont, smallReady } from '../core/pixelfont.js';
+import { text, textCached, measure, loadSmallFont, smallReady } from '../core/pixelfont.js';
 import { rect } from '../core/sprite.js';
 import { img, loadAll } from '../core/assets.js';
 import { getCtx } from '../core/canvas.js';
@@ -48,8 +48,13 @@ const ROW_H = 17;
 const BAR_X = VIEW_W - 5;
 const BAR_TOP = 70;
 const BAR_BOTTOM = 250;
-/** 판돈 줄 */
-const POT_Y = VIEW_H - 10;
+/**
+ * 판돈 줄 — **조작 버튼 위**에 둔다.
+ * 처음에 화면 맨 아래(310)에 뒀더니 버튼(266~314)과 겹치고 아래가 잘렸다(실측).
+ */
+const POT_Y = 252;
+/** 알림은 판돈 바로 위에서 위로 쌓인다 */
+const TICKER_Y = 232;
 
 /** 상대 색 — 이름·점·이름표에 같은 색을 써야 누가 누군지 이어진다 */
 const TINT = [PAL.goRed, '#6ec6ff', '#ffd24a'];
@@ -229,16 +234,40 @@ function drawPot(scene) {
   });
 }
 
-/** 낙사·부활 알림 — 위에서부터 쌓이고 시간이 지나면 사라진다 */
+/**
+ * 낙사·부활 알림 — 판돈 줄 위에서 **아래에서 위로** 쌓이고 시간이 지나면 사라진다.
+ *
+ * 문구가 화면(180)보다 길면 **잘리는 게 아니라 접힌다.** "상대폰님이 신발 20개를 걸고
+ * 20칸 앞으로 부활했습니다" 는 7px 로도 206px 라 한 줄에 안 들어간다 —
+ * 그렇다고 문구를 줄이면 무슨 일이 일어났는지가 흐려진다.
+ */
 function drawTicker(scene) {
   const now = Date.now();
   const live = (scene.ticker ?? []).filter((t) => t.until > now);
   if (live.length !== (scene.ticker ?? []).length) scene.ticker = live;
-  live.slice(-2).forEach((t, i) => {
-    text(t.msg, CENTER_X, POT_Y - 22 + i * 9, {
+
+  const lines = [];
+  for (const t of live.slice(-2)) lines.push(...wrap(t.msg, VIEW_W - 8));
+  lines.slice(-3).forEach((line, i, arr) => {
+    text(line, CENTER_X, TICKER_Y - (arr.length - 1 - i) * 9, {
       color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow,
     });
   });
+}
+
+/** 글자 폭을 재서 접는다 (띄어쓰기 우선, 없으면 글자 단위) */
+function wrap(msg, maxW) {
+  const words = String(msg).split(' ');
+  const out = [];
+  let cur = '';
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (measure(next, 1, false, true) <= maxW) { cur = next; continue; }
+    if (cur) out.push(cur);
+    cur = w;
+  }
+  if (cur) out.push(cur);
+  return out;
 }
 
 function drawCountdown(scene) {

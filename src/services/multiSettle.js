@@ -35,7 +35,13 @@ const payTag = (code) => `${code}:pay`;
  *  기기를 바꾸면 사라져서 같은 신발을 다시 걷게 만들었다.)
  */
 
-/** 프로필의 지갑 관련 값만 서버로 밀어 올린다 */
+/**
+ * 프로필의 지갑 관련 값만 서버로 밀어 올린다.
+ * 부활로 신발을 걸 때도 **즉시** 불러야 한다 — 안 그러면 다음 접속의 max 병합이
+ * 서버의 옛 값으로 되돌려 놓아 판돈과 지갑에 같은 신발이 동시에 존재하게 된다.
+ */
+export function syncWallet() { pushWallet(); }
+
 function pushWallet() {
   const p = L.loadProfile();
   patch({

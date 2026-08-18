@@ -78,13 +78,19 @@ export function settlementCounts(rankings) {
 export function potShoes(room) {
   const given = room?.result?.given ?? {};
   const list = playersInRound(room?.players);
-  let n = 0;
+  if (!list.length) return 0;
+  let 건것 = 0;
   for (const p of list) {
     const paid = Array.isArray(given[p.uid]) ? given[p.uid].length : 0;
-    // 낸 것 + 아직 안 낸 몫(기본 1켤레는 판이 끝나야 낸다)
-    n += Math.max(paid, owedBy(p));
+    // 부활 비용은 **이미 낸 것**이 진실이다. 아직 안 올라온 건 없는 셈 친다
+    건것 += Math.max(paid, (p.revives ?? 0) * MULTI.reviveCost);
   }
-  return n;
+  /**
+   * 기본 판돈은 **인원 − 1** 이다. 1등은 기본 1켤레를 내지 않으므로(`settleRoom` 은
+   * `!won` 일 때만 낸다) 전원 몫을 더하면 화면의 판돈이 실제 수령액보다 **항상 1 많다.**
+   * 누가 이길지는 몰라도 "한 명은 안 낸다"는 건 확실하므로 이렇게 세면 정확하다.
+   */
+  return 건것 + (list.length - 1) * MULTI.loserPenalty;
 }
 
 /** 이 사람이 이 판에서 내야 할 총량 = 기본 1 + 부활 비용 × 부활 횟수 */
@@ -103,6 +109,23 @@ export function reviveExpired(player, now) {
 }
 
 /**
+ * ★ **이 사람은 이 판에서 손을 뗐나.** (2026-08-18 재수정)
+ *
+ * 처음에는 "죽었고 부활 창이 지났나"만 봤다. 그런데 **마지막까지 살아남은 사람**은
+ * 죽지 않고 판을 끝낸다(다른 사람이 전부 빠지면 혼자 뛸 이유가 없다). 그 사람은
+ * `alive: true` 로 남으므로 종료 판정이 **영원히 false** 였다 — 전원이 결과 화면에서
+ * "다른 사람들이 아직 오르고 있습니다"만 보며 굳는다. 실제로 그 상태를 만들 수 있었다.
+ *
+ * 그래서 `out` 을 "부활 포기"가 아니라 **"이 판에서 빠졌다"**로 넓힌다. 살아서 끝낸
+ * 사람도 나갈 때 이 도장을 찍는다. 순위 계산은 여전히 `alive` 를 보므로
+ * **살아서 끝낸 사람이 동점에서 위**라는 성질은 그대로다.
+ */
+export function outOfRound(player, now) {
+  if (player?.out) return true;
+  return player?.alive === false && reviveExpired(player, now);
+}
+
+/**
  * 판이 끝났나 — **살아 있는 사람이 없고, 죽은 사람이 전부 부활 창을 넘겼거나 포기했을 때.**
  *
  * 예전 대전제("한 명이 죽으면 즉시 종료")를 대체한다. 판정을 순수 함수로 둔 이유는
@@ -111,14 +134,14 @@ export function reviveExpired(player, now) {
 export function roundOver(room, now) {
   const list = playersInRound(room?.players);
   if (!list.length) return false;
-  return list.every((p) => p.alive === false && reviveExpired(p, now));
+  return list.every((p) => outOfRound(p, now));
 }
 
 /** 나 말고 전원이 판에서 빠졌나 — 마지막 한 명이 혼자 계속 뛸 이유는 없다 */
 export function othersAllOut(room, myUid, now) {
   const others = playersInRound(room?.players).filter((p) => p.uid !== myUid);
   if (!others.length) return false;
-  return others.every((p) => p.alive === false && reviveExpired(p, now));
+  return others.every((p) => outOfRound(p, now));
 }
 
 /** 부활 위치 — **무조건 1위보다 `reviveAhead` 칸 앞** */

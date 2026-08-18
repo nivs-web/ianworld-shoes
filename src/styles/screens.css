@@ -720,6 +720,14 @@
   white-space: nowrap;
 }
 
+/* 이 판에 건 신발(부활 비용). 방장 태그와 헷갈리지 않게 붉은 계열로 */
+.tag-bet {
+  flex: 0 0 auto; font-size: 11px; padding: 0 4px;
+  color: var(--c-panel); background: var(--c-accent-dark);
+}
+/* 이미 떨어진 사람 */
+.tag-out { flex: 0 0 auto; font-size: 11px; padding: 0 4px; color: var(--c-line); }
+
 .player-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
 .player-row { display: flex; align-items: center; gap: 6px; padding: 3px 4px; }
 .player-row.me { background: rgba(255, 221, 142, 0.16); }

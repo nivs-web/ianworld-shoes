@@ -18,6 +18,7 @@ import { potShoes, canRevive } from '../services/matchRules.js';
 import * as Room from '../services/multiplayer.js';
 import { pickPenaltyShoes } from '../services/matchRules.js';
 import * as L from '../services/storageLocal.js';
+import { syncWallet } from '../services/multiSettle.js';
 import S from '../config/strings.ko.js';
 
 function dim() {
@@ -330,7 +331,16 @@ export class MultiDeathOverlay {
   constructor(game) {
     this.game = game;
     this.busy = false;
-    this.endAt = Date.now() + MULTI.reviveWindowSeconds * 1000;
+    /**
+     * ★ **창의 끝은 서버 시각 기준이다.** (2026-08-18 재수정)
+     * 남들은 내 `deadAt`(서버 보정)에 20초를 더해 판정한다. 내 화면만 **폰 시계**로
+     * 세면 시계가 어긋난 만큼 창이 길거나 짧아진다 — 길면 이미 끝난 판에 신발을 걸고
+     * (그 신발은 아무도 안 걷는다), 짧으면 억울하게 기회를 잃는다.
+     */
+    const me = game.room?.players?.[game.multi?.myUid];
+    const 서버기준끝 = (me?.deadAt ?? 0) + MULTI.reviveWindowSeconds * 1000;
+    const 내시계로 = 서버기준끝 - Room.serverOffsetSync();
+    this.endAt = me?.deadAt ? 내시계로 : Date.now() + MULTI.reviveWindowSeconds * 1000;
     this.msg = null;
   }
 
@@ -357,6 +367,8 @@ export class MultiDeathOverlay {
 
   async revive() {
     if (this.busy) return;
+    // 이미 판이 끝나 결과 화면으로 가는 중이면 걸 이유가 없다 (걸어도 아무도 못 걷는다)
+    if (this.game.over || this.game.leaving) return;
     const wallet = getProfile();
     if (!canRevive(this.me)) { this.msg = S.reviveMaxed; return; }
     if ((wallet.shoesOwned ?? 0) < MULTI.reviveCost) {
@@ -375,12 +387,32 @@ export class MultiDeathOverlay {
     }
     L.removeShoesByIndex(picked);
 
-    // ② 항아리에 올리고 ③ 되살아난다
+    /**
+     * ② 판돈과 부활을 **한 번의 쓰기로** 올린다(`reviveMe`). 전부 되거나 전부 안 된다.
+     * `null` 은 서버를 다시 읽어 "정말 안 들어갔다"를 확인한 뒤에만 온다 —
+     * 그래서 여기서 되돌려도 신발이 복제되지 않는다.
+     */
     const floor = await Room.reviveMe(this.game.multi.code, picked).catch(() => null);
     if (floor == null) {
-      L.addShoes(picked);          // 못 걸었으면 되돌린다 — 판돈은 실물이어야 한다
+      L.addShoes(picked);
       this.busy = false;
       this.msg = S.networkError;
+      return;
+    }
+    /**
+     * ★ **지갑을 바로 서버에 올린다.** (2026-08-18 재수정)
+     * 지갑 병합은 신발별 **max** 라, 여기서 안 올리면 다음 접속에 서버의 옛 값이
+     * 이겨 20켤레가 되돌아온다 — 항아리에는 그대로 있으니 그만큼 복제된다.
+     */
+    syncWallet();
+    /**
+     * 기다리는 사이에 판이 끝나 버렸으면(다른 사람이 순위를 박았거나 내가 그 사이 나갔다면)
+     * **되살아날 자리가 없다.** 서버에는 내가 살아 있는 것으로 남으므로, 그대로 두면
+     * 남들의 종료 판정이 나를 영원히 기다린다 — 곧바로 손 뗐다고 알린다.
+     */
+    if (this.game.over || this.game.leaving) {
+      Room.markOut(this.game.multi.code).catch(() => {});
+      this.busy = false;
       return;
     }
     Sfx.play('sfx_revive');
@@ -419,9 +451,10 @@ export class MultiDeathOverlay {
 
     const 가능 = canRevive(this.me) && have >= MULTI.reviveCost && !this.busy;
     button(16, 168, 148, 34, 가능);
-    text(S.reviveWith(MULTI.reviveCost), 90, 178, {
-      color: 가능 ? PAL.text : PAL.textShadow, align: 'center', small: true,
-    });
+    // 한 줄로 쓰면 170px 라 패널(148)을 넘는다 — 두 줄로 나눈다
+    const c = 가능 ? PAL.text : PAL.textShadow;
+    text(S.reviveWith1(MULTI.reviveCost), 90, 174, { color: c, align: 'center', small: true });
+    text(S.reviveWith2(MULTI.reviveAhead), 90, 186, { color: c, align: 'center', small: true });
 
     button(16, 208, 148, 26, false);
     text(S.quitRound, 90, 215, { color: PAL.text, align: 'center' });
