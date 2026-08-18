@@ -147,6 +147,19 @@ for (const [label, rule] of [['정산 도장', settledWrite], ['패자 납부', 
     bad(`${label} — 방을 나가면 정산을 못 끝낸다 (또는 유령 방을 만들 수 있다)`);
   }
 }
+
+console.log('\n8) 끝나지 않은 판의 판돈을 되찾을 수 있는가 (2026-08-19)');
+/**
+ * 상대가 튕겨 순위가 영영 안 박히면 부활 비용은 아무에게도 안 간다. 그 신발을
+ * 주인이 되가져오려면 **순위가 없는 방에서 자기 `given` 을 지울 수** 있어야 한다.
+ * 지우기만 열고 쓰기는 안 연다 — 순위 없이 판돈을 새로 걸 수 있으면 정산이 꼬인다.
+ */
+if (givenWrite.includes('!newData.exists()') && givenWrite.includes('auth.uid == $uid')) {
+  ok('판돈 회수 — 본인 것만, 지우는 것만');
+} else {
+  bad('판돈 회수 — 순위가 안 박힌 판의 판돈이 영원히 묶인다');
+}
+
 const roomWrite = room['.write'] ?? '';
 if (!roomWrite.includes('!data.exists() ||')) ok('빈 코드에 아무 값이나 못 쓴다 (유령 방 방지)');
 else bad('없는 방에 아무 필드나 쓸 수 있다 — 유령 방이 만들어진다');

@@ -93,6 +93,16 @@ service cloud.firestore {
 >
 > **(1) 하위 `.write` 는 아예 평가되지 않았다.** RTDB 는 **상위에서 허용하면 하위 `.write` 를
 > 보지 않는다**(shallower rules override deeper). `$code` 에 쓰기를 열어 뒀으므로
+### 끝나지 않은 판의 판돈은 **주인이 되가져갈 수 있어야 한다** (2026-08-19)
+
+부활 비용은 판이 끝나야 승자에게 간다. 그런데 상대가 튕기거나 앱을 꺼서 **순위가 영영
+안 박히면** 그 신발은 아무에게도 안 가고 방에만 남는다 — 실제로 100켤레를 걸었다가
+통째로 잃었다는 신고가 있었다.
+
+그래서 `result/given/$uid` 쓰기에 한 항을 더했다 — **순위가 없을 때는 자기 것을 지우는
+것만** 허용한다(`|| !newData.exists()`). 이게 있어야 방을 이미 나온 사람도 회수할 수 있다.
+순위가 박힌 뒤에는 그 신발이 승자 몫이므로 이 경로로 빼낼 수 없다.
+
 ### 역전 배틀 — 새 필드 셋과 판돈 상한 (2026-08-18, 3차)
 
 `players/$uid` 에 `revives`(부활 횟수) · `deadAt`(죽은 서버 시각) · `out`(부활 포기)이 늘었다.
@@ -214,7 +224,7 @@ service cloud.firestore {
 
           "given": {
             "$uid": {
-              ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($code).child('result').child('rankings').exists()",
+              ".write": "auth != null && auth.uid == $uid && (root.child('rooms').child($code).child('result').child('rankings').exists() || !newData.exists())",
               ".validate": "!newData.hasChild('220')",
               "$i": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 129 && ($uid == auth.uid || newData.val() == data.val())"

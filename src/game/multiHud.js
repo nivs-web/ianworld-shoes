@@ -28,7 +28,7 @@
  * 상용 한글 2,350자를 통째로 담고 있고, 멀티에 들어올 때만 받는다.
  */
 
-import { text, textCached, measure, loadSmallFont, smallReady } from '../core/pixelfont.js';
+import { textCached, measure, loadSmallFont, smallReady } from '../core/pixelfont.js';
 import { rect } from '../core/sprite.js';
 import { img, loadAll } from '../core/assets.js';
 import { getCtx } from '../core/canvas.js';
@@ -81,7 +81,8 @@ function ensureAssets(list) {
 export function multiHud(scene) {
   if (!smallReady()) loadSmallFont();
   const list = (scene.opponents ?? []).slice(0, 3);
-  ensureAssets(list);
+  // 상대 목록 객체는 방 갱신 때만 새로 만들어진다 — 그때만 에셋을 확인하면 된다
+  if (scene.assetsFor !== scene.opponents) { scene.assetsFor = scene.opponents; ensureAssets(list); }
 
   drawGhosts(scene, list);
   drawRaceBar(scene, list);
@@ -136,17 +137,25 @@ function drawGhosts(scene, list) {
       const ax = left ? 3 : VIEW_W - 4;
       const ay = Math.max(8, Math.min(VIEW_H - 12, Math.round(footY) - 8));
       rect(ax - 2, ay, 5, 5, color);
-      text(left ? '<' : '>', left ? ax + 5 : ax - 5, ay - 1, {
+      textCached(left ? '<' : '>', left ? ax + 5 : ax - 5, ay - 1, {
         color, small: true, align: left ? 'left' : 'right',
       });
     }
   });
 }
 
+/**
+ * ★ **매 프레임 찍는 글자는 전부 캐시본으로.** (2026-08-19 렉 수정)
+ *
+ * 이름표는 `shadow` 가 붙어 글리프를 **두 번** 찍는다. 상대 3명 이름표 + 상대 줄 3개 +
+ * 판돈 + 알림 3줄이면 프레임당 수백 번의 `fillRect` 가 나간다 — 예전에 HUD 가 666회로
+ * 중저가 안드로이드의 60fps 를 깨뜨린 그 규모다(§9-0-14). `textCached` 는 글자 하나를
+ * 오프스크린에 한 번 구워 두고 그 뒤로는 `drawImage` 만 한다.
+ */
 function nameTag(name, cx, y, color) {
   const s = String(name ?? '').slice(0, 5);
   if (!s) return;
-  text(s, cx, Math.max(2, y), { color, align: 'center', small: true, shadow: PAL.textShadow });
+  textCached(s, cx, Math.max(2, y), { color, align: 'center', small: true, shadow: PAL.textShadow });
 }
 
 // ─────────────────────────────────────────────
@@ -198,13 +207,13 @@ function drawRows(scene, list) {
     else rect(3, y, 16, 16, PAL.panelDark);
 
     // 이름은 7px — 예전 11px 로는 세 줄이 화면을 다 먹었다
-    text(String(o.nickname ?? '').slice(0, 5), 22, y + 1, { scale: 1, color, small: true });
+    textCached(String(o.nickname ?? '').slice(0, 5), 22, y + 1, { scale: 1, color, small: true });
     textCached(S.multiOpponentStat(o.shoesFound ?? 0, o.stairs ?? 0), VIEW_W - 10, y + 1, {
       scale: 1, color, align: 'right', mono: true, small: true,
     });
     // 부활 횟수 — 저 사람이 이 판에 얼마를 걸었는지가 곧 위협의 크기다
     if (o.revives) {
-      text(`+${o.revives * MULTI.reviveCost}`, 22, y + 9, { scale: 1, color: PAL.goRed, small: true });
+      textCached(`+${o.revives * MULTI.reviveCost}`, 22, y + 9, { scale: 1, color: PAL.goRed, small: true });
     }
   });
 }
@@ -223,13 +232,16 @@ function drawFace(face, x, y, alive) {
 // 4) 판돈 · 알림 · 카운트다운
 // ─────────────────────────────────────────────
 
-/** 화면 맨 아래 고정 — 지금 이 판에 얼마가 걸려 있는지 */
+/**
+ * 화면 하단 고정 — 지금 이 판에 얼마가 걸려 있는지.
+ * 값은 **방이 바뀔 때만** 다시 센다(매 프레임 세면 참가자·항아리를 60번/초 훑는다).
+ */
 function drawPot(scene) {
   const room = scene.room;
   if (!room) return;
-  const n = potShoes(room);
-  if (!n) return;
-  text(S.potLine(n), CENTER_X, POT_Y, {
+  if (scene.potRoom !== room) { scene.potRoom = room; scene.potText = S.potLine(potShoes(room)); }
+  if (!scene.potText) return;
+  textCached(scene.potText, CENTER_X, POT_Y, {
     color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow,
   });
 }
@@ -247,9 +259,13 @@ function drawTicker(scene) {
   if (live.length !== (scene.ticker ?? []).length) scene.ticker = live;
 
   const lines = [];
-  for (const t of live.slice(-2)) lines.push(...wrap(t.msg, VIEW_W - 8));
+  for (const t of live.slice(-2)) {
+    // 접는 계산은 메시지당 한 번 — 폭 재기를 매 프레임 돌릴 이유가 없다
+    if (!t.lines) t.lines = wrap(t.msg, VIEW_W - 8);
+    lines.push(...t.lines);
+  }
   lines.slice(-3).forEach((line, i, arr) => {
-    text(line, CENTER_X, TICKER_Y - (arr.length - 1 - i) * 9, {
+    textCached(line, CENTER_X, TICKER_Y - (arr.length - 1 - i) * 9, {
       color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow,
     });
   });
@@ -278,7 +294,8 @@ function drawCountdown(scene) {
    * 3·2·1 은 숫자로, 0 이 되는 순간만 'GO!'. 기획서 §7 S16 그대로다.
    * 화면 한가운데 크게 — 이때는 계단을 볼 게 아니라 출발 타이밍만 보면 된다.
    */
-  text(n > 0 ? String(n) : S.go, VIEW_W >> 1, 130, {
+  // 캐시를 태운다 — 배율 6 + 외곽선이면 글자 하나가 프레임당 fillRect 수백 번이다(§9-0-25)
+  textCached(n > 0 ? String(n) : S.go, VIEW_W >> 1, 130, {
     scale: n > 0 ? 6 : 4, color: PAL.text, outline: PAL.textShadow, align: 'center', mono: true,
   });
 }

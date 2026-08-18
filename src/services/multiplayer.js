@@ -677,8 +677,19 @@ export async function reportDeath(code, { stairs, shoesFound }) {
    * `deadAt` 은 **서버 보정 시각**이다. 폰 시계가 제각각이면 어떤 사람은 5초 만에,
    * 어떤 사람은 40초 동안 부활 창이 열린다. (오프셋은 세션당 한 번만 잰다)
    */
-  const offset = await serverOffset(fb);
-  const at = nowOn(fb, offset);
+  /**
+   * ★ **시각은 서버가 찍는다.** (2026-08-19)
+   *
+   * 예전에는 내가 잰 보정값으로 `Date.now() + offset` 을 썼다. 그 보정이 실패하면
+   * 조용히 0이 되고(§9-0-22), 그 상태로 시계가 1분 빠른 폰이 죽으면 `deadAt` 이
+   * **미래**라 남들의 종료 판정이 영원히 안 선다. 반대로 느린 폰이면 남들 눈에는
+   * 이미 20초가 지난 것으로 보여 **부활을 고르는 중에 판이 끝나 버린다**
+   * (사용자가 말한 "튕김"의 정체 중 하나다).
+   *
+   * `serverTimestamp()` 는 **서버가 자기 시계로** 채운다 — 쓰는 쪽 시계가 무의미해진다.
+   * 읽는 쪽은 각자 `.info/serverTimeOffset` 으로 보정하므로 모두가 같은 답을 낸다.
+   */
+  const at = fb.dbMod.serverTimestamp();
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
     stairs: stairs | 0, shoesFound: shoesFound | 0, alive: false, reachedAt: at, deadAt: at,
   }), undefined, '사망 보고').catch(() => {});
@@ -744,13 +755,12 @@ export async function reviveMe(code, indices) {
    *
    * 멀티패스 업데이트는 **전부 되거나 전부 안 된다.** 그래서 그 창이 아예 사라진다.
    */
-  const offset = await serverOffset(fb);
   const patch = {
     [path('result', 'given', fb.uid)]: merged,
     [path('players', fb.uid, 'alive')]: true,
     [path('players', fb.uid, 'stairs')]: floor,
     [path('players', fb.uid, 'revives')]: (me.revives ?? 0) + 1,
-    [path('players', fb.uid, 'reachedAt')]: nowOn(fb, offset),
+    [path('players', fb.uid, 'reachedAt')]: fb.dbMod.serverTimestamp(),
     [path('players', fb.uid, 'deadAt')]: 0,
     [path('players', fb.uid, 'out')]: null,
   };
@@ -797,7 +807,15 @@ export async function finalizeResult(code) {
   if (room.result?.rankings) return room;          // 이미 확정됨 — 먼저 쓴 사람 것을 남긴다
 
   const players = playersInRound(room.players);    // 대기자는 이번 판 사람이 아니다
-  if (players.length < MULTI.minPlayers) return room;
+  /**
+   * ★ **혼자 남아도 순위는 박는다.** (2026-08-19)
+   *
+   * 예전에는 `minPlayers`(2) 미만이면 그냥 돌아갔다. 그런데 상대가 튕겨서 방에서
+   * 빠지면 남은 사람은 **영원히 결과가 안 나온다** — "다른 사람들이 아직 오르고 있습니다"
+   * 화면에 갇히고, 그 판에 걸린 신발도 아무도 못 걷는다.
+   * 한 명이라도 있으면 그 사람 기준으로 끝낸다.
+   */
+  if (!players.length) return room;
 
   /**
    * ★ **판이 끝났을 때만 순위를 박는다.** (2026-08-18 역전 배틀)
@@ -863,7 +881,21 @@ const SETTLE_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
  * 다만 영원히 기다리지는 않는다(일주일).
  */
 export function mustKeepRoom(room) {
-  if (!room?.result?.rankings) return false;
+  /**
+   * ★ **순위가 없어도 항아리에 신발이 있으면 못 지운다.** (2026-08-19)
+   *
+   * 이게 없어서 **신발 100켤레가 통째로 사라졌다.** 재현 경로가 정확히 이랬다:
+   * 신발 100켤레를 가진 사람이 20켤레씩 다섯 번 부활한다(항아리 100켤레, 지갑 0).
+   * 그런데 상대가 렉으로 튕겨 판이 **끝나지 않는다** → `rankings` 가 안 생긴다 →
+   * 예전 판정은 순위가 없으면 `false` 를 돌려주므로 마지막 사람이 나갈 때
+   * `leaveRoom` 이 방을 지운다. 항아리째로 증발이다.
+   *
+   * 순위가 없다는 건 "아직 아무도 못 받았다"는 뜻이므로 **오히려 더 지켜야 한다.**
+   * 판이 끝내 안 끝나면 `settleRoom` 이 다음 접속 때 **주인에게 되돌려준다.**
+   */
+  const given = room?.result?.given ?? {};
+  const 항아리에있다 = Object.values(given).some((v) => Array.isArray(v) && v.length);
+  if (!room?.result?.rankings) return 항아리에있다;
   const endedAt = room.result?.endedAt ?? 0;
   if (endedAt && Date.now() - endedAt > SETTLE_GRACE_MS) return false;
   return hasUnclaimed(room) || hasUnpaid(room);
@@ -881,8 +913,19 @@ export function hasUnclaimed(room) {
    * '방에 남기'가 영원히 `pending` 으로 막히고(대기자는 갇힌다), 반대로 아직 안 걷힌
    * 신발을 "걷혔다"고 보고 `result` 를 지워 **신발을 증발**시킨다.
    */
-  return rank.some((uid, i) => Array.isArray(given[uid]) && given[uid].length && !(mask & (1 << i)));
+  if (rank.some((uid, i) => Array.isArray(given[uid]) && given[uid].length && !(mask & (1 << i)))) return true;
+  /**
+   * ★ **순위에 없는 사람이 건 신발도 있다.** (2026-08-19)
+   * 판 도중에 방에서 빠진 사람(튕김·탈퇴)은 `rankings` 에 못 들어간다(규칙이 참가자만
+   * 허용한다). 그 사람이 부활에 건 신발은 그대로 항아리에 남으므로, 승자가 걷기 전까지
+   * 방을 지워선 안 된다. 승자가 걷으면 `ORPHAN_BIT` 이 찍힌다.
+   */
+  const 남의것 = Object.entries(given).some(([uid, v]) => !rank.includes(uid) && Array.isArray(v) && v.length);
+  return 남의것 && !(mask & ORPHAN_BIT);
 }
+
+/** 순위에 없는 사람(중도 이탈자)의 판돈을 걷었다는 표시 — 참가자 비트(0~3)와 안 겹친다 */
+export const ORPHAN_BIT = 1 << 15;
 
 /**
  * 볼일이 다 끝난 방을 치운다 — **참가자가 아무도 없고 걷을 신발도 없을 때만.**
@@ -992,6 +1035,40 @@ export async function myRoomCodes(limit = 20) {
   } catch {
     return [];
   }
+}
+
+/**
+ * ★ **끝나지 않은 판의 내 판돈을 되돌려받는다.** (2026-08-19)
+ *
+ * 부활 비용은 판이 끝나야 승자에게 간다. 그런데 상대가 튕기거나 앱을 껐으면
+ * 순위가 영영 안 박힌다 — 그 신발은 **아무에게도 안 가고 방에만 남는다.**
+ * 그 방이 지워지면 증발이고, 안 지워져도 영원히 묶인다.
+ *
+ * 그래서 **순위가 없는 방**에서는 내 것을 도로 가져온다. 순서가 중요하다:
+ * **서버에서 먼저 지우고** 그 다음에 지갑에 넣는다. 반대로 하면 지우기가 실패했을 때
+ * 다음 접속에 또 받아 복제된다.
+ *
+ * @returns {Promise<number[]|null>} 되돌려받은 신발 (없으면 null)
+ */
+export async function reclaimStake(code) {
+  const fb = await rt();
+  if (!fb) return null;
+  const read = await readOnce(fb, path(ROOMS, code));
+  const room = read.val;
+  if (!room) return null;
+  if (room.result?.rankings) return null;          // 순위가 있으면 승자 몫이다
+  const mine = room.result?.given?.[fb.uid];
+  if (!Array.isArray(mine) || !mine.length) return null;
+
+  try {
+    await withTimeout(
+      fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'result', 'given', fb.uid))),
+      undefined, '판돈 회수'
+    );
+  } catch {
+    return null;   // 못 지웠으면 아직 내 것이 아니다 — 다음 접속에 다시 시도한다
+  }
+  return mine;
 }
 
 /**

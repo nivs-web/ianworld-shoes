@@ -168,7 +168,12 @@ function blit(ctx, str, x, y, s, color, mono, F = FONT) {
  * 캐시하면 층마다 캔버스를 새로 만든다. 글자 단위면 숫자 10개만 구우면 끝이다.
  */
 const glyphCache = new Map();
-const GLYPH_CACHE_MAX = 96;
+/**
+ * 96 은 숫자·영문만 쓰던 시절의 값이다. 멀티는 **한글 이름·판돈·알림**을 매 프레임
+ * 캐시본으로 찍으므로 금방 넘치고, 넘치면 매 프레임 다시 굽느라 오히려 느려진다.
+ * 글리프 하나는 7~11px 짜리 작은 캔버스라 300개라도 메모리가 거의 안 든다.
+ */
+const GLYPH_CACHE_MAX = 320;
 
 function cachedGlyph(ch, s, color, outline, shadow, mono, small) {
   const F = fontOf(small);

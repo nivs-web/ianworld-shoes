@@ -561,7 +561,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
        { uid: 'a', stairs: 3, alive: false, reachedAt: 200 },
        { uid: 'b', stairs: 3, alive: false, reachedAt: 100 },
      ]), ['b', 'a']);
-  has('사망 보고가 서버 보정 시각을 쓴다', mp, 'const at = nowOn(fb, offset);');
+  // 시계가 제각각인 폰들 사이에서는 '내가 잰 보정값'조차 못 믿는다 (§9-0-25).
+  // 이제 서버가 직접 찍는다.
+  has('사망 보고가 서버 시각을 쓴다', mp, 'const at = fb.dbMod.serverTimestamp();');
 
   // 9) 새 배포 감지
   has('배포 감지 루틴', pw, 'async function checkDeploy');
@@ -736,6 +738,56 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('부활 직후 지갑 동기화', ov, 'syncWallet()');
   // ⑦ 안 낸 패자가 있으면 잠깐 기다렸다 되돌린다
   has('미납부도 리셋을 잠시 막는다', mp, 'hasUnpaid(room) && 끝난지 < RESET_WAIT_MS');
+}
+
+// ── 23) 랙 · 신발 증발 (2026-08-19) ──
+/**
+ * 사용자 신고 두 건이 출발점이다.
+ *   ① "랙이 있어 튕긴다"
+ *   ② "신발 100개를 20개씩 5번 걸었는데 그 신발이 사라졌다"
+ * ②는 재산이 실제로 없어지는 사고라 **증상이 아니라 경로**를 못 박아 둔다.
+ */
+{
+  console.log('\n23) 랙 · 판돈 증발 (2026-08-19)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const mp = read('../src/services/multiplayer.js');
+  const ms = read('../src/services/multiSettle.js');
+  const hud = read('../src/game/multiHud.js');
+  const pf = read('../src/core/pixelfont.js');
+
+  // ① 판돈이 걸린 방은 순위가 없어도 못 지운다 (100켤레 증발의 직접 원인)
+  eq('순위 없이 판돈만 있어도 지키다', M.potShoes({
+    players: { a: { revives: 5 }, b: {} },
+    result: { given: { a: new Array(100).fill(1) } },
+  }), 101);
+  has('항아리가 비지 않았으면 방을 남긴다', mp, 'if (!room?.result?.rankings) return 항아리에있다;');
+
+  // ② 끝나지 않은 판의 내 판돈은 되돌려받는다 — 서버에서 먼저 지우고 지갑에 넣는다
+  has('판돈 회수 경로', mp, 'export async function reclaimStake(code)');
+  has('순위가 있으면 회수하지 않는다', mp, 'if (room.result?.rankings) return null;');
+  has('정산이 회수를 부른다', ms, 'Room.reclaimStake(code)');
+  eq('서버에서 지운 뒤에 지갑에 넣는다',
+    ms.indexOf('Room.reclaimStake(code)') < ms.indexOf('L.addShoes(back)'), true);
+  has('아직 뛰는 사람이 있으면 회수하지 않는다', ms, "p?.alive !== false");
+
+  // ③ 방에서 빠진 사람의 판돈(순위에 못 들어간다)도 승자가 걷는다
+  has('고아 판돈 비트', mp, 'export const ORPHAN_BIT');
+  has('승자가 고아 판돈을 걷는다', ms, '!rankings.includes(uid)');
+
+  // ④ 혼자 남아도 순위를 박는다 — 아니면 결과 화면에서 영원히 갇힌다
+  eq('minPlayers 미만이면 포기하지 않는다', mp.includes('players.length < MULTI.minPlayers) return'), false);
+
+  // ⑤ 시각은 서버가 찍는다 (폰 시계가 빠르면 부활 창이 안 닫히고, 느리면 고르는 중에 끝난다)
+  has('사망 시각을 서버가 찍는다', mp, 'const at = fb.dbMod.serverTimestamp();');
+  has('부활 시각도 서버가 찍는다', mp, "'reachedAt')]: fb.dbMod.serverTimestamp()");
+
+  // ⑥ 랙 — 멀티 HUD 의 매 프레임 문자열이 전부 캐시를 탄다
+  eq('HUD 에 캐시 없는 text() 호출이 없다', /[^dC]text\(/.test(hud.replace(/textCached\(/g, 'X(')), false);
+  has('판돈은 방이 바뀔 때만 다시 만든다', hud, 'if (scene.potRoom !== room)');
+  has('알림 줄바꿈은 한 번만 잰다', hud, 'if (!t.lines) t.lines = wrap(');
+  has('글리프 캐시를 늘렸다', pf, 'GLYPH_CACHE_MAX = 320');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

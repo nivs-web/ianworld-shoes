@@ -66,7 +66,28 @@ export async function settleRoom(code, room = null) {
   if (!u || u.guest) return null;
   const r = room ?? await Room.readRoom(code);
   const rankings = r?.result?.rankings;
-  if (!rankings?.length) return null;
+  /**
+   * ★ **순위가 없는 방 = 끝나지 않은 판.** 여기 내 판돈이 있으면 **되돌려받는다.** (2026-08-19)
+   *
+   * 부활 비용은 판이 끝나야 승자에게 간다. 상대가 튕기거나 앱을 꺼서 순위가 영영 안
+   * 박히면 그 신발은 아무에게도 안 가고 방에만 남는다 — 신발 100켤레를 걸고 그 판이
+   * 안 끝나면 **100켤레가 통째로 묶이거나 방과 함께 사라졌다.** (실제 신고 사례)
+   *
+   * 판이 아직 도는 중일 수도 있으므로 **살아 있는 참가자가 하나도 없을 때만** 회수한다.
+   */
+  if (!rankings?.length) {
+    const 살아있는사람 = Object.values(r?.players ?? {}).some((p) => !p?.waiting && p?.alive !== false);
+    if (r && !살아있는사람) {
+      const back = await Room.reclaimStake(code).catch(() => null);
+      if (back?.length) {
+        L.addShoes(back);
+        for (const i of back) L.recordShoe(i);
+        pushWallet();
+        return { rank: 0, won: false, paid: [], took: back, pending: 0, lost: 0, refunded: back.length };
+      }
+    }
+    return null;
+  }
 
   const myIndex = rankings.indexOf(u.uid);
   if (myIndex < 0) return null;
@@ -134,6 +155,18 @@ export async function settleRoom(code, room = null) {
       mask |= bit;
       claiming++;
     });
+
+    /**
+     * ★ **순위에 없는 사람이 건 신발도 걷는다.** (2026-08-19)
+     * 판 도중 튕겨서 방에서 빠진 사람은 `rankings` 에 못 들어가는데(규칙이 참가자만
+     * 허용한다) 그 사람이 부활에 건 신발은 항아리에 남는다. 안 걷으면 영원히 묶인다.
+     */
+    if (!(mask & Room.ORPHAN_BIT)) {
+      const 남은것 = Object.entries(given)
+        .filter(([uid, v]) => !rankings.includes(uid) && Array.isArray(v) && v.length)
+        .flatMap(([, v]) => v);
+      if (남은것.length) { pickUp.push(...남은것); mask |= Room.ORPHAN_BIT; claiming++; }
+    }
 
     /**
      * **도장을 먼저 서버에 남기고 나서 지갑에 넣는다.** 순서가 반대면 도장 쓰기가
