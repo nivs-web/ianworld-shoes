@@ -11,7 +11,7 @@
  * 어차피 평소에도 일어나야 하는 일이고, 점수를 새로 지어내지 않는다.
  */
 
-import { getStore, configured, projectId, withTimeout } from './firebase.js';
+import { getStore, configured, projectId, withTimeout, multiplayerReady } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import * as Rank from './leaderboard.js';
@@ -37,6 +37,12 @@ export async function selftest() {
    */
   const pid = projectId();
   if (!step('projectId 모양', /^[a-z0-9-]+$/.test(pid), JSON.stringify(pid))) return steps;
+
+  /**
+   * 1-2. **멀티 설정.** `databaseURL` 이 비면 멀티가 통째로, 아무 소리 없이 죽는다.
+   * 배포 환경변수가 빈 채로 나가 실제로 그랬다. (CLAUDE.md §9-0-15)
+   */
+  step('멀티(RTDB) 설정', multiplayerReady(), multiplayerReady() ? 'ok' : 'databaseURL 없음 — 멀티 불가');
 
   // 2. 지금 로그인 상태인가
   const u = currentUser();

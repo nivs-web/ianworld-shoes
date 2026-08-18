@@ -21,7 +21,6 @@
         },
 
         "players": {
-          ".validate": "newData.numChildren() <= newData.parent().child('maxPlayers').val()",
           "$uid": {
             "nickname":    { ".validate": "newData.isString() && newData.val().length <= 16 && ($uid == auth.uid || newData.val() == data.val())" },
             "characterId": { ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())" },
@@ -46,7 +45,7 @@
 
           "given": {
             "$uid": {
-              ".validate": "newData.numChildren() <= 4",
+              ".validate": "!newData.hasChild('4')",
               "$i": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 129 && ($uid == auth.uid || newData.val() == data.val())"
               }

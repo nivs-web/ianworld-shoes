@@ -136,7 +136,6 @@ service cloud.firestore {
         },
 
         "players": {
-          ".validate": "newData.numChildren() <= newData.parent().child('maxPlayers').val()",
           "$uid": {
             "nickname":    { ".validate": "newData.isString() && newData.val().length <= 16 && ($uid == auth.uid || newData.val() == data.val())" },
             "characterId": { ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())" },
@@ -161,7 +160,7 @@ service cloud.firestore {
 
           "given": {
             "$uid": {
-              ".validate": "newData.numChildren() <= 4",
+              ".validate": "!newData.hasChild('4')",
               "$i": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 129 && ($uid == auth.uid || newData.val() == data.val())"
               }
@@ -199,10 +198,14 @@ service cloud.firestore {
 - **`hostUid`** — 값이 그대로거나, 최초 생성이거나, **직전 방장이 이미 방에 없을 때만** 바꿀 수 있다.
   방장이 나갔을 때 남은 사람에게 넘기는 정상 동작(`leaveRoom`)은 통과하고, 방장이 멀쩡한데
   가로채는 건 막힌다. 예전 규칙이 입장 자체를 막던 문제도 여기서 풀린다.
-- **`players/.validate` 정원** — 서버가 직접 인원수를 센다. 클라이언트 트랜잭션이 뚫려도 5인 방이 안 된다.
+- **정원은 규칙으로 못 센다** — RTDB 규칙에는 `numChildren()` 이 **없다**(`hasChild`/`hasChildren` 뿐).
+  게시할 때 `No such method/property 'numChildren'` 로 거부돼서 알았다. 정원은 클라이언트
+  트랜잭션이 계속 막는다. 다만 **가짜 참가자는 못 넣으므로**(아래 규칙) 최악이 "자기 자신이
+  5번째로 끼어드는" 정도다 — 신발이 생기지는 않는다.
 - **`rankings/$i` 는 실재하는 참가자여야 한다** — 가짜 uid 를 1등에 박고 정산을 돌리는 경로를 끊는다.
   위의 가짜 참가자 차단과 짝을 이룬다.
-- **`given/$uid` 는 4개 이하, 값은 0~129**(신발 130종) — 패널티는 1켤레지만 여유를 뒀다.
+- **`given/$uid` 는 인덱스 4가 없어야 한다**(= 4개 이하), **값은 0~129**(신발 130종).
+  개수를 셀 방법이 없어 `!newData.hasChild('4')` 로 표현했다. 패널티는 1켤레지만 여유를 뒀다.
   예전에는 길이·값 제한이 아예 없어 수백 켤레를 적을 수 있었다.
 - **`settled/$uid`** — 정산 도장(§9-0-14). 로컬에만 두면 저장소를 지우거나 기기를 바꿀 때
   같은 방이 다시 정산돼 신발이 복제된다. 본인만 찍고, 남의 도장은 못 지운다.

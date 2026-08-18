@@ -56,6 +56,23 @@ function resolveAuthDomain() {
  */
 const clean = (v) => (typeof v === 'string' ? v.trim() : v);
 
+/**
+ * ★ **RTDB 주소가 비면 멀티가 통째로, 그리고 조용히 죽는다.** (2026-08-16)
+ *
+ * `getRtdb()` 는 `CFG.databaseURL` 이 비어 있으면 **청크를 부르지도 않고 곧장 null** 을
+ * 돌려준다. 그러면 방 만들기·입장·정산이 전부 아무 일도 안 하는 함수가 되고,
+ * 화면에는 1.6초짜리 "네트워크 연결을 확인해주세요" 토스트 하나만 스쳐 간다.
+ * 오류도, 로그도, 네트워크 요청도 없다.
+ *
+ * 실제로 배포 환경변수 `VITE_FIREBASE_DATABASE_URL` 이 **빈 값**이라 멀티가
+ * 첫 배포부터 한 번도 동작한 적이 없었다. 세 개 배포의 번들을 전부 까 보니
+ * 셋 다 `databaseURL:""` 였다.
+ *
+ * 이 값은 비밀이 아니다 — 콘솔에서 누구나 보이고, 어차피 번들에 박힌다.
+ * 그래서 **기본값을 코드에 둔다.** 환경변수는 다른 프로젝트를 붙일 때 덮어쓰는 용도다.
+ */
+const DEFAULT_DB_URL = 'https://find-shoes-f5c55-default-rtdb.asia-southeast1.firebasedatabase.app';
+
 const CFG = {
   apiKey: clean(import.meta.env.VITE_FIREBASE_API_KEY),
   authDomain: clean(resolveAuthDomain()),
@@ -63,8 +80,18 @@ const CFG = {
   storageBucket: clean(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
   messagingSenderId: clean(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
   appId: clean(import.meta.env.VITE_FIREBASE_APP_ID),
-  databaseURL: clean(import.meta.env.VITE_FIREBASE_DATABASE_URL),
+  databaseURL: clean(import.meta.env.VITE_FIREBASE_DATABASE_URL) || DEFAULT_DB_URL,
 };
+
+if (!clean(import.meta.env.VITE_FIREBASE_DATABASE_URL)) {
+  console.warn(
+    '[firebase] VITE_FIREBASE_DATABASE_URL 이 비어 있어 기본 주소로 대체했습니다.\n' +
+      '          배포 환경변수에 채워 두는 편이 맞습니다 — 이 값이 비면 멀티가 조용히 죽습니다.'
+  );
+}
+
+/** 멀티가 가능한 상태인가. 화면이 "왜 안 되는지" 말해 주려면 이게 필요하다 */
+export const multiplayerReady = () => !!(configured() && CFG.databaseURL);
 
 /**
  * 다듬는 것만으로는 부족하다 — **다듬어야 했다는 사실 자체를 알려야** 다음 사람이 안 당한다.
