@@ -25,10 +25,9 @@ import { MULTI } from '../../config/balance.js';
 import { currentUser } from '../../services/auth.js';
 import { finishRun } from '../../services/profile.js';
 import * as Room from '../../services/multiplayer.js';
-import { roundOver, potShoes } from '../../services/matchRules.js';
+import { roundOver, potShoes, owedBy } from '../../services/matchRules.js';
 import { settleRoom } from '../../services/multiSettle.js';
 import { hold } from '../../core/hold.js';
-import MultiMenu from './MultiMenu.js';
 import WaitingRoom from './WaitingRoom.js';
 import Lobby from '../Lobby.js';
 
@@ -189,6 +188,11 @@ export default function MultiResult(nav, params = {}) {
    * (`result/settled/$uid`), 신발이 남은 방은 아무도 못 지우게 막았다(`hasUnclaimed`).
    * 이제 나가는 게 항상 안전하고, 방도 시체로 남지 않는다.
    */
+  /** 정산 결과가 아직 없을 때 "얼마 잃었나"를 순위·부활 횟수로 계산한다 */
+  function myOwed() {
+    return owedBy(room?.players?.[myUid] ?? {});
+  }
+
   function releaseSeat() {
     if (keepSeat) return;
     Room.leaveRoom(code).catch(() => {});
@@ -215,13 +219,21 @@ export default function MultiResult(nav, params = {}) {
           title(S.multiResultTitle),
           el('div.hint', S.loading),
           el('div.spacer'),
-          backButton(S.toLobby, () => nav.reset(Lobby))
+          backButton(S.leaveToLobby, () => nav.reset(Lobby))
         );
       }
 
       const rankings = room?.result?.rankings ?? [];
       const players = room?.players ?? {};
-      const won = settle?.won;
+      /**
+       * ★ **1등이면 메시지는 무조건 뜬다.** (2026-08-19)
+       *
+       * 예전에는 `settle` 이 있을 때만 승패 문구를 띄웠다. 그런데 정산은 여러 이유로
+       * 늦거나 `null` 이 된다(방을 이미 나갔다·순위가 방금 박혔다·네트워크). 그러면
+       * **이긴 사람이 아무 말도 못 듣는다** — 사용자가 신고한 "간혹 안 뜬다"가 이것이다.
+       * 순위표만 있으면 승패는 확정이므로, 문구는 순위로 판단한다.
+       */
+      const won = settle?.won ?? (rankings.length ? rankings[0] === myUid : undefined);
 
       /**
        * 순위가 아직 없다 = 남은 사람들이 계속 오르고 있다 (역전 배틀).
@@ -249,7 +261,7 @@ export default function MultiResult(nav, params = {}) {
             ]);
           })),
           el('div.spacer'),
-          backButton(S.toLobby, () => nav.reset(Lobby))
+          backButton(S.leaveToLobby, () => nav.reset(Lobby))
         );
       }
 
@@ -270,15 +282,19 @@ export default function MultiResult(nav, params = {}) {
         })),
 
         // 기획서 문구는 토씨 그대로 (§5-7)
-        settle
-          ? el('div.settle', null, [
+        won === undefined
+          ? el('div.hint', S.settleLater)
+          : el('div.settle', null, [
               el('div.settle-head', won ? S.won : S.lost),
-              // 판돈을 통째로 가져온다 / 부활 비용까지 합쳐 얼마를 잃었다
-              won && settle.took.length ? el('div', S.wonPot(settle.took.length)) : null,
-              won && settle.pending ? el('div.hint', S.rewardPending(settle.pending)) : null,
-              !won && settle.lost ? el('div', S.lostShoes(settle.lost)) : null,
-            ])
-          : el('div.hint', S.settleLater),
+              /**
+               * 승자 문구의 숫자는 **항아리 전체**다. 아직 안 들어온 몫이 있어도
+               * 결국 그 사람에게 간다(정산은 접속할 때마다 다시 돈다). 그때그때
+               * 걷힌 양을 쓰면 "0켤레를 가져왔습니다" 같은 말이 나온다.
+               */
+              won ? el('div', S.wonPot(potShoes(room))) : null,
+              won && settle?.pending ? el('div.hint', S.rewardPending(settle.pending)) : null,
+              !won ? el('div', S.lostShoes(settle?.lost ?? myOwed())) : null,
+            ]),
 
         el('div.spacer'),
         /**
@@ -315,8 +331,13 @@ export default function MultiResult(nav, params = {}) {
           if (r === 'pending') setTimeout(() => { if (!gone) nav.refresh(); }, 400);
           nav.refresh();
         }, { primary: true, disabled: staying }),
-        button(S.playAgain, () => { nav.reset(Lobby); nav.push(MultiMenu); }),
-        backButton(S.toLobby, () => nav.reset(Lobby))
+        /**
+         * ★ **로비로 나가는 길은 여기 하나뿐이다.** (2026-08-19)
+         * 인게임 '기권하고 나가기'도 로비가 아니라 이 화면으로 온다. 판이 끝나면
+         * 무조건 결과를 보고, 나가려면 여기서 한 번 더 눌러야 한다 —
+         * 그래야 "졌는지 이겼는지 모르고 로비에 와 있는" 일이 없다.
+         */
+        backButton(S.leaveToLobby, () => nav.reset(Lobby))
       );
     },
   };

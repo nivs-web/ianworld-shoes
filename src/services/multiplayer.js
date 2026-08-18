@@ -877,7 +877,8 @@ export async function finalizeResult(code) {
    */
   if (!roundOver(room, Date.now() + serverOffsetSync())) return room;
 
-  const ranked = rankPlayers(players);
+  // 순위도 종료 판정과 **같은 '지금'** 을 봐야 한다 — 신호가 끊긴 사람을 위로 올리면 안 된다
+  const ranked = rankPlayers(players, Date.now() + serverOffsetSync());
   try {
     await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
       state: 'finished',

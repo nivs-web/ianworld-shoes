@@ -167,6 +167,8 @@ export const S = {
   multiRowStat: (shoes, stairs) => `신발${shoes} · ${stairs}계단`,
   multiOpponentStat: (shoes, stairs) => `${shoes}/${stairs}`,
   playAgain: '한 판 더',
+  /** 결과 화면에서 로비로 나가는 유일한 길 — 인게임 '나가기'는 이 화면까지만 온다 */
+  leaveToLobby: '대기하지 않고 나가기',
   rewardPending: (n) => `${n}명의 신발은 잠시 후 들어옵니다`,
   settleLater: '정산은 다음 접속 때 반영됩니다',
   roomCode: '방 코드',
@@ -197,6 +199,8 @@ export const S = {
   // ── 역전 배틀 (2026-08-18) ─────────────────────
   /** 인게임 하단 고정 — 지금까지 이 판에 걸린 신발 총량 */
   potLine: (n) => `이 게임에 걸린 신발 ${n}켤레`,
+  /** 레이스 게이지 등수 — 1등만 크게·희게, 나머지는 작게·노랗게 */
+  rankTag: (n) => `${n}등`,
   /** 사망 후 부활 선택 화면 */
   fellTitle: '계단에서 떨어졌습니다',
   /** 부활 버튼은 두 줄이다 — 7px 폰트로도 한 줄이면 170px 라 패널(148)을 넘는다 */

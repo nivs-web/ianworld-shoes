@@ -657,8 +657,11 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // 종료 판정
   const now = 100000;
-  eq('한 명이라도 살아 있으면 안 끝난다',
-     M.roundOver({ players: { a: { alive: true }, b: { alive: false, out: true } } }, now), false);
+  // 1:1 은 한 명만 빠져도 끝난다 (2026-08-19). 셋 이상이어야 "아직 뛰는 사람"이 의미가 있다
+  eq('셋 중 한 명이라도 뛰고 있으면 안 끝난다',
+     M.roundOver({ players: { a: { alive: true }, b: { alive: false, out: true }, c: { alive: false, out: true } } }, now), false);
+  eq('1:1 은 한 명이 빠지면 끝난다',
+     M.roundOver({ players: { a: { alive: true }, b: { alive: false, out: true } } }, now), true);
   eq('창이 안 지났으면 기다린다',
      M.roundOver({ players: { a: { alive: false, deadAt: now - 1000 } } }, now), false);
   eq('창을 넘기면 끝난다',
@@ -713,8 +716,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ① 마지막 생존자가 판을 끝내도 종료 판정이 성립해야 한다
   eq('살아서 끝낸 사람도 판정에 포함',
      M.roundOver({ players: { a: { alive: true, out: true }, b: { alive: false, out: true } } }, 1), true);
-  eq('아직 뛰는 사람이 있으면 아니다',
-     M.roundOver({ players: { a: { alive: true }, b: { alive: false, out: true } } }, 1), false);
+  eq('아직 뛰는 사람이 있으면 아니다 (3인)',
+     M.roundOver({ players: { a: { alive: true }, b: { alive: false, out: true }, c: { alive: true } } }, 1), false);
   has('끝낼 때 out 도장을 찍는다', gs, 'Room.markOut(this.multi.code)');
 
   // ② 판돈과 부활은 한 번의 쓰기 (실패해도 복제되지 않는다)
@@ -880,7 +883,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('상대 층수 글자도 없다', mh.includes('multiOpponentStat'), false);
 
   // ③ 레이스 게이지 — 나는 정중앙 고정, 한 칸 = 계단 10칸
-  has('내 자리는 상수 (움직이지 않는다)', mh, 'drawRacer(scene.charId, scene.mySlot, scene.myRevives | 0, RACE_CY');
+  has('내 자리는 상수 (움직이지 않는다)', mh, 'cy: RACE_CY, alive: true, rank: rank[scene.multi?.myUid], isMe: true,');
   has('눈금은 나와의 차이', mh, 'const 칸 = Math.round((floor - 나) / MULTI.raceStairsPerTick);');
   has('끝을 넘으면 붙는다', mh, 'Math.max(-MULTI.raceTicks, Math.min(MULTI.raceTicks, 칸))');
   eq('위아래 10칸', MULTI.raceTicks, 10);
@@ -905,6 +908,66 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('화면을 먼저 바꾼다', sm, 'nav.reset(MultiResult, { code, result });\n      Room.finalizeResult(code)');
   const mres = read('../src/screens/multi/MultiResult.js');
   has('방을 못 읽어도 화면은 뜬다', mres, 'const 안전망 = setTimeout(');
+}
+
+// ── 26) 결과 화면 강제 · 1:1 즉시 종료 · 1등 표시 (2026-08-19) ──
+{
+  console.log('\n26) 결과 화면 · 1:1 · 1등 표시 (2026-08-19)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const mh = read('../src/game/multiHud.js');
+  const mres = read('../src/screens/multi/MultiResult.js');
+  const sm = read('../src/screens/startMultiGame.js');
+  const gs = read('../src/game/GameScene.js');
+
+  // ① 판이 끝나면 무조건 결과 화면 — 인게임 '나가기'도 로비로 못 간다
+  has('끝나면 결과 화면으로', sm, 'nav.reset(MultiResult, { code, result })');
+  eq('인게임에서 로비로 직행하는 길이 없다', gs.includes('Lobby'), false);
+  eq('결과 화면에 로비 버튼은 하나뿐',
+    (mres.match(/nav\.reset\(Lobby\)/g) ?? []).length, 3);   // 로딩·대기·결과 각 화면의 '나가기'
+  has('나가기 문구', mres, 'S.leaveToLobby');
+  eq('한 판 더 버튼은 없앴다', mres.includes('S.playAgain'), false);
+
+  // ② 1:1 은 한 명이 빠지면 즉시 끝난다 (부활을 안 하면 그 자리에서 패배)
+  eq('1:1 한 명 빠지면 종료',
+    M.roundOver({ players: { a: { alive: false, out: true }, b: { alive: true } } }, 1), true);
+  eq('부활 창 동안은 아직',
+    M.roundOver({ players: { a: { alive: false, deadAt: 1000 }, b: { alive: true } } }, 1500), false);
+  eq('셋이면 한 명 빠져도 계속',
+    M.roundOver({ players: { a: { alive: false, out: true }, b: { alive: true }, c: { alive: true } } }, 1), false);
+
+  // ③ 남아 있는 사람이 나간 사람보다 위 — 계단이 낮아도
+  eq('기권한 쪽이 진다', M.rankPlayers([
+    { uid: 'a', stairs: 90, alive: false, out: true },
+    { uid: 'b', stairs: 12, alive: true },
+  ], 1), ['b', 'a']);
+  eq('전원이 빠졌으면 계단 순', M.rankPlayers([
+    { uid: 'a', stairs: 90, alive: false, out: true },
+    { uid: 'b', stairs: 12, alive: false, out: true },
+  ], 1), ['a', 'b']);
+  eq('튕긴 사람도 아래로', M.rankPlayers([
+    { uid: 'a', stairs: 70, alive: true, seenAt: 1000 },
+    { uid: 'b', stairs: 90, alive: true, seenAt: 1000 - MULTI.staleSeconds * 1000 - 1 },
+  ], 1000), ['a', 'b']);
+
+  // ④ 1등이면 승리 문구가 반드시 뜬다 (정산이 늦어도)
+  has('순위로 승패를 판단한다', mres, "rankings.length ? rankings[0] === myUid : undefined");
+  has('가져온 신발은 항아리 전체', mres, 'S.wonPot(potShoes(room))');
+
+  // ⑤ 게이지 — 죽은 사람은 회색 + 카운트다운, 남은 사람은 검은 테두리
+  has('죽으면 회색', mh, 'if (!alive) fadeRect(');
+  has('남은 초 계산', mh, 'function reviveLeft(p, now)');
+  has('상대 상자에 검은 테두리', mh, 'if (!isMe) {');
+  has('등수는 얼굴을 다 그린 뒤', mh, 'for (const t of tags) drawRankTag(');
+  has('1등 왕관', mh, 'function crown(x, y)');
+  has('1등만 흰색', mh, "color: '#FFFFFF'");
+
+  // ⑥ 1등 말풍선
+  has('말풍선 그리기', mh, 'function drawFirstBubble(scene, list)');
+  has('말풍선 에셋', mh, "url: '/assets/ui/bubble_first.png'");
+  eq('말풍선 파일이 있다',
+    fs.existsSync(new URL('../public/assets/ui/bubble_first.png', import.meta.url)), true);
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

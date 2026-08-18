@@ -22,23 +22,28 @@ import { MULTI } from '../config/balance.js';
  * @param {Array<{uid:string, shoesFound?:number, stairs?:number, reachedAt?:number}>} players
  * @returns {string[]} 1등부터 uid 목록
  */
-export function rankPlayers(players) {
+export function rankPlayers(players, now = Date.now()) {
   /**
-   * ★ **계단 높이가 전부다.** (2026-08-18 역전 배틀)
+   * ★ **판에 남아 있는 사람이 나간 사람보다 위다.** (2026-08-19)
    *
-   * 예전에는 주운 신발이 1순위였는데, 부활이 생기면서 그 기준이 무너졌다 —
-   * 신발 20켤레를 걸고 부활하면 **1위보다 20칸 앞**에서 시작하므로 계단이 곧 승부다.
-   * 판은 "전원이 죽고 아무도 부활하지 않을 때" 끝나므로, 마지막까지 가장 높이 오른
-   * 사람이 이긴 사람이다.
+   * 예전에는 계단 수가 1순위이고 생존은 동점 처리용이었다. 그런데 그러면
+   * **"내가 앞설 때 나가 버리면 이긴다"** 가 된다 — 상대는 계속 오를 수 있는데도
+   * 판이 그 자리에서 굳기 때문이다. 1:1 은 한 명이 빠지면 즉시 끝나므로(§roundOver)
+   * 이 허점이 곧바로 필승법이 된다.
    *
-   * 살아 있는 사람을 위로 두는 항은 남겨 둔다 — 다른 사람이 전부 포기해 마지막 한 명이
-   * 남은 채 판이 끝나는 경우에 그 사람이 1위여야 한다.
+   * 그래서 **아직 판에 붙어 있는 사람**(죽지 않았고, 포기하지 않았고, 신호도 살아 있는)
+   * 을 먼저 놓는다. 기권도 튕김도 결과가 같다 — 남아서 계속 오른 사람이 이긴다.
+   * 전원이 빠진 뒤(정상 종료)에는 이 항이 모두 같아지므로 **계단 수가 승부를 가른다.**
+   *
+   * @param {Array<{uid:string, stairs?:number, alive?:boolean, out?:boolean, seenAt?:number, reachedAt?:number}>} players
+   * @param {number} [now] 서버 기준 '지금' (신호 끊김 판정에 쓴다)
+   * @returns {string[]} 1등부터 uid 목록
    */
-  const survived = (p) => (p.alive === false ? 0 : 1);
+  const 남아있다 = (p) => (outOfRound(p, now) ? 0 : 1);
   return [...players]
     .sort((a, b) =>
+      남아있다(b) - 남아있다(a) ||
       (b.stairs ?? 0) - (a.stairs ?? 0) ||
-      survived(b) - survived(a) ||
       (a.reachedAt ?? Infinity) - (b.reachedAt ?? Infinity) ||
       String(a.uid).localeCompare(String(b.uid))
     )
@@ -153,6 +158,16 @@ export function isStale(player, now) {
 export function roundOver(room, now) {
   const list = playersInRound(room?.players);
   if (!list.length) return false;
+  /**
+   * ★ **1:1 은 한 명이 빠지는 순간 끝난다.** (2026-08-19)
+   *
+   * 둘뿐인 판에서 상대가 나가거나 부활을 포기하면 남은 사람은 **혼자 뛰는 것**이다.
+   * 그걸 계속 시키면 "나가기를 눌렀는데 결과가 안 뜬다"가 되고, 상대가 튕긴 경우에는
+   * 생존 신호가 끊길 때까지(90초) 둘 다 묶인다. 이겼는지 졌는지는 이미 정해져 있다.
+   *
+   * 셋 이상은 다르다 — 한 명이 빠져도 **남은 사람들끼리 판이 계속돼야** 한다.
+   */
+  if (list.length === 2 && list.some((p) => outOfRound(p, now))) return true;
   return list.every((p) => outOfRound(p, now));
 }
 

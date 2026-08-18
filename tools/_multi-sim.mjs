@@ -141,7 +141,7 @@ async function reboot(p) {
 }
 
 // ═══════════════════════════════════════════════
-console.log('S1) 두 명이 게임 중에 둘 다 나가기 — 신발이 넘어가야 한다');
+console.log('S1) 1:1 — 먼저 나간 쪽이 진다 (남아 있는 사람이 1등)');
 {
   const w = new World();
   const A = w.player('A', { shoes: 20 });
@@ -158,10 +158,11 @@ console.log('S1) 두 명이 게임 중에 둘 다 나가기 — 신발이 넘어
   await reboot(A);            // 승자는 패자가 늦게 내면 다음 접속에 걷는다
 
   const room = w.db.read(`rooms/${code}`);
-  eq('순위가 박혔다', room?.result?.rankings ?? null, ['A', 'B']);
+  // A 가 먼저 기권했으므로 계단이 더 높아도 진다 — 판에 남아 있던 B 가 1등
+  eq('순위가 박혔다', room?.result?.rankings ?? null, ['B', 'A']);
   eq('총량 보존', w.total(code), before);
-  eq('승자 A 가 1켤레 얻었다', A.wallet(), 21);
-  eq('패자 B 가 1켤레 잃었다', B.wallet(), 19);
+  eq('승자 B 가 1켤레 얻었다', B.wallet(), 21);
+  eq('패자 A 가 1켤레 잃었다', A.wallet(), 19);
 }
 
 console.log('\nS2) 나가기 → 곧바로 로비로 (결과 화면을 스쳐 지나감)');
@@ -226,9 +227,9 @@ console.log('\nS4) 부활 100켤레를 걸었는데 상대가 튕겼다');
   }
   eq('항아리에 100켤레', (w.db.read(`rooms/${code}/result/given/A`) ?? []).length, 100);
 
-  // B 가 튕긴다 → A 가 기권하고 나온다
-  await quitMidGame(A, code, { stairs: 40 });
+  // B 가 튕긴다 → 한참 뒤에 A 가 기권하고 나온다 (그 사이 B 의 신호가 끊긴다)
   advance(끊김);
+  await quitMidGame(A, code, { stairs: 40 });
   await resultScreen(A, code);
   await reboot(A);
 
@@ -251,12 +252,13 @@ console.log('\nS5) 마지막 사람이 나가도 방이 남아 정산이 가능�
   eq('순위가 남아 있다', !!room?.result?.rankings, true);
 }
 
-console.log('\nS6) 먼저 나간 사람은 판이 끝날 때까지 방에 남는다 (순위에서 사라지면 안 된다)');
+console.log('\nS6) 3인 — 먼저 나간 사람은 판이 끝날 때까지 방에 남는다');
 {
   const w = new World();
   const A = w.player('A', { shoes: 20 });
   const B = w.player('B', { shoes: 20 });
-  const code = await startRound(w, A, [B]);
+  const C = w.player('C', { shoes: 20 });
+  const code = await startRound(w, A, [B, C]);
   const before = w.total(code);
 
   await quitMidGame(A, code, { stairs: 4 });
@@ -264,17 +266,17 @@ console.log('\nS6) 먼저 나간 사람은 판이 끝날 때까지 방에 남는
   eq('아직 뛰는 사람이 있으면 자리를 지킨다', r, 'kept');
   eq('방에 그대로 있다', !!w.db.read(`rooms/${code}/players/A`), true);
 
-  // B 가 계속 오르다 죽는다
+  // 셋 이상은 한 명이 빠져도 판이 계속된다
   await B.act(() => Room.publishProgress(code, { stairs: 30, shoesFound: 2 }, true));
+  await quitMidGame(C, code, { stairs: 10 });
   await quitMidGame(B, code, { stairs: 30, shoesFound: 2 });
-  await resultScreen(B, code);
-  await reboot(A);
-  await reboot(B);
+  for (const p of [A, B, C]) await resultScreen(p, code, { leave: false });
+  for (const p of [A, B, C]) await reboot(p);
 
-  eq('순위는 계단 순', w.db.read(`rooms/${code}/result/rankings`), ['B', 'A']);
+  eq('전원이 빠진 뒤에는 계단 순', w.db.read(`rooms/${code}/result/rankings`), ['B', 'C', 'A']);
   eq('총량 보존', w.total(code), before);
   eq('도망친 A 도 신발을 냈다', A.wallet(), 19);
-  eq('B 가 가져갔다', B.wallet(), 21);
+  eq('B 가 둘 몫을 가져갔다', B.wallet(), 22);
 }
 
 console.log('\nS7) 일시정지로 30초를 멈춰도 판에서 빠지지 않는다 (생존 신호)');
@@ -282,9 +284,11 @@ console.log('\nS7) 일시정지로 30초를 멈춰도 판에서 빠지지 않는
   const w = new World();
   const A = w.player('A', { shoes: 20 });
   const B = w.player('B', { shoes: 20 });
-  const code = await startRound(w, A, [B]);
+  const C = w.player('C', { shoes: 20 });
+  const code = await startRound(w, A, [B, C]);
 
   await quitMidGame(A, code, { stairs: 2 });
+  await quitMidGame(C, code, { stairs: 1 });
   // B 는 일시정지 상태 — 계단은 안 오르지만 생존 신호는 보낸다
   for (let i = 0; i < 6; i++) { advance(5000); await B.act(() => Room.heartbeat(code)); }
   const now = Date.now();
@@ -325,14 +329,14 @@ console.log('\nS9) 정산을 여러 번 돌려도 지갑은 한 번만 움직인
   const code = await startRound(w, A, [B]);
   const before = w.total(code);
 
-  await quitMidGame(A, code, { stairs: 9 });
+  await quitMidGame(A, code, { stairs: 9 });     // 먼저 포기 = 패배
   await quitMidGame(B, code, { stairs: 1 });
   for (let i = 0; i < 3; i++) { await resultScreen(A, code, { leave: false }); await resultScreen(B, code, { leave: false }); }
   for (let i = 0; i < 3; i++) { await reboot(A); await reboot(B); }
 
   eq('총량 보존', w.total(code), before);
-  eq('승자는 한 켤레만', A.wallet(), 21);
-  eq('패자도 한 켤레만', B.wallet(), 19);
+  eq('승자는 한 켤레만', B.wallet(), 21);
+  eq('패자도 한 켤레만', A.wallet(), 19);
 }
 
 console.log('\nS10) 부활 판돈은 이긴 사람이 통째로 가져간다');
@@ -357,14 +361,15 @@ console.log('\nS10) 부활 판돈은 이긴 사람이 통째로 가져간다');
 
   eq('항아리 = 60 + 기본 1', M.potShoes(w.db.read(`rooms/${code}`)), 61);
 
+  // 계단은 A 가 훨씬 높지만 **먼저 포기**했다 — 1:1 은 남아 있는 쪽이 이긴다
   await quitMidGame(A, code, { stairs: 80 });
   await quitMidGame(B, code, { stairs: 30 });
   for (const p of [A, B]) await resultScreen(p, code);
   for (const p of [A, B]) await reboot(p);
 
   eq('총량 보존', w.total(code), before);
-  eq('A(승) = 60 - 40 + 61', A.wallet(), 81);
-  eq('B(패) = 60 - 20 - 1', B.wallet(), 39);
+  eq('A(패) = 60 - 40 - 1', A.wallet(), 19);
+  eq('B(승) = 60 - 20 + 61', B.wallet(), 101);
 }
 
 console.log('\nS11) 둘 다 판 도중에 앱이 죽었다 — 다음 접속에 스스로 정리돼야 한다');
@@ -398,8 +403,8 @@ console.log('\nS12) 방에 남아 다음 판 — 초기화되고 다시 정상 �
   const code = await startRound(w, A, [B]);
   const before = w.total(code);
 
+  await quitMidGame(B, code, { stairs: 2 });    // B 가 먼저 포기 → A 승
   await quitMidGame(A, code, { stairs: 6 });
-  await quitMidGame(B, code, { stairs: 2 });
   await resultScreen(A, code, { leave: false });
   await resultScreen(B, code, { leave: false });
   await resultScreen(A, code, { leave: false });   // 승자 화면의 재수령 폴링
@@ -409,8 +414,8 @@ console.log('\nS12) 방에 남아 다음 판 — 초기화되고 다시 정상 �
 
   // 두 번째 판
   await A.act(() => Room.startCountdown(code));
+  await quitMidGame(A, code, { stairs: 5 });    // 이번엔 A 가 먼저 포기 → B 승
   await quitMidGame(B, code, { stairs: 30 });
-  await quitMidGame(A, code, { stairs: 5 });
   await resultScreen(B, code, { leave: false });
   await resultScreen(A, code, { leave: false });
   await reboot(B);
@@ -427,13 +432,16 @@ console.log('\nS13) 먼저 나간 사람을 다음 판에 끌고 가지 않는�
   const w = new World();
   const A = w.player('A', { shoes: 20 });
   const B = w.player('B', { shoes: 20 });
-  const code = await startRound(w, A, [B]);
+  const C = w.player('C', { shoes: 20 });
+  const code = await startRound(w, A, [B, C]);
 
   await quitMidGame(A, code, { stairs: 2 });
   const kept = await A.act(() => Room.leaveRoom(code));
   eq('순위가 없으면 자리를 지킨다', kept, 'kept');
+  await quitMidGame(C, code, { stairs: 4 });
   await quitMidGame(B, code, { stairs: 9 });
   await resultScreen(B, code, { leave: false });
+  await resultScreen(C, code, { leave: true });
 
   // A 는 앱을 껐다 — 신호가 끊긴 채 4분이 지난다 (미납 대기 시간도 지난다)
   advance(Math.max(끊김, 240000));
@@ -504,8 +512,8 @@ console.log('\nS16) 옛 클라이언트가 찍어 둔 비트 도장을 새 코�
   const code = await startRound(w, A, [B]);
   const before = w.total(code);
 
+  await quitMidGame(B, code, { stairs: 1 });         // B 가 먼저 포기 → 패자
   await quitMidGame(A, code, { stairs: 9 });
-  await quitMidGame(B, code, { stairs: 1 });
   await resultScreen(B, code, { leave: false });     // B 가 먼저 낸다
 
   // 옛 클라이언트가 한 것처럼 **비트마스크만** 찍고 신발을 걷어 간 상태를 만든다
@@ -538,8 +546,8 @@ console.log('\nS17) 나눠 낸 신발 — 부활 20켤레 걷은 뒤 기본 1켤
     const floor = await Room.reviveMe(code, picked);
     if (floor == null) L.addShoes(picked);
   });
+  await quitMidGame(B, code, { stairs: 30 });      // B 가 먼저 포기 → 패자
   await quitMidGame(A, code, { stairs: 90 });
-  await quitMidGame(B, code, { stairs: 30 });
 
   await resultScreen(A, code, { leave: false });   // 승자가 20켤레를 먼저 걷는다
   eq('먼저 20켤레', A.wallet(), 60);
@@ -650,6 +658,35 @@ console.log('\nS20) 한 명이 튕기면 — 계단이 높은 쪽이 걸린 신�
   eq('총량 보존', w.total(code), before);
   eq('A = 60 - 20 + (40 + 1)', A.wallet(), 81);
   eq('B = 60 - 20 - 1', B.wallet(), 39);
+}
+
+console.log('\nS21) 1:1 — 죽고 10초 안에 부활을 안 하면 그 자리에서 진다');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  const before = w.total(code);
+
+  // A 가 훨씬 높이 올라간 뒤 떨어진다 — 하지만 부활을 안 한다
+  await A.act(() => Room.publishProgress(code, { stairs: 90, shoesFound: 0 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 12, shoesFound: 0 }, true));
+  await A.act(() => Room.reportDeath(code, { stairs: 90, shoesFound: 0 }));
+
+  const 죽은직후 = w.db.read(`rooms/${code}`);
+  eq('부활 창 동안은 안 끝난다', M.roundOver(죽은직후, Date.now()), false);
+
+  advance((MULTI.reviveWindowSeconds + 1) * 1000);
+  eq('창이 지나면 끝난다', M.roundOver(w.db.read(`rooms/${code}`), Date.now()), true);
+
+  await resultScreen(B, code, { leave: false });
+  await resultScreen(A, code, { leave: false });
+  await reboot(B);
+
+  eq('계단이 낮아도 남아 있던 B 가 1등', w.db.read(`rooms/${code}/result/rankings`), ['B', 'A']);
+  eq('총량 보존', w.total(code), before);
+  eq('A 가 신발을 뺏겼다', A.wallet(), 19);
+  eq('B 가 가져갔다', B.wallet(), 21);
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n시뮬레이션 이상 없음');

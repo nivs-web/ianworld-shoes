@@ -13,7 +13,7 @@
     "assets:chars": "node tools/slice-characters.mjs && node tools/build-faces.mjs",
     "assets:shoes": "node tools/slice-newdesign.mjs",
     "assets:bg": "node tools/downscale-bg.mjs",
-    "assets:ui": "node tools/slice-buttons.mjs && node tools/slice-stair.mjs && node tools/build-hud-ui.mjs",
+    "assets:ui": "node tools/slice-buttons.mjs && node tools/slice-stair.mjs && node tools/build-hud-ui.mjs && node tools/build-bubble.mjs",
     "assets:font": "node tools/build-font.mjs && node tools/build-font-small.mjs",
     "assets:icons": "node tools/build-icons.mjs",
     "assets:faces": "node tools/build-faces.mjs",
@@ -25,7 +25,8 @@
     "//qa:rules": "RTDB 규칙과 클라이언트가 쓰는 필드가 어긋나지 않는지. 규칙이 미지의 키를 거부하므로 필드를 하나 추가하고 규칙에 안 적으면 멀티가 통째로 막힌다.",
     "qa:rules": "node tools/_rules-qa.mjs",
     "sim:multi": "node --import ./tools/_sim-loader.mjs tools/_multi-sim.mjs",
-    "preview:hud": "node tools/_hud-preview.mjs"
+    "preview:hud": "node tools/_hud-preview.mjs",
+    "assets:bubble": "node tools/build-bubble.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"

@@ -36,7 +36,8 @@ import { getCtx } from '../core/canvas.js';
 import { PAL, SLOT_COLORS, SLOT_DIM } from './palette.js';
 import { VIEW_W, VIEW_H, STAIR, CENTER_X, CHAR } from '../config/layout.js';
 import { MULTI } from '../config/balance.js';
-import { potShoes, slotIndex } from '../services/matchRules.js';
+import { potShoes, slotIndex, rankPlayers, canRevive } from '../services/matchRules.js';
+import { serverOffsetSync } from '../services/multiplayer.js';
 import S from '../config/strings.ko.js';
 
 /** 알림 한 줄이 떠 있는 시간 */
@@ -59,6 +60,11 @@ const RACE_CX = 161;
 const RACE_CY = 150;                     // **나는 여기서 절대 안 움직인다**
 const TICK_GAP = 9;                      // 눈금 간격
 
+/** 등수 글씨는 얼굴 상자 왼쪽에 */
+const RANK_X = RACE_CX - (CELL >> 1) - 3;
+/** 1등 말풍선 */
+const BUBBLE = { w: 38, h: 24 };
+
 /** 판돈 줄 — 조작 버튼(266~314) 위 */
 const POT_Y = 252;
 /** 알림은 판돈 바로 위에서 위로 쌓인다 */
@@ -75,6 +81,11 @@ const TICKER_CX = TICKER_W >> 1;
 const requested = new Set();
 function ensureAssets(list) {
   const want = [];
+  // 1등 말풍선 — 멀티에서만 쓰는 그림이라 여기서 같이 받는다
+  if (!requested.has('bubble')) {
+    requested.add('bubble');
+    want.push({ key: 'bubble_first', url: '/assets/ui/bubble_first.png' });
+  }
   for (const o of list) {
     const id = o.characterId;
     if (!id || requested.has(id)) continue;
@@ -97,6 +108,7 @@ export function multiHud(scene) {
   if (scene.assetsFor !== scene.opponents) { scene.assetsFor = scene.opponents; ensureAssets(list); }
 
   drawGhosts(scene, list);
+  drawFirstBubble(scene, list);
   drawRaceGauge(scene, list);
   drawPot(scene);
   drawTicker(scene);
@@ -187,39 +199,107 @@ function drawRaceGauge(scene, list) {
     return RACE_CY - clamped * TICK_GAP;
   };
 
+  const rank = rankOf(scene);
+  const now = Date.now() + serverOffsetSync();
+
+  /**
+   * ★ **겹치면 왼쪽으로 비켜 세운다.** (2026-08-19)
+   * 눈금 간격은 9도트인데 얼굴 상자는 22도트다 — 20칸 안쪽으로 붙으면 서로를 가린다.
+   * 자리는 **내가 항상 맨 오른쪽**이고, 늦게 놓이는 사람이 한 칸씩 왼쪽으로 물러난다.
+   */
+  const 놓인자리 = [{ y: RACE_CY }];
+  const 비켜서기 = (y) => {
+    const n = 놓인자리.filter((p) => Math.abs(p.y - y) < CELL).length;
+    놓인자리.push({ y });
+    return n * (CELL - 4);
+  };
+
   // 상대 먼저, 나는 마지막에 — 겹치면 내가 위에 보여야 한다
+  const tags = [];
   for (const o of list) {
-    drawRacer(o.characterId, o.slot, o.revives | 0, yOf(o.stairs | 0), o.alive !== false);
+    const cy = yOf(o.stairs | 0);
+    tags.push(drawRacer({
+      charId: o.characterId, slot: o.slot, revives: o.revives | 0,
+      cy, dx: -비켜서기(cy), alive: o.alive !== false, rank: rank[o.id],
+      countdown: reviveLeft(o, now),
+    }));
   }
-  drawRacer(scene.charId, scene.mySlot, scene.myRevives | 0, RACE_CY, true, true);
+  tags.push(drawRacer({
+    charId: scene.charId, slot: scene.mySlot, revives: scene.myRevives | 0,
+    cy: RACE_CY, alive: true, rank: rank[scene.multi?.myUid], isMe: true,
+  }));
+  /**
+   * 등수는 **얼굴을 다 그린 뒤에** 찍는다. 가까이 붙은 사람들은 서로 비켜서 있어서
+   * 먼저 찍으면 옆 사람 상자에 깔린다(미리보기로 확인).
+   */
+  for (const t of tags) drawRankTag(t.rank, t.x, t.y, t.dx !== 0);
 }
 
 /**
- * 한 사람 — 얼굴 + **6칸으로 나뉜 3도트 테두리.**
+ * 지금 순위 — **인게임 표시는 정산과 같은 계산을 써야** 한다.
+ * 화면에서 1등이던 사람이 결과에서 2등이면 그건 그냥 거짓말이다.
+ */
+function rankOf(scene) {
+  const players = scene.room?.players ?? {};
+  const order = rankPlayers(
+    Object.entries(players).filter(([, v]) => !v?.waiting).map(([uid, v]) => ({ uid, ...v })),
+    Date.now() + serverOffsetSync()
+  );
+  const out = {};
+  order.forEach((uid, i) => { out[uid] = i + 1; });
+  return out;
+}
+
+/**
+ * 죽은 사람의 남은 부활 시간(초). 살아 있거나 이미 포기했으면 `null`.
+ *
+ * 이 숫자가 있어야 **"쟤가 곧 20칸 앞에서 튀어나온다"**는 긴장이 생긴다.
+ * 기준은 서버가 찍은 `deadAt` 이라 모두의 화면에서 같은 초가 흐른다.
+ */
+function reviveLeft(p, now) {
+  if (p.alive !== false || p.out || !p.deadAt) return null;
+  if (!canRevive(p)) return null;
+  const 남음 = Math.ceil((p.deadAt + MULTI.reviveWindowSeconds * 1000 - now) / 1000);
+  return 남음 > 0 ? Math.min(MULTI.reviveWindowSeconds, 남음) : null;
+}
+
+/**
+ * 한 사람 — 얼굴 + **6칸으로 나뉜 3도트 테두리** + 등수.
  *
  * 테두리 칸이 곧 남은 부활 횟수다. 한 번 쓸 때마다 한 칸이 어두워지므로,
- * 상대의 테두리만 봐도 "쟤는 이제 두 번 남았다"가 읽힌다. 숫자로 쓰면 읽는 데
- * 시간이 걸리고, 뛰면서는 아무도 안 읽는다.
+ * 상대의 테두리만 봐도 "쟤는 이제 두 번 남았다"가 읽힌다.
+ * 죽어 있는 동안에는 **얼굴이 회색이 되고 그 위에 남은 초가 뜬다.**
  */
-function drawRacer(charId, slot, revives, cy, alive, isMe = false) {
+function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, countdown = null, dx = 0 }) {
   const i = Math.max(0, Math.min(SLOT_COLORS.length - 1, slot | 0));
   const on = SLOT_COLORS[i];
   const off = SLOT_DIM[i];
-  const x = RACE_CX - (CELL >> 1);
+  const x = RACE_CX - (CELL >> 1) + dx;
   const y = Math.round(cy) - (CELL >> 1);
+
+  /**
+   * ★ **남의 상자에는 1도트 검은 테두리를 더 두른다.** (2026-08-19)
+   * 배경(하늘·건물)이 밝으면 노랑·초록이 묻힌다. 내 상자는 흰 테두리라 이미 또렷하다.
+   */
+  if (!isMe) {
+    rect(x - 1, y - 1, CELL + 2, 1, PAL.textShadow);
+    rect(x - 1, y + CELL, CELL + 2, 1, PAL.textShadow);
+    rect(x - 1, y, 1, CELL, PAL.textShadow);
+    rect(x + CELL, y, 1, CELL, PAL.textShadow);
+  }
 
   // 바탕 — 얼굴이 없을 때도 자리가 보여야 한다
   rect(x + BORDER, y + BORDER, FACE, FACE, PAL.panelDark);
   const face = img(`${charId}_face`);
-  if (face) {
-    const ctx = getCtx2d();
-    if (ctx) {
-      ctx.save();
-      ctx.globalAlpha = alive ? 1 : 0.35;
-      ctx.drawImage(face, x + BORDER, y + BORDER);
-      ctx.restore();
-    }
+  const ctx = getCtx2d();
+  if (face && ctx) {
+    ctx.save();
+    ctx.globalAlpha = alive ? 1 : 0.35;
+    ctx.drawImage(face, x + BORDER, y + BORDER);
+    ctx.restore();
   }
+  // 죽어 있으면 얼굴을 회색으로 덮는다 — "지금 부활을 고르는 중"이 한눈에 보인다
+  if (!alive) fadeRect(x + BORDER, y + BORDER, FACE, FACE, PAL.textShadow, 0.55);
 
   /**
    * 6칸 테두리 — 위 2칸, 오른쪽 1칸, 아래 2칸, 왼쪽 1칸.
@@ -255,6 +335,111 @@ function drawRacer(charId, slot, revives, cy, alive, isMe = false) {
     rect(x - 1, y, 1, CELL, PAL.text);
     rect(x + CELL, y, 1, CELL, PAL.text);
   }
+
+  // 남은 부활 시간 — 얼굴 위에 크게
+  if (countdown != null) {
+    textCached(String(countdown), x + (CELL >> 1), y + 6, {
+      color: PAL.text, outline: PAL.textShadow, align: 'center', mono: true, scale: 1,
+    });
+  }
+
+  return { rank, x, y, dx };
+}
+
+/**
+ * 등수 — 얼굴 왼쪽. **1등만 다르게 생겼다.**
+ *
+ * 1등은 11px 볼드 흰색 + 검은 외곽선 + 머리 위 왕관, 나머지는 7px 노랑.
+ * 크기와 색이 다르면 숫자를 읽기 전에 "쟤가 1등"이 먼저 보인다.
+ */
+function drawRankTag(rank, x, y, 겹침) {
+  if (!rank) return;
+  const 일등 = rank === 1;
+  const label = S.rankTag(rank);
+  const cy = y + (CELL >> 1);
+  /**
+   * 옆으로 비켜선 사람은 **상자 위**에 붙인다 — 왼쪽에는 이미 다른 사람이 서 있다.
+   */
+  const px = 겹침 ? x + (CELL >> 1) : x - 2;
+  const py = 겹침 ? y - (일등 ? 12 : 8) : cy - (일등 ? 5 : 3);
+  const align = 겹침 ? 'center' : 'right';
+  if (일등) {
+    crown(겹침 ? px - 2 : x - 12, py - 7);
+    textCached(label, px, py, { color: '#FFFFFF', outline: PAL.textShadow, align, scale: 1 });
+  } else {
+    textCached(label, px, py, {
+      color: PAL.gaugeWarn, outline: PAL.textShadow, align, small: true, scale: 1,
+    });
+  }
+}
+
+/** 왕관 5×4 — 1등 글씨 위 (도트로 직접 찍는다, 에셋 하나 더 받을 이유가 없다) */
+function crown(x, y) {
+  const gold = PAL.gaugeWarn;
+  rect(x, y + 1, 1, 3, gold);
+  rect(x + 4, y + 1, 1, 3, gold);
+  rect(x + 2, y, 1, 4, gold);
+  rect(x, y + 3, 5, 1, gold);
+  rect(x + 1, y + 2, 1, 2, gold);
+  rect(x + 3, y + 2, 1, 2, gold);
+}
+
+/** 반투명 사각형 — 죽은 얼굴을 회색으로 덮을 때만 쓴다 */
+function fadeRect(x, y, w, h, color, alpha) {
+  const ctx = getCtx2d();
+  if (!ctx) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  rect(x, y, w, h, color);
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────
+// 3) 1등 말풍선 — 계단 위 1등 머리 위에 따라다닌다
+// ─────────────────────────────────────────────
+
+/**
+ * ★ **1등 머리 위에만 "1등이닷".** (2026-08-19)
+ *
+ * 오른쪽 게이지가 "몇 칸 차이"를 알려 준다면, 이 말풍선은 **지금 이 순간 누가
+ * 앞서는가**를 계단 위에서 바로 알려 준다. 1등을 빼앗기는 순간 사라지므로,
+ * 말풍선이 내 머리에서 떨어져 나가는 것만으로 역전당한 걸 안다.
+ *
+ * 그림은 사용자가 준 `etc/1등이닷.png` 를 빌드 타임에 도트로 구운 것이다
+ * (`tools/build-bubble.mjs`). 글씨까지 구워져 있어 매 프레임 글자를 찍지 않는다.
+ */
+function drawFirstBubble(scene, list) {
+  if (scene.countdownMs > 0) return;
+  const bubble = img('bubble_first');
+  if (!bubble) return;
+  const ctx = getCtx2d();
+  if (!ctx) return;
+
+  const rank = rankOf(scene);
+  const myUid = scene.multi?.myUid;
+  if (rank[myUid] === 1) {
+    // 내 캐릭터는 항상 화면 가운데 발끝 기준이다
+    return drawBubbleAt(ctx, bubble, CENTER_X, CHAR.footY - CHAR.h);
+  }
+  const 일등 = list.find((o) => rank[o.id] === 1);
+  if (!일등) return;
+
+  const stairs = scene.stairs;
+  if (!stairs) return;
+  const camX = stairs.worldX(scene.floor) + ((stairs.nextDir(scene.floor) * STAIR.gapX) >> 1);
+  const floor = 일등.stairs | 0;
+  const footY = CHAR.footY - (floor - scene.floor) * STAIR.gapY;
+  if (footY < 0 || footY > VIEW_H) return;          // 화면 밖이면 게이지가 맡는다
+  stairs.ensure?.(floor + 1);
+  const cx = stairs.worldX(floor) - camX + CENTER_X;
+  drawBubbleAt(ctx, bubble, cx, footY - CHAR.h);
+}
+
+/** 머리 위 왼쪽 — 꼬리가 머리를 가리키게 (참고 이미지와 같은 배치) */
+function drawBubbleAt(ctx, bubble, headCx, headTop) {
+  const x = Math.round(headCx) - BUBBLE.w + 6;
+  const y = Math.round(headTop) - BUBBLE.h - 1;
+  ctx.drawImage(bubble, Math.max(1, Math.min(VIEW_W - BUBBLE.w - 1, x)), Math.max(1, y));
 }
 
 // ─────────────────────────────────────────────
