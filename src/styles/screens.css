@@ -11,7 +11,12 @@
 
 .screen-title {
   text-align: center;
-  font-size: 20px;
+  /**
+   * 20px → 24px (2단계 확대, 2px/단계 — 2026-08-19). 로비·메뉴 화면 전체
+   * ("신발 도감"·"캐릭터 바꾸기"·"명예의 전당"·"멀티게임 로비" 등)가
+   * 전부 이 `title()` 헬퍼 하나를 거치므로 여기 한 곳만 고치면 다 반영된다.
+   */
+  font-size: 24px;
   font-weight: bold;
   color: var(--c-panel);
   letter-spacing: 1px;
@@ -566,6 +571,38 @@
   image-rendering: pixelated;
 }
 
+/* S08b 설정 — 음향 on/off (2026-08-19) */
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(245, 217, 160, 0.08);
+  border: 2px solid var(--c-line);
+}
+
+.settings-label {
+  font-size: 14px;
+  color: var(--c-text-light);
+  text-align: center;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-row-label {
+  font-size: 13px;
+  color: var(--c-text-light);
+}
+
+.settings-row .seg {
+  flex: 0 0 auto;
+}
+
 /* 공통 다이얼로그 / 토스트 */
 .dialog-overlay {
   position: fixed;
@@ -763,7 +800,26 @@
   font-size: 11px; line-height: 1;
 }
 .player-row.me { background: rgba(255, 221, 142, 0.16); }
-.player-name { flex: 1; }
+.player-name {
+  flex: 1;
+  /* 이름이 길어도 옆의 보유신발 배지가 밀리지 않는다 — 이름만 줄이고 자른다 (§11) */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/** 이름 옆 보유신발 — 아이콘 + 켤레수. 폭이 고정이라 이름이 길어도 자리가 안 밀린다 */
+.player-shoes {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--c-text-light);
+  opacity: 0.85;
+}
+.player-shoes img { width: 14px; height: 10px; image-rendering: pixelated; }
 .tag-host { font-size: 10px; color: var(--btn-hilite-on); }
 .tag-ready { font-size: 10px; opacity: 0.5; }
 .tag-ready.on { opacity: 1; color: var(--btn-hilite-on); }

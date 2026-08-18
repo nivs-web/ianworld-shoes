@@ -9,7 +9,7 @@
  */
 
 import S from '../../config/strings.ko.js';
-import { el, button, backButton, segmented, screen, title, toast } from '../ui.js';
+import { el, button, backButton, segmented, screen, title, toast, presentOverlay } from '../ui.js';
 import { characterById, characterSprite } from '../../data/characters.js';
 import { MULTI } from '../../config/balance.js';
 import { currentUser } from '../../services/auth.js';
@@ -22,6 +22,24 @@ import Lobby from '../Lobby.js';
 
 /** 되돌리기가 실패했을 때 다시 시도하기까지 */
 const RESET_RETRY_MS = 2500;
+
+/**
+ * 참가자 이름을 누르면 뜨는 승률/보유신발 팝업. (2026-08-19, §11)
+ * `p` 는 `players/$uid` 스냅샷 — nickname·shoesOwned·multiWins·multiLosses.
+ */
+function playerStatPopup(p) {
+  let dismiss = () => {};
+  const close = () => dismiss();
+  const games = (p.multiWins ?? 0) + (p.multiLosses ?? 0);
+  const overlay = el('div.dialog-overlay', { onclick: close }, [
+    el('div.dialog', { onclick: (e) => e.stopPropagation() }, [
+      el('div.dialog-msg', p.nickname || '???'),
+      el('div.dialog-detail', S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0)),
+      button(S.close, close, { sfx: 'sfx_menu_back' }),
+    ]),
+  ]);
+  dismiss = presentOverlay(overlay);
+}
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -150,7 +168,7 @@ export default function WaitingRoom(nav, params = {}) {
        */
       if (!room) {
         return screen(
-          title(S.roomCode),
+          title(S.multiRoomTitle(code)),
           el('div.hint', S.loading),
           el('div.spacer'),
           backButton(S.back, () => leave(true))
@@ -166,7 +184,7 @@ export default function WaitingRoom(nav, params = {}) {
       const allReady = enough && inRound.every((p) => p.ready || p.uid === room.hostUid);
 
       return screen(
-        title(S.roomCode),
+        title(S.multiRoomTitle(code)),
 
         // 비밀방은 코드가 커야 한다 — 친구한테 불러 줘야 하니까
         room.isPrivate
@@ -189,7 +207,12 @@ export default function WaitingRoom(nav, params = {}) {
               style: { background: SLOT_COLORS[slot] ?? SLOT_COLORS[0], color: slot === 1 ? '#3A1F0C' : '#FFF4D6' },
             }),
             ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
-            el('div.player-name', p.nickname || '???'),
+            // 이름을 누르면 승률/보유신발 팝업 (§11, 2026-08-19)
+            el('div.player-name', { text: p.nickname || '???', onclick: () => playerStatPopup(p) }),
+            el('div.player-shoes', null, [
+              el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
+              el('span', S.playerShoesOwned(p.shoesOwned ?? 0)),
+            ]),
             p.uid === room.hostUid ? el('div.tag-host', S.host) : null,
             el('div.tag-ready', { class: p.ready ? 'on' : '' },
               p.waiting ? S.roomStateWaiting : p.ready ? S.ready : '...'),

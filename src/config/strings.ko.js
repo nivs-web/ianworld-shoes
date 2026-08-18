@@ -15,9 +15,11 @@ export const S = {
   loginUnavailable: '지금은 로그인 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요',
   /** 팝업이 막혔는데 리다이렉트도 못 쓰는 환경 — 헛걸음 대신 사실대로 알린다 */
   loginPopupBlocked: '브라우저가 로그인 창을 막았습니다. 팝업을 허용하고 다시 눌러주세요',
-  installShortcut: '바로가기 아이콘 만들기',
+  installShortcut: '앱 바로가기 만들기',
   installIosGuide: '공유 버튼 → "홈 화면에 추가"를 눌러주세요',
   installDone: '홈 화면에 추가되었습니다',
+  /** PC — 설치 프롬프트도 iOS 안내도 안 되는 브라우저(파이어폭스 등)의 마지막 수단 */
+  installBookmarkGuide: 'Ctrl+D (Mac은 Cmd+D)를 눌러 즐겨찾기에 추가해주세요',
   loginFailed: '로그인에 실패했습니다. 다시 시도해주세요',
   logout: '로그아웃',
   logoutConfirm: '로그아웃 하시겠습니까?',
@@ -47,15 +49,17 @@ export const S = {
   myMultiRecord: (wins, games) => `나의 멀티게임 승률 ${wins}승 / ${games}게임`,
   myShoesOwned: (n) => `나의 신발 보유량 ${n}켤레`,
   myDexProgress: (have, all) => `나의 신발 도감 ${have}/${all}켤레`,
-  difficultyTitle: '게임난이도(신발의 등장 빈도가 달라집니다)',
+  difficultyTitle: '게임난이도를 높이면, 신발도 많이 등장합니다',
   difficultyEasy: '쉬움',
   difficultyNormal: '보통',
   difficultyHard: '어려움',
-  menuCollection: '나의 신발 컬렉션',
+  menuCollection: '신발 도감',
   menuCharacter: '캐릭터 바꾸기',
   menuRename: '캐릭터 닉네임 변경하기',
   menuHallOfFame: '명예의 전당',
   menuControls: '조작법 변경',
+  /** 로비 메뉴 표기 — 안에 조작법 변경 + 음향 설정을 담는다 (2026-08-19) */
+  menuSettings: '설정',
   playSingle: '싱글게임',
   playMulti: '멀티게임',
 
@@ -77,7 +81,7 @@ export const S = {
   purchaseFailed: '신발이 부족합니다',
 
   // ── S06 신발 도감 ──────────────────────────
-  collectionTitle: '나의 신발 컬렉션',
+  collectionTitle: '신발 도감',
   totalShoes: '총 신발 갯수',
   /** 같은 신발을 여러 켤레 들고 있을 때만 표기한다 (1켤레는 아무것도 안 쓴다) */
   ownedPairs: (n) => `${n}켤레 보유`,
@@ -122,6 +126,14 @@ export const S = {
   controlMode2: '상승 - 방향전환',
   controlMode3: '우상승 - 좌상승',
 
+  // ── S08b 설정 (2026-08-19) ──────────────────
+  settingsTitle: '설정',
+  menuSound: '음향 설정',
+  soundBgm: '배경음악',
+  soundSfx: '효과음',
+  settingsOn: '켜짐',
+  settingsOff: '꺼짐',
+
   // ── S09 인게임 HUD ─────────────────────────
   /** @param {number} n */
   hudShoes: (n) => `찾은신발 ${n}`,
@@ -150,7 +162,7 @@ export const S = {
   reviveNo: '포기',
 
   // ── S13~S18 멀티 ───────────────────────────
-  multiTitle: '멀티게임',
+  multiTitle: '멀티게임 로비',
   createRoom: '방 만들기',
   joinRoom: '방 입장',
   createPrivateRoom: '비밀방 만들기',
@@ -160,12 +172,16 @@ export const S = {
   publicRoomHint: '자동으로 만들어진 방입니다. 다른 사람이 곧 들어옵니다',
   host: '방장',
   roomSlots: (n, max) => `참가자 ${n}/${max}명`,
+  /** 대기방 참가자 카드 — 이름 옆 보유량, 클릭하면 승률까지 (2026-08-19, §11) */
+  playerShoesOwned: (n) => `보유신발 ${n}켤레`,
+  playerStatPopup: (wins, games, shoes) =>
+    `승률 ${wins}승 / ${games}게임\n보유신발 ${shoes}켤레`,
   needMorePlayers: '2명 이상이어야 시작할 수 있습니다',
   notEveryoneReady: '아직 레디하지 않은 사람이 있습니다',
   waitingHostSelf: '모두 레디하면 시작할 수 있습니다',
   roomClosed: '방이 사라졌습니다',
   roomAlreadyStarted: '이미 시작한 방입니다',
-  multiResultTitle: '멀티 결과',
+  multiResultTitle: '게임 결과',
   multiRowStat: (shoes, stairs) => `신발${shoes} · ${stairs}계단`,
   multiOpponentStat: (shoes, stairs) => `${shoes}/${stairs}`,
   playAgain: '한 판 더',
@@ -174,6 +190,7 @@ export const S = {
   rewardPending: (n) => `${n}명의 신발은 잠시 후 들어옵니다`,
   settleLater: '정산은 다음 접속 때 반영됩니다',
   roomCode: '방 코드',
+  multiRoomTitle: (n) => `멀티게임 ${n}번 방`,
   ready: '레디',
   cancelReady: '레디 취소',
   startGame: '시작하기',
@@ -190,7 +207,8 @@ export const S = {
   roomListLoading: '방을 찾는 중...',
   roomStateWaiting: '대기중',
   roomStatePlaying: '게임중',
-  roomRow: (name, n, max) => `${name || '???'} · ${n}/${max}`,
+  /** 방 번호를 넣는다 (2026-08-19) — 목록만 보고는 어느 방인지 알 수 없었다 */
+  roomRow: (code, name, n, max) => `${code}번 · ${name || '???'} · ${n}/${max}`,
   roomEnter: '입장',
   roomFullShort: '만원',
   roomJoinedAsWaiter: '게임이 끝나면 다음 판부터 함께합니다',
@@ -207,8 +225,8 @@ export const S = {
   /** 레이스 게이지 등수 — 1등만 크게·희게, 나머지는 노랗게 */
   rankTag: (n) => `${n}등`,
   /** 계단 숫자 아래 — 따라잡아야 할 거리 */
-  gapFromFirst: (n) => `(1등과의 거리 ${n}계단)`,
-  keepingFirst: '(1등 유지중)',
+  gapFromFirst: (n) => `1등까지 ${n}계단 남음`,
+  keepingFirst: '현재 1등 유지중!',
   /** 1등 머리 위 말풍선 — 이 문자열에서 폰트 글자를 굽는다(tools/build-bubble.mjs) */
   firstBubble: '1등이닷',
   /** 사망 후 부활 선택 화면 */
@@ -232,8 +250,10 @@ export const S = {
    * 게이지에서 그 색 테두리를 찾으면 그게 그 사람이다.
    */
   slotColorName: ['빨강색', '노란색', '파랑색', '초록색'],
+  /** 부활 알림 전용 — "노랑, 1등 부활" 처럼 짧게(2026-08-19) */
+  slotColorShort: ['빨강', '노랑', '파랑', '초록'],
   someoneFell: (color) => `${color}이 떨어졌다!`,
-  someoneRevived: (color) => `${color}이 1등 부활!`,
+  someoneRevived: (colorShort) => `${colorShort}, 1등 부활`,
   someoneOut: (color) => `${color}이 포기했다!`,
   /** 결과 화면 */
   waitingOthers: '다른 사람들이 아직 오르고 있습니다',

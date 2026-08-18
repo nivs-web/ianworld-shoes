@@ -4,11 +4,12 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, backButton, screen, confirmDialog } from './ui.js';
+import { el, button, backButton, screen, confirmDialog, toast } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
 import { signOut } from '../services/auth.js';
 import Lobby from './Lobby.js';
 import SplashLogin from './SplashLogin.js';
+import { canInstall, promptInstall, isStandalone, onInstallChange } from '../services/pwa.js';
 
 const CARDS = [
   { id: 'find_shoes', title: S.gameTitle, screen: () => Lobby, ready: true },
@@ -26,7 +27,24 @@ export default function Portal(nav) {
     nav.reset(SplashLogin);
   }
 
+  /**
+   * '앱 바로가기 만들기' — 안드로이드/데스크톱 크롬은 `beforeinstallprompt` 를 받아
+   * 진짜 설치 대화상자를 띄운다. iOS 사파리는 그 이벤트가 없어 안내 문구로 대신한다.
+   * 그 둘 다 아닌 PC 브라우저(파이어폭스 등)는 설치 자체가 불가능하므로 **북마크 안내**로
+   * 같은 목적(바로가기)을 이룬다 — `promptInstall()` 이 'unavailable' 을 돌려주는 경우다.
+   */
+  async function onInstall() {
+    const r = await promptInstall();
+    if (r === 'ios') toast(S.installIosGuide, 3200);
+    else if (r === 'accepted') toast(S.installDone, 2600);
+    else if (r === 'unavailable') toast(S.installBookmarkGuide, 3200);
+  }
+
+  // 설치 가능 신호는 화면이 그려진 뒤에 온다 — 도착하면 버튼을 다시 그린다
+  const off = onInstallChange(() => nav.refresh());
+
   return {
+    onLeave() { off(); },
     render() {
       const p = getProfile();
       return screen(
@@ -42,6 +60,8 @@ export default function Portal(nav) {
           ])
         ),
         el('div.spacer'),
+        // 이미 홈 화면 앱으로 돌고 있으면 바로가기가 무의미하므로 감춘다
+        !isStandalone() ? button(S.installShortcut, onInstall) : null,
         backButton(S.logout, onLogout)
       );
     },

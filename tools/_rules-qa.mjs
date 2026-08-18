@@ -121,7 +121,13 @@ console.log('\n5) 다음 판 준비(resetRoom)가 규칙에 막히지 않는가 
  * 두 번째 판을 영영 못 한다. (§9-0-19)
  */
 const RESET_OK = {
-  ready: 'newData.val() == false',
+  /**
+   * ★ **`ready` 는 더 이상 초기값(false) 한 가지만 허용하지 않는다.** (2026-08-19)
+   * '계속하기'를 누른 기존 참가자는 다음 판에 **레디가 자동으로 켜져야** 한다
+   * (`multiplayer.js resetRoom`). 값 제약 없이 "waiting 전환 때만" 허용해서
+   * true·false 둘 다 통과시킨다 — 어차피 `newData.isBoolean()` 이 위에서 막아 준다.
+   */
+  ready: null,
   stairs: 'newData.val() == 0',
   shoesFound: 'newData.val() == 0',
   alive: 'newData.val() == true',
@@ -129,8 +135,15 @@ const RESET_OK = {
 for (const [k, init] of Object.entries(RESET_OK)) {
   const v = room.players.$uid[k]?.['.validate'] ?? '';
   const waiting = v.includes("child('state').val() == 'waiting'");
-  if (v.includes(init) && waiting) ok(`참가자.${k} — 방이 waiting 으로 갈 때 초기값으로 되돌릴 수 있다`);
+  const initOk = init == null || v.includes(init);
+  if (initOk && waiting) ok(`참가자.${k} — 방이 waiting 으로 갈 때 초기값으로 되돌릴 수 있다`);
   else bad(`참가자.${k} — 남의 값을 초기화 못 한다. '방에 남기'가 401 로 죽는다`);
+}
+// ready 는 초기값 제약이 없어야(=값을 안 가려야) '자동 레디'가 통과한다 — 그 반대를 잡는다
+{
+  const v = room.players.$uid.ready?.['.validate'] ?? '';
+  if (!v.includes('newData.val() == false')) ok('참가자.ready — 초기화 시 true 로도 되돌릴 수 있다 (자동 레디)');
+  else bad('참가자.ready — false 로만 고정돼 있다. 자동 레디가 401 로 막힌다');
 }
 
 console.log('\n6) 참가자 노드가 객체인지 검사하는가 (가짜 인원 방지)');

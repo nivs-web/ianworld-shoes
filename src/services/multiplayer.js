@@ -84,6 +84,12 @@ const nowOn = (fb, offset) => Date.now() + offset;
  * `matchRules.isStale` 이 판정할 수 있다. 값이 없으면 판정을 안 하므로(모르는 것을
  * 근거로 남을 빼지 않는다) 그런 사람이 판을 영영 못 끝내게 만든다.
  */
+/**
+ * 참가자 카드(§11, 2026-08-19)를 위한 스냅샷. `nickname`·`characterId` 처럼
+ * **입장 시점 값**이다 — 판 중에 신발을 더 모아도 방 안의 숫자는 바뀌지 않는다.
+ * 실시간으로 쫓아가려면 방을 계속 다시 쓰는 별도 동기화가 필요한데, 대기방에
+ * 앉아 있는 짧은 시간 동안은 입장 시점 값으로도 충분하다.
+ */
 function meRecord(profile, fb) {
   return {
     seenAt: fb ? fb.dbMod.serverTimestamp() : 0,
@@ -94,6 +100,9 @@ function meRecord(profile, fb) {
     shoesFound: 0,
     alive: true,
     joinedAt: Date.now(),
+    shoesOwned: profile.shoesOwned ?? 0,
+    multiWins: profile.multiWins ?? 0,
+    multiLosses: profile.multiLosses ?? 0,
   };
 }
 
@@ -409,10 +418,21 @@ export async function resetRoom(code) {
     // 빠진 키(reachedAt·deadAt·out·revives·waiting)는 **삭제**된다 — 다음 판은 백지에서 시작한다
     players[uid] = {
       nickname: v.nickname ?? '', characterId: v.characterId ?? 'ian',
-      ready: false, stairs: 0, shoesFound: 0, alive: true, joinedAt: v.joinedAt ?? Date.now(),
+      /**
+       * ★ **'계속하기'를 누른 사람은 레디가 자동으로 켜진다.** (2026-08-19, 사용자 요청)
+       * 이 함수를 타는 사람은 전부 "이미 이 방에 있던" 사람이다 — 방금 결과 화면에서
+       * `계속하기` 를 눌렀다는 뜻이다. 그 의사를 다시 레디 버튼으로 확인받을 필요가
+       * 없다. **새로 들어오는 사람만** `joinRoom`(→ `meRecord`)을 타므로 거기서는
+       * 여전히 `ready: false` 로 시작한다 — 신규 유저는 당연히 레디를 눌러야 한다.
+       * 원하면 `레디 취소`로 언제든 끌 수 있다.
+       */
+      ready: true, stairs: 0, shoesFound: 0, alive: true, joinedAt: v.joinedAt ?? Date.now(),
       // ★ 생존 신호도 지금으로 다시 찍는다 — 안 그러면 지난 판의 낡은 값 때문에
       //   **다음 판이 시작하자마자 전원이 '튕긴 사람'으로 판정된다.** (2026-08-19)
       seenAt: fb.dbMod.serverTimestamp(),
+      // ★ 참가자 카드 스냅샷은 다음 판에도 그대로 옮긴다 — 진행도가 아니라 프로필값이라
+      //   지울 이유가 없다. 값을 그대로 옮기므로 "남의 것은 값이 그대로" 규칙도 통과한다.
+      shoesOwned: v.shoesOwned ?? 0, multiWins: v.multiWins ?? 0, multiLosses: v.multiLosses ?? 0,
     };
   }
   const n = Object.keys(players).length;

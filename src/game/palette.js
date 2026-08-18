@@ -31,6 +31,8 @@ export const PAL = {
   line: '#6B3F1D',
   text: '#FFF4D6',
   textShadow: '#3A1F0C',
+  /** 죽어서 카운트다운 중인 등수 글자 — 회색(2026-08-19) */
+  deadGray: '#9A968E',
   accent: '#D94F2B',
 
   // 이펙트

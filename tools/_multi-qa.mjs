@@ -844,7 +844,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('방에 없으면 안 보낸다 (유령 노드 방지)', gs, 'if (!this.room?.players?.[this.multi.myUid]) return;');
 
   // ⑤ 다음 판 — 낡은 신호를 새로 찍고, 자리에 없는 사람은 데려가지 않는다
-  has('되돌릴 때 신호를 새로 찍는다', mp, 'seenAt: fb.dbMod.serverTimestamp(),\n    };');
+  has('되돌릴 때 신호를 새로 찍는다', mp, 'seenAt: fb.dbMod.serverTimestamp(),');
   has('자리에 없는 사람은 다음 판에 안 태운다', mp, 'if (!자리에있다(uid, v)) continue;');
 
   // ⑥ 나눠 낸 신발 — 켤레 수 도장(새) + 비트 도장(옛 클라이언트 보호)을 한 번에 쓴다
@@ -968,11 +968,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('1등 왕관', mh, 'function crown(x, y)');
   has('1등만 흰색', mh, "color: '#FFFFFF'");
 
-  // ⑥ 1등 말풍선
-  has('말풍선 그리기', mh, 'function drawFirstBubble(scene, list)');
-  has('말풍선 에셋', mh, "url: '/assets/ui/bubble_first.png'");
-  eq('말풍선 파일이 있다',
-    fs.existsSync(new URL('../public/assets/ui/bubble_first.png', import.meta.url)), true);
+  // ⑥ 1등 말풍선 — **2026-08-19 삭제됐다** (사용자 요청, "흰 말풍선 없애").
+  //    남기는 검사는 "확실히 없다"뿐이다 — 지웠다가 리팩터로 슬쩍 되돌아오는 걸 잡는다.
+  eq('말풍선 그리기 함수가 없다', mh.includes('function drawFirstBubble'), false);
+  eq('말풍선 에셋을 안 받는다', mh.includes("url: '/assets/ui/bubble_first.png'"), false);
 }
 
 // ── 27) 폰트 (2026-08-19, 되돌림) ──
@@ -1003,7 +1002,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     [...String(t).toUpperCase()].reduce((a, c) => a + ((F7.glyphs[c]?.w ?? F7.glyphs['?'].w) + F7.tracking), 0);
   for (const [name, t] of [
     ['판돈', S.potLine(484)],
-    ['부활 알림', S.someoneRevived('노란색')],
+    ['부활 알림', S.someoneRevived(S.slotColorShort[1])],  // 실제 호출: 짧은 색 이름 (2026-08-19)
     ['낙사 알림', S.someoneFell('빨강색')],
     ['포기 알림', S.someoneOut('초록색')],
   ]) {
@@ -1062,12 +1061,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('한 칸 = 5계단', MULTI.raceStairsPerTick, 5);
   has('내 얼굴도 미리 받는다', mh, 'if (myCharId && !requested.has(myCharId))');
   has('1등과의 거리 줄', mh, 'function drawGapLine(scene)');
-  eq('1등이면 유지중', S.keepingFirst, '(1등 유지중)');
+  eq('1등이면 유지중 (2026-08-19 문구 변경)', S.keepingFirst, '현재 1등 유지중!');
+  eq('1등과의 거리 문구 (2026-08-19 문구 변경)', S.gapFromFirst(7), '1등까지 7계단 남음');
 
-  // ⑥ 말풍선 — 새 그림, 머리 위, 보는 방향에 따라 반전
-  has('말풍선 68×34', mh, 'const BUBBLE = { w: 68, h: 34 };');
-  has('왼쪽을 보면 뒤집는다', mh, 'ctx.scale(-1, 1);');
-  has('머리 위로 띄운다', mh, 'const y = Math.round(headTop) - BUBBLE.h - 3;');
+  // ⑥ 말풍선은 삭제됐다 — 위 26번 그룹에서 "없다"를 이미 확인한다. 여기서는 중복 확인 안 함.
 
   // ⑦ 문구
   eq('부활 버튼 1줄', S.reviveWith1(20), '신발 20개 써서');
@@ -1075,6 +1072,118 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('사망 화면 상금', S.potWin(30), '승리시 신발 30켤레 !');
   eq('사망 화면 내 지갑', S.myShoes(4), '나의 남은 신발 4켤레');
   has('사망 화면이 상금을 크게', ov, 'S.potWin(potShoes(this.game.room))');
+}
+
+// ── 29) 2026-08-19 배치 — 부활 알림 문구 · 죽은 등수 · 부활 원가 · 신발 이름 · 판중 습득 정산 ──
+{
+  console.log('\n29) 부활 알림 · 죽은 등수 회색 · 부활 30개 · 130종 이름 · 판중 습득 정산');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const S = (await import('../src/config/strings.ko.js')).default;
+  const { REVIVE } = await import('../src/config/balance.js');
+  const mh = read('../src/game/multiHud.js');
+  const gs = read('../src/game/GameScene.js');
+  const shoesData = JSON.parse(read('../src/data/shoes.json'));
+  const ms = read('../src/services/multiSettle.js');
+
+  // ① 부활 알림 — 색 이름만 짧게, "이" 조사와 "!" 를 뗐다
+  eq('노랑 부활', S.someoneRevived(S.slotColorShort[1]), '노랑, 1등 부활');
+  eq('빨강 부활', S.someoneRevived(S.slotColorShort[0]), '빨강, 1등 부활');
+  eq('파랑 부활', S.someoneRevived(S.slotColorShort[2]), '파랑, 1등 부활');
+  eq('초록 부활', S.someoneRevived(S.slotColorShort[3]), '초록, 1등 부활');
+  has('GameScene 은 짧은 색으로 알린다', gs, 'S.someoneRevived(colorShort)');
+
+  // ② 죽어서 카운트다운 중이면 등수 글자도 회색 + 작게
+  has('죽으면 등수도 dead 플래그를 받는다', mh, 'dead: countdown != null');
+  has('dead 면 회색 + 7px', mh, "color: PAL.deadGray, outline: PAL.textShadow, align, small: true");
+  has('죽으면 1등 왕관 서식도 포기한다', mh, '일등 = rank === 1 && !dead');
+
+  // ③ 싱글 부활 원가 50 → 30
+  eq('부활 30개', REVIVE.shoesPerRevive, 30);
+
+  // ④ 130종 이름 — "스페셜 01" 류를 전부 사용자 지정 이름으로 교체
+  eq('130개 전부', shoesData.shoes.length, 130);
+  eq('옛 이름 잔재 없음', shoesData.shoes.some((s) => /^(스페셜|레어|트라이|투톤|베이식) \d/.test(s.name)), false);
+  eq('중복 이름 없음', new Set(shoesData.shoes.map((s) => s.name)).size, 130);
+  eq('1티어 첫 신발 = 스피카', shoesData.shoes.find((s) => s.index === 0).name, '스피카');
+
+  // ⑤ 판 도중 습득한 신발도 1등이 가져간다 (승자 자신의 몫은 제외)
+  has('정산이 상대가 주운 개수를 센다', ms, 'foundShoesTotal(r, u.uid)');
+  has('개수만큼 새로 굴린다', ms, 'rollFoundShoe()');
+  has('판돈 도장과 같은 회차에서만 한 번', ms, 'if (!L.isSettled(payTag(code))) {');
+}
+
+{
+  console.log('\n30) 계단이 조작 버튼 틈에서 사라지던 버그 · PWA 바로가기 버튼 (2026-08-19)');
+  const { STAIR, CHAR, CONTROLS } = await import('../src/config/layout.js');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+
+  // ① drawBelow=2 였을 때는 마지막 계단 바닥(sy=265)이 버튼 윗변(y266)과 맞아
+  //    버튼 사이 틈(x54~126)이 항상 비어 보였다. 버튼 영역을 실제로 덮는지 계산으로 확인한다.
+  const rows = [];
+  for (let k = STAIR.drawAbove; k >= -STAIR.drawBelow; k--) {
+    const sy = CHAR.footY - k * STAIR.gapY;
+    if (sy < -STAIR.h - 40 || sy > 340) continue;
+    rows.push({ sy, bottom: sy + STAIR.h });
+  }
+  const coversButtonBand = rows.some(
+    (r) => r.sy <= CONTROLS.left.y + CONTROLS.left.h && r.bottom >= CONTROLS.left.y
+  );
+  eq('버튼 틈(y266~314)까지 계단이 그려진다', coversButtonBand, true);
+  eq('drawBelow 가 충분히 늘었다', STAIR.drawBelow >= 6, true);
+
+  // ② PWA 바로가기 버튼 — 포털(로그아웃) 화면 위에, 설치/iOS안내/PC북마크 세 경로 모두 처리
+  const portal = fs.readFileSync('src/screens/Portal.js', 'utf8');
+  has('포털에 앱 바로가기 버튼', portal, 'S.installShortcut, onInstall');
+  has('설치 불가 브라우저는 북마크 안내로', portal, "installBookmarkGuide");
+  const idxInstall = portal.indexOf('S.installShortcut');
+  const idxLogout = portal.indexOf('S.logout, onLogout');
+  eq('바로가기 버튼이 로그아웃 위에 있다', idxInstall > 0 && idxInstall < idxLogout, true);
+
+  // ③ ESC/게임패드 리매핑 — Y/B = X/A, RB·RT = left, LB·LT = right, 메뉴버튼 = ESC
+  const input = fs.readFileSync('src/core/input.js', 'utf8');
+  has('ESC 키가 일시정지', input, "['Escape', 'KeyP', 'Enter']");
+  has('Y(3) 도 left', input, 'on(2) || on(3)');
+  has('RB/R1(5)·RT/R2(7) 도 left', input, 'on(5) || on(7)');
+  has('B(1) 도 right', input, 'on(0) || on(1)');
+  has('LB/L1(4)·LT/L2(6) 도 right', input, 'on(4) || on(6)');
+  has('메뉴/뷰 버튼이 곧 ESC(pause)', input, 'on(9) || on(8)');
+  has('DOM 화면에서는 pauseHandler 대신 domBackHandler', input, 'else domBackHandler?.()');
+
+  // ④ ESC/게임패드 메뉴가 도감 등 DOM 화면에서 뒤로가기/팝업닫기로 동작 (§7)
+  const router = fs.readFileSync('src/screens/router.js', 'utf8');
+  has('팝업부터 닫고 없으면 뒤로가기로 통일', router, 'function backOrCloseOverlay()');
+  has('ESC 바인딩 존재', router, 'export function bindEscBack()');
+  has('게임 중에는 ui-mode 가 아니므로 건너뛴다', router, "classList.contains('ui-mode')");
+  has('게임패드 메뉴 → domBackHandler 등록', router, 'setDomBackHandler(backOrCloseOverlay)');
+  const mainJs = fs.readFileSync('src/main.js', 'utf8');
+  has('main.js 가 ESC 바인딩을 켠다', mainJs, 'bindEscBack()');
+
+  // ⑤ [조작법 변경] → [설정], 안에 조작법 변경 + 음향 설정(BGM/SFX on/off) (§4)
+  const lobby = fs.readFileSync('src/screens/Lobby.js', 'utf8');
+  has('로비 메뉴가 설정으로 바뀌었다', lobby, 'S.menuSettings, () => nav.push(Settings)');
+  const settingsScreen = fs.readFileSync('src/screens/Settings.js', 'utf8');
+  has('설정 화면 안에 조작법 변경이 남아 있다', settingsScreen, 'S.menuControls, () => nav.push(Controls)');
+  has('설정 화면이 BGM on/off', settingsScreen, "Audio.setEnabled('bgm', v)");
+  has('설정 화면이 SFX on/off', settingsScreen, "Audio.setEnabled('sfx', v)");
+
+  // ⑥ 로비/메뉴 화면 타이틀 폰트 2단계(+4px) 확대 (§9) — title() 헬퍼 하나로 전체 화면에 적용
+  const css = fs.readFileSync('src/styles/screens.css', 'utf8');
+  const m = /\.screen-title\s*\{[^}]*font-size:\s*(\d+)px/.exec(css);
+  eq('타이틀 폰트 20px → 24px', m && Number(m[1]), 24);
+
+  // ⑦ 대기방 참가자 카드 — 보유신발 배지 + 클릭 시 승률 팝업 (§11)
+  const mp = fs.readFileSync('src/services/multiplayer.js', 'utf8');
+  has('meRecord 가 보유신발/승패를 스냅샷으로 담는다', mp, 'shoesOwned: profile.shoesOwned ?? 0');
+  has('meRecord 가 승수를 담는다', mp, 'multiWins: profile.multiWins ?? 0');
+  has('meRecord 가 패수를 담는다', mp, 'multiLosses: profile.multiLosses ?? 0');
+  has('resetRoom 이 다음 판에도 스냅샷을 옮긴다', mp, 'shoesOwned: v.shoesOwned ?? 0');
+  const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
+  has('대기방에 보유신발 배지', wr, 'S.playerShoesOwned(p.shoesOwned ?? 0)');
+  has('이름을 누르면 팝업', wr, 'onclick: () => playerStatPopup(p)');
+  has('팝업이 승률/게임수/보유신발을 보여준다', wr, 'S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0)');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

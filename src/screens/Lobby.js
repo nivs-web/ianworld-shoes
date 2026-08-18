@@ -17,7 +17,7 @@ import { badgeSlots } from '../data/badges.js';
 import CharacterSelect from './CharacterSelect.js';
 import Collection from './Collection.js';
 import HallOfFame from './HallOfFame.js';
-import Controls from './Controls.js';
+import Settings from './Settings.js';
 import MultiMenu from './multi/MultiMenu.js';
 import Portal from './Portal.js';
 import { startGame } from './startGame.js';
@@ -94,7 +94,7 @@ export default function Lobby(nav) {
         button(S.menuCollection, () => nav.push(Collection)),
         button(S.menuCharacter, () => nav.push(CharacterSelect)),
         button(S.menuHallOfFame, () => nav.push(HallOfFame)),
-        button(S.menuControls, () => nav.push(Controls)),
+        button(S.menuSettings, () => nav.push(Settings)),
 
         el('div.row', null, [
           button(S.playSingle, () => startGame(nav, {}), { primary: true }),

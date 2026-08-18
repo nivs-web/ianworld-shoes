@@ -24,7 +24,7 @@ import * as L from './storageLocal.js';
 import * as Room from './multiplayer.js';
 import { currentUser } from './auth.js';
 import { patch } from './profile.js';
-import { pickPenaltyShoes, owedBy, outOfRound } from './matchRules.js';
+import { pickPenaltyShoes, owedBy, outOfRound, foundShoesTotal, rollFoundShoe } from './matchRules.js';
 import { MULTI } from '../config/balance.js';
 
 /** 도장 이름 — 방 하나에서 "내가 낸 것"과 "누구한테서 받은 것"을 따로 센다 */
@@ -202,6 +202,24 @@ export async function settleRoom(code, room = null) {
     }
 
     if (!L.isSettled(payTag(code))) {
+      /**
+       * ★ **판 도중 다들 주운 신발도 전부 1등이 가져간다.** (2026-08-19, 사용자 신고)
+       *
+       * 예전에는 판돈(`given` — 기본 참가비 + 부활 비용)만 정산했다. 계단에서 주운
+       * 신발은 승자의 `runResult.shoeIndices` 로만(자기 몫만) 지갑에 들어갔고,
+       * **패자가 주운 몫은 어디에도 기록되지 않아 조용히 사라졌다** — 신고받은 그 증상이다.
+       *
+       * 어떤 신발인지는 상대 화면에만 있어(개수만 방으로 온다) 그대로 옮길 수 없으므로
+       * **개수만큼 새로 굴려** 승자 지갑에 넣는다. 정확히 한 번만 굴려야 하므로
+       * 판돈 정산과 **같은 도장**(`payTag`) 안에서, 딱 한 번 돈다.
+       */
+      const bonusN = foundShoesTotal(r, u.uid);
+      if (bonusN > 0) {
+        const bonus = Array.from({ length: bonusN }, () => rollFoundShoe());
+        L.addShoes(bonus);
+        for (const i of bonus) L.recordShoe(i);
+        took = [...took, ...bonus];
+      }
       L.recordMatch(true);
       L.markSettled(payTag(code));
     }

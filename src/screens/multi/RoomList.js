@@ -63,7 +63,7 @@ export default function RoomList(nav) {
               const 상태 = r.playing ? S.roomStatePlaying : S.roomStateWaiting;
               return el('div.room-row', { class: r.playing ? 'playing' : '' }, [
                 el('div.room-state', 상태),
-                el('div.room-name', S.roomRow(r.hostName, r.count, r.max)),
+                el('div.room-name', S.roomRow(r.code, r.hostName, r.count, r.max)),
                 r.full
                   ? el('div.room-full', S.roomFullShort)
                   : button(S.roomEnter, () => enter(r.code), { primary: !r.playing, disabled: busy }),

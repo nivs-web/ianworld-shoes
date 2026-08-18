@@ -14,7 +14,7 @@ import * as Sfx from './audio/sfx.js';
 import * as Bgm from './audio/bgm.js';
 
 import { GameScene } from './game/GameScene.js';
-import { nav, bindHardwareBack } from './screens/router.js';
+import { nav, bindHardwareBack, bindEscBack } from './screens/router.js';
 import SplashLogin from './screens/SplashLogin.js';
 import Lobby from './screens/Lobby.js';
 import { initAuth, onUserChanged } from './services/auth.js';
@@ -57,6 +57,7 @@ async function boot() {
     () => { startLoop(update, render); Audio.resumeAudio(); }
   );
   bindHardwareBack();
+  bindEscBack();
 
   /**
    * 진단용 훅. QA 스크립트가 로그인을 건너뛰고 화면을 직접 열 때 쓴다.

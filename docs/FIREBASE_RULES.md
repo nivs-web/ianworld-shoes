@@ -220,7 +220,7 @@ service cloud.firestore {
               ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())"
             },
             "ready": {
-              ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == false && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
+              ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
             },
             "stairs": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
@@ -239,6 +239,15 @@ service cloud.firestore {
             },
             "waiting": {
               ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "shoesOwned": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "multiWins": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "multiLosses": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && ($uid == auth.uid || newData.val() == data.val())"
             },
             "revives": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && ($uid == auth.uid || newData.val() == data.val())"
@@ -357,6 +366,14 @@ service cloud.firestore {
   "아는 사람끼리만" 을 보장하려면 코드 해시로 조회하는 구조가 필요하다.
 - `userRooms/{uid}` 는 **내가 참가한 방 목록**이다. 정산을 안 하고 앱을 꺼도
   다음 접속에 여기서 미정산 방을 찾아 청산한다. 본인만 읽고 쓴다.
+
+### 대기방 참가자 카드 — 보유신발·승률 (2026-08-19)
+
+`players/$uid` 에 `shoesOwned`(보유 켤레) · `multiWins`(멀티 승수) · `multiLosses`(멀티 패수)를
+추가했다(§11). **`nickname`·`characterId` 와 같은 입장 시점 스냅샷**이라 판 중에 신발을
+더 모아도 방 안의 숫자는 안 바뀐다 — 다른 필드처럼 "본인만, 남의 것은 값이 그대로"를 따른다.
+`resetRoom` 이 다음 판을 위해 참가자를 다시 쓸 때도 이 세 값은 그대로 옮겨 적는다
+(승패 수는 방 안에서 안 바뀌는 값이라 옮겨도 규칙을 어기지 않는다).
 
 ---
 

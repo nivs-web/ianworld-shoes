@@ -696,5 +696,91 @@ console.log('\nS21) 1:1 — 부활 창이 지나면 판이 끝나고, 계단이 
   eq('B 가 가져갔다', B.wallet(), 21);
 }
 
+console.log('\nS22-pre) "계속하기" 후 다음 판 — 기존 참가자는 레디가 자동으로 켜진다 (2026-08-19)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+
+  await quitMidGame(B, code, { stairs: 2 });
+  await quitMidGame(A, code, { stairs: 6 });
+  await resultScreen(A, code, { leave: false });
+  await resultScreen(B, code, { leave: false });
+
+  await A.act(() => Room.resetRoom(code));
+  const players = w.db.read(`rooms/${code}/players`);
+  /**
+   * 예전에는 둘 다 `ready: false` 로 돌아가 매 판마다 다시 레디를 눌러야 했다.
+   * "계속하기"를 누른 시점에 이미 다음 판 의사를 밝힌 것이므로, 기존 참가자는
+   * 레디가 자동으로 켜진 채로 대기방에 들어가야 한다 — 방장만 [시작하기]를 누르면 된다.
+   */
+  eq('A(방장)도 자동 레디', players.A.ready, true);
+  eq('B(참가자)도 자동 레디', players.B.ready, true);
+
+  // 새로 들어오는 사람은 여전히 스스로 레디해야 한다 — 자동 레디가 아니다
+  const C = w.player('C', { shoes: 20 });
+  await C.act(() => Room.joinRoom(code));
+  eq('신규 참가자는 레디가 꺼진 채로 들어온다', w.db.read(`rooms/${code}/players/C/ready`), false);
+}
+
+console.log('\nS22) 판 도중 주운 신발도 1등이 가져간다 — 개수만큼 새로 굴려 받는다 (2026-08-19)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 }); // 패자, 판 중에 5개 주웠다
+  const B = w.player('B', { shoes: 20 }); // 승자, 판 중에 0개
+  const code = await startRound(w, A, [B]);
+  const before = w.total(code);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 10, shoesFound: 5 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 40, shoesFound: 0 }, true));
+  await A.act(() => Room.reportDeath(code, { stairs: 10, shoesFound: 5 }));
+  advance((MULTI.reviveWindowSeconds + 1) * 1000);
+
+  await resultScreen(B, code, { leave: false });
+  await resultScreen(A, code, { leave: false });
+  await reboot(B); // A 가 늦게 낸 기본 1켤레를 B 가 마저 걷는다 (S21과 같은 패턴)
+
+  eq('계단 높은 B 가 1등', w.db.read(`rooms/${code}/result/rankings`), ['B', 'A']);
+  /**
+   * ★ **여기서는 "총량 보존"이 아니라 "총량이 정확히 5만큼 늘어난다"를 본다.**
+   * 패자가 주운 5개는 실물이 아무 지갑에도 없었으므로(개수만 방으로 왔다) 승자에게
+   * 그대로 옮길 수 없다 — 그 개수만큼 새로 굴려 승자 지갑에 넣는 게 이 기능이다.
+   * 그래서 A+B 지갑 합이 이전보다 정확히 5 늘어야 정상이고, 그대로면(=5 안 늘면)
+   * 패자가 주운 신발이 다시 증발하고 있다는 뜻이다.
+   */
+  eq('패자가 낸 기본 1켤레 + 주운 5개 = 승자 지갑이 6 늘었다', B.wallet(), 26);
+  eq('패자는 기본 1켤레만 잃는다(주운 건 원래 자기 지갑에 없었다)', A.wallet(), 19);
+  eq('총량이 주운 개수(5)만큼 늘었다 — 사라지지 않고 승자에게 새로 갔다', w.total(code), before + 5);
+}
+
+console.log('\nS23) 판 도중 주운 신발 — 승자 자신의 몫은 중복으로 세지 않는다');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 }); // 승자, 자기가 3개 주웠다 — finishRun 이 별도로 반영
+  const B = w.player('B', { shoes: 20 }); // 패자, 0개
+  const code = await startRound(w, A, [B]);
+  const before = w.total(code);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 40, shoesFound: 3 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 10, shoesFound: 0 }, true));
+  await B.act(() => Room.reportDeath(code, { stairs: 10, shoesFound: 0 }));
+  advance((MULTI.reviveWindowSeconds + 1) * 1000);
+
+  await resultScreen(A, code, { leave: false });
+  await resultScreen(B, code, { leave: false });
+  await reboot(A); // B 가 늦게 낸 기본 1켤레를 A 가 마저 걷는다
+
+  eq('계단 높은 A 가 1등', w.db.read(`rooms/${code}/result/rankings`), ['A', 'B']);
+  /**
+   * A 의 3개는 이 시뮬레이터가 흉내내지 않는 `finishRun(runResult.shoeIndices)` 몫이라
+   * (그건 GameScene/profile.js 쪽 코드다) 여기서는 정산이 그 3개를 **또** 굴리지 않는지만
+   * 본다 — 늘어나는 건 패자 몫(0)뿐이므로 판돈(기본 1켤레)만큼만 옮겨가야 한다.
+   */
+  eq('패자 몫(0)만 더해졌다 — 승자는 판돈 1켤레만 받는다', A.wallet(), 21);
+  eq('패자는 1켤레를 잃는다', B.wallet(), 19);
+  eq('총량 보존 (패자의 주운 개수가 0 이므로 새로 굴린 신발도 0)', w.total(code), before);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n시뮬레이션 이상 없음');
 process.exit(fails ? 1 : 0);

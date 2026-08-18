@@ -71,8 +71,6 @@ const TICK_GAP = 10;
 
 /** 등수 글씨는 얼굴 상자 왼쪽에 */
 const RANK_X = RACE_CX - (CELL >> 1) - 3;
-/** 1등 말풍선 */
-const BUBBLE = { w: 68, h: 34 };
 
 /** 계단 숫자(41~63) 바로 아래 */
 const GAP_Y = 64;
@@ -103,11 +101,6 @@ function ensureAssets(list, myCharId) {
     requested.add(myCharId);
     want.push({ key: `${myCharId}_face`, url: `/assets/characters/${myCharId}_face.png` });
   }
-  // 1등 말풍선 — 멀티에서만 쓰는 그림이라 여기서 같이 받는다
-  if (!requested.has('bubble')) {
-    requested.add('bubble');
-    want.push({ key: 'bubble_first', url: '/assets/ui/bubble_first.png' });
-  }
   for (const o of list) {
     const id = o.characterId;
     if (!id || requested.has(id)) continue;
@@ -130,7 +123,6 @@ export function multiHud(scene) {
   if (scene.assetsFor !== scene.opponents) { scene.assetsFor = scene.opponents; ensureAssets(list, scene.charId); }
 
   drawGhosts(scene, list);
-  drawFirstBubble(scene, list);
   drawRaceGauge(scene, list);
   drawGapLine(scene);
   drawPot(scene);
@@ -253,7 +245,7 @@ function drawRaceGauge(scene, list) {
    * 등수는 **얼굴을 다 그린 뒤에** 찍는다. 가까이 붙은 사람들은 서로 비켜서 있어서
    * 먼저 찍으면 옆 사람 상자에 깔린다(미리보기로 확인).
    */
-  for (const t of tags) drawRankTag(t.rank, t.x, t.y, t.dx !== 0);
+  for (const t of tags) drawRankTag(t.rank, t.x, t.y, t.dx !== 0, t.dead);
 }
 
 /**
@@ -363,7 +355,7 @@ function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, count
       color: PAL.text, outline: PAL.textShadow, align: 'center', mono: true, scale: 1 });
   }
 
-  return { rank, x, y, dx };
+  return { rank, x, y, dx, dead: countdown != null };
 }
 
 /**
@@ -372,9 +364,15 @@ function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, count
  * 1등은 11px 볼드 흰색 + 검은 외곽선 + 머리 위 왕관, 나머지는 7px 노랑.
  * 크기와 색이 다르면 숫자를 읽기 전에 "쟤가 1등"이 먼저 보인다.
  */
-function drawRankTag(rank, x, y, 겹침) {
+function drawRankTag(rank, x, y, 겹침, dead = false) {
   if (!rank) return;
-  const 일등 = rank === 1;
+  /**
+   * ★ **죽어서 카운트다운 중이면 등수 글자도 회색 + 2단계 더 작게.** (2026-08-19)
+   * 얼굴이 이미 회색으로 죽었다는 걸 보여 주는데 등수만 11px 흰색으로 크게 남으면
+   * "지금 부활을 고르는 중"이라는 신호가 약해진다. 7px 소문자 폰트가 이 저장소의
+   * 최소 크기라 "2단계 작게"는 곧 1등 전용 11px 볼드를 포기하고 이 폰트로 내리는 것이다.
+   */
+  const 일등 = rank === 1 && !dead;
   const label = S.rankTag(rank);
   const cy = y + (CELL >> 1);
   /**
@@ -386,6 +384,9 @@ function drawRankTag(rank, x, y, 겹침) {
   if (일등) {
     crown(겹침 ? px - 2 : x - 12, py - 7);
     textCached(label, px, py, { color: '#FFFFFF', outline: PAL.textShadow, align, scale: 1 });
+  } else if (dead) {
+    textCached(label, px, py, {
+      color: PAL.deadGray, outline: PAL.textShadow, align, small: true, scale: 1 });
   } else {
     textCached(label, px, py, {
       color: PAL.gaugeWarn, outline: PAL.textShadow, align, small: true, scale: 1 });
@@ -430,73 +431,6 @@ function drawGapLine(scene) {
   textCached(차이 > 0 ? S.gapFromFirst(차이) : S.keepingFirst, CENTER_X, GAP_Y, {
     color: 차이 > 0 ? PAL.gaugeWarn : PAL.text, align: 'center', small: true, shadow: PAL.textShadow,
   });
-}
-
-// ─────────────────────────────────────────────
-// 3) 1등 말풍선 — 계단 위 1등 머리 위에 따라다닌다
-// ─────────────────────────────────────────────
-
-/**
- * ★ **1등 머리 위에만 "1등이닷".** (2026-08-19)
- *
- * 오른쪽 게이지가 "몇 칸 차이"를 알려 준다면, 이 말풍선은 **지금 이 순간 누가
- * 앞서는가**를 계단 위에서 바로 알려 준다. 1등을 빼앗기는 순간 사라지므로,
- * 말풍선이 내 머리에서 떨어져 나가는 것만으로 역전당한 걸 안다.
- *
- * 그림은 사용자가 준 `etc/1등이닷.png` 를 빌드 타임에 도트로 구운 것이다
- * (`tools/build-bubble.mjs`). 글씨까지 구워져 있어 매 프레임 글자를 찍지 않는다.
- */
-function drawFirstBubble(scene, list) {
-  if (scene.countdownMs > 0) return;
-  const bubble = img('bubble_first');
-  if (!bubble) return;
-  const ctx = getCtx2d();
-  if (!ctx) return;
-
-  const rank = rankOf(scene);
-  const myUid = scene.multi?.myUid;
-  if (rank[myUid] === 1) {
-    // 내 캐릭터는 항상 화면 가운데 발끝 기준이다
-    return drawBubbleAt(ctx, bubble, CENTER_X, CHAR.footY - CHAR.dh, scene.player?.facing ?? 1);
-  }
-  const 일등 = list.find((o) => rank[o.id] === 1);
-  if (!일등) return;
-
-  const stairs = scene.stairs;
-  if (!stairs) return;
-  const camX = stairs.worldX(scene.floor) + ((stairs.nextDir(scene.floor) * STAIR.gapX) >> 1);
-  const floor = 일등.stairs | 0;
-  const footY = CHAR.footY - (floor - scene.floor) * STAIR.gapY;
-  if (footY < 0 || footY > VIEW_H) return;          // 화면 밖이면 게이지가 맡는다
-  stairs.ensure?.(floor + 1);
-  const cx = stairs.worldX(floor) - camX + CENTER_X;
-  drawBubbleAt(ctx, bubble, cx, footY - CHAR.dh, 1);
-}
-
-/**
- * 머리 **바로 위**에 띄운다 — 얼굴·몸을 절대 가리지 않는다. (2026-08-19)
- *
- * 말풍선 꼬리는 그림의 오른쪽 아래에 있다. 그래서 오른쪽을 보고 있으면 그대로,
- * **왼쪽을 보고 있으면 좌우로 뒤집어** 꼬리가 항상 머리 쪽을 가리키게 한다.
- * 위치는 머리 중심에서 보는 방향 **반대쪽으로 조금** 밀어, 꼬리가 정수리에 닿는다.
- */
-function drawBubbleAt(ctx, bubble, headCx, headTop, facing = 1) {
-  const 오른쪽 = facing >= 0;
-  const nudge = 오른쪽 ? -10 : 10;
-  const x = Math.round(headCx) - (BUBBLE.w >> 1) + nudge;
-  const y = Math.round(headTop) - BUBBLE.h - 3;      // 머리 위 3도트 띄운다
-  const px = Math.max(1, Math.min(VIEW_W - BUBBLE.w - 1, x));
-  const py = Math.max(1, y);
-  if (오른쪽) {
-    ctx.drawImage(bubble, px, py);
-    return;
-  }
-  // 좌우 반전 — 스무딩은 건드리지 않으므로 도트가 그대로 유지된다(§3-1)
-  ctx.save();
-  ctx.translate(px + BUBBLE.w, py);
-  ctx.scale(-1, 1);
-  ctx.drawImage(bubble, 0, 0);
-  ctx.restore();
 }
 
 // ─────────────────────────────────────────────

@@ -6,7 +6,7 @@
  * 판정만 떼어 놨다. (periodKeys.js 를 떼어 놓은 것과 같은 이유)
  */
 
-import { MULTI } from '../config/balance.js';
+import { MULTI, SHOE_TIERS } from '../config/balance.js';
 
 /**
  * 순위 정렬 — 기획서 §5-7.
@@ -305,4 +305,36 @@ export function playersInRound(players) {
   return Object.entries(players ?? {})
     .filter(([, v]) => !v?.waiting)
     .map(([uid, v]) => ({ uid, ...v }));
+}
+
+// ─────────────────────────────────────────────
+// 판 중 획득한 신발도 1등이 가져간다 (2026-08-19, 사용자 신고)
+// ─────────────────────────────────────────────
+
+/**
+ * **다른 사람들이 이 판에서 주운 신발 총량.**
+ *
+ * `shoesFound` 는 진행도로 계속 올라오는 **개수**뿐이다(어떤 신발인지는 각자 화면에만
+ * 있고 방으로 넘어오지 않는다). 그래서 패자가 주운 신발을 승자에게 "그대로" 옮길 수는
+ * 없다 — 대신 **개수만큼 승자 지갑에 새로 굴려 준다**(`rollFoundShoe`).
+ *
+ * 승자 자신의 몫은 뺀다 — 승자는 이미 자기 `runResult.shoeIndices` 로 정확한 신발을
+ * 받는다(`finishRun`). 여기서 또 세면 자기 것을 두 번 받는다.
+ */
+export function foundShoesTotal(room, excludeUid) {
+  return playersInRound(room?.players).reduce(
+    (sum, p) => sum + (p.uid === excludeUid ? 0 : (p.shoesFound ?? 0)),
+    0
+  );
+}
+
+/** 티어 확률로 신발 하나를 굴린다 — 인게임 `Stairs.rollShoe` 와 같은 분포, 시드 없이. */
+export function rollFoundShoe(rand = Math.random) {
+  let r = rand() * SHOE_TIERS.reduce((s, t) => s + t.prob, 0);
+  for (const t of SHOE_TIERS) {
+    if (r < t.prob) return t.offset + Math.floor(rand() * t.count);
+    r -= t.prob;
+  }
+  const last = SHOE_TIERS[SHOE_TIERS.length - 1];
+  return last.offset + Math.floor(rand() * last.count);
 }

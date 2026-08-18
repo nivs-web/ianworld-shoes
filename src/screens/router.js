@@ -6,7 +6,7 @@
  * 단순화했다. `body.ui-mode` 가 붙으면 캔버스가 통째로 숨는다.
  */
 
-import { setInputEnabled } from '../core/input.js';
+import { setInputEnabled, setDomBackHandler } from '../core/input.js';
 import { closeTopOverlay, closeAllOverlays } from './ui.js';
 
 /** @typedef {{render:(nav:object)=>HTMLElement, onLeave?:()=>void}} Screen */
@@ -99,6 +99,11 @@ export const nav = {
   depth: () => stack.length,
 };
 
+/** 팝업이 있으면 그것부터, 없으면 뒤로가기. 안드로이드 뒤로가기 · ESC · 게임패드 메뉴가 전부 이걸 쓴다. */
+function backOrCloseOverlay() {
+  if (!closeTopOverlay() && stack.length > 1) nav.back();
+}
+
 /** 안드로이드 뒤로가기 / 브라우저 뒤로가기 */
 export function bindHardwareBack() {
   history.pushState({ sf: true }, '');
@@ -109,7 +114,28 @@ export function bindHardwareBack() {
      * 팝업을 열고 뒤로가기를 누르면 **뒤의 화면만 바뀌고 팝업은 로비 위에 남았고**,
      * 구매 확인 다이얼로그는 떠난 화면의 구매를 끝까지 실행했다. (screens/ui.js)
      */
-    if (!closeTopOverlay() && stack.length > 1) nav.back();
+    backOrCloseOverlay();
     history.pushState({ sf: true }, '');
   });
 }
+
+/**
+ * ESC 키 — **DOM 화면(로비·도감 등)에서만** 여기서 처리한다. 인게임(캔버스)에서는
+ * `core/input.js` 의 `pauseHandler` 가 이미 ESC 를 일시정지로 받고 있으므로,
+ * 여기서 또 반응하면 두 번 처리된다. `body.ui-mode` 유무로 어느 쪽인지 가른다. (§7, 2026-08-19)
+ */
+export function bindEscBack() {
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'Escape') return;
+    if (!document.body.classList.contains('ui-mode')) return; // 게임 중 — pauseHandler 몫
+    e.preventDefault();
+    backOrCloseOverlay();
+  });
+}
+
+/**
+ * 게임패드 메뉴 버튼(View/Menu) — DOM 화면에서 눌렸을 때. `core/input.js` 의
+ * `pollGamepads()` 가 매 프레임 이 핸들러를 부른다(인게임 중에는 `pauseHandler` 가 우선이라
+ * 여기까지 안 온다). 등록은 라우터가 살아 있는 한 항상 유효하다.
+ */
+setDomBackHandler(backOrCloseOverlay);
