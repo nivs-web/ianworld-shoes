@@ -46,13 +46,24 @@ async function rt() {
  * 카운트다운을 "3초 뒤"가 아니라 **절대 시각**으로 잡아야 네 명이 같은 순간에 출발한다.
  * 기기 시계는 몇 초씩 어긋나 있는 게 보통이라, 그 차이를 먼저 알아 둔다.
  */
+let offsetCache = null;
+
 export async function serverOffset(fb) {
+  /**
+   * ★ **한 번만 재고 기억한다.** (2026-08-18)
+   * `reportDeath` 가 이 값을 쓰기 시작하면서, 죽는 순간 왕복 한 번이 더 끼었다.
+   * 그 사이에 `finalizeResult` 가 방을 읽어 버리면 **죽은 사람이 아직 살아 있는 것으로**
+   * 순위가 매겨진다(동점 판정이 뒤집힌다). 시계 차이는 판이 도는 몇 분 사이에
+   * 의미 있게 변하지 않으므로 세션 하나에 한 번이면 충분하다.
+   */
+  if (offsetCache !== null) return offsetCache;
   try {
     const snap = await withTimeout(fb.dbMod.get(fb.dbMod.ref(fb.rtdb, '.info/serverTimeOffset')), undefined, '서버 시각');
-    return snap.val() ?? 0;
+    offsetCache = snap.val() ?? 0;
   } catch {
-    return 0;
+    offsetCache = 0;
   }
+  return offsetCache;
 }
 
 const nowOn = (fb, offset) => Date.now() + offset;
@@ -354,11 +365,7 @@ export async function resetRoom(code) {
    * 승자가 걷었는지는 서버의 `result/settled` 비트마스크가 안다. 걷힐 때까지
    * 잠깐 미루면 되고, 패자가 아예 안 냈으면 `given` 자체가 없으니 바로 통과한다.
    */
-  const rank = room.result?.rankings ?? [];
-  const given = room.result?.given ?? {};
-  const mask = Number(room.result?.settled?.[rank[0]] ?? 0);
-  const 미수령 = rank.slice(1).some((uid, i) => Array.isArray(given[uid]) && !(mask & (1 << i)));
-  if (미수령) return 'pending';
+  if (hasUnclaimed(room)) return 'pending';
 
   const players = {};
   for (const [uid, v] of Object.entries(room.players ?? {})) {
@@ -436,7 +443,9 @@ const STALE_EMPTY_MS = 3 * 60 * 1000;
 function sweepEmptyRooms(fb, rooms) {
   const now = Date.now();
   const dead = rooms
-    .filter((r) => r && r.code && !Object.keys(r.players ?? {}).length && now - (r.createdAt ?? now) > STALE_EMPTY_MS)
+    .filter((r) => r && r.code && !Object.keys(r.players ?? {}).length
+      && !mustKeepRoom(r)   // 신발이 걸려 있는 방은 못 지운다 (증발하거나 패널티가 면제된다)
+      && now - (r.createdAt ?? now) > STALE_EMPTY_MS)
     .slice(0, 5);
   for (const r of dead) {
     withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, r.code))), undefined, '빈 방 정리').catch(() => {});
@@ -709,6 +718,65 @@ export async function finalizeResult(code) {
 // ─────────────────────────────────────────────
 
 /** 대기방에서 나간다. 방장이 마지막이면 방을 지운다. */
+/**
+ * 아직 아무도 안 걷은 신발이 방에 남아 있나.
+ *
+ * 패자는 자기 지갑에서 **먼저 빼고** `result/given` 에 올린다. 승자가 `result/settled`
+ * 비트마스크를 찍기 전에 그 방(또는 `result`)이 사라지면 그 신발은 게임에서 증발한다.
+ * 방을 지우거나 되돌리기 전에 반드시 이걸 본다.
+ */
+/**
+ * 아직 신발을 안 낸 패자가 있나 (= 나중에 낼 수 있는 방).
+ *
+ * 패자가 죽자마자 앱을 껐으면 `given` 이 아예 없다. 그 방을 지워 버리면
+ * **패널티를 영구히 면제**받는다 — 접속 청산(`sweepUnsettled`)이 다시 훑을 방이
+ * 없어지기 때문이다. 그래서 낼 사람이 남아 있는 동안은 방을 남겨 둔다.
+ */
+export function hasUnpaid(room) {
+  const rank = room?.result?.rankings ?? [];
+  if (rank.length < 2) return false;
+  const given = room.result?.given ?? {};
+  return rank.slice(1).some((uid) => !Array.isArray(given[uid]));
+}
+
+/** 정산이 남아 기다려 주는 기간. 이 뒤로는 안 온 것으로 보고 방을 치운다. */
+const SETTLE_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * 이 방을 지우면 안 되나 — **누군가의 신발이 걸려 있으면 지우지 않는다.**
+ * 다만 영원히 기다리지는 않는다(일주일).
+ */
+export function mustKeepRoom(room) {
+  if (!room?.result?.rankings) return false;
+  const endedAt = room.result?.endedAt ?? 0;
+  if (endedAt && Date.now() - endedAt > SETTLE_GRACE_MS) return false;
+  return hasUnclaimed(room) || hasUnpaid(room);
+}
+
+export function hasUnclaimed(room) {
+  const rank = room?.result?.rankings ?? [];
+  if (!rank.length) return false;
+  const given = room.result?.given ?? {};
+  const mask = Number(room.result?.settled?.[rank[0]] ?? 0);
+  return rank.slice(1).some((uid, i) => Array.isArray(given[uid]) && !(mask & (1 << i)));
+}
+
+/**
+ * 볼일이 다 끝난 방을 치운다 — **참가자가 아무도 없고 걷을 신발도 없을 때만.**
+ * 정산까지 끝난 뒤 마지막으로 부른다. 규칙이 '참가자 0명인 방'의 삭제를 허용한다.
+ */
+export async function tidyRoom(code) {
+  const fb = await rt();
+  if (!fb) return;
+  const room = (await readOnce(fb, path(ROOMS, code))).val;
+  if (!room) return;
+  if (Object.keys(room.players ?? {}).length) return;
+  if (mustKeepRoom(room)) return;
+  try {
+    await withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code))), undefined, '방 정리');
+  } catch { /* 다음에 다시 */ }
+}
+
 export async function leaveRoom(code) {
   const fb = await rt();
   if (!fb) return;
@@ -742,7 +810,11 @@ export async function leaveRoom(code) {
   clearDisconnect(fb, code);
 
   // 아무도 안 남으면 방째로 치운다 (규칙이 '참가자 0명인 방'의 삭제를 허용한다)
-  if (!rest.length) {
+  //   ★ 단 **아직 아무도 못 걷은 신발이 있으면 남긴다.** (2026-08-18)
+  //   패자가 낸 신발은 방 안(`result/given`)에 있다. 방을 지우면 그 신발은
+  //   패자 지갑에서만 빠진 채 증발한다. 승자는 방에 없어도 걷을 수 있으므로
+  //   (규칙에 `result/settled/$uid` 쓰기를 열어 뒀다) 빈 껍데기로 남겨 둔다.
+  if (!rest.length && !mustKeepRoom(room)) {
     try {
       await withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid))), undefined, '방 나가기');
       await withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code))), undefined, '빈 방 정리');
@@ -752,7 +824,8 @@ export async function leaveRoom(code) {
 
   const patch = { [path('players', fb.uid)]: null };
   // 내가 방장이었으면 **가장 오래 있던 사람**에게 넘긴다 (누가 계산해도 같은 답)
-  if (room.hostUid === fb.uid) patch.hostUid = rest[0][0];
+  // 아무도 안 남는 경우(= 신발이 남아 방을 못 지우는 경우)에는 승계할 사람이 없다
+  if (room.hostUid === fb.uid && rest.length) patch.hostUid = rest[0][0];
   const 자리있음 = rest.length < (room.maxPlayers ?? MULTI.maxPlayers);
   if (!room.isPrivate && room.state !== 'finished' && room.open !== 자리있음) patch.open = 자리있음;
 

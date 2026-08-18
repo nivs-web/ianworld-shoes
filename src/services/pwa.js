@@ -14,6 +14,7 @@
  */
 
 import * as Scene from '../core/scene.js';
+import { canReload } from '../core/hold.js';
 
 /** 빌드마다 달라지는 값 — vite.config.js 의 define 에서 주입한다 */
 const BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev';
@@ -131,6 +132,7 @@ const RELOADED_TO = 'sf_reloadedTo';
 async function checkDeploy() {
   try {
     if (Scene.depth() > 0) return;                 // 게임이 돌고 있다 — 손대지 않는다
+    if (!canReload()) return;                      // 대기방·결과 화면도 건드리면 안 된다 (core/hold.js)
     const html = await fetch('/index.html', { cache: 'no-store' }).then((r) => (r.ok ? r.text() : ''));
     const served = html.match(/\/assets\/index-[A-Za-z0-9_-]+\.js/)?.[0];
     if (!served) return;

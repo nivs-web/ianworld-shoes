@@ -538,7 +538,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // 5) 종료 재진입 방지
   has('끝난 판은 update 를 멈춘다', gs, 'if (this.over) return;');
-  has('나가기 재진입 방지', gs, 'if (this.leaving) return;');
+  has('나가기 재진입 방지', gs, 'if (this.leaving || this.over) return;');
 
   // 6) 멀티 일시정지에는 다시하기가 없다
   has('멀티 일시정지 — 기권 확인 단계', ov, 'confirmExit');
@@ -565,6 +565,51 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // 10) 깨진 저장값 백업
   has('깨진 저장값을 .bak 으로 남긴다', sl, '.bak');
+}
+
+// ── 20) 2026-08-18 2차 — 고치다 만든 구멍까지 막았는가 ──
+{
+  console.log('\n20) 2차 검수 재발 방지 (2026-08-18)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const mp = read('../src/services/multiplayer.js');
+  const wr = read('../src/screens/multi/WaitingRoom.js');
+  const mr = read('../src/screens/multi/MultiResult.js');
+  const ms = read('../src/services/multiSettle.js');
+  const gs = read('../src/game/GameScene.js');
+  const pw = read('../src/services/pwa.js');
+  const rules = JSON.parse(read('../docs/rtdb-rules.json'));
+
+  // 대기자의 되돌리기가 남의 정산을 지우면 안 된다
+  has('되돌리기는 이번 판 사람이 다 나간 뒤에만', wr, "rank.some((uid) => r.players?.[uid])");
+  has('되돌리기 실패 시 재시도', wr, 'RESET_RETRY_MS');
+
+  // 종료 대기 중 일시정지로 두 번 끝내는 경로
+  has('끝난 판에서는 일시정지가 안 열린다', gs, 'if (this.over || this.leaving) return;');
+
+  // 신발이 걸린 방은 못 지운다 (미수령 + 미납부)
+  has('미납부 판정', mp, 'export function hasUnpaid');
+  has('방 보존 판정', mp, 'export function mustKeepRoom');
+  eq('빈 방이어도 패자가 안 냈으면 남긴다',
+     [mp.includes('!rest.length && !mustKeepRoom(room)'), mp.includes('if (mustKeepRoom(room)) return;')],
+     [true, true]);
+
+  // 접속 청산이 죽은 기록을 지운다
+  has('볼일 없는 방 기록 정리', ms, '볼일없음');
+
+  // 서버 시각은 한 번만 잰다 (사망 보고가 순위 확정에 밀리면 안 된다)
+  has('서버 오프셋 캐시', mp, 'offsetCache');
+
+  // 자동 새로고침 금지 구역
+  has('대기방·결과 화면은 새로고침 금지', pw, 'canReload()');
+  eq('두 화면 모두 hold 를 잡는다', [wr.includes('hold()'), mr.includes('hold()')], [true, true]);
+
+  // 규칙: 초기화 허용은 result 까지 지울 때만 / 도장은 진짜 방에만
+  const st = rules.rules.rooms.$code.players.$uid.stairs['.validate'];
+  eq('초기화 허용에 result 조건이 붙었다', st.includes("child('result').exists()"), true);
+  const settled = rules.rules.rooms.$code.result.settled.$uid['.write'];
+  eq('도장은 순위가 있는 방에만', settled.includes("child('rankings').exists()"), true);
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

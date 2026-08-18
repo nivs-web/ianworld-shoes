@@ -14,7 +14,8 @@
  * 판을 끝낸 사람들이 전부 시체로 쌓였고, 매칭은 `open == true` 인 방 앞 12개만
  * 훑으므로 **시체 12개면 모두가 새 방만 파게 된다.** 그래서 나갈 때 방에서도 빠지고,
  * 탭을 그냥 닫는 경우를 위해 자동 이탈 예약도 다시 켠다(`rearmRoomSeat`).
- * 단 **아직 못 받은 신발이 있으면 남는다** — 방을 나가면 규칙상 그 신발을 영영 못 걷는다.
+ * 받을 신발이 남아 있어도 나간다 — 방 밖에서도 걷을 수 있게 규칙을 열었고
+ * (`result/settled/$uid`), 신발이 남은 방은 아무도 못 지운다(`hasUnclaimed`).
  */
 
 import S from '../../config/strings.ko.js';
@@ -24,6 +25,7 @@ import { currentUser } from '../../services/auth.js';
 import { finishRun } from '../../services/profile.js';
 import * as Room from '../../services/multiplayer.js';
 import { settleRoom } from '../../services/multiSettle.js';
+import { hold } from '../../core/hold.js';
 import MultiMenu from './MultiMenu.js';
 import WaitingRoom from './WaitingRoom.js';
 import Lobby from '../Lobby.js';
@@ -47,6 +49,8 @@ export default function MultiResult(nav, params = {}) {
   let keepSeat = false;
   let pollTimer = null;
   let polls = 0;
+  /** 정산 중에 자동 새로고침이 끼어들면 신발이 공중에 뜬다 */
+  const release = hold();
 
   (async () => {
     /**
@@ -100,18 +104,36 @@ export default function MultiResult(nav, params = {}) {
         room = await Room.readRoom(code);
         if (gone) return;
         nav.refresh();
+        if (next.pending) poll();
+        return;
       }
-      if (!next || next.pending) poll();
+      /**
+       * ★ **`null` 은 "아직"이 아니라 "이제 없다"일 수 있다.** (2026-08-18)
+       * 방이 지워졌거나 결과가 초기화되면 `settleRoom` 이 `null` 을 준다. 그걸
+       * "아직 안 왔다"로 취급하면 **오지 않을 신발을 계속 기다린다고 써 놓게 된다.**
+       * 방을 다시 읽어 순위가 살아 있을 때만 기다린다.
+       */
+      const still = await Room.readRoom(code).catch(() => null);
+      if (gone) return;
+      if (still?.result?.rankings) { poll(); return; }
+      settle = settle ? { ...settle, pending: 0 } : null;
+      nav.refresh();
     }, POLL_MS);
   }
 
   /**
-   * 화면을 떠나며 방에서도 빠진다 — **단, 받을 게 남았으면 남는다.**
-   * 방을 나가면 규칙상 `result/settled` 도장을 못 찍어 그 신발을 영영 못 걷는다.
+   * 화면을 떠나며 방에서도 빠진다.
+   *
+   * ★ **받을 게 남아도 나간다.** (2026-08-18 재수정)
+   * 처음에는 "미수령이면 방에 남는다"로 뒀는데, 그러면 결과 화면에서 새로고침하거나
+   * 탭을 닫는 순간 **다시 켜 둔 `onDisconnect` 가 나를 방에서 빼 버린다.** 실측으로
+   * 그 상태를 재현했다 — 방 밖이라 `settled` 도장을 못 찍어 패자가 낸 신발이
+   * 영영 안 들어왔다. 그래서 방향을 뒤집었다: **방 밖에서도 걷을 수 있게** 규칙을 열고
+   * (`result/settled/$uid`), 신발이 남은 방은 아무도 못 지우게 막았다(`hasUnclaimed`).
+   * 이제 나가는 게 항상 안전하고, 방도 시체로 남지 않는다.
    */
   function releaseSeat() {
     if (keepSeat) return;
-    if (settle?.won && settle.pending) return;
     Room.leaveRoom(code).catch(() => {});
   }
 
@@ -119,6 +141,7 @@ export default function MultiResult(nav, params = {}) {
     onLeave() {
       gone = true;
       clearTimeout(pollTimer);
+      release();
       releaseSeat();
     },
     render() {

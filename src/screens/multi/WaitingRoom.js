@@ -14,8 +14,12 @@ import { characterById, characterSprite } from '../../data/characters.js';
 import { MULTI } from '../../config/balance.js';
 import { currentUser } from '../../services/auth.js';
 import * as Room from '../../services/multiplayer.js';
+import { hold } from '../../core/hold.js';
 import { startMultiGame } from '../startMultiGame.js';
 import Lobby from '../Lobby.js';
+
+/** 되돌리기가 실패했을 때 다시 시도하기까지 */
+const RESET_RETRY_MS = 2500;
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -29,6 +33,11 @@ export default function WaitingRoom(nav, params = {}) {
   let room = null;
   let unsub = () => {};
   let launched = false;
+  /** 끝난 방 되돌리기를 겹쳐 부르지 않게 */
+  let resetting = false;
+  let resetTimer = null;
+  /** 이 화면이 떠 있는 동안은 자동 새로고침 금지 — 자리를 잃는다 */
+  const release = hold();
   /** 방을 두 번 나가지 않게 (화면 버튼 → onLeave 로 연달아 불린다) */
   let left = false;
 
@@ -50,6 +59,23 @@ export default function WaitingRoom(nav, params = {}) {
      * 여기서 같이 출발시키면 시작 시각이 지난 판에 혼자 뛰어들어 순식간에 끝난다.
      */
     const meNow = r.players?.[myUid];
+    /**
+     * ★ **끝난 방을 여기서도 되돌린다 — 단, 이번 판 사람이 모두 나간 뒤에만.** (2026-08-18)
+     *
+     * 대기자는 결과 화면을 못 본다(그 판을 안 뛰었으니까). 그런데 방을 `waiting` 으로
+     * 되돌리는 버튼('방에 남기')은 **결과 화면에만** 있다. 그래서 이번 판 사람들이
+     * 전부 로비로 나가면 대기자는 "다음 판을 기다리는 중"에 **영원히** 갇혔다.
+     *
+     * 그렇다고 `finished` 를 보자마자 되돌리면 **훨씬 나쁘다.** `resetRoom` 은
+     * `result` 를 통째로 지우는데, 그 순간 다른 사람들은 아직 결과 화면에서 정산 중이다 —
+     * 순위가 사라져 승자는 못 받고, 이미 지갑에서 신발을 뺀 패자는 **그 신발을 잃는다.**
+     * 그래서 **순위표에 있는 사람이 방에 한 명도 안 남았을 때만** 되돌린다.
+     * 그들이 방에서 빠졌다는 건 결과 화면을 떠났다는 뜻이다(`MultiResult.releaseSeat`).
+     *
+     * 실패하면(다른 사람이 같은 순간에 나가 규칙이 거부하는 등) 몇 초 뒤 다시 시도한다 —
+     * 한 번 실패하고 멈추면 대기자는 그대로 갇힌다.
+     */
+    if (r.state === 'finished') tryReset(r);
     if (!launched && !meNow?.waiting && (r.state === 'countdown' || r.state === 'playing')) {
       launched = true;
       unsub();
@@ -59,8 +85,27 @@ export default function WaitingRoom(nav, params = {}) {
     nav.refresh();
   });
 
+  /**
+   * 끝난 방을 다음 판 준비 상태로 되돌린다. **이번 판 사람이 모두 나간 뒤에만.**
+   * 실패하면(아직 안 걷힌 신발이 있거나 규칙이 거부하면) 잠시 뒤 스스로 다시 시도한다 —
+   * 방 변화가 더 안 오면 구독은 다시 안 불리므로, 재시도는 여기서 직접 걸어야 한다.
+   */
+  function tryReset(r) {
+    if (resetting || left || launched) return;
+    const rank = r.result?.rankings ?? [];
+    if (rank.some((uid) => r.players?.[uid])) return;   // 아직 결과 화면에 있는 사람이 있다
+    resetting = true;
+    Room.resetRoom(code).catch(() => false).then((res) => {
+      resetting = false;
+      if (res === 'ok' || left) return;
+      resetTimer = setTimeout(() => { if (room?.state === 'finished') tryReset(room); }, RESET_RETRY_MS);
+    });
+  }
+
   function leave(alsoLeaveRoom = true) {
     unsub();
+    clearTimeout(resetTimer);
+    release();
     if (alsoLeaveRoom && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
     nav.reset(Lobby);
   }
@@ -79,6 +124,8 @@ export default function WaitingRoom(nav, params = {}) {
      */
     onLeave() {
       unsub();
+      clearTimeout(resetTimer);
+      release();
       if (!launched && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
     },
 

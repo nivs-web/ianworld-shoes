@@ -93,6 +93,21 @@ service cloud.firestore {
 >
 > **(1) 하위 `.write` 는 아예 평가되지 않았다.** RTDB 는 **상위에서 허용하면 하위 `.write` 를
 > 보지 않는다**(shallower rules override deeper). `$code` 에 쓰기를 열어 뒀으므로
+### 정산은 **방을 나간 뒤에도** 끝낼 수 있어야 한다 (2026-08-18, 2차)
+
+판이 끝나면 모두 방에서 나간다 — 안 그러면 시체 방이 매칭 창(`open==true` 앞 12개)을
+차지한다. 그런데 정산은 대개 그 **뒤에** 끝난다: 패자가 몇 초 늦게 내고, 승자는 다음
+접속에 걷는다. 방 멤버만 쓸 수 있게 두면 나가는 순간 그 신발이 공중에 뜬다.
+
+그래서 두 경로만 딱 열어 뒀다 — `result/given/$uid` 와 `result/settled/$uid`.
+**본인 것만**, 그리고 **순위가 확정된 진짜 방에만**(`rankings.exists()`) 쓸 수 있다.
+실측: 방 밖 납부 200 · 남의 납부 401 · 없는 방 401.
+
+또 `$code/.write` 의 `!data.exists()` 항을 없앴다. 그게 있으면 **존재하지 않는 코드에
+아무 필드나 써서 유령 방을 만들 수 있다**(참가자도 상태도 없는 방 — 코드로 들어가면
+영원히 시작 안 되는 대기실이 된다). 방 만들기는 "내 참가자를 포함해 쓴다"는 항이
+이미 허용하므로 기능은 그대로다. 실측: 방 만들기 200 · 유령 방 401.
+
 ### 다음 판 준비는 남의 칸도 **0으로만** 되돌릴 수 있다 (2026-08-18)
 
 `resetRoom` 은 방 전체를 한 번에 되돌린다 — 모두의 `stairs·shoesFound·ready·alive` 를
@@ -101,8 +116,11 @@ service cloud.firestore {
 안 뛴 방에서만 우연히 통과해서 테스트에서 안 보였다. 증상은 '방에 남기'를 눌러도
 "네트워크 오류" 토스트만 뜨고 **같은 방에서 두 번째 판을 영영 못 하는 것.**
 
-그래서 남의 칸이라도 **초기값으로 되돌리는 것만** 허용한다 — 그것도 같은 쓰기에서
-방이 `waiting` 으로 돌아갈 때만(`newData.parent().parent().parent().child('state')`).
+그래서 남의 칸이라도 **초기값으로 되돌리는 것만** 허용한다 — 그것도 **끝난 방**(`data` 의
+`state` 가 `finished`)이 같은 쓰기에서 `waiting` 으로 돌아가고 `result` 까지 지워질 때만.
+조건이 셋인 이유: 처음에는 "새 상태가 `waiting`"만 봤는데, 그러면 판 도중에
+`{state:'waiting', players/상대/stairs:0}` 한 방으로 **남의 점수를 지울 수 있었다**(실측 200).
+옛 상태까지 보게 하니 막힌다(실측 401).
 점수를 **올려** 주는 조작은 여전히 불가능하고, 남의 진행도를 지우려면 판 자체를
 끝내야 하므로 이득이 없다.
 
@@ -139,7 +157,7 @@ service cloud.firestore {
       ".read": "auth != null",
       ".indexOn": ["open"],
       "$code": {
-        ".write": "auth != null && (!data.exists() || data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && !data.child('players').child(auth.uid).exists()) || (!newData.exists() && !data.child('players').hasChildren()))",
+        ".write": "auth != null && (data.child('players').child(auth.uid).exists() || (newData.child('players').child(auth.uid).exists() && !data.child('players').child(auth.uid).exists()) || (!newData.exists() && !data.child('players').hasChildren()))",
 
         "code":       { ".validate": "newData.val() == $code" },
         "isPrivate":  { ".validate": "newData.isBoolean() && (!data.exists() || newData.val() == data.val())" },
@@ -161,10 +179,10 @@ service cloud.firestore {
 
             "nickname":    { ".validate": "newData.isString() && newData.val().length <= 16 && ($uid == auth.uid || newData.val() == data.val())" },
             "characterId": { ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())" },
-            "ready":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == false && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
-            "stairs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
-            "shoesFound":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
-            "alive":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == true && newData.parent().parent().parent().child('state').val() == 'waiting'))" },
+            "ready":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == false && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))" },
+            "stairs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))" },
+            "shoesFound":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == 0 && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))" },
+            "alive":       { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val() || (newData.val() == true && data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))" },
             "joinedAt":    { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "reachedAt":   { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" },
             "waiting":     { ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())" },
@@ -183,6 +201,7 @@ service cloud.firestore {
 
           "given": {
             "$uid": {
+              ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($code).child('result').child('rankings').exists()",
               ".validate": "!newData.hasChild('4')",
               "$i": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 129 && ($uid == auth.uid || newData.val() == data.val())"
@@ -191,7 +210,10 @@ service cloud.firestore {
           },
 
           "settled": {
-            "$uid": { ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())" }
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid && root.child('rooms').child($code).child('result').child('rankings').exists()",
+              ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
+            }
           },
 
           "$other": { ".validate": false }

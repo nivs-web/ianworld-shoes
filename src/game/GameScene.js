@@ -191,7 +191,7 @@ export class GameScene {
 
   /** 멀티 종료 — 부활 없이 곧장 정산으로 (기획서 §5-6 '멀티는 부활 없음') */
   endMulti() {
-    if (this.over) return;   // 두 번 부르면 결과 화면이 두 개 뜬다
+    if (this.over || this.leaving) return;   // 두 번 부르면 결과 화면이 두 개 뜬다
     this.over = true;
     Bgm.stopBgm();
     this.roomUnsub?.();
@@ -223,6 +223,13 @@ export class GameScene {
   bindInput() {
     const pause = () => {
       if (this.player.dying) return;
+      /**
+       * ★ **끝난 판에서는 일시정지가 안 열린다.** (2026-08-18)
+       * 멀티 종료는 `finalizeResult`(RTDB 왕복)를 기다리는 동안 화면이 그대로 남는다.
+       * 그 사이에 상단을 눌러 일시정지 → 기권을 하면 `leave()` 가 또 불려
+       * **결과 화면이 두 개** 뜨고 정산이 두 번 돌았다(신발 이중 차감).
+       */
+      if (this.over || this.leaving) return;
       if (Scene.current() !== this) return; // 이미 오버레이가 떠 있다
       Scene.push(new PauseOverlay(this));
     };
@@ -441,7 +448,7 @@ export class GameScene {
      * 두 번 불려 **결과 화면이 두 개** 뜨고, 각자 정산을 돌려 패자가 신발을 두 번 냈다
      * (한 켤레는 아무도 못 받고 증발한다).
      */
-    if (this.leaving) return;
+    if (this.leaving || this.over) return;
     this.leaving = true;
     Bgm.stopBgm();
     const result = this.committed ? null : this.resultOf();

@@ -132,6 +132,25 @@ if (uidNode.includes('hasChildren') && uidNode.includes('nickname')) {
   bad('참가자 노드 — 원시값을 쓰면 필드 검증이 전부 건너뛰어진다 (가짜 만원 방 가능)');
 }
 
+console.log('\n7) 방 밖에서도 정산을 마칠 수 있는가 (2026-08-18)');
+/**
+ * 판이 끝나면 모두 방에서 나간다(시체 방이 매칭을 굶기지 않게). 그런데 정산은 그 뒤에
+ * 끝나는 일이 많다 — 패자가 늦게 내고, 승자가 다음 접속에 걷는다. 방 멤버만 쓸 수 있으면
+ * **나간 순간 신발이 공중에 뜬다.** 그래서 이 두 경로만 따로 열어 둔다.
+ */
+const settledWrite = room.result.settled.$uid['.write'] ?? '';
+const givenWrite = room.result.given.$uid['.write'] ?? '';
+for (const [label, rule] of [['정산 도장', settledWrite], ['패자 납부', givenWrite]]) {
+  if (rule.includes('auth.uid == $uid') && rule.includes("child('rankings').exists()")) {
+    ok(`${label} — 본인만, 순위가 확정된 방에만`);
+  } else {
+    bad(`${label} — 방을 나가면 정산을 못 끝낸다 (또는 유령 방을 만들 수 있다)`);
+  }
+}
+const roomWrite = room['.write'] ?? '';
+if (!roomWrite.includes('!data.exists() ||')) ok('빈 코드에 아무 값이나 못 쓴다 (유령 방 방지)');
+else bad('없는 방에 아무 필드나 쓸 수 있다 — 유령 방이 만들어진다');
+
 console.log('');
 if (fails) { console.error(`규칙 검사 실패 — ${fails}건`); process.exit(1); }
 console.log('규칙과 클라이언트가 일치한다');
