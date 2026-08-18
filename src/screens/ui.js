@@ -24,7 +24,17 @@ export function el(tag, props, children) {
       if (k === 'text') node.textContent = v;
       else if (k === 'html') node.innerHTML = v;
       else if (k === 'class') node.className = [node.className, v].filter(Boolean).join(' ');
-      else if (k === 'style') Object.assign(node.style, v);
+      else if (k === 'style') {
+        /**
+         * ★ **CSS 변수(`--x`)는 `Object.assign` 으로 안 들어간다.** (2026-08-19)
+         * 자리 색을 `--slot` 으로 넘겼는데 조용히 무시돼서 결과 화면의 부활 테두리가
+         * 통째로 안 보였다(미리보기로 확인). 사용자 정의 속성은 `setProperty` 로 넣는다.
+         */
+        for (const [ck, cv] of Object.entries(v)) {
+          if (ck.startsWith('--')) node.style.setProperty(ck, cv);
+          else node.style[ck] = cv;
+        }
+      }
       else if (k.startsWith('on')) node.addEventListener(k.slice(2).toLowerCase(), v);
       else node.setAttribute(k, v === true ? '' : String(v));
     }

@@ -59,7 +59,16 @@ export default function Lobby(nav) {
         el('img.lobby-logo', { src: '/assets/ui/logo_game.png', alt: S.gameTitle }),
 
         el('div.panel', null, [
-          el('img', { src: characterSprite(ch.id, 'front'), alt: ch.ko }),
+          /**
+           * ★ **캐릭터 칸 — 그림 + 이름.** (2026-08-19)
+           * 예전에는 이름이 오른쪽 통계 줄에 `플레이어 이름 : ○○` 로 섞여 있었다.
+           * 그 자리는 이제 멀티 전적이 쓰고, 캐릭터 이름은 **그림 바로 아래 노란 글씨**로
+           * 붙인다 — 누구를 고르고 있는지는 그림 옆이 가장 읽기 쉽다.
+           */
+          el('div.char-cell', null, [
+            el('img', { src: characterSprite(ch.id, 'front'), alt: ch.ko }),
+            el('div.char-name', ch.ko),
+          ]),
           el('div.stats', null, [
             // 최고기록 숫자만 인게임 계단 수와 같은 글꼴·외곽선으로 (기획 요청)
             el('div.stat-best', null, [
@@ -71,7 +80,7 @@ export default function Lobby(nav) {
             ]),
             el('div', S.myShoesOwned(p.shoesOwned)),
             el('div', S.myDexProgress(dexUnique(), SHOE_TOTAL)),
-            el('div', `${S.playerName} : ${p.nickname}`),
+            el('div', S.myMultiRecord(p.multiWins ?? 0, (p.multiWins ?? 0) + (p.multiLosses ?? 0))),
           ]),
           el('div.badges', null, slots.map((b) => pixelBadge(b))),
         ]),

@@ -184,6 +184,24 @@
   image-rendering: crisp-edges;
 }
 
+/**
+ * 캐릭터 칸 — 그림 + 이름. 폭을 이전(56)보다 **30% 넓혀** 이름이 한 줄에 들어간다.
+ */
+.char-cell {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 73px;
+}
+.char-cell .char-name {
+  font-size: 12px;
+  color: var(--btn-hilite-on);      /* 노란색 — 이름은 눈에 띄어야 한다 */
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+}
+
 .panel img {
   width: 56px;
   height: 84px;
@@ -628,7 +646,7 @@
 }
 
 .rank-no {
-  min-width: 30px;
+  min-width: 34px;
   font-size: 14px;
   font-weight: bold;
   text-align: right;
@@ -752,4 +770,96 @@
 
 .settle { text-align: center; margin: 10px 0; }
 .settle-head { font-size: 16px; color: var(--btn-hilite-on); margin-bottom: 4px; }
+
+/**
+ * ★ **승리 / 패배 연출.** (2026-08-19)
+ *
+ * 결과 화면에서 사람이 제일 먼저 알고 싶은 건 "내가 이겼나"다. 그래서 순위표보다
+ * **위에, 화면을 채울 만큼 크게** 둔다. 도트 게임이라 글자에도 그림자를 도트처럼
+ * 각지게 넣는다 — `text-shadow` 를 흐림 없이 2~3px 로만 쓴다.
+ */
+.victory, .defeat { text-align: center; margin: 4px 0 10px; }
+
+.victory-flag {
+  display: block;
+  width: 112px;
+  margin: 0 auto 2px;
+  image-rendering: pixelated;
+  filter: drop-shadow(3px 3px 0 rgba(0, 0, 0, 0.45));
+}
+.victory-big {
+  font-size: 26px;
+  line-height: 1.1;
+  color: #FFE86B;
+  text-shadow: 3px 3px 0 #6B1F08, -1px -1px 0 #6B1F08, 1px -1px 0 #6B1F08, -1px 1px 0 #6B1F08;
+}
+.victory-sub {
+  font-size: 18px;
+  color: #FFF4D6;
+  text-shadow: 2px 2px 0 #6B1F08;
+  margin-top: 2px;
+}
+.victory-pot {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--c-text-light);
+}
+/** 가져온 신발 수 — 이 화면에서 제일 중요한 숫자다 */
+.victory-pot .pot-num {
+  font-size: 20px;
+  color: #7CFF9B;
+  text-shadow: 2px 2px 0 #10381C, -1px -1px 0 #10381C;
+}
+
+.defeat-big {
+  font-size: 22px;
+  line-height: 1.15;
+  color: #FF7A6B;
+  text-shadow: 3px 3px 0 #3A0A0A, -1px -1px 0 #3A0A0A;
+}
+.defeat-sub {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--c-text-light);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+}
+/** 진 사람에게는 다음 판을 이기는 법을 알려 준다 */
+.tip {
+  margin: 10px auto 0;
+  padding: 6px 8px;
+  max-width: 280px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--c-text-light);
+  background: rgba(255, 221, 142, 0.10);
+  border: 2px solid var(--c-line);
+}
+.tip-head { color: var(--btn-hilite-on); margin-bottom: 2px; }
+
+/**
+ * 얼굴 + **6칸 부활 테두리** — 인게임 레이스 게이지와 같은 그림.
+ * 각 칸은 테두리의 한 조각이라 절대 위치로 붙인다(위 2 · 오른쪽 1 · 아래 2 · 왼쪽 1).
+ */
+.face-frame {
+  position: relative;
+  flex: 0 0 auto;
+  width: 34px; height: 38px;
+  padding: 4px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.25);
+}
+.face-frame .rank-face { width: 26px; height: 30px; }
+
+/**
+ * 칸 사이에 **틈**을 둔다. 붙여 놓으면 그냥 테두리 한 줄로 보여서 몇 칸 남았는지
+ * 셀 수가 없다(인게임에서도 같은 이유로 구분선을 넣었다).
+ */
+.rev-seg { position: absolute; background: var(--dim); }
+.rev-seg.on { background: var(--slot); }
+.rev-seg.s0 { left: 0; top: 0; width: calc(50% - 1px); height: 4px; }
+.rev-seg.s1 { right: 0; top: 0; width: calc(50% - 1px); height: 4px; }
+.rev-seg.s2 { right: 0; top: 5px; bottom: 5px; width: 4px; }
+.rev-seg.s3 { right: 0; bottom: 0; width: calc(50% - 1px); height: 4px; }
+.rev-seg.s4 { left: 0; bottom: 0; width: calc(50% - 1px); height: 4px; }
+.rev-seg.s5 { left: 0; top: 5px; bottom: 5px; width: 4px; }
 .warn { text-align: center; margin: 8px 0; color: var(--btn-face-on); }

@@ -43,6 +43,8 @@ export const S = {
   myCollection: '내 신발 도감',
   collectionUnit: '켤레',
   playerName: '플레이어 이름',
+  /** 로비 — 캐릭터 이름 자리에 있던 줄을 멀티 전적으로 바꿨다 (2026-08-19) */
+  myMultiRecord: (wins, games) => `나의 멀티게임 승률 ${wins}승 / ${games}게임`,
   myShoesOwned: (n) => `나의 신발 보유량 ${n}켤레`,
   myDexProgress: (have, all) => `나의 신발 도감 ${have}/${all}켤레`,
   difficultyTitle: '게임난이도(신발의 등장 빈도가 달라집니다)',
@@ -152,7 +154,7 @@ export const S = {
   createRoom: '방 만들기',
   joinRoom: '방 입장',
   createPrivateRoom: '비밀방 만들기',
-  enterByCode: '코드로 입장',
+  enterByCode: '비밀방 입장',
   enterCode: '4자리 코드를 입력하세요',
   multiBetHint: '이기면 신발을 뺏어오고, 지면 1켤레를 뺏깁니다',
   publicRoomHint: '자동으로 만들어진 방입니다. 다른 사람이 곧 들어옵니다',
@@ -194,29 +196,31 @@ export const S = {
   roomJoinedAsWaiter: '게임이 끝나면 다음 판부터 함께합니다',
   waitingForNextRound: '다음 판을 기다리는 중',
   nextRound: '다음 판 준비',
-  stayInRoom: '방에 남기',
+  stayInRoom: '계속하기',
 
   // ── 역전 배틀 (2026-08-18) ─────────────────────
   /** 인게임 하단 고정 — 지금까지 이 판에 걸린 신발 총량 */
-  /**
-   * 판돈 줄 — **16px 한 줄에 들어가야 한다.** (2026-08-19)
-   * 한글 16 · 숫자 8도트라 `1등하면 신발 000켤레!` = 168도트 (화면 180).
-   */
+  /** 인게임 하단 — 이 판에 걸린 신발 */
   potLine: (n) => `1등하면 신발 ${n}켤레!`,
+  /** 사망 화면 — 이겼을 때 가져갈 양을 크게 */
+  potWin: (n) => `승리시 신발 ${n}켤레 !`,
   /** 레이스 게이지 등수 — 1등만 크게·희게, 나머지는 노랗게 */
   rankTag: (n) => `${n}등`,
+  /** 계단 숫자 아래 — 따라잡아야 할 거리 */
+  gapFromFirst: (n) => `(1등과의 거리 ${n}계단)`,
+  keepingFirst: '(1등 유지중)',
   /** 1등 머리 위 말풍선 — 이 문자열에서 폰트 글자를 굽는다(tools/build-bubble.mjs) */
   firstBubble: '1등이닷',
   /** 사망 후 부활 선택 화면 */
   fellTitle: '계단에서 떨어졌습니다',
   /** 부활 버튼은 두 줄이다 — 7px 폰트로도 한 줄이면 170px 라 패널(148)을 넘는다 */
-  reviveWith1: (n) => `신발 ${n}개를 걸고`,
-  reviveWith2: (n) => `1위보다 ${n}칸 앞에서 부활`,
+  reviveWith1: (n) => `신발 ${n}개 써서`,
+  reviveWith2: () => '1위로 부활',
   reviveShort: (n) => `부활 (신발 ${n})`,
   reviveNeed: (need, have) => `신발 ${need}켤레가 필요합니다 (지금 ${have}켤레)`,
   reviveMaxed: '부활을 모두 썼습니다',
   /** 부활 화면에서 내 지갑 — 숫자만 있으면 무슨 숫자인지 모른다 */
-  myShoes: (n) => `내 신발 ${n}켤레`,
+  myShoes: (n) => `나의 남은 신발 ${n}켤레`,
   quitRound: '나가기',
   /** 다른 사람에게 뜨는 알림 (작은 글씨, 몇 초) */
   /**
@@ -234,6 +238,18 @@ export const S = {
   /** 결과 화면 */
   waitingOthers: '다른 사람들이 아직 오르고 있습니다',
   lostShoes: (n) => `이번 게임에서 신발 ${n}켤레를 잃었습니다`,
+  /** ── 결과 화면 (2026-08-19 개편) ── */
+  winBig: '승리하셨습니다 !',
+  winSub: '1등을 축하합니다',
+  wonPotPre: '걸린',
+  wonPotShoes: (n) => `신발 ${n}개`,
+  wonPotPost: '를 모두 가져왔습니다',
+  loseBig: '게임에서 패배하였습니다',
+  /** 기획서 §5-7 문구 그대로 */
+  loseTaken: (n) => `내 소중한 신발 ${n}켤레를 뺏겼습니다`,
+  tipTitle: '부활을 아껴쓰세요.',
+  tipBody1: '상대방이 부활을 다 쓰고 나면',
+  tipBody2: '아껴둔 부활을 써서 역전하세요!',
   wonPot: (n) => `걸린 신발 ${n}켤레를 모두 가져왔습니다`,
   /** 패자가 낸 신발을 승자가 아직 못 걷었다 — 지금 방을 되돌리면 그 신발이 증발한다 */
   resetPending: '신발 정산 중입니다 — 잠시만요',

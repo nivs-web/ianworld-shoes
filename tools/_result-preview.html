@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>멀티 결과 화면 미리보기 (진단 전용)</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<style>body{display:flex;gap:12px;align-items:flex-start;background:#15151b}
+ .frame{width:420px;background:#1b1b22;border:1px solid #333}</style>
+</head><body>
+<script type="module">
+/**
+ * 결과 화면은 서비스(Firebase)에 묶여 있어 그대로 띄우기 어렵다.
+ * **같은 마크업·같은 CSS 클래스**로 승/패 두 경우를 그려 디자인만 확인한다.
+ */
+import { el } from '/src/screens/ui.js';
+import S from '/src/config/strings.ko.js';
+import { SLOT_COLORS, SLOT_DIM } from '/src/game/palette.js';
+import { MULTI } from '/src/config/balance.js';
+
+const face = (id) => `/assets/characters/${id}_front.png`;
+const row = (rank, name, char, slot, revives, stat, me) =>
+  el('div.rank-row', { class: me ? 'me' : '' }, [
+    el('div.rank-no', S.rankTag(rank)),
+    el('div.face-frame', { style: { '--slot': SLOT_COLORS[slot], '--dim': SLOT_DIM[slot] } }, [
+      el('img.rank-face', { src: face(char), alt: name }),
+      el('div.rev-ring', null, Array.from({ length: MULTI.maxRevives }, (_, k) =>
+        el(`div.rev-seg.s${k}`, { class: k < MULTI.maxRevives - revives ? 'on' : 'off' }))),
+    ]),
+    el('div.rank-name', name),
+    el('div.rank-value', stat),
+    revives ? el('div.tag-bet', `+${revives * MULTI.reviveCost}`) : null,
+  ]);
+
+const rows = [
+  row(1, '이안', 'ian', 0, 2, '신발3 · 128계단', true),
+  row(2, '데니', 'denny', 1, 0, '신발1 · 96계단', false),
+  row(3, '로즈', 'rose', 2, 6, '신발0 · 40계단', false),
+];
+
+const victory = el('div.screen', null, [
+  el('div.screen-title', S.multiResultTitle),
+  el('div.victory', null, [
+    el('img.victory-flag', { src: '/assets/ui/victory_flag.png', alt: S.winBig }),
+    el('div.victory-big', S.winBig),
+    el('div.victory-sub', S.winSub),
+    el('div.victory-pot', null, [
+      el('span', S.wonPotPre + ' '),
+      el('span.pot-num', S.wonPotShoes(146)),
+      el('span', S.wonPotPost),
+    ]),
+  ]),
+  el('div.rank-list', null, rows),
+  el('div.spacer'),
+  el('button.pbtn.primary', S.stayInRoom),
+  el('button.pbtn', S.leaveToLobby),
+]);
+
+const defeat = el('div.screen', null, [
+  el('div.screen-title', S.multiResultTitle),
+  el('div.defeat', null, [
+    el('div.defeat-big', S.loseBig),
+    el('div.defeat-sub', S.loseTaken(21)),
+    el('div.tip', null, [
+      el('div.tip-head', S.tipTitle),
+      el('div', S.tipBody1),
+      el('div', S.tipBody2),
+    ]),
+  ]),
+  el('div.rank-list', null, [
+    row(1, '데니', 'denny', 1, 0, '신발1 · 96계단', false),
+    row(2, '이안', 'ian', 0, 1, '신발3 · 60계단', true),
+  ]),
+  el('div.spacer'),
+  el('button.pbtn.primary', S.stayInRoom),
+  el('button.pbtn', S.leaveToLobby),
+]);
+
+for (const scr of [victory, defeat]) {
+  const f = el('div.frame');
+  f.append(scr);
+  document.body.append(f);
+}
+window.__ready = true;
+</script></body></html>

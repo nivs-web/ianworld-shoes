@@ -58,17 +58,18 @@ export default function MultiMenu(nav) {
 
         el('div.hint', S.multiBetHint),
 
+        /**
+         * 순서: **방 입장 → 방 목록 → 비밀방 만들기 → 비밀방 입장** (2026-08-19).
+         * 위에서부터 "빠른 길 → 고르는 길 → 친구랑 하는 길" 순이다.
+         * 자동 매칭이 실패해도 **직접 고를 길**(방 목록)이 바로 아래에 있어야 막히지 않는다.
+         */
         button(busy ? S.loading : S.joinRoom, () => guard(() => Room.quickJoin({ difficulty: p.difficulty })), {
           primary: true, disabled: !canPlay || busy,
         }),
+        button(S.roomListTitle, () => nav.push(RoomList), { disabled: !canPlay || busy }),
         button(S.createPrivateRoom, () => guard(() => Room.createRoom({ isPrivate: true, difficulty: p.difficulty })), {
           disabled: !canPlay || busy,
         }),
-        /**
-         * 자동 매칭이 실패해도 **사용자가 직접 고를 길**을 둔다.
-         * 목록이 없으면 "왜 안 되는지" 를 화면에서 알 방법이 전혀 없다.
-         */
-        button(S.roomListTitle, () => nav.push(RoomList), { disabled: !canPlay || busy }),
         button(S.enterByCode, () => nav.push(CodeInput), { disabled: !canPlay || busy }),
 
         !canPlay

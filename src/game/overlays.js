@@ -354,8 +354,8 @@ export class MultiDeathOverlay {
     clearInput();
     setTapHandler((x, y) => {
       if (this.busy) return true;
-      if (inRect(x, y, 16, 168, 148, 34)) { this.revive(); return true; }
-      if (inRect(x, y, 16, 208, 148, 26)) { this.quit(); return true; }
+      if (inRect(x, y, 16, 178, 148, 34)) { this.revive(); return true; }
+      if (inRect(x, y, 16, 220, 148, 26)) { this.quit(); return true; }
       return true;   // 이 화면에서는 좌우 입력이 새면 안 된다
     }, true);
   }
@@ -445,26 +445,32 @@ export class MultiDeathOverlay {
 
   render() {
     dim();
-    panelBox(12, 96, 156, 146);
+    /**
+     * ★ **여백을 다시 잡았다.** (2026-08-19)
+     * 제목 → 남은 초 → 상금 → 내 지갑 → 버튼 두 개가 서로 붙어 있어서 급해 보였다.
+     * 패널을 위아래로 늘리고 줄 사이를 벌린다.
+     */
+    panelBox(12, 88, 156, 162);
 
-    text(S.fellTitle, 90, 104, { color: PAL.goRed, align: 'center' });
-    text(String(this.left), 90, 118, { color: PAL.text, scale: 3, align: 'center', mono: true });
+    text(S.fellTitle, 90, 96, { color: PAL.goRed, align: 'center' });
+    text(String(this.left), 90, 112, { color: PAL.text, scale: 3, align: 'center', mono: true });
 
     // 판돈은 이 화면의 핵심 정보다 — 얼마가 걸려 있는지 알아야 걸지 말지 정한다
-    text(S.potLine(potShoes(this.game.room)), 90, 150, { color: PAL.text, align: 'center', small: true });
+    // 상금은 크게(11px), 내 지갑은 한 단계 작게(7px) — 무엇이 중요한지 크기로 말한다
+    text(S.potWin(potShoes(this.game.room)), 90, 150, { color: PAL.gaugeWarn, align: 'center' });
     const have = getProfile().shoesOwned ?? 0;
-    text(S.myShoes(have), 90, 160, { color: PAL.textShadow, align: 'center', small: true });
+    text(S.myShoes(have), 90, 164, { color: PAL.textShadow, align: 'center', small: true });
 
     const 가능 = canRevive(this.me) && have >= MULTI.reviveCost && !this.busy;
-    button(16, 168, 148, 34, 가능);
+    button(16, 178, 148, 34, 가능);
     // 한 줄로 쓰면 170px 라 패널(148)을 넘는다 — 두 줄로 나눈다
     const c = 가능 ? PAL.text : PAL.textShadow;
-    text(S.reviveWith1(MULTI.reviveCost), 90, 174, { color: c, align: 'center', small: true });
-    text(S.reviveWith2(MULTI.reviveAhead), 90, 186, { color: c, align: 'center', small: true });
+    text(S.reviveWith1(MULTI.reviveCost), 90, 183, { color: c, align: 'center', small: true });
+    text(S.reviveWith2(), 90, 194, { color: c, align: 'center', small: true });
 
-    button(16, 208, 148, 26, false);
-    text(S.quitRound, 90, 215, { color: PAL.text, align: 'center' });
+    button(16, 220, 148, 26, false);
+    text(S.quitRound, 90, 227, { color: PAL.text, align: 'center' });
 
-    if (this.msg) text(this.msg, 90, 238, { color: PAL.goRed, align: 'center', small: true });
+    if (this.msg) text(this.msg, 90, 252, { color: PAL.goRed, align: 'center', small: true });
   }
 }

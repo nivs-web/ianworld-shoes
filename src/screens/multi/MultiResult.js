@@ -21,6 +21,8 @@
 import S from '../../config/strings.ko.js';
 import { el, button, backButton, screen, title, toast } from '../ui.js';
 import { characterById, characterSprite } from '../../data/characters.js';
+import { slotIndex } from '../../services/matchRules.js';
+import { SLOT_COLORS, SLOT_DIM } from '../../game/palette.js';
 import { MULTI } from '../../config/balance.js';
 import { currentUser } from '../../services/auth.js';
 import { finishRun } from '../../services/profile.js';
@@ -34,6 +36,33 @@ import Lobby from '../Lobby.js';
 /** 패자가 신발을 올리는 데 걸리는 시간은 보통 1~2초다. 그 창만 덮으면 된다. */
 const POLL_MS = 2000;
 const POLL_MAX = 5;
+
+
+/**
+ * ★ **순위 한 줄.** (2026-08-19)
+ *
+ * 왼쪽 숫자는 예전엔 그냥 목록 번호였다 — 아무 의미가 없어서 **등수**로 바꿨다(1등·2등…).
+ * 얼굴은 **자리 색 3도트 테두리**로 감싸고, 그 테두리를 **6칸**으로 나눠 부활을 몇 번
+ * 썼는지 보여 준다(안 쓰면 꽉 참, 6번 다 쓰면 전부 꺼짐). 인게임 레이스 게이지와
+ * **같은 그림**이라 "저 사람이 부활을 몇 개 써서 이겼는지"가 결과 화면에서도 그대로 읽힌다.
+ */
+function rankRow({ uid, v, i, myUid, players, label }) {
+  const ch = characterById(v.characterId);
+  const slot = Math.max(0, Math.min(SLOT_COLORS.length - 1, slotIndex(players, uid)));
+  const 남은칸 = Math.max(0, MULTI.maxRevives - (v.revives ?? 0));
+  return el('div.rank-row', { class: uid === myUid ? 'me' : '' }, [
+    el('div.rank-no', label ?? S.rankTag(i + 1)),
+    el('div.face-frame', { style: { '--slot': SLOT_COLORS[slot], '--dim': SLOT_DIM[slot] } }, [
+      ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
+      // 6칸 테두리 — 순서는 인게임과 같다(위 왼쪽 → 시계 방향)
+      el('div.rev-ring', null, Array.from({ length: MULTI.maxRevives }, (_, k) =>
+        el(`div.rev-seg.s${k}`, { class: k < 남은칸 ? 'on' : 'off' }))),
+    ]),
+    el('div.rank-name', v.nickname || '???'),
+    el('div.rank-value', S.multiRowStat(v.shoesFound ?? 0, v.stairs ?? 0)),
+    v.revives ? el('div.tag-bet', `+${v.revives * MULTI.reviveCost}`) : null,
+  ]);
+}
 
 export default function MultiResult(nav, params = {}) {
   const code = params.code;
@@ -250,16 +279,8 @@ export default function MultiResult(nav, params = {}) {
           title(S.multiResultTitle),
           el('div.warn', null, [el('div', S.waitingOthers)]),
           el('div.hint', S.potLine(potShoes(room))),
-          el('div.rank-list', null, live.map(([uid, v], i) => {
-            const ch = characterById(v.characterId);
-            return el('div.rank-row', { class: uid === myUid ? 'me' : '' }, [
-              el('div.rank-no', String(i + 1)),
-              ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
-              el('div.rank-name', v.nickname || '???'),
-              el('div.rank-value', S.multiRowStat(v.shoesFound ?? 0, v.stairs ?? 0)),
-              v.alive === false ? el('div.tag-out', S.lost) : null,
-            ]);
-          })),
+          el('div.rank-list', null, live.map(([uid, v], i) =>
+            rankRow({ uid, v, i, myUid, players }))),
           el('div.spacer'),
           backButton(S.leaveToLobby, () => nav.reset(Lobby))
         );
@@ -268,33 +289,37 @@ export default function MultiResult(nav, params = {}) {
       return screen(
         title(S.multiResultTitle),
 
-        el('div.rank-list', null, rankings.map((uid, i) => {
-          const v = players[uid] ?? {};
-          const ch = characterById(v.characterId);
-          return el('div.rank-row', { class: uid === myUid ? 'me' : '' }, [
-            el('div.rank-no', String(i + 1)),
-            ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
-            el('div.rank-name', v.nickname || '???'),
-            el('div.rank-value', S.multiRowStat(v.shoesFound ?? 0, v.stairs ?? 0)),
-            // 이 판에 얼마를 걸었는지 (부활 비용) — 방장 태그와 구분되는 색이어야 한다
-            v.revives ? el('div.tag-bet', `+${v.revives * MULTI.reviveCost}`) : null,
-          ]);
-        })),
-
-        // 기획서 문구는 토씨 그대로 (§5-7)
+        /**
+         * ★ **승패를 먼저, 크게.** (2026-08-19)
+         * 예전에는 순위표부터 나오고 승패 문구가 작게 붙었다. 이 게임에서 사람이 제일
+         * 먼저 알고 싶은 건 "내가 이겼나"다. 이긴 사람에게는 깃발까지 보여 준다.
+         */
         won === undefined
           ? el('div.hint', S.settleLater)
-          : el('div.settle', null, [
-              el('div.settle-head', won ? S.won : S.lost),
-              /**
-               * 승자 문구의 숫자는 **항아리 전체**다. 아직 안 들어온 몫이 있어도
-               * 결국 그 사람에게 간다(정산은 접속할 때마다 다시 돈다). 그때그때
-               * 걷힌 양을 쓰면 "0켤레를 가져왔습니다" 같은 말이 나온다.
-               */
-              won ? el('div', S.wonPot(potShoes(room))) : null,
-              won && settle?.pending ? el('div.hint', S.rewardPending(settle.pending)) : null,
-              !won ? el('div', S.lostShoes(settle?.lost ?? myOwed())) : null,
+          : won
+          ? el('div.victory', null, [
+              el('img.victory-flag', { src: '/assets/ui/victory_flag.png', alt: S.winBig }),
+              el('div.victory-big', S.winBig),
+              el('div.victory-sub', S.winSub),
+              el('div.victory-pot', null, [
+                el('span', S.wonPotPre + ' '),
+                el('span.pot-num', S.wonPotShoes(potShoes(room))),
+                el('span', S.wonPotPost),
+              ]),
+              settle?.pending ? el('div.hint', S.rewardPending(settle.pending)) : null,
+            ])
+          : el('div.defeat', null, [
+              el('div.defeat-big', S.loseBig),
+              el('div.defeat-sub', S.loseTaken(settle?.lost ?? myOwed())),
+              el('div.tip', null, [
+                el('div.tip-head', S.tipTitle),
+                el('div', S.tipBody1),
+                el('div', S.tipBody2),
+              ]),
             ]),
+
+        el('div.rank-list', null, rankings.map((uid, i) =>
+          rankRow({ uid, v: players[uid] ?? {}, i, myUid, players }))),
 
         el('div.spacer'),
         /**

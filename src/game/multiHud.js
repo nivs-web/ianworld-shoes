@@ -57,14 +57,25 @@ const TICK_W = 5;
 const TICK_X = LINE_X - TICK_W;          // 173~177
 /** 얼굴 상자 중심 x — 눈금과 겹치지 않게 왼쪽으로 (상자 150~172) */
 const RACE_CX = 161;
-const RACE_CY = 150;                     // **나는 여기서 절대 안 움직인다**
-const TICK_GAP = 9;                      // 눈금 간격
+/**
+ * 내 자리 — **여기서 절대 안 움직인다.**
+ * 눈금 21칸이 26~240 을 쓰도록 가운데를 133 으로 잡았다. 위로는 부활 하트 자리까지
+ * 올라가고(멀티에는 하트가 없다), 아래로는 알림 줄 바로 위까지 내려온다.
+ */
+const RACE_CY = 133;
+/**
+ * 눈금 간격 — 위아래로 10칸씩이라 세로로 2×10×GAP 을 쓴다.
+ * 화면에서 쓸 수 있는 세로 폭은 26~240 (그 아래는 알림·판돈·조작 버튼) → 10.
+ */
+const TICK_GAP = 10;
 
 /** 등수 글씨는 얼굴 상자 왼쪽에 */
 const RANK_X = RACE_CX - (CELL >> 1) - 3;
 /** 1등 말풍선 */
-const BUBBLE = { w: 38, h: 24 };
+const BUBBLE = { w: 68, h: 34 };
 
+/** 계단 숫자(41~63) 바로 아래 */
+const GAP_Y = 64;
 /** 판돈 줄 — **조작 버튼 위**(266~314). 7px 글자라 252~259 를 차지한다 */
 const POT_Y = 252;
 /** 알림은 판돈 바로 위에서 위로 쌓인다 */
@@ -81,8 +92,17 @@ const TICKER_CX = TICKER_W >> 1;
 
 /** 상대 캐릭터 스프라이트는 내 것과 다르다 — 처음 보이는 순간에 받아 둔다 */
 const requested = new Set();
-function ensureAssets(list) {
+function ensureAssets(list, myCharId) {
   const want = [];
+  /**
+   * ★ **내 얼굴도 받아야 한다.** (2026-08-19)
+   * `GameScene` 은 내 캐릭터의 front·side·jump 만 받는다. 얼굴(`_face`)은 상대용으로만
+   * 받고 있어서 **레이스 게이지에서 내 칸만 비어 있었다** — 사용자가 지적한 그 버그다.
+   */
+  if (myCharId && !requested.has(myCharId)) {
+    requested.add(myCharId);
+    want.push({ key: `${myCharId}_face`, url: `/assets/characters/${myCharId}_face.png` });
+  }
   // 1등 말풍선 — 멀티에서만 쓰는 그림이라 여기서 같이 받는다
   if (!requested.has('bubble')) {
     requested.add('bubble');
@@ -107,11 +127,12 @@ export function multiHud(scene) {
   if (!smallReady()) loadSmallFont();
   const list = (scene.opponents ?? []).slice(0, 3);
   // 상대 목록 객체는 방 갱신 때만 새로 만들어진다 — 그때만 에셋을 확인하면 된다
-  if (scene.assetsFor !== scene.opponents) { scene.assetsFor = scene.opponents; ensureAssets(list); }
+  if (scene.assetsFor !== scene.opponents) { scene.assetsFor = scene.opponents; ensureAssets(list, scene.charId); }
 
   drawGhosts(scene, list);
   drawFirstBubble(scene, list);
   drawRaceGauge(scene, list);
+  drawGapLine(scene);
   drawPot(scene);
   drawTicker(scene);
   drawCountdown(scene);
@@ -392,6 +413,25 @@ function fadeRect(x, y, w, h, color, alpha) {
   ctx.restore();
 }
 
+/**
+ * ★ **계단 숫자 바로 아래 — 1등과의 거리.** (2026-08-19)
+ *
+ * 오른쪽 게이지가 "누가 위냐"를 보여 준다면 이 줄은 **몇 칸을 따라잡아야 하는지**를
+ * 숫자로 못 박는다. 1등이면 "1등 유지중" — 지켜야 할 것이 있다는 신호다.
+ */
+function drawGapLine(scene) {
+  if (scene.countdownMs > 0) return;
+  const room = scene.room;
+  if (!room) return;
+  const 최고 = Object.entries(room.players ?? {})
+    .filter(([, v]) => !v?.waiting)
+    .reduce((m, [, v]) => Math.max(m, v.stairs ?? 0), 0);
+  const 차이 = 최고 - (scene.floor | 0);
+  textCached(차이 > 0 ? S.gapFromFirst(차이) : S.keepingFirst, CENTER_X, GAP_Y, {
+    color: 차이 > 0 ? PAL.gaugeWarn : PAL.text, align: 'center', small: true, shadow: PAL.textShadow,
+  });
+}
+
 // ─────────────────────────────────────────────
 // 3) 1등 말풍선 — 계단 위 1등 머리 위에 따라다닌다
 // ─────────────────────────────────────────────
@@ -417,7 +457,7 @@ function drawFirstBubble(scene, list) {
   const myUid = scene.multi?.myUid;
   if (rank[myUid] === 1) {
     // 내 캐릭터는 항상 화면 가운데 발끝 기준이다
-    return drawBubbleAt(ctx, bubble, CENTER_X, CHAR.footY - CHAR.h);
+    return drawBubbleAt(ctx, bubble, CENTER_X, CHAR.footY - CHAR.dh, scene.player?.facing ?? 1);
   }
   const 일등 = list.find((o) => rank[o.id] === 1);
   if (!일등) return;
@@ -430,14 +470,33 @@ function drawFirstBubble(scene, list) {
   if (footY < 0 || footY > VIEW_H) return;          // 화면 밖이면 게이지가 맡는다
   stairs.ensure?.(floor + 1);
   const cx = stairs.worldX(floor) - camX + CENTER_X;
-  drawBubbleAt(ctx, bubble, cx, footY - CHAR.h);
+  drawBubbleAt(ctx, bubble, cx, footY - CHAR.dh, 1);
 }
 
-/** 머리 위 왼쪽 — 꼬리가 머리를 가리키게 (참고 이미지와 같은 배치) */
-function drawBubbleAt(ctx, bubble, headCx, headTop) {
-  const x = Math.round(headCx) - BUBBLE.w + 6;
-  const y = Math.round(headTop) - BUBBLE.h - 1;
-  ctx.drawImage(bubble, Math.max(1, Math.min(VIEW_W - BUBBLE.w - 1, x)), Math.max(1, y));
+/**
+ * 머리 **바로 위**에 띄운다 — 얼굴·몸을 절대 가리지 않는다. (2026-08-19)
+ *
+ * 말풍선 꼬리는 그림의 오른쪽 아래에 있다. 그래서 오른쪽을 보고 있으면 그대로,
+ * **왼쪽을 보고 있으면 좌우로 뒤집어** 꼬리가 항상 머리 쪽을 가리키게 한다.
+ * 위치는 머리 중심에서 보는 방향 **반대쪽으로 조금** 밀어, 꼬리가 정수리에 닿는다.
+ */
+function drawBubbleAt(ctx, bubble, headCx, headTop, facing = 1) {
+  const 오른쪽 = facing >= 0;
+  const nudge = 오른쪽 ? -10 : 10;
+  const x = Math.round(headCx) - (BUBBLE.w >> 1) + nudge;
+  const y = Math.round(headTop) - BUBBLE.h - 3;      // 머리 위 3도트 띄운다
+  const px = Math.max(1, Math.min(VIEW_W - BUBBLE.w - 1, x));
+  const py = Math.max(1, y);
+  if (오른쪽) {
+    ctx.drawImage(bubble, px, py);
+    return;
+  }
+  // 좌우 반전 — 스무딩은 건드리지 않으므로 도트가 그대로 유지된다(§3-1)
+  ctx.save();
+  ctx.translate(px + BUBBLE.w, py);
+  ctx.scale(-1, 1);
+  ctx.drawImage(bubble, 0, 0);
+  ctx.restore();
 }
 
 // ─────────────────────────────────────────────

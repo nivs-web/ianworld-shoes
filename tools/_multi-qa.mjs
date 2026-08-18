@@ -888,7 +888,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('눈금은 나와의 차이', mh, 'const 칸 = Math.round((floor - 나) / MULTI.raceStairsPerTick);');
   has('끝을 넘으면 붙는다', mh, 'Math.max(-MULTI.raceTicks, Math.min(MULTI.raceTicks, 칸))');
   eq('위아래 10칸', MULTI.raceTicks, 10);
-  eq('한 칸 = 계단 10칸', MULTI.raceStairsPerTick, 10);
+  eq('한 칸 = 계단 5칸', MULTI.raceStairsPerTick, 5);
 
   // ④ 테두리 6칸 = 남은 부활
   eq('부활 상한 6회', MULTI.maxRevives, 6);
@@ -938,23 +938,27 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('셋이면 한 명 빠져도 계속',
     M.roundOver({ players: { a: { alive: false, out: true }, b: { alive: true }, c: { alive: true } } }, 1), false);
 
-  // ③ 남아 있는 사람이 나간 사람보다 위 — 계단이 낮아도
-  eq('기권한 쪽이 진다', M.rankPlayers([
+  /**
+   * ③ **계단이 높은 사람이 이긴다** (2026-08-19 재확정).
+   * 기권했든 튕겼든 상관없다 — 사용자가 두 번 못 박은 규칙이다.
+   * 생존은 **동점일 때만** 본다.
+   */
+  eq('기권해도 계단이 높으면 이긴다', M.rankPlayers([
     { uid: 'a', stairs: 90, alive: false, out: true },
     { uid: 'b', stairs: 12, alive: true },
-  ], 1), ['b', 'a']);
-  eq('전원이 빠졌으면 계단 순', M.rankPlayers([
-    { uid: 'a', stairs: 90, alive: false, out: true },
-    { uid: 'b', stairs: 12, alive: false, out: true },
   ], 1), ['a', 'b']);
-  eq('튕긴 사람도 아래로', M.rankPlayers([
+  eq('튕겨도 계단이 높으면 이긴다', M.rankPlayers([
     { uid: 'a', stairs: 70, alive: true, seenAt: 1000 },
     { uid: 'b', stairs: 90, alive: true, seenAt: 1000 - MULTI.staleSeconds * 1000 - 1 },
-  ], 1000), ['a', 'b']);
+  ], 1000), ['b', 'a']);
+  eq('동점이면 판에 남아 있던 쪽', M.rankPlayers([
+    { uid: 'a', stairs: 40, alive: false, out: true },
+    { uid: 'b', stairs: 40, alive: true },
+  ], 1), ['b', 'a']);
 
   // ④ 1등이면 승리 문구가 반드시 뜬다 (정산이 늦어도)
   has('순위로 승패를 판단한다', mres, "rankings.length ? rankings[0] === myUid : undefined");
-  has('가져온 신발은 항아리 전체', mres, 'S.wonPot(potShoes(room))');
+  has('가져온 신발은 항아리 전체', mres, 'S.wonPotShoes(potShoes(room))');
 
   // ⑤ 게이지 — 죽은 사람은 회색 + 카운트다운, 남은 사람은 검은 테두리
   has('죽으면 회색', mh, 'if (!alive) fadeRect(');
@@ -1006,6 +1010,71 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     const w = width7(t);
     eq(`${name} 한 줄에 들어간다 (${w}px)`, w <= 180, true);
   }
+}
+
+// ── 28) 결과 화면 · 로비 · 게이지 개편 (2026-08-19) ──
+{
+  console.log('\n28) 결과 화면 · 로비 · 게이지 (2026-08-19)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const S = (await import('../src/config/strings.ko.js')).default;
+  const mres = read('../src/screens/multi/MultiResult.js');
+  const menu = read('../src/screens/multi/MultiMenu.js');
+  const lobby = read('../src/screens/Lobby.js');
+  const css = read('../src/styles/screens.css');
+  const mh = read('../src/game/multiHud.js');
+  const ov = read('../src/game/overlays.js');
+  const ui = read('../src/screens/ui.js');
+
+  // ① 결과 화면 — 등수 · 부활 테두리 · 버튼
+  has('순위는 1등·2등으로', mres, 'label ?? S.rankTag(i + 1)');
+  has('얼굴에 자리 색 테두리', mres, "el('div.face-frame'");
+  has('테두리는 6칸', mres, 'Array.from({ length: MULTI.maxRevives }');
+  has('6칸 CSS', css, '.rev-seg.s5');
+  eq('한 판 더 버튼 없음', mres.includes('S.playAgain'), false);
+  eq('계속하기 문구', S.stayInRoom, '계속하기');
+  has('CSS 변수를 el() 이 넣어 준다', ui, "ck.startsWith('--')");
+
+  // ② 승리 / 패배 연출
+  for (const [k, v] of [['승리 큰 글씨', S.winBig], ['승리 부제', S.winSub], ['패배 큰 글씨', S.loseBig]]) {
+    eq(`${k} 있음`, typeof v === 'string' && v.length > 0, true);
+  }
+  has('승리 깃발', mres, "src: '/assets/ui/victory_flag.png'");
+  eq('깃발 파일', fs.existsSync(new URL('../public/assets/ui/victory_flag.png', import.meta.url)), true);
+  has('가져온 신발만 강조', mres, "el('span.pot-num'");
+  has('패배 팁', mres, 'S.tipBody2');
+  eq('잃은 신발 문구는 뺏겼습니다 로', S.loseTaken(3), '내 소중한 신발 3켤레를 뺏겼습니다');
+
+  // ③ 멀티 메뉴 순서 — 방 입장 → 방 목록 → 비밀방 만들기 → 비밀방 입장
+  const order = ['S.joinRoom', 'S.roomListTitle', 'S.createPrivateRoom', 'S.enterByCode']
+    .map((k) => menu.indexOf(k));
+  eq('메뉴 순서', order.every((v, i, a) => v > 0 && (i === 0 || v > a[i - 1])), true);
+  eq('비밀방 입장 문구', S.enterByCode, '비밀방 입장');
+
+  // ④ 로비 — 캐릭터 이름 · 멀티 전적
+  has('캐릭터 칸에 이름', lobby, "el('div.char-name', ch.ko)");
+  has('멀티 전적 줄', lobby, 'S.myMultiRecord(');
+  eq('플레이어 이름 줄 삭제', lobby.includes('S.playerName'), false);
+  has('캐릭터 칸 폭 73px (이전 56 대비 +30%)', css, 'width: 73px;');
+
+  // ⑤ 게이지 — 한 칸 5계단, 내 얼굴도 받는다
+  eq('한 칸 = 5계단', MULTI.raceStairsPerTick, 5);
+  has('내 얼굴도 미리 받는다', mh, 'if (myCharId && !requested.has(myCharId))');
+  has('1등과의 거리 줄', mh, 'function drawGapLine(scene)');
+  eq('1등이면 유지중', S.keepingFirst, '(1등 유지중)');
+
+  // ⑥ 말풍선 — 새 그림, 머리 위, 보는 방향에 따라 반전
+  has('말풍선 68×34', mh, 'const BUBBLE = { w: 68, h: 34 };');
+  has('왼쪽을 보면 뒤집는다', mh, 'ctx.scale(-1, 1);');
+  has('머리 위로 띄운다', mh, 'const y = Math.round(headTop) - BUBBLE.h - 3;');
+
+  // ⑦ 문구
+  eq('부활 버튼 1줄', S.reviveWith1(20), '신발 20개 써서');
+  eq('부활 버튼 2줄', S.reviveWith2(), '1위로 부활');
+  eq('사망 화면 상금', S.potWin(30), '승리시 신발 30켤레 !');
+  eq('사망 화면 내 지갑', S.myShoes(4), '나의 남은 신발 4켤레');
+  has('사망 화면이 상금을 크게', ov, 'S.potWin(potShoes(this.game.room))');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

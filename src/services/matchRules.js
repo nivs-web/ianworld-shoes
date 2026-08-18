@@ -24,26 +24,21 @@ import { MULTI } from '../config/balance.js';
  */
 export function rankPlayers(players, now = Date.now()) {
   /**
-   * ★ **판에 남아 있는 사람이 나간 사람보다 위다.** (2026-08-19)
+   * ★ **계단이 높은 사람이 이긴다.** (2026-08-19 재확정)
    *
-   * 예전에는 계단 수가 1순위이고 생존은 동점 처리용이었다. 그런데 그러면
-   * **"내가 앞설 때 나가 버리면 이긴다"** 가 된다 — 상대는 계속 오를 수 있는데도
-   * 판이 그 자리에서 굳기 때문이다. 1:1 은 한 명이 빠지면 즉시 끝나므로(§roundOver)
-   * 이 허점이 곧바로 필승법이 된다.
+   * 한동안 "판에 남아 있는 사람"을 1순위로 뒀다 — 1:1 에서 먼저 포기하면 지도록.
+   * 그런데 사용자가 두 번에 걸쳐 못 박았다: *"방이 사라지던 튕기던 무조건, 걸린 신발은
+   * 게임이 종료된 시점에서 **더 높은 계단에 있던 사람**이 가져간다"*, *"계단 최상위에
+   * 위치한 사람이 승리"*. 그래서 **계단 수가 다시 1순위**다.
    *
-   * 그래서 **아직 판에 붙어 있는 사람**(죽지 않았고, 포기하지 않았고, 신호도 살아 있는)
-   * 을 먼저 놓는다. 기권도 튕김도 결과가 같다 — 남아서 계속 오른 사람이 이긴다.
-   * 전원이 빠진 뒤(정상 종료)에는 이 항이 모두 같아지므로 **계단 수가 승부를 가른다.**
-   *
-   * @param {Array<{uid:string, stairs?:number, alive?:boolean, out?:boolean, seenAt?:number, reachedAt?:number}>} players
-   * @param {number} [now] 서버 기준 '지금' (신호 끊김 판정에 쓴다)
-   * @returns {string[]} 1등부터 uid 목록
+   * 생존은 **동점일 때만** 본다 — 같은 층에서 끝났으면 아직 판에 붙어 있던 쪽이 위다.
+   * 그 뒤는 먼저 도달한 순, 마지막은 uid 사전순(누가 계산해도 같은 답이 나와야 한다).
    */
   const 남아있다 = (p) => (outOfRound(p, now) ? 0 : 1);
   return [...players]
     .sort((a, b) =>
-      남아있다(b) - 남아있다(a) ||
       (b.stairs ?? 0) - (a.stairs ?? 0) ||
+      남아있다(b) - 남아있다(a) ||
       (a.reachedAt ?? Infinity) - (b.reachedAt ?? Infinity) ||
       String(a.uid).localeCompare(String(b.uid))
     )

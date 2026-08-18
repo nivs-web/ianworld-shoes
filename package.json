@@ -27,7 +27,8 @@
     "sim:multi": "node --import ./tools/_sim-loader.mjs tools/_multi-sim.mjs",
     "preview:hud": "node tools/_hud-preview.mjs",
     "assets:bubble": "node tools/build-bubble.mjs",
-    "preview:screens": "node tools/_screen-preview.mjs"
+    "preview:screens": "node tools/_screen-preview.mjs",
+    "preview:result": "node tools/_screen-preview.mjs result"
   },
   "dependencies": {
     "firebase": "^11.1.0"
