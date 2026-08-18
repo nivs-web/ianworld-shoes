@@ -274,6 +274,23 @@ export function hasSeat(room, myUid, maxPlayers = 4) {
  * 게임 중에 들어온 대기자(`waiting: true`)는 순위에도 정산에도 들어가면 안 된다.
  * 뛰지도 않은 판에서 꼴찌가 되어 신발을 뺏기면 그건 그냥 사고다.
  */
+/**
+ * ★ **자리 번호 — 들어온 순서.** (2026-08-19)
+ *
+ * 1번 빨강 · 2번 노랑 · 3번 파랑 · 4번 초록. 대기방의 번호 상자와 인게임 레이스
+ * 게이지의 얼굴 테두리가 **같은 번호·같은 색**을 써야 "로비의 나"와 "게임 속의 나"가
+ * 이어진다. 그래서 판정은 **누가 계산해도 같아야** 한다 — 들어온 시각(같으면 uid)으로
+ * 줄을 세운다. 대기자도 자리를 차지한다(다음 판에는 정식 참가자가 되므로).
+ *
+ * @returns {number} 0~3 (모르는 사람이면 -1)
+ */
+export function slotIndex(players, uid) {
+  const order = Object.entries(players ?? {})
+    .sort((a, b) => (a[1]?.joinedAt ?? 0) - (b[1]?.joinedAt ?? 0) || a[0].localeCompare(b[0]))
+    .map(([id]) => id);
+  return order.indexOf(uid);
+}
+
 export function playersInRound(players) {
   return Object.entries(players ?? {})
     .filter(([, v]) => !v?.waiting)

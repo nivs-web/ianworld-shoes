@@ -601,5 +601,56 @@ console.log('\nS18) 아무 순서로나 섞어도 신발은 생기지도 사라�
   if (최악) console.log('       예:', JSON.stringify(최악));
 }
 
+console.log('\nS19) 이긴 사람이 다음 판의 방장이 된다');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });   // 방을 만든 사람 = 처음 방장
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  eq('처음엔 만든 사람이 방장', w.db.read(`rooms/${code}/hostUid`), 'A');
+
+  await quitMidGame(A, code, { stairs: 3 });
+  await quitMidGame(B, code, { stairs: 40 });          // B 가 이긴다
+  await resultScreen(A, code, { leave: false });
+  await resultScreen(B, code, { leave: false });
+
+  eq('이긴 B 가 방장', w.db.read(`rooms/${code}/hostUid`), 'B');
+  eq('순위', w.db.read(`rooms/${code}/result/rankings`), ['B', 'A']);
+}
+
+console.log('\nS20) 한 명이 튕기면 — 계단이 높은 쪽이 걸린 신발을 전부 가져간다');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 60 });
+  const B = w.player('B', { shoes: 60 });
+  const code = await startRound(w, A, [B]);
+  const before = w.total(code);
+
+  // 둘 다 한 번씩 걸었다 (항아리 40 + 기본 1)
+  const revive = (p, stairs) => p.act(async () => {
+    await Room.reportDeath(code, { stairs });
+    const picked = M.pickPenaltyShoes(L.loadProfile().shoesByIndex ?? {}, MULTI.reviveCost);
+    L.removeShoesByIndex(picked);
+    const floor = await Room.reviveMe(code, picked);
+    if (floor == null) L.addShoes(picked);
+  });
+  await revive(A, 8);
+  await revive(B, 12);
+
+  // A 가 70계단까지 올라간 뒤 **B 가 튕긴다**(30계단에서 아무 쓰기 없이 사라짐)
+  await B.act(() => Room.publishProgress(code, { stairs: 30, shoesFound: 0 }, true));
+  await A.act(() => Room.publishProgress(code, { stairs: 70, shoesFound: 0 }, true));
+  advance(끊김);
+
+  await resultScreen(A, code, { leave: false });
+  await reboot(B);        // B 가 나중에 다시 접속한다
+  await resultScreen(A, code, { leave: false });
+
+  eq('계단 높은 A 가 1등', w.db.read(`rooms/${code}/result/rankings`), ['A', 'B']);
+  eq('총량 보존', w.total(code), before);
+  eq('A = 60 - 20 + (40 + 1)', A.wallet(), 81);
+  eq('B = 60 - 20 - 1', B.wallet(), 39);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n시뮬레이션 이상 없음');
 process.exit(fails ? 1 : 0);

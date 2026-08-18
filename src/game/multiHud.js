@@ -1,63 +1,75 @@
 /**
- * 멀티 전용 인게임 표시 — **상대가 어디까지 올라갔는지 눈으로 보게 한다.** (2026-08-18)
+ * 멀티 전용 인게임 표시 — **누가 몇 칸 앞서는지 한눈에.** (2026-08-19 전면 개편)
  *
  * 인게임은 전부 캔버스다 (CLAUDE.md §6-3). DOM 오버레이를 얹으면 도트가 깨진다.
  *
- * ## 왜 숫자만으로는 부족했나
+ * ## 글자를 지우고 그림으로 바꿨다
  *
- * 예전에는 상대를 **이름 + 숫자 두 개**로만 보여 줬다. 정보로는 충분한데 **역전당하는
- * 순간이 안 보인다.** 이 게임의 재미는 "쟤가 내 앞으로 튀어나왔다 → 다시 뒤집는다" 인데,
- * 숫자가 조용히 바뀌는 걸로는 그 감정이 안 생긴다.
+ * 예전에는 상대를 **이름 + 숫자**로 보여 줬다. 정보로는 충분한데 180×320 화면에서
+ * 세 줄이면 계단이 안 보이고, 무엇보다 **읽어야** 알 수 있다. 뛰면서 글자를 읽을 수는 없다.
+ * 그래서 인게임에서 아이디를 통째로 없애고 **오른쪽 레이스 게이지** 하나로 모았다.
  *
- * ## 세 겹으로 보여 준다
+ * ## 레이스 게이지 (이 파일의 핵심)
+ *
+ *   · **나는 항상 정중앙**이고 절대 움직이지 않는다. 상대만 위아래로 움직인다 —
+ *     보여 줄 것은 절대 층수가 아니라 **나와의 차이**이기 때문이다.
+ *   · 눈금은 위로 10칸, 아래로 10칸. **한 칸 = 계단 10칸.**
+ *     상대가 30칸 앞이면 3칸 위, 100칸 넘게 앞이면 맨 위에 붙는다.
+ *   · 각자 **얼굴 아이콘**으로 그린다(아이디 없음). 얼굴을 두른 **3도트 테두리**는
+ *     자리 색(1번 빨강·2번 노랑·3번 파랑·4번 초록)이고, **6칸으로 나뉘어 있다.**
+ *     부활을 한 번 쓸 때마다 한 칸씩 지워진다.
+ *
+ * 마지막 칸이 곧 마지막 목숨이라, **부활을 아꼈다가 늦게 쓰는 쪽이 유리하다** —
+ * 이 게임의 승부처가 게이지 하나에 전부 들어간다.
+ *
+ * ## 상대 캐릭터는 계단 위에도 그린다
  *
  * 멀티는 **전원이 같은 시드**로 계단을 만든다. 그래서 상대의 층수 하나만 알면
- * **그 사람이 서 있는 계단의 좌표를 내 화면에서 그대로 계산할 수 있다** —
- * 서버에서 좌표를 받을 필요가 전혀 없다.
- *
- *   1. 화면 안이면        → 반투명 **고스트 캐릭터** + 머리 위 이름표
- *   2. 세로는 보이는데 가로가 밖 → 좌/우 가장자리에 **화살표 + 이름**
- *   3. 세로도 밖이면      → 오른쪽 **레이스 바**에 점으로 (항상 보인다)
- *
- * 레이스 바가 핵심이다 — 화면 밖에 있어도 "지금 누가 앞이냐"가 한눈에 들어온다.
- *
- * ## 글자는 7px 폰트로
- *
- * 11px 하나뿐이던 시절에는 상대 줄 세 개면 계단이 안 보였다. 그리고 그 폰트는
- * **코드에 등장하는 한글만** 굽기 때문에 닉네임이 `??` 로 나왔다(실측). 7px 폰트는
- * 상용 한글 2,350자를 통째로 담고 있고, 멀티에 들어올 때만 받는다.
+ * 그 사람이 선 계단 좌표를 내 화면에서 그대로 계산할 수 있다 — 서버에서 좌표를 받을
+ * 필요가 없다. 화면 안이면 반투명 고스트로 지나간다(이름표는 없앴다).
  */
 
 import { textCached, measure, loadSmallFont, smallReady } from '../core/pixelfont.js';
 import { rect } from '../core/sprite.js';
 import { img, loadAll } from '../core/assets.js';
 import { getCtx } from '../core/canvas.js';
-import { PAL } from './palette.js';
+import { PAL, SLOT_COLORS, SLOT_DIM } from './palette.js';
 import { VIEW_W, VIEW_H, STAIR, CENTER_X, CHAR } from '../config/layout.js';
 import { MULTI } from '../config/balance.js';
-import { potShoes } from '../services/matchRules.js';
+import { potShoes, slotIndex } from '../services/matchRules.js';
 import S from '../config/strings.ko.js';
 
 /** 알림 한 줄이 떠 있는 시간 */
 export const TICKER_MS = 3000;
 
-/** 상대 줄 (얼굴 16px + 7px 글자) */
-const ROW_Y = 66;
-const ROW_H = 17;
-/** 레이스 바 */
-const BAR_X = VIEW_W - 5;
-const BAR_TOP = 70;
-const BAR_BOTTOM = 250;
 /**
- * 판돈 줄 — **조작 버튼 위**에 둔다.
- * 처음에 화면 맨 아래(310)에 뒀더니 버튼(266~314)과 겹치고 아래가 잘렸다(실측).
+ * ── 레이스 게이지 좌표 ──
+ * 얼굴 16 + 테두리 3×2 = 22. 오른쪽 끝에 붙이되 화면(180) 밖으로 나가지 않게.
  */
+const FACE = 16;
+const BORDER = 3;
+const CELL = FACE + BORDER * 2;          // 22
+/** 게이지 세로선 (오른쪽 끝) */
+const LINE_X = VIEW_W - 2;               // 178
+/** 눈금은 선 왼쪽으로 뻗는다 */
+const TICK_W = 5;
+const TICK_X = LINE_X - TICK_W;          // 173~177
+/** 얼굴 상자 중심 x — 눈금과 겹치지 않게 왼쪽으로 (상자 150~172) */
+const RACE_CX = 161;
+const RACE_CY = 150;                     // **나는 여기서 절대 안 움직인다**
+const TICK_GAP = 9;                      // 눈금 간격
+
+/** 판돈 줄 — 조작 버튼(266~314) 위 */
 const POT_Y = 252;
 /** 알림은 판돈 바로 위에서 위로 쌓인다 */
 const TICKER_Y = 232;
-
-/** 상대 색 — 이름·점·이름표에 같은 색을 써야 누가 누군지 이어진다 */
-const TINT = [PAL.goRed, '#6ec6ff', '#ffd24a'];
+/**
+ * 알림은 **레이스 게이지를 피해** 왼쪽에만 쓴다.
+ * 게이지는 오른쪽 세로 기둥(150~178)을 위아래로 통째로 쓰기 때문에,
+ * 가운데 정렬로 두면 글자가 눈금·얼굴 위로 올라탄다(미리보기로 확인).
+ */
+const TICKER_W = RACE_CX - (CELL >> 1) - 6;
+const TICKER_CX = TICKER_W >> 1;
 
 /** 상대 캐릭터 스프라이트는 내 것과 다르다 — 처음 보이는 순간에 받아 둔다 */
 const requested = new Set();
@@ -85,8 +97,7 @@ export function multiHud(scene) {
   if (scene.assetsFor !== scene.opponents) { scene.assetsFor = scene.opponents; ensureAssets(list); }
 
   drawGhosts(scene, list);
-  drawRaceBar(scene, list);
-  drawRows(scene, list);
+  drawRaceGauge(scene, list);
   drawPot(scene);
   drawTicker(scene);
   drawCountdown(scene);
@@ -96,6 +107,13 @@ export function multiHud(scene) {
 // 1) 계단 위의 상대 — 고스트 + 가장자리 화살표
 // ─────────────────────────────────────────────
 
+/**
+ * 계단 위의 상대 — 반투명 고스트.
+ *
+ * ★ **이름표를 없앴다.** (2026-08-19) 인게임에서 아이디는 아예 안 쓴다.
+ * 누가 누군지는 **자리 색**으로 안다 — 고스트 발밑에 자리 색 점을 하나 찍어
+ * 오른쪽 게이지의 테두리 색과 이어 준다. 글자보다 눈이 훨씬 빠르다.
+ */
 function drawGhosts(scene, list) {
   if (scene.countdownMs > 0) return;
   const stairs = scene.stairs;
@@ -103,21 +121,20 @@ function drawGhosts(scene, list) {
   const camX = stairs.worldX(scene.floor) + ((stairs.nextDir(scene.floor) * STAIR.gapX) >> 1);
   const ctx = getCtx2d();
 
-  list.forEach((o, i) => {
+  for (const o of list) {
     const floor = o.stairs | 0;
-    const color = TINT[i % TINT.length];
+    const color = SLOT_COLORS[Math.max(0, Math.min(SLOT_COLORS.length - 1, o.slot | 0))];
     const dy = (floor - scene.floor) * STAIR.gapY;
     const footY = CHAR.footY - dy;
 
-    // 세로로 화면 밖이면 레이스 바가 맡는다
-    if (footY < -20 || footY > VIEW_H + 20) return;
+    // 세로로 화면 밖이면 오른쪽 레이스 게이지가 맡는다
+    if (footY < -20 || footY > VIEW_H + 20) continue;
 
     stairs.ensure?.(floor + 1);
     const cx = stairs.worldX(floor) - camX + CENTER_X;
     const sprite = img(`${o.characterId}_front`);
 
     if (cx > 8 && cx < VIEW_W - 8) {
-      // 화면 안 — 반투명 고스트. 내 캐릭터보다 작게(1×) 그려 "저기 있다"가 바로 읽힌다
       if (sprite && ctx) {
         const w = CHAR.w, h = CHAR.h;
         const dx = Math.round(cx - (w >> 1));
@@ -126,106 +143,118 @@ function drawGhosts(scene, list) {
         ctx.globalAlpha = o.alive === false ? 0.25 : 0.6;
         ctx.drawImage(sprite, 0, 0, w, h, dx, top, w, h);
         ctx.restore();
-        nameTag(o.nickname, Math.round(cx), top - 8, color);
-      } else {
-        rect(Math.round(cx) - 3, Math.round(footY) - 6, 6, 6, color);
-        nameTag(o.nickname, Math.round(cx), Math.round(footY) - 16, color);
       }
+      // 자리 색 점 — 오른쪽 게이지의 테두리 색과 같은 색이다
+      rect(Math.round(cx) - 3, Math.round(footY) + 1, 6, 3, color);
     } else {
-      // 가로로 밖 — 가장자리에 화살표만 (어느 쪽에 있는지가 정보다)
+      // 가로로 밖 — 가장자리에 자리 색 화살표만 (어느 쪽에 있는지가 정보다)
       const left = cx <= 8;
       const ax = left ? 3 : VIEW_W - 4;
       const ay = Math.max(8, Math.min(VIEW_H - 12, Math.round(footY) - 8));
       rect(ax - 2, ay, 5, 5, color);
-      textCached(left ? '<' : '>', left ? ax + 5 : ax - 5, ay - 1, {
-        color, small: true, align: left ? 'left' : 'right',
-      });
     }
-  });
+  }
 }
 
+// ─────────────────────────────────────────────
+// 2) 레이스 게이지 — 나는 정중앙, 상대는 나와의 차이만큼 위아래로
+// ─────────────────────────────────────────────
+
 /**
- * ★ **매 프레임 찍는 글자는 전부 캐시본으로.** (2026-08-19 렉 수정)
+ * 오른쪽 세로 눈금.
  *
- * 이름표는 `shadow` 가 붙어 글리프를 **두 번** 찍는다. 상대 3명 이름표 + 상대 줄 3개 +
- * 판돈 + 알림 3줄이면 프레임당 수백 번의 `fillRect` 가 나간다 — 예전에 HUD 가 666회로
- * 중저가 안드로이드의 60fps 를 깨뜨린 그 규모다(§9-0-14). `textCached` 는 글자 하나를
- * 오프스크린에 한 번 구워 두고 그 뒤로는 `drawImage` 만 한다.
+ * **절대 층수를 그리지 않는다.** 위로 10칸·아래로 10칸이 전부이고 한 칸은 계단 10칸이다.
+ * 상대가 30칸 앞이면 3칸 위, 100칸을 넘게 앞서면 맨 위에 붙어 더 안 올라간다 —
+ * "얼마나 앞서는가"는 어차피 손으로 좁힐 수 있는 범위 안에서만 의미가 있다.
  */
-function nameTag(name, cx, y, color) {
-  const s = String(name ?? '').slice(0, 5);
-  if (!s) return;
-  textCached(s, cx, Math.max(2, y), { color, align: 'center', small: true, shadow: PAL.textShadow });
-}
+function drawRaceGauge(scene, list) {
+  const 나 = scene.floor | 0;
 
-// ─────────────────────────────────────────────
-// 2) 레이스 바 — 화면 밖이어도 순위가 보인다
-// ─────────────────────────────────────────────
+  // 세로선 + 눈금자 — 가운데 눈금만 밝게 (내 자리)
+  const 위 = RACE_CY - MULTI.raceTicks * TICK_GAP;
+  const 아래 = RACE_CY + MULTI.raceTicks * TICK_GAP;
+  rect(LINE_X, 위, 2, 아래 - 위 + 1, PAL.textShadow);
+  for (let t = -MULTI.raceTicks; t <= MULTI.raceTicks; t++) {
+    const y = RACE_CY + t * TICK_GAP;
+    const 가운데 = t === 0;
+    rect(가운데 ? TICK_X - 3 : TICK_X, y, 가운데 ? TICK_W + 3 : TICK_W, 1, 가운데 ? PAL.text : PAL.textShadow);
+  }
+
+  /** 계단 차이 → 눈금 y (10칸을 넘어가면 끝에 붙는다) */
+  const yOf = (floor) => {
+    const 칸 = Math.round((floor - 나) / MULTI.raceStairsPerTick);
+    const clamped = Math.max(-MULTI.raceTicks, Math.min(MULTI.raceTicks, 칸));
+    return RACE_CY - clamped * TICK_GAP;
+  };
+
+  // 상대 먼저, 나는 마지막에 — 겹치면 내가 위에 보여야 한다
+  for (const o of list) {
+    drawRacer(o.characterId, o.slot, o.revives | 0, yOf(o.stairs | 0), o.alive !== false);
+  }
+  drawRacer(scene.charId, scene.mySlot, scene.myRevives | 0, RACE_CY, true, true);
+}
 
 /**
- * 오른쪽 세로 막대에 **나와 상대의 상대 위치**를 점으로 찍는다.
- * 절대 층수가 아니라 **이번 판의 최저~최고 구간**을 늘려 그린다 —
- * 격차가 3칸이든 300칸이든 "누가 위냐"가 같은 크기로 보여야 한다.
+ * 한 사람 — 얼굴 + **6칸으로 나뉜 3도트 테두리.**
+ *
+ * 테두리 칸이 곧 남은 부활 횟수다. 한 번 쓸 때마다 한 칸이 어두워지므로,
+ * 상대의 테두리만 봐도 "쟤는 이제 두 번 남았다"가 읽힌다. 숫자로 쓰면 읽는 데
+ * 시간이 걸리고, 뛰면서는 아무도 안 읽는다.
  */
-function drawRaceBar(scene, list) {
-  if (!list.length) return;
-  const floors = [scene.floor, ...list.map((o) => o.stairs | 0)];
-  const lo = Math.min(...floors);
-  const hi = Math.max(...floors);
-  const span = Math.max(1, hi - lo);
+function drawRacer(charId, slot, revives, cy, alive, isMe = false) {
+  const i = Math.max(0, Math.min(SLOT_COLORS.length - 1, slot | 0));
+  const on = SLOT_COLORS[i];
+  const off = SLOT_DIM[i];
+  const x = RACE_CX - (CELL >> 1);
+  const y = Math.round(cy) - (CELL >> 1);
 
-  rect(BAR_X, BAR_TOP, 2, BAR_BOTTOM - BAR_TOP, PAL.textShadow);
-
-  const yOf = (f) => BAR_BOTTOM - Math.round(((f - lo) / span) * (BAR_BOTTOM - BAR_TOP));
-
-  list.forEach((o, i) => {
-    const y = yOf(o.stairs | 0);
-    rect(BAR_X - 2, y - 1, 6, 3, TINT[i % TINT.length]);
-  });
-  // 내 점은 흰색 + 한 도트 크게 — 내가 어디 있는지 먼저 보여야 한다
-  const my = yOf(scene.floor);
-  rect(BAR_X - 3, my - 2, 8, 5, PAL.text);
-}
-
-// ─────────────────────────────────────────────
-// 3) 상대 줄 — 얼굴 + 작은 이름 + 층수
-// ─────────────────────────────────────────────
-
-function drawRows(scene, list) {
-  if (!list.length) return;
-  // 계단이 높은 순 — 지금 누가 앞서는지가 한눈에 보여야 한다
-  const sorted = list.map((o, i) => ({ ...o, tint: TINT[i % TINT.length] }))
-    .sort((a, b) => (b.stairs ?? 0) - (a.stairs ?? 0));
-
-  sorted.forEach((o, i) => {
-    const y = ROW_Y + i * ROW_H;
-    const 살아있다 = o.alive !== false;
-    const color = 살아있다 ? o.tint : PAL.textShadow;
-
-    const face = img(`${o.characterId}_face`);
-    if (face) drawFace(face, 3, y, 살아있다);
-    else rect(3, y, 16, 16, PAL.panelDark);
-
-    // 이름은 7px — 예전 11px 로는 세 줄이 화면을 다 먹었다
-    textCached(String(o.nickname ?? '').slice(0, 5), 22, y + 1, { scale: 1, color, small: true });
-    textCached(S.multiOpponentStat(o.shoesFound ?? 0, o.stairs ?? 0), VIEW_W - 10, y + 1, {
-      scale: 1, color, align: 'right', mono: true, small: true,
-    });
-    // 부활 횟수 — 저 사람이 이 판에 얼마를 걸었는지가 곧 위협의 크기다
-    if (o.revives) {
-      textCached(`+${o.revives * MULTI.reviveCost}`, 22, y + 9, { scale: 1, color: PAL.goRed, small: true });
+  // 바탕 — 얼굴이 없을 때도 자리가 보여야 한다
+  rect(x + BORDER, y + BORDER, FACE, FACE, PAL.panelDark);
+  const face = img(`${charId}_face`);
+  if (face) {
+    const ctx = getCtx2d();
+    if (ctx) {
+      ctx.save();
+      ctx.globalAlpha = alive ? 1 : 0.35;
+      ctx.drawImage(face, x + BORDER, y + BORDER);
+      ctx.restore();
     }
-  });
-}
+  }
 
-/** 죽은 사람 얼굴은 어둡게 — 지금 누가 부활을 고민 중인지 보인다 */
-function drawFace(face, x, y, alive) {
-  const ctx = getCtx2d();
-  if (!ctx) return;
-  ctx.save();
-  ctx.globalAlpha = alive ? 1 : 0.35;
-  ctx.drawImage(face, x, y);
-  ctx.restore();
+  /**
+   * 6칸 테두리 — 위 2칸, 오른쪽 1칸, 아래 2칸, 왼쪽 1칸.
+   * 시계 방향으로 **왼쪽 위부터** 채운다(남은 칸이 앞쪽에 몰려 있어야 세기 쉽다).
+   */
+  const half = CELL >> 1;                       // 11
+  const segs = [
+    [x, y, half, BORDER],                              // 위 왼쪽
+    [x + half, y, CELL - half, BORDER],                // 위 오른쪽
+    [x + CELL - BORDER, y, BORDER, CELL],              // 오른쪽
+    [x + half, y + CELL - BORDER, CELL - half, BORDER],// 아래 오른쪽
+    [x, y + CELL - BORDER, half, BORDER],              // 아래 왼쪽
+    [x, y, BORDER, CELL],                              // 왼쪽
+  ];
+  const 남은칸 = Math.max(0, MULTI.maxRevives - revives);
+  segs.forEach(([sx, sy, sw, sh], n) => rect(sx, sy, sw, sh, n < 남은칸 ? on : off));
+  /**
+   * 칸 사이 1도트 구분선. 없으면 테두리가 그냥 한 줄로 보여서 **몇 칸 남았는지 셀 수가 없다**
+   * (미리보기로 확인했다). 이 구분선이 "6칸짜리 목숨"이라는 걸 읽히게 만든다.
+   */
+  const cut = PAL.textShadow;
+  rect(x + half, y, 1, BORDER, cut);
+  rect(x + half, y + CELL - BORDER, 1, BORDER, cut);
+  rect(x + CELL - BORDER, y, BORDER, 1, cut);
+  rect(x + CELL - BORDER, y + CELL - 1, BORDER, 1, cut);
+  rect(x, y, BORDER, 1, cut);
+  rect(x, y + CELL - 1, BORDER, 1, cut);
+
+  // 내 얼굴은 한 도트 더 밝은 테두리를 덧대 "이게 나"를 못 놓치게
+  if (isMe) {
+    rect(x - 1, y - 1, CELL + 2, 1, PAL.text);
+    rect(x - 1, y + CELL, CELL + 2, 1, PAL.text);
+    rect(x - 1, y, 1, CELL, PAL.text);
+    rect(x + CELL, y, 1, CELL, PAL.text);
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -261,11 +290,11 @@ function drawTicker(scene) {
   const lines = [];
   for (const t of live.slice(-2)) {
     // 접는 계산은 메시지당 한 번 — 폭 재기를 매 프레임 돌릴 이유가 없다
-    if (!t.lines) t.lines = wrap(t.msg, VIEW_W - 8);
+    if (!t.lines) t.lines = wrap(t.msg, TICKER_W);
     lines.push(...t.lines);
   }
   lines.slice(-3).forEach((line, i, arr) => {
-    textCached(line, CENTER_X, TICKER_Y - (arr.length - 1 - i) * 9, {
+    textCached(line, TICKER_CX, TICKER_Y - (arr.length - 1 - i) * 9, {
       color: PAL.text, align: 'center', small: true, shadow: PAL.textShadow,
     });
   });

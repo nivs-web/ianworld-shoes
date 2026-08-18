@@ -877,6 +877,7 @@ export async function finalizeResult(code) {
    */
   if (!roundOver(room, Date.now() + serverOffsetSync())) return room;
 
+  const ranked = rankPlayers(players);
   try {
     await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
       state: 'finished',
@@ -888,8 +889,15 @@ export async function finalizeResult(code) {
        * 열 때 다시 `true` 로 올린다.
        */
       open: false,
-      'result/rankings': rankPlayers(players),
+      'result/rankings': ranked,
       'result/endedAt': Date.now(),
+      /**
+       * ★ **이긴 사람이 다음 판의 방장이 된다.** (2026-08-19)
+       * 방장은 시작 버튼과 난이도를 쥔다. 그걸 이긴 사람에게 넘기면 "한 판 더"의
+       * 주도권이 승자에게 가고, 방장이 먼저 나가 버린 방도 자동으로 주인을 찾는다.
+       * 값이 **순위 1등**이라 누가 계산해도 같으므로 규칙도 이 한 가지만 허용한다.
+       */
+      hostUid: ranked[0] ?? room.hostUid,
     }), undefined, '결과 확정');
   } catch {
     return room;

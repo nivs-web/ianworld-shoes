@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>레이스 게이지 미리보기 (진단 전용)</title>
+<style>body{margin:0;background:#222;display:flex;justify-content:center}canvas{image-rendering:pixelated}</style>
+</head><body>
+<canvas id="game" width="180" height="320"></canvas>
+<script type="module">
+import { initCanvas, clear, getCanvas } from '/src/core/canvas.js';
+import { loadAll } from '/src/core/assets.js';
+import { loadSmallFont } from '/src/core/pixelfont.js';
+import { multiHud } from '/src/game/multiHud.js';
+
+initCanvas();
+const chars = ['ian', 'denny', 'rose', 'tony'];
+await loadAll(chars.flatMap((id) => [
+  { key: `${id}_face`, url: `/assets/characters/${id}_face.png` },
+  { key: `${id}_front`, url: `/assets/characters/${id}_front.png` },
+])).catch(() => {});
+await loadSmallFont().catch(() => {});
+
+const scene = {
+  floor: 50, charId: 'ian', mySlot: 0, myRevives: 2,
+  countdownMs: 0, shoesFound: 3,
+  room: { players: { a: { revives: 2 }, b: { revives: 1 }, c: {}, d: {} }, result: { given: { a: new Array(40).fill(1), b: new Array(20).fill(1) } } },
+  opponents: [
+    { id: 'b', characterId: 'denny', slot: 1, stairs: 83, revives: 1, alive: true },
+    { id: 'c', characterId: 'rose', slot: 2, stairs: 20, revives: 4, alive: true },
+    { id: 'd', characterId: 'tony', slot: 3, stairs: 300, revives: 6, alive: false },
+  ],
+  ticker: [{ msg: '상대방이 신발 20개를 걸고 20칸 앞으로 부활했습니다', until: Date.now() + 9e5 }],
+};
+clear('#243a52');
+multiHud(scene);
+
+window.__ready = true;
+</script></body></html>

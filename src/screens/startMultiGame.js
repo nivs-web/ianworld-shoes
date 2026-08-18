@@ -40,15 +40,21 @@ export function startMultiGame(nav, { code, room }) {
      * 기획서 §5-9 는 "멀티 게임: 승자만 기록 반영" 이므로, 반영 여부는
      * 승패를 아는 결과 화면(`MultiResult`)이 판단한다.
      */
-    onFinish: async (result) => {
+    onFinish: (result) => {
       exitFullscreen();
       /**
-       * 결과 확정은 **모두가 부른다.** 트랜잭션이라 처음 것 하나만 남고,
-       * 방장이 먼저 나가버려도 순위가 안 나오는 일이 없다.
+       * ★ **화면부터 넘긴다.** (2026-08-19)
+       *
+       * 예전에는 `await finalizeResult()` 를 먼저 했다. 그런데 그 안의 서버 읽기는
+       * **최대 8초**를 기다리고 쓰기는 12초다 — 네트워크가 나쁘면 판이 끝난 뒤에도
+       * 화면이 멈춘 채로 20초를 서 있는다. 사용자에게는 그게 "튕김"이다.
+       *
+       * 순위 확정은 결과 화면이 방을 구독하면서, 정산이 시작될 때(`settleRoom`)
+       * 또 한 번, 다음 접속의 청산에서 또 한 번 시도한다. **여기서 기다릴 이유가 없다.**
        */
-      await Room.finalizeResult(code).catch(() => null);
       Scene.clear(); // 판은 끝났다 — 씬을 비운다 (안 그러면 결과 화면 뒤에서 계속 돈다)
       nav.reset(MultiResult, { code, result });
+      Room.finalizeResult(code).catch(() => null);
     },
   }));
   return true;

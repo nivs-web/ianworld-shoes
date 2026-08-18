@@ -730,6 +730,20 @@
 
 .player-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
 .player-row { display: flex; align-items: center; gap: 6px; padding: 3px 4px; }
+/**
+ * 자리 번호 상자 — 1번 빨강 · 2번 노랑 · 3번 파랑 · 4번 초록.
+ * 인게임 레이스 게이지의 얼굴 테두리와 **같은 색**이라, 여기서 외운 색으로
+ * 게임 중에 자기를 찾는다(인게임에는 아이디가 없다).
+ * 모서리는 각지게 둔다 — border-radius 는 안티앨리어싱이 걸려 도트가 죽는다(§9-0-3).
+ */
+.slot-box {
+  flex: 0 0 auto;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #3A1F0C;
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.25), inset 2px 2px 0 rgba(255, 255, 255, 0.25);
+  font-size: 11px; line-height: 1;
+}
 .player-row.me { background: rgba(255, 221, 142, 0.16); }
 .player-name { flex: 1; }
 .tag-host { font-size: 10px; color: var(--btn-hilite-on); }

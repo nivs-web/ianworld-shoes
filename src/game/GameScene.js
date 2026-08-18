@@ -28,7 +28,7 @@ import * as Bgm from '../audio/bgm.js';
 import { AUDIO, SHOE_RARE_TIER_MAX, bgmTrackAt, MULTI } from '../config/balance.js';
 import shoesData from '../data/shoes.json';
 import * as Room from '../services/multiplayer.js';
-import { roundOver, othersAllOut } from '../services/matchRules.js';
+import { roundOver, othersAllOut, slotIndex } from '../services/matchRules.js';
 import S from '../config/strings.ko.js';
 import { multiHud, TICKER_MS } from './multiHud.js';
 
@@ -194,9 +194,16 @@ export class GameScene {
        * 게임 중에 들어와 다음 판을 기다리는 사람이다. HUD 에 띄우면 0계단짜리 유령이
        * 하나 붙고, 종료 판정에도 끼어들어 판을 망친다.
        */
+      /**
+       * ★ **자리 번호를 여기서 붙인다.** (2026-08-19)
+       * 색이 곧 신원이다 — 인게임에는 아이디를 아예 안 쓰기 때문에, 대기방에서 본
+       * 번호·색이 그대로 레이스 게이지의 얼굴 테두리 색이 되어야 한다.
+       */
       const next = Object.entries(r.players ?? {})
         .filter(([id, v]) => id !== uid && !v?.waiting)
-        .map(([id, v]) => ({ id, ...v }));
+        .map(([id, v]) => ({ id, slot: slotIndex(r.players, id), ...v }));
+      this.mySlot = slotIndex(r.players, uid);
+      this.myRevives = r.players?.[uid]?.revives ?? 0;
 
       /**
        * ★ **낙사·부활을 그 자리에서 알려 준다.** (2026-08-18)

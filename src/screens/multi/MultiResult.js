@@ -79,8 +79,27 @@ export default function MultiResult(nav, params = {}) {
    * 순위를 박을 사람이 없으면 판이 영영 안 끝난다(`roundOver` 는 순수 함수라
    * 누가 계산해도 같은 답이 나온다).
    */
+  /**
+   * ★ **어떤 경우에도 화면이 뜬다.** (2026-08-19)
+   *
+   * 방을 못 읽거나(오프라인) 방이 이미 지워졌으면 구독 콜백이 아예 안 온다 —
+   * 그러면 "로딩" 한 줄만 남은 화면에 갇힌다. 사용자에게는 그게 "튕김"이다.
+   * 정산은 다음 접속의 청산이 마저 하므로, 여기서는 **로비로 나갈 길**만 보장하면 된다.
+   */
+  const 안전망 = setTimeout(() => {
+    if (gone || done) return;
+    done = true;
+    nav.refresh();
+  }, 8000);
+
   unsub = Room.subscribeRoom(code, async (r) => {
-    if (gone || !r) return;
+    if (gone) return;
+    if (!r) {
+      // 방이 사라졌다 = 여기서 할 일이 없다. 결과는 다음 접속에 맞춰진다
+      done = true;
+      nav.refresh();
+      return;
+    }
     room = r;
     if (!r.result?.rankings) {
       const now = Date.now() + Room.serverOffsetSync();
@@ -179,6 +198,7 @@ export default function MultiResult(nav, params = {}) {
     onLeave() {
       gone = true;
       unsub();
+      clearTimeout(안전망);
       clearInterval(beat);
       clearTimeout(pollTimer);
       release();

@@ -337,10 +337,18 @@ export class MultiDeathOverlay {
      * 세면 시계가 어긋난 만큼 창이 길거나 짧아진다 — 길면 이미 끝난 판에 신발을 걸고
      * (그 신발은 아무도 안 걷는다), 짧으면 억울하게 기회를 잃는다.
      */
+    /**
+     * ★ **걸 신발이 없으면 창을 짧게.** (2026-08-19)
+     * 고를 수 있는 게 '나가기' 하나뿐인데 10초를 세는 건 그냥 기다리게 하는 것이다.
+     * 남들의 판정 기준은 여전히 10초다 — 남은 사람은 내 지갑을 모른다.
+     * 이쪽이 먼저 닫히면서 `out` 도장을 찍으므로 남들도 그 즉시 기다림을 멈춘다.
+     */
+    const 걸수있다 = (getProfile().shoesOwned ?? 0) >= MULTI.reviveCost && canRevive(this.me);
+    const 창초 = 걸수있다 ? MULTI.reviveWindowSeconds : MULTI.reviveWindowShortSeconds;
     const me = game.room?.players?.[game.multi?.myUid];
-    const 서버기준끝 = (me?.deadAt ?? 0) + MULTI.reviveWindowSeconds * 1000;
+    const 서버기준끝 = (me?.deadAt ?? 0) + 창초 * 1000;
     const 내시계로 = 서버기준끝 - Room.serverOffsetSync();
-    this.endAt = me?.deadAt ? 내시계로 : Date.now() + MULTI.reviveWindowSeconds * 1000;
+    this.endAt = me?.deadAt ? 내시계로 : Date.now() + 창초 * 1000;
     this.msg = null;
   }
 

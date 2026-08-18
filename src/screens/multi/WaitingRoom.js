@@ -14,6 +14,8 @@ import { characterById, characterSprite } from '../../data/characters.js';
 import { MULTI } from '../../config/balance.js';
 import { currentUser } from '../../services/auth.js';
 import * as Room from '../../services/multiplayer.js';
+import { slotIndex } from '../../services/matchRules.js';
+import { SLOT_COLORS } from '../../game/palette.js';
 import { hold } from '../../core/hold.js';
 import { startMultiGame } from '../startMultiGame.js';
 import Lobby from '../Lobby.js';
@@ -171,9 +173,21 @@ export default function WaitingRoom(nav, params = {}) {
           ? el('div.room-code', code)
           : el('div.hint', S.publicRoomHint),
 
+        /**
+         * ★ **자리 번호 상자.** (2026-08-19)
+         * 들어온 순서대로 1번 빨강 · 2번 노랑 · 3번 파랑 · 4번 초록.
+         * 인게임에는 아이디를 아예 안 쓰기 때문에(레이스 게이지의 얼굴 테두리 색이
+         * 전부다) **여기서 자기 색을 외우는 것**이 게임 중 신원 확인의 유일한 통로다.
+         */
         el('div.player-list', null, players.map((p) => {
           const ch = characterById(p.characterId);
+          const slot = slotIndex(room.players, p.uid);
           return el('div.player-row', { class: p.uid === myUid ? 'me' : '' }, [
+            el('div.slot-box', {
+              text: String(slot + 1),
+              // 노랑 위의 흰 글씨는 안 보인다 — 밝은 자리 색만 글씨를 어둡게
+              style: { background: SLOT_COLORS[slot] ?? SLOT_COLORS[0], color: slot === 1 ? '#3A1F0C' : '#FFF4D6' },
+            }),
             ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
             el('div.player-name', p.nickname || '???'),
             p.uid === room.hostUid ? el('div.tag-host', S.host) : null,

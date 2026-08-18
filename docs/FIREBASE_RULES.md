@@ -208,7 +208,7 @@ service cloud.firestore {
           ".validate": "newData.isNumber()"
         },
         "hostUid": {
-          ".validate": "newData.isString() && (!data.exists() || newData.val() == data.val() || !newData.parent().child('players').hasChild(data.val()))"
+          ".validate": "newData.isString() && (!data.exists() || newData.val() == data.val() || !newData.parent().child('players').hasChild(data.val()) || newData.val() == newData.parent().child('result').child('rankings').child('0').val())"
         },
         "players": {
           "$uid": {

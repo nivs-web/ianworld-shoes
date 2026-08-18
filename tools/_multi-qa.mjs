@@ -641,8 +641,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // 내야 할 양 = 기본 1 + 20 × 부활
   eq('부활 0회 → 1켤레', M.owedBy({}), 1);
   eq('부활 3회 → 61켤레', M.owedBy({ revives: 3 }), 1 + 3 * MULTI.reviveCost);
-  eq('상한 10회', M.canRevive({ revives: 10 }), false);
-  eq('9회면 아직 가능', M.canRevive({ revives: 9 }), true);
+  // 상한은 밸런스 값에서 끌어온다 — 10회에서 6회로 줄였다 (2026-08-19)
+  eq('상한에 닿으면 못 쓴다', M.canRevive({ revives: MULTI.maxRevives }), false);
+  eq('한 번 남았으면 쓸 수 있다', M.canRevive({ revives: MULTI.maxRevives - 1 }), true);
 
   // 판돈은 **항아리에 실제로 든 것**으로 센다 (조작 방지)
   const 방 = {
@@ -691,7 +692,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('승자가 항아리를 통째로 걷는다', ms, 'for (const [uid, list] of Object.entries(given))');
   has('패자는 모자란 만큼만 낸다', ms, 'const short = Math.max(0, owed - already.length)');
   has('고스트 렌더', mh, 'function drawGhosts');
-  has('레이스 바', mh, 'function drawRaceBar');
+  has('레이스 게이지', mh, 'function drawRaceGauge');
   has('판돈 표시', mh, 'S.potLine');
   has('작은 폰트 사용', mh, 'small: true');
   eq('규칙에 revives·deadAt·out 이 있다',
@@ -849,6 +850,61 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // ⑦ 이미 끝난 판이면 화면도 즉시 끝낸다
   has('순위가 박히면 게임을 끝낸다', gs, "if (r.result?.rankings || r.state === 'finished') this.endMulti();");
+}
+
+// ── 25) 자리 색 · 레이스 게이지 · 부활 6회 (2026-08-19) ──
+{
+  console.log('\n25) 자리 색 · 레이스 게이지 (2026-08-19)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const mh = read('../src/game/multiHud.js');
+  const mp = read('../src/services/multiplayer.js');
+  const wr = read('../src/screens/multi/WaitingRoom.js');
+  const ov = read('../src/game/overlays.js');
+  const pal = read('../src/game/palette.js');
+
+  // ① 자리 번호 — 들어온 순서, 누가 계산해도 같아야 한다
+  const 방 = { a: { joinedAt: 30 }, b: { joinedAt: 10 }, c: { joinedAt: 20 } };
+  eq('먼저 들어온 사람이 1번', [M.slotIndex(방, 'b'), M.slotIndex(방, 'c'), M.slotIndex(방, 'a')], [0, 1, 2]);
+  eq('같은 시각이면 uid 순(결정적)',
+    M.slotIndex({ z: { joinedAt: 1 }, a: { joinedAt: 1 } }, 'a'), 0);
+  eq('모르는 사람은 -1', M.slotIndex(방, 'zz'), -1);
+  has('색은 빨강·노랑·파랑·초록 네 개', pal, "export const SLOT_COLORS = ['#E2413C', '#F2C23C', '#3D8FE0', '#3FB958']");
+  has('대기방에 번호 상자', wr, "el('div.slot-box'");
+  has('대기방도 같은 자리 계산을 쓴다', wr, 'slotIndex(room.players, p.uid)');
+
+  // ② 인게임에는 아이디를 쓰지 않는다
+  eq('이름표 함수가 없다', mh.includes('function nameTag'), false);
+  eq('상대 이름을 그리지 않는다', mh.includes('o.nickname'), false);
+  eq('상대 층수 글자도 없다', mh.includes('multiOpponentStat'), false);
+
+  // ③ 레이스 게이지 — 나는 정중앙 고정, 한 칸 = 계단 10칸
+  has('내 자리는 상수 (움직이지 않는다)', mh, 'drawRacer(scene.charId, scene.mySlot, scene.myRevives | 0, RACE_CY');
+  has('눈금은 나와의 차이', mh, 'const 칸 = Math.round((floor - 나) / MULTI.raceStairsPerTick);');
+  has('끝을 넘으면 붙는다', mh, 'Math.max(-MULTI.raceTicks, Math.min(MULTI.raceTicks, 칸))');
+  eq('위아래 10칸', MULTI.raceTicks, 10);
+  eq('한 칸 = 계단 10칸', MULTI.raceStairsPerTick, 10);
+
+  // ④ 테두리 6칸 = 남은 부활
+  eq('부활 상한 6회', MULTI.maxRevives, 6);
+  has('남은 칸 = 상한 − 쓴 횟수', mh, 'const 남은칸 = Math.max(0, MULTI.maxRevives - revives);');
+  has('칸 구분선', mh, 'const cut = PAL.textShadow;');
+
+  // ⑤ 부활 창 10초, 걸 신발이 없으면 5초
+  eq('부활 창 10초', MULTI.reviveWindowSeconds, 10);
+  eq('못 걸면 5초', MULTI.reviveWindowShortSeconds, 5);
+  has('지갑을 보고 창을 정한다', ov, 'const 창초 = 걸수있다 ? MULTI.reviveWindowSeconds : MULTI.reviveWindowShortSeconds;');
+
+  // ⑥ 이긴 사람이 방장
+  has('순위 1등을 방장으로', mp, 'hostUid: ranked[0] ?? room.hostUid,');
+
+  // ⑦ 끝나면 화면부터 넘긴다 (결과 확정을 기다리지 않는다)
+  const sm = read('../src/screens/startMultiGame.js');
+  eq('결과 확정을 기다리지 않는다', sm.includes('await Room.finalizeResult'), false);
+  has('화면을 먼저 바꾼다', sm, 'nav.reset(MultiResult, { code, result });\n      Room.finalizeResult(code)');
+  const mres = read('../src/screens/multi/MultiResult.js');
+  has('방을 못 읽어도 화면은 뜬다', mres, 'const 안전망 = setTimeout(');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
