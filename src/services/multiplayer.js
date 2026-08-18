@@ -357,7 +357,8 @@ export async function listRooms() {
   const rooms = await scanOpenRooms(fb);
   const max = MULTI.maxPlayers;
   return rooms
-    .filter((r) => r && r.code && !r.isPrivate)
+    // 끝난 방은 목록에 올리지 않는다 — 들어가도 아무것도 못 한다
+    .filter((r) => r && r.code && !r.isPrivate && r.state !== 'finished')
     .map((r) => {
       const players = Object.values(r.players ?? {});
       const host = r.players?.[r.hostUid];
@@ -610,46 +611,40 @@ export async function reportDeath(code, { stairs, shoesFound }) {
  * 하고, 쓰기는 트랜잭션으로 **이미 적혀 있으면 건드리지 않는다.** 네 명이 동시에
  * 적으러 와도 처음 것 하나만 남는다.
  */
-export async function finalizeResult(code, attempt = 0) {
+export async function finalizeResult(code) {
   const fb = await rt();
   if (!fb) return null;
-  const roomRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
+
   /**
-   * 트랜잭션 첫 호출은 **로컬 캐시 값**으로 온다. 이 함수는 `endMulti()` 가 방 구독을
-   * 끊은 뒤에 불리므로 캐시가 이미 비워졌을 수 있고, 그러면 `!cur` 로 중단돼
-   * **순위가 영영 안 박힌다**(= 아무도 정산을 못 한다). 먼저 읽어 캐시를 채운다.
-   * `joinRoom` 이 정확히 이 함정 때문에 자동 매칭을 통째로 죽이고 있었다.
+   * ★ **여기도 트랜잭션을 버렸다.** (2026-08-16)
+   *
+   * `joinRoom` 과 똑같은 함정이다 — 트랜잭션 첫 호출은 로컬 캐시 값이고, 이 함수는
+   * `endMulti()` 가 방 구독을 끊은 **뒤에** 불리므로 그 캐시가 이미 비어 있다.
+   * 그러면 `if (!cur) return` 으로 중단되고 **순위가 영영 안 박힌다** —
+   * 순위가 없으면 아무도 정산을 못 하니 신발이 오가지 않는다.
+   * 증상이 화면에 안 보이는 자리라 더 위험했다.
+   *
+   * 순위 계산은 `rankPlayers` 로 **결정적**이라 누가 계산해도 같은 답이 나온다.
+   * 그래서 "이미 적혀 있으면 건드리지 않는다"만 지키면 트랜잭션이 필요 없다.
    */
-  await waitConnected(fb);
-  await readOnce(fb, path(ROOMS, code));
+  const read = await readOnce(fb, path(ROOMS, code));
+  const room = read.val;
+  if (!room) return null;
+  if (room.result?.rankings) return room;          // 이미 확정됨 — 먼저 쓴 사람 것을 남긴다
+
+  const players = playersInRound(room.players);    // 대기자는 이번 판 사람이 아니다
+  if (players.length < MULTI.minPlayers) return room;
+
   try {
-    const res = await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
-      if (!cur) return;
-      if (cur.result?.rankings) return cur; // 이미 확정됨 — 덮어쓰지 않는다
-      const players = playersInRound(cur.players);   // 대기자는 이번 판 사람이 아니다
-      if (players.length < MULTI.minPlayers) return cur;
-      cur.state = 'finished';
-      cur.open = false;
-      cur.result = { ...(cur.result ?? {}), rankings: rankPlayers(players), endedAt: Date.now() };
-      return cur;
+    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
+      state: 'finished',
+      'result/rankings': rankPlayers(players),
+      'result/endedAt': Date.now(),
     }), undefined, '결과 확정');
-    return res.snapshot?.val() ?? null;
   } catch {
-    /**
-     * ★ **한 번은 다시 시도한다.** (2026-08-16)
-     *
-     * 이 트랜잭션은 방 노드 **전체**를 다시 쓴다. 그런데 규칙이 "남의 값은 그대로여야
-     * 한다"고 요구하므로, 내가 읽은 뒤 쓰기 전에 **상대의 마지막 진행도가 서버에 닿으면**
-     * 내가 쓰는 값이 낡아서 거부된다. 판이 끝나는 순간은 모두가 마지막 보고를 밀어 올리는
-     * 시점이라 실제로 겹칠 수 있다. 순위가 안 박히면 아무도 정산을 못 하므로,
-     * 짧게 쉬고 최신 값으로 한 번 더 시도한다. (모두가 부르므로 보통은 누군가 성공한다)
-     */
-    if (attempt === 0) {
-      await new Promise((r) => setTimeout(r, 400));
-      return finalizeResult(code, 1);
-    }
-    return null;
+    return room;
   }
+  return (await readOnce(fb, path(ROOMS, code))).val ?? room;
 }
 
 // ─────────────────────────────────────────────
@@ -660,21 +655,43 @@ export async function finalizeResult(code, attempt = 0) {
 export async function leaveRoom(code) {
   const fb = await rt();
   if (!fb) return;
-  const roomRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code));
-  // 여기도 캐시가 비어 있으면 트랜잭션이 첫 호출에서 중단된다 (finalizeResult 주석 참고)
-  await readOnce(fb, path(ROOMS, code));
+
+  /**
+   * ★ **나가기도 트랜잭션이 아니다.** (2026-08-16)
+   *
+   * 실측에서 `뒤로` 를 눌러도 방에 그대로 남아 있었다 — 트랜잭션이 빈 캐시를 보고
+   * `if (!cur) return` 으로 중단됐기 때문이다. 나간 사람이 계속 남으면 방이 찬 것처럼
+   * 보여서 **다른 사람이 못 들어온다.** 매칭이 망가지는 직접적인 경로다.
+   *
+   * 나가는 건 **내 참가자 노드 하나를 지우는 일**이다. 그 뒤에 방을 다시 읽어
+   * 뒷정리(빈 방 삭제 · 방장 승계 · open 갱신)를 한다.
+   */
   try {
-    await withTimeout(fb.dbMod.runTransaction(roomRef, (cur) => {
-      if (!cur) return;
-      if (cur.state !== 'waiting') return cur; // 시작한 판은 빠져나가도 기록이 남아야 한다
-      delete cur.players?.[fb.uid];
-      const n = Object.keys(cur.players ?? {}).length;
-      if (n === 0) return null; // 빈 방은 치운다
-      if (cur.hostUid === fb.uid) cur.hostUid = Object.keys(cur.players)[0];
-      cur.open = !cur.isPrivate;
-      return cur;
-    }), undefined, '방 나가기');
-  } catch { /* 못 지워도 open=false 라 매칭에는 안 걸린다 */ }
+    await withTimeout(
+      fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid))),
+      undefined, '방 나가기'
+    );
+  } catch {
+    return;   // 못 지웠으면 뒷정리도 의미가 없다
+  }
+
+  const room = (await readOnce(fb, path(ROOMS, code))).val;
+  if (!room) return;
+  const left = Object.keys(room.players ?? {});
+
+  // 아무도 안 남았으면 방을 치운다 (규칙이 '참가자 0명인 방'의 삭제를 허용한다)
+  if (!left.length) {
+    await withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, code))), undefined, '빈 방 정리').catch(() => {});
+    return;
+  }
+  // 내가 방장이었으면 남은 사람에게 넘긴다 — 안 넘기면 아무도 시작을 못 누른다
+  const patch = {};
+  if (!room.players?.[room.hostUid]) patch.hostUid = left[0];
+  const 자리있음 = left.length < (room.maxPlayers ?? MULTI.maxPlayers);
+  if (!room.isPrivate && room.open !== 자리있음) patch.open = 자리있음;
+  if (Object.keys(patch).length) {
+    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), patch), undefined, '방 정리').catch(() => {});
+  }
 }
 
 /**
