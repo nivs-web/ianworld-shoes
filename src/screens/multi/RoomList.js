@@ -67,7 +67,7 @@ export default function RoomList(nav) {
                 // 방장의 보유신발 — 대기방 참가자 카드와 같은 배지 (§11, 2026-08-19)
                 el('div.player-shoes', null, [
                   el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
-                  el('span', S.playerShoesOwned(r.hostShoes ?? 0)),
+                  el('span', S.roomShoes(r.hostShoes ?? 0)),
                 ]),
                 r.full
                   ? el('div.room-full', S.roomFullShort)

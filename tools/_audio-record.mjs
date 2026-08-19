@@ -4,11 +4,23 @@
  *
  *   node tools/_audio-record.mjs bgm   → 10트랙 각 6초
  *   node tools/_audio-record.mjs sfx   → 효과음 전량 순서대로
+ *   node tools/_audio-record.mjs sfx sfx_rival_fell,sfx_rival_revive → 고른 것만
  */
 import { chromium } from 'playwright';
 import { writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 
 const mode = process.argv[2] ?? 'sfx';
+/**
+ * ★ 효과음 목록을 **소스에서 긁는다** (2026-08-19).
+ * 손으로 적어 두면 새로 만든 소리가 미리듣기에서 조용히 빠진다 — 실제로 그랬다.
+ * 세 번째 인자를 주면 그것만 뽑는다(새 소리 두 개만 들어 볼 때).
+ */
+const ALL = [...readFileSync('src/audio/sfx.js', 'utf8').matchAll(/^\s{2}(sfx_[a-z_]+):/gm)]
+  .map((m) => m[1])
+  .filter((k) => k !== 'sfx_shout');
+const PICK = process.argv[3] ? process.argv[3].split(',').filter((k) => ALL.includes(k)) : null;
+if (process.argv[3] && !PICK.length) { console.error('그런 효과음이 없다'); process.exit(1); }
 
 const b = await chromium.launch({
   executablePath: '/opt/pw-browsers/chromium',
@@ -19,8 +31,13 @@ await p.goto('http://127.0.0.1:4173/');
 await p.waitForTimeout(2500);
 await p.mouse.click(270, 880);
 await p.waitForTimeout(500);
+// 클릭이 빈 곳에 떨어져도 잠금은 풀려야 한다 (_audio-qa.mjs 와 같은 이유)
+if (!(await p.evaluate(() => window.__dbg.Audio.isUnlocked()))) {
+  await p.evaluate(() => window.__dbg.Audio.unlock());
+  await p.waitForTimeout(200);
+}
 
-const base64 = await p.evaluate(async (m) => {
+const base64 = await p.evaluate(async ([m, list, pick]) => {
   const A = window.__dbg.Audio;
   const { Sfx, Bgm } = window.__dbg;
   const ctx = A.audioCtx();
@@ -45,13 +62,11 @@ const base64 = await p.evaluate(async (m) => {
       await wait(400);
     }
   } else {
-    const ids = ['sfx_step', 'sfx_step_alt', 'sfx_step', 'sfx_step_alt',
-      'sfx_shoe_get', 'sfx_shoe_rare', 'sfx_turn', 'sfx_fall', 'sfx_death', 'sfx_revive',
-      'sfx_menu_move', 'sfx_menu_select', 'sfx_menu_back', 'sfx_purchase', 'sfx_denied',
-      'sfx_countdown', 'sfx_countdown', 'sfx_countdown', 'sfx_go', 'sfx_win', 'sfx_lose'];
-    for (const id of ids) { Sfx.play(id); await wait(id.startsWith('sfx_step') ? 200 : 900); }
-    for (const c of ['ian', 'denny', 'lisa', 'jenny', 'ipo']) {
-      Sfx.resetShoutGate(); Sfx.playShout(c); await wait(800);
+    for (const id of list) { Sfx.play(id); await wait(id.startsWith('sfx_step') ? 200 : 1000); }
+    if (!pick) {
+      for (const c of ['ian', 'denny', 'lisa', 'jenny', 'ipo']) {
+        Sfx.resetShoutGate(); Sfx.playShout(c); await wait(800);
+      }
     }
   }
 
@@ -64,8 +79,9 @@ const base64 = await p.evaluate(async (m) => {
   let s = '';
   for (let i = 0; i < buf.length; i++) s += String.fromCharCode(buf[i]);
   return btoa(s);
-}, mode);
+}, [mode, PICK ?? ALL, !!PICK]);
 
-await writeFile(`/tmp/audio_${mode}.webm`, Buffer.from(base64, 'base64'));
-console.log(`/tmp/audio_${mode}.webm`);
+const out = `tools/_out/audio_${PICK ? PICK.join('+') : mode}.webm`;
+await writeFile(out, Buffer.from(base64, 'base64'));
+console.log(out);
 await b.close();

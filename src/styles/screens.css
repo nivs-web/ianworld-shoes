@@ -825,9 +825,10 @@
 
 /* ── 방 목록 (2026-08-16) ─────────────────────
    게임 중인 방도 보여 준다. 자리가 있으면 대기자로 들어가 다음 판을 기다린다. */
-.room-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.room-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+/* 세로가 좁아 답답했다 → 위아래 여백을 늘렸다 (2026-08-19, 사용자 요청) */
 .room-row {
-  display: flex; align-items: center; gap: 6px; padding: 4px 5px;
+  display: flex; align-items: center; gap: 6px; padding: 9px 7px;
   border: 2px solid var(--c-line); background: var(--c-panel);
 }
 .room-row.playing { opacity: 0.82; }
@@ -842,6 +843,12 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .room-full { flex: 0 0 auto; color: var(--c-line); font-size: 12px; padding: 0 6px; }
+/**
+ * 방 목록의 신발 배지 — **방 이름과 같은 색**으로 맞춘다. (2026-08-19)
+ * 기본값(`--c-text-light`, 거의 흰색)은 이 행의 밝은 바탕(`--c-panel`) 위에서
+ * 대비가 모자라 읽히지 않았다. 대기방은 어두운 바탕이라 흰색 그대로 둔다.
+ */
+.room-row .player-shoes { color: var(--c-text); opacity: 1; }
 /* ★ **버튼 폭을 반드시 되돌린다.** (2026-08-18)
    `.pbtn` 은 로비용이라 `width: 100%` 다. 목록 행에 그대로 들어가면 버튼 하나가
    행 전체 폭을 먹고 `flex: 0 0 auto` 라 줄지도 않아서, 방 이름은 23px 로 뭉개지고

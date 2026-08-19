@@ -15,7 +15,7 @@ const page = await browser.newPage({ viewport: { width: 1200, height: 1100 }, de
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-const TARGETS = { result: '_result-preview', room: '_room-preview' };
+const TARGETS = { result: '_result-preview', room: '_room-preview', rooms: '_roomlist-preview' };
 const target = TARGETS[process.argv[2]] ?? '_screen-preview';
 await page.goto(`http://127.0.0.1:${PORT}/tools/${target}.html`, { waitUntil: 'networkidle' });
 await page.waitForFunction('window.__ready === true', null, { timeout: 20000 }).catch(() => {});

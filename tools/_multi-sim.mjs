@@ -784,6 +784,119 @@ console.log('\nS22-b) ★ 패자가 **먼저 방을 나가도** 주운 신발이
   eq('총량이 주운 개수(5)만큼 늘었다', w.total(code), before + 5);
 }
 
+console.log('\nS22-c) ★ 4인 — 주운 신발 전부가 1등에게. 각자 나가는 시점이 제각각이다');
+{
+  /**
+   * 사용자 신고: "여러 명이서 동시에 계산해 보면 안 맞는다."
+   * 실제 4인 판을 그대로 흉내 낸다 — 죽는 순서도, 나가는 시점도 제각각이다.
+   *
+   *   A 주움 4 · B 주움 2 · C 주움 3 · D(승자) 주움 5
+   *   승자가 받을 것 = 판돈(기본 1×3) + 남들이 주운 것(4+2+3 = 9)
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const C = w.player('C', { shoes: 20 });
+  const D = w.player('D', { shoes: 20 });
+  const code = await startRound(w, A, [B, C, D]);
+  const before = w.total(code);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 10, shoesFound: 4 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 14, shoesFound: 2 }, true));
+  await C.act(() => Room.publishProgress(code, { stairs: 18, shoesFound: 3 }, true));
+  await D.act(() => Room.publishProgress(code, { stairs: 40, shoesFound: 5 }, true));
+
+  // 셋이 차례로 죽고 부활을 포기한다
+  await A.act(() => Room.reportDeath(code, { stairs: 10, shoesFound: 4 }));
+  await B.act(() => Room.reportDeath(code, { stairs: 14, shoesFound: 2 }));
+  await C.act(() => Room.reportDeath(code, { stairs: 18, shoesFound: 3 }));
+  // 셋 이상이면 마지막 한 명은 계속 오른다(§9-0-28) — D 도 끝나야 판이 닫힌다
+  await D.act(() => Room.reportDeath(code, { stairs: 40, shoesFound: 5 }));
+  advance((MULTI.reviveWindowSeconds + 1) * 1000);
+
+  // 나가는 시점이 제각각 — A 는 결과도 안 보고 바로, B 는 보고 나가고, C 는 남는다
+  await A.act(() => Room.leaveRoom(code).catch(() => {}));
+  await resultScreen(B, code, { leave: true });
+  await resultScreen(C, code, { leave: false });
+  await resultScreen(D, code, { leave: false });
+  await reboot(D);
+
+  eq('계단 최고 D 가 1등', w.db.read(`rooms/${code}/result/rankings`)?.[0], 'D');
+  /**
+   * A 는 결과 화면도 안 보고 나갔으므로 아직 기본 1켤레를 안 냈다 — **잃은 게 아니라
+   * 미납**이다. 다음 접속의 청산(`sweepUnsettled`)이 받아 내고 승자가 마저 걷는다.
+   */
+  eq('아직은 판돈 2 + 주운 9 (A 미납)', D.wallet(), 31);
+  await reboot(A);            // A 가 다시 접속 → 밀린 1켤레를 낸다
+  await reboot(D);            // D 가 그것을 걷는다
+  // D = 20 + 판돈 3 + 남들이 주운 9 = 32
+  eq('A 가 재접속하면 판돈 3 + 주운 9 가 전부 모인다', D.wallet(), 32);
+  eq('A 는 기본 1켤레만 잃는다', A.wallet(), 19);
+  eq('B·C 도 기본 1켤레씩만', [B.wallet(), C.wallet()], [19, 19]);
+  eq('총량이 남들이 주운 만큼(9) 늘었다', w.total(code), before + 9);
+}
+
+console.log('\nS22-d) ★ 화면에 뜬 판돈 = 1등이 실제로 얻는 양 (표시와 정산이 같은 식)');
+{
+  /**
+   * 사용자 신고: "계산해 보면 안 맞는다."
+   * 화면 하단 `1등하면 신발 N켤레!` 는 판돈만 세고 **주운 신발을 빼먹고 있었다.**
+   * 그런데 1등은 주운 것까지 전부 가져가므로 실제 수령액이 늘 더 컸다.
+   * 이제 둘이 같은 식을 쓴다 — 그것을 여기서 못 박는다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 60 });
+  const B = w.player('B', { shoes: 60 });
+  const C = w.player('C', { shoes: 60 });
+  const code = await startRound(w, A, [B, C]);
+  const beforeB = B.wallet();
+
+  await A.act(() => Room.publishProgress(code, { stairs: 10, shoesFound: 4 }, true));
+  await C.act(() => Room.publishProgress(code, { stairs: 12, shoesFound: 3 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 30, shoesFound: 6 }, true));
+  // A 가 한 번 부활한다 (판돈 20켤레 추가)
+  await A.act(() => Room.reportDeath(code, { stairs: 10, shoesFound: 4 }));
+  await A.act(async () => {
+    const picked = M.pickPenaltyShoes(L.loadProfile().shoesByIndex ?? {}, MULTI.reviveCost);
+    L.removeShoesByIndex(picked);           // ★ 지갑에서 먼저 뺀다 (실제 순서와 같게)
+    const floor = await Room.reviveMe(code, picked);
+    if (floor == null) L.addShoes(picked);  // 실패하면 되돌린다
+  });
+  await A.act(() => Room.publishProgress(code, { stairs: 50, shoesFound: 4 }, true));
+
+  await A.act(() => Room.reportDeath(code, { stairs: 50, shoesFound: 4 }));
+  await C.act(() => Room.reportDeath(code, { stairs: 12, shoesFound: 3 }));
+  await B.act(() => Room.reportDeath(code, { stairs: 30, shoesFound: 6 }));
+  advance((MULTI.reviveWindowSeconds + 1) * 1000);
+
+  // 순위가 박히기 직전, 화면이 보여 주던 숫자를 그대로 잰다
+  const roomBefore = await Room.readRoom(code);
+  const 화면 = M.potShoes(roomBefore);
+
+  await resultScreen(A, code, { leave: true });
+  await resultScreen(C, code, { leave: true });
+  await resultScreen(B, code, { leave: false });
+  await reboot(A);   // 승자가 늦게 올라온 판돈을 마저 걷는다 (S21·S22 와 같은 패턴)
+
+  const winner = w.db.read(`rooms/${code}/result/rankings`)?.[0];
+  eq('부활한 A 가 계단 50 으로 1등', winner, 'A');
+
+  /**
+   * 검산. **정산이 주는 것 + 내가 주운 것 = 화면에 뜬 숫자** 여야 한다.
+   *
+   * 시뮬레이터는 `finishRun`(승자 자신의 판 기록 반영)을 돌리지 않는다 — 그건 화면
+   * (`MultiResult.js`)의 일이라 여기 범위 밖이다. 그래서 승자 자신이 주운 4켤레는
+   * 지갑에 안 들어와 있고, 그만큼을 더해야 화면 숫자와 맞는다.
+   *
+   *   화면 = 판돈 22 + 모두가 주운 것 13 = 35
+   *   정산 = 판돈 22 + 남이 주운 것 9  = 31,  거기에 내가 주운 4 = 35 ✓
+   */
+  const 정산으로얻은양 = A.wallet() - (60 - MULTI.reviveCost);
+  const 내가주운것 = w.db.read(`rooms/${code}/result/found/A`);
+  eq('정산 + 내 습득 = 화면에 뜬 판돈', 정산으로얻은양 + 내가주운것, 화면);
+  eq('총량은 남들이 주운 만큼(3+6=9) 늘었다', w.total(code), 180 + 9);
+}
+
 console.log('\nS23) 판 도중 주운 신발 — 승자 자신의 몫은 중복으로 세지 않는다');
 {
   const w = new World();

@@ -75,25 +75,63 @@ export function settlementCounts(rankings) {
  * `result.given` 은 그 사람이 **자기 지갑에서 실제로 뺀** 신발 목록이므로 이걸 세면
  * 표시와 실물이 항상 일치한다. 아직 안 낸 기본 1켤레는 사람 수로 더해 준다.
  */
-export function potShoes(room) {
+/**
+ * 이 판에 걸린 신발 — 화면 하단 `1등하면 신발 N켤레!` 와 사망 화면이 쓰는 수.
+ *
+ * ★ **판돈 + 모두가 주운 신발**이다. (2026-08-19, 사용자 요청으로 습득분 포함)
+ *
+ * 예전에는 판돈(기본 참가비 + 부활 비용)만 셌다. 그런데 1등은 **주운 신발까지 전부**
+ * 가져가므로(`foundShoesTotal` + 승자 자신의 `runResult`), 화면의 숫자가 실제 수령액보다
+ * 늘 작았다 — 사용자가 "계산이 안 맞는다"고 한 게 이것이다.
+ *
+ * 이제 둘이 정확히 같은 식을 쓴다:
+ *
+ *   화면 = (인원−1)×기본 + Σ부활비용 + Σ모두가 주운 것
+ *   수령 = 걷은 판돈             + 남이 주운 것 + 내가 주운 것(runResult)
+ *
+ * 덤으로 **누가 신발을 줍든 숫자가 곧바로 올라간다** — 판이 커지는 게 눈에 보여야
+ * 끝까지 오를 이유가 생긴다.
+ *
+ * @param {object} room
+ * @param {{uid:string, shoesFound:number}} [live] 내 최신 습득 수. 서버가 되돌려주기
+ *   전(진행도 전송은 300ms 간격)에도 **내가 주운 순간 바로** 반영되게 한다.
+ */
+export function potShoes(room, live) {
   const given = room?.result?.given ?? {};
   const list = playersInRound(room?.players);
   if (!list.length) return 0;
-  let 건것 = 0;
+  const saved = room?.result?.found;
+
+  let 부활값 = 0;
+  let 기본낸사람 = 0;
+  let 주운것 = 0;
   for (const p of list) {
     const paid = Array.isArray(given[p.uid]) ? given[p.uid].length : 0;
+    const 부활비 = (p.revives ?? 0) * MULTI.reviveCost;
     // 부활 비용은 **이미 낸 것**이 진실이다. 아직 안 올라온 건 없는 셈 친다
-    건것 += Math.max(paid, (p.revives ?? 0) * MULTI.reviveCost);
+    부활값 += Math.max(paid, 부활비);
+    /**
+     * ★ 이 사람이 **기본 1켤레까지 이미 냈는지**를 따로 센다. (2026-08-19)
+     * 기본 판돈은 판이 끝난 뒤에 내므로, 판 도중에는 `given` 에 부활비만 들어 있다.
+     * 그런데 정산이 끝나면 거기에 기본 1켤레가 더해진다 — 그걸 안 가리고 아래에서
+     * `(인원−1)` 을 통째로 더하면 **결과 화면에서만 판돈이 부풀어 보인다**(실측 37 vs 35).
+     */
+    if (paid > 부활비) 기본낸사람++;
+
+    // 판이 끝났으면 결과에 박힌 값이 진실이다 (사람이 방을 나가도 남는다)
+    const fromRoom = typeof saved?.[p.uid] === 'number' ? saved[p.uid] : (p.shoesFound ?? 0);
+    주운것 += live && live.uid === p.uid ? Math.max(fromRoom, live.shoesFound ?? 0) : fromRoom;
   }
   /**
    * 기본 판돈은 **인원 − 1** 이다. 1등은 기본 1켤레를 내지 않으므로(`settleRoom` 은
-   * `!won` 일 때만 낸다) 전원 몫을 더하면 화면의 판돈이 실제 수령액보다 **항상 1 많다.**
+   * `!won` 일 때만 낸다) 전원 몫을 더하면 실제 수령액보다 항상 1 많다.
    * 누가 이길지는 몰라도 "한 명은 안 낸다"는 건 확실하므로 이렇게 세면 정확하다.
+   * **이미 낸 사람 몫은 위에서 셌으므로 남은 것만** 더한다.
    */
-  return 건것 + (list.length - 1) * MULTI.loserPenalty;
+  const 남은기본 = Math.max(0, (list.length - 1) - 기본낸사람) * MULTI.loserPenalty;
+  return 부활값 + 남은기본 + 주운것;
 }
 
-/** 이 사람이 이 판에서 내야 할 총량 = 기본 1 + 부활 비용 × 부활 횟수 */
 export function owedBy(player) {
   return MULTI.loserPenalty + (player?.revives ?? 0) * MULTI.reviveCost;
 }

@@ -451,10 +451,24 @@ export class MultiDeathOverlay {
      * 제목 → 남은 초 → 상금 → 내 지갑 → 버튼 두 개가 서로 붙어 있어서 급해 보였다.
      * 패널을 위아래로 늘리고 줄 사이를 벌린다.
      */
-    panelBox(12, 88, 156, 162);
+    panelBox(12, 84, 156, 172);
 
-    text(S.fellTitle, 90, 96, { color: PAL.goRed, align: 'center' });
-    text(String(this.left), 90, 112, { color: PAL.text, scale: 3, align: 'center', mono: true });
+    text(S.fellTitle, 90, 92, { color: PAL.goRed, align: 'center' });
+
+    /**
+     * ★ **카운트다운 칸을 따로 판다.** (2026-08-19, 사용자 요청)
+     *
+     * 숫자가 제목·상금과 같은 바닥에 얹혀 있어서 어디까지가 "남은 시간"인지 경계가
+     * 없었다. 살짝 어두운 칸을 깔고 위아래로 여백을 주면 그 칸이 곧 시계가 된다.
+     * 숫자에는 **외곽선**을 둘러 크림색 패널 위에서도 획이 또렷하게 선다
+     * (배율 3이라 외곽선 한 겹이 3도트로 두껍게 나온다).
+     */
+    // 배율 3 숫자는 높이가 33도트다 — 위아래 4~5도트 여백을 두려면 칸이 42여야 한다
+    const CD = { x: 50, y: 106, w: 80, h: 42 };
+    rect(CD.x, CD.y, CD.w, CD.h, PAL.panelDark);
+    strokeRect(CD.x, CD.y, CD.w, CD.h, PAL.boxLine);
+    text(String(this.left), 90, CD.y + 4, {
+      color: PAL.text, outline: PAL.textShadow, scale: 3, align: 'center', mono: true });
 
     // 판돈은 이 화면의 핵심 정보다 — 얼마가 걸려 있는지 알아야 걸지 말지 정한다
     // 상금은 크게(11px), 내 지갑은 한 단계 작게(7px) — 무엇이 중요한지 크기로 말한다
@@ -466,12 +480,19 @@ export class MultiDeathOverlay {
      * 배경에 묻혀 "검은 숫자만 떠 있는" 것처럼 보였고, 부활 여부는 버튼이 활성인지로
      * 이미 알 수 있어서 정보가 겹쳤다(사용자 요청).
      */
-    text(S.potWin(potShoes(this.game.room)), 90, 152, {
+    text(S.potWin(potShoes(this.game.room)), 90, 154, {
       color: PAL.gaugeWarn, outline: PAL.textShadow, align: 'center' });
+    /**
+     * 그 바로 아래 **한 단계 작은 검은 글씨**로 내 잔고 (2026-08-19, 사용자 요청).
+     * 한 번 지웠다가 되살렸다 — 지난번엔 배경 위에 떠 있어 묻혔는데, 이제는 크림색
+     * 패널 안이라 검은 글씨가 오히려 또렷하다. 걸지 말지 정하려면 "얼마 걸리나"와
+     * "내가 얼마 가졌나"가 나란히 있어야 한다.
+     */
     const have = getProfile().shoesOwned ?? 0;
+    text(S.myShoes(have), 90, 168, { color: PAL.boxLine, align: 'center', small: true });
 
     const 가능 = canRevive(this.me) && have >= MULTI.reviveCost && !this.busy;
-    button(16, 178, 148, 34, 가능);
+    button(16, 182, 148, 34, 가능);
     /**
      * 못 누르는 상태(신발 부족·부활 소진)도 **읽히기는 해야 한다.**
      * 예전엔 어두운 `textShadow` 색이라 어두운 버튼 위에서 글자가 뭉개져 보였다
@@ -483,11 +504,11 @@ export class MultiDeathOverlay {
      * (`신발 20개 써서 / 1위로 부활` → `신발 20개로 부활`, 2026-08-19 사용자 요청)
      * 11px 는 7px 대비 두 단계 위다(이 게임의 폰트는 두 벌뿐이라 그게 최대 단계다).
      */
-    text(S.reviveWith(MULTI.reviveCost), 90, 189, {
+    text(S.reviveWith(MULTI.reviveCost), 90, 193, {
       color: c, outline: PAL.textShadow, align: 'center' });
 
-    button(16, 220, 148, 26, false);
-    text(S.quitRound, 90, 227, { color: PAL.text, align: 'center' });
+    button(16, 222, 148, 26, false);
+    text(S.quitRound, 90, 229, { color: PAL.text, align: 'center' });
 
     if (this.msg) text(this.msg, 90, 252, { color: PAL.goRed, align: 'center', small: true });
   }

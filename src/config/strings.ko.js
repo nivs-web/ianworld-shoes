@@ -185,6 +185,11 @@ export const S = {
   roomSlots: (n, max) => `참가자 ${n}/${max}명`,
   /** 대기방 참가자 카드 — 이름 옆 보유량, 클릭하면 승률까지 (2026-08-19, §11) */
   playerShoesOwned: (n) => `보유신발 ${n}켤레`,
+  /**
+   * 방 목록용 짧은 표기 (2026-08-19). 한 줄에 상태·방번호·이름·인원·입장 버튼이
+   * 다 들어가야 해서 "보유"를 뺐다 — 신발 아이콘이 이미 붙어 있어 뜻은 안 흐려진다.
+   */
+  roomShoes: (n) => `신발 ${n}켤레`,
   playerStatPopup: (wins, games, shoes) =>
     `승률 ${wins}승 / ${games}게임\n보유신발 ${shoes}켤레`,
   needMorePlayers: '2명 이상이어야 시작할 수 있습니다',

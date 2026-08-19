@@ -791,7 +791,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // ⑥ 랙 — 멀티 HUD 의 매 프레임 문자열이 전부 캐시를 탄다
   eq('HUD 에 캐시 없는 text() 호출이 없다', /[^dC]text\(/.test(hud.replace(/textCached\(/g, 'X(')), false);
-  has('판돈은 방이 바뀔 때만 다시 만든다', hud, 'if (scene.potRoom !== room)');
+  // 캐시 열쇠에 **내가 주운 수**도 들어간다 (2026-08-19 6차) — 안 그러면 내가 신발을
+  // 주워도 방 스냅샷이 올 때까지 하단 숫자가 안 움직인다
+  has('판돈은 방/내 습득이 바뀔 때만 다시 만든다', hud, 'if (scene.potRoom !== room || scene.potMine !== mine)');
   has('알림 줄바꿈은 한 번만 잰다', hud, 'if (!t.lines) t.lines = wrap(');
   has('글리프 캐시를 늘렸다', pf, 'GLYPH_CACHE_MAX = 320');
 }
@@ -1093,7 +1095,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('빨강 부활', S.someoneRevived(S.slotColorName[0]), '빨강색 1등 부활!');
   eq('파랑 부활', S.someoneRevived(S.slotColorName[2]), '파랑색 1등 부활!');
   eq('초록 부활', S.someoneRevived(S.slotColorName[3]), '초록색 1등 부활!');
-  has('GameScene 은 자리 색 이름으로 알린다', gs, 'this.notify(S.someoneRevived(color))');
+  // 색 인자가 붙었다 (36-④) — 알림 문구 자체는 그대로다
+  has('GameScene 은 자리 색 이름으로 알린다', gs, 'this.notify(S.someoneRevived(color), ');
 
   // ② 죽어서 카운트다운 중이면 등수 글자도 회색 + 작게
   has('죽으면 등수도 dead 플래그를 받는다', mh, 'dead: countdown != null');
@@ -1240,7 +1243,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const mp = fs.readFileSync('src/services/multiplayer.js', 'utf8');
   has('listRooms 가 방장 보유신발을 싣는다', mp, 'hostShoes:');
   const rl = fs.readFileSync('src/screens/multi/RoomList.js', 'utf8');
-  has('방 목록에 보유신발 배지', rl, 'S.playerShoesOwned(r.hostShoes ?? 0)');
+  // 문구만 짧아졌다 (36-②) — 배지 자체는 그대로 있어야 한다
+  has('방 목록에 보유신발 배지', rl, 'S.roomShoes(r.hostShoes ?? 0)');
 
   // ⑤ 말풍선은 문자열까지 완전히 제거 (폰트에 헛글자를 굽지 않게)
   const st = fs.readFileSync('src/config/strings.ko.js', 'utf8');
@@ -1395,8 +1399,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('알림 접기도 11px 로 잰다', mh, 'measure(next, 1, false, false)');
 
   const ov = fs.readFileSync('src/game/overlays.js', 'utf8');
-  has('사망 화면 부활 문구 한 줄 11px', ov, 'S.reviveWith(MULTI.reviveCost), 90, 189');
-  no('사망 화면의 남은 신발 줄 제거', ov, 'S.myShoes(');
+  has('사망 화면 부활 문구 한 줄 11px', ov, 'S.reviveWith(MULTI.reviveCost), 90, 193');
+  // 6차에서 **되살렸다** — 크림색 패널 안이라 검은 글씨가 또렷하고, 걸지 말지 정하려면
+  // "얼마 걸리나"와 "내가 얼마 가졌나"가 나란히 있어야 한다 (35번 묶음이 위치까지 본다)
+  has('상금 아래 내 잔고 줄', ov, 'S.myShoes(have)');
 
   // 로비
   const lobby = fs.readFileSync('src/screens/Lobby.js', 'utf8');
@@ -1444,6 +1450,116 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const css = fs.readFileSync('src/styles/screens.css', 'utf8');
   const btn = /\.pbtn \{[\s\S]*?font-size: (\d+)px/.exec(css);
   eq('버튼 폰트 19 → 17px', btn && Number(btn[1]), 17);
+}
+
+{
+  console.log('\n35) ★ 화면 판돈 = 실제 수령액 (습득분 포함) · 사망 화면 재배치 (2026-08-19 6차)');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+
+  /**
+   * ★ 화면 하단 `1등하면 신발 N켤레!` 가 **판돈만** 세고 주운 신발을 빼먹고 있었다.
+   * 1등은 주운 것까지 전부 가져가므로 실제 수령액이 늘 더 컸다 — 사용자가 "계산이
+   * 안 맞는다"고 한 지점이다. 이제 표시와 정산이 같은 식을 쓴다.
+   */
+  const mr = fs.readFileSync('src/services/matchRules.js', 'utf8');
+  has('판돈에 습득분이 들어간다', mr, 'return 부활값 + 남은기본 + 주운것;');
+  has('끝난 판은 결과에 박힌 값을 쓴다', mr, "typeof saved?.[p.uid] === 'number'");
+  has('내 습득은 서버 응답 전에도 반영', mr, 'live && live.uid === p.uid');
+
+  // 실제 수치로 검산 — 3인, 부활 1회, 각자 주움
+  const { potShoes } = await import('../src/services/matchRules.js');
+  {
+    const room = {
+      players: { A: { revives: 1, shoesFound: 4 }, B: { shoesFound: 6 }, C: { shoesFound: 3 } },
+      result: { given: { A: new Array(20).fill(1), B: [1], C: [1] } },
+    };
+    // 판돈 20 + 기본 (3-1)=2 + 주운 13 = 35
+    eq('판돈 계산 (20 + 2 + 13)', potShoes(room), 35);
+    // 내가 막 하나 더 주웠으면 서버 응답 전에도 36
+    eq('내 습득은 즉시 반영', potShoes(room, { uid: 'A', shoesFound: 5 }), 36);
+    // 결과에 박힌 값이 있으면 그쪽이 진실 (사람이 방을 나가도 남는다)
+    const ended = { ...room, result: { ...room.result, found: { A: 4, B: 6, C: 3 } } };
+    eq('끝난 판도 같은 값', potShoes(ended), 35);
+  }
+
+  // 하단 줄이 내가 주울 때마다 갱신되는가 (캐시 열쇠)
+  const hud = fs.readFileSync('src/game/multiHud.js', 'utf8');
+  has('내 습득이 캐시 열쇠에 들어간다', hud, 'scene.potMine !== mine');
+  has('판돈에 내 최신 습득을 넘긴다', hud, 'potShoes(room, { uid: scene.multi?.myUid, shoesFound: mine })');
+
+  // 사망 화면 — 카운트다운 칸 + 잔고 줄
+  const ov = fs.readFileSync('src/game/overlays.js', 'utf8');
+  has('카운트다운 전용 칸', ov, 'const CD = { x: 50, y: 106, w: 80, h: 42 }');
+  has('숫자에 외곽선', ov, "color: PAL.text, outline: PAL.textShadow, scale: 3");
+  has('상금 아래 잔고 줄 복귀', ov, 'S.myShoes(have), 90, 168');
+  // 배율 3 숫자(33도트)가 칸(42) 안에 여백을 두고 들어가는지 계산으로 확인
+  eq('숫자가 칸을 안 넘는다', 4 + 33 <= 42, true);
+}
+
+{
+  console.log('\n36) ★ 방 목록 가독성 · 죽으면 색이 빠진다 · 낙사/부활 효과음 (2026-08-19 7차)');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const css = fs.readFileSync('src/styles/screens.css', 'utf8');
+
+  // ① 방 목록 — 줄이 답답하지 않게, 배지는 방번호와 같은 색으로
+  {
+    const row = /\.room-row \{[\s\S]*?\}/.exec(css)?.[0] ?? '';
+    const pad = /padding: (\d+)px (\d+)px/.exec(row);
+    eq('방 줄 위아래 여백 4 → 9px', pad && Number(pad[1]), 9);
+    eq('방 줄 좌우 여백 5 → 7px', pad && Number(pad[2]), 7);
+    const list = /\.room-list \{[\s\S]*?\}/.exec(css)?.[0] ?? '';
+    eq('줄 간격 4 → 6px', /gap: 6px/.test(list), true);
+    has('배지 글자색을 본문색으로 되돌린다', css, '.room-row .player-shoes');
+  }
+
+  // ② 문구 축약 — 방 목록만 짧게, 대기방 카드는 그대로
+  {
+    const S = (await import('../src/config/strings.ko.js')).default;
+    eq('방 목록 배지 문구', S.roomShoes(0), '신발 0켤레');
+    const rl = fs.readFileSync('src/screens/multi/RoomList.js', 'utf8');
+    has('방 목록이 짧은 문구를 쓴다', rl, 'S.roomShoes(r.hostShoes ?? 0)');
+    const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
+    eq('대기방은 원래 문구 유지', wr.includes('playerShoesOwned'), true);
+  }
+
+  // ③ 죽은 사람은 자리 색을 잃는다 — 테두리·빈칸 둘 다
+  {
+    const hud = fs.readFileSync('src/game/multiHud.js', 'utf8');
+    has('죽음 판정은 카운트다운 유무', hud, 'const 죽음 = countdown != null;');
+    has('테두리가 회색으로', hud, 'const on = 죽음 ? PAL.deadGray : SLOT_COLORS[i];');
+    has('빈 칸도 색을 뺀다', hud, 'const off = 죽음 ? PAL.textShadow : SLOT_DIM[i];');
+    has('등수 글자도 회색', hud, 'color: PAL.deadGray, outline: PAL.textShadow, align, small: true');
+  }
+
+  // ④ 알림 색 — 낙사 빨강 / 부활 노랑, 둘 다 외곽선
+  {
+    const gs = fs.readFileSync('src/game/GameScene.js', 'utf8');
+    has('부활 알림 노랑', gs, 'S.someoneRevived(color), PAL.gaugeWarn');
+    has('낙사 알림 빨강', gs, 'S.someoneFell(color), PAL.goRed');
+    has('탈락 알림 빨강', gs, 'S.someoneOut(color), PAL.goRed');
+    const hud = fs.readFileSync('src/game/multiHud.js', 'utf8');
+    has('색을 줄마다 들고 다닌다', hud, 'color: t.color ?? PAL.text');
+    has('알림에 외곽선', hud, 'color: it.color, align: \'center\', outline: PAL.textShadow');
+  }
+
+  // ⑤ 효과음 두 개가 실제로 등록되고 불려야 한다
+  {
+    const sfx = fs.readFileSync('src/audio/sfx.js', 'utf8');
+    has('낙사 효과음 등록', sfx, 'sfx_rival_fell:');
+    has('부활 효과음 등록', sfx, 'sfx_rival_revive:');
+    const gs = fs.readFileSync('src/game/GameScene.js', 'utf8');
+    has('낙사 때 소리', gs, "'sfx_rival_fell'");
+    has('부활 때 소리', gs, "'sfx_rival_revive'");
+    /**
+     * ★ 사운드 QA 가 **목록을 손으로 들고 있으면** 새 소리는 조용히 검사 밖에 남는다.
+     * 실제로 이 두 개가 그렇게 빠졌다 — 이제 소스에서 긁어 오는지 여기서 못 박는다.
+     */
+    const aq = fs.readFileSync('tools/_audio-qa.mjs', 'utf8');
+    has('사운드 QA 가 목록을 소스에서 긁는다', aq, "readFileSync('src/audio/sfx.js', 'utf8').matchAll(");
+    has('잠금 못 풀면 멈춘다', aq, '오디오 잠금을 못 풀었다');
+  }
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

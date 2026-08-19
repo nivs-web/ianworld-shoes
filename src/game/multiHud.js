@@ -313,8 +313,16 @@ function reviveLeft(p, now) {
  */
 function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, countdown = null, dx = 0 }) {
   const i = Math.max(0, Math.min(SLOT_COLORS.length - 1, slot | 0));
-  const on = SLOT_COLORS[i];
-  const off = SLOT_DIM[i];
+  /**
+   * ★ **죽어서 부활을 고르는 동안은 자리 색을 버리고 회색이 된다.** (2026-08-19, 사용자 요청)
+   *
+   * 예전에는 얼굴만 흐려지고 테두리는 여전히 쨍한 자리 색이라 **죽은 티가 안 났다.**
+   * 이 게이지에서 색은 "살아서 뛰는 사람"의 표시다 — 색이 빠지면 그 자체로 신호가 된다.
+   * 부활하면 `countdown` 이 사라지면서 제 색이 곧바로 돌아온다.
+   */
+  const 죽음 = countdown != null;
+  const on = 죽음 ? PAL.deadGray : SLOT_COLORS[i];
+  const off = 죽음 ? PAL.textShadow : SLOT_DIM[i];
   const x = RACE_CX - (CELL >> 1) + dx;
   const y = Math.round(cy) - (CELL >> 1);
 
@@ -477,7 +485,18 @@ function drawGapLine(scene) {
 function drawPot(scene) {
   const room = scene.room;
   if (!room) return;
-  if (scene.potRoom !== room) { scene.potRoom = room; scene.potText = S.potLine(potShoes(room)); }
+  /**
+   * ★ 캐시 열쇠에 **내가 주운 수**도 넣는다. (2026-08-19)
+   * 예전엔 `room` 객체가 바뀔 때만 다시 계산해서, **내가 신발을 주워도 방 스냅샷이
+   * 올 때까지(최대 300ms + 왕복) 숫자가 안 움직였다.** 판이 커지는 걸 즉시 보여 주는 게
+   * 이 줄의 존재 이유라 그 지연은 그대로 손해다.
+   */
+  const mine = scene.shoesFound | 0;
+  if (scene.potRoom !== room || scene.potMine !== mine) {
+    scene.potRoom = room;
+    scene.potMine = mine;
+    scene.potText = S.potLine(potShoes(room, { uid: scene.multi?.myUid, shoesFound: mine }));
+  }
   if (!scene.potText) return;
   // 11px + 외곽선. `1등하면 신발 146켤레!` = 125px < 180 (미리 재 봤다)
   textCached(scene.potText, CENTER_X, POT_Y, {
@@ -500,11 +519,12 @@ function drawTicker(scene) {
   for (const t of live.slice(-2)) {
     // 접는 계산은 메시지당 한 번 — 폭 재기를 매 프레임 돌릴 이유가 없다
     if (!t.lines) t.lines = wrap(t.msg, TICKER_W);
-    lines.push(...t.lines);
+    // 색은 줄마다 들고 다닌다 — 한 화면에 낙사(빨강)와 부활(노랑)이 같이 뜰 수 있다
+    for (const line of t.lines) lines.push({ line, color: t.color ?? PAL.text });
   }
-  lines.slice(-3).forEach((line, i, arr) => {
-    textCached(line, TICKER_CX, TICKER_Y - (arr.length - 1 - i) * LINE_H, {
-      color: PAL.text, align: 'center', outline: PAL.textShadow });
+  lines.slice(-3).forEach((it, i, arr) => {
+    textCached(it.line, TICKER_CX, TICKER_Y - (arr.length - 1 - i) * LINE_H, {
+      color: it.color, align: 'center', outline: PAL.textShadow });
   });
 }
 

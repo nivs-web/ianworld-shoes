@@ -31,7 +31,8 @@
     "preview:result": "node tools/_screen-preview.mjs result",
     "assets:floors": "node tools/build-floor-bg.mjs",
     "preview:room": "node tools/_screen-preview.mjs room",
-    "assets:sign": "node tools/build-museum-sign.mjs"
+    "assets:sign": "node tools/build-museum-sign.mjs",
+    "preview:rooms": "node tools/_screen-preview.mjs rooms"
   },
   "dependencies": {
     "firebase": "^11.1.0"

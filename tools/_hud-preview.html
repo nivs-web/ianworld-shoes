@@ -23,15 +23,19 @@ const scene = {
   room: { players: {
     a: { stairs: 320, alive: true, revives: 2 },
     b: { stairs: 300, alive: true, revives: 1 },
-    c: { stairs: 310, alive: false, revives: 4, deadAt: now - 3000 },
-    d: { stairs: 300, alive: true, revives: 6 },
+    c: { stairs: 350, alive: false, revives: 4, deadAt: now - 3000 },
+    d: { stairs: 290, alive: true, revives: 6 },
   }, result: { given: { a: new Array(40).fill(1), b: new Array(20).fill(1) } } },
   opponents: [
     { id: 'b', characterId: 'denny', slot: 1, stairs: 300, revives: 1, alive: true },
-    { id: 'c', characterId: 'rose', slot: 2, stairs: 310, revives: 4, alive: false, deadAt: now - 3000 },
-    { id: 'd', characterId: 'tony', slot: 3, stairs: 300, revives: 6, alive: true },
+    { id: 'c', characterId: 'rose', slot: 2, stairs: 350, revives: 4, alive: false, deadAt: now - 3000 },
+    { id: 'd', characterId: 'tony', slot: 3, stairs: 290, revives: 6, alive: true },
   ],
-  ticker: [{ msg: '상대방이 신발 20개를 걸고 20칸 앞으로 부활했습니다', until: Date.now() + 9e5 }],
+  // 낙사(빨강)·부활(노랑) 두 색이 한 화면에 같이 뜨는 경우를 일부러 만든다
+  ticker: [
+    { msg: '파란색이 떨어졌다!', color: '#D42B2B', until: Date.now() + 9e5 },
+    { msg: '노란색 1등 부활!', color: '#F2C23C', until: Date.now() + 9e5 },
+  ],
 };
 clear('#243a52');
 multiHud(scene);

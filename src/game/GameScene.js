@@ -225,13 +225,15 @@ export class GameScene {
         // 이름 대신 **자리 색**으로 부른다 — 인게임에는 아이디가 없고, 색이 곧 신원이다
         const color = S.slotColorName[o.slot] ?? S.slotColorName[0];
         if ((o.revives ?? 0) > (was.revives ?? 0)) {
-          // 낙사·기권 알림과 **같은 색 이름**을 쓴다 — "노란색 1등 부활!" (2026-08-19)
-          this.notify(S.someoneRevived(color));
-          Sfx.play('sfx_revive');
+          // 부활은 판이 뒤집히는 순간이다 — **노란색**으로 띄우고 놀란 소리를 낸다
+          this.notify(S.someoneRevived(color), PAL.gaugeWarn);
+          Sfx.play('sfx_rival_revive');
         } else if (was.alive !== false && o.alive === false) {
-          this.notify(S.someoneFell(color));
+          // 낙사는 **빨강**. 내 사망음과 다른, 짧고 아쉬운 소리를 쓴다
+          this.notify(S.someoneFell(color), PAL.goRed);
+          Sfx.play('sfx_rival_fell');
         } else if (!was.out && o.out) {
-          this.notify(S.someoneOut(color));
+          this.notify(S.someoneOut(color), PAL.goRed);
         }
       }
       this.opponents = next;
@@ -258,8 +260,14 @@ export class GameScene {
   }
 
   /** 인게임 알림 한 줄 — 몇 초 떠 있다 사라진다 (multiHud 가 그린다) */
-  notify(msg) {
-    this.ticker.push({ msg, until: Date.now() + TICKER_MS });
+  /**
+   * 인게임 알림 한 줄.
+   * @param {string} msg
+   * @param {string} [color] 줄 색. 안 주면 기본색 — **무슨 일인지 색으로 먼저 읽힌다**
+   *   (떨어짐은 빨강, 부활은 노랑). (2026-08-19)
+   */
+  notify(msg, color) {
+    this.ticker.push({ msg, color, until: Date.now() + TICKER_MS });
     if (this.ticker.length > 3) this.ticker.shift();
   }
 

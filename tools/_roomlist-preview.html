@@ -1,0 +1,28 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<style>body{background:#1b1410;padding:14px}
+.frame{width:360px;background:#0d0a08;padding:10px;border:2px solid #4a3b2a}</style>
+</head><body><script type="module">
+import S from '/src/config/strings.ko.js';
+import { el, button } from '/src/screens/ui.js';
+const rooms = [
+  { code: 4242, hostName: '이안', count: 1, max: 4, playing: false, hostShoes: 146, full: false },
+  { code: 8817, hostName: '다섯글자님', count: 3, max: 4, playing: true, hostShoes: 7, full: false },
+  { code: 1203, hostName: '로', count: 4, max: 4, playing: false, hostShoes: 1203, full: true },
+];
+const f = el('div.frame');
+f.append(el('div.screen-title', S.roomListTitle));
+f.append(el('div.room-list', null, rooms.map((r) => el('div.room-row', { class: r.playing ? 'playing' : '' }, [
+  el('div.room-state', r.playing ? S.roomStatePlaying : S.roomStateWaiting),
+  el('div.room-name', S.roomRow(r.code, r.hostName, r.count, r.max)),
+  el('div.player-shoes', null, [
+    el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
+    el('span', S.roomShoes(r.hostShoes)),
+  ]),
+  r.full ? el('div.room-full', S.roomFullShort) : button(S.roomEnter, () => {}, { primary: !r.playing }),
+]))));
+document.body.append(f);
+window.__ready = true;
+</script></body></html>
