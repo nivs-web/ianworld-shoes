@@ -320,11 +320,8 @@ export default function MultiResult(nav, params = {}) {
               el('div.defeat-sub', S.loseSub),
               // 기획서에 못 박힌 문구라 토씨를 바꾸지 않는다 (§6-2)
               el('div.defeat-lost', S.loseTaken(settle?.lost ?? myOwed())),
-              el('div.tip', null, [
-                el('div.tip-head', S.tipTitle),
-                el('div', S.tipBody1),
-                el('div', S.tipBody2),
-              ]),
+              // ※ 여기 있던 '부활을 아껴쓰세요…' 3줄 팁은 삭제했다 (2026-08-19, 사용자 요청).
+              //    깃발·큰 문구·잃은 수까지 읽고 나면 더 읽을 것이 남아 있지 않은 게 낫다.
             ]),
 
         el('div.rank-list', null, rankings.map((uid, i) =>

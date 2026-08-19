@@ -166,5 +166,29 @@ L.resetAll(); mem.clear();
 }
 
 // ─────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+console.log('\n11) 순위표를 내 주변만 잘라서 보여 준다 (2026-08-19)');
+{
+  const { rankWindow, RANK_WINDOW_RADIUS } = await import('../src/services/rankWindow.js');
+  const rows = Array.from({ length: 200 }, (_, i) => ({ uid: `u${i + 1}`, rank: i + 1 }));
+  const size = RANK_WINDOW_RADIUS * 2 + 1;
+
+  const w200 = rankWindow(rows, 'u200');
+  eq('200등이면 끝자락이 보인다', [w200[0].rank, w200[w200.length - 1].rank], [200 - size + 1, 200]);
+
+  const w11 = rankWindow(rows, 'u11');
+  eq('11등이면 내가 가운데', w11[RANK_WINDOW_RADIUS].rank, 11);
+  eq('11등 창의 범위', [w11[0].rank, w11[w11.length - 1].rank], [11 - RANK_WINDOW_RADIUS, 11 + RANK_WINDOW_RADIUS]);
+
+  const w1 = rankWindow(rows, 'u1');
+  eq('1등이면 위로 못 뻗으니 아래로 채운다', [w1[0].rank, w1[w1.length - 1].rank], [1, size]);
+
+  eq('길이는 언제나 같다', [w1.length, w11.length, w200.length], [size, size, size]);
+  // 순위 밖(내가 목록에 없다)이면 예전처럼 위에서부터 — 하단 '내 순위' 줄이 따로 있다
+  eq('목록에 없으면 상위부터', rankWindow(rows, 'nobody')[0].rank, 1);
+  eq('짧은 목록은 그대로', rankWindow(rows.slice(0, 4), 'u3').length, 4);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n순위표 원장 이상 없음');
 process.exit(fails ? 1 : 0);

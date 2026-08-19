@@ -12,6 +12,7 @@
 import S from '../config/strings.ko.js';
 import { el, button, backButton, screen, title } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
+import { rankWindow } from '../services/rankWindow.js';
 import { fetchBoard } from '../services/leaderboard.js';
 import { characterSprite, characterById } from '../data/characters.js';
 
@@ -142,8 +143,13 @@ export default function HallOfFame(nav) {
       } else if (!state.data.rows.length) {
         body = el('div.hint', S.noRankYet);
       } else {
+        /**
+         * ★ **내가 가운데 오도록 잘라서 보여 준다.** (2026-08-19, 사용자 요청)
+         * 11등인 사람에게 1~10등은 스크롤로 지나칠 줄일 뿐이다. 줄마다 등수 숫자가
+         * 찍히므로 목록이 6등부터 시작해도 헷갈리지 않는다.
+         */
         body = el('div.rank-list', null,
-          state.data.rows.map((r) => row(r, { unit: tab.unit, me: r.uid === me.uid }))
+          rankWindow(state.data.rows, me.uid).map((r) => row(r, { unit: tab.unit, me: r.uid === me.uid }))
         );
       }
 

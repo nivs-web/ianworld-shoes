@@ -16,7 +16,9 @@ export const BUILDINGS = [
   { id: 'build_07', name: '조선' },
   { id: 'build_08', name: '고대국' },
   { id: 'build_09', name: '북미 부잣집' },
-  { id: 'build_10', name: '조선총독부' },
+  // 원래 「조선총독부」. 이름과 함께 1층 간판의 한자도 바꿔 새겼다
+  // (tools/build-museum-sign.mjs) — 이름만 갈면 화면과 메뉴가 다른 말을 한다. (2026-08-19)
+  { id: 'build_10', name: '고대박물관' },
   { id: 'build_11', name: '고대 이집트' },
   { id: 'build_12', name: '폴란드' },
   { id: 'build_13', name: '숲속의 별장' },

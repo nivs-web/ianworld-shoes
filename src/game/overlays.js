@@ -336,13 +336,14 @@ export class MultiDeathOverlay {
      * (그 신발은 아무도 안 걷는다), 짧으면 억울하게 기회를 잃는다.
      */
     /**
-     * ★ **걸 신발이 없으면 창을 짧게.** (2026-08-19)
-     * 고를 수 있는 게 '나가기' 하나뿐인데 10초를 세는 건 그냥 기다리게 하는 것이다.
-     * 남들의 판정 기준은 여전히 10초다 — 남은 사람은 내 지갑을 모른다.
-     * 이쪽이 먼저 닫히면서 `out` 도장을 찍으므로 남들도 그 즉시 기다림을 멈춘다.
+     * ★ **부활 창은 지갑과 무관하게 항상 10초다.** (2026-08-19 4차, 사용자 요청)
+     *
+     * 한동안은 걸 신발이 없으면 5초로 줄였다("고를 게 나가기뿐인데 10초는 길다").
+     * 그런데 그러면 **사람마다 죽은 뒤 화면이 머무는 시간이 달라져** 예측이 안 된다 —
+     * 남들의 종료 판정은 어차피 10초 고정이라 규칙이 둘로 갈리기도 했다.
+     * 하나로 통일하는 쪽이 게임을 읽기 쉽게 만든다.
      */
-    const 걸수있다 = (getProfile().shoesOwned ?? 0) >= MULTI.reviveCost && canRevive(this.me);
-    const 창초 = 걸수있다 ? MULTI.reviveWindowSeconds : MULTI.reviveWindowShortSeconds;
+    const 창초 = MULTI.reviveWindowSeconds;
     const me = game.room?.players?.[game.multi?.myUid];
     const 서버기준끝 = (me?.deadAt ?? 0) + 창초 * 1000;
     const 내시계로 = 서버기준끝 - Room.serverOffsetSync();

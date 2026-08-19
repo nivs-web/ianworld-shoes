@@ -897,8 +897,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // ⑤ 부활 창 10초, 걸 신발이 없으면 5초
   eq('부활 창 10초', MULTI.reviveWindowSeconds, 10);
-  eq('못 걸면 5초', MULTI.reviveWindowShortSeconds, 5);
-  has('지갑을 보고 창을 정한다', ov, 'const 창초 = 걸수있다 ? MULTI.reviveWindowSeconds : MULTI.reviveWindowShortSeconds;');
+  // 5차에서 되돌렸다 — 지갑과 무관하게 항상 10초 (34번 묶음이 본다)
+  eq('부활 창은 하나뿐', MULTI.reviveWindowSeconds, 10);
 
   // ⑥ 이긴 사람이 방장
   has('순위 1등을 방장으로', mp, 'hostUid: ranked[0] ?? room.hostUid,');
@@ -1042,7 +1042,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('승리 깃발', mres, "src: '/assets/ui/victory_flag.png'");
   eq('깃발 파일', fs.existsSync(new URL('../public/assets/ui/victory_flag.png', import.meta.url)), true);
   has('가져온 신발만 강조', mres, "el('span.pot-num'");
-  has('패배 팁', mres, 'S.tipBody2');
+  // 5차에서 삭제된 '부활을 아껴쓰세요…' 3줄 — 34번 묶음이 없음을 확인한다
   eq('잃은 신발 문구는 뺏겼습니다 로', S.loseTaken(3), '내 소중한 신발 3켤레를 뺏겼습니다');
 
   // ③ 멀티 메뉴 순서 — 방 입장 → 방 목록 → 비밀방 만들기 → 비밀방 입장
@@ -1231,7 +1231,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ③ 로비 메뉴 버튼도 2단계 키웠다 — 사용자가 든 예시가 전부 버튼 라벨이었다
   const css = fs.readFileSync('src/styles/screens.css', 'utf8');
   const btn = /\.pbtn\s*\{[\s\S]*?font-size:\s*(\d+)px/.exec(css);
-  eq('버튼 폰트 15px → 19px', btn && Number(btn[1]), 19);
+  // 19 → 17px (5차, 한 단계 축소)
+  eq('버튼 폰트 17px', btn && Number(btn[1]), 17);
   const seg = /\.seg \.pbtn\s*\{[^}]*font-size:\s*(\d+)px/.exec(css);
   eq('난이도 선택은 15px 유지 (셋이 한 줄이라 접힌다)', seg && Number(seg[1]), 15);
 
@@ -1404,6 +1405,45 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const panel = /^\.panel \{([\s\S]*?)\n\}/m.exec(css)?.[1] ?? '';
   has('패널은 줄바꿈 금지 (뱃지가 안 밀린다)', panel, 'flex-wrap: nowrap');
   eq('캐릭터 칸 폭 10% 축소', /\.char-cell \{[\s\S]*?width: (\d+)px/.exec(css)?.[1], '66');
+}
+
+{
+  console.log('\n34) 부활창 10초 고정 · 패배 팁 삭제 · 순위 윈도잉 · 고대박물관 · 버튼 폰트 (2026-08-19 5차)');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+
+  // ① 부활 창은 지갑과 무관하게 항상 10초
+  const ov = fs.readFileSync('src/game/overlays.js', 'utf8');
+  has('창 길이가 하나로 고정', ov, 'const 창초 = MULTI.reviveWindowSeconds;');
+  no('지갑 보고 창을 줄이지 않는다', ov, 'reviveWindowShortSeconds');
+  eq('부활 창 10초', MULTI.reviveWindowSeconds, 10);
+
+  // ② 패배 화면 팁 3줄 삭제
+  const mr = fs.readFileSync('src/screens/multi/MultiResult.js', 'utf8');
+  no('패배 팁 상자 없음', mr, "el('div.tip'");
+  no('팁 제목 없음', mr, 'S.tipTitle');
+
+  // ③ 순위표는 내 주변만
+  const hof = fs.readFileSync('src/screens/HallOfFame.js', 'utf8');
+  has('명예의 전당이 윈도잉을 쓴다', hof, 'rankWindow(state.data.rows, me.uid)');
+  no('전체 목록을 그대로 뿌리지 않는다', hof, 'state.data.rows.map((r) => row(');
+
+  // ④ 고대박물관 — 이름과 간판이 같이 바뀌었나
+  const bg = fs.readFileSync('src/data/backgrounds.js', 'utf8');
+  has('맵 이름 고대박물관', bg, "{ id: 'build_10', name: '고대박물관' }");
+  no('조선총독부 잔재 없음(이름)', bg, "name: '조선총독부'");
+  eq('간판 스크립트 존재', fs.existsSync('tools/build-museum-sign.mjs'), true);
+  {
+    // 파이프라인에 연결돼 있나 — assets:bg 를 다시 돌려도 한자가 안 살아나야 한다
+    const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    has('assets:bg 가 간판 스크립트를 이어 부른다', pkg.scripts['assets:bg'], 'build-museum-sign.mjs');
+  }
+
+  // ⑤ 로비 버튼 폰트 한 단계 축소
+  const css = fs.readFileSync('src/styles/screens.css', 'utf8');
+  const btn = /\.pbtn \{[\s\S]*?font-size: (\d+)px/.exec(css);
+  eq('버튼 폰트 19 → 17px', btn && Number(btn[1]), 17);
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
