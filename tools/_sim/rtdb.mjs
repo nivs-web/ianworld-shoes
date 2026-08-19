@@ -26,6 +26,8 @@ export class FakeDb {
     this.data = {};
     this.listeners = [];       // {path, cb, err}
     this.disconnects = new Map();
+    /** uid → 접속 상태 (없으면 붙어 있는 것) */
+    this.online = new Map();
     this.log = [];             // {op, path, uid, ok}
     this.denyLog = [];
   }
@@ -86,6 +88,31 @@ export class FakeDb {
         l.cb({ val: () => this.read(l.path) });
       }
     }
+  }
+
+  /**
+   * **소켓이 끊겼다** — 그 사람이 걸어 둔 `onDisconnect` 예약을 서버가 실행한다.
+   * 폰에서 전화를 받아 페이지가 얼어붙는 상황을 이걸로 재현한다.
+   */
+  dropConnection(uid) {
+    this.online.set(uid, false);
+    this.notify('.info/connected');
+    for (const [key, d] of [...this.disconnects]) {
+      if (d.uid !== uid) continue;
+      this.disconnects.delete(key);
+      if (d.op === 'remove') this.write(d.path, null);
+      else if (d.op === 'set') this.write(d.path, this.fill(d.value));
+      else if (d.op === 'update') {
+        for (const [k, v] of Object.entries(d.value ?? {})) this.write(`${d.path}/${k}`, this.fill(v));
+      }
+      this.notify(d.path);
+    }
+  }
+
+  /** 다시 붙었다 — 클라이언트가 자리 지킴을 새로 걸고 끊김 표시를 지운다 */
+  restoreConnection(uid) {
+    this.online.set(uid, true);
+    this.notify('.info/connected');
   }
 }
 
@@ -169,7 +196,17 @@ export function makeFb(db, uid) {
     },
 
     onValue(r, cb, err) {
-      if (r.path === '.info/connected') { cb({ val: () => true }); return () => {}; }
+      if (r.path === '.info/connected') {
+        /**
+         * 예전에는 **항상 true 를 한 번만** 돌려줬다. 그러면 "끊겼다 다시 붙었다"를
+         * 재현할 수 없어서, 재접속 때 자리 지킴을 다시 거는 코드가 검사 밖에 있었다.
+         * 이제 진짜 상태를 들고 있고 `dropConnection`/`restoreConnection` 이 흔든다.
+         */
+        const l = { path: '.info/connected', cb: () => cb({ val: () => db.online.get(uid) !== false }) };
+        db.listeners.push(l);
+        l.cb();
+        return () => { db.listeners = db.listeners.filter((x) => x !== l); };
+      }
       const l = { path: r.path, cb, err };
       db.listeners.push(l);
       cb({ val: () => db.read(r.path) });
@@ -219,10 +256,22 @@ export function makeFb(db, uid) {
       return { committed: true };
     },
 
+    /**
+     * `onDisconnect` — 서버가 소켓이 끊긴 걸 감지했을 때 대신 실행할 예약.
+     * 예전에는 `remove` 만 있었고 **아무도 발동시키지 않았다** — 그래서 "끊겼다"를
+     * 검사할 방법이 없었다. 이제 `set` 도 받고, `db.dropConnection(uid)` 로 실제로
+     * 발동시킬 수 있다(자리 지킴 `offAt` 을 검사하려면 이게 있어야 한다).
+     */
     onDisconnect(r) {
+      const put = (op, value) => {
+        db.disconnects.set(`${uid}|${r.path}`, { path: r.path, uid, op, value });
+        return Promise.resolve(true);
+      };
       return {
-        remove: async () => { db.disconnects.set(r.path, uid); return true; },
-        cancel: async () => { db.disconnects.delete(r.path); return true; },
+        remove: () => put('remove'),
+        set: (v) => put('set', v),
+        update: (v) => put('update', v),
+        cancel: () => { db.disconnects.delete(`${uid}|${r.path}`); return Promise.resolve(true); },
       };
     },
   };

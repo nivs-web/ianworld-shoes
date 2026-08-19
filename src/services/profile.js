@@ -67,8 +67,20 @@ async function pushRemote(patchObj) {
 
 /** 로그인 직후 — 프로필과 도감을 함께 끌어내린다 */
 export async function pullAll() {
-  const p = await pullRemote();
-  await Dex.pullAndMerge().catch(() => {});
+  /**
+   * ★ **둘을 동시에 당긴다.** (2026-08-19 8차)
+   *
+   * 계정 문서(`users/{uid}`)와 도감(`users/{uid}/collection`)은 **서로를 안 본다** —
+   * 각각 `sf_profile` 과 `sf_collection` 에 쓴다. 그런데 순서대로 기다리고 있었다:
+   * 각 호출의 시한이 12초(`WRITE_TIMEOUT_MS`)라 느린 회선에서는 두 배로 늦어진다.
+   * 병렬로 돌리면 **둘 중 느린 쪽**만큼만 걸린다.
+   *
+   * 뒤따르는 `ensureDexBadge()` 는 도감이 합쳐진 뒤여야 하므로 여기서 기다린다.
+   */
+  await Promise.all([
+    pullRemote(),
+    Dex.pullAndMerge().catch(() => {}),
+  ]);
   /**
    * 도감을 합친 **뒤에** 뱃지 도장을 확인한다. 다른 기기에서 채운 종류가 지금 막
    * 내려왔을 수 있고, 개정 전에 이미 130종을 채운 사람은 도장이 아예 없다.

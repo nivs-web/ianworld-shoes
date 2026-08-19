@@ -176,7 +176,9 @@ const glyphCache = new Map();
  * 캐시본으로 찍으므로 금방 넘치고, 넘치면 매 프레임 다시 굽느라 오히려 느려진다.
  * 글리프 하나는 7~11px 짜리 작은 캔버스라 300개라도 메모리가 거의 안 든다.
  */
-const GLYPH_CACHE_MAX = 320;
+export const GLYPH_CACHE_MAX = 320;
+/** 진단용 — 캐시가 상한에 붙으면 매 프레임 버리고 다시 굽는다(캐시가 손해가 된다) */
+export const glyphCacheSize = () => glyphCache.size;
 
 function cachedGlyph(ch, s, color, outline, shadow, mono, small) {
   const F = fontOf(small);

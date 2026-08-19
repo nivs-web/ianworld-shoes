@@ -162,6 +162,15 @@ export default function MultiResult(nav, params = {}) {
       try { finishRun(runResult); } catch (e) { console.warn('[multi] 결과 반영 실패', e); }
     }
     if (settle?.pending) room = await Room.readRoom(code);
+    /**
+     * ★ **정산이 끝났으면 내 카드의 보유 신발 수를 다시 쓴다.** (2026-08-19 10차, 사용자 신고)
+     *
+     * 이 판에서 150켤레를 잃었는데 대기방 카드와 승률 팝업은 **입장 시점 숫자**를
+     * 그대로 들고 있었다(`meRecord` 의 스냅샷). '계속하기' 로 대기방에 돌아가면
+     * 옛 숫자가 그대로 보인다 — 신발이 이 게임의 판돈이라 그 숫자가 곧 정보다.
+     * 지갑이 실제로 바뀌는 자리가 여기(정산 직후)이므로 여기서 갱신한다.
+     */
+    Room.refreshMyCard(code).catch(() => {});
     done = true;
     if (!gone) nav.refresh();
     if (settle?.pending) poll();

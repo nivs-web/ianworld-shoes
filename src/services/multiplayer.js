@@ -13,7 +13,7 @@ import { getRtdb, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { MULTI } from '../config/balance.js';
-import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound, reviveFloor, canRevive, roundOver } from './matchRules.js';
+import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound, reviveFloor, canRevive, roundOver, isStale } from './matchRules.js';
 
 const ROOMS = 'rooms';
 const MY_ROOMS = 'userRooms';
@@ -187,18 +187,27 @@ function armDisconnect(fb, code) {
   try {
     const meRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid));
     fb.dbMod.onDisconnect(meRef).remove().catch(() => {});
-    disconnectRefs.set(code, meRef);
+    disconnectRefs.set(seatKey(fb.uid, code), meRef);
   } catch { /* 지원이 안 되면 그냥 예전처럼 동작한다 */ }
 }
+
+/**
+ * 예약 열쇠에 **uid 를 넣는다.** 방 코드만 쓰면 한 프로세스 안에 여러 사람이 있을 때
+ * (시뮬레이터가 정확히 그렇다) 나중에 들어온 사람이 앞사람의 예약을 덮어쓰고,
+ * 그러면 **취소가 엉뚱한 사람에게 걸린다.** 브라우저에서는 한 사람뿐이라 값은 같지만,
+ * 열쇠가 정확하면 검사도 실제와 같은 상태에서 돈다.
+ */
+const seatKey = (uid, code) => `${uid}|${code}`;
 
 /** 대기방에서 등록한 자동 이탈을 취소한다 (@see armDisconnect) */
 const disconnectRefs = new Map();
 
 /** 방을 떠났으니 예약도 지운다 — 남겨 두면 다음 방의 예약과 헷갈린다 */
 function clearDisconnect(fb, code) {
-  const ref = disconnectRefs.get(code);
+  const key = seatKey(fb.uid, code);
+  const ref = disconnectRefs.get(key);
   if (!ref) return;
-  disconnectRefs.delete(code);
+  disconnectRefs.delete(key);
   try { fb.dbMod.onDisconnect(ref).cancel().catch(() => {}); } catch { /* 무시 */ }
 }
 
@@ -216,7 +225,7 @@ export async function rearmRoomSeat(code) {
   if (!fb) return;
   const mine = (await readOnce(fb, path(ROOMS, code, 'players', fb.uid))).val;
   if (!mine) return;                 // 이미 방에 없다
-  if (disconnectRefs.has(code)) return;
+  if (disconnectRefs.has(seatKey(fb.uid, code))) return;
   armDisconnect(fb, code);
 }
 
@@ -225,11 +234,11 @@ export async function rearmRoomSeat(code) {
  * 참가자가 사라지면 순위·정산에서 통째로 빠져 버린다.
  */
 export async function holdRoomSeat(code) {
-  const ref = disconnectRefs.get(code);
-  if (!ref) return;
-  disconnectRefs.delete(code);
   const fb = await rt();
   if (!fb) return;
+  const key = seatKey(fb.uid, code);
+  const ref = disconnectRefs.get(key) ?? fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid));
+  disconnectRefs.delete(key);
   try { await fb.dbMod.onDisconnect(ref).cancel(); } catch { /* 무시 */ }
 }
 
@@ -441,7 +450,7 @@ export async function resetRoom(code) {
    */
   const 지금 = Date.now() + serverOffsetSync();
   const 자리에있다 = (uid, v) =>
-    uid === fb.uid || !v?.seenAt || 지금 - v.seenAt <= MULTI.staleSeconds * 1000;
+    uid === fb.uid || !v?.seenAt || 지금 - v.seenAt <= MULTI.absentSeconds * 1000;
 
   const players = {};
   for (const [uid, v] of Object.entries(room.players ?? {})) {
@@ -498,9 +507,20 @@ export async function listRooms() {
   await waitConnected(fb);
   const rooms = await scanOpenRooms(fb);
   const max = MULTI.maxPlayers;
+  const 지금 = Date.now() + serverOffsetSync();
   return rooms
     // 끝난 방은 목록에 올리지 않는다 — 들어가도 아무것도 못 한다
     .filter((r) => r && r.code && !r.isPrivate && r.state !== 'finished')
+    /**
+     * ★ **전원이 자리를 비운 방도 감춘다.** (2026-08-19 10차)
+     * 들어가 봐야 상대가 없다. 지우는 건 `sweepEmptyRooms` 가 뒤에서 한다 —
+     * 목록에서 감추는 것과 지우는 것을 나눠 둬야 "지우기가 실패해도 안 보인다".
+     */
+    .filter((r) => {
+      if (r.state !== 'waiting') return true;
+      const list = Object.values(r.players ?? {});
+      return !list.length || list.some((v) => !isStale(v, 지금));
+    })
     .map((r) => {
       const players = Object.values(r.players ?? {});
       const host = r.players?.[r.hostUid];
@@ -537,12 +557,114 @@ export async function listRooms() {
 const STALE_EMPTY_MS = 3 * 60 * 1000;
 /** 안 낸 패자를 기다려 주는 시간 (그 뒤에는 방을 되돌린다) */
 const RESET_WAIT_MS = 3 * 60 * 1000;
+/**
+ * ★ **자리를 비운 사람은 대기방에서 내보낸다.** (2026-08-19 10차, 사용자 신고)
+ *
+ * *"게임을 안하는 유저가 방 만들고 창을 닫거나 내려두면 그 유저가 사라져야 하는데
+ * 유령처럼 남아있는 버그가 존재함"*
+ *
+ * `onDisconnect` 예약은 **소켓이 죽어야** 발동한다. 그런데 창을 내려두기만 하면
+ * 소켓은 살아 있다 — 서버가 보기에 그 사람은 멀쩡히 접속 중이고, 영원히 방에 앉아
+ * 레디를 안 누른다. 방은 목록에 뜨고, 들어간 사람은 시작을 못 한다.
+ *
+ * 그래서 **방을 보고 있는 사람이 치운다.** 30초 넘게 신호가 없으면 그 자리를 비운다.
+ * 규칙상 방 참가자는 방 노드를 쓸 수 있으므로 남의 칸도 **지울** 수 있다
+ * (값을 바꾸는 건 여전히 막혀 있다 — 잎마다 "내 것이거나 값이 그대로" 검증이 걸려 있다).
+ *
+ * **대기 중인 방에서만** 한다. 판이 도는 중에 지우면 순위·정산의 근거가 사라진다 —
+ * 그쪽은 `matchRules.isStale` 이 "판에서 뺀다"로 이미 처리하고, 자리는 그대로 남긴다.
+ */
+export async function purgeAbsent(code, known) {
+  const fb = await rt();
+  if (!fb) return 0;
+  const room = known ?? (await readOnce(fb, path(ROOMS, code))).val;
+  if (!room || room.state !== 'waiting') return 0;
+
+  const now = Date.now() + serverOffsetSync();
+  const 나갈사람 = Object.entries(room.players ?? {})
+    .filter(([uid, v]) => uid !== fb.uid && isStale(v, now))
+    .map(([uid]) => uid);
+  if (!나갈사람.length) return 0;
+
+  /**
+   * 방장이 나가면 승계까지 **한 번의 쓰기로** 보낸다. 나눠 보내면 그 사이에
+   * "방장이 방에 없는" 상태가 생기고, 그때 규칙이 승계를 거부한다(§9-0-21 ①).
+   */
+  const 남는사람 = Object.keys(room.players ?? {}).filter((uid) => !나갈사람.includes(uid));
+  if (!남는사람.length) return 0;                 // 전부 유령이면 방째로 정리한다 (sweepEmptyRooms)
+  const patch = {};
+  for (const uid of 나갈사람) patch[`players/${uid}`] = null;
+  if (나갈사람.includes(room.hostUid)) patch.hostUid = 남는사람[0];
+  patch.open = !room.isPrivate && 남는사람.length < (room.maxPlayers ?? MULTI.maxPlayers);
+
+  try {
+    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), patch), undefined, '유령 정리');
+    return 나갈사람.length;
+  } catch { return 0; }
+}
+
+/**
+ * ★ **내 참가자 카드의 보유 신발 수를 지금 값으로 다시 쓴다.** (2026-08-19 10차, 사용자 신고)
+ *
+ * *"신발 200개를 갖고 있는 사람이 150개를 잃으면 (…) 이전 신발 갯수가 그대로 노출됨"*
+ *
+ * `shoesOwned` 는 **입장 시점의 스냅샷**이다(`meRecord`). 판이 끝나 신발이 오가도 방
+ * 안의 숫자는 그대로라, 대기방 카드와 승률 팝업이 옛날 수를 보여 준다.
+ * 남의 카드는 남이 갱신하므로(각자 자기 것만 쓸 수 있다) **모두가 자기 것을 갱신하면**
+ * 방 전체가 맞아떨어진다.
+ */
+export async function refreshMyCard(code, known) {
+  const fb = await rt();
+  if (!fb) return false;
+  /**
+   * 이미 방 스냅샷을 들고 있으면 그걸 쓴다 — 대기방은 이걸 스냅샷마다 부르므로
+   * 여기서 한 번 더 읽으면 **볼 필요 없는 왕복이 5초마다** 생긴다.
+   */
+  const mine = known
+    ? known.players?.[fb.uid]
+    : (await readOnce(fb, path(ROOMS, code, 'players', fb.uid))).val;
+  if (!mine) return false;                        // 방에 없으면 유령 노드를 만들지 않는다
+  const p = L.loadProfile();
+  const next = {
+    shoesOwned: p.shoesOwned ?? 0,
+    multiWins: p.multiWins ?? 0,
+    multiLosses: p.multiLosses ?? 0,
+  };
+  // 값이 같으면 쓰지 않는다 — 대기방은 방 스냅샷마다 이걸 부르므로 헛쓰기가 쌓인다
+  if (next.shoesOwned === mine.shoesOwned
+    && next.multiWins === mine.multiWins
+    && next.multiLosses === mine.multiLosses) return false;
+  try {
+    await withTimeout(fb.dbMod.update(
+      fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), next), undefined, '카드 갱신');
+    return true;
+  } catch { return false; }
+}
+
 function sweepEmptyRooms(fb, rooms) {
   const now = Date.now();
+  const 서버지금 = now + serverOffsetSync();
+  /**
+   * ★ **전원이 자리를 비운 대기방도 치운다.** (2026-08-19 10차, 사용자 신고)
+   *
+   * 방만 만들고 창을 닫으면 그 방은 **참가자 1명짜리 유령 방**으로 남는다.
+   * 참가자가 0명이 아니므로 예전 조건(`players` 가 비었나)에는 안 걸렸고,
+   * 자동 매칭은 `open == true` 인 앞 12개만 훑으므로 이런 방 12개면 전원이
+   * 새 방만 파게 된다 — 폰 세 대가 전부 방장이 되던 그 증상이다(§9-0-17).
+   *
+   * **대기 중인 방에서만** 한다. 판이 도는 방은 잠깐 전원이 백그라운드일 수 있고,
+   * 그때 방을 지우면 진행 중인 게임이 통째로 사라진다.
+   */
+  const 전원유령 = (r) => {
+    if (r.state !== 'waiting') return false;
+    const list = Object.values(r.players ?? {});
+    return list.length > 0 && list.every((v) => isStale(v, 서버지금));
+  };
   const dead = rooms
-    .filter((r) => r && r.code && !Object.keys(r.players ?? {}).length
+    .filter((r) => r && r.code
+      && (!Object.keys(r.players ?? {}).length || 전원유령(r))
       && !mustKeepRoom(r)   // 신발이 걸려 있는 방은 못 지운다 (증발하거나 패널티가 면제된다)
-      && now - (r.createdAt ?? now) > STALE_EMPTY_MS)
+      && (전원유령(r) || now - (r.createdAt ?? now) > STALE_EMPTY_MS))
     .slice(0, 5);
   for (const r of dead) {
     withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, r.code))), undefined, '빈 방 정리').catch(() => {});
@@ -758,6 +880,117 @@ export async function heartbeat(code) {
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
     seenAt: fb.dbMod.serverTimestamp(),
   }), undefined, '생존 신호').catch(() => {});
+}
+
+// ─────────────────────────────────────────────
+// 자리 지킴 (presence) — 서버가 끊긴 순간을 찍는다
+// ─────────────────────────────────────────────
+
+/**
+ * ★ **"조용하다"와 "끊겼다"는 다르다.** (2026-08-19 8차, 사용자 신고)
+ *
+ * 지금까지 살아 있는지는 **클라이언트가 5초마다 찍는 `seenAt`** 하나로만 판단했다.
+ * 그런데 브라우저는 탭이 뒤로 가면 타이머를 **1분에 한 번으로 조이고**, 폰에서 전화를
+ * 받으면 페이지를 아예 **얼려 버린다**(freeze). 그러면 멀쩡히 붙어 있는 사람도
+ * 신호가 끊긴 것처럼 보인다 — 사용자가 신고한 "잠깐 나갔다 오면 튕긴다"가 이 자리다.
+ *
+ * 그래서 **서버에게 직접 물어본다.** `onDisconnect` 는 RTDB 서버가 소켓이 끊긴 것을
+ * 감지했을 때 대신 실행하는 예약이다. 여기에 "끊긴 시각"을 찍게 해 두면:
+ *
+ *   · 탭만 숨었고 소켓은 살아 있다 → `offAt` 이 안 찍힌다 → **영원히 자리를 지킨다**
+ *   · 정말 끊겼다 → 서버가 그 순간을 찍는다 → 유예 시간이 **거기서부터** 흐른다
+ *   · 돌아왔다 → 다시 붙는 순간 지운다
+ *
+ * 타이머로 어림하는 것보다 정확하고, 무엇보다 **브라우저가 얼려도 서버는 안 얼린다.**
+ *
+ * 규칙에 `offAt` 이 아직 없으면 이 쓰기만 조용히 거부된다 — 그러면 예전처럼
+ * `seenAt` 만 보고 판단한다(§9-0-34 의 교훈: 새 필드는 항상 이렇게 넣는다).
+ */
+const presenceOff = new Map();
+
+export async function armPresence(code) {
+  const fb = await rt();
+  if (!fb) return;
+  const key = seatKey(fb.uid, code);
+  if (presenceOff.has(key)) return;
+  const ref = fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid, 'offAt'));
+
+  /**
+   * **다시 붙을 때마다 예약을 새로 건다.** `onDisconnect` 예약은 한 번 발동하면
+   * 사라지므로, 끊겼다 돌아온 뒤에 안 걸어 두면 그 다음 끊김은 아무도 모른다.
+   * `.info/connected` 는 붙을 때마다 true 로 다시 온다.
+   */
+  /**
+   * ★ **자리를 빼는 예약도 붙을 때마다 다시 취소한다.**
+   *
+   * 방에 들어올 때 `armDisconnect` 가 "끊기면 나를 `players` 에서 지워라"를 예약한다
+   * (유령 방을 막는 장치다). 게임이 시작되면 `holdRoomSeat` 가 그걸 취소하는데,
+   * 그 취소가 **끊기기 전에 서버에 닿지 못하면** 잠깐의 끊김 한 번으로 판에서
+   * 통째로 사라진다 — 돌아와도 방에 내가 없다. 그게 "튕김"의 가장 나쁜 형태다.
+   *
+   * 게다가 SDK 는 재접속 때 예약을 **다시 보낸다.** 그래서 한 번 취소한 것으로는
+   * 부족하고, 붙을 때마다 확인해야 한다. 이건 판이 도는 동안에만 돈다
+   * (대기방에서는 자동 이탈이 있어야 유령 방이 안 쌓인다).
+   */
+  const seat = fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid));
+  let off = null;
+  try {
+    off = fb.dbMod.onValue(fb.dbMod.ref(fb.rtdb, '.info/connected'), async (snap) => {
+      if (snap.val() !== true) return;
+      try { await fb.dbMod.onDisconnect(seat).cancel(); } catch { /* 무시 */ }
+      try {
+        await fb.dbMod.onDisconnect(ref).set(fb.dbMod.serverTimestamp());
+        // 돌아왔다 — 끊겼던 표시를 지운다
+        await withTimeout(fb.dbMod.set(ref, null), undefined, '자리 지킴 해제');
+      } catch { /* 규칙에 없으면 조용히 예전 방식으로 */ }
+    });
+  } catch { return; }
+  presenceOff.set(key, () => {
+    off?.();
+    try { fb.dbMod.onDisconnect(ref).cancel().catch(() => {}); } catch { /* 무시 */ }
+    withTimeout(fb.dbMod.set(ref, null), undefined, '자리 지킴 정리').catch(() => {});
+  });
+}
+
+/** 판이 끝났거나 방을 떠났다 — 자리 지킴을 끈다 */
+/**
+ * ★ **판 도중에 방에서 사라졌으면 다시 넣는다.** (2026-08-19 8차)
+ *
+ * 방에 들어올 때 걸어 둔 `onDisconnect(...).remove()` 는 게임이 시작되면 취소되지만,
+ * 그 취소가 끊기기 전에 서버에 닿지 못했거나 옛 클라이언트가 걸어 둔 예약이 남아 있으면
+ * **잠깐 끊긴 것만으로 `players/<나>` 가 통째로 지워진다.** 돌아와도 방에 내가 없으니
+ * 순위에도 못 들고 판돈도 못 받는다 — "튕김" 의 가장 나쁜 형태다.
+ *
+ * 그래서 진행도를 보낼 때마다 **내가 아직 명단에 있는지** 보고, 없으면 지금 상태
+ * 그대로 다시 넣는다. 순위가 이미 박혔으면 넣지 않는다(끝난 판에 끼어들면 안 된다).
+ * 규칙상 "내가 아직 없을 때만 나를 넣을 수 있다" 라 이 쓰기는 정상 입장과 같은 취급이다.
+ */
+export async function rejoinIfDropped(code, { stairs = 0, shoesFound = 0, alive = true, revives = 0 } = {}) {
+  const fb = await rt();
+  if (!fb) return false;
+  const room = (await readOnce(fb, path(ROOMS, code))).val;
+  if (!room) return false;
+  if (room.result?.rankings) return false;         // 이미 끝난 판
+  if (room.state !== 'playing' && room.state !== 'countdown') return false;
+  if (room.players?.[fb.uid]) return false;        // 멀쩡히 있다
+
+  const p = L.loadProfile();
+  const rec = { ...meRecord(p, fb), ready: true, stairs, shoesFound, alive };
+  if (revives > 0) rec.revives = revives;
+  try {
+    await withTimeout(fb.dbMod.set(
+      fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), rec), undefined, '자리 복구');
+    return true;
+  } catch { return false; }
+}
+
+export function disarmPresence(code) {
+  // 열쇠에 uid 가 붙어 있으므로 이 방의 것을 골라 낸다 (브라우저에서는 어차피 하나뿐)
+  for (const [key, stop] of [...presenceOff]) {
+    if (!key.endsWith(`|${code}`)) continue;
+    presenceOff.delete(key);
+    try { stop(); } catch { /* 무시 */ }
+  }
 }
 
 export function resetProgressThrottle() {

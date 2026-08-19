@@ -4,7 +4,7 @@
  */
 
 import { Rng } from '../core/rng.js';
-import { STAIR, CENTER_X, CHAR } from '../config/layout.js';
+import { STAIR, CENTER_X, CHAR, VIEW_H } from '../config/layout.js';
 import { SHOE_TIERS } from '../config/balance.js';
 import { SHOE } from '../config/layout.js';
 import { rect, strokeRect, draw, drawFrameAt, drawFrameAtFlipped } from '../core/sprite.js';
@@ -102,7 +102,13 @@ export class Stairs {
 
       const sx = this.xs[i] - camX + CENTER_X - (STAIR.w >> 1);
       const sy = CHAR.footY - k * STAIR.gapY;
-      if (sy < -STAIR.h - 40 || sy > 340) continue;
+      /**
+       * ★ 컷오프를 화면 경계로 조인다 (2026-08-19 8차).
+       * `-STAIR.h - 40` / `340` 은 여유를 40·20도트씩 둔 값이라 **1픽셀도 안 보이는
+       * 계단 3개**를 매 프레임 그리고 있었다(그림자·외곽선 fillRect 6 + drawImage 3).
+       * 계단은 축이 정확히 `sy` ~ `sy + STAIR.h` 라 여유가 필요 없다.
+       */
+      if (sy + STAIR.h < 0 || sy > VIEW_H) continue;
 
       // ── 가독성 보강: 드롭섀도 + 어두운 외곽선 ──
       // 배경(벽돌/나무)과 계단(회색 돌) 색이 겹쳐도 계단이 또렷하게 떠 보이게 한다.

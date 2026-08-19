@@ -80,6 +80,41 @@ export default function WaitingRoom(nav, params = {}) {
     Room.heartbeat(code).catch(() => {});
   }, MULTI.heartbeatMs);
 
+  /**
+   * ★ **대기방에서도 30초 규칙을 지킨다.** (2026-08-19 10차, 사용자 지정)
+   *
+   * 창을 내려두면 브라우저가 타이머를 얼려 신호가 끊긴다. 그동안 남들은 나를
+   * 유령으로 보고 치우므로(`purgeAbsent`), 30초를 넘겨 돌아왔다면 **이미 방에 없다.**
+   * 그 사실을 모르고 대기방 화면에 앉아 있으면 시작 버튼을 눌러도 아무 일이 안 난다 —
+   * 돌아오는 즉시 확인해서 로비로 보낸다.
+   */
+  let hiddenAt = 0;
+  const onVisible = () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    const 비운시간 = hiddenAt ? Date.now() - hiddenAt : 0;
+    hiddenAt = 0;
+    if (비운시간 > MULTI.absentSeconds * 1000) {
+      toast(S.kickedAbsent(MULTI.absentSeconds), 3200);
+      leave(true);
+      return;
+    }
+    Room.heartbeat(code).catch(() => {});
+  };
+  document.addEventListener('visibilitychange', onVisible);
+
+  /**
+   * ★ **유령 치우기와 내 카드 갱신은 방 스냅샷이 올 때만.** (2026-08-19 10차)
+   * 둘 다 서버 왕복이라 타이머로 돌리면 헛왕복이 쌓인다. 방이 바뀌었다는 건
+   * 무언가 실제로 일어났다는 뜻이므로 그때만 확인하면 충분하다.
+   */
+  let 마지막청소 = 0;
+  const 청소 = (r) => {
+    if (Date.now() - 마지막청소 < MULTI.heartbeatMs) return;
+    마지막청소 = Date.now();
+    Room.purgeAbsent(code, r).catch(() => {});
+    Room.refreshMyCard(code, r).catch(() => {});
+  };
+
   unsub = Room.subscribeRoom(code, (r) => {
     room = r;
     if (!r) {
@@ -114,6 +149,7 @@ export default function WaitingRoom(nav, params = {}) {
      * 실패하면(다른 사람이 같은 순간에 나가 규칙이 거부하는 등) 몇 초 뒤 다시 시도한다 —
      * 한 번 실패하고 멈추면 대기자는 그대로 갇힌다.
      */
+    청소(r);
     if (r.state === 'finished') tryReset(r);
     if (!launched && !meNow?.waiting && (r.state === 'countdown' || r.state === 'playing')) {
       launched = true;
@@ -145,6 +181,7 @@ export default function WaitingRoom(nav, params = {}) {
     unsub();
     clearInterval(beat);
     clearTimeout(resetTimer);
+    document.removeEventListener('visibilitychange', onVisible);
     release();
     if (alsoLeaveRoom && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
     nav.reset(Lobby);
@@ -166,6 +203,7 @@ export default function WaitingRoom(nav, params = {}) {
       unsub();
       clearInterval(beat);
       clearTimeout(resetTimer);
+      document.removeEventListener('visibilitychange', onVisible);
       release();
       if (!launched && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
     },

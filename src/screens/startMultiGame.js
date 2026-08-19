@@ -14,6 +14,10 @@ import { get as getProfile } from '../services/profile.js';
 import * as Room from '../services/multiplayer.js';
 import { currentUser } from '../services/auth.js';
 import MultiResult from './multi/MultiResult.js';
+import Lobby from './Lobby.js';
+import { toast } from './ui.js';
+import S from '../config/strings.ko.js';
+import { MULTI } from '../config/balance.js';
 
 export function startMultiGame(nav, { code, room }) {
   const p = getProfile();
@@ -55,6 +59,20 @@ export function startMultiGame(nav, { code, room }) {
       Scene.clear(); // 판은 끝났다 — 씬을 비운다 (안 그러면 결과 화면 뒤에서 계속 돈다)
       nav.reset(MultiResult, { code, result });
       Room.finalizeResult(code).catch(() => null);
+    },
+    /**
+     * ★ **30초 넘게 자리를 비웠다 — 로비로 내보낸다.** (2026-08-19 10차, 사용자 지정)
+     *
+     * 결과 화면이 아니라 **로비**인 이유: 그 판은 내가 뛰지 않은 판이 됐다(남들이 이미
+     * 나를 뺐다). 결과를 보여 줘 봐야 내 순위가 없고, 판돈 정산은 다음 접속의 청산이
+     * 마저 한다. 대신 **왜 나왔는지는 반드시 말해 준다** — 설명 없는 화면 전환은
+     * 고장으로 보인다.
+     */
+    onAbsent: () => {
+      exitFullscreen();
+      Scene.clear();
+      nav.reset(Lobby);
+      toast(S.kickedAbsent(MULTI.absentSeconds), 3200);
     },
   }));
   return true;

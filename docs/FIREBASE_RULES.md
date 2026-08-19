@@ -261,6 +261,9 @@ service cloud.firestore {
             "$other": {
               ".validate": false
             },
+            "offAt": {
+              ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
+            },
             "seenAt": {
               ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val() || (data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
             }

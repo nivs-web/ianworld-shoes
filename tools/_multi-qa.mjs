@@ -837,13 +837,20 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     M.isStale({}, Date.now() + 10 ** 9), false);
   eq('신호가 살아 있으면 안 뺀다', M.isStale({ seenAt: Date.now() }, Date.now() + 1000), false);
   eq('오래 끊기면 뺀다',
-    M.isStale({ seenAt: 0 + 1 }, 1 + MULTI.staleSeconds * 1000 + 1), true);
+    M.isStale({ seenAt: 0 + 1 }, 1 + MULTI.absentSeconds * 1000 + 1), true);
 
   // ④ 신호는 일시정지·부활 선택 중에도 간다 (그때는 계단이 안 바뀌어 쓰기가 없다)
   has('게임 화면이 주기적으로 보낸다', gs, 'MULTI.heartbeatMs');
   has('결과 화면도 보낸다', res, 'Room.heartbeat(code)');
   has('대기방도 보낸다', wr, 'Room.heartbeat(code)');
-  has('방에 없으면 안 보낸다 (유령 노드 방지)', gs, 'if (!this.room?.players?.[this.multi.myUid]) return;');
+  /**
+   * 8차: 방에 없으면 **그냥 넘기지 않고 자리를 되찾는다.** 유령 노드를 만들지 않는다는
+   * 원래 목적(= `heartbeat` 를 안 부른다)은 그대로다.
+   */
+  has('방에 없으면 신호를 안 보낸다 (유령 노드 방지)', gs, 'if (!room.players?.[this.multi.myUid]) {');
+  // 10차: 방을 아직 못 받았으면 **아무 판단도 안 한다** (헛왕복이 렉의 한 갈래였다)
+  has('방을 못 받았으면 판단하지 않는다', gs, 'const room = this.room;\n      if (!room) return;');
+  has('대신 자리를 되찾는다', gs, 'Room.rejoinIfDropped(this.multi.code, {');
 
   // ⑤ 다음 판 — 낡은 신호를 새로 찍고, 자리에 없는 사람은 데려가지 않는다
   has('되돌릴 때 신호를 새로 찍는다', mp, 'seenAt: fb.dbMod.serverTimestamp(),');
@@ -951,7 +958,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   ], 1), ['a', 'b']);
   eq('튕겨도 계단이 높으면 이긴다', M.rankPlayers([
     { uid: 'a', stairs: 70, alive: true, seenAt: 1000 },
-    { uid: 'b', stairs: 90, alive: true, seenAt: 1000 - MULTI.staleSeconds * 1000 - 1 },
+    { uid: 'b', stairs: 90, alive: true, seenAt: 1000 - MULTI.absentSeconds * 1000 - 1 },
   ], 1000), ['b', 'a']);
   eq('동점이면 판에 남아 있던 쪽', M.rankPlayers([
     { uid: 'a', stairs: 40, alive: false, out: true },
@@ -1074,7 +1081,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // 4차: 두 줄 7px → 한 줄 11px, 상금 문구는 인게임과 통일, 남은 신발 줄은 삭제
   eq('부활 버튼 한 줄', S.reviveWith(20), '신발 20개로 부활');
   eq('사망 화면 상금 = 인게임과 같은 문구', S.potWin(30), '1등하면 신발 30켤레!');
-  has('사망 화면이 상금을 크게', ov, 'S.potWin(potShoes(this.game.room))');
+  // 판돈은 이제 스냅샷 캐시를 거친다 (8차, 매 프레임 정산 계산을 돌리던 것)
+  has('사망 화면이 상금을 크게', ov, 'S.potWin(this.pot())');
+  has('판돈을 방 스냅샷마다만 센다', ov, 'if (this._potRoom !== room)');
 }
 
 // ── 29) 2026-08-19 배치 — 부활 알림 문구 · 죽은 등수 · 부활 원가 · 신발 이름 · 판중 습득 정산 ──
@@ -1559,6 +1568,145 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     const aq = fs.readFileSync('tools/_audio-qa.mjs', 'utf8');
     has('사운드 QA 가 목록을 소스에서 긁는다', aq, "readFileSync('src/audio/sfx.js', 'utf8').matchAll(");
     has('잠금 못 풀면 멈춘다', aq, '오디오 잠금을 못 풀었다');
+  }
+}
+
+{
+  console.log('\n37) ★ 잠깐 나갔다 와도 안 튕긴다 · 프레임 비용 (2026-08-19 8차)');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+
+  // ① 자리 지킴 — "조용하다"와 "끊겼다"를 가른다
+  {
+    const mp = fs.readFileSync('src/services/multiplayer.js', 'utf8');
+    has('끊긴 시각을 서버가 찍는다', mp, 'onDisconnect(ref).set(fb.dbMod.serverTimestamp())');
+    has('다시 붙으면 지운다', mp, "withTimeout(fb.dbMod.set(ref, null), undefined, '자리 지킴 해제')");
+    /**
+     * ★ 이게 이번 회차의 핵심이다. 자리를 빼는 예약을 **붙을 때마다** 취소하지 않으면
+     * 잠깐의 끊김 한 번으로 방에서 통째로 사라진다 — 시뮬에서 실제로 재현됐다.
+     */
+    has('자리 빼는 예약도 붙을 때마다 취소', mp, 'await fb.dbMod.onDisconnect(seat).cancel();');
+    has('예약 열쇠에 uid 가 들어간다', mp, 'const seatKey = (uid, code) =>');
+    has('명단에서 사라졌으면 되찾는다', mp, 'export async function rejoinIfDropped(');
+    has('끝난 판에는 안 들어간다', mp, "if (room.result?.rankings) return false;");
+
+    const mr = fs.readFileSync('src/services/matchRules.js', 'utf8');
+    has('끊긴 시각이 있으면 그걸 먼저 본다', mr, 'if (off) return now - off > 한계;');
+  }
+
+  // ② 임계값 — 얼린 페이지가 2분짜리 통화를 버텨야 한다
+  {
+    // 10차: 150/45 두 갈래를 **30초 하나로** 통일했다 (사용자 지정)
+    eq('자리 비움 판정 30초', MULTI.absentSeconds, 30);
+    eq('신호는 5초마다 — 30초면 여섯 번 연속 놓친 것', MULTI.absentSeconds / (MULTI.heartbeatMs / 1000), 6);
+  }
+
+  // ③ 돌아오는 순간 바로 신호
+  {
+    const gs = fs.readFileSync('src/game/GameScene.js', 'utf8');
+    has('화면이 돌아오면 즉시 보낸다', gs, "document.addEventListener('visibilitychange', this.onVisible)");
+    has('나갈 때 뗀다', gs, "document.removeEventListener('visibilitychange', this.onVisible)");
+    has('자리 지킴을 건다', gs, 'Room.armPresence(this.multi.code)');
+    has('판이 끝나면 끈다', gs, 'Room.disarmPresence(this.multi.code)');
+  }
+
+  // ④ 프레임 비용 — 오버레이가 캐시 없는 글자를 쓰면 안 된다
+  {
+    const ov = fs.readFileSync('src/game/overlays.js', 'utf8');
+    /**
+     * 오버레이는 아래 게임 화면과 **함께** 매 프레임 다시 그려진다. 캐시 없는 `text()` 로
+     * 그리면 외곽선 한 줄이 글리프당 fillRect 9벌이라 사망 패널 한 장이 3,647회였다(실측).
+     */
+    has('오버레이가 캐시본을 쓴다', ov, 'import { textCached as text, GLYPH_H }');
+    no('원본 text 를 따로 들여오지 않는다', ov, "import { text, GLYPH_H }");
+    has('판돈은 스냅샷마다만', ov, 'if (this._potRoom !== room)');
+    has('지갑은 바뀔 때만', ov, 'invalidateWallet()');
+    no('매 프레임 지갑을 읽지 않는다', ov, 'const have = getProfile().shoesOwned');
+
+    const hud = fs.readFileSync('src/game/multiHud.js', 'utf8');
+    has('순위 계산도 스냅샷마다만', hud, 'if (scene.rankRoom !== room)');
+    has('1등 계단 수도 캐시', hud, 'if (scene.gapRoom !== room)');
+    has('6칸 좌표는 모듈 상수', hud, 'const SEGS = (() => {');
+
+    const st = fs.readFileSync('src/game/stairs.js', 'utf8');
+    has('화면 밖 계단은 안 그린다', st, 'if (sy + STAIR.h < 0 || sy > VIEW_H) continue;');
+
+    const bg = fs.readFileSync('src/game/background.js', 'utf8');
+    has('덮이는 하늘은 안 칠한다', bg, 'if (!tile || !f1 || !road) rect(0, 0, VIEW_W, VIEW_H, PAL.skyFallback);');
+    has('구름 좌표는 모듈 상수', bg, 'const CLOUD_SPOTS = [');
+  }
+
+  // ⑤ 접속 속도 — 기다리는 동안 볼 것이 있어야 하고, 안 쓸 그림을 기다리지 않는다
+  {
+    const main = fs.readFileSync('src/main.js', 'utf8');
+    // 부트 화면을 끄는 것이 첫 화면을 띄운 **뒤**여야 빈 화면 구간이 없다
+    eq('첫 화면을 띄운 뒤에 부트 화면을 끈다',
+      main.indexOf('nav.reset(routeFor(u))') < main.lastIndexOf('hideBoot();'), true);
+
+    const gs = fs.readFileSync('src/game/GameScene.js', 'utf8');
+    has('층수 배경은 뒤에서 받는다', gs, 'loadAll(FLOOR_BACKGROUNDS.map(');
+    no('층수 배경을 시작 목록에 넣지 않는다', gs, '...FLOOR_BACKGROUNDS.map((f) => ({ key: f.key, url: floorAsset(f.key) })),');
+    has('조작 버튼은 쓰는 것만', gs, '...buttonAssets(this.controlMode),');
+
+    const pf = fs.readFileSync('src/services/profile.js', 'utf8');
+    has('프로필·도감을 동시에 당긴다', pf, 'await Promise.all([');
+  }
+}
+
+{
+  console.log('\n38) ★ 30초 규칙 · 유령 방 청소 · 보유 신발 갱신 (2026-08-19 10차)');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const mp = fs.readFileSync('src/services/multiplayer.js', 'utf8');
+
+  // ① 30초 하나로 통일 — 판정과 화면이 같은 숫자를 봐야 어긋나지 않는다
+  {
+    const mr = fs.readFileSync('src/services/matchRules.js', 'utf8');
+    has('판정이 30초 상수를 쓴다', mr, 'const 한계 = MULTI.absentSeconds * 1000;');
+    no('갈라져 있던 두 상수는 없다', mr, 'offlineGraceSeconds');
+    const bal = fs.readFileSync('src/config/balance.js', 'utf8');
+    no('밸런스에도 남아 있지 않다', bal, 'staleSeconds');
+
+    const gs = fs.readFileSync('src/game/GameScene.js', 'utf8');
+    has('화면도 같은 숫자로 판단한다', gs, '비운시간 > MULTI.absentSeconds * 1000');
+    has('30초를 넘기면 스스로 나간다', gs, 'kickOut()');
+    has('나가면서 도장을 찍는다', gs, 'Room.markOut(code)');
+    has('자리도 비운다', gs, 'Room.leaveRoom(code)');
+    const sm = fs.readFileSync('src/screens/startMultiGame.js', 'utf8');
+    has('로비로 보낸다', sm, 'nav.reset(Lobby)');
+    has('왜 나왔는지 말해 준다', sm, 'S.kickedAbsent(MULTI.absentSeconds)');
+    const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
+    has('대기방도 같은 규칙', wr, '비운시간 > MULTI.absentSeconds * 1000');
+  }
+
+  // ② 유령 방 — 창을 내려두면 소켓이 살아 있어 onDisconnect 가 안 터진다
+  {
+    has('보고 있는 사람이 치운다', mp, 'export async function purgeAbsent(');
+    has('대기 중인 방에서만', mp, "if (!room || room.state !== 'waiting') return 0;");
+    has('방장 승계까지 한 번의 쓰기로', mp, "if (나갈사람.includes(room.hostUid)) patch.hostUid = 남는사람[0];");
+    has('전원 유령인 대기방은 방째로 지운다', mp, 'const 전원유령 = (r) => {');
+    has('목록에서도 감춘다', mp, 'return !list.length || list.some((v) => !isStale(v, 지금));');
+    // 판이 도는 방은 절대 안 지운다 — 진행 중인 게임이 통째로 사라진다
+    has('전원 유령 판정은 waiting 만', mp, "if (r.state !== 'waiting') return false;");
+    const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
+    has('대기방이 스냅샷마다 치운다', wr, 'Room.purgeAbsent(code, r)');
+    // 서버 왕복이라 스냅샷마다 무조건 부르면 헛왕복이 쌓인다
+    has('청소는 스로틀', wr, '마지막청소 < MULTI.heartbeatMs');
+  }
+
+  // ③ 보유 신발 수 — 입장 시점 스냅샷이 판이 끝나도 안 바뀌던 문제
+  {
+    has('내 카드만 다시 쓴다', mp, 'export async function refreshMyCard(');
+    has('방에 없으면 안 쓴다 (유령 노드 방지)', mp, 'if (!mine) return false;');
+    has('값이 같으면 안 쓴다', mp, 'if (next.shoesOwned === mine.shoesOwned');
+    const res = fs.readFileSync('src/screens/multi/MultiResult.js', 'utf8');
+    has('정산 직후 갱신', res, 'Room.refreshMyCard(code)');
+    const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
+    // 이미 들고 있는 스냅샷을 넘긴다 — 5초마다 헛왕복을 만들지 않는다
+    has('대기방에서도 갱신', wr, 'Room.refreshMyCard(code, r)');
+    has('스냅샷을 재활용한다', mp, 'const mine = known');
   }
 }
 

@@ -1,0 +1,95 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>프레임 비용 측정 (진단 전용)</title>
+<style>body{margin:0;background:#111;color:#ddd;font:13px monospace}canvas{display:none}</style>
+</head><body><canvas id="game" width="180" height="320"></canvas>
+<script type="module">
+/**
+ * 프레임 비용 측정 — `npm run perf:frame`
+ *
+ * "버벅인다"는 신고는 **숫자 없이는 고칠 수 없다.** 화면을 눈으로 보면
+ * 60fps 도 55fps 도 똑같아 보이고, 고친 뒤에 나아졌는지도 알 수 없다.
+ * 그래서 실제 렌더 함수를 가짜 상태로 N번 돌려 **한 프레임에 몇 ms 를 쓰는지**,
+ * 그리고 그 안에서 `fillRect` 를 몇 번 부르는지 센다.
+ *
+ * fillRect 를 세는 이유: 이 게임의 렌더 비용은 거의 전부 **글자**다.
+ * 외곽선이 붙은 글리프 하나가 fillRect 9벌이라 줄 몇 개로 수천 번이 된다.
+ */
+import { initCanvas, getCtx } from '/src/core/canvas.js';
+import { glyphCacheSize, GLYPH_CACHE_MAX } from '/src/core/pixelfont.js';
+import { loadAll } from '/src/core/assets.js';
+import { multiHud, multiGhosts } from '/src/game/multiHud.js';
+import * as Overlays from '/src/game/overlays.js';
+
+initCanvas();
+const ctx = getCtx();
+
+// ── 호출 계수기: 실제 캔버스 API 를 감싼다 (렌더 결과는 그대로 나온다)
+const counts = { fillRect: 0, drawImage: 0, save: 0 };
+for (const k of Object.keys(counts)) {
+  const orig = ctx[k].bind(ctx);
+  ctx[k] = (...a) => { counts[k]++; return orig(...a); };
+}
+const resetCounts = () => { for (const k of Object.keys(counts)) counts[k] = 0; };
+
+const chars = ['ian', 'denny', 'rose', 'tony'];
+await loadAll(chars.flatMap((id) => [
+  { key: `${id}_face`, url: `/assets/characters/${id}_face.png` },
+  { key: `${id}_front`, url: `/assets/characters/${id}_front.png` },
+]).concat([
+  { key: 'stair', url: '/assets/ui/stair.png' },
+])).catch(() => {});
+
+const now = Date.now();
+const scene = {
+  floor: 320, charId: 'ian', mySlot: 0, myRevives: 2, multi: { myUid: 'a', code: '1234' },
+  countdownMs: 0, shoesFound: 3, difficulty: 'normal',
+  stairs: { worldX: (f) => f * 30, nextDir: () => 1, ensure() {} },
+  room: { players: {
+    a: { stairs: 320, alive: true, revives: 2, seenAt: now },
+    b: { stairs: 300, alive: true, revives: 1, seenAt: now },
+    c: { stairs: 350, alive: false, revives: 4, deadAt: now - 3000, seenAt: now },
+    d: { stairs: 290, alive: true, revives: 6, seenAt: now },
+  }, result: { given: { a: new Array(40).fill(1), b: new Array(20).fill(1) } } },
+  opponents: [
+    { id: 'b', characterId: 'denny', slot: 1, stairs: 300, revives: 1, alive: true },
+    { id: 'c', characterId: 'rose', slot: 2, stairs: 350, revives: 4, alive: false, deadAt: now - 3000 },
+    { id: 'd', characterId: 'tony', slot: 3, stairs: 290, revives: 6, alive: true },
+  ],
+  ticker: [
+    { msg: '파란색이 떨어졌다!', color: '#D42B2B', until: now + 9e5 },
+    { msg: '노란색 1등 부활!', color: '#F2C23C', until: now + 9e5 },
+  ],
+};
+
+// 사망 오버레이 — 실제로 게임이 만드는 것과 같은 인자
+const death = new Overlays.MultiDeathOverlay(scene);
+const pause = new Overlays.PauseOverlay({ multi: true, leave() {} });
+const over = new Overlays.GameOverOverlay({ floor: 999, shoesFound: 12, leave() {} }, 1200);
+
+/** 한 항목을 N번 돌려 프레임당 ms 와 호출 수를 잰다 */
+function bench(label, fn, n = 300) {
+  fn(); // 워밍업 (첫 호출의 캐시 채우기를 빼고 잰다 — 정상 프레임을 재는 게 목적이다)
+  resetCounts();
+  const t0 = performance.now();
+  for (let i = 0; i < n; i++) fn();
+  const ms = (performance.now() - t0) / n;
+  return { label, ms: Number(ms.toFixed(3)),
+    fillRect: Math.round(counts.fillRect / n), drawImage: Math.round(counts.drawImage / n) };
+}
+
+const rows = [];
+rows.push(bench('멀티 HUD (4인)', () => { multiGhosts(scene); multiHud(scene); }));
+rows.push(bench('멀티 사망 패널', () => death.render()));
+rows.push(bench('일시정지 패널', () => pause.render()));
+rows.push(bench('게임오버 패널', () => over.render()));
+rows.push(bench('멀티 HUD + 사망 패널', () => { multiGhosts(scene); multiHud(scene); death.render(); }));
+
+/**
+ * 글리프 캐시가 **넘치면 캐시가 오히려 손해다** — 매 프레임 오래된 것을 버리고 다시 굽는다
+ * (실제로 상한이 96 이던 시절에 그랬다, §9-0-25). 그래서 점유율도 같이 잰다.
+ */
+window.__perf = rows;
+window.__glyphs = { used: glyphCacheSize(), max: GLYPH_CACHE_MAX };
+document.body.append(Object.assign(document.createElement('pre'),
+  { textContent: rows.map((r) => `${r.label.padEnd(22)} ${String(r.ms).padStart(7)}ms  fillRect ${String(r.fillRect).padStart(5)}  drawImage ${String(r.drawImage).padStart(4)}`).join('\n') }));
+window.__ready = true;
+</script></body></html>

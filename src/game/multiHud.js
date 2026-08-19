@@ -69,6 +69,23 @@ const RACE_CY = 133;
  */
 const TICK_GAP = 10;
 
+/**
+ * 6칸 테두리의 칸 좌표(상자 왼쪽 위 기준). 위 2칸 · 오른쪽 1칸 · 아래 2칸 · 왼쪽 1칸을
+ * 시계 방향으로 **왼쪽 위부터** 채운다 — 남은 칸이 앞쪽에 몰려 있어야 세기 쉽다.
+ */
+const HALF = CELL >> 1;                        // 11
+const SEGS = (() => {
+  const half = HALF;
+  return [
+    [0, 0, half, BORDER],                               // 위 왼쪽
+    [half, 0, CELL - half, BORDER],                     // 위 오른쪽
+    [CELL - BORDER, 0, BORDER, CELL],                   // 오른쪽
+    [half, CELL - BORDER, CELL - half, BORDER],         // 아래 오른쪽
+    [0, CELL - BORDER, half, BORDER],                   // 아래 왼쪽
+    [0, 0, BORDER, CELL],                               // 왼쪽
+  ];
+})();
+
 /** 등수 글씨는 얼굴 상자 왼쪽에 */
 const RANK_X = RACE_CX - (CELL >> 1) - 3;
 
@@ -281,14 +298,27 @@ function drawRaceGauge(scene, list) {
  * 화면에서 1등이던 사람이 결과에서 2등이면 그건 그냥 거짓말이다.
  */
 function rankOf(scene) {
-  const players = scene.room?.players ?? {};
-  const order = rankPlayers(
-    Object.entries(players).filter(([, v]) => !v?.waiting).map(([uid, v]) => ({ uid, ...v })),
-    Date.now() + serverOffsetSync()
-  );
-  const out = {};
-  order.forEach((uid, i) => { out[uid] = i + 1; });
-  return out;
+  const room = scene.room;
+  /**
+   * ★ **방 스냅샷마다 한 번만 센다.** (2026-08-19 8차)
+   *
+   * `rankPlayers` 는 정렬 + `outOfRound`/`isStale`/`reviveExpired` 판정까지 도는
+   * **정산 로직**이다. 그게 렌더 안에 있어서 초당 60번 돌았다 — 그런데 방 스냅샷은
+   * 초당 최대 13회만 온다(진행도 300ms 스로틀). 나머지 47번은 같은 답을 다시 구한 것이다.
+   * 인당 객체 스프레드까지 하므로 GC 압력도 여기서 제일 컸다.
+   */
+  if (scene.rankRoom !== room) {
+    scene.rankRoom = room;
+    const players = room?.players ?? {};
+    const order = rankPlayers(
+      Object.entries(players).filter(([, v]) => !v?.waiting).map(([uid, v]) => ({ uid, ...v })),
+      Date.now() + serverOffsetSync()
+    );
+    const out = {};
+    order.forEach((uid, i) => { out[uid] = i + 1; });
+    scene.rankMap = out;
+  }
+  return scene.rankMap;
 }
 
 /**
@@ -354,24 +384,22 @@ function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, count
    * 6칸 테두리 — 위 2칸, 오른쪽 1칸, 아래 2칸, 왼쪽 1칸.
    * 시계 방향으로 **왼쪽 위부터** 채운다(남은 칸이 앞쪽에 몰려 있어야 세기 쉽다).
    */
-  const half = CELL >> 1;                       // 11
-  const segs = [
-    [x, y, half, BORDER],                              // 위 왼쪽
-    [x + half, y, CELL - half, BORDER],                // 위 오른쪽
-    [x + CELL - BORDER, y, BORDER, CELL],              // 오른쪽
-    [x + half, y + CELL - BORDER, CELL - half, BORDER],// 아래 오른쪽
-    [x, y + CELL - BORDER, half, BORDER],              // 아래 왼쪽
-    [x, y, BORDER, CELL],                              // 왼쪽
-  ];
+  /**
+   * 칸 좌표는 **상자 기준 상대값**이라 사람마다 같다 — 모듈 상수로 한 번만 만든다.
+   * (예전엔 인당 배열 7개를 새로 만들어 4인이면 프레임당 28개였다)
+   */
   const 남은칸 = Math.max(0, MULTI.maxRevives - revives);
-  segs.forEach(([sx, sy, sw, sh], n) => rect(sx, sy, sw, sh, n < 남은칸 ? on : off));
+  for (let n = 0; n < SEGS.length; n++) {
+    const [dx0, dy0, sw, sh] = SEGS[n];
+    rect(x + dx0, y + dy0, sw, sh, n < 남은칸 ? on : off);
+  }
   /**
    * 칸 사이 1도트 구분선. 없으면 테두리가 그냥 한 줄로 보여서 **몇 칸 남았는지 셀 수가 없다**
    * (미리보기로 확인했다). 이 구분선이 "6칸짜리 목숨"이라는 걸 읽히게 만든다.
    */
   const cut = PAL.textShadow;
-  rect(x + half, y, 1, BORDER, cut);
-  rect(x + half, y + CELL - BORDER, 1, BORDER, cut);
+  rect(x + HALF, y, 1, BORDER, cut);
+  rect(x + HALF, y + CELL - BORDER, 1, BORDER, cut);
   rect(x + CELL - BORDER, y, BORDER, 1, cut);
   rect(x + CELL - BORDER, y + CELL - 1, BORDER, 1, cut);
   rect(x, y, BORDER, 1, cut);
@@ -460,10 +488,20 @@ function drawGapLine(scene) {
   if (scene.countdownMs > 0) return;
   const room = scene.room;
   if (!room) return;
-  const 최고 = Object.entries(room.players ?? {})
-    .filter(([, v]) => !v?.waiting)
-    .reduce((m, [, v]) => Math.max(m, v.stairs ?? 0), 0);
-  const 차이 = 최고 - (scene.floor | 0);
+  /**
+   * 1등 계단 수도 **방이 바뀔 때만** 다시 구한다 (판돈 줄과 같은 이유).
+   * 내 계단 수는 매 프레임 바뀌므로 뺄셈만 남긴다 — 그건 공짜다.
+   */
+  if (scene.gapRoom !== room) {
+    scene.gapRoom = room;
+    let top = 0;
+    for (const v of Object.values(room.players ?? {})) {
+      if (v?.waiting) continue;
+      if ((v?.stairs ?? 0) > top) top = v.stairs ?? 0;
+    }
+    scene.gapTop = top;
+  }
+  const 차이 = (scene.gapTop | 0) - (scene.floor | 0);
   /**
    * 7px + 그림자 → **11px + 외곽선** (2026-08-19 사용자 요청).
    * 외곽선은 글리프를 8방향으로 한 번 더 찍으므로 배경색이 무엇이든 글자가 뜬다.

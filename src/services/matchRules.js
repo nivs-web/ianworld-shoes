@@ -177,9 +177,25 @@ export function outOfRound(player, now) {
  * 판정하지 않는다 — 모르는 것을 근거로 남을 판에서 빼면 안 된다.
  */
 export function isStale(player, now) {
+  /**
+   * ★ **끊긴 시각이 있으면 그걸 먼저 본다.** (2026-08-19 8차)
+   *
+   * `offAt` 은 **서버가** 소켓이 끊긴 순간에 찍는 값이다(`multiplayer.armPresence`).
+   * 이게 있으면 어림할 이유가 없다 — 유예는 그 시각부터 센다.
+   *
+   * `offAt` 이 없다는 건 **아직 붙어 있다**는 뜻이다. 탭이 뒤로 가서 조용할 뿐인
+   * 사람을 판에서 빼면 안 된다 — 그게 바로 "잠깐 나갔다 오면 튕긴다"였다.
+   * 그래서 아래 `seenAt` 판정은 **자리 지킴이 없는 옛 클라이언트를 위한 안전망**이고,
+   * 그만큼 넉넉하게 잡는다.
+   */
+  const 한계 = MULTI.absentSeconds * 1000;
+
+  const off = player?.offAt ?? 0;
+  if (off) return now - off > 한계;
+
   const seen = player?.seenAt ?? 0;
   if (!seen) return false;
-  return now - seen > MULTI.staleSeconds * 1000;
+  return now - seen > 한계;
 }
 
 /**

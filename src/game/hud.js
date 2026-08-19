@@ -77,11 +77,18 @@ export function renderHud(s) {
  * 조작 모드별 아이콘 배치 (기획서 §4-2)
  *   1: 전환 · 상승   2: 상승 · 전환   3: 좌상승 · 우상승
  */
-const BTN_ICONS = {
+export const BTN_ICONS = {
   1: ['btn_turn', 'btn_up'],
   2: ['btn_up', 'btn_turn'],
   3: ['btn_left', 'btn_right'],
 };
+
+/**
+ * 그 모드가 실제로 쓰는 버튼 그림만 — 네 장을 다 받을 이유가 없다.
+ * (모드 3이면 `btn_turn`·`btn_up` 1,790B 가 통째로 낭비였다)
+ */
+export const buttonAssets = (mode) =>
+  (BTN_ICONS[mode] ?? BTN_ICONS[1]).map((key) => ({ key, url: `/assets/ui/${key}.png` }));
 
 function renderButtons(mode) {
   const icons = BTN_ICONS[mode] ?? BTN_ICONS[1];

@@ -203,6 +203,12 @@ export const S = {
   needMorePlayers: '2명 이상이어야 시작할 수 있습니다',
   notEveryoneReady: '아직 레디하지 않은 사람이 있습니다',
   waitingHostSelf: '모두 레디하면 시작할 수 있습니다',
+  /**
+   * 30초 넘게 자리를 비워 판에서 빠졌을 때 (2026-08-19 10차).
+   * 이유를 말하지 않으면 사용자는 "갑자기 튕겼다"로 받아들인다 — 같은 현상이라도
+   * 설명이 있으면 규칙이고 없으면 버그다.
+   */
+  kickedAbsent: (sec) => `${sec}초 넘게 자리를 비워 게임에서 나왔습니다`,
   roomClosed: '방이 사라졌습니다',
   roomAlreadyStarted: '이미 시작한 방입니다',
   multiResultTitle: '게임 결과',

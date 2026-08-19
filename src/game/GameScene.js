@@ -19,7 +19,7 @@ import { BUILDINGS, buildingAssets, floorAsset, FLOOR_BACKGROUNDS } from '../dat
 import { Stairs } from './stairs.js';
 import { Player, P_STATE } from './player.js';
 import { Background } from './background.js';
-import { renderHud } from './hud.js';
+import { renderHud, buttonAssets } from './hud.js';
 import { PauseOverlay, ReviveOverlay, GameOverOverlay, MultiDeathOverlay } from './overlays.js';
 import { PAL } from './palette.js';
 import { get as getProfile, dexUnique } from '../services/profile.js';
@@ -41,6 +41,7 @@ export class GameScene {
    * @param {number} [opt.controlMode] 1|2|3
    * @param {number} [opt.startFloor] 엘리베이터로 건너뛴 시작 층수 (기획서 §5-8-1)
    * @param {(result:object, action:'home'|'retry')=>void} [opt.onFinish]
+   * @param {() => void} [opt.onAbsent] 30초 넘게 자리를 비워 판에서 빠졌다 (멀티)
    *        판이 끝났을 때. 'home'이면 로비로, 'retry'면 같은 설정으로 새 판.
    *        어느 쪽이든 **결과는 먼저 계정에 반영된다** — 다시하기를 눌렀다고
    *        방금 주운 신발이 사라지면 안 된다.
@@ -59,6 +60,8 @@ export class GameScene {
      * 부르는 콜백을 두고, 나중에 `leave()` 가 또 반영하지 않도록 `committed` 로 막는다.
      */
     this.onCommit = opt.onCommit ?? null;
+    /** 30초 넘게 자리를 비워 판에서 빠졌을 때 (멀티 전용, `kickOut`) */
+    this.onAbsent = opt.onAbsent ?? null;
     this.committed = false;
     /** 판이 끝났다 — 입력도 게이지도 멈춘다 (결과 확정을 기다리는 동안 계속 돌면 안 된다) */
     this.over = false;
@@ -141,12 +144,9 @@ export class GameScene {
       { key: `${pick.id}_road`, url: a.road },
       { key: `${pick.id}_floor1`, url: a.floor1 },
       { key: `${pick.id}_tile`, url: a.tile },
-      ...FLOOR_BACKGROUNDS.map((f) => ({ key: f.key, url: floorAsset(f.key) })),
       { key: 'stair', url: '/assets/ui/stair.png' },
-      { key: 'btn_turn', url: '/assets/ui/btn_turn.png' },
-      { key: 'btn_up', url: '/assets/ui/btn_up.png' },
-      { key: 'btn_left', url: '/assets/ui/btn_left.png' },
-      { key: 'btn_right', url: '/assets/ui/btn_right.png' },
+      // 조작 버튼은 **이 모드가 쓰는 두 장만** 받는다 (아래 주석)
+      ...buttonAssets(this.controlMode),
       { key: 'gauge_frame', url: '/assets/ui/gauge_frame.png' },
       { key: 'btn_pause', url: '/assets/ui/btn_pause.png' },
     ];
@@ -154,6 +154,19 @@ export class GameScene {
     loadAll(list).then(() => {
       this.ready = true;
     });
+
+    /**
+     * ★ **층수 배경 9장은 기다리지 않는다.** (2026-08-19 8차)
+     *
+     * 200층↑ 교체 배경 9장은 **115KB — 판 시작에 받는 전체(257KB)의 44%** 인데,
+     * 200층에 닿기 전에는 단 한 장도 안 그린다(`background.js` 가 `floor >= from`
+     * 일 때만 쓴다). 그걸 기다리느라 **모든 판의 시작이 늦어지고 있었다.**
+     *
+     * 그래서 뒤에서 받는다. 200층까지 오르는 데 최소 수십 초가 걸리므로 그때는 이미
+     * 도착해 있고, 혹시 없더라도 `img()` 가 null 을 주면 배경이 어두운 색으로
+     * 폴백할 뿐 게임은 멈추지 않는다(그 분기가 원래부터 있다).
+     */
+    loadAll(FLOOR_BACKGROUNDS.map((f) => ({ key: f.key, url: floorAsset(f.key) }))).catch(() => {});
 
     clearInput();
     this.bindInput();
@@ -184,13 +197,67 @@ export class GameScene {
      * 진행도 쓰기로는 부족하다 — 일시정지 중이거나 죽어서 부활을 고르는 20초 동안에는
      * 계단이 안 바뀌어 아무 쓰기도 안 나간다. 신호는 **씬이 살아 있는 한** 계속 간다.
      */
-    this.beat = setInterval(() => {
+    /** 마지막으로 "내가 방에 있다"가 확인된 시각 — 30초 판정의 기준 */
+    this.lastSeenOk = Date.now();
+    /** 화면을 내려둔 시각 (0 이면 보고 있다) */
+    this.hiddenAt = 0;
+
+    const beat = () => {
       if (this.over || this.leaving) return;
-      // **방에 내가 있을 때만 보낸다.** 방이 지워졌거나 내가 빠진 뒤에 쓰면
-      // `players/내uid/seenAt` 하나짜리 유령 노드를 새로 만들 수 있다.
-      if (!this.room?.players?.[this.multi.myUid]) return;
+      /**
+       * ★ **방을 아직 못 받았으면 아무 판단도 하지 않는다.** (2026-08-19 10차)
+       *
+       * 예전에는 `!this.room?.players?.[uid]` 하나로 판단해서, **첫 스냅샷이 오기 전에도
+       * "내가 빠졌다"로 읽고** 5초마다 방 전체를 다시 읽었다(`rejoinIfDropped`).
+       * 사용자가 신고한 "방금 만든 거 렉이 있는 것 같다"의 한 갈래가 이 헛왕복이다.
+       * 모르는 것을 근거로 움직이면 안 된다 — 방을 받은 뒤에만 따진다.
+       */
+      const room = this.room;
+      if (!room) return;
+
+      if (!room.players?.[this.multi.myUid]) {
+        /**
+         * 방에 내가 없다. 두 경우가 있고 **처방이 정반대**다.
+         *   · 30초 안: 잠깐 끊긴 사이에 예약이 나를 지운 것이다 → 자리를 되찾는다
+         *   · 30초 밖: 규칙대로 자리를 잃은 것이다 → 로비로 나간다
+         */
+        if (Date.now() - this.lastSeenOk <= MULTI.absentSeconds * 1000) {
+          Room.rejoinIfDropped(this.multi.code, {
+            stairs: this.floor, shoesFound: this.shoesFound,
+            alive: !this.player?.dead, revives: this.myRevives | 0,
+          }).catch(() => {});
+        } else {
+          this.kickOut();
+        }
+        return;
+      }
+      this.lastSeenOk = Date.now();
       Room.heartbeat(this.multi.code).catch(() => {});
-    }, MULTI.heartbeatMs);
+    };
+    this.beat = setInterval(beat, MULTI.heartbeatMs);
+
+    /**
+     * ★ **30초 안에 돌아오면 계속, 넘기면 로비로.** (2026-08-19 10차, 사용자 지정)
+     *
+     * 브라우저는 탭이 뒤로 가면 `setInterval` 을 **1분에 한 번**으로 조이고, 폰에서
+     * 전화를 받으면 페이지를 통째로 **얼린다.** 그러니 "얼마나 자리를 비웠나"는
+     * 타이머로 셀 수 없고, **화면이 내려간 시각과 돌아온 시각의 차이**로 재야 한다.
+     *
+     * 30초를 넘겼으면 남들은 이미 나를 판에서 뺐다(`matchRules.isStale`, 같은 30초).
+     * 그 상태로 혼자 계단을 오르면 아무 의미가 없으므로 **스스로 정리하고 나간다** —
+     * 남들의 판정과 내 화면이 어긋나는 구간을 아예 만들지 않는다.
+     */
+    this.onVisible = () => {
+      if (document.hidden) { this.hiddenAt = Date.now(); return; }
+      const 비운시간 = this.hiddenAt ? Date.now() - this.hiddenAt : 0;
+      this.hiddenAt = 0;
+      if (비운시간 > MULTI.absentSeconds * 1000) return this.kickOut();
+      beat();
+    };
+    document.addEventListener('visibilitychange', this.onVisible);
+
+    // 서버가 끊김을 직접 찍게 해 둔다 — 타이머로 어림하지 않는다
+    Room.armPresence(this.multi.code).catch(() => {});
     Room.msUntilStart(this.multi.startAt ?? 0).then((ms) => {
       // 서버 시계로 다시 잰다. 내 시계가 몇 초 어긋나 있어도 여기서 바로잡힌다
       this.startAtLocal = Date.now() + Math.max(0, ms);
@@ -282,10 +349,7 @@ export class GameScene {
     if (this.over || this.leaving) return;   // 두 번 부르면 결과 화면이 두 개 뜬다
     this.over = true;
     Bgm.stopBgm();
-    this.roomUnsub?.();
-    this.roomUnsub = null;
-    clearInterval(this.beat);
-    this.beat = null;
+    this.exitMulti();
     Room.publishProgress(this.multi.code, {
       stairs: this.floor, shoesFound: this.shoesFound, alive: !this.player?.dead,
     }, true);
@@ -307,6 +371,12 @@ export class GameScene {
     this.roomUnsub = null;
     clearInterval(this.beat);
     this.beat = null;
+    if (this.onVisible) {
+      document.removeEventListener('visibilitychange', this.onVisible);
+      this.onVisible = null;
+    }
+    // 자리 지킴은 판이 끝나면 끈다 — 결과 화면·대기방에서는 끊겨도 방에서 빠지면 안 된다
+    if (this.multi?.code) Room.disarmPresence(this.multi.code);
   }
 
   resume() {
@@ -566,6 +636,29 @@ export class GameScene {
   bestSoFar() {
     const p = getProfile();
     return Math.max(p.bestByDifficulty?.[this.diff.id] ?? 0, this.floor);
+  }
+
+  /**
+   * ★ **30초 넘게 자리를 비웠다 — 판에서 나간다.** (2026-08-19 10차, 사용자 지정)
+   *
+   * 남들은 이미 나를 뺐으므로(같은 30초) 여기서 버티면 **화면과 서버가 다른 말을 한다.**
+   * 조용히 사라지지 않고 세 가지를 하고 나간다:
+   *   ① 판에서 손을 뗐다는 도장 — 남들이 나를 기다리지 않게 (`markOut`)
+   *   ② 자리 비우기 — 유령으로 남아 다음 판을 막지 않게 (`leaveRoom`)
+   *   ③ 왜 나왔는지 말해 주기 — 아무 설명 없이 로비면 그건 고장으로 보인다
+   *
+   * 정산은 다음 접속의 청산(`sweepUnsettled`)이 마저 한다. 내가 건 판돈은 방에 남아
+   * 있고 규칙상 방 밖에서도 도장을 찍을 수 있다(§9-0-22).
+   */
+  kickOut() {
+    if (this.over || this.leaving) return;
+    this.leaving = true;
+    Bgm.stopBgm();
+    this.exitMulti();
+    const code = this.multi.code;
+    Room.markOut(code).catch(() => {});
+    Room.leaveRoom(code).catch(() => {});
+    this.onAbsent?.();
   }
 
   /**

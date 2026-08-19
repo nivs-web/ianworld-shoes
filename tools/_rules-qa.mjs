@@ -66,6 +66,18 @@ for (const m of src.matchAll(/'players', fb\.uid\)\), \{([^}]*)\}/g)) {
   }
 }
 
+/**
+ * ★ **잎 하나만 따로 쓰는 경로도 본다.** (2026-08-19 8차)
+ * `path(ROOMS, code, 'players', fb.uid, 'offAt')` 처럼 필드를 직접 가리키는 쓰기는
+ * 위의 `update({...})` 패턴에 안 걸린다 — 자리 지킴(`offAt`)이 그렇게 들어왔다.
+ * 이런 건 `onDisconnect` 로 걸리는 경우가 많아 **실패해도 로그조차 안 남는다.**
+ */
+for (const m of src.matchAll(/'players', fb\.uid, '(\w+)'\)/g)) {
+  const k = m[1];
+  if (playerKeys.has(k)) ok(`참가자.${k} (잎 직접 쓰기)`);
+  else bad(`참가자.${k} — 규칙에 없다 (자리 지킴 쓰기가 조용히 거부된다)`);
+}
+
 /** 방 노드에 직접 `update` 하는 필드 */
 for (const m of src.matchAll(/path\(ROOMS, code\)\), \{([^}]*)\}/g)) {
   for (const k of [...m[1].matchAll(/(\w+):/g)].map((x) => x[1])) {

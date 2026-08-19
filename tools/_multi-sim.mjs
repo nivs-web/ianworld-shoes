@@ -31,7 +31,7 @@ const M = await import('../src/services/matchRules.js');
 const { MULTI } = await import('../src/config/balance.js');
 
 /** 신호가 확실히 끊긴 것으로 보이는 시간 */
-const 끊김 = (MULTI.staleSeconds + 30) * 1000;
+const 끊김 = (MULTI.absentSeconds + 30) * 1000;
 
 let fails = 0;
 const eq = (label, got, want) => {
@@ -110,6 +110,15 @@ async function startRound(w, hostP, others) {
   const code = await hostP.act(() => Room.createRoom({}));
   for (const o of others) await o.act(() => Room.joinRoom(code));
   await hostP.act(() => Room.startCountdown(code));
+  /**
+   * ★ 게임 화면이 시작할 때 하는 일을 **여기서도 한다.** (2026-08-19 8차)
+   * `startMultiGame` 은 판이 시작되면 자동 이탈 예약을 끄고(`holdRoomSeat`)
+   * 자리 지킴을 건다(`armPresence`). 시뮬이 그걸 빼먹으면 **실제와 다른 상태**로
+   * 검사하게 된다 — 실제로 이걸 넣자마자 "끊기면 방에서 통째로 사라진다"가 재현됐다.
+   */
+  for (const p of [hostP, ...others]) {
+    await p.act(async () => { await Room.holdRoomSeat(code); await Room.armPresence(code); });
+  }
   return code;
 }
 
@@ -564,12 +573,19 @@ console.log('\nS17) 나눠 낸 신발 — 부활 20켤레 걷은 뒤 기본 1켤
   eq('B = 40 - 20 - 1', B.wallet(), 19);
 }
 
-console.log('\nS18) 아무 순서로나 섞어도 신발은 생기지도 사라지지도 않는다 (무작위 60판)');
+/**
+ * 판 수와 시작 시드를 밖에서 정할 수 있다 — `SIM_ROUNDS=300 SIM_SEED=1000 npm run sim:multi`.
+ * 고정 60판만 돌면 **매번 똑같은 60판**이라 반복 실행에 아무 의미가 없다.
+ * 시드를 옮겨 가며 수백 판을 돌려야 순서 버그가 드러난다.
+ */
+const 판수 = Number(process.env.SIM_ROUNDS ?? 60);
+const 시드시작 = Number(process.env.SIM_SEED ?? 0);
+console.log(`\nS18) 아무 순서로나 섞어도 신발은 생기지도 사라지지도 않는다 (무작위 ${판수}판, 시드 ${시드시작}~)`);
 {
   let 어긋난판 = 0;
   let 안끝난판 = 0;
   let 최악 = null;
-  for (let seed = 0; seed < 60; seed++) {
+  for (let seed = 시드시작; seed < 시드시작 + 판수; seed++) {
     const rnd = rng(seed * 7919 + 13);
     const w = new World();
     const names = ['A', 'B', 'C'].slice(0, 2 + Math.floor(rnd() * 2));
@@ -591,6 +607,27 @@ console.log('\nS18) 아무 순서로나 섞어도 신발은 생기지도 사라�
         });
       }
     }
+    /**
+     * ★ **무작위 끊김·복귀** (2026-08-19 8차, 사용자 신고 반영)
+     * 전화를 받거나 앱을 전환하는 것이 실제 대전에서 제일 흔한 사건인데
+     * 시뮬에는 그 사건이 아예 없었다 — 없는 사건은 검사도 못 한다.
+     */
+    for (const p of ps) {
+      const r = rnd();
+      if (r < 0.25) {
+        w.db.dropConnection(p.uid);
+        advance(Math.floor(rnd() * 40000));              // 잠깐 자리를 비운다
+        if (rnd() < 0.7) {                                // 대부분은 돌아온다
+          w.db.restoreConnection(p.uid);
+          await p.act(async () => {
+            await new Promise((res) => setTimeout(res, 0));
+            await Room.rejoinIfDropped(code, { stairs: 5 }).catch(() => {});
+            await Room.heartbeat(code).catch(() => {});
+          });
+        }
+      }
+    }
+
     // 무작위 이탈 — 어떤 사람은 그냥 튕긴다(아무 쓰기 없이)
     const shuffled = [...ps].sort(() => rnd() - 0.5);
     for (const p of shuffled) {
@@ -610,7 +647,7 @@ console.log('\nS18) 아무 순서로나 섞어도 신발은 생기지도 사라�
     const room = w.db.read(`rooms/${code}`);
     if (room && !room.result?.rankings) 안끝난판++;
   }
-  eq('60판 전부 총량 보존', 어긋난판, 0);
+  eq(`${판수}판 전부 총량 보존`, 어긋난판, 0);
   eq('안 끝난 판 없음', 안끝난판, 0);
   if (최악) console.log('       예:', JSON.stringify(최악));
 }
@@ -923,6 +960,209 @@ console.log('\nS23) 판 도중 주운 신발 — 승자 자신의 몫은 중복�
   eq('패자 몫(0)만 더해졌다 — 승자는 판돈 1켤레만 받는다', A.wallet(), 21);
   eq('패자는 1켤레를 잃는다', B.wallet(), 19);
   eq('총량 보존 (패자의 주운 개수가 0 이므로 새로 굴린 신발도 0)', w.total(code), before);
+}
+
+console.log('\nS24) 30초 안에 돌아오면 계속 게임할 수 있다');
+{
+  /**
+   * ★ 사용자 신고: **"전화를 받거나 창 밖으로 잠깐 빠져나갔다가 돌아오면 거의 튕긴다"**
+   *
+   * 브라우저는 탭이 뒤로 가면 `setInterval` 을 1분에 한 번으로 조이고, 폰은 페이지를
+   * 아예 얼린다 — 그동안 `seenAt` 이 안 나간다. 예전 기준(90초)이면 2분짜리 통화 한 번에
+   * 판에서 빠졌다. 이제 **소켓이 살아 있으면(=`offAt` 이 없으면) 조용해도 자리를 지킨다.**
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 40, shoesFound: 0 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 60, shoesFound: 0 }, true));
+
+  // B 가 20초 동안 아무 신호도 못 보낸다 (문자를 확인하고 돌아온다)
+  advance(20000);
+  const 지금 = Date.now();
+  const room1 = w.db.read(`rooms/${code}`);
+  eq('30초 안이면 판에서 안 빠진다', M.outOfRound({ uid: 'B', ...room1.players.B }, 지금), false);
+  eq('그래서 판도 안 끝난다', M.roundOver(room1, 지금), false);
+
+  // 돌아왔다 — 신호를 보내고 계속 뛴다
+  await B.act(() => Room.heartbeat(code));
+  await B.act(() => Room.publishProgress(code, { stairs: 75, shoesFound: 2 }, true));
+  const room2 = w.db.read(`rooms/${code}`);
+  eq('돌아와서 계속 오른다', room2.players.B.stairs, 75);
+  eq('여전히 판 안에 있다', M.outOfRound({ uid: 'B', ...room2.players.B }, Date.now()), false);
+}
+
+console.log('\nS25) 정말 끊겼다 — 서버가 찍은 시각부터 유예가 흐른다');
+{
+  /**
+   * 자리 지킴의 반대쪽. 소켓이 죽으면 **서버가 그 순간을 `offAt` 에 찍는다.**
+   * 그러면 어림할 필요가 없다 — 유예(45초)가 지나면 판에서 뺀다.
+   * 예전 방식(마지막 신호로부터 90초)보다 **빠르고 정확하다.**
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 70, shoesFound: 0 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 30, shoesFound: 0 }, true));
+
+  w.db.dropConnection('B');                        // 소켓이 죽었다
+  const 끊긴직후 = w.db.read(`rooms/${code}`);
+  eq('서버가 끊긴 시각을 찍었다', typeof 끊긴직후.players.B.offAt, 'number');
+  eq('끊기자마자 빼지는 않는다', M.outOfRound({ uid: 'B', ...끊긴직후.players.B }, Date.now()), false);
+
+  advance((MULTI.absentSeconds + 5) * 1000);
+  const 유예후 = w.db.read(`rooms/${code}`);
+  eq('유예가 지나면 판에서 빠진다', M.outOfRound({ uid: 'B', ...유예후.players.B }, Date.now()), true);
+  eq('1:1 이라 판이 끝난다', M.roundOver(유예후, Date.now()), true);
+
+  // 계단이 높은 A 가 가져간다 (§9-0-30 사용자 확정 규칙)
+  const before = w.total(code);
+  await A.act(() => Room.finalizeResult(code));
+  const room = w.db.read(`rooms/${code}`);
+  eq('순위는 계단 순', room.result.rankings, ['A', 'B']);
+  await resultScreen(A, code);
+  await reboot(B);
+  eq('총량 보존', w.total(code), before);
+}
+
+console.log('\nS26) 돌아와서 다시 붙으면 끊김 표시가 지워진다');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  w.db.dropConnection('B');
+  advance(20000);                                   // 유예(45초) 안에 돌아온다
+  eq('아직 판 안에 있다',
+    M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), false);
+
+  // 다시 붙었다 — `.info/connected` 가 true 로 돌아오면 클라이언트가 알아서 정리한다
+  await B.act(async () => { w.db.restoreConnection('B'); await new Promise((r) => setTimeout(r, 0)); });
+  const room = w.db.read(`rooms/${code}`);
+  eq('끊김 표시가 지워졌다', room.players.B.offAt ?? null, null);
+  await B.act(() => Room.heartbeat(code));
+  advance(20000);
+  eq('그 뒤로는 30초 안이면 안 빠진다',
+    M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), false);
+}
+
+console.log('\nS27) 끊긴 사이에 방에서 지워졌다 — 돌아오면 자리를 되찾는다');
+{
+  /**
+   * 옛 클라이언트가 걸어 둔 `onDisconnect(...).remove()` 나, 취소가 서버에 닿기 전에
+   * 끊긴 경우 — **잠깐 끊긴 것만으로 `players/<나>` 가 통째로 지워진다.**
+   * 돌아와도 방에 내가 없으니 순위에도 못 들고 판돈도 못 받는다.
+   * 게임 화면의 생존 신호가 그 상태를 발견하면 **지금 진행도 그대로** 다시 넣는다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  await B.act(() => Room.publishProgress(code, { stairs: 44, shoesFound: 3 }, true));
+
+  // 옛 예약이 남아 있었다고 치고 강제로 지운다
+  w.db.write(`rooms/${code}/players/B`, null);
+  eq('방에서 사라졌다', w.db.read(`rooms/${code}/players/B`), null);
+
+  const 되찾음 = await B.act(() => Room.rejoinIfDropped(code, { stairs: 44, shoesFound: 3, alive: true }));
+  eq('자리를 되찾았다', 되찾음, true);
+  const me = w.db.read(`rooms/${code}/players/B`);
+  eq('진행도가 그대로', [me?.stairs, me?.shoesFound], [44, 3]);
+  eq('판에도 다시 들어갔다', M.playersInRound(w.db.read(`rooms/${code}`).players).length, 2);
+}
+
+console.log('\nS28) 이미 끝난 판에는 다시 들어가지 않는다');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  await quitMidGame(A, code, { stairs: 30 });
+  await quitMidGame(B, code, { stairs: 10 });
+  eq('순위가 박혔다', !!w.db.read(`rooms/${code}`).result?.rankings, true);
+
+  w.db.write(`rooms/${code}/players/B`, null);
+  const 되찾음 = await B.act(() => Room.rejoinIfDropped(code, { stairs: 10 }));
+  eq('끝난 판에는 안 들어간다', 되찾음, false);
+  eq('명단도 그대로', w.db.read(`rooms/${code}/players/B`), null);
+}
+
+console.log('\nS29) 방만 만들고 창을 닫은 사람 — 유령으로 안 남는다');
+{
+  /**
+   * ★ 사용자 신고: *"게임을 안하는 유저가 방 만들고 창을 닫거나 내려두면 (…)
+   * 유령처럼 남아있는 버그가 존재함"*
+   *
+   * `onDisconnect` 는 **소켓이 죽어야** 발동한다. 창을 내려두기만 하면 소켓은 살아
+   * 있으니 서버는 그 사람을 접속 중으로 본다 — 영원히 앉아서 레디를 안 누른다.
+   * 그래서 **방을 보고 있는 사람이 치운다.**
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });     // 방만 만들고 창을 내려둔 사람
+  const B = w.player('B', { shoes: 20 });
+  const code = await A.act(() => Room.createRoom({}));
+  await B.act(() => Room.joinRoom(code));
+
+  advance((MULTI.absentSeconds + 5) * 1000);  // A 의 신호가 끊긴 채 30초를 넘긴다
+  await B.act(() => Room.heartbeat(code));    // B 는 화면을 보고 있다
+
+  const 치움 = await B.act(() => Room.purgeAbsent(code));
+  eq('유령 한 명을 치웠다', 치움, 1);
+  const room = w.db.read(`rooms/${code}`);
+  eq('A 가 방에서 빠졌다', room.players?.A ?? null, null);
+  eq('B 는 그대로', !!room.players?.B, true);
+  eq('방장도 B 로 넘어갔다', room.hostUid, 'B');
+  eq('자리가 났으니 다시 열린다', room.open, true);
+}
+
+console.log('\nS30) 판이 도는 중에는 자리를 지운다 (순위·정산의 근거가 사라진다)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);    // state = countdown/playing
+  await A.act(() => Room.publishProgress(code, { stairs: 10, shoesFound: 0 }, true));
+  advance((MULTI.absentSeconds + 5) * 1000);
+
+  const 치움 = await A.act(() => Room.purgeAbsent(code));
+  eq('대기 중이 아니면 아무도 안 치운다', 치움, 0);
+  eq('B 는 방에 그대로 있다', !!w.db.read(`rooms/${code}`).players?.B, true);
+  // 대신 판정으로 빠진다 — 자리는 남기고 순위에서만 뺀다
+  eq('그래도 판에서는 빠진다',
+    M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now() ), true);
+}
+
+console.log('\nS31) 판이 끝나 신발이 오가면 카드의 보유 신발 수도 따라간다');
+{
+  /**
+   * ★ 사용자 신고: *"신발 200개를 갖고 있는 사람이 150개를 잃으면 (…)
+   * 이전 신발 갯수가 그대로 노출됨"*
+   * `shoesOwned` 는 입장 시점 스냅샷이라 판이 끝나도 안 바뀐다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  eq('입장 시점 스냅샷', w.db.read(`rooms/${code}/players/B`).shoesOwned, 20);
+
+  await quitMidGame(A, code, { stairs: 30 });
+  await quitMidGame(B, code, { stairs: 5 });
+  await resultScreen(A, code, { leave: false });
+  await resultScreen(B, code, { leave: false });   // B 가 1켤레 잃는다
+
+  eq('지갑은 실제로 줄었다', B.wallet(), 19);
+  eq('그런데 카드는 아직 옛 숫자', w.db.read(`rooms/${code}/players/B`).shoesOwned, 20);
+
+  const 갱신 = await B.act(() => Room.refreshMyCard(code));
+  eq('갱신했다', 갱신, true);
+  eq('카드도 새 숫자', w.db.read(`rooms/${code}/players/B`).shoesOwned, 19);
+
+  // 값이 같으면 헛쓰기를 하지 않는다 (대기방이 스냅샷마다 부른다)
+  eq('두 번째는 안 쓴다', await B.act(() => Room.refreshMyCard(code)), false);
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n시뮬레이션 이상 없음');

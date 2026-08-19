@@ -8,7 +8,21 @@
 import * as Scene from '../core/scene.js';
 import { consumeInput, clearInput, setTapHandler, BTN } from '../core/input.js';
 import { rect, strokeRect } from '../core/sprite.js';
-import { text, GLYPH_H } from '../core/pixelfont.js';
+/**
+ * ★ **오버레이도 캐시본으로 그린다.** (2026-08-19 8차)
+ *
+ * 오버레이는 씬 스택 위에 얹히므로 **아래 게임 화면과 함께 매 프레임 다시 그려진다**
+ * (`core/scene.js` renderAll). 그런데 여기 글자는 전부 `text()` 였다 — 외곽선이 붙으면
+ * 글리프 하나가 fillRect 9벌이라(`pixelfont.js` 주석) 멀티 사망 패널 한 장이
+ * **프레임당 3,647 fillRect** 였다(실측, `npm run perf:frame`). 초당 21만 번이다.
+ *
+ * 하필 이 화면은 **멀티에서 죽은 직후** — RTDB 왕복이 가장 바쁜 순간 — 에 뜬다.
+ * 사용자가 신고한 "멀티게임 작동시 버벅임"이 정확히 이 자리다.
+ *
+ * 내용은 초당 1회(카운트다운) 또는 아예 안 바뀌므로 캐시본이 맞다.
+ * `textCached` 는 `text` 와 인자가 같아서 이름만 바꿔 끼운다.
+ */
+import { textCached as text, GLYPH_H } from '../core/pixelfont.js';
 import * as Sfx from '../audio/sfx.js';
 import { VIEW_W, VIEW_H, GAMEOVER, PAUSE } from '../config/layout.js';
 import { REVIVE, MULTI } from '../config/balance.js';
@@ -61,7 +75,19 @@ export class PauseOverlay {
    * (멀티의 `onFinish` 는 `action` 을 무시하므로 '나가기'와 완전히 같다).
    * 그리고 나가기는 **한 번 더 눌러야** 나간다 — 지고 나서 되돌릴 방법이 없는 행동이다.
    */
+  /**
+   * ★ 항목을 **한 번만 만든다.** (2026-08-19)
+   * 게터라서 `render()` 2회 + `update()` 2회 = 프레임당 3~4번 배열·객체·클로저를
+   * 새로 만들고 있었다. 라벨이 바뀌는 건 `confirmExit` 하나뿐이라 그것만 다시 만든다.
+   */
   get items() {
+    if (this._items && this._itemsConfirm === this.confirmExit) return this._items;
+    this._itemsConfirm = this.confirmExit;
+    this._items = this.buildItems();
+    return this._items;
+  }
+
+  buildItems() {
     const resume = { label: S.resume, run: () => { Sfx.play('sfx_menu_back'); Scene.pop(); } };
     if (this.game.multi) {
       return [
@@ -372,6 +398,31 @@ export class MultiDeathOverlay {
     return Math.max(0, Math.ceil((this.endAt - Date.now()) / 1000));
   }
 
+  /**
+   * ★ **판돈과 지갑을 매 프레임 다시 세지 않는다.** (2026-08-19 8차)
+   *
+   * `potShoes()` 는 참가자 전원의 `given` 을 훑는 정산 계산이고, `getProfile()` 은
+   * **localStorage 를 읽어 JSON 을 파싱하고 신발 130칸을 순회**한다
+   * (`storageLocal.reconcile`). 그 둘이 `render()` 안에 있었으니 초당 60번씩 돌았다.
+   *
+   * 둘 다 **방 스냅샷이 바뀔 때만** 달라진다(지갑은 내가 부활을 눌렀을 때만).
+   * 그래서 방 객체의 정체성을 열쇠로 쓴다 — `subscribeRoom` 이 스냅샷마다 새 객체를
+   * 주므로 값이 바뀌면 반드시 열쇠도 바뀐다.
+   */
+  pot() {
+    const room = this.game.room;
+    if (this._potRoom !== room) { this._potRoom = room; this._pot = potShoes(room); }
+    return this._pot;
+  }
+
+  wallet() {
+    if (this._wallet === undefined) this._wallet = getProfile().shoesOwned ?? 0;
+    return this._wallet;
+  }
+
+  /** 지갑이 실제로 바뀌었을 때만 다시 읽는다 (부활 성공·실패 환불) */
+  invalidateWallet() { this._wallet = undefined; }
+
   async revive() {
     if (this.busy) return;
     // 이미 판이 끝나 결과 화면으로 가는 중이면 걸 이유가 없다 (걸어도 아무도 못 걷는다)
@@ -393,6 +444,7 @@ export class MultiDeathOverlay {
       return;
     }
     L.removeShoesByIndex(picked);
+    this.invalidateWallet();
 
     /**
      * ② 판돈과 부활을 **한 번의 쓰기로** 올린다(`reviveMe`). 전부 되거나 전부 안 된다.
@@ -402,6 +454,7 @@ export class MultiDeathOverlay {
     const floor = await Room.reviveMe(this.game.multi.code, picked).catch(() => null);
     if (floor == null) {
       L.addShoes(picked);
+      this.invalidateWallet();
       this.busy = false;
       this.msg = S.networkError;
       return;
@@ -480,7 +533,7 @@ export class MultiDeathOverlay {
      * 배경에 묻혀 "검은 숫자만 떠 있는" 것처럼 보였고, 부활 여부는 버튼이 활성인지로
      * 이미 알 수 있어서 정보가 겹쳤다(사용자 요청).
      */
-    text(S.potWin(potShoes(this.game.room)), 90, 154, {
+    text(S.potWin(this.pot()), 90, 154, {
       color: PAL.gaugeWarn, outline: PAL.textShadow, align: 'center' });
     /**
      * 그 바로 아래 **한 단계 작은 검은 글씨**로 내 잔고 (2026-08-19, 사용자 요청).
@@ -488,7 +541,7 @@ export class MultiDeathOverlay {
      * 패널 안이라 검은 글씨가 오히려 또렷하다. 걸지 말지 정하려면 "얼마 걸리나"와
      * "내가 얼마 가졌나"가 나란히 있어야 한다.
      */
-    const have = getProfile().shoesOwned ?? 0;
+    const have = this.wallet();
     text(S.myShoes(have), 90, 168, { color: PAL.boxLine, align: 'center', small: true });
 
     const 가능 = canRevive(this.me) && have >= MULTI.reviveCost && !this.busy;
