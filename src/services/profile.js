@@ -98,6 +98,13 @@ export async function pullAll() {
       selectedCharacter: stamped.selectedCharacter ?? '',
     }).catch(() => {});
   }
+  /**
+   * ★ **마지막 로그인 시각.** (2026-08-19 12차, 사용자 지정)
+   * 유저상태창 맨 아래 `마지막로그인: 2026.01.01 19:34` 에 쓴다. 접속 중인 사람은
+   * `presence` 가 알려 주므로(현재로그인중), 이 값은 **떠난 뒤에** 의미가 생긴다.
+   * 판마다가 아니라 접속 때 한 번만 쓴다 — 정확도는 충분하고 쓰기는 하루 몇 번이다.
+   */
+  pushRemote({ lastLoginAt: Date.now() }).catch(() => {});
   // 오프라인 동안 쌓인 기록을 이제 올린다
   Rank.flushQueued().catch(() => {});
   return stamped;

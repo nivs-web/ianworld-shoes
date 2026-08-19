@@ -232,14 +232,48 @@ console.log('\n9) 접속 표시 · 쪽지함 (2026-08-19 11차)');
     else bad('접속 목록을 아무도 못 읽는다');
 
     const w = I['.write'] ?? '';
-    // 보내기: 새 쪽지만 · 보낸이는 나 / 지우기: 받은 사람만
+    // 보내기: 새 쪽지만 · 보낸이는 나
     if (w.includes("!data.exists()") && w.includes("newData.child('from').val() == auth.uid")) {
       ok('쪽지 보내기 — 새 쪽지만, 보낸이 위조 불가');
     } else {
       bad('쪽지 — 남의 쪽지를 덮어쓰거나 보낸이를 위조할 수 있다');
     }
-    if (w.includes('!newData.exists()') && w.includes('auth.uid == $uid')) ok('쪽지 지우기 — 받은 사람만');
-    else bad('쪽지를 받은 사람이 지울 수 없다 (읽어도 계속 뜬다)');
+    /**
+     * 쪽지함이 **이력**이 되면서(2026-08-19 12차) 주인은 자기 함을 고칠 수 있어야 한다 —
+     * 읽음 표시·오래된 것 정리·보낸 사본 기록이 전부 여기로 들어온다.
+     */
+    if (w.includes('auth.uid == $uid')) ok('내 쪽지함은 내가 고친다 (읽음 표시·정리·보낸 사본)');
+    else bad('읽음 표시를 못 한다 — 읽은 쪽지가 로비마다 다시 뜬다');
+    // 받은 쪽지에 읽음 표시를 달 때 from 은 남의 uid 다 — 그대로면 통과해야 한다
+    if ((I.from?.['.validate'] ?? '').includes('newData.val() == data.val()')) {
+      ok('읽음 표시가 from 검증에 안 막힌다');
+    } else {
+      bad('읽음 표시가 from 검증에 막힌다 (받은 쪽지가 영원히 안 읽힘)');
+    }
+    for (const k of ['to', 'toName', 'out', 'read']) {
+      if (iKeys.has(k)) ok(`쪽지.${k}`);
+      else bad(`쪽지.${k} — 규칙에 없다 (이력·읽음 표시가 통째로 거부된다)`);
+    }
+
+    // 수신 거부 · 차단은 **규칙이** 막아야 한다 — 화면에서만 막으면 조작으로 뚫린다
+    const P2 = rules.prefs?.$uid;
+    if (!P2) bad('prefs 규칙이 없다 — 수신 거부·차단이 서버에서 안 막힌다');
+    else {
+      if (w.includes("child('accept').val() != false")) ok('수신 거부를 규칙이 막는다');
+      else bad('수신을 꺼도 쪽지가 들어온다');
+      // `== true` 로 쓰면 값이 없는 **신규 사용자 전원**이 쪽지를 못 받는다
+      if (!w.includes("child('accept').val() == true")) ok('기본값(없음)은 수신 허용');
+      else bad('accept 를 == true 로 봤다 — 설정을 안 만진 사람이 전부 막힌다');
+      if (w.includes("child('blocked').child(auth.uid).exists()")) ok('차단을 규칙이 막는다');
+      else bad('차단해도 그 사람 쪽지가 들어온다');
+      if ((P2.accept?.['.read'] ?? '').includes('auth != null')) ok('수신 여부는 보내는 사람이 읽는다');
+      else bad('수신 거부 이유를 보내는 사람에게 말해 줄 수 없다');
+      // 차단 목록이 공개되면 그 자체가 사고다
+      if ((P2.blocked?.['.read'] ?? '').includes('auth.uid == $uid')) ok('차단 목록은 본인만 읽는다');
+      else bad('차단 목록이 공개돼 있다');
+      if ((P2['.write'] ?? '').includes('auth.uid == $uid')) ok('수신 설정 — 본인만 쓴다');
+      else bad('남의 수신 설정을 바꿀 수 있다');
+    }
     if ((rules.inbox.$uid['.read'] ?? '').includes('auth.uid == $uid')) ok('쪽지함 — 본인만 읽는다');
     else bad('남의 쪽지함을 읽을 수 있다');
 

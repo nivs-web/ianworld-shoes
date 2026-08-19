@@ -11,6 +11,8 @@ import { el, button, backButton, screen, title } from './ui.js';
 import Controls from './Controls.js';
 import SoundSettings from './SoundSettings.js';
 import BgSettings from './BgSettings.js';
+import Inbox from './Inbox.js';
+import MessageSettings from './MessageSettings.js';
 
 export default function Settings(nav) {
   return {
@@ -21,6 +23,12 @@ export default function Settings(nav) {
         button(S.menuControls, () => nav.push(Controls)),
         button(S.menuSound, () => nav.push(SoundSettings)),
         button(S.menuSingleBg, () => nav.push(BgSettings)),
+        /**
+         * 쪽지 관련 둘 (2026-08-19 12차). 로비가 아니라 설정에 둔 이유는 사용자 지정이다 —
+         * 로비 메뉴는 이미 여섯 줄이라 한 줄만 더 붙어도 한 화면에 안 들어온다.
+         */
+        button(S.menuInbox, () => nav.push(Inbox)),
+        button(S.menuMsgAccept, () => nav.push(MessageSettings)),
 
         el('div.spacer'),
         backButton(S.back, () => nav.back())

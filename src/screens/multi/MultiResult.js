@@ -32,6 +32,7 @@ import { roundOver, potShoes, owedBy } from '../../services/matchRules.js';
 import { settleRoom } from '../../services/multiSettle.js';
 import { hold } from '../../core/hold.js';
 import WaitingRoom from './WaitingRoom.js';
+import { openUserCard } from '../UserCard.js';
 import Lobby from '../Lobby.js';
 
 /** 패자가 신발을 올리는 데 걸리는 시간은 보통 1~2초다. 그 창만 덮으면 된다. */
@@ -51,7 +52,16 @@ function rankRow({ uid, v, i, myUid, players, label }) {
   const ch = characterById(v.characterId);
   const slot = Math.max(0, Math.min(SLOT_COLORS.length - 1, slotIndex(players, uid)));
   const 남은칸 = Math.max(0, MULTI.maxRevives - (v.revives ?? 0));
-  return el('div.rank-row', { class: uid === myUid ? 'me' : '' }, [
+  /**
+   * ★ **결과 화면에서도 아이디를 누르면 유저상태창.** (2026-08-19 12차, 사용자 지정)
+   * *"게임이 끝나면 게임 결과 창에서는 아이디 눌러서 메세지 보낼 수 있음"* —
+   * 방금 같이 뛴 사람에게 말을 걸 수 있는 자리가 여기다. 대결신청은 뺀다
+   * (아직 이 방 안이라 새 방을 파면 유령 자리가 생긴다).
+   */
+  return el('div.rank-row', {
+    class: uid === myUid ? 'me' : '',
+    onclick: () => openUserCard({ ...v, uid }, { slot, challenge: false }),
+  }, [
     el('div.rank-no', label ?? S.rankTag(i + 1)),
     el('div.face-frame', { style: { '--slot': SLOT_COLORS[slot], '--dim': SLOT_DIM[slot] } }, [
       ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),

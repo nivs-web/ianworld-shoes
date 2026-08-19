@@ -350,10 +350,10 @@ service cloud.firestore {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         "$id": {
-          ".write": "auth != null && ((!data.exists() && newData.child('from').val() == auth.uid) || (!newData.exists() && auth.uid == $uid))",
+          ".write": "auth != null && (auth.uid == $uid || (!data.exists() && newData.child('from').val() == auth.uid && root.child('prefs').child($uid).child('accept').val() != false && !root.child('prefs').child($uid).child('blocked').child(auth.uid).exists()))",
           ".validate": "!newData.exists() || newData.hasChildren(['from', 'kind', 'at'])",
           "from": {
-            ".validate": "newData.isString() && newData.val() == auth.uid"
+            ".validate": "newData.isString() && (newData.val() == auth.uid || newData.val() == data.val())"
           },
           "fromName": {
             ".validate": "newData.isString() && newData.val().length <= 16"
@@ -370,9 +370,39 @@ service cloud.firestore {
           "at": {
             ".validate": "newData.isNumber()"
           },
+          "to": {
+            ".validate": "newData.isString() && newData.val().length <= 64"
+          },
+          "toName": {
+            ".validate": "newData.isString() && newData.val().length <= 16"
+          },
+          "out": {
+            ".validate": "newData.isBoolean()"
+          },
+          "read": {
+            ".validate": "newData.isBoolean()"
+          },
           "$other": {
             ".validate": false
           }
+        }
+      }
+    },
+    "prefs": {
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid",
+        "accept": {
+          ".read": "auth != null",
+          ".validate": "newData.isBoolean()"
+        },
+        "blocked": {
+          ".read": "auth != null && auth.uid == $uid",
+          "$other": {
+            ".validate": "newData.isBoolean()"
+          }
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },
@@ -484,6 +514,46 @@ service cloud.firestore {
 > **읽기 범위를 알고 둔다.** `presence` 는 로그인한 사람 전체에게 열려 있다.
 > 담긴 값은 닉네임·캐릭터·보유 신발·승패 — 전부 명예의 전당에 이미 공개되는 값이라
 > 새로 새어 나가는 정보는 없다. 이메일이나 uid 외의 식별자는 넣지 않는다.
+
+
+### `prefs` — 수신 설정과 차단 (2026-08-19 12차)
+
+*"'꺼짐'을 누르면 메세지나 1:1대결을 보낼 수 없어 (…) 차단 누르면 (…) 이 유저가 보내는
+메세지는 차단 되게끔"*
+
+**읽기 범위가 둘로 갈린다.** 이게 이 노드의 전부다.
+
+| | 누가 읽나 | 왜 |
+|---|---|---|
+| `prefs/$uid/accept` | **로그인한 누구나** | 보내는 사람이 이유를 알아야 `상대방에 메세지 수신 거부중` 이라고 말해 줄 수 있다 |
+| `prefs/$uid/blocked` | **본인만** | 차단 목록이 공개되면 그 자체가 사고다 |
+
+차단은 그래서 **화면이 아니라 규칙이 막는다.** `inbox/$uid/$id/.write` 에 두 항을 더했다:
+
+```
+root.child('prefs').child($uid).child('accept').val() != false
+&& !root.child('prefs').child($uid).child('blocked').child(auth.uid).exists()
+```
+
+클라이언트는 거부당했다는 사실만 보고 `상대방이 차단 설정을 했습니다` 로 옮긴다.
+목록을 못 읽으므로 **누가 나를 차단했는지 알아낼 방법이 없다** — 그게 맞다.
+
+> `accept.val() != false` 이지 `== true` 가 아니다. 값이 **없는 사람**(설정을 한 번도
+> 건드리지 않은 대다수)이 기본으로 받아야 하기 때문이다. `== true` 로 쓰면 신규 사용자
+> 전원이 쪽지를 못 받는다.
+
+### 쪽지함은 이제 **이력**이다 (2026-08-19 12차)
+
+읽은 쪽지를 지우던 것을 `read: true` 로 바꿨다(사용자 요청: 주고받은 것 전부 남기기).
+그래서 규칙 두 곳이 느슨해졌다 — 둘 다 **자기 쪽지함 안에서만** 이다.
+
+- `$id/.write` 첫 항이 `auth.uid == $uid` 다. 내 쪽지함은 내가 고친다(읽음 표시·정리·
+  보낸 사본). 남의 함에는 여전히 **새 쪽지를 만드는 것만** 되고 덮어쓰기는 안 된다.
+- `from` 검증에 `|| newData.val() == data.val()` 을 더했다. 안 그러면 **받은 쪽지에
+  읽음 표시를 다는 순간** `from` 이 내 uid 가 아니라서 거부된다.
+
+새 필드 넷: `to` · `toName` · `out`(보낸 사본 표시) · `read`.
+`$other: false` 라 **적지 않으면 그 쓰기가 통째로 거부된다** — 늘 그렇듯 여기가 제일 조심할 곳이다.
 
 ---
 

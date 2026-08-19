@@ -39,6 +39,19 @@ export function setDomBackHandler(fn) {
 }
 
 /**
+ * DOM 화면에서 **게임패드 방향키·확인 버튼**이 할 일. (2026-08-19 12차)
+ *
+ * 게임패드는 이벤트가 없어 매 프레임 폴링해야 하는데, 그 폴링은 여기(엔진)에만 있다.
+ * 화면 쪽(`screens/menuNav.js`)이 커서를 옮기므로 콜백으로 넘긴다 —
+ * 엔진이 DOM 을 직접 만지면 §6-3 의 경계가 무너진다.
+ * @type {((dir:'up'|'down'|'left'|'right'|'ok') => void) | null}
+ */
+let domNavHandler = null;
+export function setDomNavHandler(fn) {
+  domNavHandler = fn;
+}
+
+/**
  * 브라우저는 사용자 제스처 없이는 소리를 내지 않는다.
  * 어떤 입력이든 들어오면 그 자리에서 오디오를 깨운다. (제스처 핸들러 안이어야 한다)
  */
@@ -155,10 +168,13 @@ function onKeyUp(e) {
  * 선입력 버퍼가 순식간에 차서 조작이 밀린다.
  */
 const padWas = { L: false, R: false, pause: false };
+/** DOM 메뉴 커서용 게임패드 이전 상태 (눌린 순간만 보내려고 기억한다) */
+const padNav = { up: false, down: false, left: false, right: false, ok: false };
 
 export function pollGamepads() {
   if (typeof navigator.getGamepads !== 'function') return;
   let L = false, R = false, pause = false;
+  let navUp = false, navDown = false, navLeft = false, navRight = false, navOk = false;
 
   /**
    * 표준 게임패드 매핑(W3C) 기준 버튼 인덱스.
@@ -170,10 +186,19 @@ export function pollGamepads() {
   for (const gp of navigator.getGamepads()) {
     if (!gp) continue;
     const ax = gp.axes?.[0] ?? 0;
+    const ay = gp.axes?.[1] ?? 0;
     const b = gp.buttons ?? [];
     const on = (i) => !!b[i]?.pressed;
     pause = pause || on(9) || on(8);             // Start/Menu(≡) · Select/View(hamburger)
-    if (!enabled) continue;                      // 방향 조작은 게임 중일 때만 본다
+    if (!enabled) {
+      // DOM 화면 — 십자키·왼쪽 스틱은 메뉴 커서, A 는 선택
+      navUp = navUp || ay < -0.5 || on(12);
+      navDown = navDown || ay > 0.5 || on(13);
+      navLeft = navLeft || ax < -0.5 || on(14);
+      navRight = navRight || ax > 0.5 || on(15);
+      navOk = navOk || on(0);
+      continue;
+    }
     L = L || ax < -0.5 || on(14) || on(2) || on(3) || on(5) || on(7);   // 십자키←, X, Y, RB/R1, RT/R2
     R = R || ax > 0.5 || on(15) || on(0) || on(1) || on(4) || on(6);    // 십자키→, A, B, LB/L1, LT/L2
   }
@@ -189,7 +214,22 @@ export function pollGamepads() {
   }
   padWas.pause = pause;
 
-  if (!enabled) { padWas.L = false; padWas.R = false; return; }
+  /**
+   * ★ **DOM 화면에서는 방향키가 메뉴 커서다.** (2026-08-19 12차, 사용자 지정)
+   * 게임 입력이 꺼져 있을 때(`enabled === false`)만 돈다 — 인게임에서는 같은 십자키가
+   * 좌우 조작이라 겹치면 안 된다. 눌린 **순간에만** 한 번 보낸다(누르고 있는 동안
+   * 매 프레임 보내면 목록이 주르륵 흘러간다).
+   */
+  if (!enabled) {
+    padWas.L = false; padWas.R = false;
+    const nav = { up: navUp, down: navDown, left: navLeft, right: navRight, ok: navOk };
+    for (const [dir, on] of Object.entries(nav)) {
+      if (on && !padNav[dir]) domNavHandler?.(dir);
+      padNav[dir] = on;
+    }
+    return;
+  }
+  for (const k of Object.keys(padNav)) padNav[k] = false;
 
   if (L && !padWas.L) { wakeAudio(); push(BTN.LEFT); }
   if (R && !padWas.R) { wakeAudio(); push(BTN.RIGHT); }

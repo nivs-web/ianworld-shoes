@@ -334,6 +334,8 @@ export async function fetchUserCard(uid) {
       shoesOwned: v.shoesOwned ?? 0,
       multiWins: v.multiWins ?? 0,
       multiLosses: v.multiLosses ?? 0,
+      // 유저상태창 맨 아래 줄 (2026-08-19 12차)
+      lastLoginAt: v.lastLoginAt ?? 0,
     };
   } catch { return null; }
 }

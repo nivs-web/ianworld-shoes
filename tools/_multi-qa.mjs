@@ -1837,5 +1837,105 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   }
 }
 
+// ─────────────────────────────────────────────
+{
+  console.log('\n40) ★ 받은 메세지함 · 수신 설정 · 차단 · 메뉴 키보드 조작 · 마지막로그인 (2026-08-19 12차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const S2 = (await import('../src/config/strings.ko.js')).default;
+
+  // ① 로비 문구에서 '나의' 를 뺐다
+  eq('로비 보유량 문구', S2.myShoesOwned(0), '신발 보유량 0켤레');
+  eq('로비 도감 문구', S2.myDexProgress(0, 130), '신발 도감 0/130켤레');
+
+  // ② 받은 메세지함 — 이력이 남아야 한다
+  {
+    const pr = read('src/services/presence.js');
+    const ib = read('src/screens/Inbox.js');
+    const ip = read('src/screens/inboxPopups.js');
+    const st = read('src/screens/Settings.js');
+    has('설정에 받은 메세지함', st, 'button(S.menuInbox');
+    has('설정에 메세지 수신 설정', st, 'button(S.menuMsgAccept');
+    // 지우면 이력이 사라진다 — 읽음만 찍는다
+    has('읽음 표시', pr, 'export async function markRead(');
+    has('팝업은 읽음만 찍는다', ip, 'Presence.markRead(item.id)');
+    // 대결 신청은 이력이 아니다 (지나간 신청은 아무 쓸모가 없다)
+    has('대결 신청만 지운다', ip, "if (item.kind === 'challenge') Presence.drop(item.id)");
+    has('안 읽은 것만 팝업', ip, '!m.out && !m.read');
+    // 보낸 것도 남아야 "주고받은 이력"이 된다
+    has('보낸 사본을 내 함에도 남긴다', pr, 'out: true');
+    has('무한정 쌓이지 않게 정리', pr, 'export const INBOX_KEEP');
+    has('목록에 시각 표기', ib, 'stamp(m.at)');
+    has('줄을 누르면 답장/차단/닫기', ib, 'S.replyMessage');
+    has('차단 버튼', ib, 'S.blockUser');
+    eq('버튼 문구는 사용자 지정 그대로', [S2.replyMessage, S2.blockUser, S2.close], ['답장하기', '차단', '닫기']);
+  }
+
+  // ③ 수신 거부 · 차단은 **이유를 구분해서** 말한다
+  {
+    const pr = read('src/services/presence.js');
+    const uc = read('src/screens/UserCard.js');
+    has('수신 여부를 미리 읽는다', pr, 'export async function readAccept(');
+    // 규칙에 막힌 것만으로는 "꺼 뒀다"와 "차단했다"를 구별할 수 없다
+    has('수신 꺼짐이면 보내지 않는다', pr, "return 'off';");
+    has('규칙 거부는 차단으로 읽는다', pr, "denied(e) ? 'blocked' : 'error'");
+    has('세 갈래 문구', uc, 'off: S.peerRecvOff');
+    has('차단 문구', uc, 'blocked: S.peerBlocked');
+    eq('사용자 지정 문구 그대로', [S2.peerRecvOff, S2.peerBlocked],
+      ['상대방에 메세지 수신 거부중', '상대방이 차단 설정을 했습니다']);
+    const ms = read('src/screens/MessageSettings.js');
+    has('켜짐/꺼짐', ms, 'S.msgAcceptOn');
+    has('서버에 저장', ms, 'Presence.setAccept(');
+  }
+
+  // ④ 게임 결과 화면 · 대기방에서 아이디를 누르면 쪽지
+  {
+    const res = read('src/screens/multi/MultiResult.js');
+    const wr = read('src/screens/multi/WaitingRoom.js');
+    has('결과 화면 줄을 누르면 유저상태창', res, 'onclick: () => openUserCard(');
+    // 이미 같은 방 안이라 새 방을 파면 유령 자리가 생긴다
+    has('결과 화면에는 대결신청 없음', res, 'challenge: false');
+    has('대기방에서도 쪽지는 보낸다', wr, 'openUserCard(p, { slot, challenge: false })');
+    no('대기방에서 버튼을 통째로 끄지 않는다', wr, 'actions: false');
+  }
+
+  // ⑤ 키보드·게임패드로 메뉴 조작
+  {
+    const mn = read('src/screens/menuNav.js');
+    const inp = read('src/core/input.js');
+    const main = read('src/main.js');
+    has('메뉴 커서 모듈', mn, 'export function bindMenuNav(');
+    has('부팅에서 켠다', main, 'bindMenuNav();');
+    has('방향키로 이동', mn, "e.code === 'ArrowDown'");
+    // 입력칸에 글자를 칠 때 방향키를 뺏으면 안 된다
+    has('입력 중에는 안 가로챈다', mn, 'const typing = ()');
+    // 팝업이 떠 있으면 뒤 화면 버튼으로 새면 안 된다
+    has('팝업 안에서만 움직인다', mn, "querySelectorAll('.dialog-overlay')");
+    has('게임패드 방향 핸들러', inp, 'export function setDomNavHandler(');
+    // 인게임에서는 같은 십자키가 좌우 조작이다 — 겹치면 안 된다
+    has('DOM 화면일 때만 커서', inp, 'if (!enabled) {\n    padWas.L = false');
+    has('눌린 순간에만 한 번', inp, 'if (on && !padNav[dir]) domNavHandler?.(dir);');
+    const css = read('src/styles/screens.css');
+    has('포커스가 눈에 보인다', css, '.pbtn:focus');
+  }
+
+  // ⑥ 마지막 로그인
+  {
+    const uc = read('src/screens/UserCard.js');
+    const pf = read('src/services/profile.js');
+    const lb = read('src/services/leaderboard.js');
+    const tt = read('src/screens/timeText.js');
+    has('접속 때 기록', pf, 'pushRemote({ lastLoginAt: Date.now() })');
+    has('카드가 받아 온다', lb, 'lastLoginAt: v.lastLoginAt ?? 0');
+    has('카드에 줄이 있다', uc, 'user-card-login');
+    // 접속 중이면 날짜보다 "지금 여기 있다"가 훨씬 쓸모 있는 정보다
+    has('접속 중이면 현재로그인중', uc, 'S.lastLogin(S.lastLoginNow)');
+    eq('연도까지 찍는다', tt.includes('d.getFullYear()'), true);
+    eq('사용자 지정 형식', S2.lastLogin('2026.01.01 19:34'), '마지막로그인: 2026.01.01 19:34');
+  }
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

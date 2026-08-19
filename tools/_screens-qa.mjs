@@ -87,13 +87,42 @@ console.log('6번째 캐릭터:', (await p.locator('.char-name').innerText()).tr
   '| 구매버튼:', await p.locator('button:has-text("캐릭터 구매하기")').count());
 await clickText('뒤로');
 
-// 설정 → 조작법
+// 설정 → 조작법 · 받은 메세지함 · 메세지 수신 설정
 await clickText('설정');
 await clickText('조작법 변경');
 await shot('08_controls');
 console.log('조작 카드 수:', await p.locator('.ctrl-card').count());
 await clickText('뒤로');
+
+/**
+ * 쪽지 관련 두 화면 (2026-08-19 12차). 로그인이 없어 목록은 비지만,
+ * **화면이 뜨고 콘솔 오류가 없는지**가 핵심이다 — 새 화면이 조용히 터지면
+ * 그 경로는 아무도 안 밟아 본 채 배포된다.
+ */
+await clickText('받은 메세지함');
+await p.waitForTimeout(500);
+await shot('08e_inbox');
+console.log('받은 메세지함:', (await text()).split('\n').filter(Boolean).slice(0, 2).join(' / '));
 await clickText('뒤로');
+await clickText('메세지 수신 설정');
+await p.waitForTimeout(500);
+await shot('08f_msgsettings');
+console.log('수신 설정 버튼:', await p.locator('button:has-text("켜짐")').count(),
+  '/', await p.locator('button:has-text("꺼짐")').count());
+await clickText('뒤로');
+await clickText('뒤로');
+
+/**
+ * 키보드로 메뉴를 움직인다 (2026-08-19 12차). 방향키 두 번이면 두 번째 버튼이
+ * 잡혀야 하고, 그 상태에서 Enter 가 곧바로 눌러야 한다(브라우저 기본 동작).
+ */
+await p.keyboard.press('ArrowDown');
+await p.keyboard.press('ArrowDown');
+const focused = await p.evaluate(() => {
+  const a = document.activeElement;
+  return a && a.classList.contains('pbtn') ? a.textContent.trim() : null;
+});
+console.log('키보드 커서:', JSON.stringify(focused));
 
 /**
  * 명예의 전당 · 멀티 메뉴 · 현재접속자 (2026-08-19 11차).

@@ -1287,3 +1287,105 @@
 .online-state.idle { color: var(--btn-hilite-on); }
 .online-state.playing { color: var(--c-panel-dark); }
 
+/* ── 받은 메세지함 · 수신 설정 · 메뉴 커서 (2026-08-19 12차) ─── */
+
+.inbox-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: 60vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/**
+ * 한 줄에 방향·상대·본문·시각 넷이 들어간다. 본문만 늘었다 줄었다 하고
+ * 나머지는 고정폭이라 **세로로 줄이 맞는다** — 목록은 훑는 물건이라 이게 중요하다.
+ */
+.inbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 6px;
+  background: rgba(245, 217, 160, 0.08);
+  border: 2px solid var(--c-line);
+  cursor: pointer;
+}
+
+/* 안 읽은 것은 한눈에 — 목록을 여는 이유가 대개 이것이다 */
+.inbox-row.unread { border-color: var(--c-accent); }
+.inbox-row.out { opacity: 0.78; }
+
+.inbox-dir {
+  flex: 0 0 30px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--c-panel-dark);
+}
+.inbox-row.unread .inbox-dir { color: var(--c-accent); font-weight: bold; }
+
+.inbox-who {
+  flex: 0 0 68px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--btn-hilite-on);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inbox-blocked {
+  margin-left: 3px;
+  font-size: 9px;
+  color: var(--c-accent);
+}
+
+.inbox-line {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--c-text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inbox-when {
+  flex: 0 0 auto;
+  font-size: 10px;
+  text-align: center;
+  color: var(--c-panel-dark);
+}
+
+/* 유저상태창 맨 아래 — 마지막 로그인 */
+.user-card-login {
+  text-align: center;
+  font-size: 11px;
+  color: var(--c-line);
+}
+
+/**
+ * ★ **키보드·게임패드 커서.** (2026-08-19 12차)
+ * 브라우저 기본 포커스 링은 도트 화면에서 흐릿하게 번진다 — 각진 테두리로 바꾼다.
+ * `:focus-visible` 이 아니라 `:focus` 인 이유: 게임패드로 옮긴 포커스는 브라우저가
+ * "키보드 조작"으로 쳐 주지 않아 `:focus-visible` 이 안 걸리는 경우가 있다.
+ */
+.pbtn:focus {
+  outline: none;
+  /**
+   * 기존 버튼 스킨(십자 외곽선 4장 + 안쪽 하이라이트·그늘)을 **그대로 두고**
+   * 바깥에 한 겹만 더 두른다. 통째로 갈아 끼우면 포커스가 잡히는 순간 버튼 모양이
+   * 바뀌어 "눌린 것처럼" 보인다.
+   */
+  box-shadow:
+    0 -2px 0 0 var(--btn-outline),
+    0 2px 0 0 var(--btn-outline),
+    -2px 0 0 0 var(--btn-outline),
+    2px 0 0 0 var(--btn-outline),
+    inset 0 2px 0 0 var(--btn-hilite),
+    inset 0 -3px 0 0 var(--btn-shade),
+    0 0 0 5px var(--c-accent);
+}
+

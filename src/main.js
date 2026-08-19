@@ -15,6 +15,7 @@ import * as Bgm from './audio/bgm.js';
 
 import { GameScene } from './game/GameScene.js';
 import { nav, bindHardwareBack, bindEscBack } from './screens/router.js';
+import { bindMenuNav } from './screens/menuNav.js';
 import SplashLogin from './screens/SplashLogin.js';
 import Lobby from './screens/Lobby.js';
 import { initAuth, onUserChanged } from './services/auth.js';
@@ -58,6 +59,11 @@ async function boot() {
   );
   bindHardwareBack();
   bindEscBack();
+  /**
+   * ★ 키보드·게임패드로 메뉴를 움직인다 (2026-08-19 12차, 사용자 지정) —
+   * *"터치 없이도 게임 가능하게끔"*. 방향키로 커서, 엔터로 선택, ESC 로 뒤로.
+   */
+  bindMenuNav();
 
   /**
    * 진단용 훅. QA 스크립트가 로그인을 건너뛰고 화면을 직접 열 때 쓴다.

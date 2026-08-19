@@ -23,6 +23,7 @@ import * as Presence from '../services/presence.js';
 import * as Room from '../services/multiplayer.js';
 import { get as getProfile } from '../services/profile.js';
 import { openComposer } from './UserCard.js';
+import { stamp } from './timeText.js';
 
 /** 대결 신청 수락 제한 (초) — 사용자 지정: "10초안에 수락을 누르지 않으면 자동 거절" */
 export const CHALLENGE_SECONDS = 10;
@@ -46,7 +47,13 @@ export function start(navigator) {
   navRef = navigator ?? navRef;
   if (stop) return;
   stop = Presence.subscribeInbox((items) => {
-    queue = items;
+    /**
+     * ★ **안 읽은 것 · 내가 받은 것만** 띄운다. (2026-08-19 12차)
+     * 쪽지함이 이력이 되면서 읽은 쪽지도 서버에 남는다 — 거르지 않으면 로비에 들어갈
+     * 때마다 예전 쪽지가 전부 다시 뜬다. 보낸 사본(`out`)은 애초에 내 것이다.
+     */
+    if (!items) { queue = []; return; }   // 못 붙었다 — 띄울 것도 없다
+    queue = items.filter((m) => !m.out && !m.read);
     // 서버에서 사라진 것은 기억에서도 지운다 (안 그러면 Set 이 계속 커진다)
     const live = new Set(items.map((m) => m.id));
     for (const id of [...handled]) if (!live.has(id)) handled.delete(id);
@@ -80,7 +87,12 @@ function pump() {
   showing = true;
   const done = () => {
     showing = false;
-    Presence.drop(item.id).catch(() => {});
+    /**
+     * 쪽지는 **지우지 않고 읽음만 찍는다** — 받은 메세지함이 이력을 보여 줘야 한다.
+     * 대결 신청은 다르다. 지나간 신청이 목록에 남아 봐야 아무 쓸모가 없다.
+     */
+    if (item.kind === 'challenge') Presence.drop(item.id).catch(() => {});
+    else Presence.markRead(item.id).catch(() => {});
     // 다음 통은 한 박자 쉬고 — 팝업이 연달아 튀면 앞엣것을 못 읽는다
     setTimeout(pump, 350);
   };
@@ -108,6 +120,8 @@ function showMessage(item, done) {
   const overlay = el('div.dialog-overlay', null, [
     el('div.dialog', null, [
       el('div.dialog-msg', S.messageFrom(item.fromName || '???')),
+      // 언제 온 쪽지인지 (사용자 요청) — 게임 한 판 하고 나오면 몇 분이 지나 있다
+      el('div.inbox-when', stamp(item.at)),
       el('div.inbox-text', item.text || ''),
       el('div.row', null, [
         button(S.close, () => dismiss(), { sfx: 'sfx_menu_back' }),
@@ -150,6 +164,7 @@ function showChallenge(item, done) {
   const overlay = el('div.dialog-overlay', null, [
     el('div.dialog', null, [
       el('div.dialog-msg', S.messageFrom(item.fromName || '???')),
+      el('div.inbox-when', stamp(item.at)),
       el('div.dialog-detail', S.challengeAsk),
       el('div.row', null, [
         button(S.challengeDecline, () => choose(false), { sfx: 'sfx_menu_back' }),

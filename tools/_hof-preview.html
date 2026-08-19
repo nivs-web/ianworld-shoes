@@ -17,6 +17,7 @@ import S from '/src/config/strings.ko.js';
 import { el } from '/src/screens/ui.js';
 import { characterById, characterSprite } from '/src/data/characters.js';
 import { openUserCard } from '/src/screens/UserCard.js';
+import { stamp } from '/src/screens/timeText.js';
 
 const rows = [
   { rank: 1, nickname: '이안', characterId: 'ian', value: 12480, multiWins: 128, multiLosses: 44 },
@@ -66,6 +67,30 @@ ou.append(el('div.online-list', null, online.map((u) => {
   ]);
 })));
 document.body.append(ou);
+
+/**
+ * 받은 메세지함 (2026-08-19 12차). 줄 마크업은 `Inbox.js` 를 손으로 옮긴 것이다 —
+ * 위의 ⚠ 와 같은 이유로, 줄 구조를 바꾸면 여기도 같이 고친다.
+ */
+const msgs = [
+  { out: false, who: '다섯글자님', text: '지금 한 판 어때요? 방 파둘게요', at: Date.now() - 60e3, read: false },
+  { out: true, who: '이안', text: '좋아요 바로 갈게요', at: Date.now() - 3600e3, read: true },
+  { out: false, who: '로', text: '아까 그 신발 어디서 주웠어요? 3티어 같던데', at: Date.now() - 86400e3 * 2, read: true, blocked: true },
+];
+const ibx = el('div.frame');
+ibx.append(el('div.screen-title', S.inboxTitle));
+ibx.append(el('div.inbox-list', null, msgs.map((m) => el('div.inbox-row', {
+  class: [m.out ? 'out' : 'in', !m.out && !m.read ? 'unread' : ''].filter(Boolean).join(' '),
+}, [
+  el('div.inbox-dir', m.out ? S.inboxSent : S.inboxRecv),
+  el('div.inbox-who', null, [
+    el('span.inbox-name', m.who),
+    m.blocked ? el('span.inbox-blocked', S.blockedTag) : null,
+  ].filter(Boolean)),
+  el('div.inbox-line', m.text),
+  el('div.inbox-when', stamp(m.at)),
+]))));
+document.body.append(ibx);
 
 // 유저상태창은 진짜 컴포넌트 — 상태를 넘겨 서버 조회 없이 그린다
 openUserCard(

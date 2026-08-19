@@ -52,8 +52,9 @@ export const S = {
   playerName: '플레이어 이름',
   /** 로비 — 캐릭터 이름 자리에 있던 줄을 멀티 전적으로 바꿨다 (2026-08-19) */
   myMultiRecord: (wins, games) => `멀티게임 ${wins}승 / ${games}게임`,
-  myShoesOwned: (n) => `나의 신발 보유량 ${n}켤레`,
-  myDexProgress: (have, all) => `나의 신발 도감 ${have}/${all}켤레`,
+  /** 로비 통계 — '나의' 를 뺐다 (2026-08-19 12차). 내 화면이라는 건 이미 안다 */
+  myShoesOwned: (n) => `신발 보유량 ${n}켤레`,
+  myDexProgress: (have, all) => `신발 도감 ${have}/${all}켤레`,
   difficultyTitle: '게임난이도를 높이면, 신발도 많이 등장합니다',
   difficultyEasy: '쉬움',
   difficultyNormal: '보통',
@@ -355,7 +356,6 @@ export const S = {
   challengeRefused: (name) => `${name}님이 대결 신청을 거절했습니다`,
   challengeGone: '대결 신청이 취소되었습니다',
   messageFrom: (name) => `${name}님의 메세지`,
-  replyMessage: '답장보내기',
 
   // ── 현재접속자 (2026-08-19 11차) ────────────
   onlineUsers: '현재접속자',
@@ -365,6 +365,41 @@ export const S = {
   onlineCount: (n) => `현재 ${n}명 접속중`,
   noOneOnline: '접속 중인 사람이 없습니다',
   meTag: '나',
+
+  // ── 받은 메세지함 · 수신 설정 · 차단 (2026-08-19 12차) ──
+  menuInbox: '받은 메세지함',
+  inboxTitle: '받은 메세지함',
+  inboxEmpty: '주고받은 메세지가 없습니다',
+  /** 목록 줄 앞머리 — 내가 보낸 것인지 받은 것인지 */
+  inboxSent: '보냄',
+  inboxRecv: '받음',
+  /** 목록 줄에 붙는 시각. 오늘 것은 시:분만, 지난 것은 날짜까지 */
+  msgTimeToday: (hh, mm) => `${hh}:${mm}`,
+  msgTimeFull: (mo, dd, hh, mm) => `${mo}.${dd} ${hh}:${mm}`,
+  /** 팝업 버튼 (사용자 지정 문구) */
+  replyMessage: '답장하기',
+  blockUser: '차단',
+  unblockUser: '차단 해제',
+  blockedDone: '차단했습니다',
+  unblockedDone: '차단을 해제했습니다',
+  blockConfirm: (name) => `${name}님을 차단할까요?`,
+  blockConfirmDetail: '차단하면 이 사람이 보내는 메세지가 오지 않습니다',
+  blockedTag: '차단됨',
+
+  menuMsgAccept: '메세지 수신 설정',
+  msgAcceptTitle: '메세지 수신 설정',
+  msgAcceptOn: '켜짐',
+  msgAcceptOff: '꺼짐',
+  msgAcceptHintOn: '메세지와 대결 신청을 받습니다',
+  msgAcceptHintOff: '아무도 나에게 메세지와 대결 신청을 보낼 수 없습니다',
+  /** 보내는 쪽에 뜨는 이유 — 둘을 구분해야 사용자가 상황을 안다 */
+  peerRecvOff: '상대방에 메세지 수신 거부중',
+  peerBlocked: '상대방이 차단 설정을 했습니다',
+
+  /** 유저상태창 맨 아래 (2026-08-19 12차) */
+  lastLogin: (when) => `마지막로그인: ${when}`,
+  lastLoginNow: '현재로그인중',
+  lastLoginNone: '기록 없음',
 
   // ── 공통 ───────────────────────────────────
   loading: '불러오는 중...',

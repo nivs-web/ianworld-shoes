@@ -24,6 +24,7 @@ import { currentUser } from '../services/auth.js';
 import * as Presence from '../services/presence.js';
 import * as Room from '../services/multiplayer.js';
 import { get as getProfile } from '../services/profile.js';
+import { stampFull } from './timeText.js';
 
 const STATUS_TEXT = {
   playing: S.statusPlaying,
@@ -52,6 +53,12 @@ export function openUserCard(p, opt = {}) {
    * 엉뚱한 버튼을 누른다.
    */
   const statusLine = el('div.user-card-status', STATUS_TEXT[opt.status] ?? S.statusOffline);
+  /**
+   * ★ **마지막 로그인.** (2026-08-19 12차, 사용자 지정)
+   * 접속 중이면 `현재로그인중`. 아니면 계정 문서의 `lastLoginAt` 을 날짜로 찍는다.
+   * 값이 늦게 오므로 자리를 먼저 잡아 둔다(상태 줄과 같은 이유 — 높이가 튀면 안 된다).
+   */
+  const loginLine = el('div.user-card-login', S.lastLogin(S.lastLoginNone));
   const row = el('div.row.user-card-actions');
   const face = el('div.player-card-face',
     { style: { '--slot': SLOT_COLORS[opt.slot ?? 0] ?? SLOT_COLORS[0] } },
@@ -67,6 +74,7 @@ export function openUserCard(p, opt = {}) {
       charLine,
       statLine,
       statusLine,
+      loginLine,
       row,
       button(S.close, close, { sfx: 'sfx_menu_back' }),
     ]),
@@ -84,6 +92,8 @@ export function openUserCard(p, opt = {}) {
       if (!full) return;
       const g = (full.multiWins ?? 0) + (full.multiLosses ?? 0);
       statLine.textContent = S.playerStatPopup(full.multiWins ?? 0, g, full.shoesOwned ?? 0);
+      if (full.lastLoginAt) lastLoginAt = full.lastLoginAt;
+      paintLogin();
       const c = characterById(full.characterId);
       if (c) {
         charLine.textContent = c.ko;
@@ -95,10 +105,24 @@ export function openUserCard(p, opt = {}) {
 
   /** 지금 아는 상태로 버튼을 다시 만든다 */
   let status = opt.status ?? null;
+  let lastLoginAt = p.lastLoginAt ?? 0;
+
+  function paintLogin() {
+    // 접속 중이면 날짜보다 "지금 여기 있다"가 훨씬 쓸모 있는 정보다
+    if (status === 'playing' || status === 'lobby') {
+      loginLine.textContent = S.lastLogin(S.lastLoginNow);
+      return;
+    }
+    loginLine.textContent = S.lastLogin(lastLoginAt ? stampFull(lastLoginAt) : S.lastLoginNone);
+  }
+  paintLogin();
+
   function paintActions() {
     row.textContent = '';
     if (isMe || !p.uid || opt.actions === false) return;
     row.append(button(S.sendMessage, () => { close(); openComposer(p); }));
+    // 대기방처럼 이미 같은 방에 앉아 있는 곳에서는 대결 버튼을 안 붙인다
+    if (opt.challenge === false) return;
     row.append(button(S.challengeUser, () => {
       /**
        * 게임 중·미접속에는 안 보낸다. 사용자 문구 그대로 알린다 —
@@ -115,6 +139,7 @@ export function openUserCard(p, opt = {}) {
     Presence.readOne(p.uid).then((v) => {
       status = v?.state === 'playing' ? 'playing' : (v ? 'lobby' : 'offline');
       statusLine.textContent = STATUS_TEXT[status];
+      paintLogin();
       paintActions();
     }).catch(() => {});
   }
@@ -136,12 +161,25 @@ export function openComposer(p, prefill = '') {
     placeholder: S.messageHint, autocomplete: 'off',
   });
 
+  /**
+   * ★ **못 보낸 이유를 구분해서 말한다.** (2026-08-19 12차, 사용자 지정)
+   *   off     — 상대가 수신을 꺼 뒀다 (`prefs/accept`, 미리 읽어서 안다)
+   *   blocked — 상대가 나를 차단했다 (규칙이 거부한다. 차단 목록은 못 읽는다)
+   * 둘을 "실패"로 뭉뚱그리면 사용자는 자기 네트워크를 의심하게 된다.
+   */
+  const REASON = {
+    ok: S.messageSent,
+    off: S.peerRecvOff,
+    blocked: S.peerBlocked,
+    error: S.networkError,
+  };
+
   async function send() {
     const text = input.value.trim();
     if (!text) return toast(S.messageEmpty, 1600);
     close();
-    const ok = await Presence.sendMessage(p.uid, text);
-    toast(ok ? S.messageSent : S.networkError, 1800);
+    const r = await Presence.sendMessage(p.uid, text, p.nickname ?? '');
+    toast(REASON[r] ?? S.networkError, r === 'ok' ? 1800 : 2400);
   }
 
   const overlay = el('div.dialog-overlay', { onclick: close }, [
