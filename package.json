@@ -12,7 +12,7 @@
     "assets": "npm run assets:chars && npm run assets:shoes && npm run assets:bg && npm run assets:ui && npm run assets:font && npm run assets:icons",
     "assets:chars": "node tools/slice-characters.mjs && node tools/build-faces.mjs",
     "assets:shoes": "node tools/slice-newdesign.mjs",
-    "assets:bg": "node tools/downscale-bg.mjs && node tools/build-museum-sign.mjs",
+    "assets:bg": "node tools/downscale-bg.mjs && node tools/build-museum-sign.mjs && node tools/build-season2-bg.mjs",
     "assets:ui": "node tools/slice-buttons.mjs && node tools/slice-stair.mjs && node tools/build-hud-ui.mjs && node tools/build-bubble.mjs",
     "assets:font": "node tools/build-font.mjs && node tools/build-font-small.mjs",
     "assets:icons": "node tools/build-icons.mjs",
@@ -32,7 +32,12 @@
     "assets:floors": "node tools/build-floor-bg.mjs",
     "preview:room": "node tools/_screen-preview.mjs room",
     "assets:sign": "node tools/build-museum-sign.mjs",
-    "preview:rooms": "node tools/_screen-preview.mjs rooms"
+    "preview:rooms": "node tools/_screen-preview.mjs rooms",
+    "//assets:season2": "시즌2 배경 30종. 판형이 고정이라 자동 검출을 쓰지 않는다 — tools/bg-season2.json 이 id·이름·(필요하면) 좌표를 들고 있다.",
+    "assets:season2": "node tools/build-season2-bg.mjs",
+    "qa:bg": "node --import ./tools/_json-import.mjs tools/_bg-qa2.mjs",
+    "preview:bg": "node tools/_screen-preview.mjs bg",
+    "qa:bgfit": "node --import ./tools/_json-import.mjs tools/_bgfit.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"

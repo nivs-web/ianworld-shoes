@@ -1,0 +1,56 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<style>body{background:#1b1410;padding:14px;display:flex;gap:18px;align-items:flex-start}
+.frame{width:360px;background:#0d0a08;padding:10px;border:2px solid #4a3b2a}
+.frame.cut{width:420px}</style>
+</head><body><script type="module">
+/**
+ * 싱글게임 배경설정 미리보기 (진단 전용) — `npm run preview:bg`
+ *
+ * 배경이 44종이라 격자가 몇 줄까지 늘어지는지, 이름이 잘리는지, 그리고
+ * **한 번 더 눌렀을 때 뜨는 큰 그림**의 비율이 맞는지 눈으로 봐야 한다.
+ * 왼쪽 = 목록(고른 카드에 빨간 테두리), 오른쪽 = 큰 그림 팝업.
+ */
+import S from '/src/config/strings.ko.js';
+import { el, button } from '/src/screens/ui.js';
+import { BUILDINGS, buildingAssets } from '/src/data/backgrounds.js';
+import { cutScale } from '/src/screens/BgSettings.js';
+import { BG } from '/src/config/layout.js';
+
+const cur = 'build_30';
+const card = (id, label, url) => el('div.bg-card', { class: cur === id ? 'on' : '' }, [
+  url ? el('img.bg-thumb', { src: url, alt: label }) : el('div.bg-thumb.bg-thumb-random', '?'),
+  el('div.bg-card-name', label),
+]);
+
+// 실제 화면과 같은 뼈대(.screen 안에 쌓인다)로 재현해야 간격이 거짓말을 안 한다
+const list = el('div.frame');
+const scr = el('div.screen');
+list.append(scr);
+scr.append(el('div.screen-title', S.menuSingleBg));
+scr.append(el('div.hint', S.singleBgHint));
+scr.append(el('div.hint.bg-tip', S.bgPreviewHint));
+scr.append(el('div.bg-grid', null, [
+  card('random', S.bgRandom, null),
+  ...BUILDINGS.map((b) => card(b.id, b.name, buildingAssets(b.id).floor1)),
+]));
+document.body.append(list);
+
+// 큰 그림 팝업 — BgSettings.openCut 과 같은 뼈대
+const a = buildingAssets(cur);
+const k = cutScale(window.innerWidth, window.innerHeight);   // 화면과 같은 식
+const cut = el('div.frame.cut');
+cut.append(el('div.bg-cut', null, [
+  el('div.bg-cut-name', BUILDINGS.find((b) => b.id === cur).name),
+  el('div.bg-cut-stack', { style: `width:${BG.tileW * k}px` }, [
+    el('img', { src: a.tile }), el('img', { src: a.floor1 }), el('img', { src: a.road }),
+  ]),
+  button(S.bgPreviewClose, () => {}),
+]));
+document.body.append(cut);
+
+await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })));
+window.__ready = true;
+</script></body></html>

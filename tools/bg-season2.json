@@ -1,0 +1,63 @@
+{
+  "_readme": [
+    "시즌2 배경 명단. 파일명 → 게임 안 id 와 한국어 이름.",
+    "",
+    "★ 왜 명단 파일이 필요한가",
+    "시즌1(downscale-bg.mjs)은 폴더를 정렬한 순서로 build_01..16 을 붙인다. 그 방식은",
+    "파일이 하나 늘거나 이름이 바뀌면 **모든 배경의 id 가 밀린다** — build_10 간판 스크립트도,",
+    "사용자가 설정에 저장해 둔 배경도 전부 엉뚱한 곳을 가리키게 된다.",
+    "원본 파일명이 Gemini 난수라 정렬 순서에 아무 의미도 없으니 더더욱 위험하다.",
+    "그래서 시즌2는 id 를 여기에 **손으로 못 박는다.** 파일을 추가해도 기존 id 는 안 움직인다.",
+    "",
+    "panels 를 적으면 기본 판형 대신 그 좌표를 쓴다 (좌 → 우, 도로/1층/2·3층 순서).",
+    "좌표는 2752x1536 기준이고, 절반 크기 원본에는 자동으로 배율이 걸린다.",
+    "이름은 포스터 제목에서 땄다."
+  ],
+
+  "Gemini_Generated_Image_15v90v15v90v15v9.png": { "id": "build_17", "name": "도트게임 캐릭터집" },
+  "Gemini_Generated_Image_2fk7ur2fk7ur2fk7.png": { "id": "build_18", "name": "프로토스의 방" },
+  "Gemini_Generated_Image_4pizgo4pizgo4piz.png": { "id": "build_19", "name": "동물들의 마을" },
+  "Gemini_Generated_Image_4qn8304qn8304qn8.png": { "id": "build_20", "name": "고대 도서관" },
+  "Gemini_Generated_Image_5l6bvx5l6bvx5l6b.png": { "id": "build_21", "name": "개미의 집" },
+  "Gemini_Generated_Image_64u6hk64u6hk64u6.png": { "id": "build_22", "name": "고대 문명" },
+  "Gemini_Generated_Image_7ac5ym7ac5ym7ac5.png": { "id": "build_23", "name": "과학의 집" },
+  "Gemini_Generated_Image_7l2xii7l2xii7l2x.png": {
+    "id": "build_24", "name": "오사카 성",
+    "_why": "오른쪽에 '완성된 탑' 장식 그림이 하나 더 있어서, 기본 판형으로 자르면 2·3층 옆에 배경과 그 장식이 딸려 들어온다",
+    "panels": [
+      { "left": 88, "top": 840, "width": 832, "height": 480 },
+      { "left": 1000, "top": 568, "width": 752, "height": 752 },
+      { "left": 1926, "top": 516, "width": 358, "height": 826 }
+    ]
+  },
+  "Gemini_Generated_Image_8hp9e38hp9e38hp9.png": { "id": "build_25", "name": "로마 콜로세움" },
+  "Gemini_Generated_Image_9o8ery9o8ery9o8e.png": { "id": "build_26", "name": "상하이" },
+  "Gemini_Generated_Image_9zovri9zovri9zov.png": { "id": "build_27", "name": "90 오락실" },
+  "Gemini_Generated_Image_h3ifgth3ifgth3if.png": { "id": "build_28", "name": "너의 이름은" },
+  "Gemini_Generated_Image_iosq1niosq1niosq.png": { "id": "build_29", "name": "센과 치히로" },
+  "Gemini_Generated_Image_iu7beoiu7beoiu7b.png": { "id": "build_30", "name": "햄버거 가게" },
+  "Gemini_Generated_Image_iyvci3iyvci3iyvc.png": { "id": "build_31", "name": "중국 자금성" },
+  "Gemini_Generated_Image_jg3s7jjg3s7jjg3s.png": { "id": "build_32", "name": "멋진 숲속의 집" },
+  "Gemini_Generated_Image_mh038amh038amh03.png": { "id": "build_33", "name": "지브리의 집" },
+  "Gemini_Generated_Image_njsb9xnjsb9xnjsb.png": { "id": "build_34", "name": "게임 캐릭터 방" },
+  "Gemini_Generated_Image_o0m8pqo0m8pqo0m8.png": { "id": "build_35", "name": "유황온천 여관" },
+  "Gemini_Generated_Image_on4lvxon4lvxon4l.png": { "id": "build_36", "name": "외계인 문명" },
+  "Gemini_Generated_Image_p457tpp457tpp457.png": { "id": "build_37", "name": "폐허" },
+  "Gemini_Generated_Image_pv8l1mpv8l1mpv8l.png": {
+    "id": "build_38", "name": "요르단 페트라",
+    "_why": "2·3층 그림이 판형보다 좁게 그려져서, 기본 좌표로 자르면 오른쪽 1/4 이 모눈 배경이다",
+    "panels": [
+      { "left": 88, "top": 840, "width": 832, "height": 480 },
+      { "left": 1000, "top": 568, "width": 752, "height": 752 },
+      { "left": 2014, "top": 472, "width": 470, "height": 874 }
+    ]
+  },
+  "Gemini_Generated_Image_sl6bjfsl6bjfsl6b.png": { "id": "build_39", "name": "로봇 매니아" },
+  "Gemini_Generated_Image_tzp1jctzp1jctzp1.png": { "id": "build_40", "name": "상상의 집" },
+  "Gemini_Generated_Image_vnpy50vnpy50vnpy.png": { "id": "build_41", "name": "전차 매니아" },
+  "Gemini_Generated_Image_wruwgwruwgwruwgw.png": { "id": "build_42", "name": "테라의 방" },
+  "Gemini_Generated_Image_xlhg6axlhg6axlhg.png": { "id": "build_43", "name": "헨젤과 그레텔" },
+  "Gemini_Generated_Image_xsx2saxsx2saxsx2.png": { "id": "build_44", "name": "신비로운 외계인의 집" },
+  "Gemini_Generated_Image_ym5ozcym5ozcym5o.png": { "id": "build_45", "name": "톰소여의 나무집" },
+  "Gemini_Generated_Image_z384fez384fez384.png": { "id": "build_46", "name": "초콜릿 공장" }
+}

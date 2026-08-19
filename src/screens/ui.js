@@ -26,6 +26,12 @@ export function el(tag, props, children) {
       else if (k === 'class') node.className = [node.className, v].filter(Boolean).join(' ');
       else if (k === 'style') {
         /**
+         * 문자열도 받는다 — `style: 'width:360px'`. 예전엔 객체만 받아서 문자열을 주면
+         * `Object.assign` 이 **글자 하나씩** 넣으려다 "Indexed property setter is not
+         * supported" 로 터졌다(무엇이 잘못됐는지 알 수 없는 메시지다).
+         */
+        if (typeof v === 'string') { node.style.cssText = v; continue; }
+        /**
          * ★ **CSS 변수(`--x`)는 `Object.assign` 으로 안 들어간다.** (2026-08-19)
          * 자리 색을 `--slot` 으로 넘겼는데 조용히 무시돼서 결과 화면의 부활 테두리가
          * 통째로 안 보였다(미리보기로 확인). 사용자 정의 속성은 `setProperty` 로 넣는다.

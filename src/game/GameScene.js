@@ -121,7 +121,8 @@ export class GameScene {
     this.player.introFacing = this.stairs.nextDir(this.floor);
     this.player.facing = this.player.introFacing;
 
-    // 배경: 기본은 16종 중 랜덤 1종. 싱글에서 사용자가 골라 뒀으면 그것을 쓴다.
+    // 배경: 기본은 BUILDINGS 전체(시즌1 14 + 시즌2 30 = 44종) 중 랜덤 1종.
+    // 싱글에서 사용자가 골라 뒀으면 그것을 쓴다. 없는 id 면 find 가 undefined 라 랜덤으로 흘러간다.
     const chosen = !this.multi && this.forcedBuilding
       ? BUILDINGS.find((b) => b.id === this.forcedBuilding)
       : null;

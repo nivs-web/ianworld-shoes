@@ -1,0 +1,1226 @@
+{
+  "buildings": [
+    {
+      "id": "build_17",
+      "name": "도트게임 캐릭터집",
+      "source": "Gemini_Generated_Image_15v90v15v90v15v9.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_17_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_17_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_17_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_18",
+      "name": "프로토스의 방",
+      "source": "Gemini_Generated_Image_2fk7ur2fk7ur2fk7.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_18_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_18_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_18_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_19",
+      "name": "동물들의 마을",
+      "source": "Gemini_Generated_Image_4pizgo4pizgo4piz.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_19_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_19_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_19_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_20",
+      "name": "고대 도서관",
+      "source": "Gemini_Generated_Image_4qn8304qn8304qn8.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_20_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_20_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_20_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_21",
+      "name": "개미의 집",
+      "source": "Gemini_Generated_Image_5l6bvx5l6bvx5l6b.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_21_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_21_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_21_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_22",
+      "name": "고대 문명",
+      "source": "Gemini_Generated_Image_64u6hk64u6hk64u6.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_22_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_22_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_22_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_23",
+      "name": "과학의 집",
+      "source": "Gemini_Generated_Image_7ac5ym7ac5ym7ac5.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_23_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_23_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_23_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_24",
+      "name": "오사카 성",
+      "source": "Gemini_Generated_Image_7l2xii7l2xii7l2x.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_24_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_24_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1926,
+            "top": 516,
+            "width": 358,
+            "height": 826
+          },
+          "out": "build_24_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_25",
+      "name": "로마 콜로세움",
+      "source": "Gemini_Generated_Image_8hp9e38hp9e38hp9.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_25_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_25_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_25_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_26",
+      "name": "상하이",
+      "source": "Gemini_Generated_Image_9o8ery9o8ery9o8e.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_26_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_26_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_26_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_27",
+      "name": "90 오락실",
+      "source": "Gemini_Generated_Image_9zovri9zovri9zov.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_27_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_27_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_27_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_28",
+      "name": "너의 이름은",
+      "source": "Gemini_Generated_Image_h3ifgth3ifgth3if.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_28_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_28_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_28_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_29",
+      "name": "센과 치히로",
+      "source": "Gemini_Generated_Image_iosq1niosq1niosq.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_29_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_29_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_29_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_30",
+      "name": "햄버거 가게",
+      "source": "Gemini_Generated_Image_iu7beoiu7beoiu7b.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_30_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_30_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_30_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_31",
+      "name": "중국 자금성",
+      "source": "Gemini_Generated_Image_iyvci3iyvci3iyvc.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_31_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_31_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_31_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_32",
+      "name": "멋진 숲속의 집",
+      "source": "Gemini_Generated_Image_jg3s7jjg3s7jjg3s.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 44,
+            "top": 420,
+            "width": 416,
+            "height": 240
+          },
+          "out": "build_32_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 500,
+            "top": 284,
+            "width": 376,
+            "height": 376
+          },
+          "out": "build_32_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 940,
+            "top": 236,
+            "width": 372,
+            "height": 424
+          },
+          "out": "build_32_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_33",
+      "name": "지브리의 집",
+      "source": "Gemini_Generated_Image_mh038amh038amh03.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_33_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_33_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_33_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_34",
+      "name": "게임 캐릭터 방",
+      "source": "Gemini_Generated_Image_njsb9xnjsb9xnjsb.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_34_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_34_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_34_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_35",
+      "name": "유황온천 여관",
+      "source": "Gemini_Generated_Image_o0m8pqo0m8pqo0m8.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_35_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_35_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_35_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_36",
+      "name": "외계인 문명",
+      "source": "Gemini_Generated_Image_on4lvxon4lvxon4l.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_36_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_36_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_36_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_37",
+      "name": "폐허",
+      "source": "Gemini_Generated_Image_p457tpp457tpp457.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_37_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_37_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_37_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_38",
+      "name": "요르단 페트라",
+      "source": "Gemini_Generated_Image_pv8l1mpv8l1mpv8l.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_38_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_38_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 2014,
+            "top": 472,
+            "width": 470,
+            "height": 874
+          },
+          "out": "build_38_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_39",
+      "name": "로봇 매니아",
+      "source": "Gemini_Generated_Image_sl6bjfsl6bjfsl6b.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_39_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_39_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_39_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_40",
+      "name": "상상의 집",
+      "source": "Gemini_Generated_Image_tzp1jctzp1jctzp1.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_40_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_40_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_40_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_41",
+      "name": "전차 매니아",
+      "source": "Gemini_Generated_Image_vnpy50vnpy50vnpy.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_41_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_41_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_41_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_42",
+      "name": "테라의 방",
+      "source": "Gemini_Generated_Image_wruwgwruwgwruwgw.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_42_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_42_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_42_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_43",
+      "name": "헨젤과 그레텔",
+      "source": "Gemini_Generated_Image_xlhg6axlhg6axlhg.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 44,
+            "top": 420,
+            "width": 416,
+            "height": 240
+          },
+          "out": "build_43_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 500,
+            "top": 284,
+            "width": 376,
+            "height": 376
+          },
+          "out": "build_43_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 940,
+            "top": 236,
+            "width": 372,
+            "height": 424
+          },
+          "out": "build_43_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_44",
+      "name": "신비로운 외계인의 집",
+      "source": "Gemini_Generated_Image_xsx2saxsx2saxsx2.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_44_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_44_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_44_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_45",
+      "name": "톰소여의 나무집",
+      "source": "Gemini_Generated_Image_ym5ozcym5ozcym5o.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_45_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_45_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_45_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    },
+    {
+      "id": "build_46",
+      "name": "초콜릿 공장",
+      "source": "Gemini_Generated_Image_z384fez384fez384.png",
+      "panels": {
+        "road": {
+          "crop": {
+            "left": 88,
+            "top": 840,
+            "width": 832,
+            "height": 480
+          },
+          "out": "build_46_road.png",
+          "w": 180,
+          "h": 120
+        },
+        "floor1": {
+          "crop": {
+            "left": 1000,
+            "top": 568,
+            "width": 752,
+            "height": 752
+          },
+          "out": "build_46_floor1.png",
+          "w": 180,
+          "h": 180
+        },
+        "tile": {
+          "crop": {
+            "left": 1880,
+            "top": 472,
+            "width": 744,
+            "height": 848
+          },
+          "out": "build_46_tile.png",
+          "w": 180,
+          "h": 360
+        }
+      }
+    }
+  ],
+  "colors": 32,
+  "template": [
+    {
+      "left": 88,
+      "top": 840,
+      "width": 832,
+      "height": 480
+    },
+    {
+      "left": 1000,
+      "top": 568,
+      "width": 752,
+      "height": 752
+    },
+    {
+      "left": 1880,
+      "top": 472,
+      "width": 744,
+      "height": 848
+    }
+  ],
+  "templateW": 2752
+}
