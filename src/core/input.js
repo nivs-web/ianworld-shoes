@@ -171,8 +171,33 @@ const padWas = { L: false, R: false, pause: false };
 /** DOM 메뉴 커서용 게임패드 이전 상태 (눌린 순간만 보내려고 기억한다) */
 const padNav = { up: false, down: false, left: false, right: false, ok: false };
 
+/**
+ * ★ **패드가 없으면 매 프레임 훑지 않는다.** (2026-08-19 13차, 속도)
+ *
+ * `navigator.getGamepads()` 는 **호출할 때마다 배열을 새로 만든다.** 게임 루프는
+ * 로비에서도 60fps 로 도므로 아무도 패드를 안 꽂았는데 초당 60개의 배열이 생겼다 —
+ * 폰에서는 그게 곧 GC 부담이다. 브라우저가 `gamepadconnected` 로 알려 주므로
+ * **연결된 뒤에만** 훑는다. 이벤트를 놓치는 브라우저를 위해 2초에 한 번은 확인한다.
+ */
+let padCount = 0;
+let padProbeAt = 0;
+const PAD_PROBE_MS = 2000;
+if (typeof window !== 'undefined') {
+  window.addEventListener('gamepadconnected', () => { padCount++; });
+  window.addEventListener('gamepaddisconnected', () => { padCount = Math.max(0, padCount - 1); });
+}
+
 export function pollGamepads() {
   if (typeof navigator.getGamepads !== 'function') return;
+  if (!padCount) {
+    const now = performance.now();
+    if (now - padProbeAt < PAD_PROBE_MS) return;
+    padProbeAt = now;
+    let any = false;
+    for (const gp of navigator.getGamepads()) if (gp) { any = true; break; }
+    if (!any) return;
+    padCount = 1;
+  }
   let L = false, R = false, pause = false;
   let navUp = false, navDown = false, navLeft = false, navRight = false, navOk = false;
 
@@ -222,14 +247,18 @@ export function pollGamepads() {
    */
   if (!enabled) {
     padWas.L = false; padWas.R = false;
-    const nav = { up: navUp, down: navDown, left: navLeft, right: navRight, ok: navOk };
-    for (const [dir, on] of Object.entries(nav)) {
-      if (on && !padNav[dir]) domNavHandler?.(dir);
-      padNav[dir] = on;
-    }
+    // 객체·배열을 만들지 않는다 — 이 함수는 초당 60번 돈다
+    if (navUp && !padNav.up) domNavHandler?.('up');
+    if (navDown && !padNav.down) domNavHandler?.('down');
+    if (navLeft && !padNav.left) domNavHandler?.('left');
+    if (navRight && !padNav.right) domNavHandler?.('right');
+    if (navOk && !padNav.ok) domNavHandler?.('ok');
+    padNav.up = navUp; padNav.down = navDown; padNav.left = navLeft;
+    padNav.right = navRight; padNav.ok = navOk;
     return;
   }
-  for (const k of Object.keys(padNav)) padNav[k] = false;
+  padNav.up = false; padNav.down = false; padNav.left = false;
+  padNav.right = false; padNav.ok = false;
 
   if (L && !padWas.L) { wakeAudio(); push(BTN.LEFT); }
   if (R && !padWas.R) { wakeAudio(); push(BTN.RIGHT); }

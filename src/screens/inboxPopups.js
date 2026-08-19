@@ -23,6 +23,7 @@ import * as Presence from '../services/presence.js';
 import * as Room from '../services/multiplayer.js';
 import { get as getProfile } from '../services/profile.js';
 import { openComposer } from './UserCard.js';
+import { setMountHook } from './router.js';
 import { stamp } from './timeText.js';
 
 /** 대결 신청 수락 제한 (초) — 사용자 지정: "10초안에 수락을 누르지 않으면 자동 거절" */
@@ -46,6 +47,8 @@ const uiMode = () => document.body.classList.contains('ui-mode');
 export function start(navigator) {
   navRef = navigator ?? navRef;
   if (stop) return;
+  // DOM 화면으로 돌아올 때마다 밀린 쪽지를 띄우게 라우터에 자기를 건다 (2026-08-19 13차)
+  setMountHook(flush);
   stop = Presence.subscribeInbox((items) => {
     /**
      * ★ **안 읽은 것 · 내가 받은 것만** 띄운다. (2026-08-19 12차)

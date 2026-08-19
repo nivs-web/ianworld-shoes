@@ -26,8 +26,20 @@ import * as L from './storageLocal.js';
 const PRESENCE = 'presence';
 const INBOX = 'inbox';
 
-/** 부팅을 방해하지 않으려고 이만큼 미뤘다 붙는다 */
-const START_DELAY_MS = 1500;
+/**
+ * 부팅을 방해하지 않으려고 이만큼 미뤘다 붙는다.
+ *
+ * 1500 → **2500** (2026-08-19 13차). 1.5초는 사용자가 로비를 보고 **싱글게임을 누르는
+ * 바로 그 순간**이라, RTDB 청크(44KB gz)가 판 에셋(146KB)과 회선을 다퉜다.
+ * 게다가 그냥 기다리는 게 아니라 `requestIdleCallback` 으로 **한가한 틈**을 고른다.
+ */
+const START_DELAY_MS = 2500;
+
+/** 한가한 틈에 부른다 (없는 브라우저는 그냥 타이머) */
+function whenIdle(fn, timeout) {
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(fn, { timeout });
+  else setTimeout(fn, timeout);
+}
 /**
  * 이보다 오래된 대결 신청은 **버린다.** 앱을 꺼 뒀다 몇 시간 뒤에 켰는데
  * "대결 신청이 들어왔습니다"가 뜨면, 수락해 봐야 상대는 이미 없다.
@@ -99,7 +111,21 @@ export function startLater(after, delay = START_DELAY_MS) {
   if (started || startTimer) return;
   startTimer = setTimeout(() => {
     startTimer = null;
-    start().catch(() => {}).then(() => { try { after?.(); } catch { /* 무시 */ } });
+    /**
+     * 탭이 숨어 있으면 붙지 않는다 — 어차피 그 사람은 지금 게임을 안 보고 있고,
+     * 붙자마자 `onDisconnect` 로 지워질 수도 있다. 돌아오면 그때 붙는다.
+     */
+    if (typeof document !== 'undefined' && document.hidden) {
+      document.addEventListener('visibilitychange', function once() {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', once);
+        startLater(after, 0);
+      });
+      return;
+    }
+    whenIdle(() => {
+      start().catch(() => {}).then(() => { try { after?.(); } catch { /* 무시 */ } });
+    }, 3000);
   }, delay);
 }
 
@@ -120,12 +146,21 @@ export function setState(state) {
   }).catch(() => {});
 }
 
-/** 프로필이 바뀌었다(신발·승패·닉네임) — 카드를 다시 쓴다 */
+/**
+ * 프로필이 바뀌었다(신발·승패·닉네임) — 카드를 다시 쓴다.
+ * **값이 그대로면 안 쓴다.** 로비를 드나들 때마다 부르므로, 안 그러면 헛쓰기가 쌓인다
+ * (`multiplayer.refreshMyCard` 와 같은 이유).
+ */
+let lastCard = '';
 export function refresh() {
   if (!started) return;
+  const card = myCard();
+  const key = `${card.nickname}|${card.characterId}|${card.shoesOwned}|${card.multiWins}|${card.multiLosses}|${card.state}`;
+  if (key === lastCard) return;
+  lastCard = key;
   rt().then((fb) => {
     if (!fb) return;
-    return withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(PRESENCE, fb.uid)), myCard()),
+    return withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(PRESENCE, fb.uid)), card),
       undefined, '접속 표시 갱신');
   }).catch(() => {});
 }

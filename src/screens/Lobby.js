@@ -15,14 +15,23 @@ import { PAL } from '../game/palette.js';
 import { pixelText } from './pixelText.js';
 import { pixelBadge } from './pixelBadge.js';
 import { badgeSlots } from '../data/badges.js';
-import CharacterSelect from './CharacterSelect.js';
-import Collection from './Collection.js';
-import HallOfFame from './HallOfFame.js';
-import Settings from './Settings.js';
-import MultiMenu from './multi/MultiMenu.js';
 import Portal from './Portal.js';
+import { lazyScreen, prefetchScreens } from './lazyScreen.js';
 import { startGame } from './startGame.js';
 import * as Presence from '../services/presence.js';
+
+/**
+ * ★ **메뉴 화면은 누를 때 받는다.** (2026-08-19 13차, 속도 — `lazyScreen.js` 주석)
+ *
+ * 이 다섯을 정적으로 import 하면 도감의 신발 130종 표, 배경설정의 배경 44종 명단,
+ * 명예의 전당, 멀티 화면 일체가 **로비를 그리기도 전에** 부팅 번들에 들어온다.
+ * 로비에서 실제로 쓰는 건 버튼 라벨뿐이다.
+ */
+const Collection = lazyScreen(() => import('./Collection.js'), S.menuCollection);
+const CharacterSelect = lazyScreen(() => import('./CharacterSelect.js'), S.menuCharacter);
+const HallOfFame = lazyScreen(() => import('./HallOfFame.js'), S.hallTitle);
+const Settings = lazyScreen(() => import('./Settings.js'), S.settingsTitle);
+const MultiMenu = lazyScreen(() => import('./multi/MultiMenu.js'), S.multiTitle);
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -43,7 +52,23 @@ const DIFFS = [
  */
 function prewarmMultiIfReturning() {
   if (!everPlayedMulti()) return;
-  import('../services/multiplayer.js').then((M) => M.prewarm()).catch(() => {});
+  /**
+   * ★ **한가할 때 붙는다.** (2026-08-19 13차, 속도)
+   *
+   * 로비는 **부팅 직후**에 뜬다. 여기서 곧바로 RTDB 청크(44KB gz)를 부르면
+   * 아직 내려오는 중인 firebase 청크·글꼴·로고와 회선을 다툰다 — 그 대가는
+   * "첫 화면이 늦다"로 나타나고, 정작 얻는 건 몇 초 뒤에나 쓸 연결이다.
+   * `requestIdleCallback` 으로 미루면 **누르기 전에는 반드시 붙어 있고**
+   * 부팅과는 겹치지 않는다.
+   */
+  const go = () => import('../services/multiplayer.js').then((M) => M.prewarm()).catch(() => {});
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 3000 });
+  else setTimeout(go, 1200);
+}
+
+/** 로비에 들어오면 **한가할 때** 메뉴 화면들을 미리 받아 둔다 — 누를 때는 이미 있다 */
+function prewarmMenus() {
+  prefetchScreens([Collection, CharacterSelect, HallOfFame, Settings, MultiMenu]);
 }
 
 export default function Lobby(nav) {
@@ -54,6 +79,7 @@ export default function Lobby(nav) {
    * 화면마다 갱신을 흩뿌리지 않고 이 한 곳에서 맞춘다. 아직 안 붙었으면 아무 일도 안 한다.
    */
   Presence.refresh();
+  prewarmMenus();
   return {
     render() {
       const p = getProfile();

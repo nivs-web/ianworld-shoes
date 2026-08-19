@@ -127,7 +127,8 @@ export default function HallOfFame(nav) {
     const games = (r.multiWins ?? 0) + (r.multiLosses ?? 0);
     return el('div.rank-row', { class: opt.me ? 'me' : '', onclick: () => openCard(r) }, [
       el('div.rank-no', r.rank === null ? '-' : String(r.rank)),
-      ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
+      ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko, loading: 'lazy', decoding: 'async' })
+         : el('div.rank-face'),
       el('div.rank-name', r.nickname || '???'),
       /**
        * ★ **신발왕 탭에만** 멀티 승률 칸. (2026-08-19 11차, 사용자 지정)

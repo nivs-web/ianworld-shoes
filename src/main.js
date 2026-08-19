@@ -13,7 +13,6 @@ import * as Audio from './audio/audio.js';
 import * as Sfx from './audio/sfx.js';
 import * as Bgm from './audio/bgm.js';
 
-import { GameScene } from './game/GameScene.js';
 import { nav, bindHardwareBack, bindEscBack } from './screens/router.js';
 import { bindMenuNav } from './screens/menuNav.js';
 import SplashLogin from './screens/SplashLogin.js';
@@ -23,9 +22,13 @@ import { get as getProfile, pullAll } from './services/profile.js';
 import { selftest } from './services/diagnose.js';
 import { sweepUnsettled } from './services/multiSettle.js';
 import { initPwa } from './services/pwa.js';
+import { prefetchGame } from './game/loadGame.js';
 
-// 오버레이/로비에서 새 판을 열 때 순환 import를 피하기 위한 전역 훅
-window.__gameModule = { GameScene };
+/**
+ * ★ **인게임 코드는 이제 따로 받는다.** (2026-08-19 13차)
+ * 예전에는 여기서 정적으로 import 해서 **부팅 번들에 49KB(gzip)** 가 들어 있었다 —
+ * 첫 화면에는 한 줄도 안 쓰는 코드다. 자세한 계측은 `game/loadGame.js` 주석.
+ */
 
 function hideBoot() {
   const boot = document.getElementById('boot');
@@ -41,6 +44,18 @@ async function boot() {
    * 늦게 듣기 시작하면 그 판에서는 설치 버튼을 못 띄운다. (services/pwa.js)
    */
   initPwa();
+
+  /**
+   * ★ **세션 확인을 제일 먼저 띄운다.** (2026-08-19 13차, 속도)
+   *
+   * `initAuth()` 는 첫 호출에서 **firebase 청크(71KB)를 내려받는다.** 예전에는 캔버스·
+   * 입력·오디오·루프를 다 세운 **뒤에** 불러서, 그 준비 시간만큼 요청이 늦게 나갔다.
+   * 실측(4G, `npm run perf:boot`)에서 firebase 청크가 **+703ms** 에야 끝나고
+   * 첫 화면이 그 직후였다 — 네트워크가 놀고 있는 구간이 앞에 있었다는 뜻이다.
+   *
+   * 프라미스만 먼저 띄우고 기다리기는 아래에서 한다. 그 사이에 초기화가 돈다.
+   */
+  const authReady = initAuth();
 
   initCanvas();
   initInput();
@@ -64,6 +79,12 @@ async function boot() {
    * *"터치 없이도 게임 가능하게끔"*. 방향키로 커서, 엔터로 선택, ESC 로 뒤로.
    */
   bindMenuNav();
+
+  /**
+   * ★ 인게임 코드(49KB gzip)를 **한가할 때 미리** 받아 둔다. (2026-08-19 13차)
+   * 첫 화면을 그리는 데는 필요 없지만, 버튼을 누를 때는 이미 있어야 한다.
+   */
+  prefetchGame();
 
   /**
    * 진단용 훅. QA 스크립트가 로그인을 건너뛰고 화면을 직접 열 때 쓴다.
@@ -158,13 +179,48 @@ async function boot() {
    * 순서만 바꾸면 그 구간이 통째로 사라진다. 기다리는 시간은 같지만 **기다리는 동안
    * 볼 것이 있다** — 사용자에게는 그게 곧 속도다.
    */
-  const u = await initAuth();
-  nav.reset(routeFor(u));
-  hideBoot();
+  /**
+   * ★ **계정이 이미 있으면 세션 확인을 기다리지 않고 로비를 띄운다.** (2026-08-19 13차)
+   *
+   * 실측: 첫 화면까지 726ms 중 **firebase 청크 + 세션 확인이 400ms 넘게** 차지했다.
+   * 그런데 이 게임은 **로컬이 원본**이다(§M5) — 로컬에 `uid` 와 닉네임이 있다는 건
+   * 예전에 **실제로 로그인에 성공했다**는 뜻이고, 그 화면은 어차피 로비다.
+   *
+   * 그래서 먼저 그리고 나중에 맞춘다. 세션이 정말 끊겼으면(`!u`) 그때 로그인 화면으로
+   * 돌린다 — 그 경우는 드물고, 그 대가로 **모든 재방문자의 첫 화면이 그만큼 빨라진다.**
+   * 그 사이에 싱글게임을 시작해도 문제가 없다(기록은 로컬에 남고 다음 접속에 올라간다).
+   */
+  const 로컬 = getProfile();
+  const 미리로비 = !!(로컬.nickname && 로컬.uid && 로컬.uid !== 'guest');
+  if (미리로비) {
+    nav.reset(Lobby);
+    hideBoot();
+  }
+
+  /** 지금 로비를 띄워 뒀나 — 같은 화면을 두 번 세우지 않으려고 기억한다 */
+  let 로비중 = 미리로비;
+
+  const u = await authReady;
+  if (미리로비) {
+    // 세션이 끝났다 — 그제야 로그인 화면으로 되돌린다
+    if (!u) { nav.reset(SplashLogin); 로비중 = false; }
+  } else {
+    const 첫화면 = routeFor(u);
+    nav.reset(첫화면);
+    로비중 = 첫화면 === Lobby;
+    hideBoot();
+  }
   if (u && !u.guest) syncOnce();
   onUserChanged((next) => {
-    // 부팅 타임아웃 뒤에 세션이 확인된 경우 — 로그인 화면에 머물러 있으면 밀어 넣는다
-    if (next && nav.depth() === 1 && routeFor(next) === Lobby) nav.reset(Lobby);
+    /**
+     * 부팅 타임아웃 뒤에 세션이 확인된 경우 — 로그인 화면에 머물러 있으면 밀어 넣는다.
+     * **이미 로비면 다시 세우지 않는다**: `reset` 은 화면 인스턴스를 새로 만들어
+     * 로비의 미리받기·접속 표시가 한 번 더 돈다(2026-08-19 13차, '미리 로비' 이후).
+     */
+    if (next && !로비중 && nav.depth() === 1 && routeFor(next) === Lobby) {
+      nav.reset(Lobby);
+      로비중 = true;
+    }
     if (next && !next.guest) syncOnce();
   });
 }

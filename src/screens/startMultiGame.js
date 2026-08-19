@@ -18,12 +18,23 @@ import Lobby from './Lobby.js';
 import { toast } from './ui.js';
 import S from '../config/strings.ko.js';
 import { MULTI } from '../config/balance.js';
+import { loadGameModule } from '../game/loadGame.js';
 
-export function startMultiGame(nav, { code, room }) {
+let starting = false;
+
+export async function startMultiGame(nav, { code, room }) {
+  if (starting) return false;
   const p = getProfile();
   enterFullscreen().then((ok) => { if (ok) lockPortrait(); });
 
-  const { GameScene } = window.__gameModule;
+  // 인게임 코드는 따로 받는다 — 전체화면 요청 **뒤에** (제스처 컨텍스트, §9-0-2)
+  starting = true;
+  let GameScene;
+  try {
+    ({ GameScene } = await loadGameModule());
+  } finally {
+    starting = false;
+  }
   Room.resetProgressThrottle();
   // 판이 시작됐다 — 잠깐 끊겼다고 방에서 빠지면 안 된다 (multiplayer.js armDisconnect)
   Room.holdRoomSeat(code).catch(() => {});

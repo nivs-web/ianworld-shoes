@@ -100,5 +100,15 @@ export function bindMenuNav() {
     move(dir === 'down' || dir === 'right' ? 1 : -1);
   });
 
-  new MutationObserver(resync).observe(document.body, { childList: true, subtree: true });
+  /**
+   * ★ **훑는 범위를 좁힌다.** (2026-08-19 13차, 속도)
+   *
+   * 처음엔 `document.body` 를 `subtree: true` 로 봤는데, 그러면 **토스트 하나가
+   * 뜨고 지는 것까지** 콜백을 깨운다. 실제로 필요한 신호는 둘뿐이다 —
+   * 화면이 통째로 갈리는 것(`#ui` 의 자식 교체)과 팝업이 열리고 닫히는 것(body 직계).
+   */
+  const ui = document.getElementById('ui');
+  const mo = new MutationObserver(resync);
+  if (ui) mo.observe(ui, { childList: true });
+  mo.observe(document.body, { childList: true });
 }

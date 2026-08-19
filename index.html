@@ -19,6 +19,13 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 <link rel="icon" href="/icons/icon-192.png" />
 
+<!--
+  Neo둥근모(43.6KB) 프리로드는 **재 보고 뺐다.** (2026-08-19 13차)
+  넣으면 글꼴이 먼저 오는 대신 `index.js` 가 그만큼 밀리는데, 첫 화면은 JS 가 있어야
+  뜬다 — 실측(4G, `npm run perf:boot`)에서 첫 화면 시간이 453 vs 460ms 로 사실상 같았다.
+  차이가 없다면 **느린 회선에서 JS 가 이기는 쪽**이 안전하다. 글꼴은 `font-display: swap`
+  이라 어차피 화면을 막지 않는다.
+-->
 <link rel="stylesheet" href="/src/styles/reset.css" />
 <link rel="stylesheet" href="/src/styles/pixel-ui.css" />
 <link rel="stylesheet" href="/src/styles/screens.css" />

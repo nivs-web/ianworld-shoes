@@ -9,7 +9,6 @@
 import { setInputEnabled, setDomBackHandler } from '../core/input.js';
 import { closeTopOverlay, closeAllOverlays } from './ui.js';
 import * as Presence from '../services/presence.js';
-import * as Inbox from './inboxPopups.js';
 
 /** @typedef {{render:(nav:object)=>HTMLElement, onLeave?:()=>void}} Screen */
 
@@ -73,8 +72,19 @@ function mount() {
   draw();
   // DOM 화면으로 돌아왔다 — 밀린 쪽지를 지금 띄운다 (인게임 동안은 서버에 그대로 뒀다)
   Presence.setState('lobby');
-  Inbox.flush();
+  mountHook?.();
 }
+
+/**
+ * ★ **화면이 라우터를 물게 하지, 라우터가 화면을 물게 하지 않는다.** (2026-08-19 13차)
+ *
+ * 예전에는 라우터가 `inboxPopups` 를 정적으로 import 해서, **쪽지 팝업과 그것이 끌고 오는
+ * 유저상태창까지 부팅 번들**에 들어왔다. 쪽지함은 접속 2.5초 뒤에나 켜지는 기능이다.
+ * 훅으로 뒤집으면 라우터는 아무것도 모르고, 쪽지 쪽이 준비되면 자기를 등록한다.
+ * @type {(() => void) | null}
+ */
+let mountHook = null;
+export function setMountHook(fn) { mountHook = fn; }
 
 export const nav = {
   /** 새 화면을 쌓는다 */

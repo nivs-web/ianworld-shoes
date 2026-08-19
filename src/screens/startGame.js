@@ -12,12 +12,20 @@ import * as Scene from '../core/scene.js';
 import { enterFullscreen, exitFullscreen, lockPortrait } from '../core/fullscreen.js';
 import { nav } from './router.js';
 import Lobby from './Lobby.js';
+import { loadGameModule } from '../game/loadGame.js';
 
 /**
  * @param {object} navigator router.nav
  * @param {{useElevator?:boolean}} opt
  */
-export function startGame(navigator, opt = {}) {
+/**
+ * 두 번 눌려도 판이 둘 열리지 않게. 인게임 코드를 받는 동안(첫 판 한정)
+ * 화면이 아직 로비라 **연타가 가능해졌기 때문에** 생긴 방어다.
+ */
+let starting = false;
+
+export async function startGame(navigator, opt = {}) {
+  if (starting) return false;
   const p = getProfile();
 
   // 엘리베이터는 **누르는 즉시** 차감한다 (기획서 §5-8-1 "도중에 나가도 환불 없음")
@@ -35,7 +43,19 @@ export function startGame(navigator, opt = {}) {
    */
   enterFullscreen().then((ok) => { if (ok) lockPortrait(); });
 
-  const { GameScene } = window.__gameModule;
+  /**
+   * ★ 인게임 코드는 **여기서** 받는다 (2026-08-19 13차, `game/loadGame.js`).
+   * 전체화면 요청보다 **뒤에** 있는 게 중요하다 — `await` 를 먼저 하면 제스처
+   * 컨텍스트를 벗어나 브라우저가 전체화면을 거절한다(§9-0-2 에서 한 번 데였다).
+   * 부팅 직후에 미리 받아 두므로(`prefetchGame`) 보통은 마이크로태스크 하나다.
+   */
+  starting = true;
+  let GameScene;
+  try {
+    ({ GameScene } = await loadGameModule());
+  } finally {
+    starting = false;
+  }
   navigator.toCanvas();
   Scene.reset(
     new GameScene({

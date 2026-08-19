@@ -1820,7 +1820,12 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('쪽지함은 붙은 뒤에 구독', main, "import('./screens/inboxPopups.js').then((I) => I.start(nav))");
     has('인게임은 게임중', rt, "Presence.setState('playing');");
     has('DOM 화면은 대기중', rt, "Presence.setState('lobby');");
-    has('DOM 으로 돌아오면 밀린 쪽지를 띄운다', rt, 'Inbox.flush();');
+    /**
+     * 13차에 방향을 뒤집었다 — 라우터가 쪽지 팝업을 물면 그게 부팅 번들에 들어온다.
+     * 이제 쪽지 쪽이 라우터에 자기를 건다.
+     */
+    has('DOM 으로 돌아오면 밀린 쪽지를 띄운다', rt, 'mountHook?.();');
+    has('훅은 쪽지 쪽이 건다', ip, 'setMountHook(flush);');
     // 인게임(캔버스)에 DOM 팝업이 뜨면 입력이 막혀 그 판이 끝난다
     has('인게임에서는 안 띄운다', ip, "document.body.classList.contains('ui-mode')");
     has('한 번에 하나씩', ip, 'if (showing || !uiMode()) return;');
@@ -1916,7 +1921,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('게임패드 방향 핸들러', inp, 'export function setDomNavHandler(');
     // 인게임에서는 같은 십자키가 좌우 조작이다 — 겹치면 안 된다
     has('DOM 화면일 때만 커서', inp, 'if (!enabled) {\n    padWas.L = false');
-    has('눌린 순간에만 한 번', inp, 'if (on && !padNav[dir]) domNavHandler?.(dir);');
+    has('눌린 순간에만 한 번', inp, "if (navUp && !padNav.up) domNavHandler?.('up');");
+    // 로비에서도 루프는 60fps 로 돈다 — 패드가 없으면 아예 훑지 않는다 (2026-08-19 13차)
+    has('패드가 없으면 매 프레임 안 훑는다', inp, 'if (!padCount) {');
     const css = read('src/styles/screens.css');
     has('포커스가 눈에 보인다', css, '.pbtn:focus');
   }
@@ -1934,6 +1941,95 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('접속 중이면 현재로그인중', uc, 'S.lastLogin(S.lastLoginNow)');
     eq('연도까지 찍는다', tt.includes('d.getFullYear()'), true);
     eq('사용자 지정 형식', S2.lastLogin('2026.01.01 19:34'), '마지막로그인: 2026.01.01 19:34');
+  }
+}
+
+// ─────────────────────────────────────────────
+{
+  console.log('\n41) ★ 현재접속자 새로고침 · 접속 속도 (2026-08-19 13차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+
+  // ① 새로고침 버튼
+  {
+    const ou = read('src/screens/multi/OnlineUsers.js');
+    has('현재접속자에 새로고침', ou, 'button(S.refreshList, refresh');
+    // 구독을 다시 걸어야 실제로 연결부터 새로 잡힌다 — 화면만 다시 그리면 그대로다
+    has('구독을 다시 건다', ou, 'unsub = listen();');
+    eq('뒤로 버튼 위에 있다',
+      ou.indexOf('S.refreshList') < ou.indexOf('backButton(S.back'), true);
+  }
+
+  // ② 첫 화면을 세션 확인보다 먼저 (실측 726ms → 362ms)
+  {
+    const main = read('src/main.js');
+    has('세션 확인을 먼저 띄운다', main, 'const authReady = initAuth();');
+    has('계정이 있으면 로비부터 그린다', main, 'if (미리로비) {');
+    // 세션이 정말 끊겼으면 되돌려야 한다 — 안 그러면 로그아웃한 사람이 로비에 갇힌다
+    has('세션이 없으면 로그인 화면으로', main, 'nav.reset(SplashLogin)');
+    has('같은 화면을 두 번 안 세운다', main, '!로비중');
+  }
+
+  // ③ 인게임 코드·메뉴 화면을 부팅 번들에서 뺐다
+  {
+    const main = read('src/main.js');
+    const sg = read('src/screens/startGame.js');
+    const sm = read('src/screens/startMultiGame.js');
+    const lb = read('src/screens/Lobby.js');
+    const rt = read('src/screens/router.js');
+    no('부팅에서 GameScene 을 정적으로 안 물린다', main, "from './game/GameScene.js'");
+    has('한가할 때 미리 받는다', main, 'prefetchGame();');
+    has('싱글 시작이 동적 로드', sg, 'await loadGameModule()');
+    has('멀티 시작이 동적 로드', sm, 'await loadGameModule()');
+    /**
+     * 전체화면 요청은 **제스처 안**에서 해야 브라우저가 받아 준다(§9-0-2).
+     * `await` 를 그 앞에 두면 조용히 거절당한다 — 순서를 검사로 못 박는다.
+     */
+    eq('전체화면 요청이 await 보다 앞',
+      sg.indexOf('enterFullscreen()') < sg.indexOf('await loadGameModule()'), true);
+    eq('멀티도 마찬가지',
+      sm.indexOf('enterFullscreen()') < sm.indexOf('await loadGameModule()'), true);
+    has('두 번 눌러도 판이 하나', sg, 'if (starting) return false;');
+    has('메뉴 화면은 누를 때 받는다', lb, "lazyScreen(() => import('./Collection.js')");
+    has('메뉴도 한가할 때 미리', lb, 'prefetchScreens([');
+    // 라우터가 쪽지 팝업을 물면 그게 통째로 부팅 번들에 들어온다
+    no('라우터가 쪽지 팝업을 안 문다', rt, "from './inboxPopups.js'");
+  }
+
+  // ④ 매 프레임 낭비 · 관찰 범위
+  {
+    const inp = read('src/core/input.js');
+    const mn = read('src/screens/menuNav.js');
+    has('패드가 없으면 안 훑는다', inp, 'if (!padCount) {');
+    no('매 프레임 객체를 안 만든다', inp, 'Object.entries(nav)');
+    /**
+     * body 전체를 subtree 로 보면 토스트 하나에도 콜백이 깨어난다.
+     * **주석을 걷어내고 본다** — 안 그러면 이 사실을 적어 둔 주석에 검사가 걸린다
+     * (§9-0-33 에서 sticky 검사가 똑같이 거짓 실패를 냈다).
+     */
+    const mnCode = mn.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    no('body 전체를 subtree 로 안 본다', mnCode, 'subtree: true');
+    has('#ui 와 팝업만 본다', mn, "mo.observe(document.body, { childList: true })");
+  }
+
+  // ⑤ 접속 표시는 **한가할 때** 붙는다 (RTDB 청크가 판 에셋과 회선을 다투지 않게)
+  {
+    const pr = read('src/services/presence.js');
+    const lb = read('src/screens/Lobby.js');
+    has('한가한 틈을 고른다', pr, 'requestIdleCallback');
+    has('탭이 숨어 있으면 안 붙는다', pr, 'document.hidden');
+    has('값이 같으면 안 쓴다', pr, 'if (key === lastCard) return;');
+    has('멀티 미리 붙이기도 한가할 때', lb, 'requestIdleCallback(go');
+  }
+
+  // ⑥ 목록 그림은 게으르게
+  {
+    const hof = read('src/screens/HallOfFame.js');
+    const ou = read('src/screens/multi/OnlineUsers.js');
+    has('순위표 얼굴 lazy', hof, "loading: 'lazy'");
+    has('접속자 얼굴 lazy', ou, "loading: 'lazy'");
   }
 }
 

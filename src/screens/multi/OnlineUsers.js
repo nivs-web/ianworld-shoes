@@ -12,7 +12,7 @@
  */
 
 import S from '../../config/strings.ko.js';
-import { el, backButton, screen, title } from '../ui.js';
+import { el, button, backButton, screen, title } from '../ui.js';
 import { characterById, characterSprite } from '../../data/characters.js';
 import { currentUser } from '../../services/auth.js';
 import * as Presence from '../../services/presence.js';
@@ -25,7 +25,7 @@ export default function OnlineUsers(nav) {
   let failed = false;
   let unsub = () => {};
 
-  unsub = Presence.subscribeOnline((rows) => {
+  const listen = () => Presence.subscribeOnline((rows) => {
     if (!rows) { failed = true; list = null; return nav.refresh(); }
     failed = false;
     /**
@@ -40,6 +40,24 @@ export default function OnlineUsers(nav) {
     });
     nav.refresh();
   });
+  unsub = listen();
+
+  /**
+   * ★ **새로고침** (2026-08-19 13차, 사용자 요청).
+   *
+   * 목록은 원래 **구독**이라 저절로 따라온다. 그런데 소켓이 끊겼다 붙는 사이에는
+   * 스냅샷이 안 오고, 사용자에게는 "목록이 멈춘 것"으로 보인다 — 그때 누를 것이 있어야 한다.
+   * 구독을 끊고 다시 걸면 연결부터 새로 잡으므로 그 상태가 실제로 풀린다.
+   * 내 카드도 같이 다시 올린다(신발 수가 바뀐 뒤였을 수 있다).
+   */
+  function refresh() {
+    unsub();
+    list = null;
+    failed = false;
+    nav.refresh();
+    Presence.refresh();
+    unsub = listen();
+  }
 
   function row(u) {
     const ch = characterById(u.characterId);
@@ -53,7 +71,7 @@ export default function OnlineUsers(nav) {
         nav,
       }),
     }, [
-      ch ? el('img.online-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko })
+      ch ? el('img.online-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko, loading: 'lazy', decoding: 'async' })
          : el('div.online-face'),
       el('div.online-name', `${u.nickname || '???'}${isMe ? ` (${S.meTag})` : ''}`),
       el('div.online-shoes', S.roomShoes(u.shoesOwned ?? 0)),
@@ -77,6 +95,7 @@ export default function OnlineUsers(nav) {
         list ? el('div.hint', S.onlineCount(list.length)) : null,
         body,
         el('div.spacer'),
+        button(S.refreshList, refresh, { sfx: 'sfx_menu_move' }),
         backButton(S.back, () => nav.back())
       );
     },
