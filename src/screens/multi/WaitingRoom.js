@@ -9,7 +9,9 @@
  */
 
 import S from '../../config/strings.ko.js';
-import { el, button, backButton, segmented, screen, title, toast, presentOverlay } from '../ui.js';
+import { el, button, backButton, segmented, screen, title, toast } from '../ui.js';
+import { openUserCard } from '../UserCard.js';
+import * as Presence from '../../services/presence.js';
 import { characterById, characterSprite } from '../../data/characters.js';
 import { MULTI } from '../../config/balance.js';
 import { currentUser } from '../../services/auth.js';
@@ -24,30 +26,21 @@ import Lobby from '../Lobby.js';
 const RESET_RETRY_MS = 2500;
 
 /**
- * 참가자 이름을 누르면 뜨는 카드. (2026-08-19, §11 → §9 에서 캐릭터 그림 추가)
- * `p` 는 `players/$uid` 스냅샷 — nickname·characterId·shoesOwned·multiWins·multiLosses.
+ * 참가자 이름을 누르면 뜨는 카드 — **공용 유저상태창**을 쓴다. (2026-08-19 11차)
  *
- * 그림을 같이 보여 주는 이유: 인게임에는 아이디가 없고 **자리 색과 캐릭터 생김새**가
- * 신원의 전부다. 대기방에서 "이 사람이 저 캐릭터구나"를 붙여 둬야 판이 시작된 뒤에
- * 화면에서 상대를 찾을 수 있다.
+ * 예전에는 이 파일이 팝업을 직접 만들었다. 명예의 전당·현재접속자에서도 같은 창을
+ * 요구받으면서 `screens/UserCard.js` 로 떼어냈다 — 세 화면이 각자 만들면 언젠가
+ * 셋이 서로 다른 말을 한다.
+ *
+ * `p` 는 `players/$uid` 스냅샷 — nickname·characterId·shoesOwned·multiWins·multiLosses.
+ * 자리 색 테두리를 그대로 둘러 인게임 레이스 게이지와 같은 신호를 쓴다.
  */
 function playerStatPopup(p, slot) {
-  let dismiss = () => {};
-  const close = () => dismiss();
-  const games = (p.multiWins ?? 0) + (p.multiLosses ?? 0);
-  const ch = characterById(p.characterId);
-  const overlay = el('div.dialog-overlay', { onclick: close }, [
-    el('div.dialog', { onclick: (e) => e.stopPropagation() }, [
-      // 자리 색 테두리를 그대로 둘러 — 인게임 레이스 게이지와 같은 신호를 쓴다
-      el('div.player-card-face', { style: { '--slot': SLOT_COLORS[slot] ?? SLOT_COLORS[0] } },
-        ch ? [el('img', { src: characterSprite(ch.id, 'front'), alt: ch.ko })] : []),
-      el('div.dialog-msg', p.nickname || '???'),
-      ch ? el('div.player-card-char', ch.ko) : null,
-      el('div.dialog-detail', S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0)),
-      button(S.close, close, { sfx: 'sfx_menu_back' }),
-    ]),
-  ]);
-  dismiss = presentOverlay(overlay);
+  /**
+   * 여기서는 **버튼을 안 붙인다**(`actions: false`). 이미 같은 방에 앉아 있는 사람에게
+   * 대결을 신청하면 방이 하나 더 생기고, 수락한 사람은 앞 방에 유령으로 남는다.
+   */
+  openUserCard(p, { slot, actions: false });
 }
 
 const DIFFS = [
@@ -58,6 +51,13 @@ const DIFFS = [
 
 export default function WaitingRoom(nav, params = {}) {
   const code = params.code;
+  /**
+   * ★ 대기방은 **'게임중'** 으로 표시한다. (2026-08-19 11차)
+   * 이미 한 방에 앉아 있는 사람이 다른 방 초대를 수락하면 앞 방에 유령으로 남는다 —
+   * 그 경로를 아예 만들지 않는다. 방을 나가면 다음 화면이 뜨면서 `router.mount` 가
+   * 다시 '대기중' 으로 되돌린다.
+   */
+  Presence.setState('playing');
   const myUid = currentUser()?.uid;
   let room = null;
   let unsub = () => {};

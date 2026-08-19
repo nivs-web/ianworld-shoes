@@ -104,6 +104,14 @@ export class GameScene {
     this.floor = this.startFloor;
     this.gauge = GAUGE_MAX;
     this.started = false; // 첫 입력부터 게이지가 줄기 시작
+    /**
+     * 출발 제한(멀티)에 남은 시간(ms). 0이면 안 그린다.
+     * 판이 시작되고 `MULTI.startWithinSeconds` 안에 첫 발을 안 떼면 그 판은 패배다
+     * (`failToStart`). 값 자체는 매 프레임 `update()` 가 다시 잰다.
+     */
+    this.startLeftMs = 0;
+    /** 판이 실제로 돌기 시작한 첫 프레임의 시각 — 출발 제한의 기준 */
+    this.raceOpenedAt = 0;
     this.shoesFound = 0;
     this.revives = 0;
     this.reviveEarned = 0; // 이미 지급한 부활 수 (balance.REVIVE.shoesPerRevive 개마다 1개)
@@ -558,6 +566,27 @@ export class GameScene {
         clearInput();
         return;
       }
+      /**
+       * ★ **5초 안에 출발하지 않으면 패배한다.** (2026-08-19 11차, 사용자 지정)
+       *
+       * 시각은 **절대 시각으로** 잰다 — 프레임 수로 깎으면 에셋 로딩이나 일시정지 동안
+       * 멈춰서, 일부러 멈춰 두는 사람에게 오히려 유리해진다(카운트다운을 벽시계로
+       * 바꾼 것과 같은 이유, §9-0-14).
+       */
+      if (!this.started) {
+        /**
+         * 기준은 방의 출발 시각이 아니라 **판이 실제로 돌기 시작한 첫 프레임**이다.
+         * 에셋이 아직 안 받아졌으면 `update()` 는 그 앞(`!this.ready`)에서 통째로
+         * 멈춘다 — 방 시각으로 재면 **로딩이 5초를 넘긴 기기는 뜨자마자 패배**한다.
+         * (같은 함정을 카운트다운에서 한 번 겪었다, §9-0-14)
+         */
+        if (!this.raceOpenedAt) this.raceOpenedAt = Date.now();
+        const 남음 = this.raceOpenedAt + MULTI.startWithinSeconds * 1000 - Date.now();
+        this.startLeftMs = Math.max(0, 남음);
+        if (남음 <= 0) return this.failToStart();
+      } else if (this.startLeftMs) {
+        this.startLeftMs = 0;
+      }
     }
 
     const btn = consumeInput();
@@ -636,6 +665,20 @@ export class GameScene {
   bestSoFar() {
     const p = getProfile();
     return Math.max(p.bestByDifficulty?.[this.diff.id] ?? 0, this.floor);
+  }
+
+  /**
+   * ★ **출발하지 않아 진다.** (2026-08-19 11차, 사용자 지정)
+   *
+   * **부활 창을 주지 않는다.** 주면 그게 곧 사용자가 신고한 그 전략이다 — 가만히 서서
+   * 상대가 부활을 태우기를 기다렸다가, 죽는 순간 1위보다 20칸 앞에서 살아나는 것.
+   * 그래서 기권(`leave`)과 똑같이 처리한다: 사망 보고 → `out` 도장 → 결과 화면.
+   * 남들은 도장을 보고 곧바로 판을 끝낼 수 있다.
+   */
+  failToStart() {
+    if (this.over || this.leaving) return;
+    this.startLeftMs = 0;
+    this.leave('home');
   }
 
   /**
@@ -736,6 +779,8 @@ export class GameScene {
       // 멀티는 부활이 없으므로 부활 칸 자체를 그리지 않는다 (기획서 §5-6)
       revives: this.multi ? 0 : this.revives,
       controlMode: this.controlMode,
+      // 멀티는 계단 숫자 위에 판돈 줄이 한 줄 들어가 좌표가 다르다 (layout.HUD.scoreMulti)
+      multi: !!this.multi,
     });
     if (this.multi) multiHud(this);
   }

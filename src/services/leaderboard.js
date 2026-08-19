@@ -216,6 +216,14 @@ export async function fetchBoard(tab, difficulty) {
           nickname: v.nickname ?? '',
           characterId: v.selectedCharacter ?? '',
           value: (tab === 'shoeking' ? v.shoesOwned : v.bestByDifficulty?.[difficulty]) ?? 0,
+          /**
+           * ★ 신발왕 탭에 **멀티 승률**을 같이 싣는다. (2026-08-19 11차, 사용자 요청)
+           * *"신발 많은 사람이 몇 승 했나 보이도록"*. 이 두 값은 이미 계정 문서에
+           * 올라와 있으므로(`multiSettle.pushWallet`) 조회가 더 늘지 않는다.
+           */
+          shoesOwned: v.shoesOwned ?? 0,
+          multiWins: v.multiWins ?? 0,
+          multiLosses: v.multiLosses ?? 0,
         };
       });
     } else {
@@ -279,6 +287,10 @@ async function myRow(fb, tab, difficulty, u) {
   const p = L.loadProfile();
   const base = {
     uid: u.uid, nickname: p.nickname ?? '', characterId: p.selectedCharacter ?? '', rank: null,
+    // 하단 고정 줄도 목록과 **같은 칸**을 그린다 — 없으면 내 줄만 승률 칸이 비어 보인다
+    shoesOwned: p.shoesOwned ?? 0,
+    multiWins: p.multiWins ?? 0,
+    multiLosses: p.multiLosses ?? 0,
   };
 
   if (tab === 'shoeking') return { ...base, value: p.shoesOwned ?? 0 };
@@ -288,4 +300,40 @@ async function myRow(fb, tab, difficulty, u) {
   const id = scoreDocId(u.uid, difficulty, period.keyOf());
   const snap = await withTimeout(fb.storeMod.getDoc(fb.storeMod.doc(fb.db, 'scores', id)), undefined, '내 순위');
   return { ...base, value: snap.exists() ? (snap.data().stairs ?? 0) : 0 };
+}
+
+/**
+ * 유저상태창에 필요한 남의 계정 값. (2026-08-19 11차)
+ *
+ * ★ **`getDoc` 이 아니라 쿼리다.** Firestore 규칙이 `users` 를 `get: isMe(uid)` /
+ * `list: signedIn()` 으로 갈라 뒀다 — 남의 문서를 **직접 읽으면 거부**되지만, 쿼리
+ * (=list)는 로그인한 사람에게 열려 있다(닉네임 중복 확인 때문에 원래 그렇다).
+ * 그래서 문서 ID 로 거르는 쿼리 한 번으로 받는다.
+ *
+ * 주간·월간·연간 탭의 줄에는 신발·승패가 없다(그 줄은 `scores` 에서 온다). 그래서
+ * 명예의 전당에서 아무 줄이나 눌러도 카드가 채워지려면 이 조회가 필요하다.
+ *
+ * @returns {Promise<{nickname:string, characterId:string, shoesOwned:number,
+ *                    multiWins:number, multiLosses:number}|null>}
+ */
+export async function fetchUserCard(uid) {
+  if (!uid || !configured() || !currentUser()) return null;
+  const fb = await getStore();
+  if (!fb) return null;
+  const { collection, query, where, limit, getDocs, documentId } = fb.storeMod;
+  try {
+    const snap = await withTimeout(getDocs(
+      query(collection(fb.db, 'users'), where(documentId(), '==', uid), limit(1))
+    ), undefined, '유저 카드');
+    const d = snap.docs[0];
+    if (!d) return null;
+    const v = d.data();
+    return {
+      nickname: v.nickname ?? '',
+      characterId: v.selectedCharacter ?? '',
+      shoesOwned: v.shoesOwned ?? 0,
+      multiWins: v.multiWins ?? 0,
+      multiLosses: v.multiLosses ?? 0,
+    };
+  } catch { return null; }
 }

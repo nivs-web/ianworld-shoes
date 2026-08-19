@@ -14,8 +14,17 @@ const browser = await chromium.launch({ executablePath: exe }).catch(() => chrom
 const page = await browser.newPage({ viewport: { width: 1200, height: 1100 }, deviceScaleFactor: 2 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-const TARGETS = { result: '_result-preview', room: '_room-preview', rooms: '_roomlist-preview', bg: '_bgsettings-preview' };
+/**
+ * 파비콘 404 는 늘 뜬다(이 저장소에는 favicon.ico 가 없다). 그걸 오류로 세면
+ * 미리보기가 **항상 실패로 보여서** 진짜 오류가 묻힌다 — 실제로 한동안 그랬다.
+ */
+page.on('console', (m) => {
+  if (m.type() !== 'error') return;
+  const t = m.text();
+  if (/favicon|status of 404/.test(t)) return;
+  errors.push(t);
+});
+const TARGETS = { result: '_result-preview', room: '_room-preview', rooms: '_roomlist-preview', bg: '_bgsettings-preview', hof: '_hof-preview' };
 const target = TARGETS[process.argv[2]] ?? '_screen-preview';
 await page.goto(`http://127.0.0.1:${PORT}/tools/${target}.html`, { waitUntil: 'networkidle' });
 await page.waitForFunction('window.__ready === true', null, { timeout: 20000 }).catch(() => {});
@@ -23,4 +32,4 @@ const out = `tools/_out/${process.argv[2] && TARGETS[process.argv[2]] ? process.
 await page.screenshot({ path: out, fullPage: true });
 await browser.close();
 vite.kill();
-console.log(errors.length ? `오류 ${errors.length}건: ${errors[0]}` : `미리보기 저장: ${out}`);
+console.log(errors.length ? `오류 ${errors.length}건:\n${errors.join('\n')}` : `미리보기 저장: ${out}`);

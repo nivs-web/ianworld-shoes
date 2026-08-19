@@ -69,7 +69,7 @@ await clickText('어려움');
 console.log('난이도 저장:', await p.evaluate(() => JSON.parse(localStorage.getItem('sf_profile')).difficulty));
 
 // 도감
-await clickText('나의 신발 컬렉션');
+await clickText('신발 도감');
 await shot('05_collection');
 const cells = await p.locator('.dex-cell').count();
 console.log('도감 1티어 칸 수:', cells, '/ 총합 문구:', (await p.locator('.dex-total').innerText()).trim());
@@ -78,7 +78,7 @@ console.log('3티어 칸 수:', await p.locator('.dex-cell').count());
 await clickText('뒤로');
 
 // 캐릭터
-await clickText('캐릭터 바꾸기');
+await clickText('캐릭터 변경');
 await shot('06_character');
 console.log('캐릭터:', (await p.locator('.char-name').innerText()).trim(), (await p.locator('.char-count').innerText()).trim());
 for (let i = 0; i < 5; i++) { await p.locator('.arrow').nth(1).click(); await p.waitForTimeout(120); }
@@ -87,10 +87,31 @@ console.log('6번째 캐릭터:', (await p.locator('.char-name').innerText()).tr
   '| 구매버튼:', await p.locator('button:has-text("캐릭터 구매하기")').count());
 await clickText('뒤로');
 
-// 조작법
+// 설정 → 조작법
+await clickText('설정');
 await clickText('조작법 변경');
 await shot('08_controls');
 console.log('조작 카드 수:', await p.locator('.ctrl-card').count());
+await clickText('뒤로');
+await clickText('뒤로');
+
+/**
+ * 명예의 전당 · 멀티 메뉴 · 현재접속자 (2026-08-19 11차).
+ * 로그인이 없는 환경이라 목록은 비어 있지만, **화면이 뜨고 콘솔 오류가 없는지**를 본다 —
+ * 새 화면이 조용히 터지면 그 경로는 아무도 안 밟아 본 채 배포된다.
+ */
+await clickText('명예의 전당');
+await shot('08b_hall');
+console.log('명예의 전당 탭 수:', await p.locator('.hof-tabs .pbtn').count());
+await clickText('뒤로');
+await clickText('멀티게임');
+await shot('08c_multi');
+console.log('멀티 메뉴에 현재접속자:', await p.locator('button:has-text("현재접속자")').count());
+await clickText('현재접속자');
+await p.waitForTimeout(600);
+await shot('08d_online');
+console.log('현재접속자 화면:', (await text()).split('\n').filter(Boolean).slice(0, 3).join(' / '));
+await clickText('뒤로');
 await clickText('뒤로');
 
 // 게임 시작 → 몇 칸 오르고 죽이기

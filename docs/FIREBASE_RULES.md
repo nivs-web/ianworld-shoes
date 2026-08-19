@@ -315,6 +315,67 @@ service cloud.firestore {
         }
       }
     },
+    "presence": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid",
+        ".validate": "!newData.exists() || newData.hasChildren(['nickname', 'state', 'at'])",
+        "nickname": {
+          ".validate": "newData.isString() && newData.val().length <= 16"
+        },
+        "characterId": {
+          ".validate": "newData.isString() && newData.val().length <= 24"
+        },
+        "shoesOwned": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "multiWins": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "multiLosses": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "state": {
+          ".validate": "newData.val() == 'lobby' || newData.val() == 'playing'"
+        },
+        "at": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "inbox": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        "$id": {
+          ".write": "auth != null && ((!data.exists() && newData.child('from').val() == auth.uid) || (!newData.exists() && auth.uid == $uid))",
+          ".validate": "!newData.exists() || newData.hasChildren(['from', 'kind', 'at'])",
+          "from": {
+            ".validate": "newData.isString() && newData.val() == auth.uid"
+          },
+          "fromName": {
+            ".validate": "newData.isString() && newData.val().length <= 16"
+          },
+          "kind": {
+            ".validate": "newData.val() == 'msg' || newData.val() == 'challenge' || newData.val() == 'system'"
+          },
+          "text": {
+            ".validate": "newData.isString() && newData.val().length <= 100"
+          },
+          "code": {
+            ".validate": "newData.isString() && newData.val().length <= 8"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "userRooms": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
@@ -392,6 +453,37 @@ service cloud.firestore {
 더 모아도 방 안의 숫자는 안 바뀐다 — 다른 필드처럼 "본인만, 남의 것은 값이 그대로"를 따른다.
 `resetRoom` 이 다음 판을 위해 참가자를 다시 쓸 때도 이 세 값은 그대로 옮겨 적는다
 (승패 수는 방 안에서 안 바뀌는 값이라 옮겨도 규칙을 어기지 않는다).
+
+
+### `presence` · `inbox` — 접속 표시와 쪽지함 (2026-08-19 11차)
+
+현재접속자 목록·쪽지·대결신청을 위해 최상위 노드 둘이 늘었다.
+
+**`presence/$uid`** — "지금 접속해 있다"는 표시 하나. 누구나 읽고(그게 목록이다),
+**본인만 쓴다.** 끊기면 `onDisconnect` 가 지운다 — 그래서 브라우저를 그냥 닫아도
+유령이 안 남는다. `state` 는 `lobby`(대기중) 또는 `playing`(게임중) 둘뿐이고,
+그 값이 **대결 신청을 받을 수 있는지**를 정한다.
+
+**`inbox/$uid/$id`** — 받는 사람만 읽는다. 쓰기 규칙이 두 갈래인 게 핵심이다:
+
+```
+(!data.exists() && newData.child('from').val() == auth.uid)   ← 보내기: 새 쪽지만, 보낸이는 나
+|| (!newData.exists() && auth.uid == $uid)                    ← 지우기: 받은 사람만
+```
+
+- **덮어쓰기가 없다**(`!data.exists()`). 있으면 남이 이미 읽지 않은 쪽지의 내용을
+  바꿔치기할 수 있다 — 대결 신청의 방 코드를 엉뚱한 방으로 갈아 끼우는 식이다.
+- **보낸이 위조가 안 된다**(`from == auth.uid`, 잎에서 한 번 더 검증). 남의 이름으로
+  대결을 신청해 엉뚱한 방으로 보내는 경로를 끊는다.
+- **지우는 건 받은 사람만**이다. 보낸 사람이 지울 수 있으면 "읽기 전에 회수"가 되는데,
+  그건 이 기능에 필요 없고 경합만 만든다.
+- `text` 100자 제한은 **클라이언트의 `maxlength` 와 같은 숫자**다(`UserCard.openComposer`).
+  다르면 규칙에서 거부되는데 사용자 화면에는 "보내기를 눌렀는데 아무 일도 안 났다"로 보인다.
+- `$other: false` 는 다른 노드와 같은 이유 — 규칙에 없는 키는 아예 못 쓴다.
+
+> **읽기 범위를 알고 둔다.** `presence` 는 로그인한 사람 전체에게 열려 있다.
+> 담긴 값은 닉네임·캐릭터·보유 신발·승패 — 전부 명예의 전당에 이미 공개되는 값이라
+> 새로 새어 나가는 정보는 없다. 이메일이나 uid 외의 식별자는 넣지 않는다.
 
 ---
 

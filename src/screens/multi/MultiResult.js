@@ -27,6 +27,7 @@ import { MULTI } from '../../config/balance.js';
 import { currentUser } from '../../services/auth.js';
 import { finishRun } from '../../services/profile.js';
 import * as Room from '../../services/multiplayer.js';
+import * as Presence from '../../services/presence.js';
 import { roundOver, potShoes, owedBy } from '../../services/matchRules.js';
 import { settleRoom } from '../../services/multiSettle.js';
 import { hold } from '../../core/hold.js';
@@ -171,6 +172,8 @@ export default function MultiResult(nav, params = {}) {
      * 지갑이 실제로 바뀌는 자리가 여기(정산 직후)이므로 여기서 갱신한다.
      */
     Room.refreshMyCard(code).catch(() => {});
+    // 접속자 목록·유저상태창이 보는 값도 같은 곳에서 갱신한다 (2026-08-19 11차)
+    Presence.refresh();
     done = true;
     if (!gone) nav.refresh();
     if (settle?.pending) poll();

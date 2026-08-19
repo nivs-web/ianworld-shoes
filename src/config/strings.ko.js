@@ -318,6 +318,54 @@ export const S = {
   wonReward: (n) => `게임의 승리로 ${n}켤레의 신발을 뺏어왔습니다`,
   lost: '내 소중한 신발 1켤레를 뺏겼습니다',
 
+  // ── 출발 제한 (2026-08-19 11차) ─────────────
+  /**
+   * 판이 시작됐는데 가만히 서 있는 사람에게. **두 줄로 나눠 둔다** — 한 줄로 붙이면
+   * 11px 로 180px 를 넘어 화면 밖으로 나간다(실측). 사용자가 준 문구 그대로다:
+   * *"5초 안에 출발하세요(엔터) 출발하지 않으면 패배합니다"*
+   */
+  startWithin: (sec) => `${sec}초 안에 출발하세요`,
+  startOrLose: '출발하지 않으면 패배합니다',
+
+  // ── 유저상태창 · 메세지 · 대결신청 (2026-08-19 11차) ──
+  /** 명예의 전당 신발왕 탭에만 붙는 칸 — 신발 많은 사람이 몇 승 했나 */
+  rankWinRate: (wins, games) => `멀티승률 ${wins}승/${games}게임`,
+  userCardTitle: '유저상태창',
+  /** 유저상태창 하단 — 지금 무엇을 하고 있는가 */
+  statusPlaying: '현재상태:게임중',
+  statusIdle: '현재상태:대기중',
+  statusOffline: '현재상태:미접속',
+  sendMessage: '메세지 보내기',
+  challengeUser: '대결신청',
+  messageHint: '보낼 메세지를 입력하세요',
+  send: '보내기',
+  messageSent: '메세지를 보냈습니다',
+  messageEmpty: '메세지를 입력해주세요',
+  /**
+   * 대결 신청은 **접속 중이고 대기중일 때만** 된다. 게임 중인 사람에게 신청하면
+   * 그 사람 화면에는 판이 도는 중이라 팝업을 띄울 자리가 없고, 미접속이면 아예 못 받는다.
+   * 메세지는 둘 다에게 보낼 수 있다 — 받는 사람이 나올 때 팝업으로 뜬다.
+   */
+  cantChallengeNow: '게임중 상태에선 메세지를 보낼 수 없습니다',
+  challengeSent: '대결 신청을 보냈습니다',
+  challengeWaiting: '상대의 응답을 기다리는 중입니다',
+  challengeAsk: '대결 신청이 들어왔습니다. 참여하시겠습니까?',
+  challengeAccept: (sec) => `수락(${sec})`,
+  challengeDecline: '거절',
+  challengeRefused: (name) => `${name}님이 대결 신청을 거절했습니다`,
+  challengeGone: '대결 신청이 취소되었습니다',
+  messageFrom: (name) => `${name}님의 메세지`,
+  replyMessage: '답장보내기',
+
+  // ── 현재접속자 (2026-08-19 11차) ────────────
+  onlineUsers: '현재접속자',
+  /** 목록 줄에는 짧게 — '현재상태:' 를 열 줄마다 되풀이할 이유가 없다 */
+  stateShortPlaying: '게임중',
+  stateShortIdle: '대기중',
+  onlineCount: (n) => `현재 ${n}명 접속중`,
+  noOneOnline: '접속 중인 사람이 없습니다',
+  meTag: '나',
+
   // ── 공통 ───────────────────────────────────
   loading: '불러오는 중...',
   comingSoon: '준비 중입니다',

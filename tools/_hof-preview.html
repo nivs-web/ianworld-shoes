@@ -1,0 +1,77 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<style>body{background:#1b1410;padding:14px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.frame{width:360px;background:#0d0a08;padding:10px;border:2px solid #4a3b2a}</style>
+</head><body><script type="module">
+/**
+ * 명예의 전당(신발왕 탭) · 현재접속자 · 유저상태창 미리보기 — `npm run preview:hof`
+ *
+ * ⚠ **줄 마크업은 화면 코드(HallOfFame.js · OnlineUsers.js)를 손으로 옮긴 것이다.**
+ *   한쪽만 고치면 이 미리보기가 거짓말을 한다(§9-0-33 에서 결과 화면 미리보기가
+ *   실제로 그랬다). 줄 구조를 바꾸면 여기도 같이 고친다.
+ *   반대로 **유저상태창은 진짜 컴포넌트**를 부른다 — 그쪽은 흉내 낼 이유가 없다.
+ */
+import S from '/src/config/strings.ko.js';
+import { el } from '/src/screens/ui.js';
+import { characterById, characterSprite } from '/src/data/characters.js';
+import { openUserCard } from '/src/screens/UserCard.js';
+
+const rows = [
+  { rank: 1, nickname: '이안', characterId: 'ian', value: 12480, multiWins: 128, multiLosses: 44 },
+  { rank: 2, nickname: '다섯글자님', characterId: 'denny', value: 9012, multiWins: 7, multiLosses: 3 },
+  { rank: 3, nickname: '로', characterId: 'rose', value: 880, multiWins: 0, multiLosses: 0 },
+  { rank: 11, nickname: '아빠게임왕', characterId: 'tony', value: 146, multiWins: 12, multiLosses: 34, me: true },
+];
+
+function rankRow(r, rate) {
+  const ch = characterById(r.characterId);
+  const games = (r.multiWins ?? 0) + (r.multiLosses ?? 0);
+  return el('div.rank-row', { class: r.me ? 'me' : '' }, [
+    el('div.rank-no', String(r.rank)),
+    ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
+    el('div.rank-name', r.nickname),
+    rate ? el('div.rank-rate', S.rankWinRate(r.multiWins ?? 0, games)) : null,
+    el('div.rank-value', `${r.value.toLocaleString('en-US')}${rate ? S.rankUnitShoes : S.rankUnitStairs}`),
+  ].filter(Boolean));
+}
+
+const hof = el('div.frame');
+hof.append(el('div.screen-title', S.hallTitle));
+hof.append(el('div.rank-list', null, rows.map((r) => rankRow(r, true))));
+hof.append(el('div.rank-mine', null, [
+  el('div.rank-mine-label', S.myRank),
+  rankRow(rows[3], true),
+]));
+document.body.append(hof);
+
+const online = [
+  { uid: 'a', nickname: '이안', characterId: 'ian', shoesOwned: 12480, state: 'lobby' },
+  { uid: 'b', nickname: '다섯글자님', characterId: 'denny', shoesOwned: 7, state: 'playing' },
+  { uid: 'c', nickname: '로', characterId: 'rose', shoesOwned: 1203, state: 'lobby', me: true },
+];
+const ou = el('div.frame');
+ou.append(el('div.screen-title', S.onlineUsers));
+ou.append(el('div.hint', S.onlineCount(online.length)));
+ou.append(el('div.online-list', null, online.map((u) => {
+  const ch = characterById(u.characterId);
+  const playing = u.state === 'playing';
+  return el('div.online-row', { class: u.me ? 'me' : '' }, [
+    ch ? el('img.online-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.online-face'),
+    el('div.online-name', `${u.nickname}${u.me ? ` (${S.meTag})` : ''}`),
+    el('div.online-shoes', S.roomShoes(u.shoesOwned)),
+    el('div.online-state', { class: playing ? 'playing' : 'idle' },
+      playing ? S.stateShortPlaying : S.stateShortIdle),
+  ]);
+})));
+document.body.append(ou);
+
+// 유저상태창은 진짜 컴포넌트 — 상태를 넘겨 서버 조회 없이 그린다
+openUserCard(
+  { uid: 'b', nickname: '다섯글자님', characterId: 'denny', shoesOwned: 146, multiWins: 12, multiLosses: 34 },
+  { slot: 1, status: 'lobby' }
+);
+
+window.__ready = true;
+</script></body></html>

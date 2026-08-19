@@ -1198,7 +1198,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
   has('대기방에 보유신발 배지', wr, 'S.playerShoesOwned(p.shoesOwned ?? 0)');
   has('이름을 누르면 팝업', wr, 'onclick: () => playerStatPopup(p, slot)');
-  has('팝업이 승률/게임수/보유신발을 보여준다', wr, 'S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0)');
+  // 팝업은 §11차에서 공용 유저상태창(screens/UserCard.js)으로 옮겼다 — 검사도 따라간다
+  const uc = fs.readFileSync('src/screens/UserCard.js', 'utf8');
+  has('팝업이 승률/게임수/보유신발을 보여준다', uc, 'S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0)');
 }
 
 {
@@ -1315,7 +1317,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('남는 폭을 먹는 완충 칸', css, '.player-gap');
   const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
   has('태그를 한 칸에 묶었다', wr, "el('div.player-tags'");
-  has('카드에 캐릭터 그림', wr, 'player-card-face');
+  has('카드에 캐릭터 그림', fs.readFileSync('src/screens/UserCard.js', 'utf8'), 'player-card-face');
 
   // ⑥ 렌더 순서 — 고스트가 내 캐릭터 뒤로
   const gs = fs.readFileSync('src/game/GameScene.js', 'utf8');
@@ -1707,6 +1709,131 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     // 이미 들고 있는 스냅샷을 넘긴다 — 5초마다 헛왕복을 만들지 않는다
     has('대기방에서도 갱신', wr, 'Room.refreshMyCard(code, r)');
     has('스냅샷을 재활용한다', mp, 'const mine = known');
+  }
+}
+
+// ─────────────────────────────────────────────
+{
+  console.log('\n39) ★ 판돈 줄 위치 · 5초 출발 규칙 · 유저상태창 · 현재접속자 · 쪽지/대결 (2026-08-19 11차)');
+  const fs = await import('node:fs');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+
+  // ① 판돈 줄을 계단 숫자 바로 위로
+  {
+    const lay = fs.readFileSync('src/config/layout.js', 'utf8');
+    const mh = fs.readFileSync('src/game/multiHud.js', 'utf8');
+    const hud = fs.readFileSync('src/game/hud.js', 'utf8');
+    has('멀티 전용 계단 숫자 좌표', lay, 'scoreMulti:');
+    has('멀티면 그 좌표를 쓴다', hud, 's.multi ? HUD.scoreMulti : HUD.score');
+    has('판돈 줄이 계단 숫자 위(41)', mh, 'const POT_Y = 41;');
+    has('1등 거리 줄은 그 아래(80)', mh, 'const GAP_Y = 80;');
+    // 오른쪽 레이스 게이지(150~178)를 침범하면 안 된다 — 중심 82 + 최대 폭 128 = 18~146
+    has('판돈 줄은 게이지를 피한 가운데', mh, 'const POT_CX = 82;');
+    const { HUD } = await import('../src/config/layout.js');
+    eq('판돈(41~52) 과 계단 숫자(55~) 가 안 겹친다', HUD.scoreMulti.y >= 41 + 13, true);
+  }
+
+  // ② 5초 안에 출발하지 않으면 패배
+  {
+    const gs = fs.readFileSync('src/game/GameScene.js', 'utf8');
+    const mh = fs.readFileSync('src/game/multiHud.js', 'utf8');
+    eq('출발 제한은 밸런스 파일에', MULTI.startWithinSeconds, 5);
+    has('출발 전에는 시간을 잰다', gs, 'MULTI.startWithinSeconds * 1000 - Date.now()');
+    // 로딩이 5초를 넘긴 기기가 뜨자마자 패배하면 안 된다 — 방 시각이 아니라 첫 프레임 기준
+    has('기준은 판이 실제로 돈 첫 프레임', gs, 'if (!this.raceOpenedAt) this.raceOpenedAt = Date.now();');
+    has('시간이 지나면 패배 처리', gs, 'failToStart()');
+    // 부활 창을 주면 그게 곧 사용자가 신고한 그 전략이다
+    has('기권과 같은 처리 (부활 창 없음)', gs, "this.leave('home');");
+    has('출발하면 경고가 사라진다', gs, 'this.startLeftMs = 0;');
+    has('경고를 그린다', mh, 'function drawStartWarn(scene)');
+    has('경고 문구 두 줄', mh, 'S.startOrLose');
+    // 레이스 게이지 위에 얹혀야 읽힌다 — 마지막에 그린다
+    eq('경고는 게이지보다 나중에 그린다',
+      mh.indexOf('drawStartWarn(scene);') > mh.indexOf('drawRaceGauge(scene, list);'), true);
+    const S2 = (await import('../src/config/strings.ko.js')).default;
+    eq('사용자 문구 그대로', [S2.startWithin(5), S2.startOrLose],
+      ['5초 안에 출발하세요', '출발하지 않으면 패배합니다']);
+  }
+
+  // ③ 명예의 전당 ±50 스크롤 · ④ 신발왕 승률 칸 · ⑤ 아이디를 누르면 유저상태창
+  {
+    const rw = fs.readFileSync('src/services/rankWindow.js', 'utf8');
+    const hof = fs.readFileSync('src/screens/HallOfFame.js', 'utf8');
+    const css = fs.readFileSync('src/styles/screens.css', 'utf8');
+    has('반경 50', rw, 'export const RANK_WINDOW_RADIUS = 50;');
+    has('내 줄이 보이는 자리로 스크롤', hof, 'function scrollToMine(');
+    // 탭이 바뀔 때만 — 매 refresh 마다 내리면 사용자가 올려 본 위치가 튕겨 돌아온다
+    has('스크롤은 탭이 바뀔 때만', hof, 'if (scrolledFor === key) return;');
+    has('목록이 실제로 스크롤된다', css, 'max-height: 48vh;');
+    has('신발왕 탭에만 승률 칸', hof, "rate: tabId === 'shoeking'");
+    has('승률 칸 마크업', hof, "el('div.rank-rate'");
+    has('승률 칸은 고정폭 (줄 정렬)', css, 'flex: 0 0 104px;');
+    has('줄을 누르면 유저상태창', hof, 'onclick: () => openCard(r)');
+    // 주간·월간·연간 줄에는 신발·승패가 없다 — 계정 문서를 따로 받아 채운다
+    const lb = fs.readFileSync('src/services/leaderboard.js', 'utf8');
+    has('남의 계정 값을 쿼리로 받는다', lb, 'export async function fetchUserCard(');
+    has('getDoc 이 아니라 쿼리 (규칙이 get 을 막는다)', lb, "where(documentId(), '==', uid)");
+    has('신발왕 줄에 승패를 싣는다', lb, 'multiWins: v.multiWins ?? 0,');
+  }
+
+  // ⑤ 유저상태창은 **하나**여야 한다
+  {
+    const uc = fs.readFileSync('src/screens/UserCard.js', 'utf8');
+    const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
+    has('공용 컴포넌트', uc, 'export function openUserCard(');
+    has('캐릭터 그림 · 아이디 · 캐릭터명 · 승률 · 보유신발', uc, 'S.playerStatPopup(');
+    has('대기방도 그걸 쓴다', wr, "import { openUserCard } from '../UserCard.js';");
+    // 대기방이 팝업을 직접 만들면 세 화면이 언젠가 다른 말을 한다
+    no('대기방에 자체 팝업이 남아 있지 않다', wr, "el('div.dialog-overlay'");
+    has('하단에 현재상태', uc, 'user-card-status');
+    has('메세지 보내기', uc, 'S.sendMessage');
+    has('대결신청', uc, 'S.challengeUser');
+    // 게임중·미접속에는 대결을 못 건다 (신청을 띄울 화면이 없다)
+    has('대기중일 때만 대결 신청', uc, "if (status !== 'lobby') return toast(S.cantChallengeNow");
+  }
+
+  // ⑥ 현재접속자
+  {
+    const mm = fs.readFileSync('src/screens/multi/MultiMenu.js', 'utf8');
+    const ou = fs.readFileSync('src/screens/multi/OnlineUsers.js', 'utf8');
+    has('멀티 메뉴에 현재접속자', mm, 'button(S.onlineUsers, () => nav.push(OnlineUsers)');
+    // 쪽지는 판돈과 무관하다 — 신발이 부족해도 사람은 볼 수 있어야 한다
+    has('신발이 없어도 들어간다', mm, '{ disabled: busy }');
+    has('접속자를 구독한다', ou, 'Presence.subscribeOnline(');
+    has('떠나면 구독을 끊는다', ou, 'onLeave() { unsub(); unsub = () => {}; }');
+    has('누르면 유저상태창', ou, 'onclick: () => openUserCard(u,');
+  }
+
+  // ⑦ 쪽지 · 대결신청
+  {
+    const pr = fs.readFileSync('src/services/presence.js', 'utf8');
+    const ip = fs.readFileSync('src/screens/inboxPopups.js', 'utf8');
+    const rt = fs.readFileSync('src/screens/router.js', 'utf8');
+    const main = fs.readFileSync('src/main.js', 'utf8');
+    has('접속 표시는 onDisconnect 로 지운다', pr, 'onDisconnect(ref).remove()');
+    // 재접속 때 다시 써야 한다 — 한 번만 쓰면 잠깐 끊긴 사람이 영영 목록에서 사라진다
+    has('재접속마다 다시 쓴다', pr, "'.info/connected'");
+    has('부팅을 막지 않는다', pr, 'export function startLater(');
+    has('부팅 뒤에 켠다', main, 'P.startLater(() => {');
+    // 쪽지함이 먼저 붙으면 RTDB 청크를 앞당겨 받아 미루기가 무의미해진다
+    has('쪽지함은 붙은 뒤에 구독', main, "import('./screens/inboxPopups.js').then((I) => I.start(nav))");
+    has('인게임은 게임중', rt, "Presence.setState('playing');");
+    has('DOM 화면은 대기중', rt, "Presence.setState('lobby');");
+    has('DOM 으로 돌아오면 밀린 쪽지를 띄운다', rt, 'Inbox.flush();');
+    // 인게임(캔버스)에 DOM 팝업이 뜨면 입력이 막혀 그 판이 끝난다
+    has('인게임에서는 안 띄운다', ip, "document.body.classList.contains('ui-mode')");
+    has('한 번에 하나씩', ip, 'if (showing || !uiMode()) return;');
+    // 지우기가 서버에 닿기 전에 스냅샷이 또 오면 같은 팝업이 두 번 뜬다
+    has('같은 쪽지를 두 번 안 띄운다', ip, 'const handled = new Set();');
+    has('답장보내기 / 닫기', ip, 'S.replyMessage');
+    eq('대결 수락 제한 10초 (사용자 지정)', /CHALLENGE_SECONDS = (\d+)/.exec(ip)?.[1], '10');
+    has('수락 버튼에 남은 초', ip, 'S.challengeAccept(left)');
+    has('10초가 지나면 자동 거절', ip, 'if (left <= 0) return choose(false);');
+    has('거절은 알려 준다', ip, 'Presence.sendSystem(item.from, S.challengeRefused');
+    // 화면이 바뀌며 팝업이 강제로 닫혀도 showing 이 굳으면 그 뒤로 아무것도 안 뜬다
+    has('강제로 닫혀도 정리된다', ip, 'presentOverlay(overlay, finish)');
+    has('오래된 신청은 버린다', ip, 'Presence.CHALLENGE_TTL_MS');
   }
 }
 

@@ -73,6 +73,8 @@ const panels = [
     renderHud(겹침); multiHud(겹침);
   }],
   ['카운트다운', () => { renderHud(scene); multiHud({ ...scene, countdownMs: 2400 }); }],
+  // 출발 제한 5초 (2026-08-19 11차) — 게이지 위에 얹히므로 겹침을 눈으로 본다
+  ['출발 경고 (5초)', () => { renderHud({ ...scene, floor: 0 }); multiHud({ ...scene, floor: 0, startLeftMs: 4200 }); }],
   ['일시정지 (싱글)', () => { renderHud(scene); new PauseOverlay({ ...scene, multi: null }).render(); }],
   ['일시정지 (멀티)', () => { renderHud(scene); new PauseOverlay(scene).render(); }],
   ['게임오버', () => { renderHud(scene); const o = new GameOverOverlay(scene); o.delay = 0; o.best = 432; o.render(); }],

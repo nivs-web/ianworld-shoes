@@ -15,6 +15,8 @@ import { get as getProfile } from '../services/profile.js';
 import { rankWindow } from '../services/rankWindow.js';
 import { fetchBoard } from '../services/leaderboard.js';
 import { characterSprite, characterById } from '../data/characters.js';
+import { fetchUserCard } from '../services/leaderboard.js';
+import { openUserCard } from './UserCard.js';
 
 const TABS = [
   { id: 'shoeking', label: S.tabShoeKing, unit: S.rankUnitShoes, byDifficulty: false },
@@ -46,6 +48,23 @@ export default function HallOfFame(nav) {
   const cache = new Map();
   const keyOf = (t, d) => `${t}:${TABS.find((x) => x.id === t).byDifficulty ? d : '-'}`;
 
+  /**
+   * 이미 스크롤을 맞춘 탭. **탭이 바뀔 때만** 내려 준다 —
+   * `nav.refresh()` 는 내 줄이 늦게 도착할 때도 불리므로, 매번 내리면
+   * 사용자가 손으로 올려 본 위치가 그때마다 튕겨 돌아온다.
+   */
+  let scrolledFor = null;
+  function scrollToMine(list, node, key) {
+    if (scrolledFor === key) return;
+    scrolledFor = key;
+    // 붙기 전에는 높이를 잴 수 없다 — 한 프레임 뒤에 잰다 (render() 직후 append 된다)
+    requestAnimationFrame(() => {
+      if (!list.isConnected) return;
+      const mid = (list.clientHeight - node.offsetHeight) / 2;
+      list.scrollTop = Math.max(0, node.offsetTop - list.offsetTop - mid);
+    });
+  }
+
   function load() {
     const my = ++reqId;
     const key = keyOf(tabId, diff);
@@ -73,15 +92,51 @@ export default function HallOfFame(nav) {
 
   load();
 
+  /**
+   * ★ **줄을 누르면 유저상태창.** (2026-08-19 11차, 사용자 지정)
+   *
+   * *"명예의 전당에서 유저 아이디 누르면 무반응인데 (…) 멀티게임에서 아이디 누르면
+   * 팝업으로 뜨는 창 뜨게 해줘"*
+   *
+   * 줄이 들고 있는 값은 탭마다 다르다 — 신발왕·역대는 계정 문서에서 오므로 신발·승패가
+   * 실려 있지만, 주간·월간·연간은 `scores` 에서 와서 **계단 수밖에 없다.** 그래서
+   * 아는 값으로 카드를 **먼저 띄우고**, 계정 값을 받아 오면 그때 다시 띄운다.
+   * 조회를 기다렸다 띄우면 "눌렀는데 아무 일도 안 난다"가 된다.
+   */
+  function openCard(r) {
+    const known = { uid: r.uid, nickname: r.nickname, characterId: r.characterId };
+    if (r.shoesOwned !== undefined) {
+      openUserCard({ ...known, shoesOwned: r.shoesOwned, multiWins: r.multiWins, multiLosses: r.multiLosses }, { nav });
+      return;
+    }
+    /**
+     * 조회를 **기다렸다 띄우지 않는다** — "눌렀는데 아무 일도 안 난다"가 된다.
+     * 아는 값으로 먼저 띄우고, 도착하면 카드가 그 줄만 갈아 끼운다(`opt.load`).
+     * 다음에 같은 줄을 눌렀을 때 또 조회하지 않게 줄에도 적어 둔다.
+     */
+    const load = fetchUserCard(r.uid).then((full) => {
+      if (full) Object.assign(r, full);
+      return full;
+    }).catch(() => null);
+    openUserCard(known, { nav, load });
+  }
+
   /** 순위 한 줄 */
   function row(r, opt = {}) {
     const ch = characterById(r.characterId);
-    return el('div.rank-row', { class: opt.me ? 'me' : '' }, [
+    const games = (r.multiWins ?? 0) + (r.multiLosses ?? 0);
+    return el('div.rank-row', { class: opt.me ? 'me' : '', onclick: () => openCard(r) }, [
       el('div.rank-no', r.rank === null ? '-' : String(r.rank)),
       ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
       el('div.rank-name', r.nickname || '???'),
+      /**
+       * ★ **신발왕 탭에만** 멀티 승률 칸. (2026-08-19 11차, 사용자 지정)
+       * 고정폭 칸이라 이름 길이와 무관하게 세로로 줄이 맞는다 — *"줄 정렬해서 써줘"*.
+       * 다른 탭에 넣지 않는 이유: 그 줄들은 `scores` 에서 와서 승패를 모른다.
+       */
+      opt.rate ? el('div.rank-rate', S.rankWinRate(r.multiWins ?? 0, games)) : null,
       el('div.rank-value', `${r.value.toLocaleString('en-US')}${opt.unit}`),
-    ]);
+    ].filter(Boolean));
   }
 
   return {
@@ -148,16 +203,27 @@ export default function HallOfFame(nav) {
          * 11등인 사람에게 1~10등은 스크롤로 지나칠 줄일 뿐이다. 줄마다 등수 숫자가
          * 찍히므로 목록이 6등부터 시작해도 헷갈리지 않는다.
          */
-        body = el('div.rank-list', null,
-          rankWindow(state.data.rows, me.uid).map((r) => row(r, { unit: tab.unit, me: r.uid === me.uid }))
-        );
+        const win = rankWindow(state.data.rows, me.uid);
+        let mineNode = null;
+        const list = el('div.rank-list', null, win.map((r) => {
+          const node = row(r, { unit: tab.unit, me: r.uid === me.uid, rate: tabId === 'shoeking' });
+          if (r.uid === me.uid) mineNode = node;
+          return node;
+        }));
+        /**
+         * ★ **내 줄이 보이는 자리로 스크롤한다.** (2026-08-19 11차)
+         * 반경이 50 이 되면서 목록이 100줄까지 나온다 — 안 내려 주면 내 순위를
+         * 손으로 찾아야 하고, 그러면 "가운데에 나를 놓는다"는 규칙이 무의미해진다.
+         */
+        if (mineNode) scrollToMine(list, mineNode, keyOf(tabId, diff));
+        body = list;
       }
 
       // 하단 고정 — 100위 밖이어도 내 기록은 항상 보인다
       const mine = state.data?.me
         ? el('div.rank-mine', null, [
             el('div.rank-mine-label', S.myRank),
-            row(state.data.me, { unit: tab.unit, me: true }),
+            row(state.data.me, { unit: tab.unit, me: true, rate: tabId === 'shoeking' }),
           ])
         : null;
 

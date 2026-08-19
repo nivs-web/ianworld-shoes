@@ -198,6 +198,63 @@ const roomWrite = room['.write'] ?? '';
 if (!roomWrite.includes('!data.exists() ||')) ok('빈 코드에 아무 값이나 못 쓴다 (유령 방 방지)');
 else bad('없는 방에 아무 필드나 쓸 수 있다 — 유령 방이 만들어진다');
 
+console.log('\n9) 접속 표시 · 쪽지함 (2026-08-19 11차)');
+{
+  /**
+   * `presence` · `inbox` 는 `rooms` 와 **같은 함정**을 공유한다 — `$other: false` 라
+   * 클라이언트가 필드를 하나 늘리고 규칙에 안 적으면 그 쓰기가 통째로 거부된다.
+   * 그런데 쪽지 보내기는 실패해도 화면에 아무 표시가 없다(토스트만 다르게 뜬다).
+   * 그래서 여기서 **코드가 실제로 쓰는 필드**를 긁어 대조한다.
+   */
+  const pres = readFileSync('src/services/presence.js', 'utf8');
+  const P = rules.presence?.$uid;
+  const I = rules.inbox?.$uid?.$id;
+  if (!P) bad('presence 규칙이 없다 — 현재접속자 목록이 통째로 빈다');
+  if (!I) bad('inbox 규칙이 없다 — 쪽지·대결신청이 전부 거부된다');
+
+  if (P && I) {
+    const pKeys = new Set(Object.keys(P).filter((k) => !k.startsWith('.') && k !== '$other'));
+    const card = /function myCard\(\) \{[\s\S]*?return \{([\s\S]*?)\};/.exec(pres)[1];
+    for (const k of [...card.matchAll(/^\s{4}(\w+):/gm)].map((m) => m[1])) {
+      if (pKeys.has(k)) ok(`접속카드.${k}`);
+      else bad(`접속카드.${k} — 규칙에 없다 (접속 표시가 통째로 거부된다)`);
+    }
+    const iKeys = new Set(Object.keys(I).filter((k) => !k.startsWith('.') && k !== '$other'));
+    for (const k of ['from', 'fromName', 'kind', 'at', 'text', 'code']) {
+      if (iKeys.has(k)) ok(`쪽지.${k}`);
+      else bad(`쪽지.${k} — 규칙에 없다 (그 쪽지는 영영 안 간다)`);
+    }
+
+    // 접속 표시는 **본인만** 쓴다 — 남의 상태를 '대기중'으로 바꿔 대결을 걸 수 있으면 안 된다
+    if ((P['.write'] ?? '').includes('auth.uid == $uid')) ok('접속 표시 — 본인만 쓴다');
+    else bad('접속 표시 — 남의 상태를 조작할 수 있다');
+    if ((rules.presence['.read'] ?? '').includes('auth != null')) ok('접속 목록 — 로그인하면 읽는다');
+    else bad('접속 목록을 아무도 못 읽는다');
+
+    const w = I['.write'] ?? '';
+    // 보내기: 새 쪽지만 · 보낸이는 나 / 지우기: 받은 사람만
+    if (w.includes("!data.exists()") && w.includes("newData.child('from').val() == auth.uid")) {
+      ok('쪽지 보내기 — 새 쪽지만, 보낸이 위조 불가');
+    } else {
+      bad('쪽지 — 남의 쪽지를 덮어쓰거나 보낸이를 위조할 수 있다');
+    }
+    if (w.includes('!newData.exists()') && w.includes('auth.uid == $uid')) ok('쪽지 지우기 — 받은 사람만');
+    else bad('쪽지를 받은 사람이 지울 수 없다 (읽어도 계속 뜬다)');
+    if ((rules.inbox.$uid['.read'] ?? '').includes('auth.uid == $uid')) ok('쪽지함 — 본인만 읽는다');
+    else bad('남의 쪽지함을 읽을 수 있다');
+
+    /**
+     * 글자 수 상한은 **클라이언트의 maxlength 와 같은 숫자**여야 한다. 다르면
+     * 규칙에서 잘려 쓰기가 거부되는데, 화면에는 "보내기를 눌렀는데 아무 일도 안 났다"로 보인다.
+     */
+    const uc = readFileSync('src/screens/UserCard.js', 'utf8');
+    const max = /maxlength: '(\d+)'/.exec(uc)?.[1];
+    const rule = /<= (\d+)/.exec(I.text['.validate'])?.[1];
+    if (max && rule && max === rule) ok(`쪽지 길이 상한이 화면과 규칙에서 같다 (${max}자)`);
+    else bad(`쪽지 길이 상한이 어긋난다 — 화면 ${max} · 규칙 ${rule}`);
+  }
+}
+
 console.log('');
 if (fails) { console.error(`규칙 검사 실패 — ${fails}건`); process.exit(1); }
 console.log('규칙과 클라이언트가 일치한다');

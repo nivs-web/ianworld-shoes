@@ -13,7 +13,7 @@ import { img } from '../core/assets.js';
 import { PAL } from './palette.js';
 
 /**
- * @param {object} s {gauge, floor, shoesFound, revives, controlMode}
+ * @param {object} s {gauge, floor, shoesFound, revives, controlMode, multi}
  */
 export function renderHud(s) {
   // ── 시간 게이지 ──
@@ -63,9 +63,15 @@ export function renderHud(s) {
 
   // ── 중앙(아래 행): 계단 수 ──
   // mono: 자릿수가 바뀌어도 가운데 정렬이 흔들리지 않게 고정폭으로 찍는다.
-  textCached(String(s.floor), HUD.score.x, HUD.score.y, {
-    color: PAL.text, outline: PAL.textShadow, scale: HUD.score.scale,
-    align: HUD.score.align, mono: true,
+  /**
+   * ★ 멀티는 **한 줄 아래**다 (2026-08-19 11차). 그 위 41~52 는 판돈 줄이 쓴다 —
+   * `layout.HUD.scoreMulti` 주석 참고. 좌표를 여기서 분기하는 이유는, 판돈 줄을
+   * 그리는 쪽(`multiHud.js`)과 숫자를 그리는 쪽이 **같은 표를 봐야** 겹치지 않기 때문이다.
+   */
+  const sc = s.multi ? HUD.scoreMulti : HUD.score;
+  textCached(String(s.floor), sc.x, sc.y, {
+    color: PAL.text, outline: PAL.textShadow, scale: sc.scale,
+    align: sc.align, mono: true,
   });
 
   // ── 조작 버튼 ──

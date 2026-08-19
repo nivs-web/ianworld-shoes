@@ -89,10 +89,27 @@ const SEGS = (() => {
 /** 등수 글씨는 얼굴 상자 왼쪽에 */
 const RANK_X = RACE_CX - (CELL >> 1) - 3;
 
-/** 계단 숫자(41~63) 바로 아래 */
-const GAP_Y = 64;
-/** 판돈 줄 — **조작 버튼 위**(266~314). 7px 글자라 252~259 를 차지한다 */
-const POT_Y = 252;
+/**
+ * ★ **판돈 줄은 계단 숫자 바로 위다.** (2026-08-19 11차, 사용자 요청)
+ *
+ * 예전에는 화면 맨 아래(252)였다. 거기는 조작 버튼(266~)과 알림 줄 사이라 눈이
+ * 가지 않는 자리다 — *"화면 아래쪽에 있는데 이걸 위로 올리자"*. 지금은 계단 숫자
+ * 바로 위에 붙어 있어서 **얼마가 걸렸는지와 지금 몇 계단인지가 한 덩어리로 읽힌다.**
+ *
+ * 숫자는 그만큼 내려갔다(`layout.HUD.scoreMulti`, 55~77). 아이콘 행(23~38)에 끼워
+ * 넣지 않은 이유는 폭이다 — 최대 `1등하면 신발 523켤레!` = **128px**(11px 폰트 실측)라
+ * 왼쪽 신발 아이콘·개수와 물리적으로 겹친다.
+ */
+const POT_Y = 41;
+/** 계단 숫자(55~77) 바로 아래 */
+const GAP_Y = 80;
+/**
+ * 판돈 줄의 중심 x — 화면 정중앙(90)이 아니라 **오른쪽 레이스 게이지를 피한 가운데**다.
+ * 게이지는 x150~178 을 위아래로 통째로 쓴다(얼굴 상자가 겹치면 128까지 밀려 나온다).
+ * 82 로 두면 최대 폭 128 이 18~146 에 들어가 게이지를 절대 침범하지 않는다.
+ * 알림 줄이 같은 이유로 왼쪽에 붙는 것과 같은 계산이다(`TICKER_CX`).
+ */
+const POT_CX = 82;
 /** 알림은 판돈 바로 위에서 위로 쌓인다 */
 const TICKER_Y = 232;
 const LINE_H = 13;   // 11px 글자 기준 (7px 시절 9)
@@ -162,6 +179,13 @@ export function multiHud(scene) {
   drawPot(scene);
   drawTicker(scene);
   drawCountdown(scene);
+  /**
+   * 출발 경고는 **맨 마지막**에 그린다 — 레이스 게이지 위에 얹혀야 한다.
+   * `출발하지 않으면 패배합니다` 는 11px 로 154px 라 게이지를 피해 왼쪽에만 쓸 수 없다.
+   * 5초짜리 경고가 게이지를 잠깐 가리는 것과, 경고 글자가 얼굴 위에서 뭉개지는 것
+   * 중에는 전자가 낫다 — 이 순간 사용자가 봐야 하는 건 게이지가 아니다.
+   */
+  drawStartWarn(scene);
 }
 
 // ─────────────────────────────────────────────
@@ -517,7 +541,7 @@ function drawGapLine(scene) {
 // ─────────────────────────────────────────────
 
 /**
- * 화면 하단 고정 — 지금 이 판에 얼마가 걸려 있는지.
+ * 계단 숫자 바로 위 — 지금 이 판에 얼마가 걸려 있는지.
  * 값은 **방이 바뀔 때만** 다시 센다(매 프레임 세면 참가자·항아리를 60번/초 훑는다).
  */
 function drawPot(scene) {
@@ -537,7 +561,7 @@ function drawPot(scene) {
   }
   if (!scene.potText) return;
   // 11px + 외곽선. `1등하면 신발 146켤레!` = 125px < 180 (미리 재 봤다)
-  textCached(scene.potText, CENTER_X, POT_Y, {
+  textCached(scene.potText, POT_CX, POT_Y, {
     color: PAL.text, align: 'center', outline: PAL.textShadow });
 }
 
@@ -594,6 +618,38 @@ function drawCountdown(scene) {
   // 캐시를 태운다 — 배율 6 + 외곽선이면 글자 하나가 프레임당 fillRect 수백 번이다(§9-0-25)
   textCached(n > 0 ? String(n) : S.go, VIEW_W >> 1, 130, {
     scale: n > 0 ? 6 : 4, color: PAL.text, outline: PAL.textShadow, align: 'center', mono: true });
+}
+
+/**
+ * ★ **5초 안에 출발하세요.** (2026-08-19 11차, 사용자 지정)
+ *
+ * 게이지는 **첫 입력부터** 줄기 시작한다(`GameScene.started`). 싱글에서는 "생각할 시간"
+ * 이지만 멀티에서는 **가만히 서 있는 것이 공짜**다 — 그동안 상대는 오르다 죽고 부활을
+ * 태운다. 부활은 1위보다 20칸 앞에서 살아나므로(`MULTI.reviveAhead`), 상대의 부활 6개가
+ * 바닥난 뒤 0계단에서 출발해도 이기는 판이 나온다. 사용자가 신고한 그 전략이다.
+ *
+ * 그래서 판이 시작되면 곧바로 카운트다운을 보여 준다. **처음부터 보여 주는 이유**는
+ * 규칙을 모르는 사람이 없어야 하기 때문이다 — 3초쯤 지나서 뜨면 이미 늦었다고 느낀다.
+ * 첫 발을 떼면 그 프레임에 사라진다(`scene.startLeftMs = 0`).
+ */
+const WARN_BOX = { x: 2, y: 96, w: VIEW_W - 4, h: 64 };
+
+function drawStartWarn(scene) {
+  const left = scene.startLeftMs | 0;
+  if (left <= 0) return;
+  // 배경 위 아무 데나 뜨는 글자는 안 읽힌다 — 어두운 판을 깔고 테두리를 두른다
+  rect(WARN_BOX.x, WARN_BOX.y, WARN_BOX.w, WARN_BOX.h, PAL.textShadow);
+  rect(WARN_BOX.x, WARN_BOX.y, WARN_BOX.w, 1, PAL.gaugeWarn);
+  rect(WARN_BOX.x, WARN_BOX.y + WARN_BOX.h - 1, WARN_BOX.w, 1, PAL.gaugeWarn);
+
+  const cx = VIEW_W >> 1;
+  textCached(S.startWithin(MULTI.startWithinSeconds), cx, WARN_BOX.y + 6, {
+    color: PAL.gaugeWarn, align: 'center', outline: PAL.textShadow });
+  textCached(S.startOrLose, cx, WARN_BOX.y + 20, {
+    color: PAL.text, align: 'center', outline: PAL.textShadow });
+  // 남은 초는 **올림**이다 — 4.2초 남았는데 4가 뜨면 1초를 손해 본 것처럼 보인다
+  textCached(String(Math.ceil(left / 1000)), cx, WARN_BOX.y + 34, {
+    scale: 2, color: PAL.gaugeWarn, align: 'center', outline: PAL.textShadow, mono: true });
 }
 
 /**

@@ -38,6 +38,9 @@
     "qa:bg": "node --import ./tools/_json-import.mjs tools/_bg-qa2.mjs",
     "preview:bg": "node tools/_screen-preview.mjs bg",
     "qa:bgfit": "node --import ./tools/_json-import.mjs tools/_bgfit.mjs",
+    "preview:hof": "node tools/_screen-preview.mjs hof",
+    "//qa:hoffit": "명예의 전당 승률 칸이 좁은 폰에서 줄을 넘기지 않는지 — 눈이 아니라 자로 잰다.",
+    "qa:hoffit": "node tools/_hoffit.mjs",
     "perf:frame": "node tools/_frameperf.mjs"
   },
   "dependencies": {

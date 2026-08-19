@@ -779,20 +779,59 @@
   font-size: 12px;
 }
 
+/**
+ * ★ **실제로 스크롤되는 목록.** (2026-08-19 11차)
+ *
+ * `rankWindow` 반경이 5 → 50 이 되면서 한 화면에 100줄까지 들어온다. 높이를 안 묶으면
+ * 화면이 통째로 길어져 **하단 고정 '내 순위' 줄과 뒤로 버튼이 스크롤 저 아래로 밀린다.**
+ * `position: relative` 는 장식이 아니라 계산용이다 — `HallOfFame.scrollToMine` 이
+ * `node.offsetTop` 으로 내 줄 위치를 재는데, 그 기준(offsetParent)이 이 상자여야 한다.
+ */
 .rank-list {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 3px;
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: 48vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .rank-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
+  /* 8 → 6 (2026-08-19 11차): 승률 칸이 붙으면서 320px 폰에서 이름 칸이 0이 됐다 */
+  gap: 6px;
+  padding: 4px 6px;
   background: rgba(245, 217, 160, 0.08);
   border: 2px solid var(--c-line);
+  /* 줄 전체가 유저상태창 버튼이다 (2026-08-19 11차) */
+  cursor: pointer;
+}
+
+/**
+ * 신발왕 탭 전용 칸 — `멀티승률 3승/7게임`.
+ * **고정폭**이라 이름이 길든 짧든 세로로 줄이 맞는다(사용자: "줄 정렬해서 써줘").
+ * 좁은 폰(360px)에서 이름 칸이 먼저 줄어들도록 `.rank-name` 의 `min-width` 를 낮췄다.
+ */
+.rank-rate {
+  /**
+   * **고정폭 + 오른쪽 정렬**이라야 줄이 맞는다. 자동 폭으로 두면 승수 자릿수에 따라
+   * 칸이 늘었다 줄었다 하면서 오른쪽 값까지 밀린다(`qa:hoffit` 이 그걸 잰다).
+   */
+  flex: 0 0 104px;
+  text-align: right;
+  /**
+   * 9px 은 이 저장소에서 가장 작은 글자다. 10px 로 두면 `멀티승률 128승/172게임`
+   * (승수·판수가 세 자리인 사람)이 칸 밖으로 잘린다 — `qa:hoffit` 이 그걸 잰다.
+   * 칸을 더 넓히는 쪽은 320px 폰에서 줄이 통째로 넘쳐서 못 쓴다.
+   */
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--c-panel-dark);
 }
 
 /* 내 줄은 목록 안에서도 한눈에 찾을 수 있어야 한다 */
@@ -802,7 +841,7 @@
 }
 
 .rank-no {
-  min-width: 34px;
+  min-width: 30px;
   font-size: 14px;
   font-weight: bold;
   text-align: right;
@@ -818,7 +857,11 @@
 }
 
 .rank-name {
-  flex: 1;
+  /**
+   * `min-width: 0` 이 핵심이다. 기본값(auto)이면 flex 아이템이 **내용보다 작아지지
+   * 않아서** 좁은 폰에서 줄이 통째로 넘친다 — 이름은 `...` 로 줄어야 한다.
+   */
+  flex: 1 1 auto;
   min-width: 0;
   font-size: 13px;
   color: var(--c-text-light);
@@ -828,6 +871,10 @@
 }
 
 .rank-value {
+  /* 값도 폭을 잡아 둔다 — 이 칸이 흔들리면 왼쪽 승률 칸의 오른쪽 끝이 같이 흔들린다 */
+  flex: 0 0 auto;
+  min-width: 72px;
+  text-align: right;
   font-size: 13px;
   font-weight: bold;
   color: var(--c-panel);
@@ -1134,3 +1181,109 @@
 .rev-seg.s4 { left: 0; bottom: 0; width: calc(50% - 1px); height: 4px; }
 .rev-seg.s5 { left: 0; top: 5px; bottom: 5px; width: 4px; }
 .warn { text-align: center; margin: 8px 0; color: var(--btn-face-on); }
+
+/* ── 유저상태창 · 쪽지 · 현재접속자 (2026-08-19 11차) ─────────── */
+
+/**
+ * 카드 하단의 `현재상태:대기중` 줄. 접속 여부는 **버튼을 누를지 말지**를 정하는
+ * 정보라 버튼 바로 위에 둔다 — 카드 맨 위에 두면 읽고 나서 다시 내려와야 한다.
+ */
+.user-card-status {
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--c-accent);
+}
+
+/* 버튼 두 개가 한 줄에 — 비어 있으면 자리도 안 차지한다 */
+.user-card-actions:empty { display: none; }
+/**
+ * `메세지 보내기` 는 여섯 글자다. 기본 버튼 폰트(17px)로는 320px 다이얼로그의 반 칸에
+ * 안 들어가 **'메세지 보내 / 기'** 로 접혔다(미리보기로 확인). 이 줄만 작게 쓴다.
+ */
+.user-card-actions .pbtn {
+  font-size: 14px;
+  padding: 10px 4px;
+  white-space: nowrap;
+}
+
+/* 쪽지 입력칸은 닉네임 칸과 달리 문장을 받는다 — 작고 왼쪽 정렬 */
+.msg-input {
+  width: 100%;
+  font-size: 14px;
+  text-align: left;
+  padding: 10px;
+}
+
+/* 받은 쪽지 본문 — 길어도 줄바꿈으로 흘러야 한다 */
+.inbox-text {
+  font-size: 14px;
+  text-align: center;
+  color: var(--c-text);
+  word-break: break-word;
+  white-space: pre-wrap;
+  padding: 6px 2px;
+}
+
+.online-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: 56vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.online-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  background: rgba(245, 217, 160, 0.08);
+  border: 2px solid var(--c-line);
+  cursor: pointer;
+}
+
+.online-row.me { border-color: var(--c-accent); }
+
+.online-face {
+  width: 22px;
+  height: 30px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+
+.online-name {
+  flex: 1 1 auto;
+  min-width: 24px;
+  font-size: 13px;
+  color: var(--c-text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-shoes {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--c-panel-dark);
+}
+
+/**
+ * 상태 태그. **게임중은 흐리게** 둔다 — 그 사람에게는 대결을 신청할 수 없으므로
+ * 목록에서 눈에 덜 띄는 편이 맞다.
+ */
+.online-state {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 38px;
+  text-align: right;
+}
+.online-state.idle { color: var(--btn-hilite-on); }
+.online-state.playing { color: var(--c-panel-dark); }
+

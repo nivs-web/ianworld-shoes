@@ -177,9 +177,21 @@ console.log('\n11) 순위표를 내 주변만 잘라서 보여 준다 (2026-08-1
   const w200 = rankWindow(rows, 'u200');
   eq('200등이면 끝자락이 보인다', [w200[0].rank, w200[w200.length - 1].rank], [200 - size + 1, 200]);
 
+  // 가운데 놓기는 **양쪽으로 다 뻗을 수 있을 때** 성립한다 (반경보다 위아래가 넉넉할 때)
+  const mid = RANK_WINDOW_RADIUS + 30;
+  const wMid = rankWindow(rows, `u${mid}`);
+  eq('가운데쯤이면 내가 한가운데', wMid[RANK_WINDOW_RADIUS].rank, mid);
+  eq('창의 범위', [wMid[0].rank, wMid[wMid.length - 1].rank], [mid - RANK_WINDOW_RADIUS, mid + RANK_WINDOW_RADIUS]);
+
+  /**
+   * ★ **11등이면 1등이 보여야 한다.** (2026-08-19 11차, 사용자 지정)
+   * *"11위 12위 인데 1위가 안보이는것도 이상하다"* — 반경 5 시절에는 6등부터 시작했다.
+   * 반경 50 이면 위로 못 뻗는 만큼 아래로 채우므로 창은 1~101 이 된다.
+   */
   const w11 = rankWindow(rows, 'u11');
-  eq('11등이면 내가 가운데', w11[RANK_WINDOW_RADIUS].rank, 11);
-  eq('11등 창의 범위', [w11[0].rank, w11[w11.length - 1].rank], [11 - RANK_WINDOW_RADIUS, 11 + RANK_WINDOW_RADIUS]);
+  eq('11등이면 1등이 보인다', w11[0].rank, 1);
+  eq('11등 창의 범위', [w11[0].rank, w11[w11.length - 1].rank], [1, size]);
+  eq('반경은 50 (사용자 지정)', RANK_WINDOW_RADIUS, 50);
 
   const w1 = rankWindow(rows, 'u1');
   eq('1등이면 위로 못 뻗으니 아래로 채운다', [w1[0].rank, w1[w1.length - 1].rank], [1, size]);

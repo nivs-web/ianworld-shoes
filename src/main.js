@@ -125,6 +125,20 @@ async function boot() {
     pullAll()
       .catch((e) => console.warn('[sync] 서버 동기화 실패 — 로컬로 계속합니다', e))
       .then(() => sweepUnsettled().catch(() => {}));
+    /**
+     * ★ **접속 표시와 쪽지함을 켠다.** (2026-08-19 11차)
+     *
+     * §9-0-11 에서 "싱글만 하는 사람이 RTDB 192KB 를 받는" 회귀를 한 번 고쳤다.
+     * 그런데 쪽지·대결신청은 **접속해 있는 모두**가 받아야 하는 기능이라, 이제는
+     * 전원이 붙어야 한다 — 안 붙으면 그 사람은 현재접속자 목록에 아예 없다.
+     *
+     * 대신 **부팅을 막지 않는다.** 첫 화면이 그려지고 한참 뒤에 조용히 붙고
+     * (`startLater`), 실패해도 게임은 그대로 돈다.
+     */
+    import('./services/presence.js').then((P) => P.startLater(() => {
+      // 쪽지함은 **붙은 뒤에** 구독한다 — 먼저 부르면 RTDB 청크를 앞당겨 받는다
+      import('./screens/inboxPopups.js').then((I) => I.start(nav)).catch(() => {});
+    })).catch(() => {});
   };
 
   /**

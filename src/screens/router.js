@@ -8,6 +8,8 @@
 
 import { setInputEnabled, setDomBackHandler } from '../core/input.js';
 import { closeTopOverlay, closeAllOverlays } from './ui.js';
+import * as Presence from '../services/presence.js';
+import * as Inbox from './inboxPopups.js';
 
 /** @typedef {{render:(nav:object)=>HTMLElement, onLeave?:()=>void}} Screen */
 
@@ -27,6 +29,12 @@ export function toCanvas() {
   if (r) { r.innerHTML = ''; r.classList.remove('active'); }
   document.body.classList.remove('ui-mode');
   setInputEnabled(true);
+  /**
+   * ★ **여기가 '게임중'의 경계다.** (2026-08-19 11차)
+   * 캔버스로 넘어가면 DOM 팝업을 띄울 수 없으므로(§6-3) 대결 신청을 받을 수 없다.
+   * 화면 하나하나가 각자 알리게 두면 언젠가 한 곳을 빠뜨린다 — 전환 지점은 여기 둘뿐이다.
+   */
+  Presence.setState('playing');
 }
 
 /** 지금 살아 있는 화면 인스턴스를 다시 그리기만 한다 */
@@ -63,6 +71,9 @@ function mount() {
 
   live = top.factory(nav, top.params);
   draw();
+  // DOM 화면으로 돌아왔다 — 밀린 쪽지를 지금 띄운다 (인게임 동안은 서버에 그대로 뒀다)
+  Presence.setState('lobby');
+  Inbox.flush();
 }
 
 export const nav = {

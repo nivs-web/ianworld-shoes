@@ -22,6 +22,7 @@ import Settings from './Settings.js';
 import MultiMenu from './multi/MultiMenu.js';
 import Portal from './Portal.js';
 import { startGame } from './startGame.js';
+import * as Presence from '../services/presence.js';
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -47,6 +48,12 @@ function prewarmMultiIfReturning() {
 
 export default function Lobby(nav) {
   prewarmMultiIfReturning();
+  /**
+   * 로비로 돌아왔다 — 접속 카드의 신발·승패·닉네임을 다시 쓴다. (2026-08-19 11차)
+   * 판이 끝났거나 캐릭터를 샀거나 닉네임을 바꿨으면 반드시 여기를 지나므로,
+   * 화면마다 갱신을 흩뿌리지 않고 이 한 곳에서 맞춘다. 아직 안 붙었으면 아무 일도 안 한다.
+   */
+  Presence.refresh();
   return {
     render() {
       const p = getProfile();
