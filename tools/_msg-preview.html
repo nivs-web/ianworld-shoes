@@ -1,0 +1,67 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<style>
+body{background:#1b1410;padding:16px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.case{width:360px}
+.case h2{font-family:inherit;color:#f5d9a0;font-size:15px;margin:0 0 8px;letter-spacing:.5px}
+/* 팝업은 원래 화면을 덮는 고정 레이어다 — 미리보기에서는 나란히 세워 본다 */
+.case .dialog-overlay{position:static;background:none;padding:0;display:block}
+</style>
+</head><body><script type="module">
+/**
+ * 쪽지 팝업 미리보기 — `npm run preview:msg` → `tools/_out/msg.png`
+ *
+ * ★ **마크업을 손으로 베끼지 않는다.** 두 팝업 모두 화면 코드가 실제로 쓰는
+ *   `messageCard()` · `inboxCard()` 를 그대로 부른다 — 베낀 미리보기는 언젠가
+ *   거짓말을 한다(§9-0-33 에서 결과 화면 미리보기가 실제로 그랬다).
+ *
+ * 보는 것:
+ *   ① 받은 쪽지 팝업 안에 **답장 입력칸이 함께** 있는가 (14차 ⑤)
+ *   ② 쪽지함 팝업이 `[이 사용자 차단하기]` + `[닫기][삭제][답장]` 인가 (14차 ⑦)
+ *   ③ 이미 차단한 사람이면 `[이 사용자 차단해제]` 로 뒤집히는가
+ */
+import { el } from '/src/screens/ui.js';
+import { replyInput } from '/src/screens/replyInput.js';
+import { messageCard } from '/src/screens/inboxPopups.js';
+import { inboxCard } from '/src/screens/Inbox.js';
+
+const now = Date.now();
+const noop = () => {};
+
+function frame(title, node) {
+  const box = el('div.case');
+  box.append(el('h2', title));
+  box.append(el('div.dialog-overlay', null, [node]));
+  document.body.append(box);
+}
+
+// ① 받은 순간 뜨는 팝업 — 입력칸이 본문 바로 아래에 있다
+{
+  const item = { id: '1', from: 'u1', fromName: '다섯글자님', kind: 'msg',
+    at: now - 90e3, text: '지금 한 판 어때요? 방 파둘게요' };
+  const rep = replyInput({ uid: item.from, nickname: item.fromName }, noop);
+  frame('① 받은 쪽지 팝업 (인라인 답장)', messageCard(item, rep, noop));
+}
+
+// ② 쪽지함에서 연 쪽지 — 차단 전
+{
+  const m = { id: '2', from: 'u2', fromName: '로', kind: 'msg',
+    at: now - 3600e3, text: '아까 그 신발 어디서 주웠어요? 3티어 같던데' };
+  const rep = replyInput({ uid: m.from, nickname: m.fromName }, noop);
+  frame('② 쪽지함 팝업 (차단 전)',
+    inboxCard(m, { rep, blocked: false, close: noop, onBlock: noop, onDelete: noop }));
+}
+
+// ③ 같은 팝업, 이미 차단한 사람 — 버튼이 해제로 뒤집힌다
+{
+  const m = { id: '3', from: 'u3', fromName: '아빠게임왕', kind: 'msg',
+    at: now - 86400e3 * 2, text: '한 판 더 하자니까' };
+  const rep = replyInput({ uid: m.from, nickname: m.fromName }, noop);
+  frame('③ 쪽지함 팝업 (이미 차단한 사람)',
+    inboxCard(m, { rep, blocked: true, close: noop, onBlock: noop, onDelete: noop }));
+}
+
+window.__ready = true;
+</script></body></html>

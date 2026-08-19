@@ -7,6 +7,7 @@
 import { initCanvas, clear, getCanvas } from '/src/core/canvas.js';
 import { loadAll } from '/src/core/assets.js';
 import { multiHud } from '/src/game/multiHud.js';
+import { loadSmallFont } from '/src/core/pixelfont.js';
 
 initCanvas();
 const chars = ['ian', 'denny', 'rose', 'tony'];
@@ -37,6 +38,13 @@ const scene = {
     { msg: '노란색 1등 부활!', color: '#F2C23C', until: Date.now() + 9e5 },
   ],
 };
+/**
+ * ★ **7px 폰트를 먼저 기다린다.** (2026-08-19 14차)
+ * `multiHud` 는 자기가 부를 때 비동기로 받아 오고, 아직 안 왔으면 11px 로 그린다
+ * (그게 정상 폴백이다). 그런데 미리보기는 **한 번 그리고 끝**이라 늘 폴백만 찍혀서
+ * 판돈·등수 줄이 실제보다 크게 나온다 — 그 그림을 보고 "안 줄었다"고 오판할 뻔했다.
+ */
+await loadSmallFont();
 clear('#243a52');
 multiHud(scene);
 

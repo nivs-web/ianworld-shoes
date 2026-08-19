@@ -21,8 +21,24 @@ export default function MessageSettings(nav) {
   let busy = false;
   let unsub = () => {};
 
+  /**
+   * ★ **못 읽어도 내가 누른 결과는 살아남는다.** (2026-08-19 14차)
+   *
+   * 14차 전까지 `prefs/$uid` 에 읽기 규칙이 없었다 — 잎(`accept`·`blocked`)에만 걸었는데
+   * **RTDB 읽기 권한은 아래로만 흐른다.** 이 구독은 그 **부모**를 보므로 늘 권한 거부였고,
+   * 그러면 `cb(null)` → `accept` 가 영영 `true` 로 굳는다. 쓰기(`setAccept`)는 멀쩡히
+   * 성공하는데 화면만 안 바뀌니 사용자에게는 **"버튼 자체가 안 눌린다"** 로 보인다 —
+   * *"메세지 꺼짐 누르면 활성화가 안되네 버튼 자체가 안누르네 이유가 뭐야?"*
+   *
+   * 규칙은 고쳤다(§9-0-44). 그래도 **화면이 서버 한 곳에만 매달리지 않게** 여기도 고친다:
+   * 못 읽으면 처음 한 번만 기본값으로 그리고, 그 뒤로는 내가 누른 값을 덮지 않는다.
+   */
   unsub = Presence.subscribeMyPrefs((v) => {
-    accept = v ? v.accept : true;
+    if (!v) {
+      if (accept === null) { accept = true; nav.refresh(); }
+      return;
+    }
+    accept = v.accept;
     nav.refresh();
   });
 
@@ -32,7 +48,9 @@ export default function MessageSettings(nav) {
     nav.refresh();
     const ok = await Presence.setAccept(on);
     busy = false;
-    if (!ok) toast(S.networkError, 1800);
+    // 서버가 받아 줬으면 **구독을 기다리지 않고** 바로 뒤집는다 (누른 즉시 반응해야 한다)
+    if (ok) accept = on;
+    else toast(S.networkError, 1800);
     nav.refresh();
   }
 

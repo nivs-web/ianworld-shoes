@@ -135,13 +135,45 @@ export function openUserCard(p, opt = {}) {
   }
   paintActions();
 
+  /**
+   * ★ **마지막 로그인을 이 창이 직접 받아 온다.** (2026-08-19 14차)
+   *
+   * 12차에 줄은 만들었는데 값을 채우는 길이 `opt.load` 하나뿐이었고 **그걸 넘기는 화면은
+   * 명예의 전당뿐**이었다. 그래서 대기방·게임 결과·현재접속자에서 접속이 끊긴 사람을 열면
+   * 늘 `마지막로그인: 기록 없음` 이었다 — 사용자가 "처리한거 맞아?" 라고 물은 자리가 여기다.
+   *
+   * 조회는 **정말 필요할 때만** 한다: 접속 중이면 어차피 `현재로그인중` 이라 읽을 이유가 없고,
+   * 이미 값을 들고 왔으면(`p.lastLoginAt`) 그것으로 끝이다. 남는 경우 — **접속이 끊긴
+   * 사람의 카드** — 에만 계정 문서를 한 번 읽는다.
+   *
+   * `leaderboard.js` 를 정적으로 물지 않는 이유는 부팅 무게다(§9-0-43) — 이 창은
+   * 로비에서도 열리는데 Firestore 코드를 같이 끌고 올 이유가 없다.
+   */
+  let fetched = false;
+  function fetchLastLogin() {
+    if (fetched || opt.load || lastLoginAt || !p.uid || isMe) return;
+    if (status !== 'offline') return;   // 접속 중이면 날짜가 필요 없다
+    fetched = true;
+    import('../services/leaderboard.js')
+      .then((m) => m.fetchUserCard(p.uid))
+      .then((full) => {
+        if (!full?.lastLoginAt) return;
+        lastLoginAt = full.lastLoginAt;
+        paintLogin();
+      })
+      .catch(() => {});
+  }
+
   if (!opt.status && p.uid && !isMe) {
     Presence.readOne(p.uid).then((v) => {
       status = v?.state === 'playing' ? 'playing' : (v ? 'lobby' : 'offline');
       statusLine.textContent = STATUS_TEXT[status];
       paintLogin();
+      fetchLastLogin();
       paintActions();
     }).catch(() => {});
+  } else {
+    fetchLastLogin();
   }
 
   dismiss = presentOverlay(overlay);

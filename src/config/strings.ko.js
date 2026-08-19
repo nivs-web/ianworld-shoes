@@ -382,6 +382,17 @@ export const S = {
   replyMessage: '답장하기',
   blockUser: '차단',
   unblockUser: '차단 해제',
+  /**
+   * 쪽지함 팝업 버튼 (2026-08-19 14차, 사용자 지정)
+   * *"[닫기][삭제][답장] 이렇게 버튼을 3가지로 바꿔 그리고 3개의 버튼 바로 위에 길다란
+   * 버튼 [이 사용자 차단하기] 라는 버튼 만들어 (…) 이미 차단된 사용자라면
+   * [이 사용자 차단해제] 라는 버튼을 만들어서"*
+   */
+  replyShort: '답장',
+  deleteMessage: '삭제',
+  messageDeleted: '메세지를 삭제했습니다',
+  blockUserLong: '이 사용자 차단하기',
+  unblockUserLong: '이 사용자 차단해제',
   blockedDone: '차단했습니다',
   unblockedDone: '차단을 해제했습니다',
   blockConfirm: (name) => `${name}님을 차단할까요?`,

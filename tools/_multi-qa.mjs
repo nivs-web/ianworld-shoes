@@ -1399,12 +1399,22 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('부활 알림 색 이름 + 느낌표', st, 'someoneRevived: (colorName) => `${colorName} 1등 부활!`');
   has('닉네임 변경하기', st, "menuRename: '닉네임 변경하기'");
 
-  // 인게임 가독성 — 7px(small) 를 버리고 11px + 외곽선
+  /**
+   * 인게임 가독성 — 7px(small) 를 버리고 11px + 외곽선.
+   *
+   * ★ **판돈 줄만 14차에 되돌렸다**(§9-0-44). 사용자가 *"폰트 크기를 2단계만 줄여"* 라고
+   * 지정했고, 이 저장소의 글자 단계는 2px 이라 11 → 7 이 정확히 두 단계다. 나머지 두 줄은
+   * 그대로 11px 다 — 되돌린 것과 안 되돌린 것을 검사가 분명히 갈라 둬야 다음 사람이 헷갈리지 않는다.
+   */
   const mh = fs.readFileSync('src/game/multiHud.js', 'utf8');
-  for (const [label, fn] of [['거리/유지중', 'drawGapLine'], ['판돈', 'drawPot'], ['알림', 'drawTicker']]) {
+  for (const [label, fn, small] of [
+    ['거리/유지중', 'drawGapLine', false],
+    ['판돈', 'drawPot', true],
+    ['알림', 'drawTicker', false],
+  ]) {
     const body = new RegExp(`function ${fn}\\(scene\\) \\{([\\s\\S]*?)\\n\\}`).exec(mh)?.[1] ?? '';
     eq(`${label} 본문을 찾았다`, body.length > 0, true);
-    eq(`${label} — 11px (small 아님)`, /small:\s*true/.test(body), false);
+    eq(`${label} — ${small ? '7px (small)' : '11px (small 아님)'}`, /small:\s*true/.test(body), small);
     eq(`${label} — 외곽선`, /outline:/.test(body), true);
   }
   has('알림 접기도 11px 로 잰다', mh, 'measure(next, 1, false, false)');
@@ -1728,8 +1738,13 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('멀티면 그 좌표를 쓴다', hud, 's.multi ? HUD.scoreMulti : HUD.score');
     has('판돈 줄이 계단 숫자 위(41)', mh, 'const POT_Y = 41;');
     has('1등 거리 줄은 그 아래(80)', mh, 'const GAP_Y = 80;');
-    // 오른쪽 레이스 게이지(150~178)를 침범하면 안 된다 — 중심 82 + 최대 폭 128 = 18~146
-    has('판돈 줄은 게이지를 피한 가운데', mh, 'const POT_CX = 82;');
+    /**
+     * ★ 14차에 **화면 정중앙(90)** 으로 되돌렸다 — 사용자 지적
+     * *"'1등하면 신발 0켤레!' 멘트가 글 가운데 정렬이 아닌거 같아"*.
+     * 7px 로 낮추면서 최대 폭이 128 → 83 이 되어, 정중앙에 둬도 48~132 라
+     * 레이스 게이지(비켜선 얼굴 상자의 왼쪽 끝이 132)를 넘지 않는다.
+     */
+    has('판돈 줄은 계단 숫자와 같은 정중앙', mh, 'const POT_CX = CENTER_X;');
     const { HUD } = await import('../src/config/layout.js');
     eq('판돈(41~52) 과 계단 숫자(55~) 가 안 겹친다', HUD.scoreMulti.y >= 41 + 13, true);
   }
@@ -1831,7 +1846,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('한 번에 하나씩', ip, 'if (showing || !uiMode()) return;');
     // 지우기가 서버에 닿기 전에 스냅샷이 또 오면 같은 팝업이 두 번 뜬다
     has('같은 쪽지를 두 번 안 띄운다', ip, 'const handled = new Set();');
-    has('답장보내기 / 닫기', ip, 'S.replyMessage');
+    // ★ 14차: `[답장하기]` → **팝업 안의 입력칸**. 두 단계가 한 단계가 됐다
+    has('팝업 안에 답장 입력칸', ip, 'replyInput({ uid: item.from');
+    has('보내기 버튼도 같은 팝업', ip, 'replyButton(rep.send)');
+    no('답장하기로 창을 더 띄우지 않는다', ip, 'openComposer');
     eq('대결 수락 제한 10초 (사용자 지정)', /CHALLENGE_SECONDS = (\d+)/.exec(ip)?.[1], '10');
     has('수락 버튼에 남은 초', ip, 'S.challengeAccept(left)');
     has('10초가 지나면 자동 거절', ip, 'if (left <= 0) return choose(false);');
@@ -1873,9 +1891,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('보낸 사본을 내 함에도 남긴다', pr, 'out: true');
     has('무한정 쌓이지 않게 정리', pr, 'export const INBOX_KEEP');
     has('목록에 시각 표기', ib, 'stamp(m.at)');
-    has('줄을 누르면 답장/차단/닫기', ib, 'S.replyMessage');
-    has('차단 버튼', ib, 'S.blockUser');
-    eq('버튼 문구는 사용자 지정 그대로', [S2.replyMessage, S2.blockUser, S2.close], ['답장하기', '차단', '닫기']);
+    // ★ 14차에 버튼이 바뀌었다 — 42번 묶음이 새 구성을 본다
+    has('닫기/삭제/답장 세 버튼', ib, 'S.deleteMessage');
+    has('차단 확인 문구', ib, 'S.blockConfirm(otherName)');
+    eq('옛 문구는 그대로 남아 있다(다른 곳에서 쓴다)', [S2.replyMessage, S2.blockUser, S2.close], ['답장하기', '차단', '닫기']);
   }
 
   // ③ 수신 거부 · 차단은 **이유를 구분해서** 말한다
@@ -2030,6 +2049,121 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     const ou = read('src/screens/multi/OnlineUsers.js');
     has('순위표 얼굴 lazy', hof, "loading: 'lazy'");
     has('접속자 얼굴 lazy', ou, "loading: 'lazy'");
+  }
+}
+
+// ─────────────────────────────────────────────
+{
+  console.log('\n42) ★ 알림 줄 아래로 · 판돈 7px 정중앙 · prefs 읽기 규칙 · 쪽지 인라인 답장 (2026-08-19 14차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const S2 = (await import('../src/config/strings.ko.js')).default;
+  const mh = read('src/game/multiHud.js');
+
+  // ①② 알림은 고정된 윗줄에서 **아래로** 쌓인다 (위로 기어올라 판을 가리면 안 된다)
+  {
+    has('알림 윗줄 고정', mh, 'const TICKER_TOP = 238;');
+    no('옛 아래 기준선 제거', mh, 'TICKER_Y');
+    has('아래로 쌓는다', mh, 'TICKER_TOP + i * LINE_H');
+    has('두 줄까지만', mh, 'const TICKER_ROWS = 2;');
+    /**
+     * 두 줄(238 + 13 + 11 = 262)이 조작 버튼 윗변(266)을 넘으면 글자가 버튼에 깔린다.
+     * 발끝(212)보다 아래에서 시작해야 계단·캐릭터를 안 가린다.
+     */
+    const top = Number(/TICKER_TOP = (\d+)/.exec(mh)[1]);
+    const lh = Number(/LINE_H = (\d+)/.exec(mh)[1]);
+    const rows = Number(/TICKER_ROWS = (\d+)/.exec(mh)[1]);
+    eq('알림이 발끝(212)보다 아래에서 시작한다', top > 212, true);
+    eq('알림 아랫줄이 조작 버튼(266) 앞에서 멈춘다', top + (rows - 1) * lh + 11 <= 266, true);
+  }
+
+  // ③ 판돈 줄 — 7px(2단계 축소) + 화면 정중앙
+  {
+    has('7px 로 그린다', mh, 'small: true });');
+    has('중심은 화면 정중앙', mh, 'const POT_CX = CENTER_X;');
+    // 폰트 데이터로 직접 잰다 — 눈으로는 게이지 침범을 못 본다
+    const f7 = JSON.parse(read('src/data/font7.generated.json'));
+    const width = (str) => {
+      const up = String(str).toUpperCase();
+      let w = 0;
+      for (const ch of up) w += (f7.glyphs[ch] ?? f7.glyphs['?']).w;
+      return w + f7.tracking * (up.length - 1);
+    };
+    const worst = width(S2.potLine(523));
+    const { CENTER_X } = await import('../src/config/layout.js');
+    // 레이스 게이지 얼굴 상자는 한 칸 비켜서면 왼쪽 끝이 132 까지 나온다
+    eq('최대 폭이 게이지를 안 넘는다', CENTER_X + Math.ceil(worst / 2) <= 132, true);
+  }
+
+  // ④ 마지막로그인 — 넘겨주는 화면이 없어도 카드가 직접 받아 온다
+  {
+    const uc = read('src/screens/UserCard.js');
+    has('접속이 끊긴 사람만 조회한다', uc, "if (status !== 'offline') return;");
+    has('계정 문서에서 받아 온다', uc, "import('../services/leaderboard.js')");
+    has('한 번만 조회한다', uc, 'if (fetched || opt.load');
+    has('받으면 그 줄만 갈아 끼운다', uc, 'lastLoginAt = full.lastLoginAt;');
+    const lb = read('src/services/leaderboard.js');
+    has('조회 결과에 마지막로그인', lb, 'lastLoginAt: v.lastLoginAt ?? 0,');
+  }
+
+  // ⑤ 받은 쪽지 팝업 안에 답장 입력칸
+  {
+    const ri = read('src/screens/replyInput.js');
+    const ip = read('src/screens/inboxPopups.js');
+    const ib = read('src/screens/Inbox.js');
+    has('입력칸 부품이 따로 있다', ri, 'export function replyInput(');
+    has('두 화면이 같은 부품을 쓴다', ip, "from './replyInput.js'");
+    has('쪽지함도 같은 부품', ib, "from './replyInput.js'");
+    // 규칙과 화면의 상한이 어긋나면 "보내기를 눌렀는데 아무 일도 안 났다"가 된다
+    has('입력 상한 100자', ri, "maxlength: '100'");
+    has('한글 조합 중 엔터는 무시', ri, '!e.isComposing');
+    has('못 보낸 이유를 구분한다', ri, 'off: S.peerRecvOff');
+    // 창을 하나 더 띄우던 두 단계가 사라졌다
+    no('팝업이 composer 를 안 연다', ip, 'openComposer');
+    no('쪽지함도 composer 를 안 연다', ib, 'openComposer');
+  }
+
+  /**
+   * ⑥ ★ **근본 원인** — `prefs/$uid` 에 읽기 규칙이 없었다.
+   *
+   * RTDB 읽기 권한은 **아래로만 흐른다.** 잎(`accept`·`blocked`)에만 걸어 뒀으니
+   * 부모를 구독하는 `subscribeMyPrefs` 는 늘 권한 거부였고, 그래서
+   * 메세지 수신 설정 버튼이 안 눌리는 것처럼 보였고 차단 해제 버튼이 안 나왔다.
+   */
+  {
+    const doc = read('docs/FIREBASE_RULES.md');
+    const i = doc.indexOf('## Realtime Database');
+    const json = /```json\n([\s\S]*?)\n```/.exec(doc.slice(i))[1];
+    const rules = JSON.parse(json).rules;
+    const prefs = rules.prefs.$uid;
+    eq('prefs/$uid 를 본인이 읽을 수 있다', prefs['.read'], 'auth != null && auth.uid == $uid');
+    // 깊은 규칙은 권한을 **더하기만** 한다 — accept 의 공개 읽기는 그대로여야 한다
+    eq('accept 는 여전히 누구나 읽는다', prefs.accept['.read'], 'auth != null');
+    eq('차단 목록은 여전히 본인만', prefs.blocked['.read'], 'auth != null && auth.uid == $uid');
+
+    // 화면도 서버 한 곳에만 매달리지 않는다
+    const ms = read('src/screens/MessageSettings.js');
+    has('누른 즉시 뒤집는다', ms, 'if (ok) accept = on;');
+    has('못 읽어도 내 조작을 안 덮는다', ms, 'if (accept === null) { accept = true; nav.refresh(); }');
+  }
+
+  // ⑦ 쪽지함 팝업 — 긴 차단 버튼 + [닫기][삭제][답장]
+  {
+    const ib = read('src/screens/Inbox.js');
+    const css = read('src/styles/screens.css');
+    eq('버튼 문구 (사용자 지정 그대로)',
+      [S2.close, S2.deleteMessage, S2.replyShort, S2.blockUserLong, S2.unblockUserLong],
+      ['닫기', '삭제', '답장', '이 사용자 차단하기', '이 사용자 차단해제']);
+    has('긴 버튼이 자기 줄을 갖는다', ib, "el('div.row.row-wide'");
+    has('차단 상태면 해제로 뒤집힌다', ib, 'blocked ? S.unblockUserLong : S.blockUserLong');
+    has('삭제가 서버에서 지운다', ib, 'Presence.drop(m.id)');
+    has('차단/해제 결과를 바로 반영한다', ib, 'markBlocked(otherUid, !blocked)');
+    has('긴 버튼 CSS', css, '.row-wide .pbtn {');
+    has('긴 버튼은 한 줄을 다 쓴다', /\.row-wide \.pbtn \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '', 'width: 100%');
+    // 답장은 창을 더 띄우지 않고 **이 팝업 안의 입력칸**을 그대로 보낸다
+    has('답장 버튼은 같은 팝업에서 보낸다', ib, 'replyButton(rep.send, S.replyShort)');
   }
 }
 

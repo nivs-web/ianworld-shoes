@@ -22,7 +22,7 @@ import { el, button, presentOverlay, toast } from './ui.js';
 import * as Presence from '../services/presence.js';
 import * as Room from '../services/multiplayer.js';
 import { get as getProfile } from '../services/profile.js';
-import { openComposer } from './UserCard.js';
+import { replyInput, replyButton } from './replyInput.js';
 import { setMountHook } from './router.js';
 import { stamp } from './timeText.js';
 
@@ -104,37 +104,55 @@ function pump() {
 }
 
 /**
- * 일반 쪽지 — 답장보내기 / 닫기.
+ * 일반 쪽지 — **받은 내용 바로 아래에 답장 입력칸이 함께 뜬다.**
+ *
+ * ★ (2026-08-19 14차, 사용자 지정) 예전에는 `[답장하기]` 를 눌러야 입력 다이얼로그가
+ * **따로** 떴다. 팝업을 닫고 다른 팝업을 여는 두 단계라 그 사이에 화면이 바뀌면
+ * 답장을 놓쳤고, 무엇보다 한 번 더 눌러야 했다 —
+ * *"메세지 내용이 온 순간 바로 그 아래 칸에 '보낼 메세지를 입력하세요'라는 text 입력
+ * 칸이 뜨는거야, 그래서 바로바로 답장 할 수 있게 만들어"*.
  *
  * **뒷정리는 `presentOverlay` 의 onClose 한 곳에서만** 한다. 화면이 바뀌면
  * `router.draw()` 가 팝업을 강제로 치우는데(`closeAllOverlays`), 버튼 핸들러에만
  * 정리를 두면 그때 `showing` 이 참으로 굳어 **그 뒤로 어떤 쪽지도 안 뜬다.**
  */
+/**
+ * 팝업 알맹이. **미리보기(`preview:msg`)가 이 함수를 그대로 부른다** —
+ * 마크업을 손으로 베낀 미리보기는 언젠가 거짓말을 한다(§9-0-33).
+ */
+export function messageCard(item, rep, close) {
+  return el('div.dialog', null, [
+    el('div.dialog-msg', S.messageFrom(item.fromName || '???')),
+    // 언제 온 쪽지인지 (사용자 요청) — 게임 한 판 하고 나오면 몇 분이 지나 있다
+    el('div.inbox-when', stamp(item.at)),
+    el('div.inbox-text', item.text || ''),
+    rep?.node,
+    el('div.row', null, [
+      button(S.close, close, { sfx: 'sfx_menu_back' }),
+      rep ? replyButton(rep.send) : null,
+    ].filter(Boolean)),
+  ].filter(Boolean));
+}
+
 function showMessage(item, done) {
   let settled = false;
-  let reply = false;
   let dismiss = () => {};
   const finish = () => {
     if (settled) return;
     settled = true;
     done();
-    if (reply) openComposer({ uid: item.from, nickname: item.fromName });
   };
-  const overlay = el('div.dialog-overlay', null, [
-    el('div.dialog', null, [
-      el('div.dialog-msg', S.messageFrom(item.fromName || '???')),
-      // 언제 온 쪽지인지 (사용자 요청) — 게임 한 판 하고 나오면 몇 분이 지나 있다
-      el('div.inbox-when', stamp(item.at)),
-      el('div.inbox-text', item.text || ''),
-      el('div.row', null, [
-        button(S.close, () => dismiss(), { sfx: 'sfx_menu_back' }),
-        // 시스템 알림(거절 통보)에는 답장할 상대가 없다
-        item.kind === 'system' ? null : button(S.replyMessage, () => { reply = true; dismiss(); },
-          { primary: true }),
-      ].filter(Boolean)),
-    ]),
-  ]);
+  // 시스템 알림(거절 통보)에는 답장할 상대가 없다 — 그때만 입력칸을 안 붙인다
+  const canReply = item.kind !== 'system' && !!item.from;
+  const rep = canReply
+    ? replyInput({ uid: item.from, nickname: item.fromName }, () => dismiss())
+    : null;
+
+  const overlay = el('div.dialog-overlay', null, [messageCard(item, rep, () => dismiss())]);
   dismiss = presentOverlay(overlay, finish);
+  // 팝업이 뜨자마자 커서를 준다 — 곧바로 치기 시작할 수 있어야 '바로바로 답장'이다.
+  // 단 모바일 키보드가 팝업을 밀어 올리므로 한 박자 뒤에 준다.
+  if (rep) setTimeout(() => rep.input.focus(), 30);
 }
 
 /**
