@@ -96,18 +96,48 @@ export function settlementCounts(rankings) {
  * @param {{uid:string, shoesFound:number}} [live] 내 최신 습득 수. 서버가 되돌려주기
  *   전(진행도 전송은 300ms 간격)에도 **내가 주운 순간 바로** 반영되게 한다.
  */
+/**
+ * 판돈을 셀 **명단**.
+ *
+ * ★ (2026-08-19 15차) 예전에는 `players` 만 봤다. 그런데 `leaveRoom` 은 `players/<uid>`
+ * 를 **통째로 지운다**(시체 방이 매칭을 막지 않게). 진 사람은 결과 화면에서 곧장 나가는
+ * 게 정상 동작이라, 그 순간 승자 화면의 `1등하면 신발 N켤레!` 가 **폭삭 줄었다** —
+ * 실제 수령액은 그대로인데 표시만 틀리니 §9-0-36 에서 고친 "계산이 안 맞는다"가 재발한다.
+ *
+ * 정산은 이미 `result`(rankings·given·found)를 진실로 쓴다(§9-0-34). 표시도 같은 곳을
+ * 봐야 한다 — **판이 끝났으면 `result` 에서, 도는 중이면 `players` 에서** 명단을 만든다.
+ */
+export function potRoster(room) {
+  const res = room?.result ?? {};
+  const ranks = Array.isArray(res.rankings) ? res.rankings : null;
+  if (!ranks?.length) return playersInRound(room?.players);
+  const ids = new Set(ranks);
+  for (const k of Object.keys(res.given ?? {})) ids.add(k);
+  for (const k of Object.keys(res.found ?? {})) ids.add(k);
+  // 남아 있는 사람은 실제 기록을, 떠난 사람은 uid 만 (아래 계산이 result 로 메운다)
+  return [...ids].map((uid) => ({ uid, ...(room?.players?.[uid] ?? {}) }));
+}
+
 export function potShoes(room, live) {
-  const given = room?.result?.given ?? {};
-  const list = playersInRound(room?.players);
+  const res = room?.result ?? {};
+  const given = res.given ?? {};
+  const saved = res.found;
+  const list = potRoster(room);
   if (!list.length) return 0;
-  const saved = room?.result?.found;
 
   let 부활값 = 0;
   let 기본낸사람 = 0;
   let 주운것 = 0;
   for (const p of list) {
     const paid = Array.isArray(given[p.uid]) ? given[p.uid].length : 0;
-    const 부활비 = (p.revives ?? 0) * MULTI.reviveCost;
+    /**
+     * ★ 방을 떠난 사람은 `revives` 를 모른다 — **낸 양에서 되짚는다.** (15차)
+     * 내는 양은 `기본 1 + 20 × 부활` 이므로 20으로 내림하면 부활 몫이 정확히 나온다
+     * (21 → 20, 20 → 20, 1 → 0). 이 값이 있어야 아래 `기본낸사람` 판정이 맞는다.
+     */
+    const 부활비 = p.revives != null
+      ? p.revives * MULTI.reviveCost
+      : Math.floor(paid / MULTI.reviveCost) * MULTI.reviveCost;
     // 부활 비용은 **이미 낸 것**이 진실이다. 아직 안 올라온 건 없는 셈 친다
     부활값 += Math.max(paid, 부활비);
     /**

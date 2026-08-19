@@ -1165,5 +1165,147 @@ console.log('\nS31) 판이 끝나 신발이 오가면 카드의 보유 신발 �
   eq('두 번째는 안 쓴다', await B.act(() => Room.refreshMyCard(code)), false);
 }
 
+console.log('\nS32) ★ 계속하기로 **두 판 연속** — 2판째 보너스와 승수가 살아 있는가 (2026-08-19 15차)');
+{
+  /**
+   * 사용자가 실제로 가장 많이 하는 흐름이다: 결과 화면에서 `계속하기` → 같은 방에서 한 판 더.
+   *
+   * 그런데 정산 도장(`payTag`)이 **방 코드만**으로 만들어져 있었다. `resetRoom` 은 방
+   * 코드를 그대로 두므로 2판째에는 도장이 이미 찍혀 있고, 그 안에 들어 있던 두 가지가
+   * 통째로 건너뛰어졌다 — 남들이 **판 도중 주운 신발**을 승자가 받는 것과,
+   * 승패 기록(`recordMatch`). 로비 승률이 첫 판에서 멈춘 것도 이 때문이다.
+   *
+   * (15차에 주운 신발 쪽은 서버 도장 `claims/<나>/found` 로 옮겨서 판마다 다시 굴리고,
+   *  승패 기록은 로컬 통계라 **도장 열쇠 자체를 판 단위로** 바꿔 고쳤다. 그래서 이
+   *  시나리오는 두 고침을 따로 잡는다.)
+   *
+   * 이 시나리오가 없어서 §9-0-31 이후로 계속 새고 있었다. 1판만 도는 검사는 전부 통과한다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 40 });
+  const B = w.player('B', { shoes: 40 });
+  const code = await startRound(w, A, [B]);
+  const before = w.total(code);
+
+  /**
+   * ── 1판째: B 가 3개 줍고 짐, A 가 이긴다 ─────────────
+   * 1:1 은 **한 명이 빠지는 순간 끝난다**(§9-0-28). 그래서 진행도를 먼저 올려 두지 않으면
+   * 그 순간의 0계단이 그대로 순위가 된다 — 실제 대전에서도 진행도는 300ms마다 올라간다.
+   */
+  await A.act(() => Room.publishProgress(code, { stairs: 20, shoesFound: 1 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 5, shoesFound: 3 }, true));
+  await quitMidGame(B, code, { stairs: 5, shoesFound: 3 });
+  await quitMidGame(A, code, { stairs: 20, shoesFound: 1 });
+  await resultScreen(B, code, { leave: false });   // 패자가 먼저 낸다
+  await resultScreen(A, code, { leave: false });   // 승자가 걷는다
+  const 승자1판 = A.wallet();
+  eq('1판째 — 판돈 1 + B 가 주운 3', 승자1판, 40 + 1 + 3);
+
+  // ── '계속하기' — 같은 방에서 되돌린다 ────────────────
+  advance(1500);   // 사람이 버튼을 누르는 데 걸리는 시간 (두 판의 종료 시각이 달라진다)
+  eq('되돌리기 성공', await A.act(() => Room.resetRoom(code)), 'ok');
+
+  // ── 2판째: 이번엔 B 가 5개 줍고 또 진다 ──────────────
+  await A.act(() => Room.startCountdown(code));
+  for (const p of [A, B]) {
+    await p.act(async () => { await Room.holdRoomSeat(code); await Room.armPresence(code); });
+  }
+  await A.act(() => Room.publishProgress(code, { stairs: 33, shoesFound: 2 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 7, shoesFound: 5 }, true));
+  await quitMidGame(B, code, { stairs: 7, shoesFound: 5 });
+  await quitMidGame(A, code, { stairs: 33, shoesFound: 2 });
+  await resultScreen(B, code, { leave: false });
+  await resultScreen(A, code, { leave: false });
+
+  /**
+   * 2판째에도 똑같이 판돈 1 + B 가 주운 5 가 들어와야 한다.
+   * 고치기 전에는 여기서 `+1` 만 들어오고 5는 증발했다.
+   */
+  eq('2판째 — 판돈 1 + B 가 주운 5도 들어온다', A.wallet(), 승자1판 + 1 + 5);
+  eq('승수가 두 판 다 쌓였다', (() => { A.wallet(); return L.loadProfile().multiWins ?? 0; })(), 2);
+  eq('총량은 남이 주운 만큼(3+5)만 늘었다', w.total(code), before + 8);
+}
+
+console.log('\nS33) ★ 납부가 실패하면 기록을 지우지 않는다 — 빚이 면제되면 안 된다 (15차)');
+{
+  /**
+   * `sweepUnsettled` 는 "볼일 없는 방"의 재시도 기록(`userRooms`)을 지운다. 그 판정이
+   * `res && !res.pending` 인데, `pending` 을 **승자 쪽에서만** 세고 있었다 —
+   * 진 사람은 언제나 0 이라 **무조건 지워졌다.**
+   *
+   * 그래서 납부가 한 번이라도 실패하면(시한 초과·순간 단절) 그 빚은 영구 면제되고
+   * 승자는 영영 못 받는다. 여기서는 지갑이 비어 보이는 순간(= 서버에서 아직 안 내려온
+   * 상태)을 만들어 그 경로를 그대로 태운다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 0 });   // 지갑이 비어 보인다 → 이번엔 못 낸다
+  const code = await startRound(w, A, [B]);
+
+  await quitMidGame(A, code, { stairs: 30 });
+  await quitMidGame(B, code, { stairs: 4 });
+  await resultScreen(A, code, { leave: false });
+
+  // 진 B 가 결과 화면을 보고 나간다 — 낼 게 없어 그냥 지나간다
+  await resultScreen(B, code, { leave: false });
+  eq('아직 아무것도 못 냈다', (w.db.read(`rooms/${code}/result/given/B`) ?? []).length, 0);
+
+  /**
+   * ★ **여기가 결정적인 순간이다.** 지갑이 비어 있는 채로 앱을 껐다 켠다.
+   * `sweepUnsettled` 는 "볼일 없는 방"의 재시도 기록을 지우는데, 그 판정에 쓰는
+   * `pending` 이 진 사람에게는 늘 0 이었다 — 그래서 **아직 안 낸 빚이 있는데도 지웠다.**
+   */
+  await reboot(B);
+  eq('빚이 남았으므로 재시도 기록도 남는다', !!w.db.read(`userRooms/B/${code}`), true);
+
+  // 그 사이 서버에서 지갑이 내려왔다 → 다음 접속에 마저 낸다
+  await B.act(() => L.addShoes([7, 7, 7]));
+  await reboot(B);
+  eq('다음 접속에 빚을 냈다', (w.db.read(`rooms/${code}/result/given/B`) ?? []).length, 1);
+
+  await reboot(A);
+  eq('승자가 그 1켤레를 받았다', A.wallet(), 21);
+}
+
+console.log('\nS34) ★ 진 사람이 나가도 화면의 판돈이 줄지 않는다 (15차)');
+{
+  /**
+   * `potShoes` 는 명단을 `players` 에서 만들었다. 그런데 진 사람은 결과 화면에서
+   * 곧장 나가고 `leaveRoom` 은 `players/<uid>` 를 통째로 지운다 — 그 순간 승자 화면의
+   * `1등하면 신발 N켤레!` 가 **폭삭 줄었다.** 실제 수령액은 그대로인데 표시만 틀렸다
+   * (§9-0-36 에서 고친 "계산이 안 맞는다"가 같은 자리에서 재발한 것이다).
+   *
+   * 정산은 이미 `result` 를 진실로 쓴다 — 표시도 같은 곳을 봐야 한다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 60 });   // 승자
+  const B = w.player('B', { shoes: 60 });   // 부활 1회 + 4개 주움
+  const code = await startRound(w, A, [B]);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 40, shoesFound: 2 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 8, shoesFound: 4 }, true));
+  await B.act(() => Room.reportDeath(code, { stairs: 8, shoesFound: 4 }));
+  await B.act(async () => {
+    const picked = M.pickPenaltyShoes(L.loadProfile().shoesByIndex ?? {}, MULTI.reviveCost);
+    L.removeShoesByIndex(picked);
+    const floor = await Room.reviveMe(code, picked);
+    if (floor == null) L.addShoes(picked);
+  });
+  await B.act(() => Room.publishProgress(code, { stairs: 12, shoesFound: 4 }, true));
+  await quitMidGame(B, code, { stairs: 12, shoesFound: 4 });
+  await quitMidGame(A, code, { stairs: 40, shoesFound: 2 });
+
+  const 방 = await A.act(() => Room.readRoom(code));
+  const 나가기전 = M.potShoes(방);
+  eq('부활 20 + 기본 1 + 모두가 주운 6', 나가기전, 27);
+
+  // 진 사람이 결과 화면에서 정산하고 곧장 나간다 (실제 사용자 행동)
+  await resultScreen(B, code, { leave: true });
+  eq('B 가 방에서 사라졌다', !!w.db.read(`rooms/${code}/players/B`), false);
+
+  const 방2 = await A.act(() => Room.readRoom(code));
+  eq('나간 뒤에도 판돈 표시가 그대로', M.potShoes(방2), 나가기전);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n시뮬레이션 이상 없음');
 process.exit(fails ? 1 : 0);

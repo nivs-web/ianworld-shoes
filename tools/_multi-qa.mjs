@@ -1124,7 +1124,13 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ⑤ 판 도중 습득한 신발도 1등이 가져간다 (승자 자신의 몫은 제외)
   has('정산이 상대가 주운 개수를 센다', ms, 'foundShoesTotal(r, u.uid)');
   has('개수만큼 새로 굴린다', ms, 'rollFoundShoe()');
-  has('판돈 도장과 같은 회차에서만 한 번', ms, 'if (!L.isSettled(payTag(code))) {');
+  /**
+   * ★ 15차에 **서버 도장**으로 옮겼다 — 로컬 도장은 저장소를 지우면 사라져 다시 굴렸다.
+   * 그리고 도장 열쇠가 방 코드만이라 '계속하기' 2판째부터 보너스가 통째로 빠졌다.
+   * 42·43번 묶음이 새 규칙을 자세히 본다.
+   */
+  has('굴린 개수를 서버에 남긴다', ms, '다음도장.found =');
+  has('서버 도장이 있으면 안 굴린다', ms, 'Number.isFinite(걷은양.found)');
 }
 
 {
@@ -2164,6 +2170,116 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('긴 버튼은 한 줄을 다 쓴다', /\.row-wide \.pbtn \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '', 'width: 100%');
     // 답장은 창을 더 띄우지 않고 **이 팝업 안의 입력칸**을 그대로 보낸다
     has('답장 버튼은 같은 팝업에서 보낸다', ib, 'replyButton(rep.send, S.replyShort)');
+  }
+}
+
+// ─────────────────────────────────────────────
+{
+  console.log('\n43) ★ 전면 점검 10건 — 팝업이 안 닫히게 · 대결신청 · 정산 (2026-08-19 15차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  /** 주석에 걸려 거짓 통과/실패하지 않게 — §9-0-33·§9-0-43 에서 두 번 데인 함정 */
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  // ① 구독이 팝업을 죽이지 않는다 (쪽지·대결신청이 "안 되던" 진짜 이유)
+  {
+    const rt = code(read('src/screens/router.js'));
+    const ui = code(read('src/screens/ui.js'));
+    const ip = code(read('src/screens/inboxPopups.js'));
+    has('refresh 는 팝업을 남긴다', rt, 'draw(true, true)');
+    has('화면이 바뀔 때만 치운다', rt, 'if (!keepOverlays) closeAllOverlays();');
+    // 강제로 치워진 것과 사용자가 닫은 것을 구별해야 '읽음'·'거절'이 잘못 찍히지 않는다
+    has('닫힌 이유를 넘긴다', ui, "closeAllOverlays(reason = 'screen')");
+    has('버튼 핸들러의 클릭 이벤트를 사유로 오인하지 않는다', ui, "typeof reason === 'string' ? reason : 'user'");
+    has('강제로 닫힌 쪽지는 읽음을 안 찍는다', ip, "if (reason === 'screen') {");
+    has('그리고 다시 띄운다', ip, 'handled.delete(item.id);');
+    has('강제로 닫힌 대결신청은 거절 통보를 안 보낸다', ip, "if (reason === 'screen') return;");
+  }
+
+  // ② 대결신청 — 상태 문자열을 boolean 으로 보지 않는다
+  {
+    const uc = code(read('src/screens/UserCard.js'));
+    has('상태 문자열로 판정한다', uc, "if (r !== 'ok') {");
+    no('옛 boolean 판정이 남아 있지 않다', uc, 'const ok = await Presence.sendChallenge');
+    has('못 갔으면 방을 남기지 않는다', uc, 'Room.leaveRoom(code)');
+    has('이유를 그대로 알려 준다', uc, 'REASON[r] ?? S.networkError');
+  }
+
+  // ③ 보내기 전에 연결을 기다린다 (12초 시한 대신)
+  {
+    const pr = code(read('src/services/presence.js'));
+    has('연결 대기가 있다', pr, 'function waitConnected(fb');
+    has('보내기가 그걸 탄다', pr, "if (!(await waitConnected(fb))) return 'error';");
+    has('수신 설정 확인은 짧게 (곁다리가 본 줄기를 막지 않게)', pr, "3000, '수신 설정 확인'");
+    has('끊기면 다시 기다린다', pr, 'online = false;');
+  }
+
+  // ④ 구독 한 번에 화면을 통째로 다시 그리지 않는다
+  {
+    const wr = code(read('src/screens/multi/WaitingRoom.js'));
+    const ou = code(read('src/screens/multi/OnlineUsers.js'));
+    has('대기방 — 보이는 값만 비교', wr, 'function viewKey(r)');
+    has('대기방 — 같으면 안 그린다', wr, 'if (key === lastView) return;');
+    // 생존 신호·진행도는 이 화면에 한 글자도 안 나온다 — 열쇠에 들어가면 안 된다
+    no('대기방 열쇠에 seenAt 없음', /function viewKey\(r\)[\s\S]*?\n  }/.exec(wr)?.[0] ?? '', 'seenAt');
+    no('대기방 열쇠에 stairs 없음', /function viewKey\(r\)[\s\S]*?\n  }/.exec(wr)?.[0] ?? '', 'stairs');
+    has('현재접속자 — 보이는 값만 비교', ou, 'const viewKey = (rows)');
+    has('현재접속자 — 같으면 안 그린다', ou, 'if (key === lastView) return;');
+    no('현재접속자 열쇠에 at 없음', /const viewKey = \(rows\)[\s\S]*?join\('\|'\);/.exec(ou)?.[0] ?? '', 'u.at');
+  }
+
+  // ⑤ 정산 도장은 **판 단위** — '계속하기' 로 이어 하는 판이 새면 안 된다
+  {
+    const ms = code(read('src/services/multiSettle.js'));
+    has('도장 열쇠에 판 구분이 있다', ms, 'const payTag = (code, r) =>');
+    has('종료 시각과 시드를 겹쳐 쓴다', ms, "r?.seed ?? 0");
+    has('주운 신발 보너스는 서버 도장', ms, '다음도장.found =');
+    has('서버 도장이 있으면 안 굴린다', ms, 'Number.isFinite(걷은양.found)');
+    // claims 에는 uid 가 아닌 키(found)도 들어간다 — 옛 비트마스크를 오염시키면 안 된다
+    const mp = code(read('src/services/multiplayer.js'));
+    has('비트마스크는 판돈을 낸 사람만 센다', mp, 'hasOwnProperty.call(given, uid)');
+  }
+
+  // ⑥ 진 사람의 미납도 pending 으로 남긴다 (기록을 지우면 빚이 면제된다)
+  {
+    const ms = code(read('src/services/multiSettle.js'));
+    const body = /async function settleOnce\(code, room = null\)[\s\S]*?\n\}/.exec(ms)?.[0] ?? '';
+    eq('settleOnce 본문을 찾았다', body.length > 0, true);
+    has('선언이 승자 분기 밖에 있다', body.split('if (won) {')[0], 'let pending = 0;');
+    has('납부 실패를 센다', body, 'pending++;');
+  }
+
+  // ⑦ 판돈 표시는 result 를 본다 (사람이 나가도 안 줄어든다)
+  {
+    const mr = code(read('src/services/matchRules.js'));
+    has('명단을 따로 만든다', mr, 'export function potRoster(room)');
+    has('판이 끝났으면 rankings 기준', mr, 'if (!ranks?.length) return playersInRound');
+    has('given·found 에만 있는 사람도 넣는다', mr, "for (const k of Object.keys(res.given ?? {})) ids.add(k);");
+    has('떠난 사람의 부활 몫은 낸 양에서 되짚는다', mr, 'Math.floor(paid / MULTI.reviveCost)');
+  }
+
+  // ⑧ 읽기 실패로 순위표를 잃지 않는다
+  {
+    const rs = code(read('src/screens/multi/MultiResult.js'));
+    has('새로 읽은 값이 있을 때만 갈아 끼운다', rs, 'if (fresh) room = fresh;');
+    no('무조건 덮어쓰지 않는다', rs, 'room = await Room.readRoom(code);');
+  }
+
+  // ⑨ 같은 방을 동시에 정산하지 않는다
+  {
+    const ms = code(read('src/services/multiSettle.js'));
+    has('진행 중인 정산을 재사용한다', ms, 'const inflight = new Map();');
+    has('같은 프라미스를 돌려준다', ms, 'if (running) return running;');
+    has('끝나면 지운다', ms, 'inflight.delete(code)');
+  }
+
+  // ⑩ 판 시작 실패를 잡는다 (대기방이 얼면 남들 판까지 30초 붙잡는다)
+  {
+    const wr = code(read('src/screens/multi/WaitingRoom.js'));
+    has('실패를 잡는다', wr, 'startMultiGame(nav, { code, room: r }).catch(');
+    has('잡으면 자리를 비운다', wr, 'launched = false;');
   }
 }
 

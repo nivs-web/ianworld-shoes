@@ -88,8 +88,20 @@ function pump() {
     return pump();
   }
   showing = true;
-  const done = () => {
+  /**
+   * @param {'user'|'screen'} reason 왜 닫혔나
+   *
+   * ★ **강제로 치워진 것은 '읽었다'가 아니다.** (2026-08-19 15차)
+   * 화면이 바뀌면 라우터가 팝업을 걷어 간다(`closeAllOverlays`). 그걸 사용자가 닫은
+   * 것과 똑같이 취급해서 **보지도 않은 쪽지에 읽음이 찍혀 영영 사라졌다.**
+   * 이제 그런 경우에는 아무것도 찍지 않고 **기억에서 빼서 다음 화면에서 다시 띄운다.**
+   */
+  const done = (reason) => {
     showing = false;
+    if (reason === 'screen') {
+      handled.delete(item.id);
+      return;                       // 서버에 그대로 둔다 — 나오는 순간 다시 보인다
+    }
     /**
      * 쪽지는 **지우지 않고 읽음만 찍는다** — 받은 메세지함이 이력을 보여 줘야 한다.
      * 대결 신청은 다르다. 지나간 신청이 목록에 남아 봐야 아무 쓸모가 없다.
@@ -137,10 +149,10 @@ export function messageCard(item, rep, close) {
 function showMessage(item, done) {
   let settled = false;
   let dismiss = () => {};
-  const finish = () => {
+  const finish = (reason) => {
     if (settled) return;
     settled = true;
-    done();
+    done(reason);
   };
   // 시스템 알림(거절 통보)에는 답장할 상대가 없다 — 그때만 입력칸을 안 붙인다
   const canReply = item.kind !== 'system' && !!item.from;
@@ -169,12 +181,18 @@ function showChallenge(item, done) {
   let left = CHALLENGE_SECONDS;
   let dismiss = () => {};
 
-  const finish = () => {
+  const finish = (reason) => {
     if (settled) return;
     settled = true;
     clearInterval(timer);
-    done();
+    done(reason);
     if (picked) return join(item.code);
+    /**
+     * ★ **화면이 바뀌어 강제로 닫힌 것은 거절이 아니다.** (2026-08-19 15차)
+     * 예전에는 그때도 거절 통보가 나갔다 — 신청을 **보지도 못한 사람이 거절한 것**이 됐고,
+     * 신청자에게는 "대결신청이 안 된다"로 보였다. 그냥 서버에 두면 다음 화면에서 다시 뜬다.
+     */
+    if (reason === 'screen') return;
     // 거절은 **알려 준다.** 신청자는 그 방 대기실에서 기다리고 있다
     const me = getProfile();
     Presence.sendSystem(item.from, S.challengeRefused(me.nickname || '???')).catch(() => {});

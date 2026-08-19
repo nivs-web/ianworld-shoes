@@ -25,8 +25,23 @@ export default function OnlineUsers(nav) {
   let failed = false;
   let unsub = () => {};
 
+  /**
+   * ★ **보이는 것이 안 바뀌었으면 다시 그리지 않는다.** (2026-08-19 15차, 속도)
+   *
+   * `presence` 는 **최상위 노드 전체**를 구독한다. 그래서 접속자 중 **아무나** 카드를
+   * 다시 쓰면(`at` 시각만 바뀌어도) 목록 전체가 다시 내려오고, 예전에는 그때마다
+   * 화면을 통째로 헐고 다시 세웠다 — 얼굴 `<img>` 가 전부 새로 만들어져 깜빡이고,
+   * 열어 둔 유저상태창 위에서 화면이 계속 요동쳤다.
+   *
+   * 이 화면이 실제로 읽는 값은 다섯 개뿐이다. `at` 은 어디에도 안 나온다.
+   */
+  const viewKey = (rows) => rows
+    .map((u) => [u.uid, u.nickname ?? '', u.characterId ?? '', u.shoesOwned ?? 0, u.state ?? ''].join(':'))
+    .join('|');
+  let lastView = null;
+
   const listen = () => Presence.subscribeOnline((rows) => {
-    if (!rows) { failed = true; list = null; return nav.refresh(); }
+    if (!rows) { failed = true; list = null; lastView = null; return nav.refresh(); }
     failed = false;
     /**
      * 정렬은 **대기중 먼저**다. 대결을 신청할 수 있는 사람이 위에 있어야 한다 —
@@ -38,6 +53,9 @@ export default function OnlineUsers(nav) {
       if (s) return s;
       return String(a.nickname ?? '').localeCompare(String(b.nickname ?? ''), 'ko');
     });
+    const key = viewKey(list);
+    if (key === lastView) return;
+    lastView = key;
     nav.refresh();
   });
   unsub = listen();
@@ -54,6 +72,7 @@ export default function OnlineUsers(nav) {
     unsub();
     list = null;
     failed = false;
+    lastView = null;
     nav.refresh();
     Presence.refresh();
     unsub = listen();

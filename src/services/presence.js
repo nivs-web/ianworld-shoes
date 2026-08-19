@@ -56,6 +56,37 @@ async function rt() {
 
 const path = (...parts) => parts.join('/');
 
+/**
+ * ★ **연결이 붙을 때까지 기다린다.** (2026-08-19 15차)
+ *
+ * RTDB 쓰기는 소켓이 없으면 **거절하지 않고 큐에 쌓인다.** 그래서 `withTimeout` 이
+ * 12초를 세고 나서야 실패가 되는데, 사용자에게는 그 12초가 **"보내기를 눌렀는데
+ * 아무 일도 안 난다"** 로 보인다. 접속 표시는 2.5초 뒤에 한가할 때 붙으므로(§9-0-43),
+ * 로비에 들어오자마자 쪽지를 보내면 정확히 그 창에 걸린다.
+ *
+ * 방(`multiplayer.js`)은 이미 같은 이유로 `waitConnected` 를 쓴다(§9-0-17).
+ * 여기서 그 파일을 물면 **쪽지 하나 보내려고 멀티 모듈 전체를 받게 되므로** 따로 둔다.
+ *
+ * 붙은 뒤에는 곧바로 참을 돌려주므로 두 번째부터는 비용이 0 이다.
+ */
+let online = false;
+function waitConnected(fb, ms = 6000) {
+  if (online) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    let done = false;
+    let off = null;
+    const finish = (v) => { if (done) return; done = true; off?.(); clearTimeout(timer); resolve(v); };
+    const timer = setTimeout(() => finish(false), ms);
+    try {
+      off = fb.dbMod.onValue(fb.dbMod.ref(fb.rtdb, '.info/connected'), (snap) => {
+        if (snap.val() !== true) return;
+        online = true;
+        finish(true);
+      });
+    } catch { finish(false); }
+  });
+}
+
 /** 지금 내 상태 — 'lobby'(대기중) 또는 'playing'(게임중) */
 let myState = 'lobby';
 let started = false;
@@ -90,7 +121,8 @@ export async function start() {
   const ref = fb.dbMod.ref(fb.rtdb, path(PRESENCE, fb.uid));
   try {
     stopConn = fb.dbMod.onValue(fb.dbMod.ref(fb.rtdb, '.info/connected'), async (snap) => {
-      if (snap.val() !== true) return;
+      if (snap.val() !== true) { online = false; return; }
+      online = true;
       try {
         // 끊기면 서버가 지운다 — 브라우저를 그냥 닫아도 목록에 유령이 안 남는다
         await fb.dbMod.onDisconnect(ref).remove();
@@ -267,8 +299,14 @@ export async function readAccept(uid) {
   const fb = await rt();
   if (!fb || !uid) return true;
   try {
+    /**
+     * ★ **짧게 묻는다(3초).** (2026-08-19 15차)
+     * 이 조회는 "왜 못 보내는지"를 더 정확히 말해 주려는 **곁다리**다. 그런데 기본
+     * 시한(12초)을 그대로 쓰면 조회가 느릴 때 **보내기 자체가 12초 늦어진다** —
+     * 곁다리가 본 줄기를 막는 꼴이다. 못 읽으면 규칙이 어차피 막아 주므로 그냥 진행한다.
+     */
     const snap = await withTimeout(
-      fb.dbMod.get(fb.dbMod.ref(fb.rtdb, path(PREFS, uid, 'accept'))), undefined, '수신 설정 확인');
+      fb.dbMod.get(fb.dbMod.ref(fb.rtdb, path(PREFS, uid, 'accept'))), 3000, '수신 설정 확인');
     return snap.val() !== false;
   } catch { return true; }
 }
@@ -300,6 +338,12 @@ const denied = (e) => /permission|denied/i.test(String(e?.code ?? '') + String(e
 export async function push(toUid, body, toName = '') {
   const fb = await rt();
   if (!fb || !toUid || toUid === fb.uid) return 'error';
+  /**
+   * ★ **붙기 전에는 보내지 않는다.** (2026-08-19 15차)
+   * 안 그러면 쓰기가 큐에 쌓인 채 12초를 기다렸다 시한 초과로 실패한다 —
+   * 사용자에게는 그냥 "안 보내진다"다. 6초 안에 못 붙으면 그건 진짜 네트워크 문제다.
+   */
+  if (!(await waitConnected(fb))) return 'error';
   /**
    * 수신 거부는 **보내기 전에** 확인한다. 규칙도 막지만, 규칙에 막힌 것만으로는
    * "꺼 뒀다"와 "나를 차단했다"를 구별할 수 없다 — 사용자에게 할 말이 달라진다.

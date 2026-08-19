@@ -143,6 +143,30 @@ console.log('현재접속자 화면:', (await text()).split('\n').filter(Boolean
 await clickText('뒤로');
 await clickText('뒤로');
 
+/**
+ * ★ **팝업이 `refresh()` 한 번에 사라지지 않는지** 실제 브라우저에서 확인한다.
+ * (2026-08-19 15차 — 쪽지·대결신청이 "안 되던" 진짜 원인이 이것이었다)
+ *
+ * 소스 검사만으로는 부족하다. `nav.refresh()` 는 구독 콜백이 부르는데, 그때 열려 있던
+ * 유저상태창·메세지 입력칸이 통째로 날아갔다. 여기서는 그 두 가지를 직접 재현한다 —
+ *   · `refresh()` → 팝업이 **남아 있어야** 한다 (같은 화면을 다시 그리는 것뿐이다)
+ *   · 화면을 옮기면 → 팝업이 **사라져야** 한다 (새 화면 위에 얹히면 안 된다)
+ */
+const overlays = () => p.locator('.dialog-overlay').count();
+await clickText('신발 도감');
+await p.waitForTimeout(300);
+await p.locator('.dex-cell').first().click();
+await p.waitForTimeout(200);
+const 팝업생김 = await overlays();
+await p.evaluate(() => window.__dbg.nav.refresh());
+await p.waitForTimeout(150);
+const 리프레시후 = await overlays();
+await p.evaluate(() => window.__dbg.nav.reset(window.__dbg.screens.Lobby));
+await p.waitForTimeout(250);
+const 화면바꾼뒤 = await overlays();
+console.log('팝업 생존: 열림 %d → refresh 후 %d (남아야 함) → 화면 이동 후 %d (0이어야 함)',
+  팝업생김, 리프레시후, 화면바꾼뒤);
+
 // 게임 시작 → 몇 칸 오르고 죽이기
 await clickText('싱글게임');
 await p.waitForTimeout(2600);

@@ -1334,8 +1334,16 @@ export function claimedCounts(room, winnerUid) {
 /** 옛 클라이언트가 읽을 비트마스크 — 걷은 사람의 자리에 비트를 세운다 */
 export function claimMask(room, counts) {
   const rank = room?.result?.rankings ?? [];
+  const given = room?.result?.given ?? {};
   let mask = 0;
   for (const uid of Object.keys(counts ?? {})) {
+    /**
+     * ★ **판돈을 낸 사람만 센다.** (2026-08-19 15차)
+     * `claims` 에는 uid 가 아닌 열쇠도 들어간다(`found` — 주운 신발 보너스 도장).
+     * 그걸 그대로 세면 순위에 없는 키라 `ORPHAN_BIT` 가 켜지고, **옛 클라이언트가
+     * 그 비트를 "순위 밖 사람의 판돈까지 걷었다"로 읽어** 안 걷힌 신발을 걷힌 것으로 본다.
+     */
+    if (!Object.prototype.hasOwnProperty.call(given, uid)) continue;
     const i = rank.indexOf(uid);
     mask |= i >= 0 ? (1 << i) : ORPHAN_BIT;
   }

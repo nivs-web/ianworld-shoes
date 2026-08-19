@@ -124,19 +124,33 @@ export function closeTopOverlay() {
   return true;
 }
 
-/** 화면이 바뀔 때 남아 있는 팝업을 전부 치운다 */
-export function closeAllOverlays() {
-  while (openOverlays.length) openOverlays.pop().close();
+/**
+ * 화면이 **바뀔 때** 남아 있는 팝업을 전부 치운다.
+ *
+ * ★ `reason` 을 넘기는 이유. (2026-08-19 15차)
+ * 팝업 중에는 닫히는 것 자체가 **결정**인 것이 있다 — 받은 쪽지는 닫히면 '읽음'이 찍히고,
+ * 대결 신청은 닫히면 '거절'로 통보된다. 그런데 화면이 바뀌어 **강제로** 치워진 것은
+ * 사용자가 내린 결정이 아니다. 그걸 구별하지 않아서 **읽지도 않은 쪽지가 읽음으로 사라지고
+ * 받지도 못한 대결 신청이 거절로 나갔다.**
+ */
+export function closeAllOverlays(reason = 'screen') {
+  while (openOverlays.length) openOverlays.pop().close(reason);
 }
 
-/** 팝업을 띄우고 등록한다. `close` 는 여러 번 불려도 안전해야 한다 */
+/**
+ * 팝업을 띄우고 등록한다. `close` 는 여러 번 불려도 안전해야 한다.
+ *
+ * `onClose(reason)` — `'user'`(직접 닫음) 또는 `'screen'`(화면이 바뀌어 강제로 치워짐).
+ * 돌려주는 `close` 는 **버튼 핸들러로 그대로 쓰인다** — 그때 첫 인자는 클릭 이벤트다.
+ * 그래서 문자열일 때만 사유로 읽는다.
+ */
 export function presentOverlay(node, onClose) {
   const entry = {
-    close() {
+    close(reason) {
       const i = openOverlays.indexOf(entry);
       if (i >= 0) openOverlays.splice(i, 1);
       node.remove();
-      onClose?.();
+      onClose?.(typeof reason === 'string' ? reason : 'user');
     },
   };
   openOverlays.push(entry);

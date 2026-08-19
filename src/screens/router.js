@@ -36,12 +36,29 @@ export function toCanvas() {
   Presence.setState('playing');
 }
 
-/** 지금 살아 있는 화면 인스턴스를 다시 그리기만 한다 */
-function draw(keepScroll = false) {
+/**
+ * 지금 살아 있는 화면 인스턴스를 다시 그리기만 한다.
+ *
+ * ★ **`refresh()` 는 팝업을 건드리면 안 된다.** (2026-08-19 15차, 사용자 신고)
+ *
+ * 예전에는 여기서 무조건 `closeAllOverlays()` 를 불렀다. 화면이 **바뀔 때**는 맞는
+ * 처리다(남으면 새 화면 위에 얹힌다). 그런데 `refresh()` 는 **같은 화면을 다시 그리는
+ * 것**이라 그 화면이 띄운 팝업은 살아 있어야 한다. 그리고 `refresh()` 를 부르는 것은
+ * 대부분 **구독 콜백**이다:
+ *
+ *   · 대기방  — 5초마다 오는 생존 신호(`seenAt`)로 방 스냅샷이 바뀐다
+ *   · 현재접속자 — 누가 들어오고 나갈 때마다
+ *   · 쪽지함  — 쪽지가 하나 올 때마다, 설정이 바뀔 때마다
+ *
+ * 즉 **아무 일도 안 해도 몇 초 안에 팝업이 저절로 닫혔다.** 증상이 셋이었다 —
+ * 쪽지를 쓰려고 입력칸을 띄우면 타이핑 중에 창이 사라지고, 받은 쪽지는 뜨자마자 닫히면서
+ * `읽음` 이 찍혀 **영영 다시 안 뜨고**, 대결 신청은 **자동 거절**로 처리돼 신청자에게
+ * 거절 통보가 갔다. 사용자가 말한 "메세지 보내는 것이 안된다 / 대결신청이 안된다"가 이것이다.
+ */
+function draw(keepScroll = false, keepOverlays = false) {
   const r = root();
   if (!r || !live) return;
-  // 다시 그리기 전에 떠 있는 팝업을 치운다 — 남으면 새 화면 위에 얹혀 버린다
-  closeAllOverlays();
+  if (!keepOverlays) closeAllOverlays();
   const y = r.scrollTop;
   r.innerHTML = '';
   r.append(live.render(nav));
@@ -114,7 +131,8 @@ export const nav = {
    * 화면 인스턴스는 그대로라 선택된 탭·index 같은 화면 상태가 유지된다.
    */
   refresh() {
-    draw(true);
+    // 팝업은 그대로 둔다 — 구독 한 번에 사용자가 열어 둔 창이 닫히면 안 된다
+    draw(true, true);
   },
   toCanvas,
   depth: () => stack.length,

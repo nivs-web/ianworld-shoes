@@ -26,6 +26,21 @@ import * as Room from '../services/multiplayer.js';
 import { get as getProfile } from '../services/profile.js';
 import { stampFull } from './timeText.js';
 
+/**
+ * ★ **못 보낸 이유를 구분해서 말한다.** (2026-08-19 12차, 사용자 지정)
+ *   off     — 상대가 수신을 꺼 뒀다 (`prefs/accept`, 미리 읽어서 안다)
+ *   blocked — 상대가 나를 차단했다 (규칙이 거부한다. 차단 목록은 못 읽는다)
+ * 둘을 "실패"로 뭉뚱그리면 사용자는 자기 네트워크를 의심하게 된다.
+ *
+ * 쪽지와 대결신청이 **같은 표**를 쓴다 — 실패 이유가 같기 때문이다(15차).
+ */
+const REASON = {
+  ok: S.messageSent,
+  off: S.peerRecvOff,
+  blocked: S.peerBlocked,
+  error: S.networkError,
+};
+
 const STATUS_TEXT = {
   playing: S.statusPlaying,
   lobby: S.statusIdle,
@@ -193,19 +208,6 @@ export function openComposer(p, prefill = '') {
     placeholder: S.messageHint, autocomplete: 'off',
   });
 
-  /**
-   * ★ **못 보낸 이유를 구분해서 말한다.** (2026-08-19 12차, 사용자 지정)
-   *   off     — 상대가 수신을 꺼 뒀다 (`prefs/accept`, 미리 읽어서 안다)
-   *   blocked — 상대가 나를 차단했다 (규칙이 거부한다. 차단 목록은 못 읽는다)
-   * 둘을 "실패"로 뭉뚱그리면 사용자는 자기 네트워크를 의심하게 된다.
-   */
-  const REASON = {
-    ok: S.messageSent,
-    off: S.peerRecvOff,
-    blocked: S.peerBlocked,
-    error: S.networkError,
-  };
-
   async function send() {
     const text = input.value.trim();
     if (!text) return toast(S.messageEmpty, 1600);
@@ -244,9 +246,26 @@ export async function startChallenge(p, nav) {
   const prof = getProfile();
   const code = await Room.createRoom({ isPrivate: true, difficulty: prof.difficulty }).catch(() => null);
   if (!code) return toast(S.networkError, 2000);
-  const ok = await Presence.sendChallenge(p.uid, code);
-  if (!ok) toast(S.networkError, 2000);
-  else toast(S.challengeSent, 1800);
+
+  /**
+   * ★ **돌려받는 값은 boolean 이 아니라 상태 문자열이다.** (2026-08-19 15차, 사용자 신고)
+   *
+   * `sendChallenge` 는 `'ok' | 'off' | 'blocked' | 'error'` 를 준다. 예전 코드는
+   * `if (!ok)` 로 봤는데 **빈 문자열이 아닌 모든 문자열은 참**이라 `'error'` 도 `'blocked'`
+   * 도 전부 성공으로 읽혔다. 그래서 신청이 아예 안 갔는데도
+   * **"대결 신청을 보냈습니다"** 가 뜨고 신청자는 아무도 안 오는 빈 방에서 기다렸다 —
+   * 사용자가 말한 "대결신청이 안된다"가 정확히 이 그림이다.
+   */
+  const r = await Presence.sendChallenge(p.uid, code);
+  if (r !== 'ok') {
+    /**
+     * 신청이 못 갔으면 **방을 남기지 않는다.** 빈 방은 자동 매칭이 훑는 12칸을
+     * 갉아먹어 남들의 매칭까지 굶긴다(§9-0-17·§9-0-21 ②에서 두 번 데인 자리다).
+     */
+    Room.leaveRoom(code).catch(() => {});
+    return toast(REASON[r] ?? S.networkError, 2400);
+  }
+  toast(S.challengeSent, 1800);
   if (nav) {
     // 순환 참조를 피해 여기서 늦게 부른다 (WaitingRoom → UserCard → WaitingRoom)
     import('./multi/WaitingRoom.js').then((m) => nav.push(m.default, { code })).catch(() => {});

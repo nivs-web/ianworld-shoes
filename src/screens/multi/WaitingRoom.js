@@ -121,6 +121,30 @@ export default function WaitingRoom(nav, params = {}) {
     Room.refreshMyCard(code, r).catch(() => {});
   };
 
+  /**
+   * ★ **보이는 것이 안 바뀌었으면 다시 그리지 않는다.** (2026-08-19 15차, 속도)
+   *
+   * 방 스냅샷은 **생존 신호(`seenAt`)만으로도** 계속 온다 — 사람마다 5초에 한 번이니
+   * 4인 방이면 **1.2초에 한 번**이다. 그때마다 `nav.refresh()` 가 화면을 통째로
+   * 헐고 다시 세웠다(`innerHTML = ''` → 전체 render). 참가자 줄의 `<img>` 까지 매번
+   * 새로 만들어지므로 얼굴이 깜빡이고, 그 사이 눌린 입력은 새 노드로 넘어가지 못한다.
+   * 사용자가 말한 "버퍼링"의 한 갈래가 여기다.
+   *
+   * 그래서 **화면이 실제로 읽는 값만** 뽑아 비교한다. `seenAt`·`offAt`·`stairs`·
+   * `alive`·`revives`·`result` 는 이 화면에 한 글자도 안 나오므로 열쇠에 없다.
+   * 정렬은 `slotIndex` 와 같은 기준(joinedAt → uid)이라 자리 색이 바뀌면 열쇠도 바뀐다.
+   */
+  function viewKey(r) {
+    if (!r) return '';
+    const ps = Object.entries(r.players ?? {})
+      .sort((a, b) => (a[1]?.joinedAt ?? 0) - (b[1]?.joinedAt ?? 0) || (a[0] < b[0] ? -1 : 1))
+      .map(([uid, p]) => [uid, p?.nickname ?? '', p?.characterId ?? '', p?.shoesOwned ?? 0,
+        p?.multiWins ?? 0, p?.multiLosses ?? 0, p?.ready ? 1 : 0, p?.waiting ? 1 : 0].join(':'))
+      .join('|');
+    return [r.state, r.hostUid, r.difficulty, r.maxPlayers, r.isPrivate ? 1 : 0, ps].join('/');
+  }
+  let lastView = null;
+
   unsub = Room.subscribeRoom(code, (r) => {
     room = r;
     if (!r) {
@@ -160,9 +184,26 @@ export default function WaitingRoom(nav, params = {}) {
     if (!launched && !meNow?.waiting && (r.state === 'countdown' || r.state === 'playing')) {
       launched = true;
       unsub();
-      startMultiGame(nav, { code, room: r });
+      /**
+       * ★ **실패를 잡는다.** (2026-08-19 15차)
+       * `startMultiGame` 은 인게임 청크를 동적으로 받는다 — PWA 캐시가 낡았거나
+       * 그 순간 회선이 끊기면 **거부(reject)** 된다. 예전에는 아무도 안 받아서
+       * `nav.toCanvas()` 도 `Scene.reset()` 도 안 돌고, 구독은 이미 끊긴 뒤라
+       * **대기방이 그대로 얼어붙었다.** 게다가 `launched` 가 참이라 나갈 때
+       * 방에서 빠지지도 않아 남들의 판까지 30초 붙잡는다.
+       */
+      startMultiGame(nav, { code, room: r }).catch((e) => {
+        console.warn('[multi] 판 시작 실패', e);
+        launched = false;
+        toast(S.networkError, 2400);
+        leave(true);
+      });
       return;
     }
+    // 보이는 값이 그대로면 다시 그리지 않는다 (생존 신호만 온 경우)
+    const key = viewKey(r);
+    if (key === lastView) return;
+    lastView = key;
     nav.refresh();
   });
 

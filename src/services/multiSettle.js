@@ -27,8 +27,22 @@ import { patch } from './profile.js';
 import { pickPenaltyShoes, owedBy, outOfRound, foundShoesTotal, foundOf, rollFoundShoe } from './matchRules.js';
 import { MULTI } from '../config/balance.js';
 
-/** 도장 이름 — 방 하나에서 "내가 낸 것"과 "누구한테서 받은 것"을 따로 센다 */
-const payTag = (code) => `${code}:pay`;
+/**
+ * 도장 이름 — "이 판에서 내 몫을 처리했다".
+ *
+ * ★ **판(round) 단위여야 한다.** (2026-08-19 15차)
+ *
+ * 예전에는 `` `${code}:pay` `` 였다. 그런데 결과 화면의 `계속하기` 는 **같은 방 코드로**
+ * 다음 판을 돈다(`resetRoom`). 그래서 2판째부터는 도장이 이미 찍혀 있어
+ *   · 승자가 **남들이 주운 신발 보너스를 못 받고**
+ *   · 승패 기록(`recordMatch`)이 아예 안 쌓였다 — 로비 승률이 첫 판에서 멈춘다.
+ * 한 방에서 계속 이어 하는 것이 가장 흔한 플레이인데 그 경로가 통째로 새고 있었다.
+ *
+ * 판을 가르는 열쇠는 **둘을 겹쳐** 쓴다 — `result.endedAt`(판마다 서버가 새로 찍는 종료
+ * 시각)과 `seed`(`resetRoom` 이 다음 판마다 다시 뽑는 계단 시드). 하나만 쓰면 두 판이
+ * 같은 밀리초에 끝나거나 시드가 우연히 겹칠 때 도장이 충돌한다.
+ */
+const payTag = (code, r) => `${code}:${r?.seed ?? 0}:${r?.result?.endedAt ?? 0}:pay`;
 /**
  * (예전에 있던 `takeTag` 는 없앴다 — 승자가 무엇을 걷었는지는 이제 **서버**가
  *  `result/settled/{uid}` 비트마스크로 들고 있다. 로컬 도장은 저장소를 지우거나
@@ -61,7 +75,41 @@ function pushWallet() {
  * @returns {Promise<{rank:number, won:boolean, paid:number[], took:number[], pending:number}|null>}
  *   pending = 아직 신발을 안 내놓은 패자 수 (그만큼 나중에 더 들어온다)
  */
+/**
+ * 승리 기록은 **판마다 한 번만.** 로컬 통계(로비 승률)라 서버 도장이 없으므로
+ * 판 단위 로컬 도장으로 막는다 — 정산은 여러 번 불릴 수 있다(결과 화면 + 재시도 + 청산).
+ */
+function markWin(code, r) {
+  if (L.isSettled(payTag(code, r))) return;
+  L.recordMatch(true);
+  L.markSettled(payTag(code, r));
+}
+
+/**
+ * ★ **같은 방을 동시에 정산하지 않는다.** (2026-08-19 15차)
+ *
+ * `settleRoom` 은 ① 서버에서 걷은 양을 읽고 ② 얼마를 더 걷을지 정하고 ③ 도장을 쓰고
+ * ④ 지갑에 넣는다. ①~③ 사이에 **똑같은 호출이 하나 더** 들어오면 둘 다 같은 답을
+ * 계산해서 **같은 판돈을 두 번 지갑에 넣는다** — 서버 `claims` 는 두 쓰기가 같은 값이라
+ * 아무것도 못 막는다.
+ *
+ * 그 창은 실제로 열려 있었다: 결과 화면은 미수령이 있으면 2초마다 다시 걷는데
+ * (`poll`), 그 왕복 도중에 사용자가 `계속하기` 를 누르면 그쪽도 `settleRoom` 을 부른다.
+ *
+ * 이미 도는 게 있으면 **그 프라미스를 그대로 돌려준다** — 두 호출자가 같은 결과를 보고,
+ * 계산은 한 번만 돈다.
+ */
+const inflight = new Map();
+
 export async function settleRoom(code, room = null) {
+  const running = inflight.get(code);
+  if (running) return running;
+  const p = settleOnce(code, room).finally(() => inflight.delete(code));
+  inflight.set(code, p);
+  return p;
+}
+
+async function settleOnce(code, room = null) {
   const u = currentUser();
   if (!u || u.guest) return null;
   let r = room ?? await Room.readRoom(code);
@@ -112,6 +160,15 @@ export async function settleRoom(code, room = null) {
 
   let paid = [];
   let took = [];
+  /**
+   * ★ **아직 처리 못 한 것이 있으면 그 수를 남긴다.** (2026-08-19 15차)
+   *
+   * 예전에는 `pending` 을 **승자 쪽에서만** 셌다. 그래서 진 사람은 언제나 0 이었고,
+   * `sweepUnsettled` 의 "볼일없음" 판정(`res && !res.pending`)이 **무조건 참**이 되어
+   * 다음 접속 때 재시도할 기록(`userRooms`)을 지워 버렸다. 납부가 한 번 실패하면
+   * (12초 시한 초과 등) 그 빚은 **영구 면제**되고 승자는 영영 못 받는다.
+   */
+  let pending = 0;
 
   /**
    * ── 진 사람: **모자란 만큼만** 낸다 ────────────────────────
@@ -141,10 +198,17 @@ export async function settleRoom(code, room = null) {
       if (!ok) {
         L.addShoes(paid);
         paid = [];
-      } else if (!L.isSettled(payTag(code))) {
+        pending++;                       // 다음 접속에 다시 낸다 — 기록을 지우면 안 된다
+      } else if (!L.isSettled(payTag(code, r))) {
         L.recordMatch(false);
-        L.markSettled(payTag(code));
+        L.markSettled(payTag(code, r));
       }
+    } else {
+      /**
+       * 지갑이 비어 보인다 — 서버에서 아직 안 내려왔을 수 있다(바로 위 주석).
+       * 그렇다면 **다음 접속에 다시 시도해야 하므로** 볼일이 끝난 게 아니다.
+       */
+      pending++;
     }
   }
 
@@ -154,7 +218,6 @@ export async function settleRoom(code, room = null) {
    * 역전 배틀의 규칙이다 — 부활 비용까지 전부 승자 몫이다. 내가 건 것도 되돌아온다.
    * 그래서 비트마스크를 **패자 목록이 아니라 순위 전체**(0번 = 나 자신 포함)에 매긴다.
    */
-  let pending = 0;
   if (won) {
     /**
      * ★ **얼마를 걷었는지 사람별로 센다.** (2026-08-19)
@@ -188,40 +251,57 @@ export async function settleRoom(code, room = null) {
     }
 
     /**
+     * ★ **주운 신발 보너스에도 서버 도장을 찍는다.** (2026-08-19 15차)
+     *
+     * 판돈은 `claims` 로 서버가 세고 있었는데, **주운 신발 보너스만 로컬 도장**에 기대고
+     * 있었다. 로컬 도장은 저장소를 지우거나 기기를 바꾸면 사라진다 — 그러면 **없던
+     * 신발이 다시 굴려져** 총량이 늘어난다(§9-0-14 에서 판돈 쪽은 같은 이유로 서버로 옮겼다).
+     *
+     * `claims/<나>/found` 에 굴린 개수를 남긴다. `result` 는 다음 판에 통째로 지워지므로
+     * **판마다 새로 굴린다** — '계속하기' 로 이어 하는 판이 그대로 정산된다.
+     *
+     * 15차 이전 클라이언트가 찍은 도장은 `found` 키가 없다. 그 경우는 **이미 굴린 것**으로
+     * 본다(그쪽은 로컬 도장으로 처리했다) — 배포 직후 한 판이 두 번 굴려지는 걸 막는다.
+     */
+    const 옛도장 = 걷은양 && typeof 걷은양 === 'object'
+      && Object.keys(걷은양).length > 0 && !Number.isFinite(걷은양.found);
+    const 굴림완료 = Number.isFinite(걷은양.found) || 옛도장;
+    const bonusN = 굴림완료 ? 0 : foundShoesTotal(r, u.uid);
+    /**
+     * 도장은 **항상** 실어 보낸다. `markSettledRemote` 는 `claims/<나>` 를 통째로
+     * 덮어쓰므로, 안 실으면 다음 쓰기 한 번에 `found` 가 지워져 또 굴리게 된다.
+     */
+    다음도장.found = 굴림완료 ? (걷은양.found ?? 0) : Math.min(220, bonusN);
+
+    /**
      * **도장을 먼저 서버에 남기고 나서 지갑에 넣는다.** 순서가 반대면 도장 쓰기가
      * 실패했을 때 다음 접속에 같은 신발을 또 걷어 **복제**된다.
      */
-    if (pickUp.length) {
+    if (pickUp.length || !굴림완료) {
       if (await Room.markSettledRemote(code, 다음도장, Room.claimMask(r, 다음도장))) {
-        L.addShoes(pickUp);
-        for (const i of pickUp) L.recordShoe(i);
-        took = pickUp;
+        if (pickUp.length) {
+          L.addShoes(pickUp);
+          for (const i of pickUp) L.recordShoe(i);
+          took = pickUp;
+        }
+        /**
+         * ★ **판 도중 다들 주운 신발도 전부 1등이 가져간다.** (2026-08-19, 사용자 신고)
+         *
+         * 어떤 신발인지는 상대 화면에만 있어(개수만 방으로 온다) 그대로 옮길 수 없으므로
+         * **개수만큼 새로 굴려** 승자 지갑에 넣는다.
+         */
+        if (bonusN > 0) {
+          const bonus = Array.from({ length: bonusN }, () => rollFoundShoe());
+          L.addShoes(bonus);
+          for (const i of bonus) L.recordShoe(i);
+          took = [...took, ...bonus];
+        }
+        markWin(code, r);
       } else {
         pending++;
       }
-    }
-
-    if (!L.isSettled(payTag(code))) {
-      /**
-       * ★ **판 도중 다들 주운 신발도 전부 1등이 가져간다.** (2026-08-19, 사용자 신고)
-       *
-       * 예전에는 판돈(`given` — 기본 참가비 + 부활 비용)만 정산했다. 계단에서 주운
-       * 신발은 승자의 `runResult.shoeIndices` 로만(자기 몫만) 지갑에 들어갔고,
-       * **패자가 주운 몫은 어디에도 기록되지 않아 조용히 사라졌다** — 신고받은 그 증상이다.
-       *
-       * 어떤 신발인지는 상대 화면에만 있어(개수만 방으로 온다) 그대로 옮길 수 없으므로
-       * **개수만큼 새로 굴려** 승자 지갑에 넣는다. 정확히 한 번만 굴려야 하므로
-       * 판돈 정산과 **같은 도장**(`payTag`) 안에서, 딱 한 번 돈다.
-       */
-      const bonusN = foundShoesTotal(r, u.uid);
-      if (bonusN > 0) {
-        const bonus = Array.from({ length: bonusN }, () => rollFoundShoe());
-        L.addShoes(bonus);
-        for (const i of bonus) L.recordShoe(i);
-        took = [...took, ...bonus];
-      }
-      L.recordMatch(true);
-      L.markSettled(payTag(code));
+    } else {
+      markWin(code, r);   // 걷을 것도 굴릴 것도 없다 — 승패 기록만 남긴다
     }
   }
 

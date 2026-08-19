@@ -172,7 +172,16 @@ export default function MultiResult(nav, params = {}) {
     if (settle?.won && runResult) {
       try { finishRun(runResult); } catch (e) { console.warn('[multi] 결과 반영 실패', e); }
     }
-    if (settle?.pending) room = await Room.readRoom(code);
+    /**
+     * ★ **읽기 실패로 방을 잃지 않는다.** (2026-08-19 15차)
+     * `readRoom` 은 못 읽으면 예외가 아니라 `null` 을 준다(`readOnce` 의 시한 초과).
+     * 그걸 그대로 담으면 이미 손에 쥔 순위표가 사라져 **이긴 화면이 "다른 사람들이
+     * 아직 오르고 있습니다" 로 무너진다.** 새로 읽은 값이 있을 때만 갈아 끼운다.
+     */
+    if (settle?.pending) {
+      const fresh = await Room.readRoom(code);
+      if (fresh) room = fresh;
+    }
     /**
      * ★ **정산이 끝났으면 내 카드의 보유 신발 수를 다시 쓴다.** (2026-08-19 10차, 사용자 신고)
      *
@@ -208,8 +217,9 @@ export default function MultiResult(nav, params = {}) {
           took: [...(settle?.took ?? []), ...next.took],
           won: settle?.won ?? next.won,
         };
-        room = await Room.readRoom(code);
+        const fresh = await Room.readRoom(code);
         if (gone) return;
+        if (fresh) room = fresh;   // 못 읽었다고 순위표를 버리지 않는다 (위와 같은 이유)
         nav.refresh();
         if (next.pending) poll();
         return;
