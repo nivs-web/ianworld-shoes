@@ -89,6 +89,8 @@ function multiRankFields(p) {
   const games = wins + (p.multiLosses ?? 0);
   const keys = currentKeyMap();
   const out = { multiGames: games };
+  // 승률왕의 '최근 일주일' 판정용 (24차). 없으면 잠자는 것으로 본다 — 아래 주석 참고
+  if (p.lastMultiAt) out.lastMultiAt = p.lastMultiAt;
   /**
    * 순위표 줄에 얼굴·이름을 실으려면 계정 문서에 그 값이 있어야 한다.
    * ★ **빈 값은 올리지 않는다** — 빈 닉네임을 밀어 올리면 서버의 멀쩡한 이름을 지우고,

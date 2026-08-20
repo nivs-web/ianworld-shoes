@@ -483,6 +483,12 @@ export function recordMatch(won, keys) {
   const p = loadProfile();
   if (won) p.multiWins = (p.multiWins ?? 0) + 1;
   else p.multiLosses = (p.multiLosses ?? 0) + 1;
+  /**
+   * ★ **마지막으로 멀티를 한 시각.** (2026-08-19 24차) 승률왕은 최근 일주일 안에
+   * 한 판이라도 해야 목록에 남는다(`MULTI.rateActiveDays`) — 그 판정의 근거다.
+   * 승·패를 가리지 않는다: 규칙이 "1게임이라도 진행" 이기 때문이다.
+   */
+  p.lastMultiAt = Date.now();
   if (won && keys) {
     const mp = { ...(p.multiPeriodWins ?? {}) };
     for (const [field, key] of Object.entries(keys)) {

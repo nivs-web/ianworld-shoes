@@ -33,6 +33,12 @@ import * as L from './storageLocal.js';
 import { LEADERBOARD } from '../config/balance.js';
 import { PERIODS, PERIOD_BY_TAB, DIFFICULTIES, scoreDocId, currentKeys, currentKeyMap, winsFromSortKey } from './periodKeys.js';
 import { MULTI } from '../config/balance.js';
+/**
+ * 승률왕 자격 판정은 **순수 계산이라 `matchRules.js` 에 둔다** — 이 파일은
+ * `firebase.js` 를 물어서 노드에서 부르는 순간 죽는다(§9-0-5 의 그 제약).
+ * 검사가 브라우저 없이 규칙을 확인할 수 있어야 한다.
+ */
+import { rateEligible } from './matchRules.js';
 
 export { dayKey, weekKey, monthKey, PERIODS, DIFFICULTIES, scoreDocId } from './periodKeys.js';
 
@@ -361,6 +367,13 @@ export async function fetchUserCard(uid) {
  *
  * @param {'wins'|'rate'|'daily'|'weekly'|'monthly'} tab
  */
+/**
+ * 승률왕은 걸러 낸 뒤에 100명을 채워야 하므로 넉넉히 받는다.
+ * 300은 §9-0-5 이전에 `scores` 를 uid 로 접을 때 쓰던 것과 같은 크기다 — 한 번의
+ * 조회로 감당되는 선이고, 잠든 사람이 그보다 많이 위에 쌓이는 상황은 사실상 없다.
+ */
+const RATE_FETCH = 300;
+
 export async function fetchMultiBoard(tab) {
   if (!configured()) return fail('offline');
   if (!currentUser()) return fail('auth');
@@ -382,22 +395,35 @@ export async function fetchMultiBoard(tab) {
     let rows;
     if (tab === 'wins' || tab === 'rate') {
       const field = tab === 'wins' ? 'multiWins' : 'winRate';
+      /**
+       * ★ 승률왕만 **넉넉히 받아서 거른다.** (2026-08-19 24차)
+       *
+       * 자격이 둘이다 — ①10게임 이상 ②최근 일주일 안에 한 판. ②는 **시간이 지나면
+       * 저절로 성립하지 않게 되는 조건**이라 서버 필드로 못 박을 수가 없다: 잠든
+       * 사람은 앱을 안 열고, 그러면 그 사람의 문서를 아무도 안 고친다.
+       * 부등호를 걸면(`where(lastMultiAt >= …)`) Firestore 가 **그 필드로 먼저
+       * 정렬하라**고 요구해서 "승률 순"을 못 뽑는다(§9-0-4 의 그 제약).
+       *
+       * 그래서 승률 상위 `FETCH` 장을 받아 **읽는 쪽에서 거르고** 100명을 남긴다.
+       * 잠든 사람이 300명 넘게 위에 쌓이지 않는 한 순위는 정확하다.
+       */
+      const want = tab === 'rate' ? RATE_FETCH : top;
       const snap = await withTimeout(getDocs(
-        query(collection(fb.db, 'users'), orderBy(field, 'desc'), limit(top))
+        query(collection(fb.db, 'users'), orderBy(field, 'desc'), limit(want))
       ), undefined, '멀티 순위 조회');
       if (offline(snap)) return fail('offline');
       rows = snap.docs.map((d) => {
         const v = d.data();
         const wins = v.multiWins ?? 0;
         const games = wins + (v.multiLosses ?? 0);
-        return { ...base(v, d.id), value: tab === 'wins' ? wins : (v.winRate ?? 0), games };
+        return {
+          ...base(v, d.id),
+          value: tab === 'wins' ? wins : (v.winRate ?? 0),
+          games,
+          lastMultiAt: v.lastMultiAt ?? 0,
+        };
       });
-      /**
-       * 승률왕은 **10판 미만을 한 번 더 거른다.** 규칙상 그런 문서에는 `winRate` 가
-       * 없으므로 원래 안 걸리지만, 옛 클라이언트가 써 둔 값이 남아 있을 수 있다 —
-       * 화면이 그걸 그대로 믿으면 1승 0패가 100% 로 1위가 된다.
-       */
-      if (tab === 'rate') rows = rows.filter((r) => r.games >= MULTI.rateMinGames);
+      if (tab === 'rate') rows = rows.filter(rateEligible).slice(0, top);
     } else {
       const field = { daily: 'mwDy', weekly: 'mwWk', monthly: 'mwMo' }[tab];
       const key = currentKeyMap()[{ daily: 'dy', weekly: 'wk', monthly: 'mo' }[tab]];
@@ -449,8 +475,12 @@ function myMultiRow(tab, u) {
   };
   if (tab === 'wins') return { ...base, value: wins };
   if (tab === 'rate') {
-    // 10판 미만이면 순위 자체가 없다 — 0% 라고 쓰면 "내 승률이 0" 이라는 거짓말이 된다
-    return { ...base, value: games >= MULTI.rateMinGames ? Math.round((wins / games) * 10000) : null };
+    /**
+     * 자격이 없으면 **순위 자체가 없다** — 0% 라고 쓰면 "내 승률이 0" 이라는 거짓말이 된다.
+     * 잠들어서 빠진 경우도 같다: 숫자를 보여 주면 목록에 있는 줄 안다.
+     */
+    const me = { ...base, lastMultiAt: p.lastMultiAt ?? 0 };
+    return { ...me, value: rateEligible(me) ? Math.round((wins / games) * 10000) : null };
   }
   const field = { daily: 'dy', weekly: 'wk', monthly: 'mo' }[tab];
   return { ...base, value: L.periodWins(field, currentKeyMap()[field]) };

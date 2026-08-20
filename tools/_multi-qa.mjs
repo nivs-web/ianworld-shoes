@@ -2667,8 +2667,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // ① 신발왕 승률 줄 — 머리말을 떼고 한 단계 크게, 이름 옆 왼쪽 정렬
   {
-    eq('승패 문구', S5.rankWinRate(0, 0), '0승/총0멀티게임');
-    no('머리말 잔재 없음', S5.rankWinRate(3, 9), '멀티승률');
+    // 24차: 총 판수를 뺐다 (사용자 지정 "그냥 멀티게임승리 횟수만")
+    eq('승패 문구', S5.rankWinRate(0), '멀티게임 0승');
+    no('총 판수 잔재 없음', S5.rankWinRate(3), '총');
     has('왼쪽 정렬', css, '.rank-rate {');
     const rate = css.slice(css.indexOf('.rank-rate {'), css.indexOf('}', css.indexOf('.rank-rate {')));
     eq('9 → 11px', /font-size: 11px;/.test(rate), true);
@@ -2705,14 +2706,16 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     eq('탭 문구', [S5.tabWinKing, S5.tabRateKing], ['승리왕', '승률왕']);
     eq('제목', S5.multiRankTitle, '멀티게임순위');
     eq('최소 판수', B5.MULTI.rateMinGames, 10);
-    eq('규칙 안내', S5.rateKingNotice(10), '승률왕은 최소 멀티게임을 10판 이상 유저만 측정합니다');
-    eq('승률 문장', S5.rateLine(24, 20, 83), '총 24게임중 20승으로 83% 승률');
+    // 24차: 규칙이 둘로 늘었다(10게임 + 최근 일주일). 49번 묶음이 판정 함수를 본다
+    eq('규칙 안내', S5.rateKingNotice(10),
+      '승률왕은 멀티게임을 최소 10게임 이상 진행해야 합니다. 만약 1주일 동안 1게임도 하지 않으면, 승률왕 리스트에서 제외 됩니다.');
+    eq('근거 문구', S5.rateLine(24, 20), '24게임중 20승');
     has('승률왕에만 안내를 띄운다', mr, "tabId === 'rate'\n        ? el('div.rank-notice'");
     // 10판 미만은 **계정 문서에 winRate 가 아예 안 생겨서** 조회에서 빠진다
     const ms = code(read('src/services/multiSettle.js'));
     has('10판을 넘겨야 승률을 쓴다', ms, 'if (games >= MULTI.rateMinGames) out.winRate');
     // 화면에서도 한 번 더 거른다 (옛 클라이언트가 써 둔 값 대비)
-    has('화면도 한 번 더 거른다', code(read('src/services/leaderboard.js')), 'r.games >= MULTI.rateMinGames');
+    has('화면도 한 번 더 거른다', code(read('src/services/leaderboard.js')), 'rows.filter(rateEligible)');
   }
 
   /**
@@ -2770,6 +2773,74 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     // 신발이 부족해도 막지 않는다 — 구경은 판돈과 무관하다
     no('신발로 막지 않는다', mm, "button(S.menuMultiRank, () => nav.push(MultiRank), {\n          class: 'crown-btn', disabled: !canPlay");
     has('버튼이 그림을 받는다', code(read('src/screens/ui.js')), 'const icons = (opt.icons ?? []).filter(Boolean);');
+  }
+}
+
+{
+  console.log('\n49) ★ 왕관 간격 · 승률왕 잠자기 규칙 · 승패 문구 단순화 (2026-08-19 24차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const S6 = (await import('../src/config/strings.ko.js')).default;
+  const B6 = await import('../src/config/balance.js');
+  const css = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // ① 왕관과 등수를 붙인다 — 23차에는 숫자가 칸 오른쪽 끝에 있어 통째로 벌어졌다
+  {
+    const place = css.slice(css.indexOf('.rank-place {'), css.indexOf('}', css.indexOf('.rank-place {')));
+    eq('간격 1px', /gap: 1px;/.test(place), true);
+    const no_ = css.slice(css.indexOf('.rank-no {'), css.indexOf('}', css.indexOf('.rank-no {')));
+    eq('등수는 왼쪽 정렬', /text-align: left;/.test(no_), true);
+    eq('칸을 다 밀지 않는다', /flex: 0 0 auto;/.test(no_), true);
+    // 실제 픽셀 간격은 `qa:mrank` 가 브라우저에서 잰다(≤3px)
+  }
+
+  /**
+   * ② ★ 승률왕 잠자기 규칙. 사용자 지적이 정확했다 —
+   *    *"10판 다 승리하면 100% 승률인데 (…) 늘 고정으로 되고, 절대 안바뀌잖아"*
+   */
+  {
+    eq('활동 기간', B6.MULTI.rateActiveDays, 7);
+    // 판정은 순수 모듈에 있다 — leaderboard.js 는 firebase.js 를 물어 노드에서 죽는다
+    const L6 = await import('../src/services/matchRules.js');
+    const DAY = 24 * 60 * 60 * 1000;
+    const now = 1755600000000;
+    const ok = { games: 10, lastMultiAt: now - 3 * DAY };
+    eq('10게임 + 최근 3일 → 포함', L6.rateEligible(ok, now), true);
+    eq('9게임이면 제외', L6.rateEligible({ ...ok, games: 9 }, now), false);
+    eq('8일 쉬면 제외', L6.rateEligible({ games: 10, lastMultiAt: now - 8 * DAY }, now), false);
+    // 사용자 지정: "2-3주 지내서 1게임이라도 다시 진행했다면 (…) 다시 포함되는거야"
+    eq('3주 쉬었다 한 판 하면 복귀', L6.rateEligible({ games: 11, lastMultiAt: now - 1000 }, now), true);
+    // 시각이 아예 없으면 옛 기록이다 — 잠든 것으로 본다
+    eq('기록이 없으면 제외', L6.rateEligible({ games: 50, lastMultiAt: 0 }, now), false);
+
+    const lb = code(read('src/services/leaderboard.js'));
+    // 부등호를 걸면 Firestore 가 그 필드로 먼저 정렬하라고 요구한다 → 승률 순을 못 뽑는다
+    no('lastMultiAt 으로 조회하지 않는다', lb, "where('lastMultiAt'");
+    has('넉넉히 받아서 거른다', lb, 'const RATE_FETCH = 300;');
+    has('거른 뒤 100명', lb, 'rows.filter(rateEligible).slice(0, top)');
+    // 판정의 근거가 실제로 쌓여야 한다
+    has('멀티를 하면 시각을 남긴다', code(read('src/services/storageLocal.js')), 'p.lastMultiAt = Date.now();');
+    has('계정 문서로 올린다', code(read('src/services/multiSettle.js')), 'out.lastMultiAt = p.lastMultiAt');
+    // 승패를 가리지 않는다 — 규칙이 "1게임이라도 진행" 이다
+    const rm = code(read('src/services/storageLocal.js'));
+    const body = rm.slice(rm.indexOf('export function recordMatch'), rm.indexOf('export function periodWins'));
+    eq('승패와 무관하게 찍는다', /if \(won\)[\s\S]*p\.lastMultiAt = Date\.now\(\);/.test(body), true);
+  }
+
+  // ③ 승률왕 줄 — 근거는 작게, 값은 비트맵으로 크게
+  {
+    const mr = code(read('src/screens/MultiRank.js'));
+    has('근거 칸', mr, "el('div.rank-sub', S.rateLine(games, r.multiWins ?? 0))");
+    has('값은 비트맵 숫자', mr, "pixelText(pct, { scale: 2, mini: true, color: PAL.text, mono: true })");
+    has('승률 라벨', mr, 'S.ratePctLabel');
+    eq('라벨 문구', S6.ratePctLabel, '승률');
+    has('두 칸 스타일', css, '.rank-sub {');
+    has('값 칸 스타일', css, '.rank-pct {');
+    // 자격이 없으면 숫자를 보여 주지 않는다 — 목록에 있는 줄 안다
+    has('자격이 없으면 문구만', mr, "el('div.rank-value.rate-none', S.rateNone)");
   }
 }
 

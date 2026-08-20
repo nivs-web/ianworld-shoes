@@ -13,12 +13,15 @@
  * 분명해야 한다. 대신 줄 모양·왕관·스크롤은 **같은 CSS 를 그대로 쓴다** — 두 화면이
  * 다르게 보일 이유는 없다.
  *
- * ## 승률왕만 규칙이 하나 더 있다
+ * ## 승률왕만 규칙이 둘 더 있다
  *
- * 10판 미만은 **목록에 아예 안 나온다**(사용자 지정). 1승 0패가 100% 로 1위가 되면
- * 승률 순위는 아무 의미가 없다. 거르는 자리는 화면이 아니라 **계정 문서**다 —
- * 10판을 넘겨야 `winRate` 필드가 생기고, 없는 필드는 색인에 안 실린다
- * (`multiSettle.multiRankFields`). 그래서 조작한 클라이언트도 못 뚫는다.
+ * ① **10게임 이상** — 1승 0패가 100% 로 1위가 되면 승률 순위는 아무 의미가 없다.
+ *    거르는 자리는 화면이 아니라 **계정 문서**다: 10판을 넘겨야 `winRate` 필드가
+ *    생기고, 없는 필드는 색인에 안 실린다(`multiSettle.multiRankFields`).
+ * ② **최근 일주일 안에 한 판** (2026-08-19 24차, 사용자 지정) — ①만으로는
+ *    *"10게임해서 10판 다 승리하면 (…) 항상 1위로 100% 상태에서 늘 고정"* 이 된다.
+ *    이건 시간이 지나면 저절로 깨지는 조건이라 서버에 못 박을 수 없어서
+ *    **읽는 쪽에서 거른다**(`leaderboard.rateEligible`).
  */
 
 import S from '../config/strings.ko.js';
@@ -28,6 +31,8 @@ import { rankWindow } from '../services/rankWindow.js';
 import { fetchMultiBoard, fetchUserCard } from '../services/leaderboard.js';
 import { characterSprite, characterById } from '../data/characters.js';
 import { crownSlot, hasCrown } from './crown.js';
+import { pixelText } from './pixelText.js';
+import { PAL } from '../game/palette.js';
 import { openUserCard } from './UserCard.js';
 import { MULTI } from '../config/balance.js';
 
@@ -91,14 +96,27 @@ export default function MultiRank(nav) {
   }
 
   /**
-   * 값 칸. 승률왕만 문장이 들어간다 —
-   * *"총 0게임중 0승으로 95% 승률, 이라고 오른쪽에 0켤레 있는 위치에 써줘"* (사용자 지정)
+   * ★ **승률왕 줄은 값이 둘이다.** (2026-08-19 24차, 사용자 지정)
+   *
+   * *"'0게임중 0승'으로만 간단하게 하자, 그리고 오른쪽에는 다른폰트 글씨 더크게 (…)
+   *   98이라는 숫자가 눈에 확 띄게"*
+   *
+   * 왼쪽 `24게임중 20승` 은 근거고, 오른쪽 `승률 83%` 가 **순위를 정하는 값**이다.
+   * 그래서 숫자만 로비와 같은 **비트맵 글꼴 18px** 로 찍는다 — DOM 글꼴과 확연히
+   * 달라서 눈이 먼저 간다(로비의 최고기록 숫자와 같은 처리다).
    */
-  function valueText(r) {
-    if (tabId !== 'rate') return `${(r.value ?? 0).toLocaleString('en-US')}${S.rankUnitWins}`;
-    if (r.value === null) return S.rateNone;      // 10판을 안 채운 나 (내 순위 줄)
+  function rateCells(r) {
+    if (r.value === null) return [el('div.rank-value.rate-none', S.rateNone)];
     const games = r.games ?? (r.multiWins ?? 0) + (r.multiLosses ?? 0);
-    return S.rateLine(games, r.multiWins ?? 0, Math.round((r.value ?? 0) / 100));
+    const pct = Math.round((r.value ?? 0) / 100);
+    return [
+      el('div.rank-sub', S.rateLine(games, r.multiWins ?? 0)),
+      el('div.rank-pct', null, [
+        el('span.rank-pct-label', S.ratePctLabel),
+        pixelText(pct, { scale: 2, mini: true, color: PAL.text, mono: true }),
+        el('span.rank-pct-sign', '%'),
+      ]),
+    ];
   }
 
   function row(r, opt = {}) {
@@ -114,7 +132,9 @@ export default function MultiRank(nav) {
       ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko, loading: 'lazy', decoding: 'async' })
          : el('div.rank-face'),
       el('div.rank-name', r.nickname || '???'),
-      el('div.rank-value', valueText(r)),
+      ...(tabId === 'rate'
+        ? rateCells(r)
+        : [el('div.rank-value', `${(r.value ?? 0).toLocaleString('en-US')}${S.rankUnitWins}`)]),
     ]);
   }
 

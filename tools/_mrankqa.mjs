@@ -40,13 +40,20 @@ const open = async (w = 390) => {
     if (m.type() === 'error' && !/favicon|status of 404/.test(m.text())) errs.push('console: ' + m.text());
   });
   await p.goto(`http://127.0.0.1:${PORT}/tools/_mrankscreen-preview.html?rows=12&mine=2`, { waitUntil: 'networkidle' });
-  await sleep(500);
+  /**
+   * ★ 줄이 실제로 생길 때까지 기다린다. 고정 시간(500ms)으로는 dev 서버가 처음
+   * 의존성을 굽는 실행에서 **빈 화면을 재고** "왕관이 없다"로 실패한다 —
+   * 코드가 멀쩡한데 검사만 실패하는 종류라 원인을 찾는 데 시간을 버린다(§9-0-46).
+   */
+  await p.locator('.rank-list .rank-row').first().waitFor({ timeout: 15000 });
+  await sleep(300);
   return p;
 };
 
 const pick = async (p, label) => {
   await p.locator(`.hof-tabs .pbtn:has-text("${label}")`).click();
-  await sleep(400);
+  await p.locator('.rank-list .rank-row').first().waitFor({ timeout: 15000 });
+  await sleep(300);
 };
 
 // ── ①② 승리왕 (기본 탭) ─────────────
@@ -63,6 +70,16 @@ const pick = async (p, label) => {
       values: rows.slice(0, 2).map((x) => x.querySelector('.rank-value').textContent),
       // 내 순위 줄(하단 고정)에도 왕관이 붙어야 한다 — 2위로 세워 뒀다
       mineCrown: document.querySelector('.rank-mine .crown')?.getAttribute('src') ?? '',
+      /**
+       * ★ 24차: 왕관과 `1위` **사이 간격**. 사용자 신고 "간격이 너무 넓어" —
+       * 23차에는 숫자가 칸 오른쪽 끝에 붙어 있어서 22px 넘게 벌어졌다.
+       */
+      crownGap: (() => {
+        const row = rows[0];
+        const c = row.querySelector('.crown').getBoundingClientRect();
+        const n = row.querySelector('.rank-no').getBoundingClientRect();
+        return Math.round(n.left - c.right);
+      })(),
       minePlace: document.querySelector('.rank-mine .rank-no')?.textContent ?? '',
       notice: !!document.querySelector('.rank-notice'),
       broken: [...document.querySelectorAll('.crown')].filter((i) => i.naturalWidth === 0).length,
@@ -80,6 +97,7 @@ const pick = async (p, label) => {
   eq('★ 내 순위 줄에도 왕관', r.mineCrown, '/assets/ui/crown_2.png');
   eq('내 순위 줄 등수', r.minePlace, '2위');
   eq('값은 승수', r.values, ['128승', '121승']);
+  eq('★ 왕관과 등수가 붙어 있다 (≤3px)', r.crownGap >= 0 && r.crownGap <= 3, true);
   eq('승리왕에는 규칙 안내가 없다', r.notice, false);
   await p.screenshot({ path: 'tools/_out/mrank_wins.png' });
   await p.close();
@@ -89,21 +107,37 @@ const pick = async (p, label) => {
 {
   const p = await open();
   await pick(p, '승률왕');
-  const r = await p.evaluate(() => ({
-    notice: document.querySelector('.rank-notice')?.textContent ?? '',
-    // 안내는 목록보다 **위**에 있어야 한다
-    order: (() => {
-      const kids = [...document.querySelectorAll('.screen > *')];
-      return kids.findIndex((k) => k.matches('.rank-notice')) < kids.findIndex((k) => k.matches('.rank-list, .hint'));
-    })(),
-    values: [...document.querySelectorAll('.rank-list .rank-row .rank-value')].slice(0, 2).map((x) => x.textContent),
-    on: document.querySelector('.hof-tabs .pbtn.on')?.textContent ?? '',
-  }));
-  console.log('\n③ 승률왕 — 규칙 안내 · 승률 문장');
+  const r = await p.evaluate(() => {
+    const rows = [...document.querySelectorAll('.rank-list .rank-row')];
+    const pctOf = (row) => {
+      const box = row.querySelector('.rank-pct');
+      return [...box.childNodes].map((n) => n.dataset?.text ?? n.textContent).join('');
+    };
+    return {
+      notice: document.querySelector('.rank-notice')?.textContent ?? '',
+      // 안내는 목록보다 **위**에 있어야 한다
+      order: (() => {
+        const kids = [...document.querySelectorAll('.screen > *')];
+        return kids.findIndex((k) => k.matches('.rank-notice')) < kids.findIndex((k) => k.matches('.rank-list, .hint'));
+      })(),
+      subs: rows.slice(0, 2).map((x) => x.querySelector('.rank-sub').textContent),
+      pcts: rows.slice(0, 2).map(pctOf),
+      // 승률 숫자는 **비트맵**이라 DOM 글자가 아니다 — 그게 "다른 글꼴"의 증거다
+      pctCanvas: rows.slice(0, 2).map((x) => x.querySelector('.rank-pct canvas')?.height ?? 0),
+      rows: rows.length,
+      on: document.querySelector('.hof-tabs .pbtn.on')?.textContent ?? '',
+    };
+  });
+  console.log('\n③ 승률왕 — 규칙 안내 · 근거와 값 분리 · 잠든 사람 제외');
   eq('탭이 바뀐다', r.on, '승률왕');
-  eq('★ 규칙 안내', r.notice, '승률왕은 최소 멀티게임을 10판 이상 유저만 측정합니다');
+  eq('★ 규칙 안내', r.notice,
+    '승률왕은 멀티게임을 최소 10게임 이상 진행해야 합니다. 만약 1주일 동안 1게임도 하지 않으면, 승률왕 리스트에서 제외 됩니다.');
   eq('안내가 목록보다 위', r.order, true);
-  eq('★ 승률 문장', r.values, ['총 168게임중 128승으로 76% 승률', '총 164게임중 121승으로 74% 승률']);
+  eq('★ 근거는 판수와 승수만', r.subs, ['168게임중 128승', '164게임중 121승']);
+  eq('★ 값은 승률 N%', r.pcts, ['승률76%', '승률74%']);
+  eq('★ 승률 숫자는 비트맵 18px', r.pctCanvas, [18, 18]);
+  // 대역의 마지막 한 명은 3주째 잠들었다 — 12명 중 11명만 나와야 한다
+  eq('★ 일주일 넘게 안 한 사람은 빠진다', r.rows, 11);
   await p.screenshot({ path: 'tools/_out/mrank_rate.png' });
   await p.close();
 }
@@ -127,8 +161,9 @@ for (const w of [320, 360, 390, 412]) {
     const rows = [...document.querySelectorAll('.rank-list .rank-row')];
     return {
       over: rows.filter((x) => x.scrollWidth - x.clientWidth > 0).length,
+      // 승률왕 줄은 값이 둘이다 — 근거 칸이 잘리는지 본다(값은 비트맵이라 안 줄어든다)
       cut: rows.filter((x) => {
-        const v = x.querySelector('.rank-value');
+        const v = x.querySelector('.rank-sub');
         return v.scrollWidth - v.clientWidth > 0;
       }).length,
     };

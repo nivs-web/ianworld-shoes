@@ -969,10 +969,16 @@
  */
 .rank-place {
   /* 폭을 **고정**한다. 왕관이 붙는 줄만 넓어지면 등수 숫자가 줄마다 다른 x 에 선다 */
-  flex: 0 0 50px;
+  flex: 0 0 46px;
   display: flex;
   align-items: center;
-  gap: 2px;
+  /**
+   * ★ 왕관과 `1위` 를 **붙인다** (2026-08-19 24차, 사용자 지정 — "간격이 너무 넓어").
+   * 23차에는 등수 숫자가 칸의 오른쪽 끝에 붙어 있어서(`flex: 1 1 auto` + 오른쪽 정렬)
+   * 왕관과 숫자 사이가 칸 폭만큼 벌어졌다. 이제 숫자는 왕관 **바로 옆**에 서고,
+   * 남는 자리는 칸 오른쪽에 남는다 — 그래도 줄마다 시작 x 는 같다.
+   */
+  gap: 1px;
 }
 
 /** 왕관 자리 — 없는 줄에도 그대로 남는다 (위 `.rank-place` 주석) */
@@ -990,11 +996,11 @@
 }
 
 .rank-no {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   font-size: 13px;
   font-weight: bold;
-  text-align: right;
+  /* 왼쪽 정렬이라 왕관 바로 옆에 붙는다 (위 `.rank-place` 주석) */
+  text-align: left;
   color: var(--c-panel);
 }
 
@@ -1035,43 +1041,83 @@
 }
 
 /**
- * ★ **좁은 폰에서는 승률을 아랫줄로 내린다.** (2026-08-19 23차)
+ * 23차에는 승패 줄이 `128승/총190멀티게임` 이라 380px 이하에서 아랫줄로 내려야 했다.
+ * **24차에 문구가 `멀티게임 128승` 으로 짧아지면서 그 줄바꿈을 없앴다**(사용자 지정:
+ * *"총 게임 숫자는 의미가 없다"*). 줄이 낮아지면 한 화면에 더 많이 들어온다 —
+ * 좁은 폰에서 안 잘리는지는 `qa:hoffit` 이 320~412px 에서 잰다.
  *
- * 한 줄에 등수·얼굴·이름·승률·값 다섯 칸이 서려면 `128승/총190멀티게임` 같은 최악의
- * 문자열 기준으로 **391px** 이 필요하다. 360px 폰에서는 물리적으로 안 들어간다.
- * 글자를 줄이는 쪽은 사용자가 방금 키우라고 한 것을 되돌리는 셈이고, 잘라 버리면
- * 승수가 안 보인다 — 그래서 **줄을 바꾼다.** 값(켤레)은 윗줄에 그대로 둔다
- * (`order` 로 승률만 맨 뒤로 보낸다).
+ * 320px 에서는 그래도 모자란다(다섯 칸에 296px 뿐이다). 이름 칸을 줄여 봤더니
+ * 줄마다 이름 길이가 달라 **승수 칸의 시작 x 가 어긋났다**(실측 150 vs 148) —
+ * 목록이 삐뚤어지느니 그 폭에서만 **승수를 아랫줄로** 내린다. 값(켤레)은 윗줄에 남는다.
  */
-@media (max-width: 380px) {
+@media (max-width: 340px) {
   .rank-row.with-rate { flex-wrap: wrap; }
   .rank-row.with-rate .rank-rate {
     order: 9;
     flex: 1 0 100%;
-    padding-left: 72px;   /* 등수·얼굴 칸만큼 들여써서 이름 바로 아래에 선다 */
+    padding-left: 68px;   /* 등수·얼굴 칸만큼 들여써서 이름 바로 아래에 선다 */
   }
 }
 
-.rank-value {
-  /* 값도 폭을 잡아 둔다 — 이 칸이 흔들리면 왼쪽 승률 칸의 오른쪽 끝이 같이 흔들린다 */
-  flex: 0 0 auto;
-  min-width: 58px;
+/**
+ * ★ **승률왕 줄은 값이 둘이다.** (2026-08-19 24차, 사용자 지정)
+ *
+ * 왼쪽 `24게임중 20승` 은 **근거**, 오른쪽 `승률 83%` 는 **순위를 정하는 값**이다.
+ * 그래서 크기와 글꼴을 확 갈랐다 — 근거는 10px DOM 글꼴, 값은 비트맵 18px.
+ * (23차에는 한 문장이라 어느 숫자가 순위인지 읽어 봐야 알았다)
+ */
+.rank-sub {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
   text-align: right;
-  font-size: 13px;
+  color: var(--c-panel-dark);
+}
+
+.rank-pct {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: 6px;
+}
+.rank-pct-label {
+  font-size: 10px;
+  color: var(--c-panel-dark);
+  margin-right: 2px;
+}
+/* 비트맵 숫자는 인라인 이미지처럼 붙는다 (로비 통계와 같은 처리) */
+.rank-pct .px-text {
+  display: inline-block;
+  vertical-align: middle;
+  image-rendering: pixelated;
+}
+.rank-pct-sign {
+  font-size: 12px;
   font-weight: bold;
   color: var(--c-panel);
 }
 
 /**
- * ★ **승률왕 값 칸.** (2026-08-19 23차, 사용자 지정)
- * 다른 탭의 `12,480켤레` 자리에 `총 24게임중 20승으로 83% 승률` 한 문장이 들어간다.
- * 문장이라 폭이 크게 다르므로 이 줄에서만 글자를 줄이고 이름 쪽이 먼저 줄어들게 둔다.
+ * 좁은 폰에서는 **근거만** 아랫줄로 내린다 (명예의 전당 승패 줄과 같은 처리).
+ * 순위를 정하는 값(`승률 83%`)은 윗줄에 남는다 — 그게 이 목록을 보는 이유다.
  */
-.rank-row.rate .rank-value {
-  min-width: 0;
-  font-size: 10px;
+@media (max-width: 355px) {
+  .rank-row.rate { flex-wrap: wrap; }
+  .rank-row.rate .rank-sub {
+    order: 9;
+    flex: 1 0 100%;
+    padding-left: 72px;
+    text-align: left;
+  }
+}
+
+/** 자격이 없는 나 — 숫자를 보여 주면 목록에 있는 줄 안다 */
+.rank-value.rate-none {
+  font-size: 11px;
   font-weight: normal;
-  white-space: nowrap;
   color: var(--c-panel-dark);
 }
 

@@ -444,3 +444,23 @@ export function rollFoundShoe(rand = Math.random) {
   const last = SHOE_TIERS[SHOE_TIERS.length - 1];
   return last.offset + Math.floor(rand() * last.count);
 }
+
+/**
+ * ★ **승률왕 자격.** (2026-08-19 24차, 사용자 지정)
+ *
+ *   ① 멀티게임 `MULTI.rateMinGames` 판 이상
+ *   ② 최근 `MULTI.rateActiveDays` 일 안에 **한 판이라도** (승패 무관)
+ *
+ * ②가 없으면 *"10판 다 승리하면 100% 승률인데 (…) 늘 고정으로 되고, 절대 안바뀌잖아"*
+ * 라는 사용자 지적 그대로, 10전 10승이 영원히 1위로 굳는다.
+ *
+ * **제명이 아니라 잠자기다** — 3주 쉬었어도 한 판 하면 그 즉시 목록으로 돌아온다.
+ * 그게 이 규칙의 목적이다(다시 하게 만드는 것).
+ *
+ * 시각이 아예 없으면(옛 기록) 잠든 것으로 본다. 있다고 쳐 주면 판정이 무의미해진다.
+ */
+export function rateEligible(r, now = Date.now()) {
+  if ((r?.games ?? 0) < MULTI.rateMinGames) return false;
+  const last = r?.lastMultiAt ?? 0;
+  return last > 0 && now - last <= MULTI.rateActiveDays * 24 * 60 * 60 * 1000;
+}
