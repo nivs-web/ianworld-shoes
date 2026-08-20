@@ -7,6 +7,7 @@ import { INPUT } from '../config/balance.js';
 import { TOUCH } from '../config/layout.js';
 import { toLogical, getCanvas } from './canvas.js';
 import { unlock } from '../audio/audio.js';
+import { markActive } from './activity.js';
 
 export const BTN = { LEFT: 'L', RIGHT: 'R' };
 
@@ -66,6 +67,13 @@ export function onAudioReady(fn) {
 }
 
 function push(btn) {
+  /**
+   * ★ **입력은 곧 활동이다.** (2026-08-19 19차) 여기서 찍어 두면 캔버스 터치·키보드·
+   * 게임패드가 전부 한 곳으로 모인다 — 접속자 목록이 "60초 무활동이면 나간 것"을
+   * 판정할 때 이 값을 본다(`core/activity.js`). 게임패드는 DOM 이벤트를 아예
+   * 만들지 않으므로 window 리스너만으로는 못 잡는다.
+   */
+  markActive();
   const now = performance.now();
   if (now - lastPushAt < INPUT.debounceMs) return;
   lastPushAt = now;

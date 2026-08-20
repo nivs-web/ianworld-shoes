@@ -23,6 +23,7 @@ import { selftest } from './services/diagnose.js';
 import { sweepUnsettled } from './services/multiSettle.js';
 import { initPwa } from './services/pwa.js';
 import { prefetchGame } from './game/loadGame.js';
+import { bindActivity } from './core/activity.js';
 
 /**
  * ★ **인게임 코드는 이제 따로 받는다.** (2026-08-19 13차)
@@ -55,6 +56,13 @@ async function boot() {
    *
    * 프라미스만 먼저 띄우고 기다리기는 아래에서 한다. 그 사이에 초기화가 돈다.
    */
+  /**
+   * 19차: **사람이 뭔가 하는지**를 부팅 때부터 지켜본다(접속자 판정의 근거).
+   * 리스너 넷을 다는 것뿐이라 비용이 없고, 접속 표시가 붙기 전(2.5초)의 활동도
+   * 놓치지 않는다 — 안 그러면 켜자마자 조작한 사람이 "무활동"으로 시작한다.
+   */
+  bindActivity();
+
   const authReady = initAuth();
 
   initCanvas();

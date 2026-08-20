@@ -131,7 +131,8 @@ export const S = {
   tabShoeKing: '신발왕',
   tabWeekly: '주간',
   tabMonthly: '월간',
-  tabYearly: '연간',
+  /** 연간 → **오늘** (2026-08-19 19차, 사용자 지정) — KST 자정에 리셋된다 */
+  tabToday: '오늘',
   tabAllTime: '역대',
   myRank: '내 순위',
   noRankYet: '아직 기록이 없습니다',
@@ -355,7 +356,8 @@ export const S = {
   statusIdle: '현재상태:대기중',
   statusOffline: '현재상태:미접속',
   sendMessage: '메세지 보내기',
-  challengeUser: '대결신청',
+  /** 19차 사용자 지정 — 무엇을 신청하는지가 이름에 있어야 한다 */
+  challengeUser: '1:1대결신청',
   messageHint: '보낼 메세지를 입력하세요',
   send: '보내기',
   messageSent: '메세지를 보냈습니다',

@@ -18,11 +18,17 @@ import { characterSprite, characterById } from '../data/characters.js';
 import { fetchUserCard } from '../services/leaderboard.js';
 import { openUserCard } from './UserCard.js';
 
+/**
+ * ★ **연간을 빼고 오늘을 넣었다.** (2026-08-19 19차, 사용자 지정)
+ * *"명예의 전당을 자주 보는데 오늘 순위가 있으면 더 재밌을 듯"* — 1년짜리 판은
+ * 사실상 역대와 같아서 볼 이유가 적었고, 하루짜리는 매일 새로 도전할 이유가 생긴다.
+ * 기간 경계는 전부 **대한민국 시간(KST)** 고정이다(`services/periodKeys.js`).
+ */
 const TABS = [
   { id: 'shoeking', label: S.tabShoeKing, unit: S.rankUnitShoes, byDifficulty: false },
+  { id: 'daily', label: S.tabToday, unit: S.rankUnitStairs, byDifficulty: true },
   { id: 'weekly', label: S.tabWeekly, unit: S.rankUnitStairs, byDifficulty: true },
   { id: 'monthly', label: S.tabMonthly, unit: S.rankUnitStairs, byDifficulty: true },
-  { id: 'yearly', label: S.tabYearly, unit: S.rankUnitStairs, byDifficulty: true },
   { id: 'alltime', label: S.tabAllTime, unit: S.rankUnitStairs, byDifficulty: true },
 ];
 

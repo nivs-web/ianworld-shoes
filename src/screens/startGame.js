@@ -30,7 +30,8 @@ export async function startGame(navigator, opt = {}) {
 
   // 엘리베이터는 **누르는 즉시** 차감한다 (기획서 §5-8-1 "도중에 나가도 환불 없음")
   let startFloor = 0;
-  if (opt.useElevator) {
+  // 19차: 꺼져 있으면 어떤 경로로 불려도 안 태운다 — 버튼만 숨기면 옛 링크·자동화가 뚫는다
+  if (opt.useElevator && ELEVATOR.enabled) {
     if (!L.consumeShoes(ELEVATOR.cost)) return false;
     L.patchProfile({ elevatorUses: (p.elevatorUses ?? 0) + 1 });
     startFloor = ELEVATOR.startFloor;

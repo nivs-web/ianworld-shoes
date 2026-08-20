@@ -162,7 +162,11 @@ export default function Lobby(nav) {
       };
 
       /** 엘리베이터 — 500층을 밟아 본 계정에게만 보인다 (기획서 §5-8-1) */
-      const elevatorUnlocked = p.bestStairs >= ELEVATOR.unlockFloor;
+      /**
+       * 19차: `ELEVATOR.enabled` 가 꺼져 있으면 **버튼 자체가 없다**(사용자 지정).
+       * 해금 여부·신발 수는 그대로 계산해 두므로 다시 켜면 그 자리에 그대로 돌아온다.
+       */
+      const elevatorUnlocked = ELEVATOR.enabled && p.bestStairs >= ELEVATOR.unlockFloor;
       const canAffordElevator = p.shoesOwned >= ELEVATOR.cost;
 
       async function onElevator() {

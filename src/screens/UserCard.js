@@ -25,6 +25,7 @@ import * as Presence from '../services/presence.js';
 import * as Room from '../services/multiplayer.js';
 import { get as getProfile } from '../services/profile.js';
 import { stampFull } from './timeText.js';
+import { replyInput } from './replyInput.js';
 
 /**
  * ★ **못 보낸 이유를 구분해서 말한다.** (2026-08-19 12차, 사용자 지정)
@@ -81,6 +82,19 @@ export function openUserCard(p, opt = {}) {
   const charLine = el('div.player-card-char', ch ? ch.ko : '');
   const statLine = el('div.dialog-detail', S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0));
 
+  /**
+   * ★ **아이디를 눌렀다는 건 대개 말을 걸려는 것이다.** (2026-08-19 19차, 사용자 지정)
+   *
+   * *"메세지 보내기를 눌러서 보낼 메세지를 입력하는 것이 아니라 (…) 유저상태창이 뜨면
+   *   하단에 (…) text입력칸을 만들고 (…) 그 아래 [메세지 보내기] 버튼을 큼직하고 길게"*
+   *
+   * 예전에는 `메세지 보내기` → 창을 닫고 → 입력 팝업을 새로 여는 **두 단계**였다.
+   * 그 사이에 화면이 바뀌면 입력이 통째로 날아가고, 무엇보다 한 번 더 눌러야 했다.
+   * 입력칸은 받은 쪽지 팝업과 **같은 부품**(`replyInput`)을 쓴다 — 각자 만들면
+   * 언젠가 둘이 다른 말을 한다(§9-0-44 에서 같은 이유로 뺐다).
+   */
+  const compose = (isMe || !p.uid || opt.actions === false) ? null : replyInput(p, close);
+
   const overlay = el('div.dialog-overlay', { onclick: close }, [
     el('div.dialog', { onclick: (e) => e.stopPropagation() }, [
       // 자리 색 테두리 — 인게임 레이스 게이지와 같은 신호를 쓴다 (없으면 기본색)
@@ -90,9 +104,11 @@ export function openUserCard(p, opt = {}) {
       statLine,
       statusLine,
       loginLine,
+      compose?.node ?? null,
+      // 큼직하고 긴 빨간 버튼 — 이 창에서 제일 자주 누르는 것이라 눈에 먼저 들어와야 한다
+      compose ? button(S.sendMessage, compose.send, { class: 'danger wide' }) : null,
       row,
-      button(S.close, close, { sfx: 'sfx_menu_back' }),
-    ]),
+    ].filter(Boolean)),
   ]);
 
   /**
@@ -132,21 +148,26 @@ export function openUserCard(p, opt = {}) {
   }
   paintLogin();
 
+  /**
+   * 아래 줄은 **`[1:1대결신청] [닫기]` 두 개, 색 없이**다(19차 사용자 지정).
+   * 보내기는 위의 빨간 버튼이 맡으므로 여기서 빠졌다.
+   * 대결 버튼을 못 붙이는 자리(대기방처럼 이미 같은 방)에서는 `닫기` 만 남는다.
+   */
   function paintActions() {
     row.textContent = '';
-    if (isMe || !p.uid || opt.actions === false) return;
-    row.append(button(S.sendMessage, () => { close(); openComposer(p); }));
-    // 대기방처럼 이미 같은 방에 앉아 있는 곳에서는 대결 버튼을 안 붙인다
-    if (opt.challenge === false) return;
-    row.append(button(S.challengeUser, () => {
-      /**
-       * 게임 중·미접속에는 안 보낸다. 사용자 문구 그대로 알린다 —
-       * *"게임중 상태에선 메세지를 보낼 수 없습니다"*.
-       */
-      if (status !== 'lobby') return toast(S.cantChallengeNow, 2200);
-      close();
-      startChallenge(p, opt.nav);
-    }, { primary: true }));
+    const canChallenge = !isMe && p.uid && opt.actions !== false && opt.challenge !== false;
+    if (canChallenge) {
+      row.append(button(S.challengeUser, () => {
+        /**
+         * 게임 중·미접속에는 안 보낸다. 사용자 문구 그대로 알린다 —
+         * *"게임중 상태에선 메세지를 보낼 수 없습니다"*.
+         */
+        if (status !== 'lobby') return toast(S.cantChallengeNow, 2200);
+        close();
+        startChallenge(p, opt.nav);
+      }));
+    }
+    row.append(button(S.close, close, { sfx: 'sfx_menu_back' }));
   }
   paintActions();
 
@@ -195,44 +216,13 @@ export function openUserCard(p, opt = {}) {
 }
 
 /**
- * 쪽지 쓰기. 입력칸 하나짜리 다이얼로그다.
+ * ~~쪽지 쓰기 팝업~~ — **19차에 없앴다.**
  *
- * `maxlength` 를 100 으로 두는 건 규칙과 같은 숫자다 — 규칙에서 잘리면 쓰기가 통째로
- * 거부되는데, 사용자에게는 "보내기를 눌렀는데 아무 일도 안 났다"로 보인다.
+ * 유저상태창 안에 입력칸이 들어가면서(사용자 지정) 이 창을 열 자리가 사라졌다.
+ * 지우지 않고 자리만 남기면 다음 사람이 "왜 안 쓰이지?" 하고 되살리게 되므로
+ * 함수째 지운다 — 되살릴 일이 생기면 `replyInput` 을 팝업에 감싸면 그만이다.
  */
-export function openComposer(p, prefill = '') {
-  let dismiss = () => {};
-  const close = () => dismiss();
-  const input = el('input.nick-input.msg-input', {
-    type: 'text', maxlength: '100', value: prefill,
-    placeholder: S.messageHint, autocomplete: 'off',
-  });
 
-  async function send() {
-    const text = input.value.trim();
-    if (!text) return toast(S.messageEmpty, 1600);
-    close();
-    const r = await Presence.sendMessage(p.uid, text, p.nickname ?? '');
-    toast(REASON[r] ?? S.networkError, r === 'ok' ? 1800 : 2400);
-  }
-
-  const overlay = el('div.dialog-overlay', { onclick: close }, [
-    el('div.dialog', { onclick: (e) => e.stopPropagation() }, [
-      el('div.dialog-msg', p.nickname || '???'),
-      input,
-      el('div.row', null, [
-        button(S.cancel, close, { sfx: 'sfx_menu_back' }),
-        button(S.send, send, { primary: true }),
-      ]),
-    ]),
-  ]);
-  dismiss = presentOverlay(overlay);
-  // 한글 조합 중 엔터는 무시한다 — 조합을 끝내는 엔터까지 전송으로 먹으면 글자가 잘린다
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); send(); }
-  });
-  setTimeout(() => input.focus(), 30);
-}
 
 /**
  * 대결 신청 — **방을 먼저 만들고** 그 코드를 실어 보낸다.

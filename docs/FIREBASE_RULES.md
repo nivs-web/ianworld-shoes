@@ -44,9 +44,12 @@ service cloud.firestore {
 
       function d() { return request.resource.data; }
 
-      // 기간 필드는 셋 중 **하나만** 들어간다. 셋을 다 넣으면 주간 색인이 연간 문서까지 훑는다.
+      // 기간 필드는 셋 중 **하나만** 들어간다. 셋을 다 넣으면 주간 색인이 일간 문서까지 훑는다.
+      // 2026-08-19 19차: 연간(yr)을 빼고 일간(dy)을 넣었다. 옛 yr 문서는 남아 있으므로
+      // 그 갱신까지 막지 않으려면 yr 항을 지우면 안 된다 — 조회만 안 할 뿐이다.
       function periodOk() {
-        return (d().period == 'wk' && d().wk == d().key)
+        return (d().period == 'dy' && d().dy == d().key)
+            || (d().period == 'wk' && d().wk == d().key)
             || (d().period == 'mo' && d().mo == d().key)
             || (d().period == 'yr' && d().yr == d().key);
       }
@@ -341,6 +344,9 @@ service cloud.firestore {
         "at": {
           ".validate": "newData.isNumber()"
         },
+        "lastActive": {
+          ".validate": "newData.val() == now"
+        },
         "$other": {
           ".validate": false
         }
@@ -627,9 +633,10 @@ Vercel → 프로젝트 → Settings → **Environment Variables** 에 `.env.exa
 
 | 컬렉션 | 필드 순서 | 쓰이는 곳 |
 |--------|-----------|-----------|
+| `scores` | `difficulty` 오름차순, `dy` 오름차순, `stairs` **내림차순** | **오늘 탭 (2026-08-19 19차 신설 — 콘솔에 만들어 뒀다: `CICAgJjmiJEK`)** |
 | `scores` | `difficulty` 오름차순, `wk` 오름차순, `stairs` **내림차순** | 주간 탭 |
 | `scores` | `difficulty` 오름차순, `mo` 오름차순, `stairs` **내림차순** | 월간 탭 |
-| `scores` | `difficulty` 오름차순, `yr` 오름차순, `stairs` **내림차순** | 연간 탭 |
+| `scores` | `difficulty` 오름차순, `yr` 오름차순, `stairs` **내림차순** | ~~연간 탭~~ — 19차에 탭을 없앴다. 색인은 남겨 둬도 해가 없다 |
 
 **신발왕·역대 탭은 색인이 필요 없다.** `users` 를 단일 필드(`shoesOwned`,
 `bestByDifficulty.easy` 등)로 정렬하는데, 단일 필드 색인은 Firestore 가 자동으로 만든다.

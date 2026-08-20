@@ -10,7 +10,7 @@
  *
  * 기간 조회에 부등호(`createdAt >= 시작`)를 쓰면 Firestore 는 **부등호를 건 필드로 먼저
  * 정렬하라**고 요구한다. 그러면 "계단 수 상위"를 못 뽑는다. 그래서 제출할 때 기간 키를
- * 미리 문자열로 박아 둔다(`wk`·`mo`·`yr`) — 등호 비교라 계단 수로 바로 정렬할 수 있다.
+ * 미리 문자열로 박아 둔다(`dy`·`wk`·`mo`) — 등호 비교라 계단 수로 바로 정렬할 수 있다.
  *
  * ## `scores` 는 판마다 한 장이 아니다
  *
@@ -33,7 +33,7 @@ import * as L from './storageLocal.js';
 import { LEADERBOARD } from '../config/balance.js';
 import { PERIODS, PERIOD_BY_TAB, DIFFICULTIES, scoreDocId, currentKeys } from './periodKeys.js';
 
-export { weekKey, monthKey, yearKey, PERIODS, DIFFICULTIES, scoreDocId } from './periodKeys.js';
+export { dayKey, weekKey, monthKey, PERIODS, DIFFICULTIES, scoreDocId } from './periodKeys.js';
 
 /**
  * 네트워크가 없을 때 Firestore 는 **예외를 던지지 않고** 로컬 캐시로 답한다.
@@ -183,7 +183,7 @@ export async function syncIdentity() {
 
 /**
  * 순위표 한 장.
- * @param {'shoeking'|'alltime'|'weekly'|'monthly'|'yearly'} tab
+ * @param {'shoeking'|'alltime'|'daily'|'weekly'|'monthly'} tab
  * @param {'easy'|'normal'|'hard'} [difficulty] 신발왕에는 쓰이지 않는다
  * @returns {Promise<{rows:Row[], me:Row|null, error:string|null}>}
  *   error: null 성공 / 'auth' 로그인 안 됨 / 'offline' 연결 불가 / 'failed' 조회 실패.

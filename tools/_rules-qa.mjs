@@ -278,10 +278,24 @@ console.log('\n9) 접속 표시 · 쪽지함 (2026-08-19 11차)');
     else bad('남의 쪽지함을 읽을 수 있다');
 
     /**
+     * ★ 접속 판정의 근거가 되는 `lastActive` 는 **서버가 찍은 값만** 통과해야 한다.
+     *   (2026-08-19 19차) 클라이언트가 미래 시각을 넣을 수 있으면 영원히 접속 중으로
+     *   남을 수 있고, 그게 곧 사용자가 신고한 "아무도 없는데 5명 접속 중"이다.
+     */
+    const la = rules.presence?.$uid?.lastActive?.['.validate'] ?? '';
+    if (la.includes('now')) ok('접속 활동 시각은 서버 시각만 허용');
+    else bad('lastActive 규칙이 없거나 서버 시각을 강제하지 않는다');
+    // 규칙에 없는 필드는 `$other: false` 때문에 통째로 거부된다 — 쓰면서 조용히 실패한다
+    const presSrc = readFileSync('src/services/presence.js', 'utf8');
+    if (presSrc.includes('lastActive')) ok('클라이언트도 lastActive 를 쓴다');
+    else bad('presence.js 가 lastActive 를 안 쓴다');
+
+    /**
      * 글자 수 상한은 **클라이언트의 maxlength 와 같은 숫자**여야 한다. 다르면
      * 규칙에서 잘려 쓰기가 거부되는데, 화면에는 "보내기를 눌렀는데 아무 일도 안 났다"로 보인다.
      */
-    const uc = readFileSync('src/screens/UserCard.js', 'utf8');
+    // 19차: 입력칸이 `replyInput` 하나로 합쳐졌다 — maxlength 도 이제 여기 한 곳뿐이다
+    const uc = readFileSync('src/screens/replyInput.js', 'utf8');
     const max = /maxlength: '(\d+)'/.exec(uc)?.[1];
     const rule = /<= (\d+)/.exec(I.text['.validate'])?.[1];
     if (max && rule && max === rule) ok(`쪽지 길이 상한이 화면과 규칙에서 같다 (${max}자)`);

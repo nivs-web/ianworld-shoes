@@ -2407,5 +2407,95 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   }
 }
 
+
+{
+  console.log('\n45) ★ 오늘 순위 · 엘리베이터 숨김 · 접속 판정 60초 · 유저상태창 (2026-08-19 19차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const S2 = (await import('../src/config/strings.ko.js')).default;
+  const P = await import('../src/services/periodKeys.js');
+
+  // ① 탭 다섯 개 — 연간을 빼고 오늘을 넣었다
+  {
+    const hof = code(read('src/screens/HallOfFame.js'));
+    const tabs = [...hof.matchAll(/\{ id: '(\w+)'/g)].map((m) => m[1]);
+    eq('명예의 전당 탭 순서', tabs, ['shoeking', 'daily', 'weekly', 'monthly', 'alltime']);
+    no('연간 탭 없음', hof, "'yearly'");
+    eq('오늘 문구', S2.tabToday, '오늘');
+    no('옛 연간 문구 잔재 없음', code(read('src/config/strings.ko.js')), 'tabYearly');
+  }
+
+  /**
+   * ② 기간 키는 **KST 고정**이다. 기기 시간대로 계산하면 같은 순간에 올린 기록이
+   *    서로 다른 순위표로 흩어진다 — 월요일 0시 KST 가 UTC 기기에서는 아직 지난주다.
+   */
+  {
+    const pk = code(read('src/services/periodKeys.js'));
+    has('KST 로 옮겨 계산한다', pk, 'const KST_OFFSET_MS = 9 * 60 * 60 * 1000;');
+    eq('기간 셋', P.PERIODS.map((x) => x.field), ['dy', 'wk', 'mo']);
+    // 사용자 지정: 일요일 밤 11시 59분 리셋 = 월요일 0시부터 새 주
+    eq('일요일 23:59 는 지난주', P.weekKey(new Date('2026-08-16T23:59:59+09:00')), '2026-W33');
+    eq('월요일 00:00 은 새 주', P.weekKey(new Date('2026-08-17T00:00:00+09:00')), '2026-W34');
+    // 사용자 지정: 오늘 순위는 당일 23:59 기준 리셋
+    eq('오늘 23:59', P.dayKey(new Date('2026-08-20T23:59:59+09:00')), '2026-08-20');
+    eq('자정 넘으면 새 날', P.dayKey(new Date('2026-08-21T00:00:00+09:00')), '2026-08-21');
+    // 규칙이 새 기간 필드를 받아야 한다 — 안 그러면 오늘 기록 제출이 통째로 거부된다
+    has('Firestore 규칙이 dy 를 받는다', read('docs/FIREBASE_RULES.md'), "d().period == 'dy' && d().dy == d().key");
+  }
+
+  // ③ 엘리베이터 — 스위치 하나로 끄고, 버튼만이 아니라 시작 경로도 막는다
+  {
+    const bal = code(read('src/config/balance.js'));
+    has('엘리베이터 스위치', bal, 'enabled: false');
+    const lb = code(read('src/screens/Lobby.js'));
+    has('꺼져 있으면 버튼이 없다', lb, 'ELEVATOR.enabled && p.bestStairs >= ELEVATOR.unlockFloor');
+    has('시작 경로도 막는다', code(read('src/screens/startGame.js')), 'opt.useElevator && ELEVATOR.enabled');
+  }
+
+  /**
+   * ④ ★ **접속 판정 = 활동.** 사용자 신고: *"게임이 들어와 있지 않은 사람이
+   *    현재접속자로 뜨는건 문제가 있는 것 같아 (…) 60초"*
+   */
+  {
+    const pr = code(read('src/services/presence.js'));
+    has('60초 문턱', pr, 'export const ACTIVITY_TIMEOUT_MS = 60 * 1000;');
+    has('심장 박동 15초', pr, 'const HEARTBEAT_MS = 15 * 1000;');
+    has('활동 시각은 서버가 찍는다', pr, 'lastActive: myFb.dbMod.serverTimestamp()');
+    has('읽는 쪽에서 거른다', pr, 'export function isLive(card');
+    has('목록에 필터를 건다', pr, '.filter((r) => isLive(r, now))');
+    // 오래됨은 이벤트를 만들지 않는다 — 타이머로 다시 걸러야 유령이 사라진다
+    has('5초마다 다시 거른다', pr, 'recomputeAll();');
+    has('대결 상대 확인도 같은 잣대', pr, 'return isLive(v) ? v : null;');
+    // 화면을 내리면 스스로 빠진다. beforeunload/unload 는 쓰지 않는다(크롬이 금지)
+    has('숨으면 스스로 빠진다', pr, "if (document.visibilityState === 'hidden') { drop(); return; }");
+    no('beforeunload 안 쓴다', pr, 'beforeunload');
+    no('unload 안 쓴다', pr, "addEventListener('unload'");
+    // 활동은 게임 입력에서도 온다 — 게임패드는 DOM 이벤트를 아예 안 만든다
+    has('입력이 활동을 찍는다', code(read('src/core/input.js')), 'markActive();');
+    has('부팅에서 활동을 지켜본다', code(read('src/main.js')), 'bindActivity();');
+    no('마우스 움직임은 활동이 아니다', code(read('src/core/activity.js')), 'mousemove');
+  }
+
+  // ⑤ 유저상태창 — 입력칸이 창 안에, 빨간 긴 버튼, 아래 [1:1대결신청][닫기]
+  {
+    const uc = code(read('src/screens/UserCard.js'));
+    has('입력칸을 창 안에 둔다', uc, 'replyInput(p, close)');
+    has('보내기는 빨간 긴 버튼', uc, "button(S.sendMessage, compose.send, { class: 'danger wide' })");
+    has('아래 줄에 대결신청', uc, 'row.append(button(S.challengeUser');
+    has('아래 줄에 닫기', uc, 'row.append(button(S.close, close');
+    no('팝업을 또 열지 않는다', uc, 'openComposer(p)');
+    eq('대결 버튼 문구', S2.challengeUser, '1:1대결신청');
+    eq('입력칸 안내 문구', S2.messageHint, '보낼 메세지를 입력하세요');
+    // 엔터로도 보내진다 (사용자 지정) — 한글 조합 중 엔터는 무시한다
+    has('엔터로 보낸다', code(read('src/screens/replyInput.js')), "e.key === 'Enter' && !e.isComposing");
+    const css = read('src/styles/screens.css');
+    has('빨간 버튼 스타일', css, '.pbtn.danger {');
+    has('한 줄을 다 쓰는 버튼', css, '.pbtn.wide {');
+  }
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

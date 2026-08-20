@@ -30,20 +30,43 @@ const eq = (label, got, want) => {
 };
 
 // ─────────────────────────────────────────────
-console.log('1) 주차 키 — ISO 규칙 (목요일이 속한 해가 그 주의 해)');
-eq('연중', P.weekKey(new Date(2026, 7, 15)), '2026-W33');
-eq('월요일과 일요일은 같은 주', P.weekKey(new Date(2026, 7, 10)), P.weekKey(new Date(2026, 7, 16)));
-eq('일요일 다음날은 다른 주', P.weekKey(new Date(2026, 7, 17)), '2026-W34');
+/**
+ * ★ 날짜를 **KST 문자열로 못 박아** 만든다. (2026-08-19 19차)
+ *
+ * 예전에는 `new Date(2026, 7, 15)` 처럼 **기기 로컬 시간**으로 만들었다. 키 계산이
+ * KST 고정으로 바뀐 지금 그렇게 하면 검사가 **돌리는 기계의 시간대에 따라 달라진다**
+ * (UTC+10 기기에서는 로컬 자정이 KST 로 전날 23시라 날짜가 하루 밀린다).
+ * 검사가 환경에 따라 답이 달라지면 통과도 실패도 의미가 없다.
+ */
+const K = (s) => new Date(`${s}+09:00`);
+
+console.log('1) 주차 키 — ISO 규칙 (목요일이 속한 해가 그 주의 해) · KST 고정');
+eq('연중', P.weekKey(K('2026-08-15T12:00:00')), '2026-W33');
+eq('월요일과 일요일은 같은 주', P.weekKey(K('2026-08-10T00:00:00')), P.weekKey(K('2026-08-16T12:00:00')));
+// ★ 사용자 지정: 일요일 밤 11시 59분에 리셋 = 월요일 0시부터 새 주
+eq('일요일 23:59 는 아직 지난주', P.weekKey(K('2026-08-16T23:59:59')), '2026-W33');
+eq('월요일 00:00 부터 새 주', P.weekKey(K('2026-08-17T00:00:00')), '2026-W34');
 // 2026-01-01은 목요일 → 그 주는 2026년 1주차
-eq('새해 첫날', P.weekKey(new Date(2026, 0, 1)), '2026-W01');
+eq('새해 첫날', P.weekKey(K('2026-01-01T12:00:00')), '2026-W01');
 // 2027-01-01은 금요일 → 그 주의 목요일은 2026-12-31 → 2026년 53주차
-eq('연말은 앞 해로 붙는다', P.weekKey(new Date(2027, 0, 1)), '2026-W53');
+eq('연말은 앞 해로 붙는다', P.weekKey(K('2027-01-01T12:00:00')), '2026-W53');
+// 시간대가 달라도 **같은 순간이면 같은 키** — 이게 KST 고정의 목적이다
+eq('UTC 로 적어도 같은 답', P.weekKey(new Date('2026-08-16T15:00:00Z')), '2026-W34');
 
 // ─────────────────────────────────────────────
-console.log('2) 월·연 키 — 자릿수 고정 (문자열 정렬이 곧 시간 순서여야 한다)');
-eq('한 자리 달', P.monthKey(new Date(2026, 0, 9)), '2026-01');
-eq('두 자리 달', P.monthKey(new Date(2026, 11, 31)), '2026-12');
-eq('연', P.yearKey(new Date(2026, 5, 1)), '2026');
+console.log("2) 오늘·월 키 — 자릿수 고정 (문자열 정렬이 곧 시간 순서여야 한다)");
+eq('한 자리 달', P.monthKey(K('2026-01-09T12:00:00')), '2026-01');
+eq('두 자리 달', P.monthKey(K('2026-12-31T23:00:00')), '2026-12');
+eq('달 경계 — 말일 23:59', P.monthKey(K('2026-08-31T23:59:59')), '2026-08');
+eq('달 경계 — 1일 00:00', P.monthKey(K('2026-09-01T00:00:00')), '2026-09');
+// ★ 사용자 지정: 오늘 순위는 당일 밤 11시 59분 기준으로 리셋 = KST 자정에 날짜가 바뀐다
+eq('오늘 키', P.dayKey(K('2026-08-20T12:34:00')), '2026-08-20');
+eq('23:59 는 아직 오늘', P.dayKey(K('2026-08-20T23:59:59')), '2026-08-20');
+eq('자정 넘으면 다음 날', P.dayKey(K('2026-08-21T00:00:00')), '2026-08-21');
+eq('한 자리 날짜도 두 자리로', P.dayKey(K('2026-03-05T09:00:00')), '2026-03-05');
+// 연간은 19차에 없앴다 — 남아 있으면 화면에 없는 문서를 계속 쓰게 된다
+eq('연간 기간은 더 이상 없다', P.PERIODS.map((x) => x.field), ['dy', 'wk', 'mo']);
+eq('탭 이름도 셋', P.PERIODS.map((x) => x.tab), ['daily', 'weekly', 'monthly']);
 
 // ─────────────────────────────────────────────
 console.log('3) 문서 ID — 보안 규칙이 다시 계산해 대조하는 그 조합');
@@ -55,16 +78,16 @@ eq('조합', P.scoreDocId('u1', 'hard', '2026-W33'), 'u1_hard_2026-W33');
   eq('규칙과 같은 값', P.scoreDocId(doc.uid, doc.difficulty, doc.key), idFromRule);
 }
 {
-  const when = new Date(2026, 7, 15);
+  const when = K('2026-08-15T12:00:00');
   const ids = P.PERIODS.map((p) => P.scoreDocId('u1', 'easy', p.keyOf(when)));
   eq('기간 3종이 서로 다른 문서', new Set(ids).size, 3);
-  eq('세 장의 정체', ids, ['u1_easy_2026-W33', 'u1_easy_2026-08', 'u1_easy_2026']);
+  eq('세 장의 정체', ids, ['u1_easy_2026-08-15', 'u1_easy_2026-W33', 'u1_easy_2026-08']);
 }
 
 // ─────────────────────────────────────────────
 console.log('4) 기간 필드 — 문서 한 장에 하나만');
 {
-  const when = new Date(2026, 7, 15);
+  const when = K('2026-08-15T12:00:00');
   for (const p of P.PERIODS) {
     const doc = { period: p.field, key: p.keyOf(when), [p.field]: p.keyOf(when) };
     const others = P.PERIODS.filter((q) => q.field !== p.field).map((q) => q.field);
@@ -111,9 +134,9 @@ console.log('7) 제출 여부 판정 — 같은 점수는 다시 안 쓴다');
 console.log('8) 캐시 솎기 — 지난 기간은 버린다 (어떤 화면에도 안 나온다)');
 L.resetAll(); mem.clear();
 {
-  const now = new Date(2026, 7, 15);
+  const now = K('2026-08-15T12:00:00');
   const keep = P.currentKeys(now);
-  eq('살릴 키 3개', keep, ['2026-W33', '2026-08', '2026']);
+  eq('살릴 키 3개', keep, ['2026-08-15', '2026-W33', '2026-08']);
 
   for (const d of P.DIFFICULTIES) {
     for (const k of keep) L.notePeriodBest(P.scoreDocId('u1', d, k), 100);
@@ -126,29 +149,37 @@ L.resetAll(); mem.clear();
   const left = Object.keys(L.loadPeriodBest());
   eq('솎기 후 = 난이도 3 × 기간 3', left.length, 9);
   eq('지난 주 사라짐', left.includes('u1_hard_2026-W20'), false);
-  eq('올해는 남음', left.includes('u1_hard_2026'), true);
+  eq('오늘은 남음', left.includes('u1_hard_2026-08-15'), true);
+  // 접미사가 겹치는 함정: `..._2026-08` 은 `..._2026-08-15` 의 접두사다.
+  // `endsWith('_' + key)` 로 판정하므로 서로를 잡아먹지 않는다 — 9) 에서 다시 본다
+  eq('이번 달도 남음', left.includes('u1_hard_2026-08'), true);
 }
 
 // ─────────────────────────────────────────────
-console.log('9) 솎기가 연(年)을 잡아먹지 않는다 — 접미사가 겹치기 쉽다');
+console.log('9) 솎기가 달(月)을 잡아먹지 않는다 — 접미사가 겹치기 쉽다');
 {
-  // '2026' 은 '2026-W33' 의 접두사라, 단순 포함 검사면 서로를 살려 버린다
+  /**
+   * `'2026-08'` 은 `'2026-08-15'` 의 **접두사**다. 단순 포함 검사(`includes`)로 짰다면
+   * 이번 달 키가 지난 달 15일 문서까지 살려 낸다. `endsWith('_' + key)` 라야 한다.
+   * (19차 전에는 `'2026'`(연간)이 같은 함정이었다 — 기간이 바뀌어도 함정은 남는다)
+   */
   const m = {
-    'u1_hard_2026': 1,
-    'u1_hard_2026-08': 2,
+    'u1_hard_2026-08': 1,
+    'u1_hard_2026-08-15': 2,
     'u1_hard_2026-W33': 3,
-    'u1_hard_2025': 4,
-    'u1_hard_2025-W33': 5,
+    'u1_hard_2026-07': 4,
+    'u1_hard_2026-08-14': 5,
   };
-  const out = L.prunePeriodBest(m, ['2026-W33', '2026-08', '2026']);
-  eq('올해 것만 셋', Object.keys(out).sort(), ['u1_hard_2026', 'u1_hard_2026-08', 'u1_hard_2026-W33']);
+  const out = L.prunePeriodBest(m, ['2026-08-15', '2026-W33', '2026-08']);
+  eq('오늘 것만 셋', Object.keys(out).sort(),
+    ['u1_hard_2026-08', 'u1_hard_2026-08-15', 'u1_hard_2026-W33']);
 }
 
 // ─────────────────────────────────────────────
 console.log('10) 닉네임 동기화 대상 — 지금 기간 것만, 올린 적 있는 것만');
 L.resetAll(); mem.clear();
 {
-  const now = new Date(2026, 7, 15);
+  const now = K('2026-08-15T12:00:00');
   // 어려움만 세 기간 다 올렸고, 보통은 주간만 올렸다고 치자
   for (const p of P.PERIODS) L.notePeriodBest(P.scoreDocId('u1', 'hard', p.keyOf(now)), 500);
   L.notePeriodBest(P.scoreDocId('u1', 'normal', P.weekKey(now)), 30);

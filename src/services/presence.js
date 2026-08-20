@@ -22,6 +22,7 @@
 import { getRtdb, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
+import { markActive, msSinceActive } from '../core/activity.js';
 
 const PRESENCE = 'presence';
 const INBOX = 'inbox';
@@ -34,6 +35,47 @@ const INBOX = 'inbox';
  * 게다가 그냥 기다리는 게 아니라 `requestIdleCallback` 으로 **한가한 틈**을 고른다.
  */
 const START_DELAY_MS = 2500;
+
+/**
+ * ★ **접속 판정 = 연결이 아니라 활동.** (2026-08-19 19차, 사용자 지정)
+ *
+ * *"60초 동안 움직임이 없고 메뉴도 누르지 않고 아무런 행동도 하지 않으면,
+ *   그 사용자는 나간 사용자라고 판단하자"*
+ *
+ * 예전에는 `onDisconnect` 하나로만 판단했다. 그건 **소켓이 죽었는지**만 알려 준다 —
+ * 탭을 열어 둔 채 폰을 주머니에 넣으면 소켓은 멀쩡하고 서버는 끊긴 걸 알 방법이 없다.
+ * 그래서 **아무도 없는데 5명이 접속 중**으로 남았다.
+ *
+ * 조사해 보니 실제 제품들도 전부 신호를 둘로 나눈다(연결성 / 활동성).
+ * 값의 근거:
+ *
+ * | | 값 | 왜 |
+ * |---|---|---|
+ * | `ACTIVITY_TIMEOUT_MS` | 60초 | 사용자 지정 |
+ * | `HEARTBEAT_MS` | 15초 | 신호를 **연속 3번 놓쳐도** 안 잘린다. Zulip 이 같은 규칙을 코드 주석에 적어 뒀다(`OFFLINE_THRESHOLD = PING × 3 + 여유`). PubNub 은 2배, Pusher 는 1.25배(그쪽은 프로토콜 ping 이라 왕복만 보면 된다) |
+ * | `RECOMPUTE_MS` | 5초 | **오래됨은 이벤트를 만들지 않는다.** 아무도 쓰지 않으면 RTDB 콜백이 안 오므로 목록이 그대로 멈춘다 — 타이머로 다시 걸러야 유령이 사라진다 |
+ * | `WRITE_THROTTLE_MS` | 10초 | 같은 값을 자주 쓰면 그게 그대로 **모두에게 브로드캐스트**된다(RTDB 는 바이트 과금) |
+ *
+ * 그리고 **활동이 없으면 아예 안 쓴다.** 자리를 비운 사람의 비용이 0이 되고,
+ * 60초가 지나면 저절로 목록에서 빠진다 — 따로 지우는 사람이 필요 없다.
+ */
+export const ACTIVITY_TIMEOUT_MS = 60 * 1000;
+const HEARTBEAT_MS = 15 * 1000;
+const RECOMPUTE_MS = 5 * 1000;
+const WRITE_THROTTLE_MS = 10 * 1000;
+
+/**
+ * 기기가 잠들었다 깨어난 것을 알아채는 문턱.
+ *
+ * 사파리에는 `resume` 이벤트가 없고, 크롬은 숨은 탭의 타이머를 **1분에 한 번**까지
+ * 조인다. 그래서 "타이머가 이만큼이나 늦게 돌았다"로 판정한다 — 문턱이 60초보다
+ * 길어야 스로틀링을 잠든 것으로 오해하지 않는다(Zulip 워치독이 같은 이유로 75초다).
+ */
+const SUSPEND_MS = 75 * 1000;
+
+/** 서버 시계와의 차이 — `lastActive` 는 서버가 찍으므로 읽을 때도 서버 시각으로 재야 한다 */
+let serverOffset = 0;
+const serverNow = () => Date.now() + serverOffset;
 
 /** 한가한 틈에 부른다 (없는 브라우저는 그냥 타이머) */
 function whenIdle(fn, timeout) {
@@ -92,6 +134,11 @@ let myState = 'lobby';
 let started = false;
 let stopConn = null;
 let startTimer = null;
+let myRef = null;
+let myFb = null;
+let beat = null;
+let lastWriteAt = 0;
+let lifecycleBound = false;
 
 /** 내 접속 카드. 프로필이 바뀌면 다시 쓴다 (신발 수·승패가 여기 실린다) */
 function myCard() {
@@ -108,6 +155,14 @@ function myCard() {
 }
 
 /**
+ * 내 카드를 서버에 쓴다. `lastActive` 는 **반드시 서버 타임스탬프**다 —
+ * 폰 시계가 앞서 있으면 영원히 "방금 활동함"이 되어 유령이 되살아난다.
+ */
+function cardWithStamp(fb) {
+  return { ...myCard(), lastActive: fb.dbMod.serverTimestamp() };
+}
+
+/**
  * 접속 표시를 켠다. 여러 번 불러도 한 번만 붙는다.
  *
  * `.info/connected` 를 구독하는 이유는 **재접속** 때문이다. 한 번만 쓰고 말면
@@ -119,17 +174,113 @@ export async function start() {
   const fb = await rt();
   if (!fb) { started = false; return; }
   const ref = fb.dbMod.ref(fb.rtdb, path(PRESENCE, fb.uid));
+  myRef = ref;
+  myFb = fb;
   try {
+    // 서버 시계와의 차이를 받아 둔다 — 남의 `lastActive` 를 재려면 같은 시계여야 한다
+    fb.dbMod.onValue(fb.dbMod.ref(fb.rtdb, '.info/serverTimeOffset'),
+      (s2) => { serverOffset = s2.val() || 0; });
+
     stopConn = fb.dbMod.onValue(fb.dbMod.ref(fb.rtdb, '.info/connected'), async (snap) => {
       if (snap.val() !== true) { online = false; return; }
       online = true;
       try {
-        // 끊기면 서버가 지운다 — 브라우저를 그냥 닫아도 목록에 유령이 안 남는다
+        /**
+         * 끊기면 서버가 지운다 — 브라우저를 그냥 닫아도 목록에 유령이 안 남는다.
+         * **반드시 `set` 보다 먼저 건다**(Firebase 문서의 경쟁 조건 경고).
+         * 다만 이것은 **빠른 길일 뿐 정확성의 근거가 아니다** — 서버가 죽은 소켓을
+         * 알아채는 데 걸리는 시간은 공개돼 있지도 않다. 정확성은 `lastActive` 가 맡는다.
+         */
         await fb.dbMod.onDisconnect(ref).remove();
-        await withTimeout(fb.dbMod.set(ref, myCard()), undefined, '접속 표시');
+        await writeCard(fb, ref);
       } catch { /* 규칙이 아직 없으면 조용히 넘어간다 — 게임은 그대로 돈다 */ }
     });
+    beat = setInterval(() => heartbeat().catch(() => {}), HEARTBEAT_MS);
+    bindLifecycle();
   } catch { started = false; }
+}
+
+/** 지금 카드를 쓰고 마지막 쓰기 시각을 남긴다 */
+async function writeCard(fb, ref) {
+  await withTimeout(fb.dbMod.set(ref, cardWithStamp(fb)), undefined, '접속 표시');
+  lastWriteAt = Date.now();
+}
+
+/**
+ * ★ **활동이 있을 때만** 심장 박동을 보낸다.
+ *
+ * 숨어 있거나 60초 넘게 아무것도 안 했으면 **쓰지 않는다** — 그러면 `lastActive` 가
+ * 늙어서 남들의 목록에서 저절로 빠진다. 지우러 갈 필요도, 서버 잡도 필요 없다.
+ * (덤으로 자리를 비운 사람이 만드는 트래픽이 0이 된다)
+ */
+async function heartbeat() {
+  if (!started || !myRef || !myFb || !online) return;
+  const visible = typeof document === 'undefined' || document.visibilityState === 'visible';
+  if (!visible) return;
+  /**
+   * ★ **판·대기방에 앉아 있는 것도 활동으로 친다.** (사용자 지정)
+   *
+   * *"메뉴 여기저기 돌아다니거나 멀티게임에 방을 만들고 있거나, 게임로비에 있거나,
+   *   등등 게임중이면, 상대방이 현재 게임중입니다 라고 뜨게 만들고"*
+   *
+   * 상대 차례를 지켜보거나 방에서 시작을 기다리는 사람은 60초 동안 아무것도 안 누를 수
+   * 있다. 그렇다고 그 사람을 "나갔다"고 하면 대기방이 통째로 사라진다.
+   *
+   * 안전한 이유는 **화면이 보이는 동안만** 인정하기 때문이다 — 폰을 잠그거나 다른 앱으로
+   * 넘어가면 `visibilitychange` 가 `hidden` 을 주고, 그 순간 우리는 스스로 목록에서 빠진다.
+   * 즉 "폰을 내려놓은 사람"은 이 예외로 살아남지 못한다.
+   */
+  const inGame = myState === 'playing';
+  if (!inGame && msSinceActive() > ACTIVITY_TIMEOUT_MS) return;
+  if (Date.now() - lastWriteAt < WRITE_THROTTLE_MS) return;
+  await withTimeout(myFb.dbMod.update(myRef, {
+    lastActive: myFb.dbMod.serverTimestamp(), at: Date.now(),
+  }), undefined, '접속 유지');
+  lastWriteAt = Date.now();
+}
+
+/**
+ * 화면을 내리는 순간 **스스로 목록에서 빠진다.**
+ *
+ * `beforeunload`·`unload` 는 쓰지 않는다 — 크롬 문서가 "쓰지 말라"고 못 박았고
+ * 모바일에서는 거의 안 불린다(앱 전환 후 브라우저를 종료하면 셋 다 안 온다).
+ * **믿을 수 있는 종료 신호는 `visibilitychange` 의 `hidden` 하나뿐이다.**
+ * `pagehide` 는 보조로만 건다(bfcache 와는 호환된다).
+ */
+function bindLifecycle() {
+  if (typeof document === 'undefined' || lifecycleBound) return;
+  lifecycleBound = true;
+  /**
+   * 숨는 순간의 이 쓰기는 **닿을 수도, 안 닿을 수도 있다** — 브라우저가 곧바로 페이지를
+   * 얼리면 큐에 남는다. 그래서 이건 "빠른 길"일 뿐이고, 못 닿아도 60초 뒤 `lastActive`
+   * 가 늙어 저절로 빠진다. 두 겹을 다 두는 이유가 이것이다.
+   */
+  const drop = () => {
+    if (myRef && myFb) withTimeout(myFb.dbMod.remove(myRef), undefined, '접속 해제').catch(() => {});
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { drop(); return; }
+    markActive();
+    if (myRef && myFb) writeCard(myFb, myRef).catch(() => {});
+    recomputeAll();
+  });
+  window.addEventListener('pagehide', drop);
+
+  /**
+   * 기기가 잠들었다 깨어난 것을 알아챈다 — 사파리에는 `resume` 이벤트가 없다.
+   * 타이머가 문턱보다 오래 늦었으면 그 사이 우리는 아무 신호도 못 보냈으므로,
+   * 카드를 새로 쓰고 목록도 다시 거른다.
+   */
+  let tick = Date.now();
+  setInterval(() => {
+    const now = Date.now();
+    if (now - tick > SUSPEND_MS && myRef && myFb) {
+      markActive();
+      writeCard(myFb, myRef).catch(() => {});
+    }
+    tick = now;
+    recomputeAll();
+  }, RECOMPUTE_MS);
 }
 
 /**
@@ -173,8 +324,12 @@ export function setState(state) {
   if (!started) return;
   rt().then((fb) => {
     if (!fb) return;
+    // 화면을 옮긴 것 자체가 활동이다 — 여기서 안 찍으면 게임에 들어간 사람이 60초 뒤 사라진다
+    markActive();
+    lastWriteAt = Date.now();
     return withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(PRESENCE, fb.uid)),
-      { state: myState, at: Date.now() }), undefined, '상태 갱신');
+      { state: myState, at: Date.now(), lastActive: fb.dbMod.serverTimestamp() }),
+      undefined, '상태 갱신');
   }).catch(() => {});
 }
 
@@ -192,8 +347,9 @@ export function refresh() {
   lastCard = key;
   rt().then((fb) => {
     if (!fb) return;
-    return withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(PRESENCE, fb.uid)), card),
-      undefined, '접속 표시 갱신');
+    lastWriteAt = Date.now();
+    return withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(PRESENCE, fb.uid)),
+      { ...card, lastActive: fb.dbMod.serverTimestamp() }), undefined, '접속 표시 갱신');
   }).catch(() => {});
 }
 
@@ -207,31 +363,83 @@ export function refresh() {
  * @param {(rows: Array|null) => void} cb
  * @returns {() => void} 해제
  */
+/**
+ * ★ **살아 있는 접속인가** — 60초 안에 활동이 있었나. (2026-08-19 19차)
+ *
+ * `lastActive` 가 아예 없는 카드는 **19차 이전 클라이언트**가 쓴 것이다. 그런 카드는
+ * `at`(폰 시계)으로라도 재 준다 — 배포 직후에는 옛 클라이언트가 아직 돌아다닌다(PWA 캐시).
+ * 둘 다 없으면 판단할 근거가 없으므로 **접속 중으로 보지 않는다**: 근거 없이
+ * "여기 있다"고 말하는 쪽이 훨씬 나쁘다(대결 신청이 허공으로 나간다).
+ */
+export function isLive(card, now = serverNow()) {
+  const t = Number(card?.lastActive ?? card?.at ?? 0);
+  return t > 0 && now - t < ACTIVITY_TIMEOUT_MS;
+}
+
+/**
+ * 접속자 목록을 구독한다.
+ *
+ * **못 붙었을 때는 `null` 을 준다.** 빈 배열로 뭉뚱그리면 화면이 "접속 중인 사람이
+ * 없습니다"라고 **거짓말을 한다** — 연결이 안 된 것과 아무도 없는 것은 다르다
+ * (§9-0-6 에서 순위표가 같은 거짓말을 했다).
+ *
+ * ★ **거르는 일은 읽는 쪽이 한다.** 데이터는 이미 모두에게 내려와 있으므로 서버를
+ *   한 번 더 거칠 이유가 없다(추가 쓰기·함수 호출 0). 대신 **오래됨은 이벤트를
+ *   만들지 않으므로** 5초마다 스스로 다시 걸러야 한다 — 이게 없으면 `lastActive` 를
+ *   넣어도 화면의 유령은 그대로 남는다.
+ *
+ * @param {(rows: Array|null) => void} cb
+ * @returns {() => void} 해제
+ */
 export function subscribeOnline(cb) {
   let off = () => {};
   let dead = false;
+  const entry = { cb, raw: null };
+  watchers.add(entry);
   rt().then((fb) => {
     if (dead) return;
     if (!fb) return cb(null);
     const r = fb.dbMod.ref(fb.rtdb, PRESENCE);
     const h = fb.dbMod.onValue(r, (snap) => {
-      const v = snap.val() ?? {};
-      cb(Object.entries(v).map(([uid, p]) => ({ uid, ...p })));
-    }, () => cb(null));
+      entry.raw = snap.val() ?? {};
+      emit(entry);
+    }, () => { entry.raw = null; cb(null); });
     if (dead) { h(); return; }
     off = h;
   }).catch(() => cb(null));
-  return () => { dead = true; off(); };
+  return () => { dead = true; watchers.delete(entry); off(); };
 }
 
-/** 한 사람의 접속 상태만 (없으면 null = 미접속) */
+/** 구독자들 — 5초마다 같은 데이터로 다시 걸러 준다 */
+const watchers = new Set();
+
+function emit(entry) {
+  if (!entry.raw) return;
+  const now = serverNow();
+  const rows = Object.entries(entry.raw)
+    .map(([uid, p]) => ({ uid, ...p }))
+    .filter((r) => isLive(r, now));
+  entry.cb(rows);
+}
+
+function recomputeAll() {
+  for (const w of watchers) emit(w);
+}
+
+/**
+ * 한 사람의 접속 상태만 (없으면 null = 미접속).
+ *
+ * ★ **오래된 카드는 없는 것으로 본다.** (19차) 목록만 거르고 여기를 안 거르면
+ *   "목록에는 없는데 대결 신청은 보내지는" 상태가 된다 — 사용자가 신고한 그것이다.
+ */
 export async function readOne(uid) {
   const fb = await rt();
   if (!fb || !uid) return null;
   try {
     const snap = await withTimeout(
       fb.dbMod.get(fb.dbMod.ref(fb.rtdb, path(PRESENCE, uid))), undefined, '접속 확인');
-    return snap.val() ?? null;
+    const v = snap.val() ?? null;
+    return isLive(v) ? v : null;
   } catch { return null; }
 }
 
