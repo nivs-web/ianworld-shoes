@@ -1,5 +1,5 @@
 /**
- * S21 메세지 수신 설정 — 켜짐 / 꺼짐 하나뿐. (2026-08-19 12차, 사용자 지정)
+ * S21 메세지 수신 설정 — **[수신차단] [수신허용]** 두 버튼. (2026-08-19 12차 → 21차)
  *
  * *"'꺼짐'을 누르면 메세지나 1:1대결을 보낼 수 없어. 보내기 누르면 '상대방에 메세지
  * 수신 거부중' 이라고 뜨게끔해"*
@@ -58,20 +58,35 @@ export default function MessageSettings(nav) {
     onLeave() { unsub(); unsub = () => {}; },
 
     render() {
-      const on = accept !== false;
+      /**
+       * ★ **지금 어느 쪽인지 한 줄로 먼저 말한다.** (2026-08-19 21차, 사용자 지정)
+       * *"버튼2개 상단에 '현재상태 : 수신허용' 이런 식으로"*
+       *
+       * 아직 값을 못 받았으면(`null`) **단정하지 않는다** — `현재상태 : 수신허용` 이라고
+       * 써 놓고 잠시 뒤 뒤집히면 그게 제일 나쁘다(§9-0-6 의 그 거짓말).
+       */
+      const stateWord = accept === null ? S.loading : (accept === false ? S.msgAcceptOff : S.msgAcceptOn);
+
       return screen(
         title(S.msgAcceptTitle),
 
+        el('div.msg-accept-now', {
+          // 차단 상태는 글자만으로도 눈에 띄어야 한다 — 목록의 [차단] 배지와 같은 신호
+          class: accept === false ? 'off' : '',
+        }, S.msgAcceptNow(stateWord)),
+
+        // 순서는 사용자 지정 그대로 — [수신차단] [수신허용]
         el('div.seg', null, [
-          button(S.msgAcceptOn, () => set(true), {
-            class: accept === true ? 'on' : '', disabled: busy, sfx: 'sfx_menu_move',
-          }),
           button(S.msgAcceptOff, () => set(false), {
             class: accept === false ? 'on' : '', disabled: busy, sfx: 'sfx_menu_move',
           }),
+          button(S.msgAcceptOn, () => set(true), {
+            class: accept === true ? 'on' : '', disabled: busy, sfx: 'sfx_menu_move',
+          }),
         ]),
 
-        el('div.hint', accept === null ? S.loading : (on ? S.msgAcceptHintOn : S.msgAcceptHintOff)),
+        // 안내는 **상태와 무관하게 늘 같은 문장**이다 — 누르기 전에 무엇이 멈추는지 알려야 한다
+        el('div.hint', S.msgAcceptHint),
 
         el('div.spacer'),
         backButton(S.back, () => nav.back())

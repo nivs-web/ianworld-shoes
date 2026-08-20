@@ -171,9 +171,27 @@ export default function Inbox(nav) {
       else if (!rows.length) body = el('div.hint', S.inboxEmpty);
       else { body = el('div.inbox-list', null, rows.map(row)); listed = true; }
 
+      /**
+       * ★ **수신차단 상태면 맨 위에서 먼저 알린다.** (2026-08-19 21차, 사용자 지정)
+       *
+       * *"아, 내가 수신거부 눌러서 아무런 메세지도 받을 수 없구나 라는 것을 한 눈에
+       *   알 수 있도록 만들어"*
+       *
+       * 이 화면이 그 자리인 이유: 차단해 둔 사람이 "왜 아무 쪽지도 안 오지?" 하고
+       * 들여다보는 곳이 바로 여기다. 그때 **빈 목록만 보이면 고장으로 읽힌다.**
+       *
+       * 허용 상태에서는 **아무것도 안 띄운다** — 늘 뜨는 안내는 곧 안 읽히는 안내다.
+       * 값을 아직 못 받았을 때(`accept` 초기값 `true`)도 안 띄운다: 없는 상태를
+       * 있다고 말하는 쪽이 훨씬 나쁘다.
+       */
+      const blockedNotice = prefs.accept === false
+        ? el('div.inbox-notice', S.inboxBlockedNotice)
+        : null;
+
       // 목록이 있으면 여백을 넣지 않는다 — 그쪽이 남는 공간을 가져가면 목록 아래가 빈다
       return screen(
         title(S.inboxTitle),
+        blockedNotice,
         body,
         listed ? null : el('div.spacer'),
         backButton(S.back, () => nav.back())

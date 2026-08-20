@@ -2508,5 +2508,66 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   }
 }
 
+{
+  console.log('\n46) ★ 차단 배지 · 수신 설정 두 버튼 · 수신차단 경고 (2026-08-19 21차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const S3 = (await import('../src/config/strings.ko.js')).default;
+  const css = read('src/styles/screens.css');
+
+  /**
+   * ① 받은 메세지함 — 차단한 사람 줄에 **빨간 바탕 흰 글씨** [차단].
+   *    *"내가 실수로 차단을 누른 사용자가 누구인지 한눈에 알 수 있도록"*
+   *    색까지 검사하는 이유: 배지가 뜨기만 하고 배경이 안 깔리면(크림색 바탕에 흰 글씨)
+   *    사실상 안 보인다 — §9-0-37 에서 방 목록 배지가 정확히 그랬다.
+   */
+  {
+    const ib = code(read('src/screens/Inbox.js'));
+    has('차단한 사람에게만 배지', ib, "prefs.blocked?.[otherUid] ? el('span.inbox-blocked', S.blockedTag) : null");
+    eq('배지 문구', S3.blockedTag, '차단');
+    has('배지 스타일', css, '.inbox-blocked {');
+    has('배지 흰 글씨', css, 'color: #FFF4D6;');
+    has('배지 빨간 바탕', css, 'background: #B23A2E;');
+  }
+
+  /**
+   * ② 수신차단 상태면 **받은 메세지함 맨 위**에 빨간 글씨 경고.
+   *    허용 상태에서는 안 띄운다 — 늘 뜨는 안내는 곧 안 읽히는 안내다.
+   *    값을 아직 못 받았을 때(`accept` 초기값 true)도 안 띄운다.
+   */
+  {
+    const ib = code(read('src/screens/Inbox.js'));
+    has('차단일 때만 경고', ib, "prefs.accept === false");
+    has('경고는 목록보다 위', ib, 'title(S.inboxTitle),\n        blockedNotice,\n        body,');
+    has('경고 상자 스타일', css, '.inbox-notice {');
+    has('경고는 빨간 글씨', css, 'color: #FF9A8A;');
+    eq('경고 문구', S3.inboxBlockedNotice,
+      '회원님은 메세지를 받으실 수 없는 수신차단 상태입니다. 메세지 수신 설정 메뉴에서 수신허용을 누르시면 다시 메세지를 받으실 수 있습니다');
+  }
+
+  /**
+   * ③ 메세지 수신 설정 — 켜짐/꺼짐 대신 **[수신차단] [수신허용]** 두 버튼,
+   *    그 위에 `현재상태 : …` 한 줄, 아래에 무엇이 멈추는지 안내.
+   */
+  {
+    const ms = code(read('src/screens/MessageSettings.js'));
+    const order = [...ms.matchAll(/button\(S\.(msgAccept\w+),/g)].map((m) => m[1]);
+    eq('버튼 순서', order, ['msgAcceptOff', 'msgAcceptOn']);
+    eq('차단 버튼 문구', S3.msgAcceptOff, '수신차단');
+    eq('허용 버튼 문구', S3.msgAcceptOn, '수신허용');
+    eq('현재상태 줄', S3.msgAcceptNow('수신허용'), '현재상태 : 수신허용');
+    eq('안내 문구', S3.msgAcceptHint, '수신차단 버튼을 누르면, 메세지 받기, 대결신청 등의 기능이 모두 중지됩니다.');
+    has('현재상태 줄이 있다', ms, "el('div.msg-accept-now'");
+    has('안내는 늘 같은 문장', ms, "el('div.hint', S.msgAcceptHint)");
+    // 값을 못 받았으면 단정하지 않는다 — 써 놓고 뒤집히는 쪽이 훨씬 나쁘다(§9-0-6)
+    has('로딩 중에는 단정 안 함', ms, 'accept === null ? S.loading');
+    // 12차의 켜짐/꺼짐 문구는 되살아나면 안 된다
+    has('차단 상태는 글자도 빨강', css, '.msg-accept-now.off {');
+  }
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

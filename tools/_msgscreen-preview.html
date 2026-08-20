@@ -1,0 +1,41 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>메세지 화면 미리보기</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<!--
+  ★ 진짜 화면(`Inbox.js`·`MessageSettings.js`)을 그대로 띄운다.
+    바꾸는 것은 `presence.js` 하나뿐 — import map 이 대역으로 갈아 끼운다.
+    (명예의 전당이 `_hof-stub.js` 로 같은 일을 한다)
+-->
+<script type="importmap">
+{ "imports": { "/src/services/presence.js": "/tools/_presence-stub.js" } }
+</script>
+</head>
+<body class="ui-mode">
+<div id="ui" class="active"></div>
+<script type="module">
+import Inbox from '/src/screens/Inbox.js';
+import MessageSettings from '/src/screens/MessageSettings.js';
+
+const q = new URLSearchParams(location.search);
+const Screen = q.get('screen') === 'settings' ? MessageSettings : Inbox;
+
+const root = document.getElementById('ui');
+/**
+ * 라우터 대신 최소한의 `nav` — 다시 그리기만 하면 된다.
+ *
+ * ⚠ `live` 를 **먼저 선언**해 둔다. 화면 생성자가 구독을 걸면서 그 자리에서
+ *   `nav.refresh()` 를 부르는 경우가 있는데(수신 설정이 그렇다), 그때 `live` 는
+ *   아직 대입 전이라 `Cannot access 'live' before initialization` 으로 죽는다.
+ *   실제 라우터도 같은 이유로 `live` 가 없으면 그냥 넘어간다.
+ */
+let live = null;
+const nav = {
+  refresh() { if (!live) return; root.innerHTML = ''; root.append(live.render(nav)); },
+  back() {}, push() {}, reset() {},
+};
+live = Screen(nav);
+nav.refresh();
+</script>
+</body></html>

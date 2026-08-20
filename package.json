@@ -43,6 +43,8 @@
     "preview:msg": "node tools/_screen-preview.mjs msg",
     "//qa:hoffit": "명예의 전당 승률 칸이 좁은 폰에서 줄을 넘기지 않는지 — 눈이 아니라 자로 잰다.",
     "qa:hoffit": "node tools/_hoffit.mjs",
+    "//qa:msg": "받은 메세지함·수신 설정을 진짜 화면 그대로 띄워 확인한다 — 차단 배지 색, 수신차단 경고, 버튼 순서 (21차).",
+    "qa:msg": "node tools/_msgqa.mjs",
     "//qa:cardfocus": "유저상태창을 열면 커서가 입력칸 안에 있는지 — 19차에 부품을 합치며 조용히 사라졌던 동작이다(20차).",
     "qa:cardfocus": "node tools/_cardfocus.mjs",
     "//qa:hofvert": "명예의 전당이 세로를 다 쓰는지 (16차). max-height 를 되돌리면 화면 아래 검은 공백 173~243px 가 다시 잡힌다.",

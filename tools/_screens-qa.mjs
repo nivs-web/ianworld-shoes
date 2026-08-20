@@ -107,8 +107,14 @@ await clickText('뒤로');
 await clickText('메세지 수신 설정');
 await p.waitForTimeout(500);
 await shot('08f_msgsettings');
-console.log('수신 설정 버튼:', await p.locator('button:has-text("켜짐")').count(),
-  '/', await p.locator('button:has-text("꺼짐")').count());
+/**
+ * 21차: 켜짐/꺼짐 두 버튼을 **[수신차단] [수신허용]** 으로 바꿨다(사용자 지정).
+ * 옛 이름을 그대로 세면 화면이 멀쩡해도 늘 0/0 이라 아무것도 확인하지 못한다.
+ */
+console.log('수신 설정 버튼:', await p.locator('button:has-text("수신차단")').count(),
+  '/', await p.locator('button:has-text("수신허용")').count(),
+  '| 현재상태 줄:', await p.locator('.msg-accept-now').count(),
+  '| 안내:', (await p.locator('.hint').first().innerText()).slice(0, 12));
 await clickText('뒤로');
 await clickText('뒤로');
 
