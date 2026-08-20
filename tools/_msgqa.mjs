@@ -128,6 +128,76 @@ for (const [label, qs, want] of [['수신허용', 'screen=settings&accept=1', '�
   await p.close();
 }
 
+// ── ⑤ 22차 — 현재상태 줄 · 탭 셋 · 받음/보냄 색 ─────────────
+{
+  const p = await open('accept=1');
+  const r = await p.evaluate(() => {
+    const kids = [...document.querySelectorAll('.screen > *')];
+    const tabs = [...document.querySelectorAll('.inbox-tabs .pbtn')];
+    const rows = [...document.querySelectorAll('.inbox-row')];
+    const dirOf = (row) => {
+      const d = row.querySelector('.inbox-dir');
+      return { text: d.textContent, color: getComputedStyle(d).color,
+        border: getComputedStyle(row).borderTopColor };
+    };
+    return {
+      // 타이틀 → 현재상태 → (경고) → 탭 → 목록
+      iTitle: kids.findIndex((k) => k.matches('.screen-title')),
+      iNow: kids.findIndex((k) => k.matches('.msg-accept-now')),
+      iTabs: kids.findIndex((k) => k.matches('.inbox-tabs')),
+      iList: kids.findIndex((k) => k.matches('.inbox-list, .hint')),
+      nowText: document.querySelector('.msg-accept-now')?.textContent ?? '',
+      labels: tabs.map((x) => x.textContent),
+      onIndex: tabs.findIndex((x) => x.classList.contains('on')),
+      rows: rows.length,
+      recv: rows.filter((x) => x.classList.contains('in')).map(dirOf)[0],
+      sent: rows.filter((x) => x.classList.contains('out')).map(dirOf)[0],
+    };
+  });
+  console.log('\n⑤ 22차 — 현재상태 줄 · 탭 셋 · 받음(파랑)/보냄(빨강)');
+  eq('★ 현재상태 줄이 타이틀 바로 아래', r.iNow, r.iTitle + 1);
+  eq('현재상태 문구', r.nowText, '현재상태 : 수신허용');
+  eq('★ 탭 셋', r.labels, ['전체보기', '받은 메세지', '보낸 메세지']);
+  eq('★ 처음엔 전체보기', r.labels[r.onIndex], '전체보기');
+  eq('탭은 목록보다 위', r.iTabs > r.iNow && r.iTabs < r.iList, true);
+  eq('전체보기는 네 줄 전부', r.rows, 4);
+  eq('받음 글씨', r.recv.text, '받음');
+  eq('★ 받음은 파란 글씨', r.recv.color, 'rgb(143, 192, 255)');
+  eq('★ 받음은 파란 테두리', r.recv.border, 'rgb(76, 141, 224)');
+  eq('보냄 글씨', r.sent.text, '보냄');
+  eq('★ 보냄은 빨간 글씨', r.sent.color, 'rgb(255, 154, 138)');
+  eq('★ 보냄은 빨간 테두리', r.sent.border, 'rgb(198, 64, 46)');
+
+  /** 탭을 누르면 **그쪽만** 남는다 — 서버를 다시 부르지 않고 손에 있는 목록을 거른다 */
+  const pick = async (label) => {
+    await p.locator(`.inbox-tabs .pbtn:has-text("${label}")`).click();
+    await sleep(250);
+    return p.evaluate(() => {
+      const rows = [...document.querySelectorAll('.inbox-row')];
+      return {
+        n: rows.length,
+        kinds: [...new Set(rows.map((x) => (x.classList.contains('out') ? 'out' : 'in')))],
+        on: document.querySelector('.inbox-tabs .pbtn.on')?.textContent ?? '',
+        empty: document.querySelector('.hint')?.textContent ?? '',
+      };
+    });
+  };
+  const inOnly = await pick('받은 메세지');
+  eq('★ 받은 메세지만', inOnly.kinds, ['in']);
+  eq('받은 것 세 통', inOnly.n, 3);
+  eq('탭이 켜진다', inOnly.on, '받은 메세지');
+  await shot(p, 'inbox_in');
+
+  const outOnly = await pick('보낸 메세지');
+  eq('★ 보낸 메세지만', outOnly.kinds, ['out']);
+  eq('보낸 것 한 통', outOnly.n, 1);
+  await shot(p, 'inbox_out');
+
+  const all = await pick('전체보기');
+  eq('전체보기로 돌아온다', all.n, 4);
+  await p.close();
+}
+
 eq('\n콘솔 오류 없음', errs, []);
 await b.close();
 try { process.kill(-vite.pid); } catch { vite.kill(); }

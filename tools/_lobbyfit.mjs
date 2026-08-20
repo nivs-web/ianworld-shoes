@@ -25,7 +25,7 @@ for (const w of [320, 360, 390, 412]) {
   await p.goto(`http://127.0.0.1:${PORT}/`);
   await p.evaluate(()=>localStorage.setItem('sf_profile',JSON.stringify({uid:'d',nickname:'이안',shoesOwned:1460,shoesByIndex:{0:1460},selectedCharacter:'ian',difficulty:'normal',bestStairs:5432,multiWins:17,multiLosses:33,ownedCharacters:['ian'],walletVersion:1,dexBadgeAt:1})));
   /**
-   * 도감도 채워 둔다 — 비어 있으면 화면에 늘 `신발도감 0 / 130켤레` 가 찍혀서
+   * 도감도 채워 둔다 — 비어 있으면 화면에 늘 `신발도감 0켤레` 가 찍혀서
    * **자릿수가 늘어났을 때 줄이 터지는지**를 못 본다(지갑 쪽에서 이미 한 번 데였다).
    */
   await p.evaluate(() => {
@@ -102,7 +102,8 @@ for (const w of [320, 360, 390, 412]) {
     /^최고기록 \d+계단$/,
     /^보유신발 \d+켤레$/,
     /^멀티게임 \d+승\/\d+게임$/,
-    /^신발도감 \d+\/\d+켤레$/,
+    // 22차: 분모를 뺐다 (사용자 지정). 완성하면 뒤에 `, 도감완성` 이 붙는다
+    /^신발도감 \d+켤레(, 도감완성)?$/,
   ];
   const txtOk = r.lines.length === 4 && WANT.every((re, i) => re.test(r.lines[i].txt));
   /**
@@ -133,6 +134,37 @@ for (const w of [320, 360, 390, 412]) {
   if (!ok) bad++;
   console.log(`  ${w}px  패널높이=${r.panelH} 뱃지${sameRow?'같은줄':'아랫줄'} 넘침=${r.overflow} 캐릭터칸=${r.charW} 그림=${r.imgW}x${r.imgH} 이름간격=${r.nameGap} 줄간격=[${steps.join(',')}] 숫자높이=${sizes.join(',')} 단위붙음=[${allGaps.join(',')}] 통계칸=${r.statsW} 필요폭=[${r.lines.map((l)=>l.want).join(',')}] 잘림=${cut.length?cut.map((c)=>`"${c.txt}"+${c.cut}px`).join(' '):'없음'} 페이지스크롤=${r.pageScroll} ${ok?'✅':'❌'}`);
   if (!txtOk) console.log(`      문구/순서 어긋남: ${r.lines.map((l) => `"${l.txt}"`).join(' | ')}`);
+  /**
+   * ★ **도감을 다 모은 경우도 재 본다.** (2026-08-19 22차)
+   * 완성하면 문구가 `신발도감 130켤레, 도감완성` 으로 **길어진다**(사용자 지정).
+   * 87켤레 상태만 재면 그 줄이 좁은 폰에서 잘리는 걸 못 본다 — 이 검사는 원래
+   * "잘림은 넘침으로 안 잡힌다"를 잡으려고 만든 것이다(18차).
+   */
+  {
+    await p.evaluate(() => {
+      const dex = {};
+      for (let i = 0; i < 130; i++) dex[i] = { count: 3, at: 1 };
+      localStorage.setItem('sf_collection', JSON.stringify(dex));
+    });
+    await p.reload(); await sleep(1600);
+    await p.evaluate(() => window.__dbg?.nav?.reset(window.__dbg.screens.Lobby));
+    await sleep(500);
+    const d = await p.evaluate(() => {
+      const line = [...document.querySelectorAll('.panel .stats .stat-line')].pop();
+      return {
+        // 캔버스는 dataset.text, 배지는 textContent — 둘 다 눈에 보이는 글자다
+        txt: [...line.childNodes].map((n) => (n.nodeType === 3 ? n.textContent
+          : (n.dataset?.text ?? n.textContent))).join(''),
+        cut: line.scrollWidth - line.clientWidth,
+        overflow: document.querySelector('.panel').scrollWidth - document.querySelector('.panel').clientWidth,
+      };
+    });
+    const doneOk = d.txt === '신발도감 130켤레도감완성' && d.cut <= 0 && d.overflow <= 0;   // 배지라 사이에 공백이 없다
+    if (!doneOk) bad++;
+    console.log(`         도감완성 → "${d.txt}" 잘림=${d.cut}px 넘침=${d.overflow} ${doneOk ? '✅' : '❌'}`);
+    if (w === 390) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel_dexdone.png' });
+  }
+
   if (w === 390) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel.png' });
   // 좁은 폰의 접힌 배치도 한 장 남긴다 — 눈으로 확인할 길이 이것뿐이다
   if (w === 320) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel_320.png' });

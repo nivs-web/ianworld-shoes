@@ -54,7 +54,14 @@ export default function Inbox(nav) {
   let rows = null;
   /** 못 붙었다 — "메세지가 없다"와 다른 말을 해야 한다 */
   let failed = false;
+  /**
+   * 목록 탭 (2026-08-19 22차, 사용자 지정). 기본은 **전체보기**.
+   * 서버에서 다시 받아 오지 않는다 — 이미 손에 있는 목록을 거를 뿐이다.
+   */
+  let filter = 'all';   // 'all' | 'in' | 'out'
   let prefs = { accept: true, blocked: {} };
+  /** 수신 설정을 **한 번이라도 읽었는가** — 못 읽었으면 상태를 단정하지 않는다 */
+  let prefsKnown = false;
   let unsub = () => {};
   let unsubPrefs = () => {};
 
@@ -78,8 +85,13 @@ export default function Inbox(nav) {
    */
   unsubPrefs = Presence.subscribeMyPrefs((v) => {
     // 못 읽었으면 **지금 값을 그대로 둔다** — 내가 방금 차단해 둔 것을 지우면 안 된다
-    if (!v) return;
+    if (!v) {
+      // 끝내 못 읽었으면 기본값(수신허용)으로 말한다 — 수신 설정 화면과 같은 판단이다
+      if (!prefsKnown) { prefsKnown = true; nav.refresh(); }
+      return;
+    }
     prefs = v;
+    prefsKnown = true;
     nav.refresh();
   });
 
@@ -164,12 +176,47 @@ export default function Inbox(nav) {
     onLeave() { unsub(); unsubPrefs(); unsub = () => {}; unsubPrefs = () => {}; },
 
     render() {
+      /**
+       * ★ **탭은 거르기만 한다.** (2026-08-19 22차, 사용자 지정)
+       * *"[전체보기][받은 메세지][보낸 메세지] (…) 일단 전체보기가 활성화 되어 있도록"*
+       *
+       * 서버 구독은 하나뿐이고 목록도 이미 손에 있다 — 탭마다 다시 받아 오면
+       * 같은 데이터를 세 번 받게 되고, 탭을 옮길 때마다 화면이 비었다 채워진다.
+       */
+      const shown = rows === null ? null : rows.filter(
+        (m) => (filter === 'all' ? true : filter === 'out' ? !!m.out : !m.out)
+      );
+      // 빈 목록의 문구는 탭마다 다르다 — 아래 `inboxEmptyIn` 주석 참고
+      const emptyText = filter === 'in' ? S.inboxEmptyIn
+        : filter === 'out' ? S.inboxEmptyOut : S.inboxEmpty;
+
       let body;
       let listed = false;   // 본문이 **스크롤되는 목록**인가 (로딩·오류·빈 목록은 아니다)
       if (failed) body = el('div.hint', S.networkError);
-      else if (rows === null) body = el('div.hint', S.loading);
-      else if (!rows.length) body = el('div.hint', S.inboxEmpty);
-      else { body = el('div.inbox-list', null, rows.map(row)); listed = true; }
+      else if (shown === null) body = el('div.hint', S.loading);
+      else if (!shown.length) body = el('div.hint', emptyText);
+      else { body = el('div.inbox-list', null, shown.map(row)); listed = true; }
+
+      /**
+       * 지금 어느 쪽인지 **타이틀 바로 아래에서** 말한다 (22차, 사용자 지정).
+       * 수신 설정 화면과 **같은 부품·같은 문구**(`.msg-accept-now`)를 쓴다 —
+       * 두 화면이 같은 상태를 다른 말로 표시하면 어느 쪽이 진짜인지 알 수 없다.
+       *
+       * 아직 못 읽었으면 단정하지 않는다: `현재상태 : 수신허용` 이라고 써 놓고
+       * 잠시 뒤 뒤집히는 쪽이 제일 나쁘다(§9-0-6).
+       */
+      const blocked = prefs.accept === false;
+      const stateWord = !prefsKnown ? S.loading : (blocked ? S.msgAcceptOff : S.msgAcceptOn);
+      const stateLine = el('div.msg-accept-now', { class: blocked ? 'off' : '' },
+        S.msgAcceptNow(stateWord));
+
+      const tabs = el('div.seg.inbox-tabs', null, [
+        [S.inboxTabAll, 'all'], [S.inboxTabIn, 'in'], [S.inboxTabOut, 'out'],
+      ].map(([label, id]) => button(label, () => {
+        if (filter === id) return;      // 같은 탭을 다시 눌러도 화면을 헛되이 다시 그리지 않는다
+        filter = id;
+        nav.refresh();
+      }, { class: filter === id ? 'on' : '', sfx: 'sfx_menu_move' })));
 
       /**
        * ★ **수신차단 상태면 맨 위에서 먼저 알린다.** (2026-08-19 21차, 사용자 지정)
@@ -184,14 +231,16 @@ export default function Inbox(nav) {
        * 값을 아직 못 받았을 때(`accept` 초기값 `true`)도 안 띄운다: 없는 상태를
        * 있다고 말하는 쪽이 훨씬 나쁘다.
        */
-      const blockedNotice = prefs.accept === false
+      const blockedNotice = blocked
         ? el('div.inbox-notice', S.inboxBlockedNotice)
         : null;
 
       // 목록이 있으면 여백을 넣지 않는다 — 그쪽이 남는 공간을 가져가면 목록 아래가 빈다
       return screen(
         title(S.inboxTitle),
+        stateLine,
         blockedNotice,
+        tabs,
         body,
         listed ? null : el('div.spacer'),
         backButton(S.back, () => nav.back())

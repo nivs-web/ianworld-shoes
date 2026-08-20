@@ -242,6 +242,30 @@
 .stat-line {
   white-space: nowrap;   /* '최고기 / 록' 으로 쪼개지느니 넘치는 편이 낫다 */
 }
+
+/**
+ * ★ **도감완성 배지.** (2026-08-19 22차, 사용자 지정)
+ *
+ * *"도감 완성하면 '신발도감 130켤레, 도감완성' 으로 (…) 내가 도감을 완성했구나 라는
+ *   것을 한번에 알 수 있도록"*
+ *
+ * 문장으로 이어 붙였더니 360px 폰에서 16px 잘렸다(`qa:lobbyfit`). 배지는 자리를 덜
+ * 먹고 색이 글자보다 빨리 읽힌다. 초록은 이 화면에서 **여기에만** 쓴다 —
+ * 다른 곳과 겹치지 않아야 "다 모았다"는 신호로 굳는다.
+ */
+.stat-done {
+  /* 여백·글자 크기는 눈이 아니라 자로 정했다 — 360px 폰에서 이 줄이 4px 잘렸다 */
+  margin-left: 4px;
+  padding: 1px 3px;
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: #0d1a08;
+  background: #8ED96B;
+  /* 도트 화면이라 둥근 모서리를 쓰지 않는다 (§9-0-3) */
+  box-shadow: 0 0 0 1px var(--btn-outline);
+}
 /* 좁은 폰에서 통계 줄이 패널을 뚫지 않게 — 넘치면 자른다 */
 .panel .stats > div {
   overflow: hidden;
@@ -1458,17 +1482,50 @@
   cursor: pointer;
 }
 
-/* 안 읽은 것은 한눈에 — 목록을 여는 이유가 대개 이것이다 */
-.inbox-row.unread { border-color: var(--c-accent); }
-.inbox-row.out { opacity: 0.78; }
+/**
+ * ★ **받음은 파랑, 보냄은 빨강.** (2026-08-19 22차, 사용자 지정)
+ *
+ * *"받음 메세지들은 모두 파란색, 보냄 메세지들은 모두 빨간색 테두리에 넣고 싶어,
+ *   맨 왼쪽 글씨도, 받음 파란색, 보냄 빨간색, 딱 봐도 (…) 눈에 띄게"*
+ *
+ * 테두리와 앞머리 글자에 **같은 색**을 쓴다 — 둘이 다르면 색이 무엇을 뜻하는지
+ * 배우는 데 두 번 걸린다. 글자 쪽만 한 단계 밝은 색인 이유는 검은 배경(#0d0a08)
+ * 위에서 테두리용 진한 색이 글자로는 안 읽히기 때문이다.
+ *
+ * 빨강은 차단 배지(#B23A2E)와 **같은 계열이되 같은 값은 아니다** — 배지는 바탕을
+ * 채우고 이쪽은 테두리 1겹이라 역할이 갈린다.
+ */
+.inbox-row.in { border-color: var(--c-msg-in); }
+.inbox-row.out { border-color: var(--c-msg-out); }
 
+/**
+ * 안 읽은 것은 한눈에 — 목록을 여는 이유가 대개 이것이다.
+ * 22차 전에는 테두리를 강조색으로 바꿨는데, 이제 테두리는 **방향**을 뜻하므로
+ * 그 자리를 뺏으면 안 된다. 대신 바탕을 옅게 깔고 앞머리를 굵게 한다.
+ * (보낸 쪽지에는 `unread` 가 붙지 않는다 — 내가 쓴 것이다)
+ */
+.inbox-row.unread { background: rgba(76, 141, 224, 0.16); }
+.inbox-row.unread .inbox-dir { text-decoration: underline; }
+
+/**
+ * 앞머리 `받음`/`보냄`. 10 → 11px — 이 두 글자가 줄의 정체라 목록을 훑을 때
+ * 가장 먼저 읽힌다. 30px 칸에 11px 두 글자(약 22px)가 그대로 들어간다.
+ */
 .inbox-dir {
   flex: 0 0 30px;
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: bold;
   text-align: center;
   color: var(--c-panel-dark);
 }
-.inbox-row.unread .inbox-dir { color: var(--c-accent); font-weight: bold; }
+.inbox-row.in .inbox-dir { color: var(--c-msg-in-text); }
+.inbox-row.out .inbox-dir { color: var(--c-msg-out-text); }
+
+/** 탭 셋 — 한 줄에 나란히 서므로 난이도 선택과 같은 이유로 글자를 줄인다 */
+.inbox-tabs .pbtn {
+  padding: 8px 2px;
+  font-size: 13px;
+}
 
 .inbox-who {
   flex: 0 0 68px;

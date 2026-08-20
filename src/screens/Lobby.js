@@ -103,9 +103,9 @@ const STAT_FALLBACK_SCALE = 2;
  *
  * `mono` 로 찍는 이유: 자릿수가 바뀔 때 숫자 칸의 폭이 들쭉날쭉하면 줄이 흔들린다.
  */
-function statLine(str, numOpt) {
+function statLine(str, numOpt, tag) {
   const parts = String(str).split(/(\d+)/);
-  return el('div.stat-line', null, parts.map((part, i) => {
+  const line = el('div.stat-line', null, parts.map((part, i) => {
     if (!/^\d+$/.test(part)) return part;
     const cv = pixelText(part, numOpt);
     /**
@@ -119,6 +119,12 @@ function statLine(str, numOpt) {
     cv.style.marginRight = `-${pad}px`;
     return cv;
   }));
+  /**
+   * 줄 끝에 붙는 표식 — 지금은 도감완성 하나뿐이다 (2026-08-19 22차, 사용자 지정).
+   * 문장에 이어 붙이지 않는 이유는 `strings.dexComplete` 주석 참고(좁은 폰에서 잘렸다).
+   */
+  if (tag) line.append(el('span.stat-done', tag));
+  return line;
 }
 
 export default function Lobby(nav) {
@@ -218,7 +224,13 @@ export default function Lobby(nav) {
             statLine(S.myBestRecord(p.bestStairs), statNum),
             statLine(S.myShoesOwned(p.shoesOwned), statNum),
             statLine(S.myMultiRecord(p.multiWins ?? 0, (p.multiWins ?? 0) + (p.multiLosses ?? 0)), statNum),
-            statLine(S.myDexProgress(dexUnique(), SHOE_TOTAL), statNum),
+            /**
+             * ★ 다 모으면 **문장이 아니라 배지로** 알린다 (22차, 사용자 지정).
+             * 분모(`/130`)를 뺐으므로 숫자만 봐서는 끝인지 알 수 없다 —
+             * *"내가 도감을 완성했구나 라는 것을 한번에 알 수 있도록"*.
+             */
+            statLine(S.myDexProgress(dexUnique()), statNum,
+              dexUnique() >= SHOE_TOTAL ? S.dexComplete : null),
           ]),
           el('div.badges', null, slots.map((b) => pixelBadge(b))),
         ]),

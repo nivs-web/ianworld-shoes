@@ -7,6 +7,15 @@
   --c-panel-dark: #c99a52;
   --c-line: #6b3f1d;
   --c-accent: #d94f2b;
+  /**
+   * 받은 메세지 / 보낸 메세지 (2026-08-19 22차, 사용자 지정).
+   * 테두리용 진한 색과 글자용 밝은 색을 짝으로 둔다 — 검은 배경 위에서
+   * 테두리 색을 그대로 글자에 쓰면 안 읽히고, 글자 색을 테두리에 쓰면 눈이 아프다.
+   */
+  --c-msg-in: #4c8de0;
+  --c-msg-in-text: #8fc0ff;
+  --c-msg-out: #c6402e;
+  --c-msg-out-text: #ff9a8a;
   --c-accent-dark: #8c2a14;
   --c-text: #3a1f0c;
   --c-text-light: #fff4d6;

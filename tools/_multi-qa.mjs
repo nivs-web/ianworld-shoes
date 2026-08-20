@@ -1895,7 +1895,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
    */
   eq('로비 보유량 문구', S2.myShoesOwned(0), '보유신발 0켤레');
   eq('로비 최고기록 문구', S2.myBestRecord(0), '최고기록 0계단');
-  eq('로비 도감 문구', S2.myDexProgress(0, 130), '신발도감 0/130켤레');
+  // ★ 22차: 분모를 뺐다. 다 모으면 문장이 바뀐다 (사용자 지정 — 44번 묶음이 완성 문구도 본다)
+  eq('로비 도감 문구', S2.myDexProgress(0), '신발도감 0켤레');
 
   // ② 받은 메세지함 — 이력이 남아야 한다
   {
@@ -2373,7 +2374,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
      */
     const rows = [...lb.matchAll(/statLine\(S\.(\w+)\(/g)].map((m) => m[1]);
     eq('통계 네 줄의 순서', rows, ['myBestRecord', 'myShoesOwned', 'myMultiRecord', 'myDexProgress']);
-    eq('네 줄 전부 같은 옵션', (lb.match(/, statNum\)/g) ?? []).length, 4);
+    // 22차: 도감 줄만 세 번째 인자(완성 배지)를 더 받는다 — 옵션 자체는 그대로 넷이다
+    eq('네 줄 전부 같은 옵션', (lb.match(/, statNum[,)]/g) ?? []).length, 4);
     /**
      * ★ **외곽선을 쓰지 않는다.** 외곽선을 켜면 캔버스 사방에 배율만큼(3px) 여백이
      *   생기고, 그게 문장 안에서 **없는 띄어쓰기**가 된다(18차 사용자 신고의 원인).
@@ -2389,10 +2391,20 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   {
     /** 네 줄 전부 **문장 하나**, 라벨 뒤 한 칸 · 단위 앞 0칸 (18차 사용자 지정) */
     eq('통계 네 문구', [S2.myBestRecord(5432), S2.myShoesOwned(1460),
-      S2.myMultiRecord(17, 50), S2.myDexProgress(87, 130)],
-      ['최고기록 5432계단', '보유신발 1460켤레', '멀티게임 17승/50게임', '신발도감 87/130켤레']);
+      S2.myMultiRecord(17, 50), S2.myDexProgress(87)],
+      ['최고기록 5432계단', '보유신발 1460켤레', '멀티게임 17승/50게임', '신발도감 87켤레']);
+    /**
+     * ★ 22차 사용자 지정 — **다 모으면 문장이 바뀐다.**
+     * *"도감 완성하면 '신발도감 130켤레, 도감완성' 으로 문구가 변경되게 (…)
+     *   내가 도감을 완성했구나 라는 것을 한번에 알 수 있도록"*
+     * 분모를 뺐으므로 숫자만 봐서는 끝인지 알 수 없다 — 그래서 글자로 말한다.
+     */
+    eq('완성 표식은 따로 둔다', S2.dexComplete, '도감완성');
+    has('다 모았을 때만 배지를 단다', code(read('src/screens/Lobby.js')),
+      'dexUnique() >= SHOE_TOTAL ? S.dexComplete : null');
+    has('줄 끝에 붙인다', code(read('src/screens/Lobby.js')), "line.append(el('span.stat-done', tag))");
     const lb2 = code(read('src/screens/Lobby.js'));
-    has('숫자만 감싸는 헬퍼', lb2, 'function statLine(str, numOpt)');
+    has('숫자만 감싸는 헬퍼', lb2, 'function statLine(str, numOpt, tag)');
     const css2 = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
     // flex 로 붙이면 숫자와 단위 사이에도 gap 이 들어간다 — 인라인이라야 문구대로 나온다
     no('통계 줄은 flex 가 아니다', /\.stat-line \{[\s\S]*?\}/.exec(css2)?.[0] ?? '', 'display: flex');
@@ -2541,7 +2553,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   {
     const ib = code(read('src/screens/Inbox.js'));
     has('차단일 때만 경고', ib, "prefs.accept === false");
-    has('경고는 목록보다 위', ib, 'title(S.inboxTitle),\n        blockedNotice,\n        body,');
+    // 22차: 제목과 경고 사이에 현재상태 줄이, 경고와 목록 사이에 탭 셋이 들어왔다
+    has('경고는 목록보다 위', ib, 'stateLine,\n        blockedNotice,\n        tabs,\n        body,');
     has('경고 상자 스타일', css, '.inbox-notice {');
     has('경고는 빨간 글씨', css, 'color: #FF9A8A;');
     eq('경고 문구', S3.inboxBlockedNotice,
@@ -2566,6 +2579,71 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('로딩 중에는 단정 안 함', ms, 'accept === null ? S.loading');
     // 12차의 켜짐/꺼짐 문구는 되살아나면 안 된다
     has('차단 상태는 글자도 빨강', css, '.msg-accept-now.off {');
+  }
+}
+
+{
+  console.log('\n47) ★ 받은 메세지함 탭 셋 · 받음/보냄 색 · 도감완성 배지 (2026-08-19 22차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const S4 = (await import('../src/config/strings.ko.js')).default;
+  const ib = code(read('src/screens/Inbox.js'));
+  const css = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const vars = read('src/styles/pixel-ui.css').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // ① 타이틀 바로 아래 현재상태 — 수신 설정 화면과 **같은 부품·같은 문구**를 쓴다
+  {
+    has('현재상태 줄이 화면에 있다', ib, "el('div.msg-accept-now'");
+    has('수신 설정과 같은 문구', ib, 'S.msgAcceptNow(stateWord)');
+    has('제목 다음이 현재상태', ib, 'title(S.inboxTitle),\n        stateLine,');
+    // 못 읽었으면 단정하지 않는다 — 써 놓고 뒤집히는 쪽이 더 나쁘다(§9-0-6)
+    has('읽기 전에는 단정 안 함', ib, '!prefsKnown ? S.loading');
+  }
+
+  // ② 탭 셋 — 기본은 전체보기, 그리고 **서버를 다시 부르지 않는다**
+  {
+    eq('탭 문구', [S4.inboxTabAll, S4.inboxTabIn, S4.inboxTabOut], ['전체보기', '받은 메세지', '보낸 메세지']);
+    has('기본은 전체보기', ib, "let filter = 'all';");
+    has('탭 셋을 그린다', ib, "el('div.seg.inbox-tabs'");
+    has('손에 있는 목록을 거른다', ib, "filter === 'all' ? true : filter === 'out' ? !!m.out : !m.out");
+    // 탭마다 다시 구독하면 같은 데이터를 세 번 받고 탭을 옮길 때마다 화면이 빈다
+    eq('구독은 하나뿐', (ib.match(/subscribeInbox\(/g) ?? []).length, 1);
+    // 빈 목록의 문구도 탭마다 다르다 — '받은 메세지' 탭에서 "주고받은 메세지가 없습니다" 는 거짓말이다
+    eq('빈 목록 문구 셋', [S4.inboxEmpty, S4.inboxEmptyIn, S4.inboxEmptyOut],
+      ['주고받은 메세지가 없습니다', '받은 메세지가 없습니다', '보낸 메세지가 없습니다']);
+    has('탭에 따라 문구가 갈린다', ib, 'const emptyText = ');
+  }
+
+  /**
+   * ③ 받음은 파랑, 보냄은 빨강 — 테두리와 앞머리 글자에 **같은 색**.
+   *    실제로 그 색으로 그려지는지는 `npm run qa:msg` 가 브라우저에서 계산된 값으로 본다.
+   */
+  {
+    has('파랑 변수', vars, '--c-msg-in: #4c8de0;');
+    has('파랑 글씨 변수', vars, '--c-msg-in-text: #8fc0ff;');
+    has('빨강 변수', vars, '--c-msg-out: #c6402e;');
+    has('빨강 글씨 변수', vars, '--c-msg-out-text: #ff9a8a;');
+    has('받음 줄 테두리', css, '.inbox-row.in { border-color: var(--c-msg-in); }');
+    has('보냄 줄 테두리', css, '.inbox-row.out { border-color: var(--c-msg-out); }');
+    has('받음 앞머리 색', css, '.inbox-row.in .inbox-dir { color: var(--c-msg-in-text); }');
+    has('보냄 앞머리 색', css, '.inbox-row.out .inbox-dir { color: var(--c-msg-out-text); }');
+    // 안 읽음 표시가 테두리를 도로 가져가면 색이 무엇을 뜻하는지 흐려진다
+    no('안 읽음이 테두리를 뺏지 않는다', css, '.inbox-row.unread { border-color');
+    has('안 읽음은 바탕으로', css, '.inbox-row.unread { background:');
+    // 보낸 줄을 흐리게 하던 것은 뺐다 — 빨강이 죽는다
+    no('보냄을 흐리게 하지 않는다', css, '.inbox-row.out { opacity');
+  }
+
+  // ④ 로비 도감 — 분모를 빼고, 다 모으면 배지
+  {
+    eq('분모 없는 문구', S4.myDexProgress(87), '신발도감 87켤레');
+    no('분모 잔재 없음', S4.myDexProgress(87), '/');
+    has('완성 배지 스타일', css, '.stat-done {');
+    const lb = code(read('src/screens/Lobby.js'));
+    has('완성일 때만 배지', lb, 'dexUnique() >= SHOE_TOTAL ? S.dexComplete : null');
   }
 }
 
