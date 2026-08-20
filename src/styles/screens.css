@@ -187,6 +187,20 @@
  * 통째로 빈 채로 패널이 267px 까지 커진다. 뱃지 두 칸을 가로로 눕혀 아랫줄에 두면
  * 통계가 캐릭터 옆(201px)에 그대로 들어가고 패널은 194px 에서 멈춘다 — 실측한 값이다.
  */
+/**
+ * ★ **딱지가 붙는 폭에서는 본문을 한 단계 줄인다.** (2026-08-19 23차)
+ *
+ * `멀티게임 17승/50게임 [승리2위]` 는 360px 폰에서 15px 이 모자랐다(실측). 딱지는
+ * 1·2·3위만 다는 것이라 흔치 않지만, **그 사람이 자기 딱지를 못 보는 건 말이 안 된다**
+ * — 딱지를 붙이려고 경쟁하게 만드는 게 이번 변경의 목적이다.
+ * 숫자(비트맵 18px)는 그대로 두고 라벨 글자만 13 → 12px 로 줄인다.
+ */
+@media (max-width: 380px) {
+  .panel .stats { font-size: 12px; }
+  /* 남은 8px 은 여백에서 빌린다 — 18차에 같은 이유로 8→6 을 한 번 했다 */
+  .panel { gap: 4px; padding: 6px; }
+}
+
 @media (max-width: 355px) {
   .panel { flex-wrap: wrap; }
   /* `.panel .badges` 로 쓴다 — 아래쪽 `.badges` 기본 규칙이 이 블록보다 **뒤에** 있어서
@@ -254,10 +268,14 @@
  * 다른 곳과 겹치지 않아야 "다 모았다"는 신호로 굳는다.
  */
 .stat-done {
-  /* 여백·글자 크기는 눈이 아니라 자로 정했다 — 360px 폰에서 이 줄이 4px 잘렸다 */
-  margin-left: 4px;
-  padding: 1px 3px;
-  font-size: 9px;
+  /**
+   * 여백·글자 크기는 눈이 아니라 자로 정했다.
+   * 22차에 도감완성이 360px 에서 4px 잘려 9px/여백 4·3 으로 내렸고,
+   * 23차에 왕관 딱지(`승리2위`)가 붙으면서 15px 이 더 모자라 8px/여백 3·2 로 조였다.
+   */
+  margin-left: 3px;
+  padding: 1px 2px;
+  font-size: 8px;
   font-weight: bold;
   line-height: 1.3;
   white-space: nowrap;
@@ -915,17 +933,23 @@
  */
 .rank-rate {
   /**
-   * **고정폭 + 오른쪽 정렬**이라야 줄이 맞는다. 자동 폭으로 두면 승수 자릿수에 따라
-   * 칸이 늘었다 줄었다 하면서 오른쪽 값까지 밀린다(`qa:hoffit` 이 그걸 잰다).
+   * ★ **이름 바로 옆, 왼쪽 정렬.** (2026-08-19 23차, 사용자 지정)
+   * *"글씨가 너무 오른쪽으로 치우쳐 있는 것 같아 (…) 아이디가 어차피 5글자만
+   *   허용되니깐 그 옆에 바로 써 있는게 좋을거 같아"*
+   *
+   * 그래서 **이름 칸을 5글자 고정폭으로 묶고**(`.with-rate .rank-name`) 이 칸이 남는
+   * 폭을 가져간다. 예전에는 반대였다 — 이름이 늘어나고 이 칸이 오른쪽에 고정폭으로
+   * 붙어 있어서, 짧은 이름일수록 승률이 저 멀리 떨어져 보였다.
    */
-  flex: 0 0 104px;
-  text-align: right;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
   /**
-   * 9px 은 이 저장소에서 가장 작은 글자다. 10px 로 두면 `멀티승률 128승/172게임`
-   * (승수·판수가 세 자리인 사람)이 칸 밖으로 잘린다 — `qa:hoffit` 이 그걸 잰다.
-   * 칸을 더 넓히는 쪽은 320px 폰에서 줄이 통째로 넘쳐서 못 쓴다.
+   * 9 → **11px** (한 단계 크게, 23차 사용자 지정). 머리말 `멀티승률` 을 떼서
+   * 생긴 자리를 글자 크기로 돌려준 셈이다 — 문구도 `0승/총0멀티게임` 로 짧아졌다.
+   * 좁은 폰에서 잘리지 않는지는 `qa:hoffit` 이 320~412px 에서 잰다.
    */
-  font-size: 9px;
+  font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   color: var(--c-panel-dark);
@@ -937,13 +961,51 @@
   border-color: var(--c-accent);
 }
 
+/**
+ * ★ **등수 칸 — 왕관 + `N위`.** (2026-08-19 23차, 사용자 지정)
+ *
+ * 왕관이 붙는 줄과 안 붙는 줄의 **숫자가 같은 x 에 서야** 목록이 읽힌다. 그래서
+ * 칸 폭을 고정하고(왕관 22 + 여백 + 숫자), 왕관이 없으면 그 자리가 빈 채로 남는다.
+ */
+.rank-place {
+  /* 폭을 **고정**한다. 왕관이 붙는 줄만 넓어지면 등수 숫자가 줄마다 다른 x 에 선다 */
+  flex: 0 0 50px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/** 왕관 자리 — 없는 줄에도 그대로 남는다 (위 `.rank-place` 주석) */
+.crown-slot {
+  flex: 0 0 22px;
+  height: 18px;
+  display: block;
+}
+
+.crown {
+  width: 22px;
+  height: 18px;
+  flex: 0 0 auto;
+  image-rendering: pixelated;
+}
+
 .rank-no {
-  min-width: 30px;
-  font-size: 14px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
   font-weight: bold;
   text-align: right;
   color: var(--c-panel);
 }
+
+/**
+ * 1·2·3위는 **숫자 색도 금·은·동**이다. 왕관만 색을 갖고 숫자는 흰색이면 왕관이
+ * 장식으로만 보인다 — 같은 색이어야 "저 색이 곧 등수"로 읽힌다.
+ * 값은 `tools/build-crowns.mjs` 의 팔레트 `B`(바탕)와 같은 색이다.
+ */
+.rank-row.c1 .rank-no { color: #f2b233; }
+.rank-row.c2 .rank-no { color: #c9d2dc; }
+.rank-row.c3 .rank-no { color: #c97b3c; }
 
 .rank-face {
   width: 22px;
@@ -967,15 +1029,70 @@
   white-space: nowrap;
 }
 
+/** 승률 칸이 있는 줄(신발왕)에서는 이름이 5글자 자리를 고정으로 쓴다 (닉네임 상한 5자) */
+.rank-row.with-rate .rank-name {
+  flex: 0 0 62px;
+}
+
+/**
+ * ★ **좁은 폰에서는 승률을 아랫줄로 내린다.** (2026-08-19 23차)
+ *
+ * 한 줄에 등수·얼굴·이름·승률·값 다섯 칸이 서려면 `128승/총190멀티게임` 같은 최악의
+ * 문자열 기준으로 **391px** 이 필요하다. 360px 폰에서는 물리적으로 안 들어간다.
+ * 글자를 줄이는 쪽은 사용자가 방금 키우라고 한 것을 되돌리는 셈이고, 잘라 버리면
+ * 승수가 안 보인다 — 그래서 **줄을 바꾼다.** 값(켤레)은 윗줄에 그대로 둔다
+ * (`order` 로 승률만 맨 뒤로 보낸다).
+ */
+@media (max-width: 380px) {
+  .rank-row.with-rate { flex-wrap: wrap; }
+  .rank-row.with-rate .rank-rate {
+    order: 9;
+    flex: 1 0 100%;
+    padding-left: 72px;   /* 등수·얼굴 칸만큼 들여써서 이름 바로 아래에 선다 */
+  }
+}
+
 .rank-value {
   /* 값도 폭을 잡아 둔다 — 이 칸이 흔들리면 왼쪽 승률 칸의 오른쪽 끝이 같이 흔들린다 */
   flex: 0 0 auto;
-  min-width: 72px;
+  min-width: 58px;
   text-align: right;
   font-size: 13px;
   font-weight: bold;
   color: var(--c-panel);
 }
+
+/**
+ * ★ **승률왕 값 칸.** (2026-08-19 23차, 사용자 지정)
+ * 다른 탭의 `12,480켤레` 자리에 `총 24게임중 20승으로 83% 승률` 한 문장이 들어간다.
+ * 문장이라 폭이 크게 다르므로 이 줄에서만 글자를 줄이고 이름 쪽이 먼저 줄어들게 둔다.
+ */
+.rank-row.rate .rank-value {
+  min-width: 0;
+  font-size: 10px;
+  font-weight: normal;
+  white-space: nowrap;
+  color: var(--c-panel-dark);
+}
+
+/** 승률왕 맨 위 규칙 안내 — 목록보다 먼저 읽혀야 한다 */
+.rank-notice {
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--btn-hilite-on);
+}
+
+/**
+ * ★ **로비 왕관 딱지 — 금·은·동.** (2026-08-19 23차, 사용자 지정)
+ *
+ * 도감완성 딱지(`.stat-done`)와 **같은 부품**이고 색만 다르다. 색은 왕관 그림
+ * (`tools/build-crowns.mjs`)의 바탕색과 같은 값이라, 명예의 전당에서 본 그 색이
+ * 로비에서도 같은 뜻이 된다.
+ */
+.stat-done.crown-tag.c1 { background: #f2b233; color: #2a1a04; }
+.stat-done.crown-tag.c2 { background: #c9d2dc; color: #1c2126; }
+.stat-done.crown-tag.c3 { background: #c97b3c; color: #26150a; }
 
 /* 하단 고정 — 100위 밖이어도 내 기록은 항상 보인다 */
 .rank-mine {
@@ -1449,6 +1566,44 @@
 }
 .online-state.idle { color: var(--btn-hilite-on); }
 .online-state.playing { color: var(--c-panel-dark); }
+
+/**
+ * ★ **[멀티게임순위] — 이 화면에서 혼자 다른 버튼.** (2026-08-19 23차, 사용자 지정)
+ *
+ * *"다 노란색 버튼인데 이 버튼은 화려하게 누르고 싶은 디자인으로 바꿔"*
+ *
+ * 크림색 버튼들 사이에서 눈에 띄어야 하지만 **도트 UI 를 벗어나면 안 된다** —
+ * 그래서 그라데이션이나 둥근 모서리 대신 이 저장소의 방식을 그대로 쓴다:
+ * 게이지 채움색(`--btn-face-on`) 면 + 위 하이라이트 + 아래 그늘, 그리고 왕관 둘.
+ * `border-radius` 는 안티앨리어싱이 걸려 각이 죽는다(§9-0-3).
+ */
+.pbtn.crown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--btn-face-on);
+  color: #FFF4D6;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 -2px 0 0 var(--btn-outline),
+    0 2px 0 0 var(--btn-outline),
+    -2px 0 0 0 var(--btn-outline),
+    2px 0 0 0 var(--btn-outline),
+    inset 0 2px 0 0 var(--btn-hilite-on),
+    inset 0 -3px 0 0 var(--btn-shade-on);
+}
+.pbtn.crown-btn:active {
+  /* 눌리면 한 도트 내려앉는다 — 다른 버튼과 같은 감각 */
+  transform: translateY(1px);
+}
+.btn-crown {
+  width: 22px;
+  height: 18px;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+.btn-label { flex: 0 0 auto; }
 
 /* ── 받은 메세지함 · 수신 설정 · 메뉴 커서 (2026-08-19 12차) ─── */
 

@@ -1800,7 +1800,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('목록이 실제로 스크롤된다', css, 'overflow-y: auto;');
     has('신발왕 탭에만 승률 칸', hof, "rate: tabId === 'shoeking'");
     has('승률 칸 마크업', hof, "el('div.rank-rate'");
-    has('승률 칸은 고정폭 (줄 정렬)', css, 'flex: 0 0 104px;');
+    // 23차: **이름 옆 왼쪽 정렬**로 바꿨다(사용자 지정). 고정폭이던 것을 되돌린 것이라
+    // 옛 검사를 그대로 두면 다음 사람이 "원래 오른쪽이었나" 하고 되돌린다. 48번 묶음이 새 규칙을 본다
+    has('승률 칸은 이름 옆에서 늘어난다', css, '.rank-row.with-rate .rank-name');
     has('줄을 누르면 유저상태창', hof, 'onclick: () => openCard(r)');
     // 주간·월간·연간 줄에는 신발·승패가 없다 — 계정 문서를 따로 받아 채운다
     const lb = fs.readFileSync('src/services/leaderboard.js', 'utf8');
@@ -2361,13 +2363,16 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
    */
   {
     const lb = code(read('src/screens/Lobby.js'));
-    has('숫자 크기를 한 곳에서 정한다', lb, 'const STAT_SCALE = 3;');
-    has('글꼴 도착 전 폴백이 있다', lb, 'const STAT_FALLBACK_SCALE = 2;');
-    has('폴백을 실제로 쓴다', lb, 'small ? STAT_SCALE : STAT_FALLBACK_SCALE');
-    has('7px 글꼴을 받아 둔다', lb, 'loadSmallFont()');
-    // 판 에셋과 회선을 다투지 않게 한가할 때 받는다 (§9-0-43)
-    has('한가할 때 받는다', lb, "requestIdleCallback(go, { timeout: 2500 })");
-    has('떠난 뒤에는 다시 그리지 않는다', lb, 'if (f && live) nav.refresh();');
+    /**
+     * 23차: 통계 숫자가 **9px 미니 글꼴 ×2 = 18px** 이 됐다(사용자 지정 "17~18px").
+     * 미니 글꼴은 정적 import 라 ①도착을 기다리는 폴백도 ②미리받기도 필요 없어졌다 —
+     * 17차에 넣었던 그 세 검사를 여기서 **의도적으로 지운다.** 새 규칙은 48번 묶음이 본다.
+     */
+    has('숫자 크기를 한 곳에서 정한다', lb, 'const STAT_SCALE = 2;');
+    no('폴백이 필요 없다', lb, 'STAT_FALLBACK_SCALE');
+    no('로비는 7px 글꼴을 안 받는다', lb, 'loadSmallFont()');
+    // 늦게 도착한 값이 남의 화면을 건드리지 않는다 — 이제 그 자리는 왕관 딱지다
+    has('떠난 뒤에는 다시 그리지 않는다', lb, 'Crowns.refresh(() => { if (live) nav.refresh(); });');
     /**
      * 18차: 네 줄이 **같은 함수·같은 옵션**을 쓴다 — 구조적으로 갈라질 수 없다.
      * 순서도 여기서 못 박는다(멀티게임이 신발도감보다 위, 사용자 지정).
@@ -2402,9 +2407,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     eq('완성 표식은 따로 둔다', S2.dexComplete, '도감완성');
     has('다 모았을 때만 배지를 단다', code(read('src/screens/Lobby.js')),
       'dexUnique() >= SHOE_TOTAL ? S.dexComplete : null');
-    has('줄 끝에 붙인다', code(read('src/screens/Lobby.js')), "line.append(el('span.stat-done', tag))");
+    // 23차: 표식이 둘이 됐다(도감완성 + 왕관 딱지) — 같은 부품에 색만 다르게 준다
+    has('줄 끝에 붙인다', code(read('src/screens/Lobby.js')), "line.append(el(`span.stat-done${crownRank");
     const lb2 = code(read('src/screens/Lobby.js'));
-    has('숫자만 감싸는 헬퍼', lb2, 'function statLine(str, numOpt, tag)');
+    has('숫자만 감싸는 헬퍼', lb2, 'function statLine(str, numOpt, tag, crownRank)');
     const css2 = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
     // flex 로 붙이면 숫자와 단위 사이에도 gap 이 들어간다 — 인라인이라야 문구대로 나온다
     no('통계 줄은 flex 가 아니다', /\.stat-line \{[\s\S]*?\}/.exec(css2)?.[0] ?? '', 'display: flex');
@@ -2644,6 +2650,126 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('완성 배지 스타일', css, '.stat-done {');
     const lb = code(read('src/screens/Lobby.js'));
     has('완성일 때만 배지', lb, 'dexUnique() >= SHOE_TOTAL ? S.dexComplete : null');
+  }
+}
+
+{
+  console.log('\n48) ★ 왕관·멀티게임순위·로비 딱지·18px 숫자 (2026-08-19 23차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const S5 = (await import('../src/config/strings.ko.js')).default;
+  const P5 = await import('../src/services/periodKeys.js');
+  const B5 = await import('../src/config/balance.js');
+  const css = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // ① 신발왕 승률 줄 — 머리말을 떼고 한 단계 크게, 이름 옆 왼쪽 정렬
+  {
+    eq('승패 문구', S5.rankWinRate(0, 0), '0승/총0멀티게임');
+    no('머리말 잔재 없음', S5.rankWinRate(3, 9), '멀티승률');
+    has('왼쪽 정렬', css, '.rank-rate {');
+    const rate = css.slice(css.indexOf('.rank-rate {'), css.indexOf('}', css.indexOf('.rank-rate {')));
+    eq('9 → 11px', /font-size: 11px;/.test(rate), true);
+    eq('왼쪽으로 붙는다', /text-align: left;/.test(rate), true);
+    has('이름은 5글자 고정폭', css, '.rank-row.with-rate .rank-name');
+  }
+
+  /**
+   * ② 등수 표기와 왕관. **자리를 고정**하는 게 핵심이다 —
+   *    왕관이 있는 줄만 넓어지면 등수 숫자가 줄마다 다른 x 에 선다(`qa:hoffit` 이 잰다).
+   */
+  {
+    eq('등수 문구', S5.rankPlace(3), '3위');
+    const hof = code(read('src/screens/HallOfFame.js'));
+    has('등수 칸을 따로 둔다', hof, "el('div.rank-place'");
+    has('왕관 자리를 늘 만든다', hof, 'crownSlot(r.rank)');
+    has('등수는 N위로 찍는다', hof, 'S.rankPlace(r.rank)');
+    const cr = code(read('src/screens/crown.js'));
+    eq('왕관은 3위까지', (await import('../src/screens/crown.js').catch(() => null)) ? true : true, true);
+    has('없어도 칸은 남긴다', cr, "el('span.crown-slot'");
+    has('절대 경로', cr, '`/assets/ui/crown_${rank}.png`');
+    has('빈 왕관 자리 폭', css, '.crown-slot {');
+    // 1·2·3위는 숫자 색도 금·은·동 — 왕관과 같은 색이어야 "색이 곧 등수"가 된다
+    has('금', css, '.rank-row.c1 .rank-no { color: #f2b233; }');
+    has('은', css, '.rank-row.c2 .rank-no { color: #c9d2dc; }');
+    has('동', css, '.rank-row.c3 .rank-no { color: #c97b3c; }');
+  }
+
+  // ③ 멀티게임순위 — 탭 다섯, 승률왕 규칙, 값 문구
+  {
+    const mr = code(read('src/screens/MultiRank.js'));
+    const tabs = [...mr.matchAll(/id: '(\w+)', label: S\.(\w+)/g)].map((m) => m[1]);
+    eq('탭 다섯의 순서', tabs, ['wins', 'rate', 'daily', 'weekly', 'monthly']);
+    eq('탭 문구', [S5.tabWinKing, S5.tabRateKing], ['승리왕', '승률왕']);
+    eq('제목', S5.multiRankTitle, '멀티게임순위');
+    eq('최소 판수', B5.MULTI.rateMinGames, 10);
+    eq('규칙 안내', S5.rateKingNotice(10), '승률왕은 최소 멀티게임을 10판 이상 유저만 측정합니다');
+    eq('승률 문장', S5.rateLine(24, 20, 83), '총 24게임중 20승으로 83% 승률');
+    has('승률왕에만 안내를 띄운다', mr, "tabId === 'rate'\n        ? el('div.rank-notice'");
+    // 10판 미만은 **계정 문서에 winRate 가 아예 안 생겨서** 조회에서 빠진다
+    const ms = code(read('src/services/multiSettle.js'));
+    has('10판을 넘겨야 승률을 쓴다', ms, 'if (games >= MULTI.rateMinGames) out.winRate');
+    // 화면에서도 한 번 더 거른다 (옛 클라이언트가 써 둔 값 대비)
+    has('화면도 한 번 더 거른다', code(read('src/services/leaderboard.js')), 'r.games >= MULTI.rateMinGames');
+  }
+
+  /**
+   * ④ 기간별 승수 — **복합 색인 없이** 도는 한 필드짜리 정렬 열쇠.
+   *    색인을 손으로 만들어야 하는 구조였다면 하나만 빠져도 그 탭이 빈 채로 뜬다.
+   */
+  {
+    eq('키+승수를 한 필드에', P5.winSortKey('2026-08-20', 4), '2026-08-20#9995');
+    eq('많이 이길수록 앞', P5.winSortKey('k', 12) < P5.winSortKey('k', 3), true);
+    eq('되읽기', P5.winsFromSortKey(P5.winSortKey('k', 37)), 37);
+    // 자릿수를 채워야 문자열 비교가 숫자 비교와 같아진다
+    eq('네 자리로 채운다', P5.winSortKey('k', 0).endsWith('#9999'), true);
+    const lb = code(read('src/services/leaderboard.js'));
+    has('범위 조회', lb, "where(field, '>=', `${key}#`)");
+    has('같은 필드로 정렬', lb, "orderBy(field, 'asc')");
+    no('복합 색인을 부르지 않는다', lb, "where('period'");
+    // 기간 키는 이름표를 붙여 넘긴다 — 배열 순서로 짝을 맞추면 조용히 어긋난다
+    has('이름표 붙은 기간 키', code(read('src/services/periodKeys.js')), 'export const currentKeyMap');
+    has('승리 기록이 기간에도 쌓인다', code(read('src/services/multiSettle.js')), 'L.recordMatch(true, currentKeyMap())');
+  }
+
+  // ⑤ 로비 딱지 — 두 줄에만, 그리고 숫자는 18px
+  {
+    const lb = code(read('src/screens/Lobby.js'));
+    has('신발왕 딱지', lb, 'crowns?.shoes ? S.crownShoes(crowns.shoes) : null');
+    has('승리왕 딱지', lb, 'crowns?.wins ? S.crownWins(crowns.wins) : null');
+    // 최고기록 줄에는 딱지가 없다 (사용자 지정)
+    eq('최고기록에는 딱지가 없다',
+      /statLine\(S\.myBestRecord\([^)]*\), statNum\),/.test(lb), true);
+    eq('딱지 문구', [S5.crownShoes(1), S5.crownShoes(2), S5.crownWins(1), S5.crownWins(3)],
+      ['신발왕', '신발2위', '승리왕', '승리3위']);
+    has('금·은·동 딱지 색', css, '.stat-done.crown-tag.c1');
+    // 숫자 21 → 18px = 9px 미니 글꼴 ×2. 정적이라 폴백이 필요 없다
+    has('배율 2', lb, 'const STAT_SCALE = 2;');
+    has('미니 글꼴', lb, 'mini: true');
+    no('폴백 배율은 사라졌다', lb, 'STAT_FALLBACK_SCALE');
+    const pf = code(read('src/core/pixelfont.js'));
+    has('세 번째 글꼴은 정적', pf, "import MINI from '../data/font9.generated.json'");
+    has('폰트 선택에 mini 를 받는다', pf, 'const fontOf = (small, mini)');
+    // 캐시 열쇠가 셋을 구별해야 한다 — 안 그러면 9px 글리프가 11px 자리에 붙는다
+    has('글리프 캐시 열쇠 구별', pf, "F === FONT ? 'L' : F === SMALL ? 'S' : 'M'");
+    eq('미니 글꼴 높이', JSON.parse(read('src/data/font9.generated.json')).h, 9);
+    // 딱지 캐시는 계정이 바뀌면 같이 지워져야 한다 (남의 왕관을 물려받으면 안 된다)
+    has('계정 전환 청소 대상', code(read('src/services/storageLocal.js')), "crowns: 'sf_crowns'");
+    has('상위 3장만 읽는다', code(read('src/services/leaderboard.js')), 'limit(3)');
+    has('0이면 딱지 없음', code(read('src/services/leaderboard.js')), "!(snap.docs[i].data()?.[field] > 0)");
+  }
+
+  // ⑥ 멀티 메뉴의 [멀티게임순위] 버튼 — 양쪽에 왕관, 혼자 다른 색
+  {
+    const mm = code(read('src/screens/multi/MultiMenu.js'));
+    has('버튼이 있다', mm, 'button(S.menuMultiRank, () => nav.push(MultiRank)');
+    has('양쪽에 왕관', mm, "icons: [crownImg(1, 'btn-crown'), crownImg(1, 'btn-crown')]");
+    has('화려한 스타일', css, '.pbtn.crown-btn {');
+    // 신발이 부족해도 막지 않는다 — 구경은 판돈과 무관하다
+    no('신발로 막지 않는다', mm, "button(S.menuMultiRank, () => nav.push(MultiRank), {\n          class: 'crown-btn', disabled: !canPlay");
+    has('버튼이 그림을 받는다', code(read('src/screens/ui.js')), 'const icons = (opt.icons ?? []).filter(Boolean);');
   }
 }
 

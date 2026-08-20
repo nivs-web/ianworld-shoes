@@ -31,7 +31,8 @@ import { getStore, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { LEADERBOARD } from '../config/balance.js';
-import { PERIODS, PERIOD_BY_TAB, DIFFICULTIES, scoreDocId, currentKeys } from './periodKeys.js';
+import { PERIODS, PERIOD_BY_TAB, DIFFICULTIES, scoreDocId, currentKeys, currentKeyMap, winsFromSortKey } from './periodKeys.js';
+import { MULTI } from '../config/balance.js';
 
 export { dayKey, weekKey, monthKey, PERIODS, DIFFICULTIES, scoreDocId } from './periodKeys.js';
 
@@ -337,5 +338,152 @@ export async function fetchUserCard(uid) {
       // 유저상태창 맨 아래 줄 (2026-08-19 12차)
       lastLoginAt: v.lastLoginAt ?? 0,
     };
+  } catch { return null; }
+}
+
+// ─────────────────────────────────────────────
+// 멀티게임순위 (2026-08-19 23차)
+// ─────────────────────────────────────────────
+
+/**
+ * 멀티게임순위 다섯 탭. 명예의 전당과 **같은 뼈대**를 쓰되 보는 값이 다르다.
+ *
+ *   승리왕  `multiWins`  내림차순
+ *   승률왕  `winRate`    내림차순 — **10판 미만은 그 필드가 아예 없어서 빠진다**
+ *   오늘·주간·월간  `mwDy`·`mwWk`·`mwMo` (= `"기간키#뒤집은승수"`) 범위 조회
+ *
+ * ## 복합 색인을 하나도 안 쓴다
+ *
+ * `where(기간키) + orderBy(승수)` 로 짰다면 복합 색인 3개를 콘솔에서 손으로 만들어야
+ * 하고, 하나라도 빠지면 그 탭이 **빈 채로** 뜬다(원인이 화면에 안 보인다). 기간 키와
+ * 승수를 한 필드에 담아 **같은 필드로 범위 조회 + 정렬**하면 Firestore 가 모든 필드에
+ * 자동으로 만들어 두는 단일 색인만으로 끝난다 — 콘솔 작업이 없다는 뜻이다.
+ *
+ * @param {'wins'|'rate'|'daily'|'weekly'|'monthly'} tab
+ */
+export async function fetchMultiBoard(tab) {
+  if (!configured()) return fail('offline');
+  if (!currentUser()) return fail('auth');
+  const fb = await getStore();
+  if (!fb) return fail('offline');
+  const { collection, query, orderBy, where, limit, getDocs } = fb.storeMod;
+  const top = LEADERBOARD.topN;
+
+  const base = (v, uid) => ({
+    uid,
+    nickname: v.nickname ?? '',
+    characterId: v.selectedCharacter ?? '',
+    multiWins: v.multiWins ?? 0,
+    multiLosses: v.multiLosses ?? 0,
+    shoesOwned: v.shoesOwned ?? 0,
+  });
+
+  try {
+    let rows;
+    if (tab === 'wins' || tab === 'rate') {
+      const field = tab === 'wins' ? 'multiWins' : 'winRate';
+      const snap = await withTimeout(getDocs(
+        query(collection(fb.db, 'users'), orderBy(field, 'desc'), limit(top))
+      ), undefined, '멀티 순위 조회');
+      if (offline(snap)) return fail('offline');
+      rows = snap.docs.map((d) => {
+        const v = d.data();
+        const wins = v.multiWins ?? 0;
+        const games = wins + (v.multiLosses ?? 0);
+        return { ...base(v, d.id), value: tab === 'wins' ? wins : (v.winRate ?? 0), games };
+      });
+      /**
+       * 승률왕은 **10판 미만을 한 번 더 거른다.** 규칙상 그런 문서에는 `winRate` 가
+       * 없으므로 원래 안 걸리지만, 옛 클라이언트가 써 둔 값이 남아 있을 수 있다 —
+       * 화면이 그걸 그대로 믿으면 1승 0패가 100% 로 1위가 된다.
+       */
+      if (tab === 'rate') rows = rows.filter((r) => r.games >= MULTI.rateMinGames);
+    } else {
+      const field = { daily: 'mwDy', weekly: 'mwWk', monthly: 'mwMo' }[tab];
+      const key = currentKeyMap()[{ daily: 'dy', weekly: 'wk', monthly: 'mo' }[tab]];
+      const snap = await withTimeout(getDocs(
+        query(
+          collection(fb.db, 'users'),
+          // `키#` 로 시작하는 것만 — `#`(0x23) 다음 글자가 `$`(0x24) 라 딱 그 구간이다
+          where(field, '>=', `${key}#`),
+          where(field, '<', `${key}$`),
+          orderBy(field, 'asc'),
+          limit(top)
+        )
+      ), undefined, '멀티 순위 조회');
+      if (offline(snap)) return fail('offline');
+      rows = snap.docs
+        .map((d) => {
+          const v = d.data();
+          return { ...base(v, d.id), value: v[`${field}N`] ?? winsFromSortKey(v[field]) };
+        })
+        // 0승은 순위표에 올릴 게 없다 (진 판만 있으면 칸이 0으로 남는다)
+        .filter((r) => r.value > 0);
+    }
+
+    rows.forEach((r, i) => { r.rank = i + 1; });
+
+    const u = currentUser();
+    const mine = rows.find((r) => r.uid === u?.uid);
+    return {
+      rows,
+      me: mine ?? null,
+      error: null,
+      // 내 줄은 로컬 프로필에 다 있다 — 조회를 한 번 더 할 이유가 없다
+      mePromise: mine || !u ? null : Promise.resolve(myMultiRow(tab, u)),
+    };
+  } catch (e) {
+    console.warn('[멀티순위] 조회 실패', e?.code, e);
+    return fail(e?.code === 'permission-denied' ? 'auth' : 'failed');
+  }
+}
+
+/** 순위표에 못 든 나 — 값은 전부 로컬 프로필에 있다 */
+function myMultiRow(tab, u) {
+  const p = L.loadProfile();
+  const wins = p.multiWins ?? 0;
+  const games = wins + (p.multiLosses ?? 0);
+  const base = {
+    uid: u.uid, nickname: p.nickname ?? '', characterId: p.selectedCharacter ?? '', rank: null,
+    multiWins: wins, multiLosses: p.multiLosses ?? 0, shoesOwned: p.shoesOwned ?? 0, games,
+  };
+  if (tab === 'wins') return { ...base, value: wins };
+  if (tab === 'rate') {
+    // 10판 미만이면 순위 자체가 없다 — 0% 라고 쓰면 "내 승률이 0" 이라는 거짓말이 된다
+    return { ...base, value: games >= MULTI.rateMinGames ? Math.round((wins / games) * 10000) : null };
+  }
+  const field = { daily: 'dy', weekly: 'wk', monthly: 'mo' }[tab];
+  return { ...base, value: L.periodWins(field, currentKeyMap()[field]) };
+}
+
+/**
+ * ★ **내가 1·2·3위인가.** (2026-08-19 23차, 사용자 지정 — 로비 딱지)
+ *
+ * *"만약 신발왕이면 보유신발에 [신발왕] 딱지가 (…) 딱지 붙이고 싶은 사람은 경쟁하게끔"*
+ *
+ * 상위 3장만 읽는다. 내 순위를 정확히 알 필요가 없다 — 4위부터는 딱지가 없으므로
+ * **거기 있느냐 없느냐**만 보면 된다. 두 탭(신발왕·승리왕)을 합쳐 문서 6장이다.
+ *
+ * @returns {Promise<{shoes:number, wins:number}|null>} 1·2·3 또는 0(딱지 없음)
+ */
+export async function fetchMyCrowns() {
+  const u = currentUser();
+  if (!configured() || !u || u.guest) return null;
+  const fb = await getStore();
+  if (!fb) return null;
+  const { collection, query, orderBy, limit, getDocs } = fb.storeMod;
+
+  const rankIn = async (field) => {
+    const snap = await withTimeout(getDocs(
+      query(collection(fb.db, 'users'), orderBy(field, 'desc'), limit(3))
+    ), undefined, '왕관 확인');
+    const i = snap.docs.findIndex((d) => d.id === u.uid);
+    // 값이 0이면 딱지를 주지 않는다 — 아무도 안 한 항목의 1위는 1위가 아니다
+    return i < 0 || !(snap.docs[i].data()?.[field] > 0) ? 0 : i + 1;
+  };
+
+  try {
+    const [shoes, wins] = await Promise.all([rankIn('shoesOwned'), rankIn('multiWins')]);
+    return { shoes, wins };
   } catch { return null; }
 }

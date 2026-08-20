@@ -1,0 +1,32 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>멀티게임순위 (진단 전용)</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<!--
+  ★ 데이터 계층만 대역으로 갈아 끼우고 **화면은 진짜 `HallOfFame.js`** 를 그대로 쓴다.
+    import map 은 해석된 URL 에도 적용되므로 상대 경로 import 가 그대로 걸린다.
+-->
+<script type="importmap">
+{ "imports": { "/src/services/leaderboard.js": "/tools/_mrank-stub.js" } }
+</script>
+</head>
+<body class="ui-mode">
+<div id="ui" class="active"></div>
+<script type="module">
+import MultiRank from '/src/screens/MultiRank.js';
+
+localStorage.setItem('sf_profile', JSON.stringify({
+  nickname: '이안', uid: 'me', selectedCharacter: 'ian',
+  unlockedCharacters: ['ian'], difficulty: 'easy', controlMode: 1,
+  walletVersion: 1, shoesByIndex: {},
+}));
+
+const root = document.getElementById('ui');
+const nav = { push() {}, back() {}, replace() {}, reset() {}, refresh() { draw(); }, depth: () => 1 };
+const inst = MultiRank(nav);
+function draw() { root.innerHTML = ''; root.append(inst.render(nav)); }
+draw();
+// 목록은 비동기로 온다 — 한 박자 뒤에 다시 그려진다
+setTimeout(() => { window.__ready = true; }, 400);
+</script></body></html>

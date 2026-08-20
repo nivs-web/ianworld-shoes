@@ -90,3 +90,34 @@ export const scoreDocId = (uid, difficulty, key) => `${uid}_${difficulty}_${key}
 
 /** 지금 살아 있는 기간 키들 — 로컬 캐시를 솎아 낼 때 쓴다 */
 export const currentKeys = (when = new Date()) => PERIODS.map((p) => p.keyOf(when));
+
+/**
+ * 지금 기간 키를 **필드 이름표를 붙여** 돌려준다 — `{ dy, wk, mo }`.
+ * (2026-08-19 23차, 멀티게임순위의 기간별 승수)
+ *
+ * `currentKeys` 와 달리 순서에 기대지 않는다. 배열 순서로 짝을 맞추면 `PERIODS` 에
+ * 한 줄만 끼워 넣어도 **엉뚱한 기간에 승수가 쌓인다** — 그 종류의 버그는 다음 주가
+ * 되어서야 드러난다.
+ */
+export const currentKeyMap = (when = new Date()) =>
+  Object.fromEntries(PERIODS.map((p) => [p.field, p.keyOf(when)]));
+
+/**
+ * 기간 순위표용 정렬 열쇠 — `"2026-08-20#9996"` (승수 4).
+ *
+ * ★ **복합 색인을 안 쓰려고 이렇게 한다.** `where(키) + orderBy(승수)` 는 Firestore 에서
+ * 복합 색인을 요구하는데, 그건 콘솔에서 손으로 만들어야 하고 없으면 그 탭이 통째로
+ * 빈 채로 뜬다. 키와 승수를 **한 필드에 담으면** 범위 조회 + 같은 필드 정렬이 되어
+ * **자동 단일 필드 색인만으로** 돌아간다.
+ *
+ * 승수는 `9999 - n` 으로 뒤집어 넣는다 — 오름차순 정렬이 곧 '많이 이긴 순'이 된다.
+ * 네 자리로 채워야 문자열 비교가 숫자 비교와 같아진다(`999` < `99` 같은 사고 방지).
+ */
+export const winSortKey = (key, wins) =>
+  `${key}#${String(Math.max(0, 9999 - Math.min(9999, wins | 0))).padStart(4, '0')}`;
+
+/** 위 열쇠에서 승수를 되읽는다 */
+export const winsFromSortKey = (s) => {
+  const n = Number(String(s ?? '').split('#')[1]);
+  return Number.isFinite(n) ? 9999 - n : 0;
+};

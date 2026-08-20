@@ -25,6 +25,7 @@ import * as Room from './multiplayer.js';
 import { currentUser } from './auth.js';
 import { patch } from './profile.js';
 import { pickPenaltyShoes, owedBy, outOfRound, foundShoesTotal, foundOf, rollFoundShoe } from './matchRules.js';
+import { currentKeyMap, winSortKey } from './periodKeys.js';
 import { MULTI } from '../config/balance.js';
 
 /**
@@ -64,7 +65,46 @@ function pushWallet() {
     shoesByIndex: p.shoesByIndex,
     multiWins: p.multiWins ?? 0,
     multiLosses: p.multiLosses ?? 0,
+    ...multiRankFields(p),
   });
+}
+
+/**
+ * ★ **멀티게임순위가 읽는 칸.** (2026-08-19 23차)
+ *
+ * 순위표는 집계 서버 없이 `users` 를 바로 정렬한다(§9-0-4). 그래서 **정렬에 쓸 값을
+ * 미리 계산해 계정 문서에 적어 둔다.**
+ *
+ *   승리왕   `multiWins`  — 이미 있던 값
+ *   승률왕   `winRate`    — 만분율(8333 = 83.33%)
+ *   오늘·주간·월간  `mwDy`·`mwWk`·`mwMo` = `"기간키#뒤집은승수"` + 표시용 숫자
+ *
+ * `winRate` 는 **10판을 넘겼을 때만 쓴다**(사용자 지정: *"최소 멀티게임을 10판 이상
+ * 유저만 측정합니다"*). 없는 필드는 색인에 안 실리므로 **10판 미만은 조회에서 저절로
+ * 빠진다** — 화면에서 거르는 것과 달리, 이건 조작한 클라이언트도 못 뚫는다.
+ * (§9-0-5 에서 기간 필드를 하나만 넣은 것과 같은 수법이다)
+ */
+function multiRankFields(p) {
+  const wins = p.multiWins ?? 0;
+  const games = wins + (p.multiLosses ?? 0);
+  const keys = currentKeyMap();
+  const out = { multiGames: games };
+  /**
+   * 순위표 줄에 얼굴·이름을 실으려면 계정 문서에 그 값이 있어야 한다.
+   * ★ **빈 값은 올리지 않는다** — 빈 닉네임을 밀어 올리면 서버의 멀쩡한 이름을 지우고,
+   * 그 계정은 순위표에서 `???` 가 된다(§9-0-11 에서 실제로 그렇게 박제됐다).
+   */
+  if (p.nickname) out.nickname = p.nickname;
+  if (p.selectedCharacter) out.selectedCharacter = p.selectedCharacter;
+  if (games >= MULTI.rateMinGames) out.winRate = Math.round((wins / games) * 10000);
+  for (const [field, key] of Object.entries(keys)) {
+    const cur = p.multiPeriodWins?.[field];
+    const n = cur && cur.k === key ? (cur.n ?? 0) : 0;
+    const name = 'mw' + field[0].toUpperCase() + field.slice(1);
+    out[name] = winSortKey(key, n);
+    out[`${name}N`] = n;
+  }
+  return out;
 }
 
 /**
@@ -81,8 +121,11 @@ function pushWallet() {
  */
 function markWin(code, r) {
   if (L.isSettled(payTag(code, r))) return;
-  L.recordMatch(true);
+  // 기간 키는 여기서 계산해 넘긴다 — 저장소는 날짜를 모른다 (recordMatch 주석)
+  L.recordMatch(true, currentKeyMap());
   L.markSettled(payTag(code, r));
+  // 이겼으면 순위 칸이 바뀐다. 신발이 안 오간 판(예: 판돈 0)에서도 올라가야 한다
+  pushWallet();
 }
 
 /**
@@ -200,7 +243,7 @@ async function settleOnce(code, room = null) {
         paid = [];
         pending++;                       // 다음 접속에 다시 낸다 — 기록을 지우면 안 된다
       } else if (!L.isSettled(payTag(code, r))) {
-        L.recordMatch(false);
+        L.recordMatch(false, currentKeyMap());
         L.markSettled(payTag(code, r));
       }
     } else {

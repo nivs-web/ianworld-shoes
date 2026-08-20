@@ -12,6 +12,18 @@
 
 import { getCtx, createBuffer } from './canvas.js';
 import FONT from '../data/font.generated.json';
+/**
+ * ★ **세 번째 폰트 — 갈무리9, 숫자만.** (2026-08-19 23차)
+ *
+ * 로비 통계 줄의 숫자를 **18px** 로 그리기 위한 것이다(사용자 지정 "17~18px").
+ * 11px·7px 두 벌로 만들 수 있는 크기는 11·14·21·22·28·33 여섯 칸뿐이라 그 사이가 없었다.
+ * 9 × 2 = 18 이 정확히 그 자리다.
+ *
+ * 숫자·기호 18자만 굽는다 — **1KB 미만이라 정적 import 로 들어간다.** 7px 폰트처럼
+ * 비동기로 받으면 도착 전 폴백이 필요하고, 그 폴백이 로비를 한 번 출렁이게 만든다.
+ * 인게임은 이 폰트를 쓰지 않는다(한글이 없다).
+ */
+import MINI from '../data/font9.generated.json';
 
 /** 글리프 상자 높이 (베이스라인 포함) */
 export const GLYPH_H = FONT.h;
@@ -51,11 +63,14 @@ export function loadSmallFont() {
 /** 작은 폰트가 준비됐나 (레이아웃을 미리 재는 곳에서 본다) */
 export const smallReady = () => !!SMALL;
 
-/** 이 옵션이 실제로 쓸 폰트 */
-const fontOf = (small) => (small && SMALL ? SMALL : FONT);
+/**
+ * 이 옵션이 실제로 쓸 폰트.
+ * `mini` 가 우선한다 — 정적이라 항상 준비돼 있고, 부르는 쪽이 숫자만 넘긴다.
+ */
+const fontOf = (small, mini) => (mini ? MINI : (small && SMALL ? SMALL : FONT));
 
 /** 그 폰트의 글리프 높이 — 줄 간격 계산에 쓴다 */
-export const glyphH = (small) => fontOf(small).h;
+export const glyphH = (small, mini) => fontOf(small, mini).h;
 
 const MISSING = FONT.glyphs['?'];
 
@@ -69,8 +84,8 @@ function glyph(ch, F = FONT) {
  * @param {number} [scale]
  * @param {boolean} [mono] 숫자 고정폭 (스코어처럼 자릿수가 바뀌어도 흔들리면 안 되는 곳)
  */
-export function measure(str, scale = 1, mono = false, small = false) {
-  const F = fontOf(small);
+export function measure(str, scale = 1, mono = false, small = false, mini = false) {
+  const F = fontOf(small, mini);
   const s = String(str).toUpperCase();
   if (!s.length) return 0;
   const digitW = F.glyphs['0'].w;
@@ -99,11 +114,11 @@ export function text(str, x, y, opt = {}) {
   const color = opt.color ?? '#ffffff';
   const up = String(str).toUpperCase();
   const mono = !!opt.mono;
-  const F = fontOf(opt.small);
+  const F = fontOf(opt.small, opt.mini);
 
   let ox = Math.floor(x);
   const oy = Math.floor(y);
-  const w = measure(up, s, mono, opt.small);
+  const w = measure(up, s, mono, opt.small, opt.mini);
   if (opt.align === 'center') ox -= w >> 1;
   else if (opt.align === 'right') ox -= w;
 
@@ -180,9 +195,11 @@ export const GLYPH_CACHE_MAX = 320;
 /** 진단용 — 캐시가 상한에 붙으면 매 프레임 버리고 다시 굽는다(캐시가 손해가 된다) */
 export const glyphCacheSize = () => glyphCache.size;
 
-function cachedGlyph(ch, s, color, outline, shadow, mono, small) {
-  const F = fontOf(small);
-  const key = `${ch}|${s}|${color}|${outline ?? ''}|${shadow ?? ''}|${mono ? 1 : 0}|${F === FONT ? 'L' : 'S'}`;
+function cachedGlyph(ch, s, color, outline, shadow, mono, small, mini) {
+  const F = fontOf(small, mini);
+  // 폰트가 셋이 됐으므로 열쇠도 셋을 구별해야 한다 — 안 그러면 9px 글리프가 11px 자리에 붙는다
+  const fid = F === FONT ? 'L' : F === SMALL ? 'S' : 'M';
+  const key = `${ch}|${s}|${color}|${outline ?? ''}|${shadow ?? ''}|${mono ? 1 : 0}|${fid}`;
   const hit = glyphCache.get(key);
   if (hit) return hit;
 
@@ -190,7 +207,7 @@ function cachedGlyph(ch, s, color, outline, shadow, mono, small) {
   // 외곽선은 사방으로 1도트(=s픽셀) 삐져나온다 — 그만큼 여백을 준다
   const pad = outline || shadow ? s : 0;
   const buf = createBuffer(cell * s + pad * 2, F.h * s + pad * 2);
-  text(ch, pad, pad, { color, outline, shadow, scale: s, mono, small, ctx: buf.ctx });
+  text(ch, pad, pad, { color, outline, shadow, scale: s, mono, small, mini, ctx: buf.ctx });
 
   const entry = { canvas: buf.canvas, pad, advance: (cell + F.tracking) * s };
   // 오래된 것부터 버린다 (Map 은 넣은 순서를 지킨다)
@@ -211,14 +228,14 @@ export function textCached(str, x, y, opt = {}) {
   const color = opt.color ?? '#ffffff';
 
   let ox = Math.floor(x);
-  const w = measure(up, s, mono, opt.small);
+  const w = measure(up, s, mono, opt.small, opt.mini);
   if (opt.align === 'center') ox -= w >> 1;
   else if (opt.align === 'right') ox -= w;
 
   const ctx = opt.ctx ?? getCtx();
   const oy = Math.floor(y);
   for (const ch of up) {
-    const g = cachedGlyph(ch, s, color, opt.outline, opt.shadow, mono, opt.small);
+    const g = cachedGlyph(ch, s, color, opt.outline, opt.shadow, mono, opt.small, opt.mini);
     ctx.drawImage(g.canvas, ox - g.pad, oy - g.pad);
     ox += g.advance;
   }

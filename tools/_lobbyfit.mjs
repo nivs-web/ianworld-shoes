@@ -107,11 +107,12 @@ for (const w of [320, 360, 390, 412]) {
   ];
   const txtOk = r.lines.length === 4 && WANT.every((re, i) => re.test(r.lines[i].txt));
   /**
-   * 네 줄의 숫자가 **전부 같은 높이**여야 한다. 값은 **21** — 7px 글꼴 ×3 이고
+   * 네 줄의 숫자가 **전부 같은 높이**여야 한다. 값은 **18** — 9px 미니 글꼴 ×2 다
+   * (23차 사용자 지정 "17~18px". 그 전에는 7px×3 = 21 이었다).
    * 외곽선을 안 쓰므로 여백이 0이다(18차: 외곽선 여백이 곧 가짜 띄어쓰기였다).
    */
   const sizes = [...new Set(r.lines.flatMap((l) => l.numH.split(',')))];
-  const sameSize = sizes.length === 1 && sizes[0] === '21';
+  const sameSize = sizes.length === 1 && sizes[0] === '18';
   /** 줄 간격이 전부 같은가 — 사용자 지정 "모든 줄 간격이 똑같게" */
   const steps = r.lines.slice(1).map((l, i) => l.top - r.lines[i].top);
   const evenRows = new Set(steps).size === 1;
@@ -163,6 +164,39 @@ for (const w of [320, 360, 390, 412]) {
     if (!doneOk) bad++;
     console.log(`         도감완성 → "${d.txt}" 잘림=${d.cut}px 넘침=${d.overflow} ${doneOk ? '✅' : '❌'}`);
     if (w === 390) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel_dexdone.png' });
+  }
+
+  /**
+   * ★ **왕관 딱지가 붙은 상태도 재 본다.** (2026-08-19 23차)
+   * 숫자를 21 → 18px 로 줄인 이유가 이 딱지 자리를 만들기 위해서다 — 딱지가 없는
+   * 상태만 재면 정작 좁아지는 경우를 못 본다(22차의 도감완성에서 이미 한 번 데였다).
+   */
+  {
+    await p.evaluate(() => localStorage.setItem('sf_crowns',
+      JSON.stringify({ shoes: 1, wins: 2, at: Date.now() })));
+    await p.reload(); await sleep(1600);
+    await p.evaluate(() => window.__dbg?.nav?.reset(window.__dbg.screens.Lobby));
+    await sleep(500);
+    const c = await p.evaluate(() => {
+      const lines = [...document.querySelectorAll('.panel .stats .stat-line')];
+      const txt = (n) => [...n.childNodes].map((k) => (k.nodeType === 3 ? k.textContent
+        : (k.dataset?.text ?? k.textContent))).join('');
+      return {
+        tags: lines.map((l) => l.querySelector('.stat-done')?.textContent ?? ''),
+        cut: lines.map((l) => l.scrollWidth - l.clientWidth),
+        lines: lines.map(txt),
+        overflow: document.querySelector('.panel').scrollWidth - document.querySelector('.panel').clientWidth,
+      };
+    });
+    // 딱지는 **보유신발(2번째)·멀티게임(3번째)** 두 줄에만. 최고기록에는 없다(사용자 지정)
+    // 이 시점의 도감은 바로 위 단계에서 130종을 채워 뒀다 — 그 딱지도 그대로 있어야 한다
+    const want = ['', '신발왕', '승리2위', '도감완성'];
+    const tagOk = JSON.stringify(c.tags) === JSON.stringify(want);
+    const fitOk = c.cut.every((x) => x <= 0) && c.overflow <= 0;
+    if (!tagOk || !fitOk) bad++;
+    console.log(`         왕관딱지 → [${c.tags.join('|')}] 잘림=[${c.cut.join(',')}] 넘침=${c.overflow} ${tagOk && fitOk ? '✅' : '❌'}`);
+    if (w === 390) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel_crown.png' });
+    await p.evaluate(() => localStorage.removeItem('sf_crowns'));
   }
 
   if (w === 390) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel.png' });

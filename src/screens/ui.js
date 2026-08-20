@@ -56,13 +56,18 @@ export function el(tag, props, children) {
  * 픽셀 버튼. 클릭음이 자동으로 붙는다 — 화면마다 따로 부르면 빠뜨린다.
  * @param {string} label
  * @param {() => void} onClick
- * @param {{primary?:boolean, disabled?:boolean, sfx?:string, class?:string}} [opt]
+ * @param {{primary?:boolean, disabled?:boolean, sfx?:string, class?:string,
+ *           icons?:Array<Node|null>}} [opt]
+ *   `icons` 는 글자 **양옆**에 놓을 그림 둘 (2026-08-19 23차 — [멀티게임순위] 의 왕관).
+ *   버튼마다 마크업을 따로 짜지 않으려고 여기 한 곳에서만 만든다.
  */
 export function button(label, onClick, opt = {}) {
   const cls = ['pbtn', opt.primary && 'primary', opt.class].filter(Boolean).join(' ');
-  return el('button', {
+  const icons = (opt.icons ?? []).filter(Boolean);
+  const node = el('button', {
     class: cls,
-    text: label,
+    // 그림이 있으면 글자를 span 으로 감싼다 — textContent 를 쓰면 그림이 지워진다
+    text: icons.length ? undefined : label,
     disabled: !!opt.disabled,
     type: 'button',
     onclick: (e) => {
@@ -71,6 +76,10 @@ export function button(label, onClick, opt = {}) {
       onClick(e);
     },
   });
+  if (icons.length) {
+    node.append(icons[0], el('span.btn-label', label), icons[1] ?? icons[0].cloneNode(true));
+  }
+  return node;
 }
 
 /** 뒤로 가기 버튼 — 소리만 다르다 */

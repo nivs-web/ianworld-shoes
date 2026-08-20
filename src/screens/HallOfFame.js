@@ -15,6 +15,7 @@ import { get as getProfile } from '../services/profile.js';
 import { rankWindow } from '../services/rankWindow.js';
 import { fetchBoard } from '../services/leaderboard.js';
 import { characterSprite, characterById } from '../data/characters.js';
+import { crownSlot, hasCrown } from './crown.js';
 import { fetchUserCard } from '../services/leaderboard.js';
 import { openUserCard } from './UserCard.js';
 
@@ -131,11 +132,23 @@ export default function HallOfFame(nav) {
   function row(r, opt = {}) {
     const ch = characterById(r.characterId);
     const games = (r.multiWins ?? 0) + (r.multiLosses ?? 0);
-    return el('div.rank-row', { class: opt.me ? 'me' : '', onclick: () => openCard(r) }, [
-      el('div.rank-no', r.rank === null ? '-' : String(r.rank)),
+    return el('div.rank-row', {
+      class: [opt.me ? 'me' : '', opt.rate ? 'with-rate' : '', hasCrown(r.rank) ? `crowned c${r.rank}` : ''].filter(Boolean).join(' '),
+      onclick: () => openCard(r),
+    }, [
+      /**
+       * ★ **등수 칸 — 왕관 + `N위`.** (2026-08-19 23차, 사용자 지정)
+       * 1·2·3위에만 금·은·동 왕관이 붙는다. 내 순위 줄(하단 고정)도 **같은 함수**를
+       * 지나므로 내가 3위 안에 들면 거기에도 왕관이 뜬다 — 따로 만들지 않는다.
+       */
+      el('div.rank-place', null, [
+        crownSlot(r.rank),
+        el('span.rank-no', r.rank === null ? '-' : S.rankPlace(r.rank)),
+      ]),
       ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko, loading: 'lazy', decoding: 'async' })
          : el('div.rank-face'),
       el('div.rank-name', r.nickname || '???'),
+
       /**
        * ★ **신발왕 탭에만** 멀티 승률 칸. (2026-08-19 11차, 사용자 지정)
        * 고정폭 칸이라 이름 길이와 무관하게 세로로 줄이 맞는다 — *"줄 정렬해서 써줘"*.

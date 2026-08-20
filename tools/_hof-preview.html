@@ -26,11 +26,22 @@ const rows = [
   { rank: 11, nickname: '아빠게임왕', characterId: 'tony', value: 146, multiWins: 12, multiLosses: 34, me: true },
 ];
 
+/**
+ * ⚠ 이 미리보기는 마크업을 **손으로 베낀 것**이라 실제 화면과 어긋날 수 있다.
+ *   자로 재는 검사(`qa:hoffit`)는 23차부터 진짜 화면(`_hofscreen-preview.html`)을 쓴다.
+ *   여기서는 여러 화면을 한 장에 모아 눈으로 보려는 것뿐이다 — 구조가 바뀌면 같이 고친다.
+ */
 function rankRow(r, rate) {
   const ch = characterById(r.characterId);
   const games = (r.multiWins ?? 0) + (r.multiLosses ?? 0);
-  return el('div.rank-row', { class: r.me ? 'me' : '' }, [
-    el('div.rank-no', String(r.rank)),
+  const crowned = r.rank >= 1 && r.rank <= 3;
+  return el('div.rank-row', {
+    class: [r.me ? 'me' : '', rate ? 'with-rate' : '', crowned ? `crowned c${r.rank}` : ''].filter(Boolean).join(' '),
+  }, [
+    el('div.rank-place', null, [
+      el('span.crown-slot', null, [crowned ? el('img.crown', { src: `/assets/ui/crown_${r.rank}.png`, alt: '' }) : null].filter(Boolean)),
+      el('span.rank-no', S.rankPlace(r.rank)),
+    ]),
     ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
     el('div.rank-name', r.nickname),
     rate ? el('div.rank-rate', S.rankWinRate(r.multiWins ?? 0, games)) : null,

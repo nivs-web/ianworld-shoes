@@ -13,13 +13,13 @@ import { SHOE_TOTAL } from '../config/balance.js';
 import { ELEVATOR } from '../config/balance.js';
 import { PAL } from '../game/palette.js';
 import { pixelText } from './pixelText.js';
-import { loadSmallFont, smallReady } from '../core/pixelfont.js';
 import { pixelBadge } from './pixelBadge.js';
 import { badgeSlots } from '../data/badges.js';
 import Portal from './Portal.js';
 import { lazyScreen, prefetchScreens } from './lazyScreen.js';
 import { startGame } from './startGame.js';
 import * as Presence from '../services/presence.js';
+import * as Crowns from '../services/crowns.js';
 
 /**
  * ★ **메뉴 화면은 누를 때 받는다.** (2026-08-19 13차, 속도 — `lazyScreen.js` 주석)
@@ -76,19 +76,20 @@ function prewarmMenus() {
  * 로비 통계의 큰 숫자 크기. 최고기록과 보유신발이 **같은 값을 쓴다** —
  * 둘이 달라지면 "같은 크기로" 라는 요구(16차)가 깨진다.
  *
- * ★ **7px 글꼴 ×3 = 21px** (2026-08-19 17차, 사용자 지정 "딱 1단계만 줄여")
- *
- * 배율은 정수만 되므로(§3-1) 고를 수 있는 크기는 두 글꼴을 합쳐
- * **11 · 14 · 21 · 22 · 28 · 33px** 뿐이다. 16차의 22px(11px 글꼴 ×2) 바로 아래 칸이 21px 다.
- * 네 가지를 실제로 렌더해 나란히 보여 주고 사용자가 골랐다.
- *
- * ⚠ 작은 글꼴은 **비동기로 받는다**(`loadSmallFont`). 아직 안 왔는데 `small: true` 로
- *   그리면 `pixelText` 가 11px 글꼴로 떨어져 **×3 = 33px**, 즉 **더 커진다.**
- *   그래서 도착 전에는 배율 2(=22px)로 그리고 도착하면 다시 그린다 — 22 → 21 은 1px
- *   차이라 바뀌는 순간이 눈에 안 띈다. 반대로 33 → 21 이면 화면이 출렁인다.
+ * (17차의 21px 주석은 23차에 지웠다 — 이제 이 줄의 글꼴은 9px 미니다)
  */
-const STAT_SCALE = 3;
-const STAT_FALLBACK_SCALE = 2;
+/**
+ * ★ **21px → 18px.** (2026-08-19 23차, 사용자 지정)
+ *
+ * *"이렇게 딱지를 붙이면 공간이 좁아지는데, 숫자가 써 있는 부분 전부 21px 인데
+ *   이 크기를 17~18px 정도로 줄이자"*
+ *
+ * 11px·7px 두 벌로 만들 수 있는 크기는 11·14·21·22·28·33 뿐이라 **17~18 이 없었다**
+ * (21 바로 아래가 14 다). 그래서 숫자만 담은 9px 글꼴을 한 벌 더 구웠다 —
+ * 9 × 2 = 18. 정적 import 라 **도착을 기다리는 폴백이 필요 없다**(예전엔 7px 글꼴이
+ * 늦게 와서 22 → 21 로 한 번 출렁였다).
+ */
+const STAT_SCALE = 2;
 
 /**
  * ★ **로비 통계 네 줄을 전부 같은 방식으로 그린다.** (2026-08-19 17~18차, 사용자 지정)
@@ -103,7 +104,7 @@ const STAT_FALLBACK_SCALE = 2;
  *
  * `mono` 로 찍는 이유: 자릿수가 바뀔 때 숫자 칸의 폭이 들쭉날쭉하면 줄이 흔들린다.
  */
-function statLine(str, numOpt, tag) {
+function statLine(str, numOpt, tag, crownRank) {
   const parts = String(str).split(/(\d+)/);
   const line = el('div.stat-line', null, parts.map((part, i) => {
     if (!/^\d+$/.test(part)) return part;
@@ -123,7 +124,11 @@ function statLine(str, numOpt, tag) {
    * 줄 끝에 붙는 표식 — 지금은 도감완성 하나뿐이다 (2026-08-19 22차, 사용자 지정).
    * 문장에 이어 붙이지 않는 이유는 `strings.dexComplete` 주석 참고(좁은 폰에서 잘렸다).
    */
-  if (tag) line.append(el('span.stat-done', tag));
+  /**
+   * 23차: 표식이 둘이 됐다 — 도감완성(초록)과 **왕관 딱지**(금·은·동).
+   * 같은 부품에 색만 다르게 준다. 색이 곧 등수라 글자를 읽기 전에 몇 위인지 보인다.
+   */
+  if (tag) line.append(el(`span.stat-done${crownRank ? `.crown-tag.c${crownRank}` : ''}`, tag));
   return line;
 }
 
@@ -135,22 +140,23 @@ export default function Lobby(nav) {
    * (§9-0-14 에서 순위표 응답이 정확히 그렇게 입력 중인 닉네임을 날렸다).
    */
   let live = true;
-  if (!smallReady()) {
-    /**
-     * **한가할 때** 받는다(19KB gzip). 로비를 그린 직후는 사용자가 곧바로
-     * `싱글게임` 을 누르는 순간이라 판 에셋(146KB)과 회선을 다투게 된다(§9-0-43).
-     * 도착 전에는 22px 로 그려져 있고 바뀌어도 1px 차이라 눈에 안 띈다.
-     */
-    const go = () => { loadSmallFont().then((f) => { if (f && live) nav.refresh(); }).catch(() => {}); };
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 2500 });
-    else setTimeout(go, 1200);
-  }
+  /**
+   * 23차: 여기 있던 **7px 글꼴 미리받기를 뺐다.** 통계 숫자가 9px 미니 글꼴(정적)로
+   * 바뀌어 로비는 더 이상 그 글꼴을 쓰지 않는다. 멀티에 들어갈 때 그쪽이 받는다 —
+   * 싱글만 하는 사람이 19KB 를 받던 것이 없어졌다(§9-0-11 의 그 원칙).
+   */
   /**
    * 로비로 돌아왔다 — 접속 카드의 신발·승패·닉네임을 다시 쓴다. (2026-08-19 11차)
    * 판이 끝났거나 캐릭터를 샀거나 닉네임을 바꿨으면 반드시 여기를 지나므로,
    * 화면마다 갱신을 흩뿌리지 않고 이 한 곳에서 맞춘다. 아직 안 붙었으면 아무 일도 안 한다.
    */
   Presence.refresh();
+  /**
+   * ★ **로비 딱지** (2026-08-19 23차, 사용자 지정) — 내가 신발왕/승리왕 1·2·3위인가.
+   * 지난번 값을 바로 그리고, 새 값이 **달라졌을 때만** 다시 그린다. 화면을 떠난 뒤에
+   * 도착하면 아무것도 하지 않는다(§9-0-14 — 늦은 응답이 남의 화면을 건드리면 안 된다).
+   */
+  Crowns.refresh(() => { if (live) nav.refresh(); });
   prewarmMenus();
   return {
     onLeave() { live = false; },
@@ -159,13 +165,13 @@ export default function Lobby(nav) {
       const p = getProfile();
       const ch = characterById(p.selectedCharacter);
       /** 최고기록·보유신발이 **반드시 같은 값을 쓰게** 한 곳에서 만든다 */
-      const small = smallReady();
-      const statNum = {
-        scale: small ? STAT_SCALE : STAT_FALLBACK_SCALE,
-        small,
-        color: PAL.text,
-        mono: true,
-      };
+      const statNum = { scale: STAT_SCALE, mini: true, color: PAL.text, mono: true };
+      /**
+       * 딱지는 **두 줄에만** 붙는다 (사용자 지정): 보유신발 = 신발왕 순위,
+       * 멀티게임 = 승리왕 순위. 최고기록에는 없고, 다른 탭(오늘·승률 등)도 만들지 않는다 —
+       * 딱지가 흔해지면 아무도 안 쳐다본다.
+       */
+      const crowns = Crowns.cached();
 
       /** 엘리베이터 — 500층을 밟아 본 계정에게만 보인다 (기획서 §5-8-1) */
       /**
@@ -222,8 +228,10 @@ export default function Lobby(nav) {
              * 네 줄이 같은 함수·같은 옵션(`statNum`)을 쓰므로 크기가 갈라질 수 없다.
              */
             statLine(S.myBestRecord(p.bestStairs), statNum),
-            statLine(S.myShoesOwned(p.shoesOwned), statNum),
-            statLine(S.myMultiRecord(p.multiWins ?? 0, (p.multiWins ?? 0) + (p.multiLosses ?? 0)), statNum),
+            statLine(S.myShoesOwned(p.shoesOwned), statNum,
+              crowns?.shoes ? S.crownShoes(crowns.shoes) : null, crowns?.shoes),
+            statLine(S.myMultiRecord(p.multiWins ?? 0, (p.multiWins ?? 0) + (p.multiLosses ?? 0)), statNum,
+              crowns?.wins ? S.crownWins(crowns.wins) : null, crowns?.wins),
             /**
              * ★ 다 모으면 **문장이 아니라 배지로** 알린다 (22차, 사용자 지정).
              * 분모(`/130`)를 뺐으므로 숫자만 봐서는 끝인지 알 수 없다 —

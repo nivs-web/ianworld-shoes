@@ -142,6 +142,19 @@ await clickText('뒤로');
 await clickText('멀티게임');
 await shot('08c_multi');
 console.log('멀티 메뉴에 현재접속자:', await p.locator('button:has-text("현재접속자")').count());
+/**
+ * ★ 23차: **[멀티게임순위]** 가 그 자리에 있고 실제로 열리는지 (사용자 지정).
+ * 새 화면은 조용히 터져도 아무도 모른다 — 여기서 한 번 밟아 본다.
+ */
+console.log('멀티 메뉴에 멀티게임순위:', await p.locator('button:has-text("멀티게임순위")').count(),
+  '| 왕관 아이콘:', await p.locator('.crown-btn .btn-crown').count());
+await clickText('멀티게임순위');
+await p.waitForTimeout(700);
+await shot('08c2_mrank');
+console.log('멀티게임순위 화면:', (await text()).split('\n').filter(Boolean).slice(0, 2).join(' / '),
+  '| 탭:', await p.locator('.hof-tabs .pbtn').count());
+await clickText('뒤로');
+
 await clickText('현재접속자');
 await p.waitForTimeout(600);
 await shot('08d_online');

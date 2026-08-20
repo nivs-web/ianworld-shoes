@@ -17,6 +17,8 @@ import WaitingRoom from './WaitingRoom.js';
 import CodeInput from './CodeInput.js';
 import RoomList from './RoomList.js';
 import OnlineUsers from './OnlineUsers.js';
+import MultiRank from '../MultiRank.js';
+import { crownImg } from '../crown.js';
 import Lobby from '../Lobby.js';
 
 export default function MultiMenu(nav) {
@@ -72,6 +74,20 @@ export default function MultiMenu(nav) {
           disabled: !canPlay || busy,
         }),
         button(S.enterByCode, () => nav.push(CodeInput), { disabled: !canPlay || busy }),
+
+        /**
+         * ★ **멀티게임순위** (2026-08-19 23차, 사용자 지정) — 양쪽에 금관, 화려한 버튼.
+         *
+         * *"다 노란색 버튼인데 이 버튼은 화려하게 누르고 싶은 디자인으로 바꿔"*
+         *
+         * 이 화면에서 **혼자만 다른 색**인 이유가 있다. 나머지 넷은 "지금 한 판 하러
+         * 가는" 버튼이고 이건 "누가 잘하나 보러 가는" 버튼이다 — 하는 일이 다르면
+         * 생김새도 달라야 한다. 신발이 부족해도 막지 않는다(구경은 판돈과 무관하다).
+         */
+        button(S.menuMultiRank, () => nav.push(MultiRank), {
+          class: 'crown-btn', disabled: busy,
+          icons: [crownImg(1, 'btn-crown'), crownImg(1, 'btn-crown')],
+        }),
         /**
          * ★ **현재접속자** (2026-08-19 11차, 사용자 지정) — 방과 무관한 메뉴다.
          * 방이 하나도 없어도 여기서 사람을 찾아 말을 걸고 대결을 신청할 수 있다.

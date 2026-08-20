@@ -18,6 +18,8 @@ import { text, measure, glyphH, smallReady } from '../core/pixelfont.js';
  * @param {string} [opt.color]
  * @param {string} [opt.outline] 8방향 1도트 외곽선 — 인게임 계단 수와 같은 처리
  * @param {boolean} [opt.mono] 숫자 고정폭
+ * @param {boolean} [opt.mini] 9px **숫자 전용** 글꼴로 찍는다 (23차). 정적이라 기다릴 필요가
+ *   없다 — `scale: 2` 면 정확히 18px 이다. 숫자가 아닌 글자는 이 글꼴에 없다.
  * @param {boolean} [opt.small] 7px 글꼴로 찍는다 — **`loadSmallFont()` 가 끝난 뒤에만**
  *   실제로 적용된다(아직이면 11px 로 그린다). 부르는 쪽이 기다렸다 그려야 한다.
  * @returns {HTMLCanvasElement}
@@ -27,11 +29,12 @@ export function pixelText(str, opt = {}) {
   const mono = !!opt.mono;
   /** 작은 글꼴은 아직 안 왔으면 없는 셈 친다 — 크기 계산과 그리기가 어긋나면 잘린다 */
   const small = !!opt.small && smallReady();
+  const mini = !!opt.mini;
   const pad = opt.outline ? s : 0; // 외곽선이 잘리지 않게 사방 여백
 
   const cv = document.createElement('canvas');
-  cv.width = Math.max(1, measure(str, s, mono, small) + pad * 2);
-  cv.height = glyphH(small) * s + pad * 2;
+  cv.width = Math.max(1, measure(str, s, mono, small, mini) + pad * 2);
+  cv.height = glyphH(small, mini) * s + pad * 2;
   cv.className = 'px-text';
   /**
    * 그린 값을 DOM 에 남긴다 — 캔버스는 `textContent` 에 안 잡혀서, 이게 없으면
@@ -51,7 +54,7 @@ export function pixelText(str, opt = {}) {
 
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingEnabled = false;
-  text(String(str), pad, pad, { ...opt, scale: s, mono, small, align: 'left', ctx });
+  text(String(str), pad, pad, { ...opt, scale: s, mono, small, mini, align: 'left', ctx });
 
   return cv;
 }

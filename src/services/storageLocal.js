@@ -17,6 +17,12 @@ const KEY = {
   pending: 'sf_pendingScores',
   periodBest: 'sf_periodBest',
   settled: 'sf_settledMatches',
+  /**
+   * 로비 딱지 캐시 (2026-08-19 23차) — 내가 신발왕/승리왕 몇 위인가.
+   * **이 표에 넣어야 계정이 바뀔 때 `resetAll` 이 같이 지운다** — 안 그러면
+   * 남의 왕관을 물려받은 채로 로비가 뜬다(§9-0-14 의 계정 전환 오염과 같은 함정).
+   */
+  crowns: 'sf_crowns',
 };
 
 /**
@@ -92,6 +98,12 @@ export function defaultProfile() {
     totalPlays: 0,
     multiWins: 0,
     multiLosses: 0,
+    /**
+     * 기간별 멀티 승수 (2026-08-19 23차) — 멀티게임순위의 오늘·주간·월간 탭.
+     * `{ dy: {k, n}, wk: {k, n}, mo: {k, n} }` — `k` 는 그 기간의 키, `n` 은 승수.
+     * 키가 바뀌면 `n` 을 1부터 다시 센다(그게 곧 리셋이다).
+     */
+    multiPeriodWins: {},
     elevatorUses: 0,
     /**
      * 도감완성 뱃지를 **딴 시각**(ms). 0 = 아직.
@@ -456,13 +468,41 @@ export function noteMultiJoin() {
   return p;
 }
 
-/** 멀티 전적 */
-export function recordMatch(won) {
+/**
+ * 멀티 전적.
+ *
+ * ★ 23차부터 **기간별 승수**도 같이 센다 (멀티게임순위의 오늘·주간·월간).
+ * 기간 키가 바뀌었으면 1부터 다시 센다 — 그게 곧 리셋이고, 따로 지우는 일이 없다.
+ * 기간 키는 KST 고정이라 어느 기기에서 세도 같은 칸에 들어간다(§9-0-49).
+ *
+ * @param {boolean} won
+ * @param {{dy:string, wk:string, mo:string}} [keys] 지금 기간 키 (부르는 쪽이 넘긴다 —
+ *   이 파일은 `periodKeys.js` 를 몰라야 한다: 저장소는 계산을 하지 않는다)
+ */
+export function recordMatch(won, keys) {
   const p = loadProfile();
   if (won) p.multiWins = (p.multiWins ?? 0) + 1;
   else p.multiLosses = (p.multiLosses ?? 0) + 1;
+  if (won && keys) {
+    const mp = { ...(p.multiPeriodWins ?? {}) };
+    for (const [field, key] of Object.entries(keys)) {
+      const cur = mp[field];
+      mp[field] = { k: key, n: cur && cur.k === key ? (cur.n ?? 0) + 1 : 1 };
+    }
+    p.multiPeriodWins = mp;
+  }
   saveProfile(p);
   return p;
+}
+
+/** 로비 딱지 캐시 — 값의 뜻은 `services/crowns.js` 가 정한다 (저장소는 담기만 한다) */
+export const loadCrowns = () => read(KEY.crowns, null);
+export const saveCrowns = (v) => write(KEY.crowns, v);
+
+/** 이 기간에 내가 몇 승 했나 (키가 지났으면 0) */
+export function periodWins(field, key) {
+  const v = loadProfile().multiPeriodWins?.[field];
+  return v && v.k === key ? (v.n ?? 0) : 0;
 }
 
 // ─────────────────────────────────────────────
