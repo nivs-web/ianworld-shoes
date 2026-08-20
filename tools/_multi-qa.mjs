@@ -1320,7 +1320,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('싱글만 하는 사람에겐 안 붙인다 (192KB 회귀 방지)', lobby, 'if (!everPlayedMulti()) return;');
 
   // ⑤ 대기방 표 + 캐릭터 카드
-  has('참가자 목록이 grid 표', css, 'grid-template-columns: 22px 24px 5.2em auto minmax(0, 1fr) auto;');
+  has('참가자 목록이 grid 표', css, 'grid-template-columns: 22px 24px 5.6em auto minmax(0, 1fr) auto;');
   has('태그 전용 칸', css, '.player-tags');
   has('남는 폭을 먹는 완충 칸', css, '.player-gap');
   const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
@@ -2841,6 +2841,42 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('값 칸 스타일', css, '.rank-pct {');
     // 자격이 없으면 숫자를 보여 주지 않는다 — 목록에 있는 줄 안다
     has('자격이 없으면 문구만', mr, "el('div.rank-value.rate-none', S.rateNone)");
+  }
+}
+
+{
+  console.log('\n50) ★ 아이디 5글자 · [멀티게임순위] 진한 노랑 (2026-08-19 25차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const css = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const B7 = await import('../src/config/balance.js');
+
+  /**
+   * ① 닉네임 상한은 5자다. 13px 한글 다섯 글자는 실측 65px —
+   *    그보다 좁은 고정폭을 주면 마지막 글자가 `…` 로 잘린다(사용자 신고).
+   *    실제 잘림은 `qa:hoffit`·`qa:mrank`·`_fitcheck` 가 브라우저에서 잰다.
+   */
+  {
+    eq('닉네임 상한 5자', B7.NICKNAME.maxLength, 5);
+    has('명예의 전당 이름 칸 66px', css, '.rank-row.with-rate .rank-name {\n  flex: 0 0 66px;\n}');
+    has('대기방 이름 칸 5.6em', css, '22px 24px 5.6em auto minmax(0, 1fr) auto');
+    has('현재접속자 이름은 5글자까지 안 줄어든다', css, '  min-width: 66px;');
+  }
+
+  /**
+   * ② [멀티게임순위] 버튼 색. 23차에는 게이지 채움색(`--btn-face-on`, 붉은색)이었는데
+   *    **그 색은 같은 화면의 [방 입장]** 이다 — 빨간 버튼이 둘이면 어느 쪽이 "지금 할 일"
+   *    인지 흐려진다(사용자 지적). 크림보다 한 단계 진한 금색으로 바꿨다.
+   */
+  {
+    const btn = css.slice(css.indexOf('.pbtn.crown-btn {'), css.indexOf('}', css.indexOf('.pbtn.crown-btn {')));
+    eq('진한 노랑 바탕', /background: #F0AE2B;/.test(btn), true);
+    eq('빨간 채움색을 안 쓴다', /--btn-face-on/.test(btn), false);
+    // 밝은 금색 위에서는 흰 글씨가 뜬다 — 어두운 갈색이어야 읽힌다
+    eq('어두운 글씨', /color: #3A2408;/.test(btn), true);
+    has('왕관은 그대로 양쪽에', css, '.btn-crown {');
   }
 }
 

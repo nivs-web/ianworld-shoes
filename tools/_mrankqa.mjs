@@ -81,6 +81,11 @@ const pick = async (p, label) => {
         return Math.round(n.left - c.right);
       })(),
       minePlace: document.querySelector('.rank-mine .rank-no')?.textContent ?? '',
+      /** ★ 25차: 아이디 5글자(`다섯글자님`)가 잘리지 않아야 한다 (사용자 지정) */
+      nameCut: rows.filter((x) => {
+        const n = x.querySelector('.rank-name');
+        return n.scrollWidth - n.clientWidth > 0;
+      }).length,
       notice: !!document.querySelector('.rank-notice'),
       broken: [...document.querySelectorAll('.crown')].filter((i) => i.naturalWidth === 0).length,
     };
@@ -98,6 +103,7 @@ const pick = async (p, label) => {
   eq('내 순위 줄 등수', r.minePlace, '2위');
   eq('값은 승수', r.values, ['128승', '121승']);
   eq('★ 왕관과 등수가 붙어 있다 (≤3px)', r.crownGap >= 0 && r.crownGap <= 3, true);
+  eq('★ 아이디 5글자가 안 잘린다', r.nameCut, 0);
   eq('승리왕에는 규칙 안내가 없다', r.notice, false);
   await p.screenshot({ path: 'tools/_out/mrank_wins.png' });
   await p.close();
@@ -154,6 +160,10 @@ for (const w of [320, 360, 390, 412]) {
         const v = x.querySelector('.rank-value');
         return v.scrollWidth - v.clientWidth > 0;
       }).length,
+      name: rows.filter((x) => {
+        const n = x.querySelector('.rank-name');
+        return n.scrollWidth - n.clientWidth > 0;
+      }).length,
     };
   });
   await pick(p, '승률왕');
@@ -166,11 +176,17 @@ for (const w of [320, 360, 390, 412]) {
         const v = x.querySelector('.rank-sub');
         return v.scrollWidth - v.clientWidth > 0;
       }).length,
+      name: rows.filter((x) => {
+        const n = x.querySelector('.rank-name');
+        return n.scrollWidth - n.clientWidth > 0;
+      }).length,
     };
   });
-  const good = wins.over === 0 && wins.cut === 0 && rate.over === 0 && rate.cut === 0;
+  // 이름 잘림은 **360px 이상에서만** 따진다 — 320px 은 다섯 칸을 넣을 자리 자체가 없다
+  const nameOk = w < 360 || (wins.name === 0 && rate.name === 0);
+  const good = wins.over === 0 && wins.cut === 0 && rate.over === 0 && rate.cut === 0 && nameOk;
   if (!good) bad++;
-  console.log(`  ${w}px  승리왕 넘침 ${wins.over}·잘림 ${wins.cut} / 승률왕 넘침 ${rate.over}·잘림 ${rate.cut} ${good ? '✅' : '❌'}`);
+  console.log(`  ${w}px  승리왕 넘침 ${wins.over}·잘림 ${wins.cut} / 승률왕 넘침 ${rate.over}·잘림 ${rate.cut} / 이름잘림 ${wins.name}·${rate.name} ${good ? '✅' : '❌'}`);
   await p.close();
 }
 

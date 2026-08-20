@@ -51,6 +51,15 @@ for (const w of WIDTHS) {
       crown: !!el.querySelector('.crown'),
       place: el.querySelector('.rank-no')?.textContent ?? '',
       nameW: Math.round(el.querySelector('.rank-name').getBoundingClientRect().width),
+      /**
+       * ★ 25차: **아이디 5글자가 안 잘려야 한다** (사용자 지정).
+       * 닉네임 상한이 5자이므로 이 값이 0이면 어떤 이름도 온전히 보인다.
+       * 폭만 재던 예전 검사로는 `다섯글자…` 로 잘려도 통과했다.
+       */
+      nameCut: (() => {
+        const n = el.querySelector('.rank-name');
+        return n.scrollWidth - n.clientWidth;
+      })(),
       // 승률 글자가 칸 밖으로 잘리지는 않는지 (overflow: hidden 이라 눈에는 안 보인다)
       rateCut: el.querySelector('.rank-rate').scrollWidth - el.querySelector('.rank-rate').clientWidth,
     }));
@@ -64,9 +73,10 @@ for (const w of WIDTHS) {
   const crowns = r.map((x) => x.crown);
   const crownOk = crowns.slice(0, 3).every(Boolean) && crowns.slice(3).every((c) => !c);
   const placeOk = r[0]?.place === '1위';
-  const good = over === 0 && cut === 0 && lefts.length === 1 && nos.length === 1 && crownOk && placeOk;
+  const nameCut = r.filter((x) => x.nameCut > 0).length;
+  const good = over === 0 && cut === 0 && nameCut === 0 && lefts.length === 1 && nos.length === 1 && crownOk && placeOk;
   if (!good) ok = false;
-  console.log(`  ${w}px  넘침 ${over}건 · 승률칸 왼끝 ${lefts.join(',')} ${lefts.length === 1 ? '(정렬)' : '(어긋남!)'} · 등수 왼끝 ${nos.join(',')} · 승률잘림 ${cut}건 · 왕관 ${crowns.filter(Boolean).length}개 ${crownOk ? 'ok' : '어긋남!'} · 첫줄 "${r[0]?.place}"`);
+  console.log(`  ${w}px  넘침 ${over}건 · 승률칸 왼끝 ${lefts.join(',')} ${lefts.length === 1 ? '(정렬)' : '(어긋남!)'} · 등수 왼끝 ${nos.join(',')} · 승률잘림 ${cut}건 · 이름잘림 ${nameCut}건 · 왕관 ${crowns.filter(Boolean).length}개 ${crownOk ? 'ok' : '어긋남!'} · 첫줄 "${r[0]?.place}"`);
   await p.close();
 }
 

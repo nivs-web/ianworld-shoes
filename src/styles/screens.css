@@ -1035,9 +1035,14 @@
   white-space: nowrap;
 }
 
-/** 승률 칸이 있는 줄(신발왕)에서는 이름이 5글자 자리를 고정으로 쓴다 (닉네임 상한 5자) */
+/**
+ * 승률 칸이 있는 줄(신발왕)에서는 이름이 **5글자 자리를 고정으로** 쓴다.
+ * ★ 62 → **66px** (2026-08-19 25차, 사용자 지정 "아이디 5글자 다 표시되게").
+ * 13px 한글 다섯 글자는 실측 **65px** 이다 — 62 로는 마지막 글자가 `…` 로 잘렸다.
+ * 닉네임 상한이 5자라(`NICKNAME.max`) 이 값이면 어떤 이름도 안 잘린다.
+ */
 .rank-row.with-rate .rank-name {
-  flex: 0 0 62px;
+  flex: 0 0 66px;
 }
 
 /**
@@ -1242,7 +1247,15 @@
 .player-row {
   display: grid;
   /* 마지막 칸(태그)이 방장+레디로 가장 넓어지는 경우까지 360px 폰에 들어가는 값이다 */
-  grid-template-columns: 22px 24px 5.2em auto minmax(0, 1fr) auto;
+  /**
+   * ★ 이름 칸 `5.2em` → **`5.6em`** (25차, 사용자 지정 "아이디 5글자 다 표시되게").
+   *
+   * 이 화면은 재 보니 5.2em 으로도 안 잘렸다 — `em` 이 컨테이너 글자 기준이라 폰트
+   * 크기에 따라 67.6~72.8px 사이에서 흔들린다. 14px 다섯 글자는 실측 **70px** 이므로
+   * 그 아래로 내려가는 조합이 생길 수 있다. 여유를 두고 못 박는다(`_fitcheck` 가 잰다).
+   * (실제로 잘리고 있던 곳은 명예의 전당 신발왕 줄이었다 — `.with-rate .rank-name`)
+   */
+  grid-template-columns: 22px 24px 5.6em auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 5px;
   padding: 4px;
@@ -1585,7 +1598,8 @@
 
 .online-name {
   flex: 1 1 auto;
-  min-width: 24px;
+  /* 5글자(13px 기준 65px)까지는 절대 줄지 않는다 — 25차 사용자 지정 */
+  min-width: 66px;
   font-size: 13px;
   color: var(--c-text-light);
   overflow: hidden;
@@ -1618,26 +1632,32 @@
  *
  * *"다 노란색 버튼인데 이 버튼은 화려하게 누르고 싶은 디자인으로 바꿔"*
  *
- * 크림색 버튼들 사이에서 눈에 띄어야 하지만 **도트 UI 를 벗어나면 안 된다** —
- * 그래서 그라데이션이나 둥근 모서리 대신 이 저장소의 방식을 그대로 쓴다:
- * 게이지 채움색(`--btn-face-on`) 면 + 위 하이라이트 + 아래 그늘, 그리고 왕관 둘.
- * `border-radius` 는 안티앨리어싱이 걸려 각이 죽는다(§9-0-3).
+ * ★ 25차: **빨강 → 진한 노랑** (사용자 지정). 23차에는 게이지 채움색(`--btn-face-on`,
+ * 붉은색)을 썼는데 **그 색은 이 화면에서 이미 [방 입장] 의 색**이다 — 같은 화면에
+ * 빨간 버튼이 둘이면 어느 쪽이 "지금 할 일"인지 흐려진다. 크림색(`--btn-face`)보다
+ * 한 단계 진한 금색으로 바꿔 **같은 계열 안에서** 구별되게 했다. 왕관과도 같은 색이다.
+ *
+ * 그라데이션이나 둥근 모서리는 안 쓴다 — 이 저장소의 버튼은 전부
+ * 면 + 위 하이라이트 + 아래 그늘 구조이고, `border-radius` 는 안티앨리어싱이 걸려
+ * 각이 죽는다(§9-0-3).
  */
 .pbtn.crown-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--btn-face-on);
-  color: #FFF4D6;
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  /* 왕관(`tools/build-crowns.mjs`)의 바탕색과 같은 금색 */
+  background: #F0AE2B;
+  /* 밝은 금색 위에서는 흰 글씨가 뜬다 — 어두운 갈색이 또렷하다 */
+  color: #3A2408;
+  text-shadow: none;
   box-shadow:
     0 -2px 0 0 var(--btn-outline),
     0 2px 0 0 var(--btn-outline),
     -2px 0 0 0 var(--btn-outline),
     2px 0 0 0 var(--btn-outline),
-    inset 0 2px 0 0 var(--btn-hilite-on),
-    inset 0 -3px 0 0 var(--btn-shade-on);
+    inset 0 2px 0 0 #FFD98A,
+    inset 0 -3px 0 0 #B9791A;
 }
 .pbtn.crown-btn:active {
   /* 눌리면 한 도트 내려앉는다 — 다른 버튼과 같은 감각 */
