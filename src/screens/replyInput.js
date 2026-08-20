@@ -64,7 +64,39 @@ export function replyInput(peer, close) {
     if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); send(); }
   });
 
-  return { node: input, input, send };
+  /**
+   * ★ **커서를 칸 안에 넣는다.** (2026-08-19 20차, 사용자 지정)
+   *
+   * *"왜 커서가 '보낼 메세지를 입력하세요' 라고 써 있는 text입력창 안에 없어?
+   *   커서가 자동으로 들어가 있으면 바로 타이핑 할 수 있도록 하고 싶은데?"*
+   *
+   * **부르는 쪽이 직접 부른다** — 이 부품은 자기가 언제 화면에 붙는지 모른다.
+   * 아직 안 붙은 노드에 `focus()` 를 걸면 조용히 아무 일도 일어나지 않는다.
+   * 그래서 팝업을 붙인 **직후**에 부르는 것은 부르는 쪽의 몫이다.
+   *
+   * 받은 쪽지 팝업(`inboxPopups`)도 14차부터 같은 일을 하고 있었는데 **자기만의
+   * `setTimeout(…focus(), 30)`** 을 들고 있었다. 두 곳이 각자 방법을 가지면 언젠가
+   * 한쪽만 고쳐진다 — 실제로 19차에 유저상태창 쪽이 통째로 빠졌다. 여기로 합쳤다.
+   *
+   * 두 번 거는 이유:
+   *  · 첫 번째(동기) — 아이폰은 **탭 처리와 같은 작업 안**에서 불러야 키보드를 올려 준다.
+   *    `setTimeout` 으로 미루면 제스처 맥락을 벗어나 키보드가 안 올라온다
+   *    (전체화면 요청이 같은 이유로 클릭 핸들러 안에 있다 — §9-0-2).
+   *  · 두 번째(다음 프레임) — 그 사이 다른 코드가 포커스를 가져갔거나 노드가 아직
+   *    안 붙었을 때를 위한 보험. 이미 잡혀 있으면 아무 일도 안 한다.
+   *
+   * `preventScroll` 은 배경이 덜컥 스크롤되는 것을 막는다(팝업은 어차피 화면 고정이다).
+   */
+  function focus() {
+    const go = () => {
+      if (!input.isConnected || document.activeElement === input) return;
+      try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+    };
+    go();
+    requestAnimationFrame(go);
+  }
+
+  return { node: input, input, send, focus };
 }
 
 /**

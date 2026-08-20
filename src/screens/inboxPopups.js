@@ -162,9 +162,15 @@ function showMessage(item, done) {
 
   const overlay = el('div.dialog-overlay', null, [messageCard(item, rep, () => dismiss())]);
   dismiss = presentOverlay(overlay, finish);
-  // 팝업이 뜨자마자 커서를 준다 — 곧바로 치기 시작할 수 있어야 '바로바로 답장'이다.
-  // 단 모바일 키보드가 팝업을 밀어 올리므로 한 박자 뒤에 준다.
-  if (rep) setTimeout(() => rep.input.focus(), 30);
+  /**
+   * 팝업이 뜨자마자 커서를 준다 — 곧바로 치기 시작할 수 있어야 '바로바로 답장'이다.
+   *
+   * 20차: 여기 있던 `setTimeout(…focus(), 30)` 을 부품의 `focus()` 로 합쳤다.
+   * 같은 일을 두 곳이 각자 하고 있으면 언젠가 한쪽만 고쳐진다(실제로 그랬다).
+   * 부품 쪽은 **동기 + 다음 프레임** 두 번 거는데, 동기 호출이 있어야 아이폰이
+   * 키보드를 올려 준다(탭 처리와 같은 작업 안이어야 한다).
+   */
+  rep?.focus();
 }
 
 /**

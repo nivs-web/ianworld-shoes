@@ -2490,7 +2490,18 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     eq('대결 버튼 문구', S2.challengeUser, '1:1대결신청');
     eq('입력칸 안내 문구', S2.messageHint, '보낼 메세지를 입력하세요');
     // 엔터로도 보내진다 (사용자 지정) — 한글 조합 중 엔터는 무시한다
-    has('엔터로 보낸다', code(read('src/screens/replyInput.js')), "e.key === 'Enter' && !e.isComposing");
+    const ri = code(read('src/screens/replyInput.js'));
+    has('엔터로 보낸다', ri, "e.key === 'Enter' && !e.isComposing");
+    /**
+     * 20차: 창이 뜨면 **커서가 입력칸 안에** 있어야 한다(사용자 지정).
+     * 커서를 넣는 방법은 **부품 한 곳**에만 있다 — 두 팝업이 각자 들고 있으면
+     * 언젠가 한쪽만 고쳐진다(19차에 유저상태창 쪽이 통째로 빠졌다).
+     * 실제로 커서가 들어갔는지는 `npm run qa:cardfocus` 가 브라우저에서 확인한다.
+     */
+    has('입력칸에 커서를 넣는 방법이 있다', ri, 'function focus()');
+    has('유저상태창이 창을 붙인 뒤 부른다', uc, 'compose?.focus();');
+    has('받은 쪽지 팝업도 같은 방법을 쓴다', code(read('src/screens/inboxPopups.js')), 'rep?.focus();');
+    no('각자 setTimeout 으로 잡지 않는다', code(read('src/screens/inboxPopups.js')), 'input.focus()');
     const css = read('src/styles/screens.css');
     has('빨간 버튼 스타일', css, '.pbtn.danger {');
     has('한 줄을 다 쓰는 버튼', css, '.pbtn.wide {');
