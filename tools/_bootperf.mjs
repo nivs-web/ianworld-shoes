@@ -17,8 +17,13 @@ import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const PORT = 4188;
+/**
+ * ⚠ vite 는 `npx` 아래에서 돌아 `kill()` 이 껍데기만 죽인다 — 서버가 살아남아 다음
+ *   실행에서 포트를 빼앗고, 그러면 검사가 **엉뚱한 이유로 실패한다**(2026-08-19 16차에
+ *   qa:hoffit 이 '줄이 0개' 로 실패했다 — 코드는 멀쩡했다). 프로세스 **그룹째** 죽인다.
+ */
 const preview = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'],
-  { stdio: 'ignore' });
+  { stdio: 'ignore', detached: true });
 await sleep(4000);
 
 const exe = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -120,4 +125,4 @@ async function run(label) {
 
 await run('부팅 → 로비');
 await browser.close();
-preview.kill();
+try { process.kill(-preview.pid); } catch { preview.kill(); }

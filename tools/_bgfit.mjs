@@ -14,7 +14,12 @@ import { BG } from '../src/config/layout.js';
 const CUT_W = BG.tileW;
 const CUT_H = BG.tileH + BG.floor1H + BG.roadH;
 const PORT = 5196;
-const vite = spawn('npx', ['vite', '--port', String(PORT), '--host', '127.0.0.1'], { stdio: 'ignore' });
+/**
+ * ⚠ vite 는 `npx` 아래에서 돌아 `kill()` 이 껍데기만 죽인다 — 서버가 살아남아 다음
+ *   실행에서 포트를 빼앗고, 그러면 검사가 **엉뚱한 이유로 실패한다**(2026-08-19 16차에
+ *   qa:hoffit 이 '줄이 0개' 로 실패했다 — 코드는 멀쩡했다). 프로세스 **그룹째** 죽인다.
+ */
+const vite = spawn('npx', ['vite', '--port', String(PORT), '--host', '127.0.0.1'], { stdio: 'ignore', detached: true });
 await sleep(4000);
 
 const exe = process.env.CHROME_PATH || '/opt/pw-browsers/chromium';
@@ -51,6 +56,6 @@ for (const [w, h] of [[320, 568], [390, 844], [412, 915], [1200, 1000]]) {
 }
 
 await browser.close();
-vite.kill();
+(() => { try { process.kill(-vite.pid); } catch { vite.kill(); } })();
 console.log(fails ? `\n실패 ${fails}건` : '\n큰 그림 배율 이상 없음');
 process.exit(fails ? 1 : 0);

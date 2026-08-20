@@ -104,16 +104,22 @@ export default function OnlineUsers(nav) {
 
     render() {
       let body;
+      let listed = false;   // 본문이 **스크롤되는 목록**인가 (로딩·오류·빈 목록은 아니다)
       if (failed) body = el('div.hint', S.networkError);
       else if (list === null) body = el('div.hint', S.loading);
       else if (!list.length) body = el('div.hint', S.noOneOnline);
-      else body = el('div.online-list', null, list.map(row));
+      else { body = el('div.online-list', null, list.map(row)); listed = true; }
 
+      /**
+       * ★ 목록이 있으면 **여백을 넣지 않는다.** (2026-08-19 16차)
+       * `.spacer` 도 목록도 둘 다 `flex: 1` 이라 남는 공간을 나눠 갖는다 —
+       * 그러면 목록 아래가 검은 공백이 된다(명예의 전당에서 실측 173~243px).
+       */
       return screen(
         title(S.onlineUsers),
         list ? el('div.hint', S.onlineCount(list.length)) : null,
         body,
-        el('div.spacer'),
+        listed ? null : el('div.spacer'),
         button(S.refreshList, refresh, { sfx: 'sfx_menu_move' }),
         backButton(S.back, () => nav.back())
       );

@@ -13,6 +13,7 @@ import { SHOE_TOTAL } from '../config/balance.js';
 import { ELEVATOR } from '../config/balance.js';
 import { PAL } from '../game/palette.js';
 import { pixelText } from './pixelText.js';
+import { loadSmallFont, smallReady } from '../core/pixelfont.js';
 import { pixelBadge } from './pixelBadge.js';
 import { badgeSlots } from '../data/badges.js';
 import Portal from './Portal.js';
@@ -71,8 +72,62 @@ function prewarmMenus() {
   prefetchScreens([Collection, CharacterSelect, HallOfFame, Settings, MultiMenu]);
 }
 
+/**
+ * 로비 통계의 큰 숫자 크기. 최고기록과 보유신발이 **같은 값을 쓴다** —
+ * 둘이 달라지면 "같은 크기로" 라는 요구(16차)가 깨진다.
+ *
+ * ★ **7px 글꼴 ×3 = 21px** (2026-08-19 17차, 사용자 지정 "딱 1단계만 줄여")
+ *
+ * 배율은 정수만 되므로(§3-1) 고를 수 있는 크기는 두 글꼴을 합쳐
+ * **11 · 14 · 21 · 22 · 28 · 33px** 뿐이다. 16차의 22px(11px 글꼴 ×2) 바로 아래 칸이 21px 다.
+ * 네 가지를 실제로 렌더해 나란히 보여 주고 사용자가 골랐다.
+ *
+ * ⚠ 작은 글꼴은 **비동기로 받는다**(`loadSmallFont`). 아직 안 왔는데 `small: true` 로
+ *   그리면 `pixelText` 가 11px 글꼴로 떨어져 **×3 = 33px**, 즉 **더 커진다.**
+ *   그래서 도착 전에는 배율 2(=22px)로 그리고 도착하면 다시 그린다 — 22 → 21 은 1px
+ *   차이라 바뀌는 순간이 눈에 안 띈다. 반대로 33 → 21 이면 화면이 출렁인다.
+ */
+const STAT_SCALE = 3;
+const STAT_FALLBACK_SCALE = 2;
+
+/**
+ * ★ **문구 안의 숫자만 크게 찍는다.** (2026-08-19 17차, 사용자 지정)
+ *
+ * *"신발도감 87/130켤레, 멀티게임 17승/50게임 (…) 87, 130, 17, 50 이렇게 4곳
+ *   숫자부분만 글씨 크기를 2단계 크게"*
+ *
+ * 문구를 `신발도감`/`87`/`/`/`130`/`켤레` 처럼 조각내서 strings 에 두는 방법도 있지만,
+ * 그러면 **문구 하나가 코드 다섯 줄이 되고** 나중에 말을 바꿀 때 두 곳을 고쳐야 한다.
+ * 여기서 숫자 덩어리만 찾아 감싼다 — 문구는 `strings.ko.js` 에 문장 그대로 남는다
+ * (그래서 `qa:multi` 의 문구 검사도 문장 하나로 유지된다).
+ *
+ * 비트맵이 아니라 **CSS 글자 크기**다. 이 줄들은 게임 화면과 같아야 할 이유가 없고,
+ * 비트맵으로 찍으면 줄이 넘칠 때 잘리지도 줄바꿈되지도 않는다(pixelText 주석 참고).
+ */
+function statLine(str) {
+  return el('div', null,
+    String(str).split(/(\d+)/).map((part) => (/^\d+$/.test(part) ? el('span.stat-num', part) : part))
+  );
+}
+
 export default function Lobby(nav) {
   prewarmMultiIfReturning();
+  /**
+   * 큰 숫자에 쓸 7px 글꼴을 받아 둔다. 화면을 떠난 뒤에 도착하면 다시 그리지 않는다 —
+   * `nav.refresh()` 는 "지금 살아 있는 화면"을 그리므로 남의 화면을 건드리게 된다
+   * (§9-0-14 에서 순위표 응답이 정확히 그렇게 입력 중인 닉네임을 날렸다).
+   */
+  let live = true;
+  if (!smallReady()) {
+    /**
+     * **한가할 때** 받는다(19KB gzip). 로비를 그린 직후는 사용자가 곧바로
+     * `싱글게임` 을 누르는 순간이라 판 에셋(146KB)과 회선을 다투게 된다(§9-0-43).
+     * 도착 전에는 22px 로 그려져 있고 바뀌어도 1px 차이라 눈에 안 띈다.
+     */
+    const go = () => { loadSmallFont().then((f) => { if (f && live) nav.refresh(); }).catch(() => {}); };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 2500 });
+    else setTimeout(go, 1200);
+  }
   /**
    * 로비로 돌아왔다 — 접속 카드의 신발·승패·닉네임을 다시 쓴다. (2026-08-19 11차)
    * 판이 끝났거나 캐릭터를 샀거나 닉네임을 바꿨으면 반드시 여기를 지나므로,
@@ -81,9 +136,20 @@ export default function Lobby(nav) {
   Presence.refresh();
   prewarmMenus();
   return {
+    onLeave() { live = false; },
+
     render() {
       const p = getProfile();
       const ch = characterById(p.selectedCharacter);
+      /** 최고기록·보유신발이 **반드시 같은 값을 쓰게** 한 곳에서 만든다 */
+      const small = smallReady();
+      const statNum = {
+        scale: small ? STAT_SCALE : STAT_FALLBACK_SCALE,
+        small,
+        color: PAL.text,
+        outline: PAL.textShadow,
+        mono: true,
+      };
 
       /** 엘리베이터 — 500층을 밟아 본 계정에게만 보인다 (기획서 §5-8-1) */
       const elevatorUnlocked = p.bestStairs >= ELEVATOR.unlockFloor;
@@ -127,17 +193,30 @@ export default function Lobby(nav) {
             el('div.char-name', p.nickname || '???'),
           ]),
           el('div.stats', null, [
-            // 최고기록 숫자만 인게임 계단 수와 같은 글꼴·외곽선으로 (기획 요청)
+            /**
+             * ★ **큰 숫자 두 줄** — 최고기록과 보유신발. (2026-08-19 16차, 사용자 지정)
+             *
+             * 인게임 계단 수와 같은 글꼴·외곽선으로 찍는다(`pixelText`). 배율은
+             * **3 → 2**(33px → 22px) — *"3단계 숫자 크기를 작게 줄여"*. 배율은 정수만
+             * 허용되므로(§3-1) 11px 글꼴에서 고를 수 있는 것은 22 와 33 둘뿐이다.
+             *
+             * 그리고 보유신발을 **같은 크기**로 올렸다 — *"보유 신발 수량이 생각보다
+             * 중요한데 너무 작게 표기되는 거 같아서"*. 둘 다 22 로 맞추면 패널 높이가
+             * 예전(33+13)과 같아서(22+22) 뱃지 칸·캐릭터 칸이 밀리지 않는다
+             * (`npm run qa:lobbyfit` 이 네 폭에서 잰다).
+             */
             el('div.stat-best', null, [
               el('span', S.bestRecord),
-              pixelText(p.bestStairs, {
-                scale: 3, color: PAL.text, outline: PAL.textShadow, mono: true,
-              }),
+              pixelText(p.bestStairs, statNum),
               el('span', S.bestRecordUnit),
             ]),
-            el('div', S.myShoesOwned(p.shoesOwned)),
-            el('div', S.myDexProgress(dexUnique(), SHOE_TOTAL)),
-            el('div', S.myMultiRecord(p.multiWins ?? 0, (p.multiWins ?? 0) + (p.multiLosses ?? 0))),
+            el('div.stat-best.stat-shoes', null, [
+              el('span', S.myShoesLabel),
+              pixelText(p.shoesOwned, statNum),
+              el('span', S.myShoesUnit),
+            ]),
+            statLine(S.myDexProgress(dexUnique(), SHOE_TOTAL)),
+            statLine(S.myMultiRecord(p.multiWins ?? 0, (p.multiWins ?? 0) + (p.multiLosses ?? 0))),
           ]),
           el('div.badges', null, slots.map((b) => pixelBadge(b))),
         ]),

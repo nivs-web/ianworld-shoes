@@ -9,7 +9,7 @@
  * 숫자·짧은 라벨처럼 **모양이 중요한 곳**에만 쓴다.
  */
 
-import { text, measure, GLYPH_H } from '../core/pixelfont.js';
+import { text, measure, glyphH, smallReady } from '../core/pixelfont.js';
 
 /**
  * @param {string|number} str
@@ -18,16 +18,20 @@ import { text, measure, GLYPH_H } from '../core/pixelfont.js';
  * @param {string} [opt.color]
  * @param {string} [opt.outline] 8방향 1도트 외곽선 — 인게임 계단 수와 같은 처리
  * @param {boolean} [opt.mono] 숫자 고정폭
+ * @param {boolean} [opt.small] 7px 글꼴로 찍는다 — **`loadSmallFont()` 가 끝난 뒤에만**
+ *   실제로 적용된다(아직이면 11px 로 그린다). 부르는 쪽이 기다렸다 그려야 한다.
  * @returns {HTMLCanvasElement}
  */
 export function pixelText(str, opt = {}) {
   const s = Math.max(1, opt.scale | 0 || 3);
   const mono = !!opt.mono;
+  /** 작은 글꼴은 아직 안 왔으면 없는 셈 친다 — 크기 계산과 그리기가 어긋나면 잘린다 */
+  const small = !!opt.small && smallReady();
   const pad = opt.outline ? s : 0; // 외곽선이 잘리지 않게 사방 여백
 
   const cv = document.createElement('canvas');
-  cv.width = Math.max(1, measure(str, s, mono) + pad * 2);
-  cv.height = GLYPH_H * s + pad * 2;
+  cv.width = Math.max(1, measure(str, s, mono, small) + pad * 2);
+  cv.height = glyphH(small) * s + pad * 2;
   cv.className = 'px-text';
   // 뷰포트 배율과 무관하게 1캔버스px = 1CSS px (CSS 쪽에서 pixelated 유지)
   cv.style.width = `${cv.width}px`;
@@ -35,7 +39,7 @@ export function pixelText(str, opt = {}) {
 
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingEnabled = false;
-  text(String(str), pad, pad, { ...opt, scale: s, mono, align: 'left', ctx });
+  text(String(str), pad, pad, { ...opt, scale: s, mono, small, align: 'left', ctx });
 
   return cv;
 }

@@ -43,6 +43,10 @@
     "preview:msg": "node tools/_screen-preview.mjs msg",
     "//qa:hoffit": "명예의 전당 승률 칸이 좁은 폰에서 줄을 넘기지 않는지 — 눈이 아니라 자로 잰다.",
     "qa:hoffit": "node tools/_hoffit.mjs",
+    "//qa:hofvert": "명예의 전당이 세로를 다 쓰는지 (16차). max-height 를 되돌리면 화면 아래 검은 공백 173~243px 가 다시 잡힌다.",
+    "qa:hofvert": "node tools/_hofvert.mjs",
+    "//qa:lobbyfit": "로비 패널이 320~412px 에서 한 줄을 유지하는지 + 최고기록/보유신발 숫자가 같은 크기인지 (16차).",
+    "qa:lobbyfit": "node tools/_lobbyfit.mjs",
     "perf:frame": "node tools/_frameperf.mjs",
     "//perf:boot": "부팅에서 첫 화면까지 걸린 시간과 받은 바이트. 반드시 npm run build 뒤에.",
     "perf:boot": "node tools/_bootperf.mjs"

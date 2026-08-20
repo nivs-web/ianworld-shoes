@@ -1277,7 +1277,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const css = fs.readFileSync('src/styles/screens.css', 'utf8');
 
   // ① 문구
-  has('로비 승률 문구', st, 'myMultiRecord: (wins, games) => `멀티게임 ${wins}승 / ${games}게임`');
+  // 17차: 빗금 앞뒤를 붙였다 (사용자 지정) — 숫자만 크게 찍으므로 빈칸이 있으면 더 벌어져 보인다
+  has('로비 승률 문구', st, 'myMultiRecord: (wins, games) => `멀티게임 ${wins}승/${games}게임`');
   has('캐릭터 변경', st, "menuCharacter: '캐릭터 변경'");
   has('멀티 안내 문구', st, "multiBetHint: '멀티 게임을 위해서는, 신발 1켤레가 필요합니다'");
   has('비밀방 생성', st, "createPrivateRoom: '비밀방 생성'");
@@ -1786,7 +1787,13 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('내 줄이 보이는 자리로 스크롤', hof, 'function scrollToMine(');
     // 탭이 바뀔 때만 — 매 refresh 마다 내리면 사용자가 올려 본 위치가 튕겨 돌아온다
     has('스크롤은 탭이 바뀔 때만', hof, 'if (scrolledFor === key) return;');
-    has('목록이 실제로 스크롤된다', css, 'max-height: 48vh;');
+    /**
+     * ★ 16차에 `max-height: 48vh` 를 **일부러 뺐다** — 목록이 화면 절반에서 멈추고
+     *   그 아래가 검게 비었기 때문이다(사용자 신고, 실측 173~243px). 스크롤은
+     *   `flex: 1 1 auto` 로 남는 높이를 다 먹고 `overflow-y: auto` 로 걸린다.
+     *   검사도 그에 맞춰 바꿨다 — 다시 max-height 가 붙으면 44) 에서 잡힌다.
+     */
+    has('목록이 실제로 스크롤된다', css, 'overflow-y: auto;');
     has('신발왕 탭에만 승률 칸', hof, "rate: tabId === 'shoeking'");
     has('승률 칸 마크업', hof, "el('div.rank-rate'");
     has('승률 칸은 고정폭 (줄 정렬)', css, 'flex: 0 0 104px;');
@@ -1876,8 +1883,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const S2 = (await import('../src/config/strings.ko.js')).default;
 
   // ① 로비 문구에서 '나의' 를 뺐다
-  eq('로비 보유량 문구', S2.myShoesOwned(0), '신발 보유량 0켤레');
-  eq('로비 도감 문구', S2.myDexProgress(0, 130), '신발 도감 0/130켤레');
+  // ★ 16차에 `보유신발 00켤레` 로 바뀌고 숫자만 비트맵으로 크게 찍는다 (44번 묶음이 본다)
+  eq('로비 보유량 문구', [S2.myShoesLabel, S2.myShoesUnit], ['보유신발', '켤레']);
+  // 17차 사용자 지정: 이름도 빗금도 띄어쓰기 없이 붙인다 (같은 회차 안에서 한 번 띄웠다가 되돌렸다)
+  eq('로비 도감 문구', S2.myDexProgress(0, 130), '신발도감 0/130켤레');
 
   // ② 받은 메세지함 — 이력이 남아야 한다
   {
@@ -2280,6 +2289,94 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     const wr = code(read('src/screens/multi/WaitingRoom.js'));
     has('실패를 잡는다', wr, 'startMultiGame(nav, { code, room: r }).catch(');
     has('잡으면 자리를 비운다', wr, 'launched = false;');
+  }
+}
+
+
+{
+  console.log('\n44) ★ 세로 영역과 로비 숫자 크기 (2026-08-19 16차, 사용자 지정)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  /** 주석에 걸려 거짓 통과/실패하지 않게 — §9-0-33·§9-0-43 에서 두 번 데인 함정 */
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const S2 = (await import('../src/config/strings.ko.js')).default;
+
+  /**
+   * ① 목록에 `max-height` 를 다시 붙이면 안 된다.
+   *    붙는 순간 목록이 화면 절반에서 멈추고, 그 아래 `flex:1` 여백이 남은 공간을
+   *    통째로 먹어 **화면 아래가 검게 빈다**(실측 390x780 173px, 412x915 243px).
+   *    사용자가 *"1위에서 7.5위까지만 표기되는 느낌"* 이라고 한 것이 이 현상이다.
+   */
+  {
+    // 주석에 적힌 'max-height 를 뺐다' 라는 설명에 걸리지 않게 주석부터 지운다
+    const css = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
+    const block = (sel) => {
+      const i = css.indexOf(sel + ' {');
+      return i < 0 ? '' : css.slice(i, css.indexOf('}', i));
+    };
+    for (const sel of ['.rank-list', '.online-list', '.inbox-list']) {
+      const b = block(sel);
+      eq(`${sel} 규칙을 찾았다`, b.length > 0, true);
+      no(`${sel} 에 max-height 없음`, b, 'max-height');
+      has(`${sel} 은 남는 공간을 먹는다`, b, 'flex: 1 1 auto');
+    }
+  }
+
+  /**
+   * ② 목록이 있을 때는 `.spacer` 를 빼야 한다 — 목록과 여백이 둘 다 `flex:1` 이면
+   *    남는 공간을 나눠 가진다. 반대로 로딩·오류·빈 목록일 때는 여백이 있어야
+   *    '내 순위' 와 버튼이 바닥에 붙는다.
+   */
+  for (const f of ['src/screens/HallOfFame.js', 'src/screens/multi/OnlineUsers.js', 'src/screens/Inbox.js']) {
+    const src = code(read(f));
+    has(`${f} — 목록 표식`, src, 'listed = true');
+    has(`${f} — 목록이면 여백을 뺀다`, src, "listed ? null : el('div.spacer')");
+    // 들여쓰기에 걸리지 않게 **개수로** 본다 — 여백이 하나라도 조건 없이 남아 있으면 안 된다
+    eq(`${f} — 조건 없는 여백 0개`,
+      (src.match(/el\('div\.spacer'\)/g) ?? []).length,
+      (src.match(/listed \? null : el\('div\.spacer'\)/g) ?? []).length);
+  }
+
+  /**
+   * ③ 로비 두 숫자는 **같은 크기**다. (16차: 보유신발을 최고기록과 같은 크기로 /
+   *    17차: 거기서 딱 한 칸 작게 = **7px 글꼴 ×3 = 21px**)
+   *
+   *    배율은 정수만 되므로(§3-1) 두 글꼴을 합쳐 11·14·21·22·28·33px 중에서만 고를 수
+   *    있다. 22 바로 아래 칸이 21 이다 — 사용자가 네 후보를 실제로 보고 골랐다.
+   *
+   *    ⚠ 작은 글꼴이 아직 안 왔을 때 `small: true` 로 그리면 11px 글꼴로 떨어져
+   *      ×3 = **33px, 즉 더 커진다.** 그래서 폴백 배율이 반드시 있어야 한다.
+   */
+  {
+    const lb = code(read('src/screens/Lobby.js'));
+    has('숫자 크기를 한 곳에서 정한다', lb, 'const STAT_SCALE = 3;');
+    has('글꼴 도착 전 폴백이 있다', lb, 'const STAT_FALLBACK_SCALE = 2;');
+    has('폴백을 실제로 쓴다', lb, 'small ? STAT_SCALE : STAT_FALLBACK_SCALE');
+    has('7px 글꼴을 받아 둔다', lb, 'loadSmallFont()');
+    // 판 에셋과 회선을 다투지 않게 한가할 때 받는다 (§9-0-43)
+    has('한가할 때 받는다', lb, "requestIdleCallback(go, { timeout: 2500 })");
+    has('떠난 뒤에는 다시 그리지 않는다', lb, 'if (f && live) nav.refresh();');
+    // 두 숫자가 **같은 객체**를 쓰므로 구조적으로 갈라질 수 없다
+    eq('두 숫자가 같은 설정을 쓴다', (lb.match(/pixelText\(p\.\w+, statNum\)/g) ?? []).length, 2);
+    has('보유신발도 같은 상수를 쓴다', lb, "el('div.stat-best.stat-shoes'");
+  }
+
+  /** ④ 문구: "신발 보유량 00켤레" → "보유신발 00켤레" (숫자는 그림이라 따로 그린다) */
+  {
+    eq('로비 보유량 문구', [S2.myShoesLabel, S2.myShoesUnit], ['보유신발', '켤레']);
+    // 17차: 이름도 빗금도 띄어쓰기 없이 붙인다
+    eq('도감·멀티 문구 붙여쓰기', [S2.myDexProgress(87, 130), S2.myMultiRecord(17, 50)],
+      ['신발도감 87/130켤레', '멀티게임 17승/50게임']);
+    // 문구 속 숫자만 두 단계 크게 (13px → 17px)
+    const lb2 = code(read('src/screens/Lobby.js'));
+    has('숫자만 감싸는 헬퍼', lb2, 'function statLine(str)');
+    has('도감 줄도 헬퍼를 쓴다', lb2, 'statLine(S.myDexProgress(');
+    has('멀티 줄도 헬퍼를 쓴다', lb2, 'statLine(S.myMultiRecord(');
+    has('숫자 칸 크기', read('src/styles/screens.css'), 'font-size: 17px;');
+    no('옛 문구가 남아 있지 않다', code(read('src/config/strings.ko.js')), 'myShoesOwned');
+    no('로비가 옛 문구를 안 쓴다', code(read('src/screens/Lobby.js')), 'myShoesOwned');
   }
 }
 

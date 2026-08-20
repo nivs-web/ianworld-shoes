@@ -155,6 +155,8 @@ export default function HallOfFame(nav) {
     render() {
       const tab = TABS.find((t) => t.id === tabId);
       const me = getProfile();
+      /** 본문이 **스크롤되는 목록**인가 (로딩·오류·빈 목록은 아니다) */
+      let listed = false;
 
       const tabs = el('div.seg.hof-tabs', null,
         TABS.map((t) =>
@@ -218,6 +220,7 @@ export default function HallOfFame(nav) {
          */
         if (mineNode) scrollToMine(list, mineNode, keyOf(tabId, diff));
         body = list;
+        listed = true;
       }
 
       // 하단 고정 — 100위 밖이어도 내 기록은 항상 보인다
@@ -228,12 +231,22 @@ export default function HallOfFame(nav) {
           ])
         : null;
 
+      /**
+       * ★ **목록이 있을 때는 여백을 넣지 않는다.** (2026-08-19 16차)
+       *
+       * `.spacer` 도 `.rank-list` 도 둘 다 `flex: 1` 이라, 둘을 같이 두면 남는 공간을
+       * 나눠 갖는다. 그런데 목록은 `max-height` 로 묶여 있었으므로 **남는 공간이 전부
+       * 여백으로 갔다** — 목록 아래가 통째로 검은 공백이 된 이유가 이것이다(실측 173~243px).
+       * 목록이 늘어나야 할 자리에 여백이 들어가 있으면 안 된다.
+       *
+       * 반대로 로딩·오류처럼 목록이 없을 때는 여백이 있어야 '내 순위' 가 바닥에 붙는다.
+       */
       return screen(
         title(S.hallTitle),
         tabs,
         subTabs,
         body,
-        el('div.spacer'),
+        listed ? null : el('div.spacer'),
         mine,
         backButton(S.back, () => nav.back())
       );

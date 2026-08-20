@@ -8,7 +8,12 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 
 const PORT = 5195;
-const vite = spawn('npx', ['vite', '--port', String(PORT), '--host', '127.0.0.1'], { stdio: 'ignore' });
+/**
+ * ⚠ vite 는 `npx` 아래에서 돌아 `kill()` 이 껍데기만 죽인다 — 서버가 살아남아 다음
+ *   실행에서 포트를 빼앗고, 그러면 검사가 **엉뚱한 이유로 실패한다**(2026-08-19 16차에
+ *   qa:hoffit 이 '줄이 0개' 로 실패했다 — 코드는 멀쩡했다). 프로세스 **그룹째** 죽인다.
+ */
+const vite = spawn('npx', ['vite', '--port', String(PORT), '--host', '127.0.0.1'], { stdio: 'ignore', detached: true });
 await sleep(4000);
 const exe = process.env.CHROME_PATH || '/opt/pw-browsers/chromium';
 const browser = await chromium.launch({ executablePath: exe }).catch(() => chromium.launch());
@@ -20,7 +25,7 @@ await page.waitForFunction('window.__ready === true', null, { timeout: 30000 }).
 const rows = await page.evaluate(() => window.__perf ?? null);
 const g = await page.evaluate(() => window.__glyphs ?? null);
 await browser.close();
-vite.kill();
+(() => { try { process.kill(-vite.pid); } catch { vite.kill(); } })();
 
 if (!rows) { console.error('측정 실패', errors.slice(0, 3)); process.exit(1); }
 

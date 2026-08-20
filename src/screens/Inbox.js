@@ -165,15 +165,17 @@ export default function Inbox(nav) {
 
     render() {
       let body;
+      let listed = false;   // 본문이 **스크롤되는 목록**인가 (로딩·오류·빈 목록은 아니다)
       if (failed) body = el('div.hint', S.networkError);
       else if (rows === null) body = el('div.hint', S.loading);
       else if (!rows.length) body = el('div.hint', S.inboxEmpty);
-      else body = el('div.inbox-list', null, rows.map(row));
+      else { body = el('div.inbox-list', null, rows.map(row)); listed = true; }
 
+      // 목록이 있으면 여백을 넣지 않는다 — 그쪽이 남는 공간을 가져가면 목록 아래가 빈다
       return screen(
         title(S.inboxTitle),
         body,
-        el('div.spacer'),
+        listed ? null : el('div.spacer'),
         backButton(S.back, () => nav.back())
       );
     },
