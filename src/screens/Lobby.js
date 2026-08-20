@@ -91,23 +91,34 @@ const STAT_SCALE = 3;
 const STAT_FALLBACK_SCALE = 2;
 
 /**
- * ★ **문구 안의 숫자만 크게 찍는다.** (2026-08-19 17차, 사용자 지정)
+ * ★ **로비 통계 네 줄을 전부 같은 방식으로 그린다.** (2026-08-19 17~18차, 사용자 지정)
  *
- * *"신발도감 87/130켤레, 멀티게임 17승/50게임 (…) 87, 130, 17, 50 이렇게 4곳
- *   숫자부분만 글씨 크기를 2단계 크게"*
+ * 문구는 `strings.ko.js` 에 **문장 그대로** 있고, 여기서 숫자 덩어리만 찾아
+ * 비트맵(`pixelText`)으로 갈아 끼운다. 사이사이 글자는 문자열 그대로 남으므로
+ * **띄어쓰기가 문구에 적힌 대로 나온다** — `최고기록 5432계단` 이면 라벨 뒤는 한 칸,
+ * `계단` 앞은 0칸이다. `gap` 으로 조각을 붙이면 그 구분이 불가능하다(18차에 고친 것).
  *
- * 문구를 `신발도감`/`87`/`/`/`130`/`켤레` 처럼 조각내서 strings 에 두는 방법도 있지만,
- * 그러면 **문구 하나가 코드 다섯 줄이 되고** 나중에 말을 바꿀 때 두 곳을 고쳐야 한다.
- * 여기서 숫자 덩어리만 찾아 감싼다 — 문구는 `strings.ko.js` 에 문장 그대로 남는다
- * (그래서 `qa:multi` 의 문구 검사도 문장 하나로 유지된다).
+ * 문구를 `신발도감`/`87`/`/`/`130`/`켤레` 로 쪼개 strings 에 두는 방법도 있지만,
+ * 그러면 문구 하나가 코드 다섯 줄이 되고 말을 바꿀 때 두 곳을 고쳐야 한다.
  *
- * 비트맵이 아니라 **CSS 글자 크기**다. 이 줄들은 게임 화면과 같아야 할 이유가 없고,
- * 비트맵으로 찍으면 줄이 넘칠 때 잘리지도 줄바꿈되지도 않는다(pixelText 주석 참고).
+ * `mono` 로 찍는 이유: 자릿수가 바뀔 때 숫자 칸의 폭이 들쭉날쭉하면 줄이 흔들린다.
  */
-function statLine(str) {
-  return el('div', null,
-    String(str).split(/(\d+)/).map((part) => (/^\d+$/.test(part) ? el('span.stat-num', part) : part))
-  );
+function statLine(str, numOpt) {
+  const parts = String(str).split(/(\d+)/);
+  return el('div.stat-line', null, parts.map((part, i) => {
+    if (!/^\d+$/.test(part)) return part;
+    const cv = pixelText(part, numOpt);
+    /**
+     * 캔버스에는 외곽선 여백이 사방에 있다(투명한 빈 칸). 그대로 두면 `5432 계단` 처럼
+     * **없는 띄어쓰기가 생긴다** — 음수 여백으로 정확히 상쇄한다.
+     * 다만 **앞이 공백이면 왼쪽은 그대로 둔다**: 그 자리는 문구에 적힌 진짜 띄어쓰기라
+     * 같이 지우면 `최고기록5432` 처럼 라벨까지 달라붙는다.
+     */
+    const pad = Number(cv.dataset.pad || 0);
+    cv.style.marginLeft = /\s$/.test(parts[i - 1] ?? '') ? '0' : `-${pad}px`;
+    cv.style.marginRight = `-${pad}px`;
+    return cv;
+  }));
 }
 
 export default function Lobby(nav) {
@@ -147,7 +158,6 @@ export default function Lobby(nav) {
         scale: small ? STAT_SCALE : STAT_FALLBACK_SCALE,
         small,
         color: PAL.text,
-        outline: PAL.textShadow,
         mono: true,
       };
 
@@ -194,29 +204,17 @@ export default function Lobby(nav) {
           ]),
           el('div.stats', null, [
             /**
-             * ★ **큰 숫자 두 줄** — 최고기록과 보유신발. (2026-08-19 16차, 사용자 지정)
+             * ★ **네 줄 전부 같은 모양** — 라벨 · 21px 비트맵 숫자 · 붙은 단위.
+             * (2026-08-19 18차, 사용자 지정: *"00승 00게임에서 숫자로 나온 부분 21px으로
+             * 가자 (…) 모든 줄 간격이 똑같게 하면 깔끔할거 같아"*)
              *
-             * 인게임 계단 수와 같은 글꼴·외곽선으로 찍는다(`pixelText`). 배율은
-             * **3 → 2**(33px → 22px) — *"3단계 숫자 크기를 작게 줄여"*. 배율은 정수만
-             * 허용되므로(§3-1) 11px 글꼴에서 고를 수 있는 것은 22 와 33 둘뿐이다.
-             *
-             * 그리고 보유신발을 **같은 크기**로 올렸다 — *"보유 신발 수량이 생각보다
-             * 중요한데 너무 작게 표기되는 거 같아서"*. 둘 다 22 로 맞추면 패널 높이가
-             * 예전(33+13)과 같아서(22+22) 뱃지 칸·캐릭터 칸이 밀리지 않는다
-             * (`npm run qa:lobbyfit` 이 네 폭에서 잰다).
+             * 순서도 바꿨다 — **멀티게임이 위, 신발도감이 아래.**
+             * 네 줄이 같은 함수·같은 옵션(`statNum`)을 쓰므로 크기가 갈라질 수 없다.
              */
-            el('div.stat-best', null, [
-              el('span', S.bestRecord),
-              pixelText(p.bestStairs, statNum),
-              el('span', S.bestRecordUnit),
-            ]),
-            el('div.stat-best.stat-shoes', null, [
-              el('span', S.myShoesLabel),
-              pixelText(p.shoesOwned, statNum),
-              el('span', S.myShoesUnit),
-            ]),
-            statLine(S.myDexProgress(dexUnique(), SHOE_TOTAL)),
-            statLine(S.myMultiRecord(p.multiWins ?? 0, (p.multiWins ?? 0) + (p.multiLosses ?? 0))),
+            statLine(S.myBestRecord(p.bestStairs), statNum),
+            statLine(S.myShoesOwned(p.shoesOwned), statNum),
+            statLine(S.myMultiRecord(p.multiWins ?? 0, (p.multiWins ?? 0) + (p.multiLosses ?? 0)), statNum),
+            statLine(S.myDexProgress(dexUnique(), SHOE_TOTAL), statNum),
           ]),
           el('div.badges', null, slots.map((b) => pixelBadge(b))),
         ]),

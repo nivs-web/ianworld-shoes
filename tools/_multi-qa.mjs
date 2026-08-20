@@ -1065,8 +1065,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('캐릭터 칸에 닉네임', lobby, "el('div.char-name', p.nickname || '???')");
   has('멀티 전적 줄', lobby, 'S.myMultiRecord(');
   eq('플레이어 이름 줄 삭제', lobby.includes('S.playerName'), false);
-  // 좁은 폰에서 뱃지가 밀리지 않게 73 → 66 으로 줄였다 (4차)
-  has('캐릭터 칸 폭 66px', css, 'width: 66px;');
+  // 4차에 73 → 66 으로 줄였다가 **18차에 다시 73** 으로 (사용자 지정 "칸 자체를 10% 넓혀").
+  // 좁은 폰은 이제 미디어쿼리로 뱃지를 아랫줄에 내려 해결한다 — 폭을 깎지 않는다.
+  has('캐릭터 칸 폭 73px', css, 'width: 73px;');
 
   // ⑤ 게이지 — 한 칸 5계단, 내 얼굴도 받는다
   eq('한 칸 = 5계단', MULTI.raceStairsPerTick, 5);
@@ -1438,7 +1439,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const css = fs.readFileSync('src/styles/screens.css', 'utf8');
   const panel = /^\.panel \{([\s\S]*?)\n\}/m.exec(css)?.[1] ?? '';
   has('패널은 줄바꿈 금지 (뱃지가 안 밀린다)', panel, 'flex-wrap: nowrap');
-  eq('캐릭터 칸 폭 10% 축소', /\.char-cell \{[\s\S]*?width: (\d+)px/.exec(css)?.[1], '66');
+  // 18차: 10% 넓혀 73px 로 되돌렸다 + 그림도 10% 키웠다 (사용자 지정)
+  eq('캐릭터 칸 폭', /\.char-cell \{[\s\S]*?width: (\d+)px/.exec(css)?.[1], '73');
+  eq('캐릭터 그림 크기', /\.panel img \{\s*width: (\d+)px;\s*height: (\d+)px/.exec(css)?.slice(1, 3), ['55', '84']);
+  eq('그림과 닉네임 간격', /\.char-cell \{[\s\S]*?gap: (\d+)px/.exec(css)?.[1], '5');
 }
 
 {
@@ -1884,8 +1888,13 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // ① 로비 문구에서 '나의' 를 뺐다
   // ★ 16차에 `보유신발 00켤레` 로 바뀌고 숫자만 비트맵으로 크게 찍는다 (44번 묶음이 본다)
-  eq('로비 보유량 문구', [S2.myShoesLabel, S2.myShoesUnit], ['보유신발', '켤레']);
-  // 17차 사용자 지정: 이름도 빗금도 띄어쓰기 없이 붙인다 (같은 회차 안에서 한 번 띄웠다가 되돌렸다)
+  /**
+   * 18차: 로비 통계 네 줄은 **문장 하나씩**이다 — 라벨 뒤는 한 칸, 단위 앞은 0칸.
+   * 라벨/단위를 쪼개 두면 화면에서 `gap` 으로 붙여야 해서 숫자와 단위 사이에도
+   * 같은 간격이 들어간다(사용자 신고 "한칸 띄어쓰기 한거 같다").
+   */
+  eq('로비 보유량 문구', S2.myShoesOwned(0), '보유신발 0켤레');
+  eq('로비 최고기록 문구', S2.myBestRecord(0), '최고기록 0계단');
   eq('로비 도감 문구', S2.myDexProgress(0, 130), '신발도감 0/130켤레');
 
   // ② 받은 메세지함 — 이력이 남아야 한다
@@ -2358,25 +2367,43 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     // 판 에셋과 회선을 다투지 않게 한가할 때 받는다 (§9-0-43)
     has('한가할 때 받는다', lb, "requestIdleCallback(go, { timeout: 2500 })");
     has('떠난 뒤에는 다시 그리지 않는다', lb, 'if (f && live) nav.refresh();');
-    // 두 숫자가 **같은 객체**를 쓰므로 구조적으로 갈라질 수 없다
-    eq('두 숫자가 같은 설정을 쓴다', (lb.match(/pixelText\(p\.\w+, statNum\)/g) ?? []).length, 2);
-    has('보유신발도 같은 상수를 쓴다', lb, "el('div.stat-best.stat-shoes'");
+    /**
+     * 18차: 네 줄이 **같은 함수·같은 옵션**을 쓴다 — 구조적으로 갈라질 수 없다.
+     * 순서도 여기서 못 박는다(멀티게임이 신발도감보다 위, 사용자 지정).
+     */
+    const rows = [...lb.matchAll(/statLine\(S\.(\w+)\(/g)].map((m) => m[1]);
+    eq('통계 네 줄의 순서', rows, ['myBestRecord', 'myShoesOwned', 'myMultiRecord', 'myDexProgress']);
+    eq('네 줄 전부 같은 옵션', (lb.match(/, statNum\)/g) ?? []).length, 4);
+    /**
+     * ★ **외곽선을 쓰지 않는다.** 외곽선을 켜면 캔버스 사방에 배율만큼(3px) 여백이
+     *   생기고, 그게 문장 안에서 **없는 띄어쓰기**가 된다(18차 사용자 신고의 원인).
+     *   로비 패널은 배경이 어두워 외곽선이 보이지도 않는다 — 자리만 먹었다.
+     */
+    no('큰 숫자에 외곽선을 쓰지 않는다', /const statNum = \{[\s\S]*?\};/.exec(lb)?.[0] ?? '', 'outline');
+    // 그래도 켜졌을 때를 대비해 여백 상쇄 코드는 남겨 둔다
+    has('외곽선 여백을 상쇄한다', lb, "cv.style.marginRight = `-${pad}px`;");
+    has('앞이 공백이면 왼쪽은 살린다', lb, "/\\s$/.test(parts[i - 1] ?? '') ? '0'");
   }
 
   /** ④ 문구: "신발 보유량 00켤레" → "보유신발 00켤레" (숫자는 그림이라 따로 그린다) */
   {
-    eq('로비 보유량 문구', [S2.myShoesLabel, S2.myShoesUnit], ['보유신발', '켤레']);
-    // 17차: 이름도 빗금도 띄어쓰기 없이 붙인다
-    eq('도감·멀티 문구 붙여쓰기', [S2.myDexProgress(87, 130), S2.myMultiRecord(17, 50)],
-      ['신발도감 87/130켤레', '멀티게임 17승/50게임']);
-    // 문구 속 숫자만 두 단계 크게 (13px → 17px)
+    /** 네 줄 전부 **문장 하나**, 라벨 뒤 한 칸 · 단위 앞 0칸 (18차 사용자 지정) */
+    eq('통계 네 문구', [S2.myBestRecord(5432), S2.myShoesOwned(1460),
+      S2.myMultiRecord(17, 50), S2.myDexProgress(87, 130)],
+      ['최고기록 5432계단', '보유신발 1460켤레', '멀티게임 17승/50게임', '신발도감 87/130켤레']);
     const lb2 = code(read('src/screens/Lobby.js'));
-    has('숫자만 감싸는 헬퍼', lb2, 'function statLine(str)');
-    has('도감 줄도 헬퍼를 쓴다', lb2, 'statLine(S.myDexProgress(');
-    has('멀티 줄도 헬퍼를 쓴다', lb2, 'statLine(S.myMultiRecord(');
-    has('숫자 칸 크기', read('src/styles/screens.css'), 'font-size: 17px;');
-    no('옛 문구가 남아 있지 않다', code(read('src/config/strings.ko.js')), 'myShoesOwned');
-    no('로비가 옛 문구를 안 쓴다', code(read('src/screens/Lobby.js')), 'myShoesOwned');
+    has('숫자만 감싸는 헬퍼', lb2, 'function statLine(str, numOpt)');
+    const css2 = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
+    // flex 로 붙이면 숫자와 단위 사이에도 gap 이 들어간다 — 인라인이라야 문구대로 나온다
+    no('통계 줄은 flex 가 아니다', /\.stat-line \{[\s\S]*?\}/.exec(css2)?.[0] ?? '', 'display: flex');
+    has('비트맵 숫자는 인라인 블록', css2, 'display: inline-block;');
+    // 좁은 폰(≤355px)에서는 뱃지를 아랫줄로 — 안 그러면 문구가 말없이 잘린다
+    has('좁은 폰 대비 미디어쿼리', css2, '@media (max-width: 355px)');
+    has('뱃지를 눕혀 아랫줄로', css2, 'flex-direction: row;');
+    // 16~17차에 쪼개 뒀던 라벨/단위는 18차에 문장으로 되돌렸다 — 잔재가 남으면 안 된다
+    no('쪼갠 라벨 잔재 없음', code(read('src/config/strings.ko.js')), 'myShoesLabel');
+    no('쪼갠 단위 잔재 없음', code(read('src/config/strings.ko.js')), 'myShoesUnit');
+    no('로비도 쪼갠 라벨을 안 쓴다', code(read('src/screens/Lobby.js')), 'myShoesLabel');
   }
 }
 

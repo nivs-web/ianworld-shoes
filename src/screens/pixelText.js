@@ -33,6 +33,18 @@ export function pixelText(str, opt = {}) {
   cv.width = Math.max(1, measure(str, s, mono, small) + pad * 2);
   cv.height = glyphH(small) * s + pad * 2;
   cv.className = 'px-text';
+  /**
+   * 그린 값을 DOM 에 남긴다 — 캔버스는 `textContent` 에 안 잡혀서, 이게 없으면
+   * 검사·미리보기가 "무엇이 찍혔는지" 알 방법이 없다(18차에 로비 문구 검사가 막혔다).
+   */
+  cv.dataset.text = String(str);
+  /**
+   * 외곽선 여백(사방 `pad`)은 **투명한 빈 칸**이다. 문장 안에 끼워 넣으면 그만큼
+   * 앞뒤 글자가 밀려 **띄어쓰기를 한 것처럼 보인다**(18차 사용자 신고: *"계단과 켤레가
+   * 숫자 옆에 바로 붙어 있어야 하는데 한칸 띄어쓰기 한거 같다"*). 부르는 쪽이
+   * 음수 여백으로 상쇄할 수 있게 값을 남긴다.
+   */
+  cv.dataset.pad = String(pad);
   // 뷰포트 배율과 무관하게 1캔버스px = 1CSS px (CSS 쪽에서 pixelated 유지)
   cv.style.width = `${cv.width}px`;
   cv.style.height = `${cv.height}px`;
