@@ -31,47 +31,13 @@
 import S from '../config/strings.ko.js';
 import { el, button, backButton, screen, title, toast, confirmDialog, segmented } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
-import { ITEM_CATS, itemsOf, itemById, itemSprite, itemOffset, WEAR } from '../data/items.js';
-import { characterSprite } from '../data/characters.js';
-import { get as getProfile, buyItem, equipItem, unequipAll } from '../services/profile.js';
-
+import { ITEM_CATS, itemsOf, itemById } from '../data/items.js';
 /**
- * 착용 모습 한 컷.
- *
- * ★ **날개는 캐릭터보다 먼저 붙인다**(`behind`). 캔버스와 달리 DOM 은 나중에 붙인 것이
- * 위에 오므로, 순서가 곧 앞뒤다 — 이 한 줄이 없으면 날개가 얼굴을 덮는다.
- * (인게임 고스트를 `player.render()` 앞으로 옮긴 것과 같은 이유, §9-0-33)
+ * ★ 착용 모습은 **로비와 같은 부품**이 그린다(2026-08-21 28차). 여기서 따로 그리면
+ * 앞뒤 순서와 좌표 환산이 두 벌이 되어 언젠가 한쪽만 고쳐진다 — `wearFigure.js` 주석.
  */
-function wearCut(charId, items, label) {
-  /**
-   * ★ 확대는 **안쪽 상자 하나가** 맡는다. 그림마다 `transform: scale(2)` 를 걸면
-   * 크기만 두 배가 되고 **자리(`left`/`top`)는 그대로**라 전부 어긋난다(실제로 그렇게
-   * 짰다가 모자가 어깨에 붙었다). 안쪽 상자를 통째로 키우면 좌표는 논리값 그대로 둘
-   * 수 있고, 배율이 화면 코드 여기저기로 흩어지지 않는다.
-   */
-  const inner = el('div.wear-inner', {
-    style: { width: `${WEAR.w}px`, height: `${WEAR.h}px` },
-  });
-  const put = (src, x, y, w, h) => {
-    inner.append(el('img.wear-part', {
-      src,
-      alt: '',
-      style: { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` },
-    }));
-  };
-  const list = (items ?? []).filter(Boolean);
-  const draw = (it) => {
-    const off = itemOffset(it, 'front');
-    put(itemSprite(it.id, 'front'), off.x, off.y, it.w, it.h);
-  };
-  for (const it of list) if (it.behind) draw(it);
-  put(characterSprite(charId, 'front'), WEAR.charX, WEAR.charY, 35, 50);
-  for (const it of list) if (!it.behind) draw(it);
-  return el('figure.wear-cut', null, [
-    el('div.wear-stage', null, [inner]),
-    el('figcaption', label),
-  ]);
-}
+import { wearCut, wornList } from './wearFigure.js';
+import { get as getProfile, buyItem, equipItem } from '../services/profile.js';
 
 export default function ItemShop(nav) {
   let cat = ITEM_CATS[0].id;
@@ -92,11 +58,6 @@ export default function ItemShop(nav) {
     return itemById(looking[cat]) ?? itemById(worn?.[slot]) ?? list[0] ?? null;
   }
 
-  /**
-   * 지금 착용해 둔 것들. `현재 모습` 이 이걸 그대로 그리고, 게임도 같은 값을 읽는다.
-   * @param {object} worn `profile.equippedItems`
-   */
-  const wornList = (worn) => Object.values(worn ?? {}).map(itemById).filter(Boolean);
 
   /**
    * "이걸 입으면 어떻게 되나" — 착용해 둔 것에서 **고른 것의 자리만** 갈아 끼운다.
@@ -203,19 +164,6 @@ export default function ItemShop(nav) {
           wearCut(p.selectedCharacter, previewList(worn, item), S.itemCutPreview),
           wearCut(p.selectedCharacter, wornList(worn), S.itemCutCurrent),
         ]),
-
-        /**
-         * ★ **모두 벗기.** 자리가 셋이라 하나씩 벗으면 세 번 눌러야 한다.
-         * 아무것도 안 입었으면 눌러도 아무 일이 안 일어나는 대신 **왜 안 되는지 말한다**
-         * — 조용히 아무 일도 안 하는 버튼은 고장으로 보인다(사용자 지정 문구 그대로).
-         */
-        button(S.itemUnequipAll, () => {
-          const r = unequipAll();
-          if (!r.off) { Sfx.play('sfx_denied'); toast(S.itemNothingWorn); return; }
-          Sfx.play('sfx_menu_select');
-          toast(S.itemAllOff);
-          nav.refresh();
-        }, { class: Object.values(worn).filter(Boolean).length ? '' : 'dim' }),
 
         backButton(S.itemShopExit, () => nav.back())
       );

@@ -1,5 +1,5 @@
 /**
- * 아이템 쇼핑 명단 — 악세사리 5 · 날개 3 · 반려견 3. (2026-08-21 26차, 사용자 지정)
+ * 아이템 쇼핑 명단 — 악세사리 7 · 날개 6 · 반려견 6. (2026-08-21 28차까지, 사용자 지정)
  *
  * *"신발이 3000~5000켤레 있는 사람들은 신발이 남아 돌아서, 재미가 없으니, 신발을 소진할
  *   수 있는 아이템 구매 쇼핑 항목을 추가하고 싶어, 좀 비싼 아이템만 파는거야"*
@@ -80,6 +80,15 @@ export const ITEMS = [
   // ── 날개 (등 뒤 — 캐릭터보다 먼저 그린다) ─────────────
   // `jumpCut` — 계단 사이 상승 컷에서는 **접힌 날개 + 번개**를 따로 굽는다
   { id: 'wing_dove',   cat: 'wing', slot: 'wing', ko: '비둘기날개',   cost: 3000,  w: 52, h: 26, dx: 4, dy: 26, behind: true, jumpCut: true },
+  /**
+   * ★ 색 날개 셋은 **비둘기날개 바로 아래**에 이어 붙인다(2026-08-21 사용자 지정).
+   * 모양·값(3,000)이 비둘기와 같고 **색만 다르다** — 부챗살 생성기가 팔레트만 갈아
+   * 끼우므로 좌우 대칭과 깃털 층이 저절로 따라온다. 색을 고를 수 있게 하는 것이
+   * 이 셋의 존재 이유다(첫 날개는 대부분 싼 것을 사는데, 그게 회색 하나뿐이었다).
+   */
+  { id: 'wing_blue',   cat: 'wing', slot: 'wing', ko: '파랑날개',     cost: 3000,  w: 52, h: 26, dx: 4, dy: 26, behind: true, jumpCut: true },
+  { id: 'wing_yellow', cat: 'wing', slot: 'wing', ko: '노랑날개',     cost: 3000,  w: 52, h: 26, dx: 4, dy: 26, behind: true, jumpCut: true },
+  { id: 'wing_green',  cat: 'wing', slot: 'wing', ko: '초록날개',     cost: 3000,  w: 52, h: 26, dx: 4, dy: 26, behind: true, jumpCut: true },
   { id: 'wing_angel',  cat: 'wing', slot: 'wing', ko: '천사날개',     cost: 5000,  w: 52, h: 26, dx: 4, dy: 24, behind: true, jumpCut: true },
   { id: 'wing_devil',  cat: 'wing', slot: 'wing', ko: '악마날개',     cost: 10000, w: 52, h: 26, dx: 4, dy: 25, behind: true, jumpCut: true },
 
@@ -89,14 +98,32 @@ export const ITEMS = [
    * **주인보다 먼저 그린다**(`behind`) — 앞에 서면 주인이 반려견을 밟고 오르는 그림이
    * 된다(사용자 지적). 그리고 옆모습에서는 자리까지 다르다:
    *
-   *   · 강아지·고양이 — 바라보는 **반대쪽으로 한 계단**(화면 가로 30 · 세로 20) 뒤.
+   *   · 강아지·고양이·사자·호랑이 — 바라보는 **반대쪽으로 한 계단**(화면 가로 30 · 세로 20) 뒤.
    *     원본 도트로는 배율 1.5 를 나눠 가로 20 · 세로 13 이다. 그러면 발이 **바로 뒤
    *     계단 윗면**에 정확히 닿아 따라 올라오는 그림이 된다.
+   *   · 정면은 반대로 **주인 옆에 딱 붙는다**(dx 42 → 38, 2026-08-21 사용자 지정).
+   *     로비 상단 상태창처럼 좁은 칸에도 반려견이 함께 보여야 하기 때문이다 —
+   *     멀리 떨어져 있으면 그 칸에서 제일 먼저 잘려 나간다.
    *   · 따라다니는별 — 예외로 **등 뒤 살짝 위**에 뜬다(사용자 지정). 별은 걷지 않는다.
    */
-  { id: 'pet_dog',     cat: 'pet',  slot: 'pet',  ko: '강아지',       cost: 5000,  w: 14, h: 13, dx: 42, dy: 49, sideDx: 2, sideDy: 62, behind: true },
-  { id: 'pet_cat',     cat: 'pet',  slot: 'pet',  ko: '고양이',       cost: 5000,  w: 14, h: 13, dx: 42, dy: 49, sideDx: 2, sideDy: 62, behind: true },
-  { id: 'pet_star',    cat: 'pet',  slot: 'pet',  ko: '따라다니는별', cost: 10000, w: 14, h: 11, dx: 42, dy: 30, sideDx: 0, sideDy: 24, behind: true },
+  { id: 'pet_dog',        cat: 'pet', slot: 'pet', ko: '강아지',       cost: 5000,  w: 14, h: 13, dx: 38, dy: 49, sideDx: 2, sideDy: 62, behind: true },
+  { id: 'pet_cat',        cat: 'pet', slot: 'pet', ko: '고양이',       cost: 5000,  w: 14, h: 13, dx: 38, dy: 49, sideDx: 2, sideDy: 62, behind: true },
+  { id: 'pet_lion',       cat: 'pet', slot: 'pet', ko: '귀여운사자',   cost: 7000,  w: 14, h: 13, dx: 38, dy: 49, sideDx: 2, sideDy: 62, behind: true },
+  { id: 'pet_tiger',      cat: 'pet', slot: 'pet', ko: '귀여운호랑이', cost: 7000,  w: 14, h: 13, dx: 38, dy: 49, sideDx: 2, sideDy: 62, behind: true },
+  { id: 'pet_star',       cat: 'pet', slot: 'pet', ko: '따라다니는별', cost: 10000, w: 14, h: 11, dx: 40, dy: 30, sideDx: 0, sideDy: 24, behind: true },
+  /**
+   * ★ **무서운호랑이는 캐릭터와 같은 크기(35×50)** 다(2026-08-21 사용자 지정).
+   *
+   * 그래서 자리 계산이 작은 반려견과 다르다.
+   *   · 정면 — `dx 24`. 캐릭터가 12~47 을 쓰므로 24~59 는 **절반쯤 겹친다.**
+   *     겹치는 쪽이 맞다("캐릭터랑 살짝 겹쳐서 뒤에"). 캐릭터 스프라이트는 머리가
+   *     24도트 남짓이라 **위쪽 오른편이 비어 있고**, 호랑이 머리를 그 자리(그림의
+   *     오른쪽 위)에 그려 두면 어깨 너머로 얼굴이 통째로 보인다.
+   *   · 옆모습 — 작은 반려견과 **같은 규칙**(중심을 20도트 뒤, 발을 13도트 아래).
+   *     35폭이라 `dx = 9.5 - 17.5 = -8`, `dy = 12 + 13 = 25` 가 그 값이다.
+   *     음수여도 캔버스는 안 자른다 — 자르는 것은 쇼핑 화면의 상자뿐이다.
+   */
+  { id: 'pet_tiger_big',  cat: 'pet', slot: 'pet', ko: '무서운호랑이', cost: 10000, w: 35, h: 50, dx: 24, dy: 12, sideDx: -8, sideDy: 25, behind: true },
 ];
 
 /**
@@ -107,6 +134,31 @@ export const ITEMS = [
 export function itemOffset(it, cut = 'front') {
   if (cut === 'front' || it.sideDx == null) return { x: it.dx, y: it.dy };
   return { x: it.sideDx, y: it.sideDy ?? it.dy };
+}
+
+/**
+ * ★ **뒤 겹 안에서의 앞뒤 — 컷마다 다르다.** (2026-08-21 28차)
+ *
+ * `behind` 는 "캐릭터보다 뒤"라는 것만 말한다. 그 안에서도 순서가 있고, **정면과
+ * 옆모습이 서로 반대다.**
+ *
+ *   · 정면 — 반려견은 **주인 옆**에 서 있다. 등에 붙은 날개보다 **가깝다.**
+ *   · 옆모습 — 반려견은 **한 계단 뒤**에서 따라온다. 날개보다 **멀다.**
+ *
+ * 작은 강아지는 겹치는 자리가 없어 이 차이가 안 보였다. 무서운호랑이(35×50)를 넣자마자
+ * 두 컷에서 **번갈아 가며 한쪽이 통째로 가려졌다** — 옆모습에서는 호랑이가 날개를 덮고,
+ * 순서를 뒤집자 정면에서는 날개가 호랑이 얼굴을 덮었다. 값을 만 켤레씩 주고 산 물건
+ * 둘 중 하나가 안 보이면 그건 고장이다.
+ *
+ * 숫자가 작을수록 멀다. 정렬은 **안정 정렬**이라 같은 값끼리는 표 순서를 지킨다.
+ */
+export const BACK_DEPTH = {
+  front: { wing: 0, pet: 1 },
+  side: { pet: 0, wing: 1 },
+};
+export function backFirst(cut = 'front') {
+  const d = cut === 'front' ? BACK_DEPTH.front : BACK_DEPTH.side;
+  return (a, b) => (d[a.cat] ?? 0) - (d[b.cat] ?? 0);
 }
 
 export const itemById = (id) => ITEMS.find((it) => it.id === id) ?? null;

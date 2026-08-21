@@ -88,11 +88,18 @@ for (const w of [320, 360, 390, 412]) {
         })(),
       })),
       charW: Math.round(panel.querySelector('.char-cell').getBoundingClientRect().width),
-      imgW: Math.round(panel.querySelector('.char-cell img').getBoundingClientRect().width),
-      imgH: Math.round(panel.querySelector('.char-cell img').getBoundingClientRect().height),
-      // 그림 아래끝 ~ 이름 위끝
+      /**
+       * 28차: 캐릭터 칸은 png 한 장이 아니라 **착용 모습 한 컷**이다(`wearFigure.js`).
+       * 그림틀(`.char-figure`)의 크기와, 그 안의 캐릭터 그림이 실제로 몇 px 로 보이는지를
+       * 따로 잰다 — 틀은 넓히고 캐릭터는 줄이는 것이 이번 요청이라 둘을 같이 봐야 한다.
+       */
+      figW: Math.round(panel.querySelector('.char-figure').getBoundingClientRect().width),
+      figH: Math.round(panel.querySelector('.char-figure').getBoundingClientRect().height),
+      imgW: Math.round(panel.querySelector('.char-figure .wear-part[src*="characters"]').getBoundingClientRect().width),
+      imgH: Math.round(panel.querySelector('.char-figure .wear-part[src*="characters"]').getBoundingClientRect().height),
+      // 그림틀 아래끝 ~ 이름 위끝
       nameGap: Math.round(panel.querySelector('.char-name').getBoundingClientRect().top
-        - panel.querySelector('.char-cell img').getBoundingClientRect().bottom),
+        - panel.querySelector('.char-figure').getBoundingClientRect().bottom),
       pageScroll: document.getElementById('ui').scrollHeight - document.getElementById('ui').clientHeight,
     };
   });
@@ -197,6 +204,58 @@ for (const w of [320, 360, 390, 412]) {
     console.log(`         왕관딱지 → [${c.tags.join('|')}] 잘림=[${c.cut.join(',')}] 넘침=${c.overflow} ${tagOk && fitOk ? '✅' : '❌'}`);
     if (w === 390) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel_crown.png' });
     await p.evaluate(() => localStorage.removeItem('sf_crowns'));
+  }
+
+  /**
+   * ★ **아이템을 전부 착용한 상태를 잰다.** (2026-08-21 28차, 사용자 지정)
+   *
+   * *"이 부분의 표가 작은 스마트폰 화면에서 깨지지 않는지 테스트 해봐"*
+   *
+   * 가장 큰 조합을 고른다 — 배트맨 가면(머리 위로 7도트 솟는다) · 날개(52폭) ·
+   * **무서운호랑이**(35×50, 캐릭터와 같은 크기). 아무것도 안 낀 상태만 재면
+   * 정작 자리가 모자라는 경우를 못 본다(도감완성·왕관 딱지에서 두 번 데인 자리다).
+   */
+  {
+    await p.evaluate(() => {
+      const raw = JSON.parse(localStorage.getItem('sf_profile'));
+      raw.ownedItems = { hat_batman: 1, wing_devil: 1, pet_tiger_big: 1 };
+      raw.equippedItems = { hat: 'hat_batman', wing: 'wing_devil', pet: 'pet_tiger_big' };
+      localStorage.setItem('sf_profile', JSON.stringify(raw));
+    });
+    await p.reload(); await sleep(1600);
+    await p.evaluate(() => window.__dbg?.nav?.reset(window.__dbg.screens.Lobby));
+    await sleep(700);
+    const g = await p.evaluate(() => {
+      const panel = document.querySelector('.panel');
+      const fig = panel.querySelector('.char-figure');
+      const parts = [...fig.querySelectorAll('img.wear-part')];
+      return {
+        // 그림이 **실제로 떴는지**는 클래스가 아니라 naturalWidth 로 본다(§9-0-52 왕관)
+        parts: parts.map((i) => ({ src: i.getAttribute('src').split('/').pop(), ok: i.naturalWidth > 0 })),
+        // 캐릭터보다 **먼저** 붙은 것이 뒤에 그려진다 — 날개·반려견이 앞에 오면 얼굴을 덮는다
+        charIndex: parts.findIndex((i) => i.src.includes('/characters/')),
+        overflow: panel.scrollWidth - panel.clientWidth,
+        panelH: Math.round(panel.getBoundingClientRect().height),
+        cut: [...panel.querySelectorAll('.stats .stat-line')].map((d) => d.scrollWidth - d.clientWidth),
+        figH: Math.round(fig.getBoundingClientRect().height),
+      };
+    });
+    const drawn = g.parts.every((x) => x.ok) && g.parts.length === 4;
+    // 뒤에 그려질 둘(날개·반려견)이 캐릭터보다 앞 자리에 있어야 한다
+    const order = g.charIndex === 2;
+    const fit = g.overflow <= 0 && g.cut.every((x) => x <= 0);
+    if (!drawn || !order || !fit) bad++;
+    console.log(`         아이템착용 → 그림 ${g.parts.length}장 [${g.parts.map((x) => `${x.src}${x.ok ? '' : '✗'}`).join(' ')}] 캐릭터순서=${g.charIndex} 그림틀높이=${g.figH} 패널높이=${g.panelH} 넘침=${g.overflow} 잘림=[${g.cut.join(',')}] ${drawn && order && fit ? '✅' : '❌'}`);
+    if (w === 390) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel_worn.png' });
+    if (w === 320) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel_worn_320.png' });
+    await p.evaluate(() => {
+      const raw = JSON.parse(localStorage.getItem('sf_profile'));
+      delete raw.ownedItems; delete raw.equippedItems;
+      localStorage.setItem('sf_profile', JSON.stringify(raw));
+    });
+    await p.reload(); await sleep(1200);
+    await p.evaluate(() => window.__dbg?.nav?.reset(window.__dbg.screens.Lobby));
+    await sleep(400);
   }
 
   if (w === 390) await p.locator('.panel').screenshot({ path: 'tools/_out/lobby_panel.png' });

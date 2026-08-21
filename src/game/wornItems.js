@@ -25,7 +25,7 @@
  */
 
 import { CHAR } from '../config/layout.js';
-import { WEAR, itemById, itemSprite, itemOffset } from '../data/items.js';
+import { WEAR, itemById, itemSprite, itemOffset, backFirst } from '../data/items.js';
 import { img, loadAll, has } from '../core/assets.js';
 import { drawFrameAt, drawFrameAtFlipped } from '../core/sprite.js';
 
@@ -93,10 +93,14 @@ export function drawWornItems(ids, cx, footY, scale, facing, cut, behind) {
   const top = Math.round(footY - CHAR.h * scale);
   const flip = cut !== 'front' && facing !== 1;
 
-  for (const id of ids) {
-    const it = itemById(id);
-    if (!it || !!it.behind !== !!behind) continue;
-    const sprite = img(itemKey(id, artCut(it, cut)));
+  /**
+   * 뒤 겹은 **먼 것부터** 그린다. 무엇이 먼지는 **컷마다 다르다** — 옆모습·상승 컷에서
+   * 반려견은 한 계단 뒤에서 따라오므로 날개보다 멀다(`items.js` 의 `backFirst` 주석).
+   * 이 정렬이 없으면 무서운호랑이가 날개를 통째로 덮는다(실제로 그렇게 나왔다).
+   */
+  const list = ids.map(itemById).filter((it) => it && !!it.behind === !!behind).sort(backFirst(cut));
+  for (const it of list) {
+    const sprite = img(itemKey(it.id, artCut(it, cut)));
     if (!sprite) continue;
 
     const off = itemOffset(it, cut);

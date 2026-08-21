@@ -8,7 +8,8 @@ import S from '../config/strings.ko.js';
 import { el, button, backButton, segmented, screen, toast, confirmDialog } from './ui.js';
 import { get as getProfile, setDifficulty, dexUnique } from '../services/profile.js';
 import { everPlayedMulti } from '../services/storageLocal.js';
-import { characterById, characterSprite } from '../data/characters.js';
+import { characterById } from '../data/characters.js';
+import { lobbyFigure, wornList } from './wearFigure.js';
 import { SHOE_TOTAL } from '../config/balance.js';
 import { ELEVATOR } from '../config/balance.js';
 import { PAL } from '../game/palette.js';
@@ -216,8 +217,20 @@ export default function Lobby(nav) {
            * 캐릭터 변경 화면에서 고를 때만 필요하다. 로비에서 내 이름이 안 보이면
            * 어느 계정으로 들어와 있는지 알 길이 없다.
            */
+          /**
+           * ★ **착용한 아이템이 여기에도 그대로 보인다.** (2026-08-21 28차, 사용자 지정)
+           *
+           * *"메인 로비 상단에 캐릭터 이미지가 있는 부분에 반드시 착용한 아이템이
+           *   착용된 모습으로 있어야 한다는 거야 (…) 특히 모자 같은것도 구매했으면
+           *   이 부분에 표기가 되어야해, 날개도 표기가 되어야해"*
+           *
+           * 쇼핑 화면의 `현재 모습` 과 **같은 부품**(`wearFigure.js`)이 그린다 —
+           * 값이 1,000~10,000켤레짜리라 산 사람이 그것을 늘 보고 있어야 한다.
+           * 유료 아이템이 게임 안에서만 보이고 로비에서는 안 보이면, 산 사람은
+           * 판을 시작하기 전까지 자기가 무엇을 샀는지 확인할 방법이 없다.
+           */
           el('div.char-cell', null, [
-            el('img', { src: characterSprite(ch.id, 'front'), alt: ch.ko }),
+            lobbyFigure(ch.id, wornList(p.equippedItems)),
             el('div.char-name', p.nickname || '???'),
           ]),
           el('div.stats', null, [

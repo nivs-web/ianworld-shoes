@@ -31,6 +31,11 @@ const shots = [
   ['left', 'hat_crown,wing_angel,pet_dog', 'wear_left'],
   ['right', 'hat_ironman,wing_devil,pet_cat', 'wear_right2'],
   ['right', 'hat_batman,wing_dove,pet_star', 'wear_right3'],
+  /** 28차 새 아이템 — 색 날개와 큰 호랑이가 계단 위에서 어떻게 서는지 (사용자 지정) */
+  ['right', 'hat_cap,wing_blue,pet_lion', 'wear_new1'],
+  ['left', 'hat_crown,wing_green,pet_tiger', 'wear_new2'],
+  ['right', 'hat_batman,wing_yellow,pet_tiger_big', 'wear_bigtiger'],
+  ['left', 'hat_ironman,wing_devil,pet_tiger_big', 'wear_bigtiger2'],
   ['ghost', 'hat_crown,wing_angel,pet_dog', 'wear_ghost'],
   // 계단 사이 상승 컷 — 접힌 날개 + 파란 번개 (2026-08-21)
   ['jump', 'hat_crown,wing_angel,pet_dog', 'wear_jump'],

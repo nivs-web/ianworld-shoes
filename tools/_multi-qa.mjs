@@ -1066,9 +1066,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('캐릭터 칸에 닉네임', lobby, "el('div.char-name', p.nickname || '???')");
   has('멀티 전적 줄', lobby, 'S.myMultiRecord(');
   eq('플레이어 이름 줄 삭제', lobby.includes('S.playerName'), false);
-  // 4차에 73 → 66 으로 줄였다가 **18차에 다시 73** 으로 (사용자 지정 "칸 자체를 10% 넓혀").
-  // 좁은 폰은 이제 미디어쿼리로 뱃지를 아랫줄에 내려 해결한다 — 폭을 깎지 않는다.
-  has('캐릭터 칸 폭 73px', css, 'width: 73px;');
+  // 4차에 73 → 66 으로 줄였다가 18차에 다시 73, **28차에 78** 로 (사용자 지정).
+  // 이제 이 칸에는 캐릭터 혼자가 아니라 날개·모자·반려견까지 들어간다.
+  // 좁은 폰은 미디어쿼리로 뱃지를 아랫줄에 내려 해결한다 — 폭을 깎지 않는다.
+  has('캐릭터 칸 폭 78px', css, 'width: 78px;');
 
   // ⑤ 게이지 — 한 칸 5계단, 내 얼굴도 받는다
   eq('한 칸 = 5계단', MULTI.raceStairsPerTick, 5);
@@ -1440,9 +1441,24 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const css = fs.readFileSync('src/styles/screens.css', 'utf8');
   const panel = /^\.panel \{([\s\S]*?)\n\}/m.exec(css)?.[1] ?? '';
   has('패널은 줄바꿈 금지 (뱃지가 안 밀린다)', panel, 'flex-wrap: nowrap');
-  // 18차: 10% 넓혀 73px 로 되돌렸다 + 그림도 10% 키웠다 (사용자 지정)
-  eq('캐릭터 칸 폭', /\.char-cell \{[\s\S]*?width: (\d+)px/.exec(css)?.[1], '73');
-  eq('캐릭터 그림 크기', /\.panel img \{\s*width: (\d+)px;\s*height: (\d+)px/.exec(css)?.slice(1, 3), ['55', '84']);
+  // 28차: 78px + **착용 모습 한 컷**(`wearFigure.js`). 크기는 CSS 가 아니라 코드가 준다 —
+  // 그림이 여러 장 겹치므로 `.panel img` 처럼 한 크기를 강요하는 규칙이 남으면 통째로 깨진다.
+  eq('캐릭터 칸 폭', /\.char-cell \{[\s\S]*?width: (\d+)px/.exec(css)?.[1], '78');
+  no('★ .panel img 로 크기를 강요하지 않는다', css, '.panel img {');
+  has('그림틀은 자르기만 한다', css, '.char-figure {');
+  {
+    // 화면 모듈은 DOM 을 물어 노드에서 못 부른다 — 소스에서 값만 읽는다
+    const wf = fs.readFileSync('src/screens/wearFigure.js', 'utf8');
+    const m = /LOBBY_FIG = \{ scale: ([\d.]+), x0: (\d+), y0: (\d+), w: (\d+), h: (\d+) \}/.exec(wf);
+    eq('★ 로비 그림틀 값', m?.slice(1, 6), ['1.5', '4', '4', '52', '58']);
+    // 배율 1.5 는 **인게임 캐릭터 배율과 같은 값**이다 (§3-1) — 로비와 계단 위가 같은 크기다
+    eq('★ 인게임과 같은 배율', Number(m?.[1]), 1.5);
+    // 잘라 낼 구간이 날개를 통째로 담는가 (날개는 dx 4, 폭 52)
+    const IT2 = await import('../src/data/items.js');
+    const wing = IT2.itemById('wing_dove');
+    eq('★ 날개가 그림틀 안에 다 들어간다',
+      Number(m[2]) <= wing.dx && wing.dx + wing.w <= Number(m[2]) + Number(m[4]), true);
+  }
   eq('그림과 닉네임 간격', /\.char-cell \{[\s\S]*?gap: (\d+)px/.exec(css)?.[1], '5');
 }
 
@@ -3026,26 +3042,34 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
    */
   {
     const IT = await import('../src/data/items.js');
-    eq('열세 가지', IT.ITEMS.length, 13);
+    // 28차: 날개 3 · 반려견 3 추가 → 열아홉 가지
+    eq('열아홉 가지', IT.ITEMS.length, 19);
     eq('카테고리 셋', IT.ITEM_CATS.map((c) => c.id), ['acc', 'wing', 'pet']);
     eq('★ 값이 사용자 지정 그대로', IT.ITEMS.map((i) => [i.ko, i.cost]), [
       ['중절모', 1000], ['야구모자', 1000], ['베레모', 2000], ['레게머리가발', 3000], ['왕관', 5000],
       ['아이언맨마스크', 7000], ['배트맨마스크', 7000],
-      ['비둘기날개', 3000], ['천사날개', 5000], ['악마날개', 10000],
-      ['강아지', 5000], ['고양이', 5000], ['따라다니는별', 10000],
+      ['비둘기날개', 3000], ['파랑날개', 3000], ['노랑날개', 3000], ['초록날개', 3000],
+      ['천사날개', 5000], ['악마날개', 10000],
+      ['강아지', 5000], ['고양이', 5000], ['귀여운사자', 7000], ['귀여운호랑이', 7000],
+      ['따라다니는별', 10000], ['무서운호랑이', 10000],
     ]);
     eq('날개는 캐릭터 뒤에', IT.itemsOf('wing').every((i) => i.behind === true), true);
-    // 그림 22장이 실제로 있는지는 `qa:shop` 이 브라우저에서 본다
+    // 그림 44장이 실제로 있는지는 `qa:shop` 이 브라우저에서 본다
     for (const it of IT.ITEMS) {
       const f = `public/assets/items/${it.id}_front.png`;
       if (!fs.existsSync(f)) { eq(`그림 ${it.id}`, false, true); }
     }
-    // 정면·옆 2장씩 + 날개의 상승 컷 3장 = 13×2 + 3
-    eq('그림 29장', fs.readdirSync('public/assets/items').filter((f) => f.endsWith('.png')).length, 29);
+    // 정면·옆 2장씩 + 날개의 상승 컷 = 19×2 + 6
+    eq('그림 44장', fs.readdirSync('public/assets/items').filter((f) => f.endsWith('.png')).length, 44);
 
     const shop = code(read('src/screens/ItemShop.js'));
     has('★ 사기 전에도 미리보기가 나온다', shop, 'wearCut(p.selectedCharacter, previewList(worn, item), S.itemCutPreview)');
-    has('날개·반려견은 먼저 붙인다 (= 뒤에 보인다)', shop, 'for (const it of list) if (it.behind) draw(it);');
+      // 28차: 그리는 코드는 로비와 함께 쓰는 부품으로 옮겼다 — 두 벌이 되면 한쪽만 고쳐진다
+    // 28차: 뒤 겹은 **먼 것부터** 정렬해 붙인다 (컷마다 순서가 다르다 — 54번 묶음)
+    has('날개·반려견은 먼저 붙인다 (= 뒤에 보인다)',
+      code(fs.readFileSync('src/screens/wearFigure.js', 'utf8')),
+      "for (const it of list.filter((x) => x.behind).sort(backFirst('front'))) draw(it);");
+    has('쇼핑도 그 부품을 쓴다', shop, "from './wearFigure.js'");
     has('구매는 한 번 되묻는다', shop, 'await confirmDialog({');
     // 배율이 화면 코드에 흩어지면 언젠가 정수배가 깨진다 (§3-1)
     has('확대는 안쪽 상자 하나가 맡는다', css, '.wear-inner {');
@@ -3210,20 +3234,29 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('서버에도 올린다', code(read('src/services/profile.js')), "pushRemote({ equippedItems: {} })");
 
   /** ③ 목록 뱃지 — 산 것 / 입은 것 */
-  eq('★ 착용 뱃지 문구', S9.itemWorn, '* 착용한 아이템 *');
-  eq('★ 보유 뱃지 문구', S9.itemOwned, '* 착용 가능한 아이템 *');
+  /**
+   * 28차: 문구를 **둘 다 일곱 글자**로 맞추고 별표를 뺐다(사용자 지정).
+   * 길이가 다르면 목록에서 뱃지 왼쪽 끝이 줄마다 들쭉날쭉해 다른 표시처럼 보인다.
+   */
+  eq('★ 착용 뱃지 문구', S9.itemWorn, '착용 중인 아이템');
+  eq('★ 보유 뱃지 문구', S9.itemOwned, '착용 가능 아이템');
+  eq('★ 둘 다 일곱 글자', [S9.itemWorn, S9.itemOwned].map((t) => t.replace(/\s/g, '').length), [7, 7]);
+  // 글자는 한 단계 크게 — DOM 사다리 한 칸이 2px (§3-3)
+  has('★ 뱃지 12px', css, 'font-size: 12px;');
   has('★ 입은 것만 색이 다르다', shop, "class: worn[it.slot] === it.id ? 'on' : '',");
   has('입은 것 뱃지 규칙', css, '.shop-have.on {');
 
   /** ④ 버튼 세 얼굴 · 맨 아래 두 줄 */
   eq('★ 착용해제 문구', S9.itemTakeOff, '착용해제');
   eq('★ 나가기 문구', S9.itemShopExit, '나가기');
-  eq('★ 모두 벗기 문구', S9.itemUnequipAll, '모든 아이템 착용 해제');
-  eq('★ 아무것도 안 입었을 때 문구', S9.itemNothingWorn, '착용한 아이템이 없습니다');
-  has('아무것도 안 입었으면 이유를 말한다', shop, 'toast(S.itemNothingWorn); return;');
   has('맨 아래는 나가기', shop, 'backButton(S.itemShopExit, () => nav.back())');
-  // 순서 — 모두 벗기가 나가기 **위**에 있어야 한다
-  eq('★ [모두 벗기] 가 [나가기] 위', shop.indexOf('S.itemUnequipAll') < shop.indexOf('S.itemShopExit'), true);
+  /**
+   * ★ 28차: `[모든 아이템 착용 해제]` 를 **뺐다**(사용자 지정) — 큰 버튼이 이미
+   * 착용/해제를 토글하므로 기능이 겹쳤고, 아이템이 없는 사람에게는 늘 흐린 채로
+   * 자리만 차지했다. 검사도 "있는가"에서 **"없는가"** 로 뒤집는다.
+   */
+  no('★ 모두 벗기 버튼은 없다', shop, 'S.itemUnequipAll');
+  no('그 문구도 지웠다', code(read('src/config/strings.ko.js')), 'itemUnequipAll:');
 
   /** ⑤ 두 컷 — 둘 다 정면, 하는 일이 다르다 */
   eq('★ 컷 이름', [S9.itemCutPreview, S9.itemCutCurrent], ['미리보기', '현재 모습']);
@@ -3261,7 +3294,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('굽는 쪽도 같은 값', read('tools/build-items.mjs'), 'const SPARK = { hot: [223, 247, 255]');
 
   /** ⑧ 날개는 상승 컷 그림이 따로 있다 (접힘 + 번개) */
-  eq('★ 날개 셋만 상승 컷', IT.ITEMS.filter((i) => i.jumpCut).map((i) => i.id), ['wing_dove', 'wing_angel', 'wing_devil']);
+  eq('★ 날개 여섯만 상승 컷', IT.ITEMS.filter((i) => i.jumpCut).map((i) => i.id),
+    ['wing_dove', 'wing_blue', 'wing_yellow', 'wing_green', 'wing_angel', 'wing_devil']);
   has('상승 컷 그림을 굽는다', read('tools/build-items.mjs'), "if (it.jumpCut) cuts.jump = makeWing(WING[it.id], it.w, it.h, 'left', true);");
   has('★ 상승 컷은 전용 그림, 없으면 옆모습', W, "const artCut = (it, cut) => (cut === 'jump' ? (it.jumpCut ? 'jump' : 'side') : cut);");
   for (const it of IT.ITEMS) {
@@ -3282,6 +3316,108 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
       eq(`${id}_${cut}`, fs.existsSync(`public/assets/items/${id}_${cut}.png`), true);
     }
   }
+}
+
+/**
+ * 54) ★ 로비 상단 착용 모습 · 뱃지 일곱 글자 · 새 아이템 여섯 (2026-08-21 28차)
+ *
+ * *"가장 큰 문제는 아이템을 착용하면, 메인 로비 상단에 캐릭터 이미지가 있는 부분에
+ *   반드시 착용한 아이템이 착용된 모습으로 있어야 한다는 거야"*
+ *
+ * 자리·크기가 화면에서 실제로 어떻게 보이는지는 `qa:lobbyfit`(320~412px, 아이템을
+ * 전부 낀 상태까지) 과 `qa:shop` 이 브라우저에게 묻는다. 여기서는 **코드가 그 값을
+ * 두 벌 갖고 있지 않은지**를 본다.
+ */
+{
+  console.log('\n54) ★ 로비 착용 모습 · 뱃지 일곱 글자 · 새 아이템 여섯 (2026-08-21 28차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  /** 소스 검사는 **주석을 걷어내고** 본다 — 설명 주석에 검사가 걸린 적이 있다(§9-0-33) */
+  const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const IT = await import('../src/data/items.js');
+  const lobby = code(read('../src/screens/Lobby.js'));
+  const wf = code(read('../src/screens/wearFigure.js'));
+  const shop = code(read('../src/screens/ItemShop.js'));
+
+  /** ① 로비가 **쇼핑의 `현재 모습` 과 같은 부품**을 쓴다 */
+  has('★ 로비가 착용 모습을 그린다', lobby, 'lobbyFigure(ch.id, wornList(p.equippedItems))');
+  has('부품은 한 곳에만 있다', wf, 'export function lobbyFigure(charId, items)');
+  has('쇼핑도 같은 부품', shop, "import { wearCut, wornList } from './wearFigure.js'");
+  no('★ 로비가 캐릭터 png 를 직접 넣지 않는다', lobby, 'characterSprite(');
+  // 앞뒤 순서는 부품 한 곳이 정한다 — 두 화면이 각자 정하면 언젠가 한쪽만 고쳐진다
+  eq('★ 캐릭터는 뒤 겹과 앞 겹 사이',
+    wf.indexOf('.filter((x) => x.behind)') < wf.indexOf('characterSprite(charId')
+    && wf.indexOf('characterSprite(charId') < wf.indexOf('if (!it.behind) draw(it)'), true);
+
+  /**
+   * ①-b ★ **뒤 겹 안의 앞뒤는 컷마다 반대다.** 무서운호랑이를 넣고 나서야 드러났다 —
+   *      옆모습에서는 호랑이가 날개를 덮고, 순서를 뒤집으니 정면에서는 날개가 호랑이
+   *      얼굴을 덮었다. 두 컷을 같은 순서로 두면 반드시 한쪽이 가려진다.
+   */
+  {
+    const front = [...IT.itemsOf('pet').slice(0, 1), ...IT.itemsOf('wing').slice(0, 1)].sort(IT.backFirst('front'));
+    const side = [...IT.itemsOf('pet').slice(0, 1), ...IT.itemsOf('wing').slice(0, 1)].sort(IT.backFirst('side'));
+    eq('★ 정면은 날개가 더 멀다 (반려견이 옆에 선다)', front.map((i) => i.cat), ['wing', 'pet']);
+    eq('★ 옆모습은 반려견이 더 멀다 (한 계단 뒤)', side.map((i) => i.cat), ['pet', 'wing']);
+    has('★ 인게임도 컷별로 정렬한다', code(read('../src/game/wornItems.js')), 'sort(backFirst(cut))');
+    has('★ 쇼핑·로비는 정면 순서', wf, "sort(backFirst('front'))");
+  }
+
+  /** ② 배율·잘라 낼 구간은 **코드가** 준다 (CSS 에 적으면 두 벌이 된다) */
+  has('그림틀 값은 코드에', wf, 'export const LOBBY_FIG =');
+  has('★ 배율을 인라인으로 넘긴다', wf, 'inner.style.transform = `scale(${F.scale}) translate(');
+  no('CSS 가 배율을 따로 갖지 않는다', code(read('../src/styles/screens.css')), '.char-figure .wear-inner {\n  transform: scale');
+
+  /** ③ 뱃지 — 둘 다 일곱 글자, 한 단계 큰 12px */
+  const S9 = (await import('../src/config/strings.ko.js')).default;
+  eq('★ 일곱 글자 둘', [S9.itemWorn, S9.itemOwned], ['착용 중인 아이템', '착용 가능 아이템']);
+  eq('공백 뺀 길이', [S9.itemWorn, S9.itemOwned].map((t) => t.replace(/\s/g, '').length), [7, 7]);
+  no('★ [모든 아이템 착용 해제] 는 화면에서 뺐다', shop, 'itemUnequipAll');
+
+  /** ④ 새 아이템 여섯 — 자리와 값 */
+  eq('★ 색 날개 셋이 비둘기 바로 다음',
+    IT.itemsOf('wing').map((i) => i.id).slice(0, 4),
+    ['wing_dove', 'wing_blue', 'wing_yellow', 'wing_green']);
+  eq('★ 색 날개는 3,000켤레',
+    ['wing_blue', 'wing_yellow', 'wing_green'].map((id) => IT.itemById(id).cost), [3000, 3000, 3000]);
+  eq('★ 사자·호랑이가 고양이 다음',
+    IT.itemsOf('pet').map((i) => i.id).slice(0, 4),
+    ['pet_dog', 'pet_cat', 'pet_lion', 'pet_tiger']);
+  eq('★ 작은 반려견은 강아지와 같은 크기',
+    ['pet_lion', 'pet_tiger'].map((id) => [IT.itemById(id).w, IT.itemById(id).h]), [[14, 13], [14, 13]]);
+  eq('★ 사자·호랑이 7,000켤레',
+    ['pet_lion', 'pet_tiger'].map((id) => IT.itemById(id).cost), [7000, 7000]);
+  {
+    const t = IT.itemById('pet_tiger_big');
+    eq('★ 무서운호랑이 10,000켤레', t.cost, 10000);
+    // "반려견 사이즈를 캐릭터 크기와 동일한 크기로" (사용자 지정)
+    eq('★ 캐릭터와 같은 크기 35×50', [t.w, t.h], [35, 50]);
+    eq('주인보다 뒤', t.behind, true);
+    // 옆모습은 작은 반려견과 **같은 규칙** — 중심을 20도트 뒤, 발을 13도트 아래
+    const 뒤로 = (IT.WEAR.charX + 35 / 2) - (t.sideDx + t.w / 2);
+    eq('★ 한 계단 뒤 (화면 30 ± 1)', Math.abs(뒤로 * 1.5 - 30) <= 1, true);
+    const 아래로 = (t.sideDy + t.h) - (IT.WEAR.charY + 50);
+    eq('★ 한 계단 아래', Math.round(아래로 * 1.5), 20);
+  }
+
+  /**
+   * ⑤ ★ 반려견 **정면**은 주인 옆에 딱 붙는다 (28차, 사용자 지정)
+   *    로비 상태창처럼 좁은 칸에서 제일 먼저 잘려 나가는 것이 이 자리다.
+   */
+  for (const it of IT.itemsOf('pet')) {
+    if (it.id === 'pet_star') continue;                 // 별은 어깨 위 — 예외
+    const 캐릭터오른끝 = IT.WEAR.charX + 35;              // 47
+    eq(`★ ${it.ko} 정면이 캐릭터에 닿거나 겹친다`, it.dx <= 캐릭터오른끝, true);
+    eq(`${it.ko} 정면이 상자 안에 있다`, it.dx + it.w <= IT.WEAR.w, true);
+  }
+
+  /** ⑥ 도면·팔레트가 실제로 있고, 그림이 표와 같은 크기로 구워졌는가 */
+  const bake = read('../tools/build-items.mjs');
+  for (const id of ['wing_blue', 'wing_yellow', 'wing_green', 'pet_lion', 'pet_tiger']) has(`도면/팔레트 ${id}`, bake, `${id}:`);
+  has('무서운호랑이 도면', bake, 'const TIGER_BIG = {');
+  has('★ 큰 호랑이도 옆모습은 같은 그림', bake, 'cuts.side = cuts.front;');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

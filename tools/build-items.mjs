@@ -1,5 +1,5 @@
 /**
- * 아이템 도트 22장 — 악세사리 5 · 날개 3 · 반려견 3, 각각 정면/옆. (2026-08-21 26차)
+ * 아이템 도트 44장 — 악세사리 7 · 날개 6 · 반려견 6, 각각 정면/옆(+날개는 상승 컷). (28차)
  *
  * *"그림은 너가 도트로 그려 (…) 너가 일단 도트로 그려두면, 추후에 내가 img 만들어서
  *   매칭 요청할게, 가급적 천천히 예쁘게 그려"*
@@ -188,6 +188,61 @@ const PET = {
       '...KBSBBSBK...',
       '...KBBBBBBK...',
       '...KBSBBSBK...',
+      '..KBK....KBK..',
+      '..KKK....KKK..',
+    ],
+    side: null,
+  },
+  /**
+   * ★ 귀여운사자 — 강아지·고양이와 **같은 뼈대(14×13)** 에 갈기만 두른다.
+   * *"강아지랑 고양이처럼 작은 사이즈로 그려"* (2026-08-21 사용자 지정)
+   *
+   * 14도트 안에서 사자를 사자로 읽히게 하는 것은 **얼굴을 감싼 한 겹의 테두리**다.
+   * 갈기를 두껍게 두르면 얼굴이 남지 않아 그냥 동그란 덩어리가 된다.
+   */
+  pet_lion: {
+    pal: {
+      K: [58, 32, 10], B: [252, 224, 158], H: [255, 244, 200], S: [212, 172, 90],
+      M: [186, 96, 22], W: [255, 250, 234], E: [40, 24, 10],
+    },
+    front: [
+      '.KK.......KK..',
+      '.KBK.....KBK..',
+      '.KMMKKKKKMMK..',
+      '.KMBBBBBBBMK..',
+      '.KMBEBBBEBMK..',
+      '.KMBBWWWBBMK..',
+      '.KMMBBBBBMMK..',
+      '..KMMMMMMMK...',
+      '...KBBBBBBK...',
+      '...KBHBBBBK...',
+      '...KBBBBBBK...',
+      '..KBK....KBK..',
+      '..KKK....KKK..',
+    ],
+    side: null,
+  },
+  /**
+   * ★ 귀여운호랑이 — 같은 뼈대에 **줄무늬**. 줄은 좌우 대칭으로만 넣는다.
+   * 한쪽에만 넣으면 14도트에서는 무늬가 아니라 얼룩으로 보인다.
+   */
+  pet_tiger: {
+    pal: {
+      K: [58, 30, 10], B: [246, 166, 62], H: [255, 208, 130], S: [198, 118, 34],
+      D: [40, 24, 12], W: [252, 246, 236], E: [30, 18, 8], N: [148, 60, 52],
+    },
+    front: [
+      '.KK.......KK..',
+      '.KBK.....KBK..',
+      '.KBDKKKKKDBK..',
+      '.KDBBBDBBBDBK.',
+      '.KBBEBBBEBBBK.',
+      '.KDBBWNNWBBDK.',
+      '..KBBWWWWBBK..',
+      '..KKBBBBBBKK..',
+      '...KDBBBBDK...',
+      '...KBBHBBBK...',
+      '...KDBBBBDK...',
       '..KBK....KBK..',
       '..KKK....KKK..',
     ],
@@ -574,6 +629,99 @@ function dreads(w, h, pal, side) {
 }
 
 /**
+ * ★ **무서운호랑이 — 캐릭터와 같은 35×50 도면.** (2026-08-21 28차, 사용자 지정)
+ *
+ * *"무서운호랑이, 이건 신발 10,000개, 호랑이 인데 반려견 사이즈를 캐릭터 크기와
+ *   동일한 크기로 그려, 정성껏 그려줘"*
+ *
+ * ## 타원 생성기를 버리고 도면으로 돌아왔다
+ *
+ * 처음엔 다른 큰 그림처럼 타원·삼각형을 숫자로 두고 굽게 짰다. 결과는 **"뚱뚱한 주황
+ * 고양이"** 였다 — 네 발 짐승은 실루엣이 곧 종(種)인데, 타원 몇 개를 겹치면 어느
+ * 각도에서도 덩어리가 되고 줄무늬를 아무리 얹어도 호랑이가 되지 않는다.
+ * 35×50 이면 도면으로 적을 수 있는 크기다. 적었다.
+ *
+ * ## 앉은 자세인 이유
+ *
+ * 네 발로 선 호랑이는 **가로로 길다** — 35폭 안에 넣으면 머리가 손톱만 해진다.
+ * 앉으면 머리가 크고 몸이 아래로 넓어져 세로 상자에 꼭 맞고, 무엇보다 **얼굴이
+ * 화면 위쪽**에 온다.
+ *
+ * ## 얼굴이 **오른쪽 위**에 몰려 있는 것이 이 도면의 핵심이다
+ *
+ * 정면 컷에서 이 호랑이는 캐릭터 뒤에 절반쯤 가린다(표의 `dx 24` 주석). 가려지는 것은
+ * **왼쪽 절반**이므로, 얼굴을 그림 한가운데에 두면 코까지 잘려 주황색 덩어리만 남는다.
+ * 머리 중심을 오른쪽(24열)으로 밀어 두면 어깨 너머로 **얼굴이 통째로** 보인다.
+ *
+ * 테두리(`K`)는 손으로 안 적었다 — 실루엣 가장자리를 한 번에 두른 결과를 그대로
+ * 옮겼으므로, 모양을 고칠 때는 도면의 몸통만 고치고 가장자리는 다시 두르면 된다.
+ */
+const TIGER_BIG = {
+  pal: {
+    K: [40, 20, 8],       // 테두리
+    B: [242, 152, 46],    // 본색
+    H: [255, 200, 112],   // 빛
+    S: [190, 104, 26],    // 그늘
+    D: [32, 18, 10],      // 줄무늬
+    W: [250, 244, 232],   // 가슴털 · 주둥이 · 송곳니
+    Y: [255, 214, 76],    // 눈
+    N: [148, 60, 52],     // 코
+  },
+  front: [
+      '.................KK...........KK...',
+      '................KBBK.........KBBK..',
+      '................KSSK.........KSSK..',
+      '...............KSSSSK.......KSSSSK.',
+      '...............KSSSSK.......KSSSSK.',
+      '...............KBSSSK..KKK..KSSSBK.',
+      '...............KBBBBK.KBBBK.KBBBBK.',
+      '................KBBBBKBBDDBKBBBBK..',
+      '...............KBHHHDDBBDDBBDDBBBK.',
+      '..............KBHHHBDDBBDDBBDDBBBBK',
+      '..............KDDDBBDDBBDDBBDDBDDDK',
+      '..............KHHDDDDDBBBBBBDDDDBBK',
+      '..............KBBYKYBBBBBBBBBYKYBBK',
+      '..............KDDYKYBBBBBBBBBYKYDDK',
+      '..............KDDYKYBBBBBBBBBYKYDDK',
+      '..............KBBBBBBBBBBBBBBBBBBBK',
+      '..............KBBBBBBBBNNNBBBBBBBBK',
+      '...............KDDBBWWWNNNWWWBBDDK.',
+      '...............KDDBWWWWWNWWWWWBDDK.',
+      '...............KBBWWWWWWWWWWWWWBBK.',
+      '................KBWWWWKKKKKWWWWBK..',
+      '................KDWWWWKKKKKWWWWDK..',
+      '.................KDWWKWKKKWKWWDK...',
+      '..................KBWWKKKKKWWBK....',
+      '...................KBWWKKKWWBK.....',
+      '....................KBWWWWWBK......',
+      '.....................KBBBBBK.......',
+      '................KKKKKBBBBBBBKKKKK..',
+      '..............KKBBBBBBWWWWWWWBBBDKK',
+      '............KKHHHBBBBWWWWWWWWWBBDDK',
+      '...........KDDHHHBBBBWWWWWWWWWBBDDK',
+      '..........KHDDHHBBBBBWWWWWWWWWBBDDK',
+      '........KKBBDDBBBBBBBWWWWWWWWWBBDDK',
+      '........KBBBDDBBBBBBBBWWWWWWWBBBDDK',
+      '........KBBBDDBBBBBBBBBKKWWWBBBBDDK',
+      '........KDBBDDBBBBBBBBK..KBBBBBBDDK',
+      '........KDBBDDBBBBBBBBK..KBBBBBBBBK',
+      '........KDBBDDBBBBBBBBK..KBBBBBBBBK',
+      '........KDBBBBBBBBBBBBK..KBBBBBBBBK',
+      '........KDBBBBBBBBDDDDK..KDDDDBBBBK',
+      '......KKDDBBBBBBBBBBBBK..KBBBBBBBBK',
+      '......KBDDBBBBBBBBBBBBK..KBBBBBBBBK',
+      '......KBDDBBBBBBBBBBBBK..KBBBBBBBBK',
+      '......KBBBBBBBBBBBDDDDK..KDDDDBBBBK',
+      '......KBBBBBBBBBBBBBBBK..KBBBBBBBBK',
+      '......KBBBBBBBBBBBBBBBK..KBBBBBBBBK',
+      '......KBBBBBBBBBBBBBBBK..KBBBBBBBSK',
+      '......KBBBBBBBBBSBSBSBK..KSBSBSBBSK',
+      '......KBBBBBBBBBBBBBBBK..KBBBBBBSSK',
+      '......KKKKKKKKKKKKKKKKK..KKKKKKKKKK',
+  ],
+};
+
+/**
  * 날개 세 종 — 모양은 같고 **성격**이 다르다.
  *   비둘기 : 회색 깃털, 층이 넉넉하다
  *   천사   : 흰색, 깃털 한가운데가 밝다(`glow`)
@@ -581,6 +729,20 @@ function dreads(w, h, pal, side) {
  */
 const WING = {
   wing_dove:  { pal: { K: [70, 78, 92],   B: [186, 196, 210], H: [240, 246, 255], S: [130, 142, 162] } },
+  /**
+   * ★ 색 날개 셋(2026-08-21 사용자 지정) — **팔레트만 다르다.**
+   *
+   * 모양을 따로 그리지 않은 것이 설계다. 부챗살 생성기가 좌우 대칭과 깃털 층을
+   * 보장하므로, 색만 갈아 끼우면 여섯 벌이 **한 벌처럼 같은 품질**로 나온다.
+   * 손으로 세 벌을 더 그렸으면 어느 하나는 반드시 깃털 수가 어긋났을 것이다.
+   *
+   * 네 값은 같은 규칙으로 골랐다 — `K` 는 가장 어두운 테두리, `B` 는 본색,
+   * `H` 는 본색보다 두 단계 밝게(깃털 윗면), `S` 는 두 단계 어둡게(깃털 아랫면).
+   * 밝기 차가 이만큼 벌어져야 도트 넷으로도 깃털이 층져 보인다.
+   */
+  wing_blue:   { pal: { K: [26, 52, 100],  B: [78, 140, 214],  H: [158, 208, 255], S: [44, 92, 158] } },
+  wing_yellow: { pal: { K: [122, 84, 12],  B: [246, 200, 60],  H: [255, 240, 158], S: [196, 146, 24] } },
+  wing_green:  { pal: { K: [22, 72, 44],   B: [78, 178, 106],  H: [156, 234, 176], S: [42, 118, 68] } },
   wing_angel: { pal: { K: [176, 150, 96], B: [252, 250, 240], H: [255, 255, 255], S: [214, 202, 168] }, glow: true },
   wing_devil: { pal: { K: [38, 12, 16],   B: [150, 34, 40],   H: [198, 62, 58],   S: [92, 18, 24] },    bat: true },
 };
@@ -642,6 +804,11 @@ for (const it of ITEMS) {
       cuts.front = fromRows(spec.front, spec.pal);
       cuts.side = spec.side ? fromRows(spec.side, spec.pal) : cuts.front;
     }
+  } else if (it.id === 'pet_tiger_big') {
+    // 강아지·고양이처럼 **옆모습도 같은 그림**을 쓴다 — 정면을 보고 뒤따라오는 쪽이
+    // 오히려 더 무섭고, 컷을 둘로 나누면 도면이 둘 다 어중간해진다
+    cuts.front = fromRows(TIGER_BIG.front, TIGER_BIG.pal);
+    cuts.side = cuts.front;
   } else if (PET[it.id]) {
     cuts.front = fromRows(PET[it.id].front, PET[it.id].pal);
     cuts.side = PET[it.id].side ? fromRows(PET[it.id].side, PET[it.id].pal) : cuts.front;
@@ -673,4 +840,4 @@ for (const id of [...Object.keys(HAT), ...Object.keys(MASK), ...Object.keys(PET)
   if (!itemById(id)) throw new Error(`도면은 있는데 표에 없는 아이템: ${id}`);
 }
 
-console.log(`아이템 도트 ${made}장 → public/assets/items/ (악세사리 7 · 날개 3 · 반려견 3 · 상승 컷 3)`);
+console.log(`아이템 도트 ${made}장 → public/assets/items/ (악세사리 7 · 날개 6 · 반려견 6 · 상승 컷 6)`);

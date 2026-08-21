@@ -3,13 +3,15 @@
  *
  * 사용자 지정을 브라우저에게 묻는다:
  *   ① 타이틀 `아이템 쇼핑`, 그 바로 아래 카테고리 셋 `[악세사리][날개][반려견]`
- *   ② 열세 가지의 이름과 값이 사용자가 준 그대로
+ *   ② 열아홉 가지의 이름과 값이 사용자가 준 그대로 (28차에 날개 3 · 반려견 3 추가)
  *   ③ 아래에 `아이템 착용 모습` — **미리보기 · 현재 모습 두 컷(둘 다 정면)**
  *   ④ 고르면 그 자리에서 캐릭터가 입는다 (사기 **전에도** 보인다 — 값이 최대 1만이다)
  *   ⑤ 날개·반려견은 캐릭터 **뒤**에 그려진다
  *   ⑥ 확대가 **정수배**다 (§3-1 — 1.93배면 도트가 뭉갠다)
  *   ⑦ 버튼 하나가 **세 얼굴**을 한다 — 구매하기 / 착용하기 / 착용해제
- *   ⑧ `[모든 아이템 착용 해제]` · `[나가기]`
+ *   ⑧ 맨 아래는 `[나가기]` — 28차에 `[모든 아이템 착용 해제]` 를 **뺐다**(사용자 지정:
+ *      *"착용 여러번 눌러서 착용 해제 하면 되기 때문이고, 아이템이 없는 사람도 많을
+ *      것인데"*). 큰 버튼이 이미 착용/해제를 토글하므로 기능이 겹쳤다.
  */
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -87,20 +89,28 @@ const pickTab = async (p, label) => {
   await p.screenshot({ path: 'tools/_out/shop_acc.png' });
 
   await pickTab(p, '날개');
-  eq('★ 날개 셋', await p.evaluate(() => [...document.querySelectorAll('.shop-row')].map((x) => [
+  /** 28차: 색 날개 셋이 **비둘기 바로 아래**에 이어 붙는다 — 순서까지 사용자 지정이다 */
+  eq('★ 날개 여섯 (색 셋은 비둘기 바로 아래)', await p.evaluate(() => [...document.querySelectorAll('.shop-row')].map((x) => [
     x.querySelector('.shop-name').textContent, x.querySelector('.shop-cost')?.textContent ?? ''])), [
     ['비둘기날개', '신발 3,000개'],
+    ['파랑날개', '신발 3,000개'],
+    ['노랑날개', '신발 3,000개'],
+    ['초록날개', '신발 3,000개'],
     ['천사날개', '신발 5,000개'],
     ['악마날개', '신발 10,000개'],
   ]);
   await p.screenshot({ path: 'tools/_out/shop_wing.png' });
 
   await pickTab(p, '반려견');
-  eq('★ 반려견 셋', await p.evaluate(() => [...document.querySelectorAll('.shop-row')].map((x) => [
+  /** 28차: 사자·호랑이는 **고양이 다음**, 무서운호랑이는 맨 끝(사용자 지정) */
+  eq('★ 반려견 여섯', await p.evaluate(() => [...document.querySelectorAll('.shop-row')].map((x) => [
     x.querySelector('.shop-name').textContent, x.querySelector('.shop-cost')?.textContent ?? ''])), [
     ['강아지', '신발 5,000개'],
     ['고양이', '신발 5,000개'],
+    ['귀여운사자', '신발 7,000개'],
+    ['귀여운호랑이', '신발 7,000개'],
     ['따라다니는별', '신발 10,000개'],
+    ['무서운호랑이', '신발 10,000개'],
   ]);
   await p.screenshot({ path: 'tools/_out/shop_pet.png' });
   await p.close();
@@ -159,7 +169,7 @@ const pickTab = async (p, label) => {
     btn: [...document.querySelectorAll('.screen .pbtn')].map((x) => x.textContent).find((t) => t === '착용해제' || t === '착용하기'),
   }));
   console.log('\n③-b 사면 바로 입는다');
-  eq('★ 값 대신 착용 뱃지', r.have, '* 착용한 아이템 *');
+  eq('★ 값 대신 착용 뱃지', r.have, '착용 중인 아이템');
   eq('값 표시는 사라진다', r.cost, '');
   eq('★ 지갑에서 2,000 빠진다', r.wallet, '보유신발 10,000켤레');
   eq('버튼이 [착용해제] 로 바뀐다', r.btn, '착용해제');
@@ -176,8 +186,8 @@ const pickTab = async (p, label) => {
     x.querySelector('.shop-have')?.classList.contains('on') ?? null,
   ]));
   eq('★ 안 산 것은 값', badges[0], ['중절모', '신발 1,000개', null]);
-  eq('★ 샀지만 안 입은 것', badges[2], ['베레모', '* 착용 가능한 아이템 *', false]);
-  eq('★ 입은 것', badges[4], ['왕관', '* 착용한 아이템 *', true]);
+  eq('★ 샀지만 안 입은 것', badges[2], ['베레모', '착용 가능 아이템', false]);
+  eq('★ 입은 것', badges[4], ['왕관', '착용 중인 아이템', true]);
   // 뱃지는 "떴다"가 아니라 "읽힌다"가 통과 조건이다 — 색을 계산값으로 본다 (§9-0-50)
   const 색 = await p.evaluate(() => {
     const on = document.querySelector('.shop-row:nth-child(5) .shop-have');
@@ -219,32 +229,55 @@ const pickTab = async (p, label) => {
   await p.close();
 }
 
-// ── ⑨ 모두 벗기 · 나가기 ─────────────
+// ── ⑨ 맨 아래는 [나가기] 하나뿐이다 ─────────────
 {
-  console.log('\n⑨ [모든 아이템 착용 해제] · [나가기]');
-  // 아무것도 안 입었으면 — 눌러도 아무 일이 없되 **이유를 말한다**
-  const p0 = await open('shoes=9999&own=hat_crown');
-  eq('★ 맨 아래는 [나가기]',
-    await p0.evaluate(() => [...document.querySelectorAll('.screen .pbtn')].pop().textContent), '나가기');
-  eq('★ 그 위가 [모든 아이템 착용 해제]',
-    await p0.evaluate(() => [...document.querySelectorAll('.screen .pbtn')].slice(-2)[0].textContent), '모든 아이템 착용 해제');
-  await p0.locator('.pbtn:has-text("모든 아이템 착용 해제")').click();
-  await sleep(300);
-  eq('★ 착용한 게 없으면 문구로 말한다',
-    await p0.evaluate(() => document.querySelector('.toast')?.textContent ?? ''), '착용한 아이템이 없습니다');
-  await p0.close();
-
-  // 셋을 다 입은 상태에서 누르면 — 한 번에 전부 벗는다
-  const p1 = await open('shoes=9999&own=hat_crown,wing_angel,pet_dog&wear=hat_crown,wing_angel,pet_dog');
-  await p1.locator('.pbtn:has-text("모든 아이템 착용 해제")').click();
+  /**
+   * ★ 28차: `[모든 아이템 착용 해제]` 를 **뺐다**(사용자 지정). 검사도 "있는가"에서
+   * **"없는가"** 로 뒤집는다 — 지워 놓고 검사만 남겨 두면 다음 사람이 되살린다.
+   */
+  console.log('\n⑨ 맨 아래 [나가기] — 모두 벗기 버튼은 없다');
+  const p0 = await open('shoes=9999&own=hat_crown&wear=hat_crown');
+  const btns = await p0.evaluate(() =>
+    [...document.querySelectorAll('.screen .pbtn')].filter((b) => !b.closest('.seg')).map((b) => b.textContent));
+  eq('★ 맨 아래는 [나가기]', btns.pop(), '나가기');
+  eq('★ [모든 아이템 착용 해제] 는 없다', btns.some((t) => t.includes('착용 해제')), false);
+  /** 대신 큰 버튼을 두 번 누르면 벗겨진다 — 그래서 없어도 된다는 것이 사용자의 판단이다 */
+  await p0.locator('.pbtn:has-text("착용해제")').click();
   await sleep(350);
-  const after = await p1.evaluate(() => ({
+  const after = await p0.evaluate(() => ({
     parts: [...document.querySelectorAll('.wear-cut')[1].querySelectorAll('.wear-part')].length,
     badges: [...document.querySelectorAll('.shop-have.on')].length,
   }));
   eq('★ 현재 모습이 캐릭터 한 장만 남는다', after.parts, 1);
   eq('★ 착용중 뱃지가 사라진다', after.badges, 0);
-  await p1.close();
+  await p0.close();
+}
+
+/**
+ * ── ⑩ 뱃지 문구는 **둘 다 일곱 글자** · 글자는 한 단계 크게 ── (28차, 사용자 지정)
+ *
+ * *"착용 중인 아이템 / 착용 가능 아이템 이렇게 (…) 문구를 똑같이 7글자로 바꿔,
+ *   그리고 폰트를 딱 1단계 키워도 될거 같아"*
+ *
+ * 길이가 다르면 목록을 훑을 때 뱃지 왼쪽 끝이 줄마다 들쭉날쭉해 **다른 종류의 표시**로
+ * 보인다. 글자 크기는 DOM 사다리 한 칸이 2px 이라 10 → 12px 이 "딱 1단계"다(§3-3).
+ */
+{
+  console.log('\n⑩ 뱃지 — 일곱 글자 · 12px');
+  const p = await open('shoes=9999&own=hat_crown,hat_beret&wear=hat_crown');
+  const r = await p.evaluate(() => {
+    const on = document.querySelector('.shop-have.on');
+    const off = [...document.querySelectorAll('.shop-have')].find((n) => !n.classList.contains('on'));
+    const px = (n) => getComputedStyle(n).fontSize;
+    return { on: on.textContent, off: off.textContent, onPx: px(on), offPx: px(off) };
+  });
+  const 글자수 = (t) => t.replace(/\s/g, '').length;
+  eq('★ 착용중 문구', r.on, '착용 중인 아이템');
+  eq('★ 착용가능 문구', r.off, '착용 가능 아이템');
+  eq('★ 둘 다 일곱 글자', [글자수(r.on), 글자수(r.off)], [7, 7]);
+  eq('★ 한 단계 큰 12px', [r.onPx, r.offPx], ['12px', '12px']);
+  await p.screenshot({ path: 'tools/_out/shop_badge.png' });
+  await p.close();
 }
 
 // ── ⑥ 확대는 정수배 · 좁은 폰에서 안 터진다 ─────────────
