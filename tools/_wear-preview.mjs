@@ -36,6 +36,14 @@ const shots = [
   ['left', 'hat_crown,wing_green,pet_tiger', 'wear_new2'],
   ['right', 'hat_batman,wing_yellow,pet_tiger_big', 'wear_bigtiger'],
   ['left', 'hat_ironman,wing_devil,pet_tiger_big', 'wear_bigtiger2'],
+  /** 30차 새 아이템 — 박쥐날개·다람쥐, 그리고 **더 뒤로 물린** 무서운호랑이 (사용자 지정) */
+  ['right', 'hat_beret,wing_bat,pet_squirrel', 'wear_new30a'],
+  ['left', 'hat_ironman,wing_bat,pet_squirrel', 'wear_new30b'],
+  ['jump', 'hat_crown,wing_bat,pet_squirrel', 'wear_new30jump'],
+  /** ★ 30차 사망 연출 세 박자 — 커지면 벗고, 원래 크기면 입고, 그대로 떨어진다 */
+  ['dieBig', 'hat_crown,wing_angel,pet_dog', 'wear_die_big'],
+  ['dieSmall', 'hat_crown,wing_angel,pet_dog', 'wear_die_small'],
+  ['fall', 'hat_crown,wing_angel,pet_dog', 'wear_die_fall'],
   ['ghost', 'hat_crown,wing_angel,pet_dog', 'wear_ghost'],
   // 계단 사이 상승 컷 — 접힌 날개 + 파란 번개 (2026-08-21)
   ['jump', 'hat_crown,wing_angel,pet_dog', 'wear_jump'],

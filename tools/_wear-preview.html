@@ -17,6 +17,7 @@ import { multiGhosts } from '/src/game/multiHud.js';
 import { itemKey } from '/src/game/wornItems.js';
 import { itemSprite, ITEMS } from '/src/data/items.js';
 import { CENTER_X } from '/src/config/layout.js';
+import { ANIM } from '/src/config/balance.js';
 import { loadSmallFont } from '/src/core/pixelfont.js';
 
 initCanvas();
@@ -56,6 +57,17 @@ if (cut === 'ghost') {
   else if (cut === 'jump' || cut === 'jumpleft') {
     // 계단 사이 상승 컷 — 접힌 날개 + 파란 번개
     p.state = P_STATE.EFFECT; p.timer = 2; p.facing = cut === 'jumpleft' ? -1 : 1;
+  } else if (cut === 'dieBig' || cut === 'dieSmall' || cut === 'fall') {
+    /**
+     * ★ 사망 연출 세 박자 (2026-08-21 30차, 사용자 지정)
+     *   dieBig   커진 컷 — **아무것도 안 입은** 몸
+     *   dieSmall 원래 크기 — 착용한 것 **전부** 입고 정면
+     *   fall     그대로 아래로 뚝
+     * 실기기로는 순식간에 지나가서 눈으로 확인할 방법이 이것뿐이다.
+     */
+    p.state = P_STATE.STARE;
+    p.timer = cut === 'dieBig' ? ANIM.deathStareFrames : 1;
+    if (cut === 'fall') { p.state = P_STATE.FALL; p.fallY = 26; }
   } else { p.state = P_STATE.IDLE; p.facing = cut === 'left' ? -1 : 1; }
   p.render(0, 0);
 }

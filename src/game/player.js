@@ -189,12 +189,31 @@ export class Player {
         this.renderWornShoe(cx, CHAR.footY + off, 'jump');
         break;
       }
+      /**
+       * ★ **사망 연출은 두 박자다.** (2026-08-21 29차, 사용자 지정)
+       *
+       * *"잠깐 커졌을 때는 모든 아이템 미착용한 상태 아주 잠깐 보이게 만들고, 다시
+       *   원래 크기로 바뀌었을때는 착용하고 있는 아이템 전부 다 착용한 상태에서,
+       *   정면을 보고 있다가, 아래로 뚝 떨어지는걸로"*
+       *
+       * 커진 컷에만 아이템을 안 그리는 이유가 화면에 그대로 있다 — 그 컷은 캐릭터를
+       * **1.15배로 늘려** 그리는데(정지 한 컷이라 허용한 비정수 배율), 아이템은 도트
+       * 좌표로 붙으므로 같이 안 늘어난다. 모자만 제자리에 남으면 머리에서 떠 버린다.
+       * 그래서 늘어난 동안은 **통째로 벗은 몸**을 보여 주고, 원래 배율로 돌아오는
+       * 순간 전부 되입는다. 벗었다 입는 그 한 박자가 오히려 "죽었다"를 강조한다.
+       */
       case P_STATE.STARE: {
         if (!front) break;
         const big = this.timer > (ANIM.deathStareFrames >> 1);
-        const w = big ? Math.round(CHAR.dw * 1.15) : CHAR.dw;
-        const h = big ? Math.round(CHAR.dh * 1.15) : CHAR.dh;
-        drawStretched(front, cx - (w >> 1), CHAR.footY - h, w, h);
+        if (big) {
+          const w = Math.round(CHAR.dw * 1.15);
+          const h = Math.round(CHAR.dh * 1.15);
+          drawStretched(front, cx - (w >> 1), CHAR.footY - h, w, h);
+          break;
+        }
+        this.drawItems(cx, CHAR.footY, 'front', true);
+        drawScaled(front, cx - (CHAR.dw >> 1), CHAR.footY - CHAR.dh, CHAR.w, CHAR.h, S);
+        this.drawItems(cx, CHAR.footY, 'front', false);
         break;
       }
       case P_STATE.FALL:
@@ -202,7 +221,16 @@ export class Player {
         if (!front) break;
         const x = cx - (CHAR.dw >> 1);
         const y = CHAR.footY - CHAR.dh + this.fallY;
-        if (y < 340) drawScaled(front, x, y, CHAR.w, CHAR.h, S);
+        /**
+         * ★ **떨어질 때도 입은 채로 떨어진다**(사용자 지정). 배율이 1.5 그대로라
+         * 아이템이 몸을 정확히 따라간다 — `footY` 에 낙하량을 더하기만 하면 된다.
+         * 화면 밖으로 나가면(340) 캐릭터와 **같이** 그리기를 멈춘다.
+         */
+        if (y < 340) {
+          this.drawItems(cx, CHAR.footY + this.fallY, 'front', true);
+          drawScaled(front, x, y, CHAR.w, CHAR.h, S);
+          this.drawItems(cx, CHAR.footY + this.fallY, 'front', false);
+        }
         if (this.deadShoe !== null) {
           this.renderFlyingShoe(cx + this.flyL.x, CHAR.footY + this.flyL.y, true);
           this.renderFlyingShoe(cx + this.flyR.x, CHAR.footY + this.flyR.y, false);
@@ -215,9 +243,10 @@ export class Player {
   /**
    * 착용 아이템 한 겹.
    *
-   * **살아 있는 컷에만 그린다**(INTRO·IDLE·EFFECT). 사망 연출(STARE·FALL)은 캐릭터를
-   * 1.15배로 늘리거나 낙하시키는데, 아이템만 제자리에 남으면 몸에서 떨어져 나온 것처럼
-   * 보인다 — 그 순간 사용자가 봐야 하는 건 모자가 아니라 "죽었다"는 사실이다.
+   * **배율이 1.5 인 컷에만 그린다.** 아이템은 도트 좌표로 붙으므로 캐릭터를 다른
+   * 배율로 늘린 컷(인트로 팝 1.2배 · 사망 확정 1.15배)에서는 몸에서 떨어져 나온
+   * 것처럼 보인다 — 그 두 컷만 벗은 몸으로 그린다(29차, 사용자 지정).
+   * 낙하(FALL)는 배율이 그대로라 입은 채로 떨어진다.
    *
    * @param {'front'|'side'} cut
    * @param {boolean} behind 날개처럼 캐릭터보다 뒤에 오는 것만 그릴지

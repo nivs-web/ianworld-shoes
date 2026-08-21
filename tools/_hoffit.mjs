@@ -62,6 +62,13 @@ for (const w of WIDTHS) {
       })(),
       // 승률 글자가 칸 밖으로 잘리지는 않는지 (overflow: hidden 이라 눈에는 안 보인다)
       rateCut: el.querySelector('.rank-rate').scrollWidth - el.querySelector('.rank-rate').clientWidth,
+      /**
+       * ★ 30차: 줄 그림이 **착용 모습**인가, 그리고 그 그림들이 **실제로 떴는가**.
+       * 클래스만 보면 경로가 404 여도 통과한다(§9-0-52 왕관에서 그렇게 데었다).
+       */
+      figure: !!el.querySelector('.rank-figure .wear-inner'),
+      parts: [...el.querySelectorAll('.rank-figure img')].length,
+      broken: [...el.querySelectorAll('.rank-figure img')].filter((i) => !i.naturalWidth).length,
     }));
   });
   const over = r.filter((x) => x.over > 0).length;
@@ -74,13 +81,15 @@ for (const w of WIDTHS) {
   const crownOk = crowns.slice(0, 3).every(Boolean) && crowns.slice(3).every((c) => !c);
   const placeOk = r[0]?.place === '1위';
   const nameCut = r.filter((x) => x.nameCut > 0).length;
-  const good = over === 0 && cut === 0 && nameCut === 0 && lefts.length === 1 && nos.length === 1 && crownOk && placeOk;
+  // 착용 모습: 모든 줄이 그림틀이고, 아이템을 낀 줄은 캐릭터 말고도 그림이 더 있다
+  const figOk = r.every((x) => x.figure) && r.some((x) => x.parts >= 4) && r.every((x) => x.broken === 0);
+  const good = over === 0 && cut === 0 && nameCut === 0 && lefts.length === 1 && nos.length === 1 && crownOk && placeOk && figOk;
   if (!good) ok = false;
-  console.log(`  ${w}px  넘침 ${over}건 · 승률칸 왼끝 ${lefts.join(',')} ${lefts.length === 1 ? '(정렬)' : '(어긋남!)'} · 등수 왼끝 ${nos.join(',')} · 승률잘림 ${cut}건 · 이름잘림 ${nameCut}건 · 왕관 ${crowns.filter(Boolean).length}개 ${crownOk ? 'ok' : '어긋남!'} · 첫줄 "${r[0]?.place}"`);
+  console.log(`  ${w}px  넘침 ${over}건 · 승률칸 왼끝 ${lefts.join(',')} ${lefts.length === 1 ? '(정렬)' : '(어긋남!)'} · 등수 왼끝 ${nos.join(',')} · 승률잘림 ${cut}건 · 이름잘림 ${nameCut}건 · 왕관 ${crowns.filter(Boolean).length}개 ${crownOk ? 'ok' : '어긋남!'} · 첫줄 "${r[0]?.place}" · 착용모습 ${figOk ? 'ok' : '어긋남!'}(그림 ${Math.max(...r.map((x) => x.parts))}장)`);
   await p.close();
 }
 
-console.log(ok ? '\n✅ 넘침 0 · 승률 칸이 줄마다 같은 자리 · 왕관은 1~3위에만' : '\n❌ 실패');
+console.log(ok ? '\n✅ 넘침 0 · 승률 칸이 줄마다 같은 자리 · 왕관은 1~3위에만 · 착용 모습 정상' : '\n❌ 실패');
 await b.close();
 (() => { try { process.kill(-vite.pid); } catch { vite.kill(); } })();
 process.exit(ok ? 0 : 1);

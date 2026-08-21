@@ -12,6 +12,8 @@ import { NICKNAME } from '../config/balance.js';
 import { isTestAccount } from '../config/testAccount.js';
 import * as Dex from './collection.js';
 import * as Rank from './leaderboard.js';
+/** 착용 자리 목록 — 표가 유일한 진실이라 슬롯이 늘어도 여기가 저절로 따라온다 */
+import { ITEM_CATS } from '../data/items.js';
 
 export const get = L.loadProfile;
 export const dexUnique = L.dexUnique;
@@ -221,17 +223,57 @@ export function buyItem(id, cost) {
   return r;
 }
 
+/**
+ * ★ **착용 모습도 순위표에 박혀 있다** — 갈아입으면 같이 고친다. (2026-08-21 30차)
+ *
+ * 캐릭터·닉네임과 **정확히 같은 이유**다(`setCharacter` 주석): 로비에서는 새 옷인데
+ * 주간 순위표에만 옛 모습이 남으면 남의 기록처럼 보인다. 다만 이쪽은 부르는 횟수가
+ * 다르다 — 쇼핑에서 이것저것 입어 보면 **탭 한 번마다** 불린다. `syncIdentity()` 는
+ * 한 번에 최대 아홉 장을 고치므로 그대로 매달면 쓰기가 쏟아진다.
+ *
+ * 그래서 **모아서 한 번만** 보낸다. 마지막 탭에서 3초가 지나야 나가고, 그 사이의
+ * 탭은 전부 하나로 접힌다. 늦어도 손해가 없다 — 순위표는 지금 이 순간을 다투는
+ * 화면이 아니고, 실패해도 다음 기록 제출 때 어차피 맞춰진다.
+ */
+const IDENTITY_DEBOUNCE_MS = 3000;
+let identityTimer = null;
+function syncIdentitySoon() {
+  clearTimeout(identityTimer);
+  identityTimer = setTimeout(() => {
+    identityTimer = null;
+    Rank.syncIdentity().catch(() => { /* 다음 기록 제출 때 맞춰진다 */ });
+  }, IDENTITY_DEBOUNCE_MS);
+}
+
+/**
+ * ★ **벗은 자리는 빈 문자열로 적어 보낸다.** (2026-08-21 30차)
+ *
+ * `pushRemote` 는 `setDoc(..., { merge: true })` 다. 이게 map 필드를 **재귀로**
+ * 병합한다 — 즉 `{ equippedItems: {} }` 를 보내는 것은 **아무 일도 안 하는 것**이고,
+ * `{ hat: 'x' }` 만 보내도 서버의 `wing`·`pet` 은 그대로 남는다. 그래서 **키를 지우는
+ * 일이 서버에 전달되는 길이 없었다** — 벗어도 다음 로그인에 되살아나고, 순위표에는
+ * 계속 입은 채로 떴다. (26차부터 있던 결함인데, 30차에 계정 문서의 `equippedItems`
+ * 를 순위표 그림의 입력으로 쓰면서 처음 화면에 드러났다.)
+ *
+ * `deleteField()` 를 쓰는 방법도 있지만 슬롯이 늘 때마다 지울 목록을 손으로 적어야
+ * 한다. **자리를 빠짐없이 적고 빈 자리는 `''`** 로 두면 그 문제가 사라진다 —
+ * 읽는 쪽은 전부 `filter(Boolean)`(`packItems`·`wornList`·`unequipAll`) 이라
+ * 빈 문자열이 흘러들어도 안 입은 것과 똑같이 취급된다.
+ */
+const fullWorn = (worn) => Object.fromEntries(ITEM_CATS.map((c) => [c.slot, worn?.[c.slot] ?? '']));
+
 /** 착용/해제 — 값은 작지만 기기 사이에 따라와야 해서 서버에도 올린다 */
 export function equipItem(slot, id) {
   const p = L.equipItem(slot, id);
-  pushRemote({ equippedItems: p.equippedItems ?? {} }).catch(() => {});
+  pushRemote({ equippedItems: fullWorn(p.equippedItems) }).catch(() => {});
+  syncIdentitySoon();
   return p;
 }
 
 /** 모두 벗기 — 벗은 개수를 돌려준다(0이면 화면이 "착용한 아이템이 없습니다"를 띄운다) */
 export function unequipAll() {
   const r = L.unequipAll();
-  if (r.off) pushRemote({ equippedItems: {} }).catch(() => {});
+  if (r.off) { pushRemote({ equippedItems: fullWorn(null) }).catch(() => {}); syncIdentitySoon(); }
   return r;
 }
 

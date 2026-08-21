@@ -9,13 +9,16 @@
  * 그래서 여기서는 **아무것도 갈아 끼우지 않고** 진짜 프로필 경로로 로비→쇼핑을 연다.
  *
  * 보는 것 셋:
- *   ① `토토` 는 열아홉 가지가 전부 `착용 가능 아이템` — 값 표시(`구매하기`)가 하나도 없다
+ *   ① `토토` 는 표에 있는 것이 전부 `착용 가능 아이템` — 값 표시(`구매하기`)가 하나도 없다
  *   ② **다른 아이디는 그대로다** — 하나도 안 가진 채 값이 보인다 (이게 "에게만" 의 뜻이다)
  *   ③ 신발·캐릭터·착용 상태는 **안 건드린다** — 다른 테스트를 방해하면 안 된다
  */
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
+/** 줄 수는 **표에서 읽는다** — 숫자를 손으로 적으면 아이템이 늘 때마다 거짓 실패가 난다 */
+import { ITEMS } from '../src/data/items.js';
+const N = ITEMS.length;
 
 const PORT = 5261;
 /** ⚠ npx 아래의 vite 는 kill() 로 안 죽는다 — 그룹째, 터졌을 때도 (§9-0-53) */
@@ -79,13 +82,13 @@ async function openShop(nickname) {
   return { p, rows, wallet, errs };
 }
 
-console.log('\n① 토토 — 열아홉 가지 전부 착용 가능');
+console.log('\n① 토토 — 표에 있는 것 전부 착용 가능');
 {
   const { p, rows, wallet, errs } = await openShop('토토');
-  eq('열아홉 줄', rows.length, 19);
-  eq('★ 전부 산 것으로 보인다', rows.filter((r) => r.have === '착용 가능 아이템').length, 19);
+  eq('표와 같은 줄 수', rows.length, N);
+  eq('★ 전부 산 것으로 보인다', rows.filter((r) => r.have === '착용 가능 아이템').length, N);
   eq('★ 값(구매하기) 표시가 하나도 없다', rows.filter((r) => r.cost).map((r) => r.ko), []);
-  eq('저장값에도 열아홉 가지', wallet.owned, 19);
+  eq('저장값에도 표와 같은 수', wallet.owned, N);
   // ★ 아이템 말고는 아무것도 안 건드린다 — 다른 테스트를 방해하면 안 된다
   eq('★ 신발은 그대로', wallet.shoes, 1200);
   eq('★ 캐릭터도 그대로', wallet.chars, ['ian']);
@@ -99,7 +102,7 @@ console.log('\n② 다른 아이디 — 그대로 (아무것도 안 가진 상�
 {
   const { p, rows, wallet, errs } = await openShop('이안');
   eq('★ 산 것이 하나도 없다', rows.filter((r) => r.have).length, 0);
-  eq('★ 열아홉 줄 전부 값이 보인다', rows.filter((r) => r.cost).length, 19);
+  eq('★ 모든 줄에 값이 보인다', rows.filter((r) => r.cost).length, N);
   eq('저장값도 비어 있다', wallet.owned, 0);
   eq('콘솔 오류 없음', errs, []);
   await p.close();

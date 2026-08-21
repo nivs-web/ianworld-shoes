@@ -88,6 +88,11 @@ const pick = async (p, label) => {
       }).length,
       notice: !!document.querySelector('.rank-notice'),
       broken: [...document.querySelectorAll('.crown')].filter((i) => i.naturalWidth === 0).length,
+      /** ★ 30차: 줄 그림이 착용 모습인가 · 그림이 실제로 떴는가 */
+      figures: rows.filter((x) => x.querySelector('.rank-figure .wear-inner')).length,
+      wornParts: Math.max(...rows.map((x) => x.querySelectorAll('.rank-figure img').length)),
+      wornBroken: [...document.querySelectorAll('.rank-figure img')].filter((i) => !i.naturalWidth).length,
+      rows: rows.length,
     };
   });
   console.log('①② 멀티게임순위 — 탭 다섯 · 등수 · 왕관');
@@ -105,6 +110,10 @@ const pick = async (p, label) => {
   eq('★ 왕관과 등수가 붙어 있다 (≤3px)', r.crownGap >= 0 && r.crownGap <= 3, true);
   eq('★ 아이디 5글자가 안 잘린다', r.nameCut, 0);
   eq('승리왕에는 규칙 안내가 없다', r.notice, false);
+  // ★ 30차 (사용자 지정): *"멀티게임순위 에서, 착용하고 있는 모습으로 바꿔"*
+  eq('★ 모든 줄이 착용 모습', r.figures, r.rows);
+  eq('★ 아이템을 낀 줄은 그림이 여러 장', r.wornParts >= 4, true);
+  eq('★ 그림이 실제로 뜬다', r.wornBroken, 0);
   await p.screenshot({ path: 'tools/_out/mrank_wins.png' });
   await p.close();
 }

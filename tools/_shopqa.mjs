@@ -3,7 +3,7 @@
  *
  * 사용자 지정을 브라우저에게 묻는다:
  *   ① 타이틀 `아이템 쇼핑`, 그 바로 아래 카테고리 셋 `[악세사리][날개][반려견]`
- *   ② 열아홉 가지의 이름과 값이 사용자가 준 그대로 (28차에 날개 3 · 반려견 3 추가)
+ *   ② 스물한 가지의 이름과 값이 사용자가 준 그대로 (30차에 박쥐날개·다람쥐 추가)
  *   ③ 아래에 `아이템 착용 모습` — **미리보기 · 현재 모습 두 컷(둘 다 정면)**
  *   ④ 고르면 그 자리에서 캐릭터가 입는다 (사기 **전에도** 보인다 — 값이 최대 1만이다)
  *   ⑤ 날개·반려견은 캐릭터 **뒤**에 그려진다
@@ -89,9 +89,13 @@ const pickTab = async (p, label) => {
   await p.screenshot({ path: 'tools/_out/shop_acc.png' });
 
   await pickTab(p, '날개');
-  /** 28차: 색 날개 셋이 **비둘기 바로 아래**에 이어 붙는다 — 순서까지 사용자 지정이다 */
-  eq('★ 날개 여섯 (색 셋은 비둘기 바로 아래)', await p.evaluate(() => [...document.querySelectorAll('.shop-row')].map((x) => [
+  /**
+   * 28차: 색 날개 셋이 **비둘기 바로 아래**에 이어 붙는다 — 순서까지 사용자 지정이다.
+   * 30차: 박쥐날개가 **맨 위**(사용자 지정).
+   */
+  eq('★ 날개 일곱 (박쥐가 맨 위 · 색 셋은 비둘기 아래)', await p.evaluate(() => [...document.querySelectorAll('.shop-row')].map((x) => [
     x.querySelector('.shop-name').textContent, x.querySelector('.shop-cost')?.textContent ?? ''])), [
+    ['박쥐날개', '신발 1,000개'],
     ['비둘기날개', '신발 3,000개'],
     ['파랑날개', '신발 3,000개'],
     ['노랑날개', '신발 3,000개'],
@@ -102,9 +106,13 @@ const pickTab = async (p, label) => {
   await p.screenshot({ path: 'tools/_out/shop_wing.png' });
 
   await pickTab(p, '반려견');
-  /** 28차: 사자·호랑이는 **고양이 다음**, 무서운호랑이는 맨 끝(사용자 지정) */
-  eq('★ 반려견 여섯', await p.evaluate(() => [...document.querySelectorAll('.shop-row')].map((x) => [
+  /**
+   * 28차: 사자·호랑이는 **고양이 다음**, 무서운호랑이는 맨 끝(사용자 지정).
+   * 30차: 다람쥐가 **맨 위**(사용자 지정).
+   */
+  eq('★ 반려견 일곱 (다람쥐가 맨 위)', await p.evaluate(() => [...document.querySelectorAll('.shop-row')].map((x) => [
     x.querySelector('.shop-name').textContent, x.querySelector('.shop-cost')?.textContent ?? ''])), [
+    ['다람쥐', '신발 2,000개'],
     ['강아지', '신발 5,000개'],
     ['고양이', '신발 5,000개'],
     ['귀여운사자', '신발 7,000개'],

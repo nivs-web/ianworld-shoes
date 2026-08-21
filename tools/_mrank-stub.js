@@ -8,6 +8,13 @@ const q = new URLSearchParams(location.search);
 const N = Number(q.get('rows') ?? 12);
 const MY = Number(q.get('mine') ?? 2);
 const CHARS = ['ian', 'denny', 'rose', 'tony'];
+/** ★ 30차: 착용 모습이 실제로 그려지는지 보려면 줄마다 아이템이 달라야 한다 */
+const WORN = [
+  [],
+  ['hat_crown', 'wing_angel', 'pet_dog'],
+  ['hat_batman', 'wing_devil', 'pet_tiger_big'],
+  ['hat_ironman', 'wing_bat', 'pet_squirrel'],
+];
 const NAMES = ['이안', '다섯글자님', '로', '아빠게임왕'];
 
 /**
@@ -29,6 +36,7 @@ export async function fetchMultiBoard(tab) {
       rank: i + 1,
       nickname: NAMES[i % 4],
       characterId: CHARS[i % 4],
+      items: WORN[i % 4],
       multiWins: wins,
       multiLosses: losses,
       shoesOwned: 1200 - i * 13,

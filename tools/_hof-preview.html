@@ -16,14 +16,16 @@
 import S from '/src/config/strings.ko.js';
 import { el } from '/src/screens/ui.js';
 import { characterById, characterSprite } from '/src/data/characters.js';
+/** 30차: 순위표 줄은 **착용 모습**이다 — 미리보기도 같은 부품을 써야 거짓말을 안 한다 */
+import { rankFigure, wornList } from '/src/screens/wearFigure.js';
 import { openUserCard } from '/src/screens/UserCard.js';
 import { stamp } from '/src/screens/timeText.js';
 
 const rows = [
-  { rank: 1, nickname: '이안', characterId: 'ian', value: 12480, multiWins: 128, multiLosses: 44 },
-  { rank: 2, nickname: '다섯글자님', characterId: 'denny', value: 9012, multiWins: 7, multiLosses: 3 },
-  { rank: 3, nickname: '로', characterId: 'rose', value: 880, multiWins: 0, multiLosses: 0 },
-  { rank: 11, nickname: '아빠게임왕', characterId: 'tony', value: 146, multiWins: 12, multiLosses: 34, me: true },
+  { rank: 1, nickname: '이안', characterId: 'ian', value: 12480, multiWins: 128, multiLosses: 44, items: [] },
+  { rank: 2, nickname: '다섯글자님', characterId: 'denny', value: 9012, multiWins: 7, multiLosses: 3, items: ['hat_crown', 'wing_angel', 'pet_dog'] },
+  { rank: 3, nickname: '로', characterId: 'rose', value: 880, multiWins: 0, multiLosses: 0, items: ['hat_batman', 'wing_devil', 'pet_tiger_big'] },
+  { rank: 11, nickname: '아빠게임왕', characterId: 'tony', value: 146, multiWins: 12, multiLosses: 34, me: true, items: ['hat_ironman', 'wing_bat', 'pet_squirrel'] },
 ];
 
 /**
@@ -42,7 +44,7 @@ function rankRow(r, rate) {
       el('span.crown-slot', null, [crowned ? el('img.crown', { src: `/assets/ui/crown_${r.rank}.png`, alt: '' }) : null].filter(Boolean)),
       el('span.rank-no', S.rankPlace(r.rank)),
     ]),
-    ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
+    rankFigure(ch?.id, wornList(r.items)),
     el('div.rank-name', r.nickname),
     rate ? el('div.rank-rate', S.rankWinRate(r.multiWins ?? 0, games)) : null,
     el('div.rank-value', `${r.value.toLocaleString('en-US')}${rate ? S.rankUnitShoes : S.rankUnitStairs}`),

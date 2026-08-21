@@ -39,6 +39,16 @@ import { MULTI } from '../config/balance.js';
  * 검사가 브라우저 없이 규칙을 확인할 수 있어야 한다.
  */
 import { rateEligible } from './matchRules.js';
+/**
+ * ★ 순위표 줄에 **착용한 아이템**을 같이 싣는다. (2026-08-21 30차, 사용자 지정)
+ *
+ * `data/items.js` 는 표 하나뿐인 순수 모듈이라 서비스가 물어도 안전하다
+ * (`game/**` 을 물면 canvas·assets 가 딸려 와 노드 검사가 그 자리에서 죽는다).
+ */
+import { packItems, parseItems, ITEMS_MAX } from '../data/items.js';
+
+/** 계정 문서(`users`)의 `equippedItems` → 아이템 id 배열 */
+const wornOf = (v) => Object.values(v?.equippedItems ?? {}).filter(Boolean);
 
 export { dayKey, weekKey, monthKey, PERIODS, DIFFICULTIES, scoreDocId } from './periodKeys.js';
 
@@ -84,6 +94,8 @@ export async function submitScore(entry) {
         uid: u.uid,
         nickname: p.nickname ?? '',
         characterId: p.selectedCharacter ?? '',
+        // 착용 모습은 **한 줄 문자열**로 싣는다 — 슬롯이 늘어도 규칙을 안 고친다
+        items: packItems(p.equippedItems).slice(0, ITEMS_MAX),
         stairs,
         shoesFound: entry.shoesFound | 0,
         difficulty,
@@ -164,7 +176,12 @@ export async function syncIdentity() {
   if (!fb) return 0;
 
   const p = L.loadProfile();
-  const patch = { nickname: p.nickname ?? '', characterId: p.selectedCharacter ?? '' };
+  const patch = {
+    nickname: p.nickname ?? '',
+    characterId: p.selectedCharacter ?? '',
+    // 아이템도 같이 맞춘다 — 개명과 마찬가지로 **지금 모습**이 순위표에 떠야 한다
+    items: packItems(p.equippedItems).slice(0, ITEMS_MAX),
+  };
 
   let n = 0;
   for (const difficulty of DIFFICULTIES) {
@@ -186,7 +203,7 @@ export async function syncIdentity() {
 // 조회
 // ─────────────────────────────────────────────
 
-/** @typedef {{uid:string, nickname:string, characterId:string, value:number, rank:number|null}} Row */
+/** @typedef {{uid:string, nickname:string, characterId:string, items:string[], value:number, rank:number|null}} Row */
 
 /**
  * 순위표 한 장.
@@ -222,6 +239,7 @@ export async function fetchBoard(tab, difficulty) {
           uid: d.id,
           nickname: v.nickname ?? '',
           characterId: v.selectedCharacter ?? '',
+          items: wornOf(v),
           value: (tab === 'shoeking' ? v.shoesOwned : v.bestByDifficulty?.[difficulty]) ?? 0,
           /**
            * ★ 신발왕 탭에 **멀티 승률**을 같이 싣는다. (2026-08-19 11차, 사용자 요청)
@@ -252,6 +270,7 @@ export async function fetchBoard(tab, difficulty) {
           uid: v.uid,
           nickname: v.nickname ?? '',
           characterId: v.characterId ?? '',
+          items: parseItems(v.items),
           value: v.stairs ?? 0,
         };
       });
@@ -294,6 +313,7 @@ async function myRow(fb, tab, difficulty, u) {
   const p = L.loadProfile();
   const base = {
     uid: u.uid, nickname: p.nickname ?? '', characterId: p.selectedCharacter ?? '', rank: null,
+    items: wornOf(p),
     // 하단 고정 줄도 목록과 **같은 칸**을 그린다 — 없으면 내 줄만 승률 칸이 비어 보인다
     shoesOwned: p.shoesOwned ?? 0,
     multiWins: p.multiWins ?? 0,
@@ -386,6 +406,7 @@ export async function fetchMultiBoard(tab) {
     uid,
     nickname: v.nickname ?? '',
     characterId: v.selectedCharacter ?? '',
+    items: wornOf(v),
     multiWins: v.multiWins ?? 0,
     multiLosses: v.multiLosses ?? 0,
     shoesOwned: v.shoesOwned ?? 0,
@@ -471,6 +492,7 @@ function myMultiRow(tab, u) {
   const games = wins + (p.multiLosses ?? 0);
   const base = {
     uid: u.uid, nickname: p.nickname ?? '', characterId: p.selectedCharacter ?? '', rank: null,
+    items: wornOf(p),
     multiWins: wins, multiLosses: p.multiLosses ?? 0, shoesOwned: p.shoesOwned ?? 0, games,
   };
   if (tab === 'wins') return { ...base, value: wins };

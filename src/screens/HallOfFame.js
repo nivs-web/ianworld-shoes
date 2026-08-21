@@ -14,7 +14,8 @@ import { el, button, backButton, screen, title } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
 import { rankWindow } from '../services/rankWindow.js';
 import { fetchBoard } from '../services/leaderboard.js';
-import { characterSprite, characterById } from '../data/characters.js';
+import { characterById } from '../data/characters.js';
+import { rankFigure, wornList } from './wearFigure.js';
 import { crownSlot, hasCrown } from './crown.js';
 import { fetchUserCard } from '../services/leaderboard.js';
 import { openUserCard } from './UserCard.js';
@@ -145,8 +146,12 @@ export default function HallOfFame(nav) {
         crownSlot(r.rank),
         el('span.rank-no', r.rank === null ? '-' : S.rankPlace(r.rank)),
       ]),
-      ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko, loading: 'lazy', decoding: 'async' })
-         : el('div.rank-face'),
+      /**
+       * ★ **착용한 모습 그대로** 보여 준다. (2026-08-21 30차, 사용자 지정)
+       * 순위표는 남이 내 이름을 보는 거의 유일한 화면이다 — 여기서 안 보이면
+       * 만 켤레짜리 아이템을 자랑할 자리가 없다. 로비·쇼핑과 **같은 부품**이다.
+       */
+      rankFigure(ch?.id, wornList(r.items)),
       el('div.rank-name', r.nickname || '???'),
 
       /**

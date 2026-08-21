@@ -68,9 +68,9 @@ export function wearInner(charId, items) {
     const off = itemOffset(it, 'front');
     put(itemSprite(it.id, 'front'), off.x, off.y, it.w, it.h);
   };
-  // 뒤 겹 안에서도 순서가 있다 — **정면에서는 반려견이 날개보다 가깝다**(`backFirst` 주석)
-  for (const it of list.filter((x) => x.behind).sort(backFirst('front'))) draw(it);
-  put(characterSprite(charId, 'front'), WEAR.charX, WEAR.charY, 35, 50);
+  // 뒤 겹 안에서도 순서가 있다 — **반려견이 날개보다 앞이다**(`backFirst` 주석)
+  for (const it of list.filter((x) => x.behind).sort(backFirst)) draw(it);
+  if (charId) put(characterSprite(charId, 'front'), WEAR.charX, WEAR.charY, 35, 50);
   for (const it of list) if (!it.behind) draw(it);
   return inner;
 }
@@ -105,3 +105,36 @@ export function lobbyFigure(charId, items) {
 
 /** 지금 착용해 둔 것들 — `profile.equippedItems` → 아이템 객체 배열 */
 export const wornList = (worn) => Object.values(worn ?? {}).map(itemById).filter(Boolean);
+
+/**
+ * ★ **순위표 한 줄용 작은 그림틀** (2026-08-21 30차, 사용자 지정)
+ *
+ * *"착용한 아이템을 명예의 전당이나, 멀티게임순위 에서, 착용하고 있는 모습으로 바꿔"*
+ *
+ * 예전에는 캐릭터 png 한 장을 `object-fit: contain` 으로 22×30 에 욱여넣었다. 값을
+ * 만 켤레씩 주고 산 물건이 **순위표에서만 안 보이면** 자랑할 자리가 사라진다 —
+ * 순위표는 남이 내 이름을 보는 거의 유일한 화면이다.
+ *
+ * 로비(`LOBBY_FIG`)와 **같은 상자를 같은 구간으로** 자른다. 배율만 다르다 —
+ * 잘라 낼 구간을 화면마다 다시 정하면 어떤 화면에서는 날개 끝이 잘린다.
+ * 0.5 는 나누어떨어지는 값이라 도트가 규칙적으로 솎인다(2도트 중 1도트).
+ *
+ * 결과 26×29px. 예전 22×30 보다 4px 넓지만 세로는 1px 짧아 줄 높이는 그대로다.
+ */
+export const RANK_FIG = { scale: 0.5, x0: LOBBY_FIG.x0, y0: LOBBY_FIG.y0, w: LOBBY_FIG.w, h: LOBBY_FIG.h };
+
+/**
+ * 순위표 한 줄의 착용 모습 — `rankFigure(charId, items)`.
+ *
+ * `charId` 가 없어도 **빈 그림틀을 같은 크기로** 돌려준다. 예전처럼 폭이 다른
+ * 자리표시자(`div.rank-face`)를 쓰면 캐릭터를 못 찾은 줄만 이름 칸이 4px 밀려서,
+ * 줄마다 이름 시작점이 어긋난다 — 눈에는 "한 줄만 삐뚤다"로만 보인다.
+ */
+export function rankFigure(charId, items) {
+  const F = RANK_FIG;
+  const inner = wearInner(charId, items);
+  inner.style.transform = `scale(${F.scale}) translate(${-F.x0}px, ${-F.y0}px)`;
+  return el('div.rank-face.rank-figure', {
+    style: { width: `${F.w * F.scale}px`, height: `${F.h * F.scale}px` },
+  }, [inner]);
+}
