@@ -1853,3 +1853,199 @@
     0 0 0 5px var(--c-accent);
 }
 
+
+/* ─────────────────────────────────────────────
+   방 채팅 — 대기방 (2026-08-21 26차, 사용자 지정)
+
+   ★ **높이를 줄 수로 못 박는다.** `8줄 정도 보여주면 될거 같아` 는 화면 비율이 아니라
+   줄 수다. `vh` 로 잡으면 폰마다 6줄이 되기도 11줄이 되기도 한다 — 줄 높이(18px)×8 로
+   고정하면 어느 기기에서나 정확히 여덟 줄이 보이고, 나머지는 스크롤이 맡는다.
+   (§9-0-46 에서 `max-height: 48vh` 하나가 순위표 아래를 검게 비운 그 함정이다)
+   ───────────────────────────────────────────── */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.chat-title {
+  font-size: 11px;
+  color: var(--c-panel-dark);
+}
+.chat-list {
+  /* 8줄 × 18px + 위아래 여백 4px */
+  height: 148px;
+  overflow-y: auto;
+  background: #14100c;
+  border: 2px solid var(--c-panel);
+  padding: 2px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+/*
+   ★ 줄을 **flex 가 아니라 블록**으로 둔다. flex 로 두면 긴 말이 줄바꿈을 못 하고
+   시각 칸 위로 넘쳐 글자가 겹쳐 보인다(미리보기로 확인). 블록이면 이름·본문·시각이
+   한 문단처럼 흘러서, 긴 말은 자연스럽게 다음 줄로 접히고 스크롤이 그만큼 늘어난다.
+   "8줄"은 그래서 **줄 높이 8칸**을 뜻한다 — 말 8개가 아니라.
+*/
+.chat-row {
+  display: block;
+  line-height: 18px;
+  font-size: 12px;
+  word-break: break-word;
+}
+.chat-name {
+  display: inline-block;
+  max-width: 66px;               /* 닉네임 5글자 (§9-0-54 에서 실측한 값) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  margin-right: 4px;
+  color: var(--c-msg-in-text);
+  font-weight: bold;
+}
+/* 내가 쓴 줄은 이름 색만 바꾼다 — 말풍선을 좌우로 가르면 8줄에 들어가는 글자가 준다 */
+.chat-row.mine .chat-name { color: var(--c-msg-out-text); }
+.chat-text { color: var(--c-text-light); }
+.chat-at {
+  margin-left: 4px;
+  font-size: 9px;
+  color: var(--c-panel-dark);
+  white-space: nowrap;
+}
+.chat-empty {
+  color: var(--c-panel-dark);
+  font-size: 11px;
+  text-align: center;
+  padding: 8px 0;
+}
+.chat-empty.chat-failed { color: var(--c-accent); }
+.chat-form {
+  display: flex;
+  gap: 4px;
+}
+.chat-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px;
+  background: #14100c;
+  color: var(--c-text-light);
+  border: 2px solid var(--c-panel);
+  outline: none;
+}
+.chat-input:focus { border-color: var(--c-accent); }
+/* `.pbtn` 은 로비용이라 width:100% 다 — 되돌리지 않으면 입력칸을 통째로 밀어낸다 */
+.chat-send {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* ─────────────────────────────────────────────
+   아이템 쇼핑 (2026-08-21 26차, 사용자 지정)
+   ───────────────────────────────────────────── */
+.shop-wallet {
+  font-size: 12px;
+  color: var(--c-panel-dark);
+  text-align: center;
+  margin: 2px 0 4px;
+}
+.shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.shop-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+  background: var(--c-panel);
+  border: 2px solid var(--c-line);
+  color: var(--c-text);
+  cursor: pointer;
+}
+/*
+   고른 줄은 **테두리 색 + 왼쪽 굵은 띠**로 말한다. 테두리 색만 바꾸면 도트 화면에서
+   2px 차이라 눈에 안 들어온다(스크린샷으로 확인). 배경을 바꾸는 방법은 안 쓴다 —
+   '산 것' 표시와 뜻이 겹친다.
+   `box-shadow: inset` 은 흐림 없이 딱 떨어지는 사각형이라 도트가 안 뭉갠다.
+*/
+.shop-row.on {
+  border-color: var(--c-accent);
+  box-shadow: inset 4px 0 0 var(--c-accent);
+}
+.shop-row.owned .shop-name { font-weight: bold; }
+.shop-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shop-cost {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--c-line);
+}
+.shop-have {
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 1px 4px;
+  background: var(--c-good);
+  color: #14300a;
+}
+
+/* ── 아이템 착용 모습 ── */
+.wear-title {
+  font-size: 15px;
+  color: var(--c-text-light);
+  text-align: center;
+  margin-top: 8px;
+}
+.wear-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.wear-cut { margin: 0; }
+/*
+   ★ **정수배로만 키운다** (§3-1). 60×66 논리 상자를 ×2 = 120×132.
+   `box-sizing: content-box` 를 못 박는 이유: 저장소 기본이 `border-box` 라
+   테두리를 준 순간 안쪽이 116px 이 되고 배율이 1.93 이 된다 — 눈으로는 2배와
+   구분이 안 되는데 도트는 뭉갠다(배경 확대에서 한 번 데인 자리, §9-0-38).
+*/
+.wear-stage {
+  position: relative;
+  box-sizing: content-box;
+  width: 120px;
+  height: 132px;
+  background: #14100c;
+  border: 2px solid var(--c-panel-dark);
+  overflow: hidden;
+}
+/* 논리 상자(60×66)를 **통째로** ×2 한다 — 좌표는 논리값 그대로 쓴다 */
+.wear-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  transform: scale(2);
+}
+.wear-part {
+  position: absolute;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.wear-cut figcaption {
+  font-size: 11px;
+  color: var(--c-panel-dark);
+  text-align: center;
+  padding-top: 3px;
+}

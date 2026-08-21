@@ -104,6 +104,17 @@ export function defaultProfile() {
      * 키가 바뀌면 `n` 을 1부터 다시 센다(그게 곧 리셋이다).
      */
     multiPeriodWins: {},
+    /**
+     * ★ **아이템 쇼핑** (2026-08-21 26차) — 산 것과 지금 입은 것.
+     *
+     *   `ownedItems`   : `{ hat_crown: true, ... }` — 한 번 사면 절대 사라지지 않는다
+     *   `equippedItems`: `{ hat, wing, pet }` — 자리마다 하나, 빈 값은 안 입은 것
+     *
+     * 목록이 아니라 **맵**인 이유: 원격 병합이 합집합 한 줄로 끝난다(도감과 같은 이유).
+     * 배열이면 순서가 다른 두 기기를 합칠 때 중복이 생긴다.
+     */
+    ownedItems: {},
+    equippedItems: {},
     elevatorUses: 0,
     /**
      * 도감완성 뱃지를 **딴 시각**(ms). 0 = 아직.
@@ -288,6 +299,44 @@ export function consumeShoes(n) {
   reconcile(p);
   saveProfile(p);
   return left === 0;
+}
+
+// ─────────────────────────────────────────────
+// 아이템 쇼핑 (2026-08-21 26차)
+// ─────────────────────────────────────────────
+
+/**
+ * 아이템 구매 — 비용만큼 차감하고 소유 목록에 넣는다.
+ *
+ * **캐릭터 구매와 같은 순서**를 쓴다(`consumeShoes` 먼저, 그 다음 소유 기록).
+ * 반대로 하면 차감이 실패했을 때 공짜로 가진 것이 된다.
+ *
+ * @returns {{ok: boolean, profile: object}}
+ */
+export function buyItem(id, cost) {
+  const p = loadProfile();
+  if (p.ownedItems?.[id]) return { ok: true, profile: p };
+  if ((p.shoesOwned ?? 0) < cost) return { ok: false, profile: p };
+  consumeShoes(cost);
+  const next = loadProfile();
+  next.ownedItems = { ...(next.ownedItems ?? {}), [id]: true };
+  saveProfile(next);
+  return { ok: true, profile: next };
+}
+
+/**
+ * 착용/해제 — 같은 자리에는 하나만. 이미 입고 있는 것을 다시 고르면 **벗는다.**
+ * 안 산 것은 못 입는다(화면이 막지만, 값을 믿지 않는다).
+ */
+export function equipItem(slot, id) {
+  const p = loadProfile();
+  if (id && !p.ownedItems?.[id]) return p;
+  const cur = { ...(p.equippedItems ?? {}) };
+  if (!id || cur[slot] === id) delete cur[slot];
+  else cur[slot] = id;
+  p.equippedItems = cur;
+  saveProfile(p);
+  return p;
 }
 
 /** 캐릭터 구매 — 비용만큼 차감하고 해금 목록에 넣는다 */

@@ -7,14 +7,14 @@
 
 import * as Scene from '../core/scene.js';
 import { clear } from '../core/canvas.js';
-import { consumeInput, clearInput, setTapHandler, setPauseHandler, BTN } from '../core/input.js';
+import { consumeInput, clearInput, setTapHandler, setPauseHandler, setPauseZone, BTN } from '../core/input.js';
 import { loadAll, img } from '../core/assets.js';
 import { randomSeed, Rng } from '../core/rng.js';
 import { text } from '../core/pixelfont.js';
 import {
   DIFFICULTY, GAUGE_MAX, drainAt, REVIVE, SHOE_TIERS, tierWeights,
 } from '../config/balance.js';
-import { STAIR, CENTER_X, VIEW_W, VIEW_H } from '../config/layout.js';
+import { STAIR, CENTER_X, VIEW_W, VIEW_H, HUD } from '../config/layout.js';
 import { BUILDINGS, buildingAssets, floorAsset, FLOOR_BACKGROUNDS } from '../data/backgrounds.js';
 import { Stairs } from './stairs.js';
 import { Player, P_STATE } from './player.js';
@@ -28,9 +28,9 @@ import * as Bgm from '../audio/bgm.js';
 import { AUDIO, SHOE_RARE_TIER_MAX, bgmTrackAt, MULTI } from '../config/balance.js';
 import shoesData from '../data/shoes.json';
 import * as Room from '../services/multiplayer.js';
-import { roundOver, othersAllOut, slotIndex } from '../services/matchRules.js';
+import { roundOver, othersAllOut, slotIndex, graceOnExit, leaveGraceLeftMs, pauseLeftMs, canPause } from '../services/matchRules.js';
 import S from '../config/strings.ko.js';
-import { multiHud, multiGhosts, TICKER_MS } from './multiHud.js';
+import { multiHud, multiGhosts, menuHit, TICKER_MS } from './multiHud.js';
 
 export class GameScene {
   /**
@@ -86,6 +86,14 @@ export class GameScene {
     this.ticker = [];
     this.countdownMs = 0;
     this.roomUnsub = null;
+    /** 이탈 카운트다운 중인가 (멀티 1등 전용, 6초) */
+    this.exiting = false;
+    /** 이탈까지 남은 ms — 화면이 이 값을 큰 숫자로 그린다 */
+    this.exitLeftMs = 0;
+    /** 전원 일시정지에 남은 ms (0이면 안 멈춰 있다) */
+    this.pauseLeftMs = 0;
+    /** 인게임 메뉴가 열려 있나 — `null` 이면 닫힘 (멀티 전용, 게임은 계속 돈다) */
+    this.menu = null;
     this.ready = false;
   }
 
@@ -119,6 +127,11 @@ export class GameScene {
     this.over = false;
     this.committed = false;
     this.leaving = false;
+    this.exiting = false;
+    this.exitLeftMs = 0;
+    this.pauseLeftMs = 0;
+    this.pauseTickAt = 0;
+    this.menu = null;
     this.ticker = [];
     /** 함성 발동용 — 실수 없이 연속으로 오른 칸 수 (기획서 §9-7-1) */
     this.stepStreak = 0;
@@ -260,6 +273,23 @@ export class GameScene {
       const 비운시간 = this.hiddenAt ? Date.now() - this.hiddenAt : 0;
       this.hiddenAt = 0;
       if (비운시간 > MULTI.absentSeconds * 1000) return this.kickOut();
+      /**
+       * ★ **자리를 비운 만큼 게이지가 닳는다.** (2026-08-21 26차)
+       *
+       * 일시정지 버튼을 없애도 **홈 버튼이 그대로 일시정지**다 — `main.js` 의
+       * `bindVisibility` 가 탭이 숨으면 루프를 세우므로 게이지가 멈춘다. 29초씩 끊어서
+       * 반복하면 30초 규칙에도 안 걸리고 무한정 기다릴 수 있다. 그게 사용자가 신고한
+       * *"상대방이 신발 100개이상 먹을때까지 기다렸다가"* 와 정확히 같은 악용이다.
+       *
+       * 상대는 그동안 계속 뛰었으므로 비운 시간만큼 깎는 쪽이 규칙에도 맞는다.
+       * 초당 감소량은 `drainAt(diff, floor)` 다 — 매 프레임 그 값을 60으로 나눠 빼므로
+       * 1초에 정확히 그만큼이다. 다 닳으면 그 자리에서 죽고 **부활 창이 열린다**
+       * (판을 뺏지는 않는다 — 돌아온 사람에게도 되돌릴 기회는 줘야 한다).
+       */
+      if (비운시간 > 0 && this.started && !this.over && !this.leaving && !this.exiting
+          && !this.player?.dead && this.pauseLeftMs <= 0) {
+        this.gauge = Math.max(0, this.gauge - drainAt(this.diff, this.floor) * (비운시간 / 1000));
+      }
       beat();
     };
     document.addEventListener('visibilitychange', this.onVisible);
@@ -330,7 +360,16 @@ export class GameScene {
          */
         if (r.result?.rankings || r.state === 'finished') this.endMulti();
         else if (roundOver(r, now)) this.endMulti();
-        else if (!this.player?.dead && othersAllOut(r, uid, now)) this.endMulti();
+        /**
+         * ★ **혼자 남았어도 유예가 남아 있으면 안 끝낸다.** (2026-08-21 26차)
+         *
+         * 1등이 나가기를 누른 그 순간 나는 "혼자 남은 사람"이 된다. 예전 코드는 여기서
+         * 곧바로 판을 끝냈는데, 그러면 **내가 반격할 6초가 통째로 사라진다** —
+         * 규칙을 넣고도 아무 효과가 없는 상태가 된다(실제로 이 한 줄을 빠뜨려 놓고
+         * `sim:multi` 가 잡았다).
+         */
+        else if (!this.exiting && !this.player?.dead
+                 && othersAllOut(r, uid, now) && leaveGraceLeftMs(r, now) <= 0) this.endMulti();
       }
     });
   }
@@ -401,6 +440,18 @@ export class GameScene {
    */
   bindInput() {
     const pause = () => {
+      /**
+       * ★ **멀티는 씬을 얹지 않는다.** (2026-08-21 26차)
+       * `PauseOverlay` 는 씬 스택 위에 올라가 `update()` 를 통째로 멈춘다 — 그게 곧
+       * "혼자만 멈춰서 판돈이 불어나기를 기다리는" 악용이었다. 대신 메뉴만 연다.
+       */
+      if (this.multi) {
+        if (this.over || this.leaving || this.exiting) return;
+        if (this.pauseLeftMs > 0) return;      // 멈춰 있는 동안은 아무것도 안 열린다
+        if (Scene.current() !== this) return;  // 사망 오버레이가 떠 있다
+        this.openMenu();
+        return;
+      }
       if (this.player.dying) return;
       /**
        * ★ **끝난 판에서는 일시정지가 안 열린다.** (2026-08-18)
@@ -413,12 +464,38 @@ export class GameScene {
       Scene.push(new PauseOverlay(this));
     };
     setPauseHandler(pause);
-    setTapHandler(null, false);
+    /**
+     * ★ **멀티에서는 상단 밴드 전체가 아니라 버튼 사각형만 메뉴다.** (2026-08-21 26차)
+     *
+     * 기본 판정은 화면 위 1/5 전체(`TOUCH.pauseBelowY`)다. 싱글에서는 실수로 열려도
+     * 손해가 없지만, 멀티에서는 그 한 번이 **1회뿐인 일시정지**를 날리거나 나가기
+     * 확인창을 띄운다. 대신 상단이 통째로 좌우 조작이 되어 **조작 영역이 넓어진다.**
+     */
+    setPauseZone(this.multi ? { ...HUD.pause } : null);
+    /**
+     * ★ 멀티의 세 상태에서는 **화면 전체를 이 핸들러가 삼킨다.** (2026-08-21 26차)
+     *
+     *   · 이탈 카운트다운 — *"그 어떤 버튼도 못누르게 막아야해"* (사용자 지정)
+     *   · 전원 일시정지   — 멈춰 있는데 계단이 오르면 그건 멈춘 게 아니다
+     *   · 인게임 메뉴     — 버튼을 눌렀는데 캐릭터가 같이 오르면 안 된다
+     *
+     * `true` 를 돌려주면 좌우 판정으로 새지 않는다(`input.handlePointerDown`).
+     * 셋 다 아니면 `false` 라 평소처럼 화면 절반이 좌우 조작이다.
+     */
+    setTapHandler((x, y) => {
+      if (!this.multi) return false;
+      if (this.exiting || this.pauseLeftMs > 0) return true;
+      if (!this.menu) return false;
+      const hit = menuHit(x, y);
+      if (hit >= 0) this.menuItems()[hit]?.run();
+      return true;
+    }, false);
   }
 
   exit() {
     setTapHandler(null);
     setPauseHandler(null);
+    setPauseZone(null);
     this.exitMulti();
   }
 
@@ -556,6 +633,61 @@ export class GameScene {
     if (this.over) return;
 
     /**
+     * ★ **전원 일시정지 — 20초, 1인 1회.** (2026-08-21 26차, 사용자 지정)
+     *
+     * 멈춘 동안에는 **아무것도 하지 않는다.** 게이지도, 진행도 전송도, 종료 판정도.
+     * 값은 방(`pausedAt`)에서 오므로 네 사람의 화면이 정확히 같은 초에 멈추고 풀린다.
+     *
+     * 출발 제한(`raceOpenedAt`)만 **멈춘 만큼 뒤로 민다** — 그 시계는 벽시계 기준이라
+     * (§9-0-14) 밀어 주지 않으면 남이 건 일시정지 때문에 내가 출발도 못 하고 진다.
+     */
+    if (this.multi) {
+      const now = Date.now();
+      const 남음 = pauseLeftMs(this.room, now + (Room.serverOffsetSync?.() ?? 0));
+      this.pauseLeftMs = 남음;
+      if (남음 > 0) {
+        const dt = now - (this.pauseTickAt || now);
+        this.pauseTickAt = now;
+        if (this.raceOpenedAt) this.raceOpenedAt += dt;
+        clearInput();
+        return;
+      }
+      this.pauseTickAt = 0;
+      /**
+       * 20초가 지났는데 방에 표시가 남아 있으면 **누구든** 지운다. 건 사람이 그대로
+       * 앱을 닫으면 아무도 안 풀어서 판이 영원히 멈춘다 — 규칙도 삭제는 열어 뒀다.
+       */
+      if (this.room?.pausedBy) Room.resumeRound(this.multi.code).catch(() => {});
+    }
+
+    /**
+     * ★ **이탈 카운트다운 — 6초 동안 아무것도 못 한다.** (2026-08-21 26차, 사용자 지정)
+     *
+     * *"그 어떤 버튼도 못누르게 막아야해, 그냥 5초가 지나가는걸 볼 수밖에 없어,
+     *   다만, 5초 카운트 다운 뒤로 화면에서 역전 당하는지도 보이면 좋겠어"*
+     *
+     * 그래서 **패널을 안 깐다**(`multiHud.drawExitCountdown`) — 큰 숫자만 얹고 게임
+     * 화면은 그대로 보인다. 상대가 20켤레를 걸고 내 앞으로 튀어나오는 걸 눈으로 본다.
+     *
+     * 남은 시간은 **서버가 내 이탈을 받은 뒤에는 모두와 같은 계산**을 쓴다
+     * (`leaveGraceLeftMs`). 받기 전에는 내 시계로 어림한다 — 안 그러면 왕복이 끝날
+     * 때까지 0으로 읽혀 카운트다운이 통째로 사라진다.
+     */
+    if (this.exiting) {
+      const now = Date.now();
+      const mine = this.room?.players?.[this.multi.myUid];
+      const left = mine?.out
+        ? leaveGraceLeftMs(this.room, now + (Room.serverOffsetSync?.() ?? 0))
+        : Math.max(0, this.exitEndLocal - now);
+      this.exitLeftMs = left;
+      if (left <= 0) {
+        this.exiting = false;
+        this.leave(this.exitAction ?? 'home');
+      }
+      return;
+    }
+
+    /**
      * 멀티 출발 게이트. 카운트다운이 남아 있으면 **입력도 게이지도 멈춘다** —
      * 먼저 누른 사람이 먼저 출발하면 같은 시드를 쓰는 의미가 없다.
      * 남은 시간은 서버 시각 기준으로 재 뒀다(enterMulti).
@@ -590,7 +722,15 @@ export class GameScene {
     }
 
     const btn = consumeInput();
-    if (btn) this.action(btn);
+    /**
+     * ★ 인게임 메뉴가 열려 있으면 좌우 입력은 **메뉴 커서**다. (2026-08-21 26차)
+     * 이 메뉴는 씬을 얹지 않으므로 게임이 계속 돈다 — 그동안 캐릭터는 서 있고
+     * 게이지는 닳는다. 그게 "멀티에는 일시정지가 없다"의 정직한 모습이다.
+     */
+    if (this.menu) {
+      if (btn === BTN.LEFT) { this.menu.sel = (this.menu.sel + 1) % this.menuItems().length; Sfx.play('sfx_menu_move'); }
+      else if (btn === BTN.RIGHT) this.menuItems()[this.menu.sel]?.run();
+    } else if (btn) this.action(btn);
 
     const prevState = this.player.state;
     this.player.update();
@@ -629,6 +769,7 @@ export class GameScene {
        * 판은 여기서 안 끝난다. 남은 사람들은 계속 오르고 있다.
        */
       if (this.multi) {
+        this.menu = null;   // 사망 오버레이가 위에 뜬다 — 메뉴가 남아 있으면 두 겹이 된다
         Room.reportDeath(this.multi.code, { stairs: this.floor, shoesFound: this.shoesFound });
         Scene.push(new MultiDeathOverlay(this));
         return;
@@ -665,6 +806,102 @@ export class GameScene {
   bestSoFar() {
     const p = getProfile();
     return Math.max(p.bestByDifficulty?.[this.diff.id] ?? 0, this.floor);
+  }
+
+  // ── 멀티 인게임 메뉴 · 일시정지 · 이탈 ──────────
+
+  /**
+   * ★ **멀티에는 일시정지 메뉴가 없다 — 메뉴만 있다.** (2026-08-21 26차, 사용자 지정)
+   *
+   * 예전에는 상단을 누르면 `PauseOverlay` 가 씬으로 얹혀 **내 게임만 멈췄다.**
+   * 그게 곧 사용자가 신고한 악용이다 — *"일시정지 기다리고 있다가, 상대방이 신발
+   * 100개이상 먹을때까지 기다렸다가, 일시정지 풀고, 죽은 다음 부활을 누르는 악행"*.
+   *
+   * 지금 이 메뉴는 **씬을 얹지 않는다.** 열어 두는 동안에도 게이지가 닳고 상대는
+   * 계속 오른다. 멈추고 싶으면 [일시정지]를 눌러야 하고, 그건 **전원이 같이** 멈춘다.
+   */
+  openMenu() {
+    if (this.menu) { this.menu = null; return; }
+    this.menu = { sel: 0, confirmExit: false };
+    Sfx.play('sfx_menu_move');
+  }
+
+  menuItems() {
+    if (!this.menu) return [];
+    const now = Date.now() + (Room.serverOffsetSync?.() ?? 0);
+    const 가능 = canPause(this.room, this.multi?.myUid, now);
+    return [
+      { label: S.pauseOnce(MULTI.pauseSeconds), dim: !가능, run: () => this.tryPause(가능) },
+      {
+        label: this.menu.confirmExit ? S.forfeitConfirm : S.forfeit,
+        run: () => {
+          if (!this.menu.confirmExit) { this.menu.confirmExit = true; Sfx.play('sfx_menu_move'); return; }
+          Sfx.play('sfx_menu_back');
+          this.menu = null;
+          this.beginExit('home');
+        },
+      },
+      { label: S.close, run: () => { Sfx.play('sfx_menu_back'); this.menu = null; } },
+    ];
+  }
+
+  tryPause(가능) {
+    if (!가능) {
+      // 왜 못 쓰는지 말해 준다 — 아무 반응이 없으면 그건 고장으로 보인다
+      const me = this.room?.players?.[this.multi?.myUid];
+      this.notify(me?.pauseUsed ? S.pauseUsedUp : S.pauseNotNow, PAL.goRed);
+      Sfx.play('sfx_menu_back');
+      return;
+    }
+    Sfx.play('sfx_menu_select');
+    this.menu = null;
+    Room.pauseRound(this.multi.code).then((ok) => {
+      if (!ok) this.notify(S.pauseNotNow, PAL.goRed);
+    }).catch(() => {});
+  }
+
+  /**
+   * ★ **판을 뜬다 — 1등이면 6초를 주고 나간다.** (2026-08-21 26차, 사용자 지정)
+   *
+   * 이 6초가 없으면 나가기 버튼은 **순위 확정 버튼**이다(§9-0-55). 1등이 아니거나
+   * 반격할 사람이 없으면 유예 없이 그대로 나간다 — 기권을 붙잡을 이유는 없다.
+   *
+   * **취소는 없다.** 상대가 부활하는 걸 보고 무를 수 있으면 이 버튼은 *"상대의 20켤레를
+   * 공짜로 태우는 낚시"* 가 된다(6번 반복하면 120켤레를 항아리에 넣고 내가 먹는다).
+   */
+  beginExit(action = 'home') {
+    if (this.over || this.leaving || this.exiting) return;
+    if (!this.multi) return this.leave(action);
+    const now = Date.now() + (Room.serverOffsetSync?.() ?? 0);
+    const 붙잡는다 = graceOnExit(this.room, this.multi.myUid, now);
+
+    /**
+     * 서버에 **먼저** 알린다 — 남은 사람 화면의 빨간 카운트다운이 여기서 시작된다.
+     * 살아 있는 채로 나가면 `deadAt` 이 없으므로 `markOut` 의 `outAt` 이 기준이 되고,
+     * 죽어 있으면 `deadAt` 이 더 이르므로 그쪽이 기준이 된다(`exitStartedAt`).
+     */
+    if (!this.player?.dead) {
+      Room.reportDeath(this.multi.code, { stairs: this.floor, shoesFound: this.shoesFound })
+        .catch(() => {});
+    }
+    Room.markOut(this.multi.code).catch(() => {});
+
+    if (!붙잡는다) return this.leave(action);
+
+    this.exiting = true;
+    this.exitAction = action;
+    this.menu = null;
+    clearInput();
+    Bgm.stopBgm();
+    /**
+     * 서버 답이 오기 전에 쓸 내 시계 기준 끝 시각. **죽어서 나가는 경우에는 죽은
+     * 순간부터** 세므로 부활 창에서 쓴 시간이 자동으로 빠진다 — 어느 경로로 나가든
+     * 상대가 받는 시간은 정확히 6초다.
+     */
+    const me = this.room?.players?.[this.multi.myUid];
+    const 기준 = me?.deadAt ? me.deadAt - (Room.serverOffsetSync?.() ?? 0) : Date.now();
+    this.exitEndLocal = 기준 + MULTI.leaveGraceSeconds * 1000;
+    this.exitLeftMs = Math.max(0, this.exitEndLocal - Date.now());
   }
 
   /**

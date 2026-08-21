@@ -30,6 +30,8 @@ import * as Crowns from '../services/crowns.js';
  */
 const Collection = lazyScreen(() => import('./Collection.js'), S.menuCollection);
 const CharacterSelect = lazyScreen(() => import('./CharacterSelect.js'), S.menuCharacter);
+/** ★ 아이템 쇼핑 — [캐릭터 변경] **바로 아래** (2026-08-21 26차, 사용자 지정) */
+const ItemShop = lazyScreen(() => import('./ItemShop.js'), S.menuItemShop);
 const HallOfFame = lazyScreen(() => import('./HallOfFame.js'), S.hallTitle);
 const Settings = lazyScreen(() => import('./Settings.js'), S.settingsTitle);
 const MultiMenu = lazyScreen(() => import('./multi/MultiMenu.js'), S.multiTitle);
@@ -69,7 +71,7 @@ function prewarmMultiIfReturning() {
 
 /** 로비에 들어오면 **한가할 때** 메뉴 화면들을 미리 받아 둔다 — 누를 때는 이미 있다 */
 function prewarmMenus() {
-  prefetchScreens([Collection, CharacterSelect, HallOfFame, Settings, MultiMenu]);
+  prefetchScreens([Collection, CharacterSelect, ItemShop, HallOfFame, Settings, MultiMenu]);
 }
 
 /**
@@ -251,6 +253,7 @@ export default function Lobby(nav) {
 
         button(S.menuCollection, () => nav.push(Collection)),
         button(S.menuCharacter, () => nav.push(CharacterSelect)),
+        button(S.menuItemShop, () => nav.push(ItemShop)),
         button(S.menuHallOfFame, () => nav.push(HallOfFame)),
         button(S.menuSettings, () => nav.push(Settings)),
 

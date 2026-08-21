@@ -87,6 +87,20 @@ console.log('6번째 캐릭터:', (await p.locator('.char-name').innerText()).tr
   '| 구매버튼:', await p.locator('button:has-text("캐릭터 구매하기")').count());
 await clickText('뒤로');
 
+/**
+ * 아이템 쇼핑 (2026-08-21 26차) — 로비에서 **실제로 눌러** 들어가 본다.
+ * 소스 검사는 버튼이 있다는 것까지만 말한다. 이 화면은 지연 로딩이라
+ * (`lazyScreen`) 청크가 안 오면 제목만 뜨고 목록이 비는데, 그건 눌러 봐야 드러난다.
+ */
+await clickText('아이템 쇼핑');
+await p.waitForTimeout(600);
+await shot('07b_itemshop');
+console.log('아이템 쇼핑:', (await p.locator('.screen-title').innerText()).trim(),
+  '| 카테고리:', await p.locator('.seg .pbtn').count(),
+  '| 줄:', await p.locator('.shop-row').count(),
+  '| 착용 컷:', await p.locator('.wear-cut').count());
+await clickText('뒤로');
+
 // 설정 → 조작법 · 받은 메세지함 · 메세지 수신 설정
 await clickText('설정');
 await clickText('조작법 변경');

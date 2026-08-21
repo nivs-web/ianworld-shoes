@@ -30,13 +30,13 @@
  */
 
 import { textCached, measure, loadSmallFont, smallReady } from '../core/pixelfont.js';
-import { rect } from '../core/sprite.js';
+import { rect, strokeRect } from '../core/sprite.js';
 import { img, loadAll } from '../core/assets.js';
 import { getCtx } from '../core/canvas.js';
 import { PAL, SLOT_COLORS, SLOT_DIM } from './palette.js';
 import { VIEW_W, VIEW_H, STAIR, CENTER_X, CHAR } from '../config/layout.js';
 import { MULTI } from '../config/balance.js';
-import { potShoes, slotIndex, rankPlayers, canRevive } from '../services/matchRules.js';
+import { potShoes, slotIndex, rankPlayers, canRevive, leaveGraceLeftMs, graceTarget, pauseLeftMs } from '../services/matchRules.js';
 import { serverOffsetSync } from '../services/multiplayer.js';
 import S from '../config/strings.ko.js';
 
@@ -101,6 +101,11 @@ const RANK_X = RACE_CX - (CELL >> 1) - 3;
  * 왼쪽 신발 아이콘·개수와 물리적으로 겹친다.
  */
 const POT_Y = 41;
+/**
+ * `상대가 나가는 중!` 한 줄 — 1등 거리 줄(80~91) 바로 아래.
+ * 알림 줄(238~)과도, 계단 숫자(55~77)와도 안 겹치는 유일한 빈 줄이다.
+ */
+const EXIT_HINT_Y = 94;
 /** 계단 숫자(55~77) 바로 아래 */
 const GAP_Y = 80;
 /**
@@ -195,6 +200,7 @@ export function multiHud(scene) {
   drawGapLine(scene);
   drawPot(scene);
   drawTicker(scene);
+  drawDiffBadge(scene);
   drawCountdown(scene);
   /**
    * 출발 경고는 **맨 마지막**에 그린다 — 레이스 게이지 위에 얹혀야 한다.
@@ -203,6 +209,122 @@ export function multiHud(scene) {
    * 중에는 전자가 낫다 — 이 순간 사용자가 봐야 하는 건 게이지가 아니다.
    */
   drawStartWarn(scene);
+  /**
+   * ★ 이 셋은 **맨 마지막**이다. 어떤 배경 위에서도 반드시 읽혀야 하고, 서로
+   * 겹칠 일이 없다(멈춤 → 메뉴 → 이탈 순으로 상태가 배타적이다).
+   */
+  drawPauseBanner(scene);
+  drawMenu(scene);
+  drawExitCountdown(scene);
+}
+
+// ─────────────────────────────────────────────
+// 난이도 배지 · 일시정지 · 인게임 메뉴 · 이탈 카운트다운 (2026-08-21 26차)
+// ─────────────────────────────────────────────
+
+/**
+ * ★ **우측 상단 난이도.** (2026-08-21 26차, 사용자 지정)
+ *
+ * *"말도 안하고 방장이 어려움으로 바꿔서 바로 시작 누르면 이 게임이 어려움인지
+ *   보통인지 쉬운지 알 수 없기 때문에 만들고 싶어"*
+ *
+ * ## 자리를 두 군데로 나눈 이유
+ *
+ * 이 정보가 **정말 필요한 순간은 판이 시작될 때 한 번**이다. 그래서
+ *   · 카운트다운(3·2·1) 동안에는 **화면 가운데 크게** — 그때는 가릴 것이 없고 모두가 본다
+ *   · 그 뒤에는 **우상단 작은 배지** — 잊었을 때 확인하는 자리
+ *
+ * 작은 배지는 **레이스 게이지보다 먼저** 그린다(`multiHud` 의 호출 순서). 게이지의
+ * 얼굴 상자는 상대가 50계단 넘게 앞서면 이 자리(y22~44)까지 올라오는데, 그 순간
+ * 사용자가 봐야 하는 것은 난이도가 아니라 **상대가 어디 있는가**다.
+ *
+ * 색으로도 말한다 — 쉬움 초록 · 보통 노랑 · 어려움 빨강. 글자를 읽기 전에 먼저 보인다.
+ */
+const DIFF_COLOR = { easy: '#8ED96B', normal: PAL.gaugeWarn, hard: PAL.goRed };
+/** 부활 하트 자리(멀티에는 하트가 없다). 오른쪽 끝은 게이지 왼쪽(150)보다 안쪽인 146 */
+const DIFF_RIGHT = 146;
+const DIFF_Y = 25;
+
+function drawDiffBadge(scene) {
+  const id = scene.diff?.id ?? 'normal';
+  const label = S.diffBadge[id] ?? S.diffBadge.normal;
+  const color = DIFF_COLOR[id] ?? PAL.gaugeWarn;
+  if (scene.countdownMs > 0) {
+    // 출발 직전 — 카운트다운 숫자(y130) 아래에 크게. 이때 이 화면에 다른 정보는 없다
+    textCached(label, VIEW_W >> 1, 176, {
+      scale: 2, color, outline: PAL.textShadow, align: 'center' });
+    return;
+  }
+  textCached(label, DIFF_RIGHT, DIFF_Y, { color, outline: PAL.textShadow, align: 'right' });
+}
+
+/**
+ * ★ **전원 일시정지.** (2026-08-21 26차, 사용자 지정)
+ * 1인 1회 20초. 누가 걸었든 **모두 같은 초**를 본다 — 값이 방(`pausedAt`)에서 오기 때문이다.
+ */
+function drawPauseBanner(scene) {
+  const left = scene.pauseLeftMs | 0;
+  if (left <= 0) return;
+  rect(0, 0, VIEW_W, VIEW_H, PAL.dim);
+  const cx = VIEW_W >> 1;
+  textCached(S.pauseTitle, cx, 112, { scale: 2, color: PAL.text, outline: PAL.textShadow, align: 'center' });
+  textCached(String(Math.ceil(left / 1000)), cx, 140, {
+    scale: 4, color: PAL.gaugeWarn, outline: PAL.textShadow, align: 'center', mono: true });
+  textCached(S.pauseAuto(MULTI.pauseSeconds), cx, 190, {
+    color: PAL.text, outline: PAL.textShadow, align: 'center', small: true });
+}
+
+/**
+ * 인게임 메뉴 — **씬을 얹지 않는다.** 열려 있는 동안에도 게이지는 닳는다.
+ * 그게 "멀티에는 일시정지가 없다"의 정직한 모습이고, 오래 열어 둘 이유를 없앤다.
+ */
+export const MENU_BOX = { x: 14, y: 108, w: 152, h: 96 };
+const MENU_BTN = { x: 22, y: 124, w: 136, h: 22, gap: 26 };
+
+export function menuHit(x, y) {
+  for (let i = 0; i < 3; i++) {
+    const by = MENU_BTN.y + i * MENU_BTN.gap;
+    if (x >= MENU_BTN.x && x <= MENU_BTN.x + MENU_BTN.w && y >= by && y <= by + MENU_BTN.h) return i;
+  }
+  return -1;
+}
+
+function drawMenu(scene) {
+  if (!scene.menu) return;
+  rect(0, 0, VIEW_W, VIEW_H, PAL.dim);
+  const b = MENU_BOX;
+  rect(b.x, b.y, b.w, b.h, PAL.panel);
+  rect(b.x, b.y + b.h - 4, b.w, 4, PAL.panelDark);
+  strokeRect(b.x, b.y, b.w, b.h, PAL.line);
+  const items = scene.menuItems();
+  for (let i = 0; i < items.length; i++) {
+    const by = MENU_BTN.y + i * MENU_BTN.gap;
+    const on = scene.menu.sel === i;
+    rect(MENU_BTN.x, by, MENU_BTN.w, MENU_BTN.h, on ? PAL.accent : PAL.panelDark);
+    strokeRect(MENU_BTN.x, by, MENU_BTN.w, MENU_BTN.h, PAL.line);
+    textCached(items[i].label, VIEW_W >> 1, by + 6, {
+      color: items[i].dim ? PAL.deadGray : PAL.text, align: 'center' });
+  }
+}
+
+/**
+ * ★ **6초 후에 나가집니다.** (2026-08-21 26차, 사용자 지정)
+ *
+ * *"그 어떤 버튼도 못누르게 막아야해, 그냥 5초가 지나가는걸 볼 수밖에 없어, 다만,
+ *   5초 카운트 다운 뒤로 화면에서 역전 당하는지도 보이면 좋겠어"*
+ *
+ * 그래서 **패널을 안 깐다.** 화면 전체를 덮으면 상대가 20켤레를 걸고 내 앞으로
+ * 튀어나오는 걸 볼 수 없고, 그 장면이야말로 이 규칙이 존재하는 이유다.
+ * 숫자에는 외곽선을 둘러 어떤 배경 위에서도 획이 서게 한다.
+ */
+function drawExitCountdown(scene) {
+  if (!scene.exiting) return;
+  const n = Math.max(0, Math.ceil((scene.exitLeftMs | 0) / 1000));
+  const cx = VIEW_W >> 1;
+  textCached(S.exitCountdown(n), cx, 108, {
+    color: PAL.goRed, outline: PAL.textShadow, align: 'center' });
+  textCached(String(n), cx, 124, {
+    scale: 4, color: PAL.goRed, outline: PAL.textShadow, align: 'center', mono: true });
 }
 
 // ─────────────────────────────────────────────
@@ -291,6 +413,13 @@ function drawRaceGauge(scene, list) {
 
   const rank = rankOf(scene);
   const now = Date.now() + serverOffsetSync();
+  /**
+   * ★ 지금 **6초 유예를 받고 있는 사람**. 그 얼굴에만 빨간 숫자가 뜬다.
+   * 판정은 종료 판정과 **같은 함수**를 쓴다 — 화면과 규칙이 다른 말을 하면 안 된다.
+   */
+  const 유예 = leaveGraceLeftMs(scene.room, now);
+  const 나가는사람 = 유예 > 0 ? graceTarget(scene.room, now) : null;
+  const exitOf = (uid) => (나가는사람 && uid === 나가는사람 ? Math.max(1, Math.ceil(유예 / 1000)) : null);
 
   /**
    * ★ **겹치면 왼쪽으로 비켜 세우되, 최대 2명까지만.** (2026-08-19)
@@ -322,16 +451,28 @@ function drawRaceGauge(scene, list) {
     tags.push(drawRacer({
       charId: o.characterId, slot: o.slot, revives: o.revives | 0,
       cy, dx, alive: o.alive !== false, rank: rank[o.id],
-      countdown: reviveLeft(o, now) }));
+      countdown: reviveLeft(o, now), exitLeft: exitOf(o.id) }));
   }
   tags.push(drawRacer({
     charId: scene.charId, slot: scene.mySlot, revives: scene.myRevives | 0,
-    cy: RACE_CY, alive: true, rank: rank[scene.multi?.myUid], isMe: true }));
+    cy: RACE_CY, alive: true, rank: rank[scene.multi?.myUid], isMe: true,
+    exitLeft: exitOf(scene.multi?.myUid) }));
   /**
    * 등수는 **얼굴을 다 그린 뒤에** 찍는다. 가까이 붙은 사람들은 서로 비켜서 있어서
    * 먼저 찍으면 옆 사람 상자에 깔린다(미리보기로 확인).
    */
   for (const t of tags) drawRankTag(t.rank, t.x, t.y, t.dx !== 0, t.dead);
+
+  /**
+   * ★ **남은 사람에게 말로도 알려 준다.** (2026-08-21 26차)
+   * 빨간 숫자만으로는 처음 보는 사람이 무슨 뜻인지 모른다. 지금 죽고 부활하면
+   * 이긴다는 것 — 그 한 문장이 이 규칙의 전부다. 내가 나가는 쪽이면 안 띄운다
+   * (그쪽 화면에는 이미 `6초 후에 나가집니다` 가 크게 떠 있다).
+   */
+  if (나가는사람 && 나가는사람 !== scene.multi?.myUid) {
+    textCached(S.exitRival, TICKER_CX, EXIT_HINT_Y, {
+      color: PAL.goRed, outline: PAL.textShadow, align: 'center' });
+  }
 }
 
 /**
@@ -382,7 +523,7 @@ function reviveLeft(p, now) {
  * 상대의 테두리만 봐도 "쟤는 이제 두 번 남았다"가 읽힌다.
  * 죽어 있는 동안에는 **얼굴이 회색이 되고 그 위에 남은 초가 뜬다.**
  */
-function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, countdown = null, dx = 0 }) {
+function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, countdown = null, exitLeft = null, dx = 0 }) {
   const i = Math.max(0, Math.min(SLOT_COLORS.length - 1, slot | 0));
   /**
    * ★ **죽어서 부활을 고르는 동안은 자리 색을 버리고 회색이 된다.** (2026-08-19, 사용자 요청)
@@ -391,7 +532,8 @@ function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, count
    * 이 게이지에서 색은 "살아서 뛰는 사람"의 표시다 — 색이 빠지면 그 자체로 신호가 된다.
    * 부활하면 `countdown` 이 사라지면서 제 색이 곧바로 돌아온다.
    */
-  const 죽음 = countdown != null;
+  // 나가는 중이어도 색이 빠진다 — 자리 색은 **살아서 뛰는 사람**의 표시다
+  const 죽음 = countdown != null || exitLeft != null;
   const on = 죽음 ? PAL.deadGray : SLOT_COLORS[i];
   const off = 죽음 ? PAL.textShadow : SLOT_DIM[i];
   const x = RACE_CX - (CELL >> 1) + dx;
@@ -454,13 +596,27 @@ function drawRacer({ charId, slot, revives, cy, alive, rank, isMe = false, count
     rect(x + CELL, y, 1, CELL, PAL.text);
   }
 
-  // 남은 부활 시간 — 얼굴 위에 크게
-  if (countdown != null) {
+  /**
+   * 얼굴 위의 숫자는 **두 가지 뜻**이고 색으로 갈린다. (2026-08-21 26차, 사용자 지정)
+   *
+   *   흰색  = 부활 대기 — *"쟤 아직 돌아올 수 있다"*
+   *   빨강  = **확정 이탈** — *"쟤는 나간다, 지금 넘으면 이긴다"*
+   *
+   * *"나가기를 누르면 (…) 부활대기 회색카운트 다운이 뜨는게 아니라, 빨간색글씨로
+   *   5,4,3,2,1 이렇게 뜨는게 좋지 않을까? 나갔다는 것이 확실하게 보이게끔"*
+   *
+   * 같은 자리에 같은 모양으로 뜨면 뒤처진 사람이 **판단을 못 한다** — 반격할 6초가
+   * 열렸다는 걸 모르면 규칙이 있어도 없는 것과 같다.
+   */
+  if (exitLeft != null) {
+    textCached(String(exitLeft), x + (CELL >> 1), y + 6, {
+      color: PAL.goRed, outline: PAL.textShadow, align: 'center', mono: true, scale: 1 });
+  } else if (countdown != null) {
     textCached(String(countdown), x + (CELL >> 1), y + 6, {
       color: PAL.text, outline: PAL.textShadow, align: 'center', mono: true, scale: 1 });
   }
 
-  return { rank, x, y, dx, dead: countdown != null };
+  return { rank, x, y, dx, dead: countdown != null || exitLeft != null };
 }
 
 /**

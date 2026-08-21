@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>방 채팅 미리보기</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<!--
+  ★ 진짜 `roomChat.js` 를 그대로 띄운다. 바꾸는 것은 `multiplayer.js`·`auth.js` 둘뿐이고
+    import map 이 대역으로 갈아 끼운다 — 화면 코드는 한 줄도 안 바꾼다.
+-->
+<script type="importmap">
+{ "imports": {
+  "/src/services/multiplayer.js": "/tools/_chat-stub.js",
+  "/src/services/auth.js": "/tools/_chatauth-stub.js"
+} }
+</script>
+</head>
+<body class="ui-mode">
+<div id="ui" class="active"></div>
+<script type="module">
+import { roomChat } from '/src/screens/multi/roomChat.js';
+const root = document.getElementById('ui');
+const wrap = document.createElement('div');
+wrap.className = 'screen';
+wrap.append(roomChat('1234').node);
+root.append(wrap);
+</script>
+</body></html>

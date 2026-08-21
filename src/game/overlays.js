@@ -87,20 +87,16 @@ export class PauseOverlay {
     return this._items;
   }
 
+  /**
+   * ★ **이 화면은 이제 싱글 전용이다.** (2026-08-21 26차, 사용자 지정)
+   *
+   * 멀티에서 씬을 얹으면 `update()` 가 통째로 멈춘다 — **내 게이지만** 멈추고 상대는
+   * 계속 오른다. 그게 사용자가 신고한 악용의 뿌리였다(*"상대방이 신발 100개이상
+   * 먹을때까지 기다렸다가, 일시정지 풀고, 죽은 다음 부활을 누르는 악행"*).
+   * 멀티의 메뉴는 `GameScene.openMenu()` 가 그린다 — 씬을 안 얹으므로 게임이 계속 돈다.
+   */
   buildItems() {
     const resume = { label: S.resume, run: () => { Sfx.play('sfx_menu_back'); Scene.pop(); } };
-    if (this.game.multi) {
-      return [
-        resume,
-        {
-          label: this.confirmExit ? S.forfeitConfirm : S.forfeit,
-          run: () => {
-            if (!this.confirmExit) { this.confirmExit = true; Sfx.play('sfx_menu_move'); return; }
-            Sfx.play('sfx_menu_back');
-            this.game.leave('home');
-          } },
-      ];
-    }
     return [
       resume,
       { label: S.restart, run: () => { Sfx.play('sfx_menu_select'); this.restart(); } },
@@ -362,12 +358,11 @@ export class MultiDeathOverlay {
      * (그 신발은 아무도 안 걷는다), 짧으면 억울하게 기회를 잃는다.
      */
     /**
-     * ★ **부활 창은 지갑과 무관하게 항상 10초다.** (2026-08-19 4차, 사용자 요청)
+     * ★ **부활 창은 지갑과 무관하게 항상 6초다.** (2026-08-21 26차, 사용자 지정)
      *
-     * 한동안은 걸 신발이 없으면 5초로 줄였다("고를 게 나가기뿐인데 10초는 길다").
-     * 그런데 그러면 **사람마다 죽은 뒤 화면이 머무는 시간이 달라져** 예측이 안 된다 —
-     * 남들의 종료 판정은 어차피 10초 고정이라 규칙이 둘로 갈리기도 했다.
-     * 하나로 통일하는 쪽이 게임을 읽기 쉽게 만든다.
+     * 10초는 *"너무 게임이 루즈해짐, 10초동안 기다렸다가 1초 남았을때 부활을 한다면
+     * 쉬는 시간이 생겨버리니깐"*. 그리고 이 6초는 **이탈 유예와 같은 숫자**다 —
+     * 1등이 죽으면 이 창이 그대로 상대의 반격 시간이 되기 때문이다.
      */
     const 창초 = MULTI.reviveWindowSeconds;
     const me = game.room?.players?.[game.multi?.myUid];
@@ -480,13 +475,23 @@ export class MultiDeathOverlay {
     this.game.reviveAt(floor);
   }
 
+  /**
+   * 부활을 포기한다 — **곧장 결과로 가지 않는다.** (2026-08-21 26차)
+   *
+   * 내가 1등이면 남은 사람에게 6초가 주어지고, 그동안 나는 게임 화면을 보며
+   * 카운트다운만 볼 수 있다(`GameScene.beginExit`). 그 6초가 없으면
+   * "부활 → 즉사 → 나가기"가 그대로 필승법이 된다(§9-0-55).
+   *
+   * 기준 시각은 `deadAt` 이라 **이미 부활 창에서 쓴 시간이 빠진다** — 창을 끝까지
+   * 흘려보낸 사람은 유예가 0이라 그 자리에서 끝난다.
+   */
   quit() {
     if (this.busy) return;
     this.busy = true;
     Sfx.play('sfx_menu_back');
     Room.declineRevive(this.game.multi.code).catch(() => {});
     Scene.pop();
-    this.game.endMulti();
+    this.game.beginExit('home');
   }
 
   update() {

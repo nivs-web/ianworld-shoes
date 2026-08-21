@@ -92,6 +92,28 @@ export const S = {
   difficultyHard: '어려움',
   menuCollection: '신발 도감',
   menuCharacter: '캐릭터 변경',
+  /**
+   * ── 아이템 쇼핑 (2026-08-21 26차, 사용자 지정) ──
+   * 아이템 이름·값은 `src/data/items.js` 에 있다 — 여기 두면 표와 두 곳을 고쳐야 한다.
+   */
+  menuItemShop: '아이템 쇼핑',
+  itemCatAcc: '악세사리',
+  itemCatWing: '날개',
+  itemCatPet: '반려견',
+  itemCost: (n) => `신발 ${n.toLocaleString('en-US')}개`,
+  itemBuy: (n) => `구매하기 (신발 ${n.toLocaleString('en-US')}개)`,
+  itemBuyConfirm: (ko, n) => `${ko}를 신발 ${n.toLocaleString('en-US')}개로 구매할까요?`,
+  itemBought: (ko) => `${ko} 구매 완료!`,
+  itemNeedMore: (n) => `신발이 ${n.toLocaleString('en-US')}켤레 모자랍니다`,
+  itemOwned: '보유중',
+  itemWorn: '착용중',
+  itemWear: '착용하기',
+  itemTakeOff: '벗기',
+  itemWearTitle: '아이템 착용 모습',
+  itemCutFront: '정면',
+  itemCutSide: '옆모습',
+  // 쇼핑 화면 전용 지갑 줄 — 값이 네 자리라 **자릿점**이 있어야 읽힌다
+  itemWallet: (n) => `보유신발 ${n.toLocaleString('en-US')}켤레`,
   menuRename: '닉네임 변경하기',
   menuHallOfFame: '명예의 전당',
   menuControls: '조작법 변경',
@@ -379,6 +401,26 @@ export const S = {
   /** 패자가 낸 신발을 승자가 아직 못 걷었다 — 지금 방을 되돌리면 그 신발이 증발한다 */
   resetPending: '신발 정산 중입니다 — 잠시만요',
   /** 멀티 일시정지: 나가면 곧 패배다. 한 번 더 눌러야 나간다 */
+  /**
+   * ── 26차: 이탈 6초 · 전원 일시정지 · 난이도 표시 · 방 채팅 ──
+   * (2026-08-21, 사용자 지정 문구 그대로)
+   */
+  /** 나가는 사람 화면 — 패널 없이 이 한 줄 + 큰 숫자만 얹는다(뒤로 게임이 보여야 한다) */
+  exitCountdown: (n) => `${n}초 후에 나가집니다`,
+  /** 남은 사람 화면 — 지금 죽고 부활하면 이긴다는 신호 */
+  exitRival: '상대가 나가는 중!',
+  pauseOnce: (n) => `일시정지 (${n}초, 1회)`,
+  pauseTitle: '일시정지',
+  pauseAuto: (n) => `${n}초 후 자동으로 풀립니다`,
+  pauseUsedUp: '일시정지는 한 판에 한 번만 쓸 수 있습니다',
+  pauseNotNow: '지금은 일시정지를 쓸 수 없습니다',
+  /** 인게임 우상단 난이도 배지 — 방장이 말없이 바꿔도 알 수 있게 (사용자 요청) */
+  diffBadge: { easy: '쉬움', normal: '보통', hard: '어려움' },
+  chatTitle: '채팅',
+  chatPlaceholder: '메세지를 입력하세요',
+  chatSend: '전송',
+  chatEmpty: '아직 대화가 없습니다',
+  chatFailed: '메세지를 보내지 못했습니다',
   forfeit: '기권하고 나가기',
   forfeitConfirm: '정말 기권할까요? (한 번 더)',
   roomFull: '방이 가득 찼습니다',

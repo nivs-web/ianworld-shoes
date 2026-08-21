@@ -154,6 +154,14 @@ export async function pullRemote() {
      * 둘 다 있으면 **이른 쪽** — 처음 해낸 시각이 진실이다.
      */
     dexBadgeAt: earliestStamp(local.dexBadgeAt, remote.dexBadgeAt),
+    /**
+     * ★ **산 아이템은 합집합이다.** (2026-08-21 26차)
+     * 원격이 통째로 이기면 다른 기기에서 산 것이 사라진다 — 최대 10,000켤레짜리를
+     * 로그인 한 번에 잃는 셈이다. 도감(`collection`)을 합집합으로 병합하는 것과 같은 이유.
+     * 입고 있는 것은 **마지막에 고른 쪽**(원격)을 따른다 — 취향은 합칠 수 없다.
+     */
+    ownedItems: { ...(local.ownedItems ?? {}), ...(remote.ownedItems ?? {}) },
+    equippedItems: remote.equippedItems ?? local.equippedItems ?? {},
   };
   L.reconcile(merged);
   L.saveProfile(merged);
@@ -176,6 +184,32 @@ export const setSingleBg = (id) => patch({ singleBg: id });
 export function setCharacter(id) {
   const p = patch({ selectedCharacter: id });
   Rank.syncIdentity().catch(() => { /* 다음 기록 제출 때 맞춰진다 */ });
+  return p;
+}
+
+/**
+ * 아이템 구매 (2026-08-21 26차) — 캐릭터 구매와 **같은 모양**이다.
+ * 지갑이 바뀌므로 지갑 세 값을 같이 올린다(안 올리면 다음 접속에 옛 지갑이 이겨
+ * 신발이 되살아난다 — §9-0-24 ⑥에서 부활 판돈이 그랬다).
+ * @returns {{ok:boolean, profile:object}}
+ */
+export function buyItem(id, cost) {
+  const r = L.buyItem(id, cost);
+  if (r.ok) {
+    pushRemote({
+      ownedItems: r.profile.ownedItems,
+      shoesOwned: r.profile.shoesOwned,
+      shoesByTier: r.profile.shoesByTier,
+      shoesByIndex: r.profile.shoesByIndex,
+    }).catch(() => {});
+  }
+  return r;
+}
+
+/** 착용/해제 — 값은 작지만 기기 사이에 따라와야 해서 서버에도 올린다 */
+export function equipItem(slot, id) {
+  const p = L.equipItem(slot, id);
+  pushRemote({ equippedItems: p.equippedItems ?? {} }).catch(() => {});
   return p;
 }
 

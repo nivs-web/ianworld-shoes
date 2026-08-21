@@ -45,6 +45,30 @@ const scene = {
  * 판돈·등수 줄이 실제보다 크게 나온다 — 그 그림을 보고 "안 줄었다"고 오판할 뻔했다.
  */
 await loadSmallFont();
+
+/**
+ * ★ 26차: **세 상태를 한 장씩 더 찍는다.** (`?state=exit|pause|menu`)
+ * 이탈 카운트다운·전원 일시정지·인게임 메뉴는 실기기 두 대로 판을 돌려야 보이는
+ * 화면이라, 안 찍어 두면 "패널이 게임을 다 가리는지"를 확인할 방법이 없다.
+ */
+const state = new URLSearchParams(location.search).get('state') ?? '';
+if (state === 'exit') {
+  scene.exiting = true;
+  scene.exitLeftMs = 4200;
+  // 나가는 사람은 1등(계단이 제일 높다)이어야 유예가 붙는다 — 실제 상태를 흉내 낸다
+  scene.floor = 380;
+  scene.room.players.a = { stairs: 380, alive: false, out: true, revives: 2, deadAt: Date.now() - 1800 };
+} else if (state === 'pause') {
+  scene.pauseLeftMs = 13400;
+} else if (state === 'menu') {
+  scene.menu = { sel: 1, confirmExit: false };
+  scene.menuItems = () => ([
+    { label: '일시정지 (20초, 1회)', dim: false },
+    { label: '기권하고 나가기' },
+    { label: '닫기' },
+  ]);
+}
+
 clear('#243a52');
 multiHud(scene);
 

@@ -904,10 +904,11 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('남은 칸 = 상한 − 쓴 횟수', mh, 'const 남은칸 = Math.max(0, MULTI.maxRevives - revives);');
   has('칸 구분선', mh, 'const cut = PAL.textShadow;');
 
-  // ⑤ 부활 창 10초, 걸 신발이 없으면 5초
-  eq('부활 창 10초', MULTI.reviveWindowSeconds, 10);
-  // 5차에서 되돌렸다 — 지갑과 무관하게 항상 10초 (34번 묶음이 본다)
-  eq('부활 창은 하나뿐', MULTI.reviveWindowSeconds, 10);
+  // ⑤ 부활 창 — 26차에 10 → **6초**로 내렸다 (사용자 지정: "10초 너무 게임이 루즈해짐")
+  //    그리고 이 값은 이탈 유예와 **같은 숫자**여야 한다 (51번 묶음이 그걸 본다)
+  eq('부활 창 6초', MULTI.reviveWindowSeconds, 6);
+  // 5차에서 되돌렸다 — 지갑과 무관하게 항상 같은 길이 (34번 묶음이 본다)
+  eq('부활 창은 하나뿐', MULTI.reviveWindowSeconds, 6);
 
   // ⑥ 이긴 사람이 방장
   has('순위 1등을 방장으로', mp, 'hostUid: ranked[0] ?? room.hostUid,');
@@ -1455,7 +1456,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   const ov = fs.readFileSync('src/game/overlays.js', 'utf8');
   has('창 길이가 하나로 고정', ov, 'const 창초 = MULTI.reviveWindowSeconds;');
   no('지갑 보고 창을 줄이지 않는다', ov, 'reviveWindowShortSeconds');
-  eq('부활 창 10초', MULTI.reviveWindowSeconds, 10);
+  eq('부활 창 6초', MULTI.reviveWindowSeconds, 6);
 
   // ② 패배 화면 팁 3줄 삭제
   const mr = fs.readFileSync('src/screens/multi/MultiResult.js', 'utf8');
@@ -1559,7 +1560,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ③ 죽은 사람은 자리 색을 잃는다 — 테두리·빈칸 둘 다
   {
     const hud = fs.readFileSync('src/game/multiHud.js', 'utf8');
-    has('죽음 판정은 카운트다운 유무', hud, 'const 죽음 = countdown != null;');
+    // 26차: **나가는 중**에도 색이 빠진다 — 자리 색은 '살아서 뛰는 사람'의 표시다
+    has('죽음 판정은 카운트다운 유무', hud, 'const 죽음 = countdown != null || exitLeft != null;');
     has('테두리가 회색으로', hud, 'const on = 죽음 ? PAL.deadGray : SLOT_COLORS[i];');
     has('빈 칸도 색을 뺀다', hud, 'const off = 죽음 ? PAL.textShadow : SLOT_DIM[i];');
     has('등수 글자도 회색', hud, 'color: PAL.deadGray, outline: PAL.textShadow, align, small: true');
@@ -2877,6 +2879,199 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     // 밝은 금색 위에서는 흰 글씨가 뜬다 — 어두운 갈색이어야 읽힌다
     eq('어두운 글씨', /color: #3A2408;/.test(btn), true);
     has('왕관은 그대로 양쪽에', css, '.btn-crown {');
+  }
+}
+
+{
+  console.log('\n51) ★ 이탈 6초 · 전원 일시정지 · 난이도 표시 · 방 채팅 · 아이템 쇼핑 (2026-08-21 26차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const css = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const B8 = await import('../src/config/balance.js');
+  const S8 = (await import('../src/config/strings.ko.js')).default;
+
+  /**
+   * ① ★ **모든 대기가 6초 하나다.** 부활 창과 이탈 유예가 갈리면 "죽어서 나가기"와
+   *    "살아서 나가기"가 상대에게 주는 시간이 달라진다 — 사용자 지정은 *"모두 다 6초"*.
+   */
+  {
+    eq('부활 창 6초', B8.MULTI.reviveWindowSeconds, 6);
+    eq('이탈 유예 6초', B8.MULTI.leaveGraceSeconds, 6);
+    eq('★ 두 값이 같다', B8.MULTI.reviveWindowSeconds, B8.MULTI.leaveGraceSeconds);
+    eq('일시정지 20초', B8.MULTI.pauseSeconds, 20);
+    no('지갑 보고 창을 줄이던 예외는 없다', code(read('src/config/balance.js')), 'reviveWindowShortSeconds:');
+  }
+
+  /**
+   * ② 유예 판정 — **계단만** 본다. `rankPlayers` 는 동점일 때 생존을 보므로,
+   *    나가려는 사람은 부르는 순간 이미 아래로 밀려 "1등이 아니다"가 된다.
+   */
+  {
+    const 방 = (a, b) => ({ state: 'playing', players: {
+      A: { stairs: a.s, alive: a.alive !== false, out: a.out, deadAt: a.deadAt, outAt: a.outAt, seenAt: Date.now() },
+      B: { stairs: b.s, alive: b.alive !== false, out: b.out, seenAt: Date.now() },
+    } });
+    eq('단독 1등이면 유예가 붙는다', M.graceOnExit(방({ s: 90 }, { s: 12 }), 'A'), true);
+    eq('2등이 나가면 안 붙는다', M.graceOnExit(방({ s: 90 }, { s: 12 }), 'B'), false);
+    eq('동점이면 안 붙는다', M.graceOnExit(방({ s: 50 }, { s: 50 }), 'A'), false);
+    // 반격할 사람이 없으면 6초를 세도 아무 일도 안 일어난다
+    eq('상대도 빠졌으면 안 붙는다', M.graceOnExit(방({ s: 90 }, { s: 12, out: true, alive: false }), 'A'), false);
+
+    // 기준 시각은 deadAt 이 outAt 보다 **먼저**다 — 부활 창에서 쓴 시간이 자동으로 빠진다
+    eq('죽은 순간이 기준', M.exitStartedAt({ deadAt: 100, outAt: 500 }), 100);
+    eq('살아서 나가면 누른 순간', M.exitStartedAt({ outAt: 500 }), 500);
+    eq('둘 다 없으면 0 (튕김은 이미 30초를 줬다)', M.exitStartedAt({}), 0);
+
+    const now = 10_000;
+    const 나감 = 방({ s: 90, alive: false, out: true, deadAt: now - 2000 }, { s: 12 });
+    eq('★ 죽고 2초 뒤 포기하면 4초 남는다', Math.round(M.leaveGraceLeftMs(나감, now) / 1000), 4);
+    eq('빨간 숫자의 주인', M.graceTarget(나감, now), 'A');
+    const 다씀 = 방({ s: 90, alive: false, out: true, deadAt: now - 9000 }, { s: 12 });
+    eq('★ 창을 다 흘려보냈으면 유예 0', M.leaveGraceLeftMs(다씀, now), 0);
+    eq('그때는 판이 끝난다', M.roundOver(다씀, now), true);
+    eq('유예가 남았으면 안 끝난다', M.roundOver(나감, now), false);
+  }
+
+  /**
+   * ③ 일시정지 — **죽어 있는 사람이 있으면 못 건다.** 부활 창·이탈 카운트다운은
+   *    서버 시각 기준이라 20초를 멈추면 그 창이 통째로 날아간다.
+   */
+  {
+    const 방 = (extra = {}) => ({ state: 'playing', players: {
+      A: { stairs: 5, alive: true, seenAt: Date.now(), ...(extra.A ?? {}) },
+      B: { stairs: 3, alive: true, seenAt: Date.now(), ...(extra.B ?? {}) },
+    }, ...extra.room });
+    eq('처음엔 쓸 수 있다', M.canPause(방(), 'A'), true);
+    eq('★ 1인 1회', M.canPause(방({ A: { pauseUsed: true } }), 'A'), false);
+    eq('★ 누가 죽어 있으면 못 건다', M.canPause(방({ B: { alive: false } }), 'A'), false);
+    eq('멈춰 있으면 못 건다', M.canPause(방({ room: { pausedBy: 'B', pausedAt: Date.now() } }), 'A'), false);
+    eq('대기 중인 방에서는 못 건다', M.canPause({ ...방(), state: 'waiting' }, 'A'), false);
+  }
+
+  /**
+   * ④ 화면 — 나가는 쪽은 **패널 없이** 큰 숫자만(뒤로 게임이 보여야 한다),
+   *    남은 쪽은 **빨간 숫자 + 한 줄**(반격할 6초가 열린 줄 알아야 한다).
+   */
+  {
+    const hud = code(read('src/game/multiHud.js'));
+    has('이탈 카운트다운', hud, 'function drawExitCountdown(scene)');
+    no('★ 패널을 안 깐다 (게임 화면이 보여야 한다)', hud.slice(hud.indexOf('function drawExitCountdown')), 'panelBox');
+    has('★ 빨간 숫자', hud, "color: PAL.goRed, outline: PAL.textShadow, align: 'center', mono: true");
+    has('회색(부활 대기)과 갈라 둔다', hud, 'if (exitLeft != null) {');
+    has('상대에게도 알린다', hud, 'S.exitRival');
+    has('종료 판정과 같은 함수를 쓴다', hud, 'leaveGraceLeftMs(scene.room, now)');
+    has('전원 일시정지 배너', hud, 'function drawPauseBanner(scene)');
+    has('인게임 메뉴 (씬을 안 얹는다)', hud, 'function drawMenu(scene)');
+    eq('문구', S8.exitCountdown(6), '6초 후에 나가집니다');
+
+    const gs = code(read('src/game/GameScene.js'));
+    has('취소 없는 이탈', gs, 'beginExit(action = \'home\')');
+    has('★ 유예 중에는 아무것도 안 한다', gs, 'if (this.exiting) {');
+    has('멈춘 동안에는 아무것도 안 한다', gs, 'if (남음 > 0) {');
+    has('★ 혼자 남아도 유예가 남았으면 안 끝낸다', gs, 'othersAllOut(r, uid, now) && leaveGraceLeftMs(r, now) <= 0');
+    has('홈 버튼이 공짜 일시정지가 안 되게', gs, 'this.gauge = Math.max(0, this.gauge - drainAt(this.diff, this.floor) * (비운시간 / 1000));');
+    has('멀티는 버튼 사각형만 메뉴', gs, 'setPauseZone(this.multi ? { ...HUD.pause } : null)');
+    // 씬을 얹으면 내 게이지만 멈춘다 — 그게 곧 신고된 악용이다
+    no('★ 멀티에서 PauseOverlay 를 안 얹는다', code(read('src/game/overlays.js')), 'if (this.game.multi) {\n      return [');
+    has('부활 포기도 6초를 탄다', code(read('src/game/overlays.js')), 'this.game.beginExit(\'home\')');
+  }
+
+  /**
+   * ⑤ 난이도 배지 — 카운트다운 때는 크게, 그 뒤에는 우상단 작게.
+   *    게이지보다 **먼저** 그린다(겹치면 게이지가 이긴다 — 그 순간 봐야 할 건 게이지다).
+   */
+  {
+    const hud = code(read('src/game/multiHud.js'));
+    has('난이도 배지', hud, 'function drawDiffBadge(scene)');
+    has('★ 게이지보다 먼저', hud, 'drawDiffBadge(scene);\n  drawCountdown(scene);');
+    has('색으로도 말한다', hud, 'const DIFF_COLOR = {');
+    eq('세 문구', [S8.diffBadge.easy, S8.diffBadge.normal, S8.diffBadge.hard], ['쉬움', '보통', '어려움']);
+  }
+
+  /**
+   * ⑥ 방 채팅 — 모든 방. 화면당 **한 번만** 만든다(다시 그리면 치던 글자가 죽는다).
+   */
+  {
+    const wr = code(read('src/screens/multi/WaitingRoom.js'));
+    has('★ render 밖에서 한 번만 만든다', wr, 'const chat = roomChat(code);');
+    has('render 는 같은 노드를 붙이기만', wr, 'chat.node,');
+    has('나갈 때 구독을 끊는다', wr, 'chat.stop();');
+
+    const rc = code(read('src/screens/multi/roomChat.js'));
+    // ⚠ 이 모듈은 못 부른다 — `multiplayer.js` → `firebase.js` → `import.meta.env` 라
+    //    노드에서 부르는 순간 죽는다(§9-0-5 에서 `periodKeys.js` 를 떼어 놓은 그 이유).
+    //    그래서 값은 **소스에서 읽는다.**
+    has('여덟 줄', rc, 'export const CHAT_ROWS = 8;');
+    has('★ 목록 갱신에 nav.refresh 를 안 쓴다', rc, 'Room.subscribeChat(code, (v) => { rows = v; draw(); });');
+    no('화면을 통째로 다시 그리지 않는다', rc, 'nav.refresh');
+    has('못 붙었으면 거짓말하지 않는다', rc, "list.append(el('div.chat-empty', S.networkError));");
+    has('한글 조합 중 엔터는 무시', rc, 'e.isComposing');
+    has('여덟 줄 높이를 CSS 로 못 박는다', css, '  height: 148px;');
+    // `.pbtn` 은 로비용이라 width:100% 다 — 안 되돌리면 입력칸을 통째로 밀어낸다
+    has('전송 버튼 폭을 되돌린다', css, '.chat-send {\n  width: auto;');
+
+    const mp = code(read('src/services/multiplayer.js'));
+    has('방 아래에 둔다 (판을 돌아도 남는다)', mp, "const CHAT = 'chat';");
+    has('받는 양을 묶는다', mp, 'fb.dbMod.limitToLast(CHAT_KEEP)');
+    has('시각은 서버가 찍는다', mp, 'at: fb.dbMod.serverTimestamp(),');
+    // 다음 판 준비·자리 비우기가 채팅을 지우면 기록이 사라진다
+    no('resetRoom 이 채팅을 안 지운다', mp.slice(mp.indexOf('export async function resetRoom')), 'chat: null');
+  }
+
+  /**
+   * ⑦ 아이템 쇼핑 — 표와 그림이 어긋나면 빌드가 멈춘다. 값·이름은 사용자가 준 그대로.
+   */
+  {
+    const IT = await import('../src/data/items.js');
+    eq('열한 가지', IT.ITEMS.length, 11);
+    eq('카테고리 셋', IT.ITEM_CATS.map((c) => c.id), ['acc', 'wing', 'pet']);
+    eq('★ 값이 사용자 지정 그대로', IT.ITEMS.map((i) => [i.ko, i.cost]), [
+      ['중절모', 1000], ['야구모자', 1000], ['베레모', 2000], ['레게머리가발', 3000], ['왕관', 4000],
+      ['비둘기날개', 3000], ['천사날개', 5000], ['악마날개', 10000],
+      ['강아지', 5000], ['고양이', 5000], ['따라다니는별', 5000],
+    ]);
+    eq('날개는 캐릭터 뒤에', IT.itemsOf('wing').every((i) => i.behind === true), true);
+    // 그림 22장이 실제로 있는지는 `qa:shop` 이 브라우저에서 본다
+    for (const it of IT.ITEMS) {
+      const f = `public/assets/items/${it.id}_front.png`;
+      if (!fs.existsSync(f)) { eq(`그림 ${it.id}`, false, true); }
+    }
+    eq('그림 22장', fs.readdirSync('public/assets/items').filter((f) => f.endsWith('.png')).length, 22);
+
+    const shop = code(read('src/screens/ItemShop.js'));
+    has('★ 사기 전에도 미리보기가 나온다', shop, 'wearCut(p.selectedCharacter, \'front\', item, S.itemCutFront)');
+    has('날개는 먼저 붙인다 (= 뒤에 보인다)', shop, 'if (item?.behind) put(');
+    has('구매는 한 번 되묻는다', shop, 'await confirmDialog({');
+    // 배율이 화면 코드에 흩어지면 언젠가 정수배가 깨진다 (§3-1)
+    has('확대는 안쪽 상자 하나가 맡는다', css, '.wear-inner {');
+    has('테두리가 배율을 깎지 않게', css, '  box-sizing: content-box;');
+    has('로비 메뉴에 붙었다', code(read('src/screens/Lobby.js')), 'button(S.menuItemShop, () => nav.push(ItemShop)),');
+    // 원본(etc/) 을 안 읽으므로 Vercel 빌드에서도 안전하다 (§9-0-32)
+    has('빌드 체인에 들어 있다', read('package.json'), 'npm run assets:items');
+    no('원본을 안 읽는다', read('tools/build-items.mjs'), "etc/");
+  }
+
+  /** ⑧ 새 RTDB 필드 넷이 규칙에 있는가 — 없으면 그 쓰기가 통째로 거부된다 (§9-0-34) */
+  {
+    const doc = read('docs/FIREBASE_RULES.md');
+    const i = doc.indexOf('## Realtime Database');
+    const rules = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(doc.slice(i))[1]).rules;
+    const room = rules.rooms.$code;
+    for (const k of ['outAt', 'pauseUsed']) {
+      eq(`참가자.${k} 규칙`, !!room.players.$uid[k], true);
+    }
+    for (const k of ['pausedBy', 'pausedAt', 'chat']) {
+      eq(`방.${k} 규칙`, !!room[k], true);
+    }
+    // 채팅은 **방 사람만** 쓴다. `auth != null` 만으로는 아무나 남의 방에 글을 남긴다
+    has('채팅은 방 사람만', room.chat.$mid['.write'], "root.child('rooms').child($code).child('players').child(auth.uid).exists()");
+    has('한 줄은 만든 뒤 못 고친다', room.chat.$mid['.write'], '!data.exists()');
+    // 화면의 상한과 규칙의 상한이 다르면 "보내기를 눌렀는데 아무 일도 안 난다"가 된다
+    has('채팅 길이 상한이 규칙에 있다', room.chat.$mid.text['.validate'], 'length <= 60');
+    has('클라이언트도 같은 60자', read('src/services/multiplayer.js'), 'export const CHAT_MAX = 60;');
   }
 }
 

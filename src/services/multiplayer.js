@@ -13,7 +13,7 @@ import { getRtdb, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { MULTI } from '../config/balance.js';
-import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound, reviveFloor, canRevive, roundOver, isStale } from './matchRules.js';
+import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound, reviveFloor, canRevive, roundOver, isStale, canPause } from './matchRules.js';
 
 const ROOMS = 'rooms';
 const MY_ROOMS = 'userRooms';
@@ -1044,9 +1044,184 @@ export async function markOut(code) {
 export async function declineRevive(code) {
   const fb = await rt();
   if (!fb) return;
+  /**
+   * ★ **나간 시각을 함께 남긴다.** (2026-08-21 26차)
+   *
+   * 1등이 판을 뜨면 남은 사람에게 6초가 주어지는데(`matchRules.leaveGraceLeftMs`),
+   * 그 6초를 세려면 **언제 뗐는지**가 방에 있어야 한다. `out` 만으로는 모두가 각자
+   * 자기 시계로 어림하게 되어 화면마다 다른 숫자가 뜬다.
+   *
+   * 시각은 **서버가 찍는다**(`serverTimestamp`). 폰 시계로 쓰면 시계가 빠른 사람은
+   * 미래를 적어 판을 영원히 안 끝내고, 느린 사람은 유예를 통째로 잃는다(§9-0-25).
+   *
+   * 죽어서 나가는 경우에는 `deadAt` 이 더 이르므로 판정이 그쪽을 쓴다
+   * (`matchRules.exitStartedAt`) — 여기서 덮어써도 결과가 안 바뀐다.
+   */
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
-    out: true,
+    out: true, outAt: fb.dbMod.serverTimestamp(),
   }), undefined, '부활 포기').catch(() => {});
+}
+
+// ─────────────────────────────────────────────
+// 일시정지 — 1인 1회, 20초, 전원 동시 (2026-08-21 26차)
+// ─────────────────────────────────────────────
+
+/**
+ * 판을 멈춘다. **방 하나에 한 번에 한 명만** 걸 수 있고, 건 사람은 그 판에서 다시 못 건다.
+ *
+ * `pausedBy` 와 내 `pauseUsed` 를 **한 번의 멀티패스 업데이트**로 쓴다 — 나눠 보내면
+ * "멈췄는데 사용 표시가 안 된" 상태가 생겨 무한정 멈출 수 있다.
+ *
+ * @returns {Promise<boolean>} 실제로 멈췄는지
+ */
+export async function pauseRound(code) {
+  const fb = await rt();
+  if (!fb) return false;
+  const read = await readOnce(fb, path(ROOMS, code));
+  const room = read.val;
+  if (!room || !canPause(room, fb.uid, Date.now() + serverOffsetSync())) return false;
+  try {
+    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
+      pausedBy: fb.uid,
+      pausedAt: fb.dbMod.serverTimestamp(),
+      [path('players', fb.uid, 'pauseUsed')]: true,
+    }), undefined, '일시정지');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 일시정지를 푼다 — 건 사람이 직접 풀거나, **20초가 지나면 누구든** 푼다.
+ *
+ * 누구든 풀 수 있어야 하는 이유: 건 사람이 그대로 앱을 닫으면 판이 영원히 멈춘다.
+ * 20초가 지났는지는 모두가 같은 서버 시각으로 판정하므로 답이 갈리지 않는다.
+ */
+// ─────────────────────────────────────────────
+// 방 채팅 — **모든 방(비밀방 포함)** (2026-08-21 26차, 사용자 지정)
+// ─────────────────────────────────────────────
+
+/**
+ * *"멀티게임의 방, 비밀방이던 그냥 일반 방이던, 모든 멀티게임 방에 들어온 유저들 끼리
+ *   실시간 채팅이 가능하게 (…) 게임에 들어왔다가 다시 나오고 반복되는데, 그래도
+ *   채팅 기록은 전부 그대로 있었으면 좋겠어"*
+ *
+ * ## 왜 `rooms/{code}/chat` 인가
+ *
+ * 기록이 남아야 하는 단위가 **방**이기 때문이다. 대기방 화면이 들고 있으면 게임에
+ * 들어가는 순간 사라지고, 사람마다 들고 있으면 나중에 들어온 사람이 앞 대화를 못 본다.
+ * 방 노드에 두면 `resetRoom`(다음 판 준비)·`leaveRoom` 이 **손대지 않으므로**
+ * (둘 다 필요한 키만 지정하는 멀티패스 업데이트다) 판을 몇 번 돌아도 그대로 남는다.
+ * 방이 사라질 때 같이 사라지는 것도 맞다 — 방이 없으면 그 대화는 갈 곳이 없다.
+ *
+ * ## 한 줄은 만든 뒤 못 고친다
+ *
+ * 규칙이 `!data.exists()` 일 때만 쓰기를 허용한다. 고칠 수 있게 두면 남이 이미 읽은
+ * 말을 나중에 바꿔치기할 수 있다 — 쪽지(`inbox`)를 같은 이유로 그렇게 막아 뒀다(§9-0-41).
+ */
+const CHAT = 'chat';
+/** 방에 남겨 두는 줄 수. 넘치면 오래된 쪽부터 지운다 */
+export const CHAT_KEEP = 60;
+/**
+ * 한 줄 최대 글자 수 — **규칙의 `text` 상한과 같은 숫자여야 한다.**
+ * 다르면 규칙에서 거부되는데 화면에는 "보내기를 눌렀는데 아무 일도 안 났다"로만 보인다
+ * (`qa:rules` 가 이 둘이 어긋나지 않는지 본다 — 쪽지에서 한 번 데인 자리다, §9-0-41).
+ */
+export const CHAT_MAX = 60;
+
+/**
+ * 한 줄 보낸다.
+ * @returns {Promise<'ok'|'empty'|'error'>}
+ */
+export async function sendChat(code, text) {
+  const body = String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX);
+  if (!body) return 'empty';
+  const fb = await rt();
+  if (!fb) return 'error';
+  await waitConnected(fb);
+  const me = L.loadProfile();
+  try {
+    const listRef = fb.dbMod.ref(fb.rtdb, path(ROOMS, code, CHAT));
+    await withTimeout(fb.dbMod.set(fb.dbMod.push(listRef), {
+      uid: fb.uid,
+      // 인게임에는 아이디가 없지만 채팅은 대기방(DOM) 화면이라 이름이 필요하다
+      name: (me.nickname ?? '').slice(0, 16),
+      text: body,
+      // ★ 시각은 서버가 찍는다 — 폰 시계로 쓰면 정렬이 사람마다 달라진다
+      at: fb.dbMod.serverTimestamp(),
+    }), undefined, '채팅');
+    return 'ok';
+  } catch {
+    return 'error';
+  }
+}
+
+/**
+ * 방 채팅 구독 — 최근 `CHAT_KEEP` 줄.
+ *
+ * `limitToLast` 를 쓰는 게 중요하다. 방 하나가 수백 줄이 되어도 받는 양이 고정이고,
+ * **오래된 줄 정리가 늦어도 화면은 멀쩡하다.**
+ *
+ * @param {(rows: Array<{id:string,uid:string,name:string,text:string,at:number}>|null) => void} cb
+ *   못 붙었으면 `null` — 빈 배열로 뭉뚱그리면 "아직 대화가 없습니다"라고 **거짓말**을 한다(§9-0-6).
+ */
+export function subscribeChat(code, cb) {
+  let off = null;
+  let cancelled = false;
+  rt().then((fb) => {
+    if (cancelled) return;
+    if (!fb) return cb(null);
+    const q = fb.dbMod.query(
+      fb.dbMod.ref(fb.rtdb, path(ROOMS, code, CHAT)),
+      fb.dbMod.limitToLast(CHAT_KEEP)
+    );
+    const unsub = fb.dbMod.onValue(q, (s) => {
+      const rows = [];
+      s.forEach((c) => { rows.push({ id: c.key, ...c.val() }); });
+      rows.sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
+      cb(rows);
+    }, () => cb(null));
+    if (cancelled) { unsub(); return; }
+    off = unsub;
+  });
+  return () => { cancelled = true; off?.(); off = null; };
+}
+
+/**
+ * 오래된 줄 솎기 — **방에 있는 사람이 한가할 때** 한 번씩 돌린다.
+ * 서버 잡이 없으므로(무료 요금제) 보는 사람이 치운다. 실패해도 화면은 멀쩡하다
+ * (`limitToLast` 가 이미 받는 양을 묶어 둔다).
+ */
+export async function trimChat(code) {
+  const fb = await rt();
+  if (!fb) return;
+  const q = fb.dbMod.query(
+    fb.dbMod.ref(fb.rtdb, path(ROOMS, code, CHAT)),
+    fb.dbMod.limitToLast(CHAT_KEEP * 3)
+  );
+  const snap = await new Promise((res) => {
+    const un = fb.dbMod.onValue(q, (s) => { un(); res(s); }, () => { un(); res(null); });
+  }).catch(() => null);
+  if (!snap) return;
+  const ids = [];
+  snap.forEach((c) => { ids.push(c.key); });
+  const 지울것 = ids.slice(0, Math.max(0, ids.length - CHAT_KEEP));
+  if (!지울것.length) return;
+  const patch = {};
+  for (const id of 지울것) patch[id] = null;
+  await withTimeout(
+    fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, CHAT)), patch),
+    undefined, '채팅 정리'
+  ).catch(() => {});
+}
+
+export async function resumeRound(code) {
+  const fb = await rt();
+  if (!fb) return;
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
+    pausedBy: null, pausedAt: null,
+  }), undefined, '일시정지 해제').catch(() => {});
 }
 
 /**
@@ -1101,6 +1276,8 @@ export async function reviveMe(code, indices) {
     [path('players', fb.uid, 'reachedAt')]: fb.dbMod.serverTimestamp(),
     [path('players', fb.uid, 'deadAt')]: 0,
     [path('players', fb.uid, 'out')]: null,
+    // 이탈 유예의 기준 시각도 같이 지운다 — 되살아난 사람은 판을 뜨는 중이 아니다
+    [path('players', fb.uid, 'outAt')]: null,
   };
   try {
     await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), patch), undefined, '부활');

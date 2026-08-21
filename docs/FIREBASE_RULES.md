@@ -269,6 +269,12 @@ service cloud.firestore {
             },
             "seenAt": {
               ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val() || (data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
+            },
+            "outAt": {
+              ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "pauseUsed": {
+              ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
             }
           }
         },
@@ -315,6 +321,33 @@ service cloud.firestore {
         },
         "$other": {
           ".validate": false
+        },
+        "pausedBy": {
+          ".validate": "newData.isString() && newData.val() == auth.uid"
+        },
+        "pausedAt": {
+          ".validate": "newData.isNumber() && newData.val() == now"
+        },
+        "chat": {
+          "$mid": {
+            ".write": "auth != null && root.child('rooms').child($code).child('players').child(auth.uid).exists() && ((!data.exists() && newData.child('uid').val() == auth.uid) || !newData.exists())",
+            ".validate": "!newData.exists() || newData.hasChildren(['uid', 'name', 'text', 'at'])",
+            "uid": {
+              ".validate": "newData.isString() && newData.val() == auth.uid"
+            },
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 16"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() == now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         }
       }
     },

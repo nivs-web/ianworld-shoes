@@ -21,6 +21,7 @@ import { SLOT_COLORS } from '../../game/palette.js';
 import { hold } from '../../core/hold.js';
 import { startMultiGame } from '../startMultiGame.js';
 import Lobby from '../Lobby.js';
+import { roomChat } from './roomChat.js';
 
 /** 되돌리기가 실패했을 때 다시 시도하기까지 */
 const RESET_RETRY_MS = 2500;
@@ -75,6 +76,15 @@ export default function WaitingRoom(nav, params = {}) {
   const release = hold();
   /** 방을 두 번 나가지 않게 (화면 버튼 → onLeave 로 연달아 불린다) */
   let left = false;
+  /**
+   * ★ **채팅 패널은 화면당 한 번만 만든다.** (2026-08-21 26차)
+   *
+   * 대기방은 방 스냅샷이 올 때마다 `nav.refresh()` 로 화면을 통째로 다시 세운다.
+   * 채팅을 `render()` 안에서 만들면 그때마다 노드가 새로 만들어져 **치던 글자와
+   * 스크롤 위치가 사라진다.** 같은 노드를 다시 붙이기만 하면 둘 다 살아남는다
+   * (`innerHTML = ''` 는 자식을 떼어낼 뿐 없애지 않는다).
+   */
+  const chat = roomChat(code);
   /**
    * ★ **대기방에서도 "여기 있다"를 계속 보낸다.** (2026-08-19)
    * `resetRoom`(다음 판 준비)은 신호가 살아 있는 사람만 데려가고, 종료 판정도 이 신호로
@@ -226,6 +236,7 @@ export default function WaitingRoom(nav, params = {}) {
 
   function leave(alsoLeaveRoom = true) {
     unsub();
+    chat.stop();
     clearInterval(beat);
     clearTimeout(resetTimer);
     document.removeEventListener('visibilitychange', onVisible);
@@ -248,6 +259,7 @@ export default function WaitingRoom(nav, params = {}) {
      */
     onLeave() {
       unsub();
+      chat.stop();
       clearInterval(beat);
       clearTimeout(resetTimer);
       document.removeEventListener('visibilitychange', onVisible);
@@ -330,6 +342,13 @@ export default function WaitingRoom(nav, params = {}) {
         isHost
           ? segmented(DIFFS, room.difficulty, (v) => Room.setRoomDifficulty(code, v))
           : el('div.hint', `${DIFFS.find((d) => d.value === room.difficulty)?.label ?? ''} · ${S.hostOnlyDifficulty}`),
+
+        /**
+         * ★ **방 채팅.** (2026-08-21 26차, 사용자 지정)
+         * 비밀방이든 일반 방이든 **모든 방**에 붙는다. 대기자도 함께 쓴다 —
+         * 다음 판을 기다리는 사람에게 말을 걸 방법이 이것뿐이다.
+         */
+        chat.node,
 
         // 게임이 도는 동안 들어온 대기자에게는 레디도 시작도 없다 — 기다리는 게 전부다
         me?.waiting

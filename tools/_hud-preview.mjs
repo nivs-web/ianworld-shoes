@@ -25,9 +25,12 @@ const browser = await chromium.launch({ executablePath: exe }).catch(() => chrom
 const page = await browser.newPage({ viewport: { width: 400, height: 700 }, deviceScaleFactor: 3 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-await page.goto(`http://127.0.0.1:${PORT}/tools/_hud-preview.html`, { waitUntil: 'networkidle' });
-await page.waitForFunction('window.__ready === true', null, { timeout: 15000 }).catch(() => {});
-await (await page.$('canvas'))?.screenshot({ path: 'tools/_out/hud.png' });
+/** 기본 화면 + 26차의 세 상태 — 한 장씩 남긴다 */
+for (const [state, file] of [['', 'hud'], ['exit', 'hud_exit'], ['pause', 'hud_pause'], ['menu', 'hud_menu']]) {
+  await page.goto(`http://127.0.0.1:${PORT}/tools/_hud-preview.html?state=${state}`, { waitUntil: 'networkidle' });
+  await page.waitForFunction('window.__ready === true', null, { timeout: 15000 }).catch(() => {});
+  await (await page.$('canvas'))?.screenshot({ path: `tools/_out/${file}.png` });
+}
 await browser.close();
 (() => { try { process.kill(-vite.pid); } catch { vite.kill(); } })();
 

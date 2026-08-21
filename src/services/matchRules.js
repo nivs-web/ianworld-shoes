@@ -228,6 +228,105 @@ export function isStale(player, now) {
   return now - seen > 한계;
 }
 
+// ─────────────────────────────────────────────
+// 이탈 유예 — **1등은 판을 뜨기 전에 6초를 준다** (2026-08-21 26차, 사용자 지정)
+// ─────────────────────────────────────────────
+
+/**
+ * 이 사람이 **판을 뜨기 시작한 서버 시각.** 0이면 아직 뜨는 중이 아니다.
+ *
+ * ★ `deadAt` 이 `outAt` 보다 **먼저**다. 죽어서 부활 창을 흘려보낸 시간이 곧 상대의
+ * 반격 시간이므로, 죽은 순간부터 세야 "죽어서 나가기"와 "살아서 나가기"가 상대에게
+ * 같은 6초를 준다. 둘을 따로 세면 죽고 나서 포기한 사람만 12초를 붙잡힌다.
+ *
+ * 부활하면 `reviveMe` 가 `deadAt: 0` 으로 지우므로 값은 **마지막 죽음**을 가리킨다.
+ */
+export function exitStartedAt(p) {
+  return (p?.deadAt || 0) || (p?.outAt || 0) || 0;
+}
+
+/** 계단이 가장 높은 사람 (동점은 뒤에서 따로 본다) */
+function topByStairs(list) {
+  let top = null;
+  for (const p of list) if (!top || (p.stairs ?? 0) > (top.stairs ?? 0)) top = p;
+  return top;
+}
+
+/**
+ * `uid` 가 지금 판을 뜨면 **남은 사람에게 유예를 줘야 하는가.**
+ *
+ * 세 조건을 전부 만족해야 한다.
+ *   ① 판에 둘 이상이 뛰고 있다 (혼자면 줄 사람이 없다)
+ *   ② 내가 **단독 1등**이다 — 동점자가 있으면 내가 나가도 그 사람이 이긴다(생존 우선,
+ *      `rankPlayers`). 이미 지고 있는 사람의 기권을 붙잡을 이유는 없다.
+ *   ③ 아직 판에 남아 **반격할 수 있는 사람**이 있다. 전원이 빠진 뒤라면 6초를 세도
+ *      아무 일도 일어나지 않는다.
+ *
+ * 순위 판정에 `rankPlayers` 를 쓰지 않는 이유: 그쪽은 동점일 때 **생존**을 보므로,
+ * 나가려는 사람은 부르는 순간 이미 아래로 밀려 "1등이 아니다"가 된다. 여기서 보고 싶은
+ * 것은 **계단** 하나뿐이다.
+ */
+export function graceOnExit(room, uid, now = Date.now()) {
+  const list = playersInRound(room?.players);
+  if (list.length < 2) return false;
+  if (room?.result?.rankings || room?.state === 'finished') return false;
+  const me = list.find((p) => p.uid === uid);
+  if (!me) return false;
+  const my = me.stairs ?? 0;
+  if (list.some((p) => p.uid !== uid && (p.stairs ?? 0) >= my)) return false;
+  return list.some((p) => p.uid !== uid && !outOfRound(p, now));
+}
+
+/**
+ * 지금 판이 끝나기까지 **남은 유예(ms).** 0이면 붙잡을 이유가 없다.
+ *
+ * 모두가 같은 답을 내야 한다 — 나가는 사람의 화면에 뜨는 카운트다운, 남은 사람의
+ * 레이스 게이지에 뜨는 **빨간 숫자**, 그리고 종료 판정이 전부 이 하나를 본다.
+ */
+export function leaveGraceLeftMs(room, now = Date.now()) {
+  const list = playersInRound(room?.players);
+  const top = topByStairs(list);
+  if (!top || !outOfRound(top, now)) return 0;
+  if (!graceOnExit(room, top.uid, now)) return 0;
+  const at = exitStartedAt(top);
+  if (!at) return 0;                       // 튕김은 이미 30초를 줬다 (`isStale`)
+  return Math.max(0, at + MULTI.leaveGraceSeconds * 1000 - now);
+}
+
+/** 유예를 받고 있는 사람 (레이스 게이지가 빨간 숫자를 그릴 대상) */
+export function graceTarget(room, now = Date.now()) {
+  if (leaveGraceLeftMs(room, now) <= 0) return null;
+  return topByStairs(playersInRound(room?.players))?.uid ?? null;
+}
+
+// ─────────────────────────────────────────────
+// 일시정지 — 1인 1회, 전원 동시 (2026-08-21 26차, 사용자 지정)
+// ─────────────────────────────────────────────
+
+/** 지금 판이 멈춰 있나 (남은 ms, 0이면 안 멈춰 있다) */
+export function pauseLeftMs(room, now = Date.now()) {
+  const at = room?.pausedAt ?? 0;
+  if (!at || !room?.pausedBy) return 0;
+  return Math.max(0, at + MULTI.pauseSeconds * 1000 - now);
+}
+
+/**
+ * `uid` 가 지금 일시정지를 걸 수 있나.
+ *
+ * ★ **죽어 있는 사람이 하나라도 있으면 못 건다.** 부활 창과 이탈 카운트다운은 서버가
+ * 찍은 시각 기준이라 멈출 방법이 없다 — 20초를 멈추면 그 창이 통째로 날아간다.
+ * 아무도 죽지 않은 순간에만 열어 두면 **멈춰야 할 시계가 게이지 하나로 줄어든다.**
+ */
+export function canPause(room, uid, now = Date.now()) {
+  if (!room || room.state !== 'playing') return false;
+  if (room.result?.rankings) return false;
+  if (pauseLeftMs(room, now) > 0) return false;
+  const list = playersInRound(room.players);
+  const me = list.find((p) => p.uid === uid);
+  if (!me || me.pauseUsed) return false;
+  return !list.some((p) => p.alive === false || p.out);
+}
+
 /**
  * 판이 끝났나 — **살아 있는 사람이 없고, 죽은 사람이 전부 부활 창을 넘겼거나 포기했을 때.**
  *
@@ -246,8 +345,17 @@ export function roundOver(room, now) {
    *
    * 셋 이상은 다르다 — 한 명이 빠져도 **남은 사람들끼리 판이 계속돼야** 한다.
    */
-  if (list.length === 2 && list.some((p) => outOfRound(p, now))) return true;
-  return list.every((p) => outOfRound(p, now));
+  const 끝났다 = list.length === 2
+    ? list.some((p) => outOfRound(p, now))
+    : list.every((p) => outOfRound(p, now));
+  if (!끝났다) return false;
+  /**
+   * ★ **1등이 빠져서 끝나는 판은 6초를 더 기다린다.** (2026-08-21 26차)
+   *
+   * 그 6초가 없으면 나가기 버튼이 곧 **순위 확정 버튼**이 된다(§9-0-55).
+   * 전원이 빠진 뒤라면 `leaveGraceLeftMs` 가 0을 주므로 여기서 바로 끝난다.
+   */
+  return leaveGraceLeftMs(room, now) <= 0;
 }
 
 /** 나 말고 전원이 판에서 빠졌나 — 마지막 한 명이 혼자 계속 뛸 이유는 없다 */

@@ -742,8 +742,14 @@ console.log('\nS22-pre) "계속하기" 후 다음 판 — 기존 참가자는 �
 
   await quitMidGame(B, code, { stairs: 2 });
   await quitMidGame(A, code, { stairs: 6 });
-  await resultScreen(A, code, { leave: false });
+  /**
+   * ★ 26차에 **승자가 바뀌었다.** 예전에는 B 가 기권하는 순간 판이 끝나서(1:1 즉시 종료)
+   * 2계단짜리 B 가 1등이었다. 이제는 B 가 그때 1등이라 6초 유예가 붙고, 그 사이 A 가
+   * 6계단으로 나가면서 **더 높이 오른 A 가 이긴다.** 그래서 정산 순서도 뒤집힌다 —
+   * 진 사람(B)이 먼저 내고 이긴 사람(A)이 걷어야 한 번에 끝난다.
+   */
   await resultScreen(B, code, { leave: false });
+  await resultScreen(A, code, { leave: false });
 
   await A.act(() => Room.resetRoom(code));
   const players = w.db.read(`rooms/${code}/players`);
@@ -1305,6 +1311,160 @@ console.log('\nS34) ★ 진 사람이 나가도 화면의 판돈이 줄지 않�
 
   const 방2 = await A.act(() => Room.readRoom(code));
   eq('나간 뒤에도 판돈 표시가 그대로', M.potShoes(방2), 나가기전);
+}
+
+// ═══════════════════════════════════════════════
+// 26차 — 이탈 6초 유예 (2026-08-21, 사용자 지정)
+//
+// 이 다섯 개가 이 회차의 전부다. **고치기 전에 먼저 돌려서 전부 "악용자 승리"로
+// 실패하는 것을 확인한 뒤** 규칙을 넣었다 (§9-0-34·§9-0-45 의 교훈).
+// ═══════════════════════════════════════════════
+
+/** 부활 한 번 — 지갑에서 빼고 항아리에 올리는 실제 순서 그대로 */
+async function revive(p, code) {
+  return p.act(async () => {
+    const picked = M.pickPenaltyShoes(L.loadProfile().shoesByIndex ?? {}, MULTI.reviveCost);
+    L.removeShoesByIndex(picked);
+    const floor = await Room.reviveMe(code, picked);
+    if (floor == null) L.addShoes(picked);
+    return floor;
+  });
+}
+
+console.log('\nS35) ★ 부활 → 즉시 나가기 = 필승법이었다 (26차에 막았다)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 60 });   // 정직하게 오른 사람
+  const B = w.player('B', { shoes: 60 });   // 악용자
+  const code = await startRound(w, A, [B]);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 200, shoesFound: 0 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 3, shoesFound: 0 }, true));
+
+  // B 가 일부러 죽고 부활 — 1위 + 20 = 220 계단을 **공짜로** 받는다
+  await B.act(() => Room.reportDeath(code, { stairs: 3, shoesFound: 0 }));
+  const floor = await revive(B, code);
+  eq('부활 자리 = 1위 + 20', floor, 220);
+
+  // 그리고 그 자리에서 곧바로 나가기
+  await B.act(async () => {
+    await Room.reportDeath(code, { stairs: 220, shoesFound: 0 });
+    await Room.markOut(code);
+  });
+
+  const 방 = w.db.read(`rooms/${code}`);
+  eq('★ 6초 유예 — 판이 그 자리에서 안 끝난다', M.roundOver(방, Date.now()), false);
+  eq('유예가 실제로 6초', Math.round(M.leaveGraceLeftMs(방, Date.now()) / 1000), MULTI.leaveGraceSeconds);
+  eq('빨간 카운트다운의 주인은 B', M.graceTarget(방, Date.now()), 'B');
+
+  // A 가 그 6초 안에 죽고 부활해서 넘어선다 (= 이 규칙이 노린 그림)
+  await A.act(() => Room.reportDeath(code, { stairs: 200, shoesFound: 0 }));
+  const floorA = await revive(A, code);
+  eq('A 는 B 보다 20 위에서 살아난다', floorA, 240);
+  await A.act(() => Room.publishProgress(code, { stairs: 240, shoesFound: 0 }, true));
+
+  advance((MULTI.leaveGraceSeconds + 1) * 1000);
+  await resultScreen(A, code, { leave: false });
+  await resultScreen(B, code, { leave: false });
+  await reboot(A);
+
+  eq('★ 역전한 A 가 이긴다', w.db.read(`rooms/${code}/result/rankings`), ['A', 'B']);
+  // A: 60 - 20(부활) + 20(B 부활분) + 20(내 부활분 회수) + 1(기본) = 81
+  eq('A 가 항아리를 가져갔다', A.wallet(), 81);
+  eq('악용자 B 는 21켤레를 잃었다', B.wallet(), 39);
+}
+
+console.log('\nS36) 부활 소진 사망도 6초를 준다 (나가기 버튼을 안 거치는 경로)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 200 });
+  const B = w.player('B', { shoes: 200 });
+  const code = await startRound(w, A, [B]);
+
+  await B.act(() => Room.publishProgress(code, { stairs: 5, shoesFound: 0 }, true));
+  // A 가 부활 6회를 다 쓴다
+  for (let i = 0; i < MULTI.maxRevives; i++) {
+    await A.act(() => Room.reportDeath(code, { stairs: 10 + i, shoesFound: 0 }));
+    await revive(A, code);
+  }
+  eq('부활 상한까지 썼다', w.db.read(`rooms/${code}/players/A/revives`), MULTI.maxRevives);
+  await A.act(() => Room.publishProgress(code, { stairs: 300, shoesFound: 0 }, true));
+
+  // 부활이 없는 채로 죽는다 — 나가기를 누르지 않아도 판에서 빠진다
+  await A.act(() => Room.reportDeath(code, { stairs: 300, shoesFound: 0 }));
+  const 방 = w.db.read(`rooms/${code}`);
+  eq('부활이 없어 창이 안 열린다', M.reviveExpired(방.players.A, Date.now()), true);
+  eq('★ 그래도 6초는 준다', M.roundOver(방, Date.now()), false);
+  eq('기준은 죽은 순간', Math.round(M.leaveGraceLeftMs(방, Date.now()) / 1000), MULTI.leaveGraceSeconds);
+
+  advance((MULTI.leaveGraceSeconds + 1) * 1000);
+  eq('6초가 지나면 끝난다', M.roundOver(w.db.read(`rooms/${code}`), Date.now()), true);
+}
+
+console.log('\nS37) 부활 창을 다 흘려보냈으면 **추가 유예가 없다** (합계가 항상 6초)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 60 });
+  const B = w.player('B', { shoes: 60 });
+  const code = await startRound(w, A, [B]);
+
+  await B.act(() => Room.publishProgress(code, { stairs: 5, shoesFound: 0 }, true));
+  await A.act(() => Room.publishProgress(code, { stairs: 50, shoesFound: 0 }, true));
+  await A.act(() => Room.reportDeath(code, { stairs: 50, shoesFound: 0 }));
+
+  // 부활 창(6초)을 끝까지 흘려보낸다
+  advance((MULTI.reviveWindowSeconds + 1) * 1000);
+  const 방 = w.db.read(`rooms/${code}`);
+  eq('★ 창을 다 쓴 사람에게는 유예가 없다', M.leaveGraceLeftMs(방, Date.now()), 0);
+  eq('그 자리에서 끝난다', M.roundOver(방, Date.now()), true);
+}
+
+console.log('\nS38) 2등이 나가는 것은 안 붙잡는다 (기권을 붙잡을 이유가 없다)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 60 });
+  const B = w.player('B', { shoes: 60 });
+  const code = await startRound(w, A, [B]);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 90, shoesFound: 0 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 12, shoesFound: 0 }, true));
+
+  const 방0 = w.db.read(`rooms/${code}`);
+  eq('1등이 나가면 유예가 붙는다', M.graceOnExit(방0, 'A', Date.now()), true);
+  eq('2등이 나가면 안 붙는다', M.graceOnExit(방0, 'B', Date.now()), false);
+
+  await B.act(async () => {
+    await Room.reportDeath(code, { stairs: 12, shoesFound: 0 });
+    await Room.markOut(code);
+  });
+  eq('★ 2등 이탈은 그 자리에서 끝난다', M.roundOver(w.db.read(`rooms/${code}`), Date.now()), true);
+}
+
+console.log('\nS39) 일시정지 — 1인 1회, 20초, 전원 동시');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 60 });
+  const B = w.player('B', { shoes: 60 });
+  const code = await startRound(w, A, [B]);
+  await A.act(() => Room.publishProgress(code, { stairs: 10, shoesFound: 0 }, true));
+  w.db.write(`rooms/${code}/state`, 'playing');
+
+  eq('처음엔 쓸 수 있다', M.canPause(w.db.read(`rooms/${code}`), 'A', Date.now()), true);
+  eq('A 가 멈춘다', await A.act(() => Room.pauseRound(code)), true);
+  const 방 = w.db.read(`rooms/${code}`);
+  eq('★ 전원이 같이 멈춘다', Math.round(M.pauseLeftMs(방, Date.now()) / 1000), MULTI.pauseSeconds);
+  eq('멈춘 동안에는 아무도 못 건다', M.canPause(방, 'B', Date.now()), false);
+  eq('★ 두 번째는 못 쓴다', await A.act(() => Room.pauseRound(code)), false);
+
+  advance((MULTI.pauseSeconds + 1) * 1000);
+  eq('20초가 지나면 저절로 풀린다', M.pauseLeftMs(w.db.read(`rooms/${code}`), Date.now()), 0);
+  await B.act(() => Room.resumeRound(code));
+  eq('B 는 아직 한 번 남았다', M.canPause(w.db.read(`rooms/${code}`), 'B', Date.now()), true);
+  eq('A 는 그 판에서 끝났다', M.canPause(w.db.read(`rooms/${code}`), 'A', Date.now()), false);
+
+  // 죽어 있는 사람이 있으면 못 건다 — 부활 창을 20초 멈출 방법이 없기 때문이다
+  await A.act(() => Room.reportDeath(code, { stairs: 10, shoesFound: 0 }));
+  eq('★ 누가 죽어 있으면 못 건다', M.canPause(w.db.read(`rooms/${code}`), 'B', Date.now()), false);
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n시뮬레이션 이상 없음');

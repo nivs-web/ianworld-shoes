@@ -81,9 +81,27 @@ function push(btn) {
   queue.push(btn);
 }
 
+/**
+ * ★ **메뉴 판정 영역을 좁힐 수 있다.** (2026-08-21 26차)
+ *
+ * 기본은 화면 위 1/5 전체(`TOUCH.pauseBelowY`)다 — 싱글에서는 엄지가 빗나가도
+ * 일시정지가 열릴 뿐이라 손해가 없다. 그런데 멀티에서는 그 한 번이 **1회뿐인
+ * 일시정지**를 날리거나 기권 확인창을 띄운다. 그래서 멀티는 버튼 사각형만 받고,
+ * 남는 상단은 통째로 좌우 조작이 된다(조작 영역이 오히려 넓어진다).
+ *
+ * @param {{x:number,y:number,w:number,h:number}|null} r `null` 이면 기본(상단 밴드)
+ */
+let pauseZone = null;
+export function setPauseZone(r) {
+  pauseZone = r ?? null;
+}
+
 /** 논리 좌표 → 어느 영역인가 (layout.TOUCH) */
 function zoneOf(lx, ly) {
-  if (ly < TOUCH.pauseBelowY) return 'pause';
+  if (pauseZone) {
+    const { x, y, w, h } = pauseZone;
+    if (lx >= x && lx <= x + w && ly >= y && ly <= y + h) return 'pause';
+  } else if (ly < TOUCH.pauseBelowY) return 'pause';
   return lx < TOUCH.splitX ? BTN.LEFT : BTN.RIGHT;
 }
 
