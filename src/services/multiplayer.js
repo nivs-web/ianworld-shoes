@@ -13,6 +13,7 @@ import { getRtdb, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { MULTI } from '../config/balance.js';
+import { packItems, ITEMS_MAX } from '../data/items.js';
 import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound, reviveFloor, canRevive, roundOver, isStale, canPause } from './matchRules.js';
 
 const ROOMS = 'rooms';
@@ -117,6 +118,13 @@ function meRecord(profile, fb) {
     shoesOwned: profile.shoesOwned ?? 0,
     multiWins: profile.multiWins ?? 0,
     multiLosses: profile.multiLosses ?? 0,
+    /**
+     * ★ **착용 아이템.** (2026-08-21 26차 후속)
+     * 상대 고스트에 얹히는 값이다 — 아이템은 1,000~10,000켤레짜리라 **남이 봐 주지
+     * 않으면 살 이유가 없다.** 한 줄 문자열이므로 슬롯이 늘어도 규칙이 그대로다
+     * (`data/items.js` 의 `packItems` 주석 참고). 상한은 규칙과 같은 숫자다.
+     */
+    items: packItems(profile.equippedItems).slice(0, ITEMS_MAX),
   };
 }
 
@@ -474,6 +482,8 @@ export async function resetRoom(code) {
       // ★ 참가자 카드 스냅샷은 다음 판에도 그대로 옮긴다 — 진행도가 아니라 프로필값이라
       //   지울 이유가 없다. 값을 그대로 옮기므로 "남의 것은 값이 그대로" 규칙도 통과한다.
       shoesOwned: v.shoesOwned ?? 0, multiWins: v.multiWins ?? 0, multiLosses: v.multiLosses ?? 0,
+      // 착용 아이템도 프로필값이라 다음 판에 그대로 옮긴다 (값이 그대로라 규칙도 통과한다)
+      items: typeof v.items === 'string' ? v.items : '',
     };
   }
   const n = Object.keys(players).length;

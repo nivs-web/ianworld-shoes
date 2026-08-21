@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>아이템 착용 미리보기 (진단 전용)</title>
+<style>body{margin:0;background:#222;display:flex;justify-content:center}canvas{image-rendering:pixelated}</style>
+</head><body>
+<canvas id="game" width="180" height="320"></canvas>
+<script type="module">
+/**
+ * 인게임에서 아이템을 입은 모습 — **진짜 `Player` 와 진짜 `multiGhosts` 를 부른다.**
+ * 마크업이나 좌표를 손으로 베끼면 그 미리보기는 언젠가 거짓말을 한다(§9-0-33).
+ *
+ * `?cut=front|right|left|ghost&items=...` 로 한 장씩 찍는다.
+ */
+import { initCanvas, clear } from '/src/core/canvas.js';
+import { loadAll } from '/src/core/assets.js';
+import { Player, P_STATE } from '/src/game/player.js';
+import { multiGhosts } from '/src/game/multiHud.js';
+import { itemKey } from '/src/game/wornItems.js';
+import { itemSprite, ITEMS } from '/src/data/items.js';
+import { CENTER_X } from '/src/config/layout.js';
+import { loadSmallFont } from '/src/core/pixelfont.js';
+
+initCanvas();
+const q = new URLSearchParams(location.search);
+const cut = q.get('cut') ?? 'right';
+const worn = (q.get('items') ?? 'hat_crown,wing_angel,pet_dog').split(',').filter(Boolean);
+
+const chars = ['ian', 'denny'];
+await loadAll([
+  ...chars.flatMap((id) => [
+    { key: `${id}_front`, url: `/assets/characters/${id}_front.png` },
+    { key: `${id}_side`, url: `/assets/characters/${id}_side.png` },
+    { key: `${id}_jump`, url: `/assets/characters/${id}_jump.png` },
+    { key: `${id}_face`, url: `/assets/characters/${id}_face.png` },
+  ]),
+  ...ITEMS.flatMap((it) => [
+    { key: itemKey(it.id, 'front'), url: itemSprite(it.id, 'front') },
+    { key: itemKey(it.id, 'side'), url: itemSprite(it.id, 'side') },
+  ]),
+]).catch(() => {});
+await loadSmallFont();
+
+clear('#243a52');
+
+if (cut === 'ghost') {
+  // 상대 고스트 — 진짜 `multiGhosts` 를 그대로 부른다(투명도·앞뒤 순서까지 실제 코드다)
+  multiGhosts({
+    floor: 10, charId: 'ian', mySlot: 0, countdownMs: 0,
+    stairs: { worldX: (f) => f * 0, nextDir: () => 1, ensure() {} },
+    opponents: [{ id: 'b', characterId: 'denny', slot: 1, stairs: 10, alive: true, items: worn.join(',') }],
+    room: { players: {} },
+  });
+} else {
+  const p = new Player('ian');
+  p.items = worn;
+  if (cut === 'front') { p.state = P_STATE.INTRO; p.introT = 0; }   // 팝 전 = 정면 컷
+  else { p.state = P_STATE.IDLE; p.facing = cut === 'left' ? -1 : 1; }
+  p.render(0, 0);
+}
+
+// 발끝 라인(212)과 중심선(90) — 자리가 맞는지 눈으로 대조할 기준선
+const ctx = document.getElementById('game').getContext('2d');
+ctx.fillStyle = 'rgba(255,0,0,0.35)';
+ctx.fillRect(0, 212, 180, 1);
+ctx.fillRect(CENTER_X, 0, 1, 320);
+
+window.__ready = true;
+</script></body></html>

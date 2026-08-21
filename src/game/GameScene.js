@@ -31,6 +31,8 @@ import * as Room from '../services/multiplayer.js';
 import { roundOver, othersAllOut, slotIndex, graceOnExit, leaveGraceLeftMs, pauseLeftMs, canPause } from '../services/matchRules.js';
 import S from '../config/strings.ko.js';
 import { multiHud, multiGhosts, menuHit, TICKER_MS } from './multiHud.js';
+import { packItems, parseItems, itemKey } from './wornItems.js';
+import { itemSprite } from '../data/items.js';
 
 export class GameScene {
   /**
@@ -109,6 +111,13 @@ export class GameScene {
       tierWeights(this.multi ? 0 : dexUnique())
     );
     this.player = new Player(this.charId);
+    /**
+     * ★ **아이템 쇼핑에서 산 것을 계단 위에서도 입는다.** (2026-08-21 26차 후속)
+     * 프로필은 판이 시작될 때 한 번만 읽는다 — 렌더에서 읽으면 `localStorage` 파싱과
+     * 신발 130칸 순회를 초당 60번 하게 된다(§9-0-39 에서 한 번 데인 자리다).
+     */
+    this.myItems = parseItems(packItems(getProfile().equippedItems));
+    this.player.items = this.myItems;
     this.floor = this.startFloor;
     this.gauge = GAUGE_MAX;
     this.started = false; // 첫 입력부터 게이지가 줄기 시작
@@ -170,6 +179,11 @@ export class GameScene {
       ...buttonAssets(this.controlMode),
       { key: 'gauge_frame', url: '/assets/ui/gauge_frame.png' },
       { key: 'btn_pause', url: '/assets/ui/btn_pause.png' },
+      // 내가 착용한 것만 받는다 — 안 산 아이템 22장을 판마다 받을 이유가 없다
+      ...this.myItems.flatMap((id) => [
+        { key: itemKey(id, 'front'), url: itemSprite(id, 'front') },
+        { key: itemKey(id, 'side'), url: itemSprite(id, 'side') },
+      ]),
     ];
     this.ready = false;
     loadAll(list).then(() => {

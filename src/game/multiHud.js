@@ -34,6 +34,7 @@ import { rect, strokeRect } from '../core/sprite.js';
 import { img, loadAll } from '../core/assets.js';
 import { getCtx } from '../core/canvas.js';
 import { PAL, SLOT_COLORS, SLOT_DIM } from './palette.js';
+import { drawWornItems, ensureItemAssets, parseItems } from './wornItems.js';
 import { VIEW_W, VIEW_H, STAIR, CENTER_X, CHAR } from '../config/layout.js';
 import { MULTI } from '../config/balance.js';
 import { potShoes, slotIndex, rankPlayers, canRevive, leaveGraceLeftMs, graceTarget, pauseLeftMs } from '../services/matchRules.js';
@@ -166,6 +167,8 @@ function ensureAssets(list, myCharId) {
       { key: `${id}_face`, url: `/assets/characters/${id}_face.png` }
     );
   }
+  // 상대가 착용한 아이템 그림 — 목록이 바뀔 때만 확인하므로 매 프레임 비용이 없다
+  for (const o of list) ensureItemAssets(parseItems(o.items));
   if (want.length) loadAll(want).catch(() => {});
 }
 
@@ -363,9 +366,20 @@ function drawGhosts(scene, list) {
         const w = CHAR.w, h = CHAR.h;
         const dx = Math.round(cx - (w >> 1));
         const top = Math.round(footY - h);
+        /**
+         * ★ **상대가 산 아이템도 고스트에 얹는다.** (2026-08-21 26차 후속)
+         * 아이템은 값이 1,000~10,000켤레다 — **남이 봐 주지 않으면 살 이유가 없다.**
+         * 투명도는 캐릭터와 **같은 save 블록 안에서** 걸린다: 따로 걸면 모자만
+         * 또렷하게 떠서 몸에서 분리돼 보인다.
+         *
+         * 고스트는 원본 크기(배율 1)로 그리고 언제나 정면 컷이라 반전이 없다.
+         */
+        const worn = parseItems(o.items);
         ctx.save();
         ctx.globalAlpha = o.alive === false ? 0.25 : 0.6;
+        drawWornItems(worn, cx, footY, 1, 1, 'front', true);
         ctx.drawImage(sprite, 0, 0, w, h, dx, top, w, h);
+        drawWornItems(worn, cx, footY, 1, 1, 'front', false);
         ctx.restore();
       }
       // 자리 색 점 — 오른쪽 게이지의 테두리 색과 같은 색이다

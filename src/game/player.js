@@ -16,6 +16,7 @@ import { CHAR, CENTER_X, SHOE } from '../config/layout.js';
 import { img } from '../core/assets.js';
 import { getCtx } from '../core/canvas.js';
 import { drawScaled, drawScaledFlipped, drawFrameAt, drawFrameAtFlipped } from '../core/sprite.js';
+import { drawWornItems } from './wornItems.js';
 import shoesData from '../data/shoes.json';
 import charMeta from '../data/characters.generated.json';
 
@@ -47,6 +48,11 @@ export class Player {
     this.deadShoe = null;
     /** 인트로가 끝나면 이 방향을 본다 (GameScene이 설정) */
     this.introFacing = 1;
+    /**
+     * 착용 아이템 id 들 (모자·날개·반려견). GameScene 이 프로필에서 넣어 준다.
+     * 비어 있으면 아래 `drawItems` 가 곧바로 돌아가므로 싱글·멀티 모두 비용이 0이다.
+     */
+    this.items = [];
   }
 
   get inIntro() {
@@ -152,7 +158,9 @@ export class Player {
           const h = Math.round(CHAR.dh * 1.2);
           drawStretched(front, cx - (w >> 1), CHAR.footY - h, w, h);
         } else {
+          this.drawItems(cx, CHAR.footY, 'front', true);
           this.drawCut(front, cx - (CHAR.dw >> 1), CHAR.footY - CHAR.dh, CHAR.w, CHAR.h, S, 'front');
+          this.drawItems(cx, CHAR.footY, 'front', false);
         }
         this.renderWornShoe(cx, CHAR.footY, 'front');
         break;
@@ -161,7 +169,9 @@ export class Player {
         if (!side) break;
         const x = cx - (CHAR.dw >> 1);
         const y = CHAR.footY - CHAR.dh;
+        this.drawItems(cx, CHAR.footY, 'side', true);
         this.drawCut(side, x, y, CHAR.w, CHAR.h, S, 'side');
+        this.drawItems(cx, CHAR.footY, 'side', false);
         this.renderWornShoe(cx, CHAR.footY, 'side');
         break;
       }
@@ -170,7 +180,9 @@ export class Player {
         const off = this.climbOffsetY();
         const x = cx - (CHAR.jumpDw >> 1);
         const y = CHAR.footY - CHAR.jumpDh + off;
+        this.drawItems(cx, CHAR.footY + off, 'side', true);
         this.drawCut(jump, x, y, CHAR.jumpW, CHAR.jumpH, S, 'jump');
+        this.drawItems(cx, CHAR.footY + off, 'side', false);
         this.renderWornShoe(cx, CHAR.footY + off, 'jump');
         break;
       }
@@ -195,6 +207,21 @@ export class Player {
         break;
       }
     }
+  }
+
+  /**
+   * 착용 아이템 한 겹.
+   *
+   * **살아 있는 컷에만 그린다**(INTRO·IDLE·EFFECT). 사망 연출(STARE·FALL)은 캐릭터를
+   * 1.15배로 늘리거나 낙하시키는데, 아이템만 제자리에 남으면 몸에서 떨어져 나온 것처럼
+   * 보인다 — 그 순간 사용자가 봐야 하는 건 모자가 아니라 "죽었다"는 사실이다.
+   *
+   * @param {'front'|'side'} cut
+   * @param {boolean} behind 날개처럼 캐릭터보다 뒤에 오는 것만 그릴지
+   */
+  drawItems(cx, footY, cut, behind) {
+    if (!this.items?.length) return;
+    drawWornItems(this.items, cx, footY, CHAR.scale, this.facing, cut, behind);
   }
 
   /**

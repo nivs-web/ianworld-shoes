@@ -3075,5 +3075,97 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   }
 }
 
+// ─────────────────────────────────────────────
+{
+  console.log('\n52) ★ 인게임 아이템 착용 렌더 (2026-08-21 26차 후속)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const IT = await import('../src/data/items.js');
+  const W = code(read('src/game/wornItems.js'));
+  const P = code(read('src/game/player.js'));
+  const G = code(read('src/game/GameScene.js'));
+  const H = code(read('src/game/multiHud.js'));
+
+  /**
+   * ① ★ **쇼핑 미리보기와 같은 표를 쓴다.** 여기서 좌표를 새로 적으면 두 화면이
+   *    언젠가 갈라지고, 사용자가 직접 그린 png 로 갈아 끼울 때 한쪽만 따라온다.
+   */
+  has('★ 표의 WEAR 기준을 그대로 환산한다', W, 'it.dx - WEAR.charX');
+  has('세로도 같은 기준', W, 'it.dy - WEAR.charY');
+  /**
+   * ② ★ **뒤집기는 원본 도트 단위에서** 한다. 화면 좌표를 뒤집으면 배율 1.5 가 곱해진
+   *    뒤라 반올림 오차가 방향마다 다르게 남는다 — 오른쪽/왼쪽에서 모자 자리가 1px 튄다.
+   */
+  has('★ 반전은 배율 곱하기 전에', W, 'CHAR.w - relX - it.w');
+  /** ③ 캐릭터 상자는 컷과 무관하게 35×50 — 점프 컷(50×50)으로 바꾸면 이펙트 3프레임 동안 모자가 튄다 */
+  has('상자 기준이 하나다', W, 'CHAR.w * scale');
+
+  /** ④ ★ 날개는 캐릭터보다 **먼저** — 캔버스는 나중에 그린 것이 위다 */
+  eq('★ 날개 셋 전부 behind', IT.itemsOf('wing').every((i) => i.behind === true), true);
+  eq('모자·반려견은 앞', [...IT.itemsOf('acc'), ...IT.itemsOf('pet')].every((i) => !i.behind), true);
+  for (const cut of ['front', 'side']) {
+    has(`내 캐릭터 — ${cut} 뒤 겹`, P, `this.drawItems(cx, CHAR.footY`);
+  }
+  eq('★ 뒤 겹이 먼저, 앞 겹이 나중 (내 캐릭터)',
+    P.indexOf("this.drawItems(cx, CHAR.footY, 'side', true)") < P.indexOf("this.drawItems(cx, CHAR.footY, 'side', false)"), true);
+  eq('★ 뒤 겹이 먼저, 앞 겹이 나중 (고스트)',
+    H.indexOf("drawWornItems(worn, cx, footY, 1, 1, 'front', true)") < H.indexOf("drawWornItems(worn, cx, footY, 1, 1, 'front', false)"), true);
+  eq('★ 고스트 아이템이 캐릭터 사이에 낀다',
+    H.indexOf("drawWornItems(worn, cx, footY, 1, 1, 'front', true)") < H.indexOf('ctx.drawImage(sprite, 0, 0, w, h, dx, top, w, h)')
+    && H.indexOf('ctx.drawImage(sprite, 0, 0, w, h, dx, top, w, h)') < H.indexOf("drawWornItems(worn, cx, footY, 1, 1, 'front', false)"), true);
+  /** ⑤ 투명도는 캐릭터와 **같은 save 블록** 안 — 따로 걸면 모자만 또렷해 몸에서 분리돼 보인다 */
+  {
+    const i = H.indexOf('const worn = parseItems(o.items);');
+    const seg = H.slice(i, i + 700);
+    eq('★ 고스트 투명도 블록 안에서 그린다',
+      seg.indexOf('ctx.save()') < seg.indexOf("drawWornItems(worn, cx, footY, 1, 1, 'front', true)")
+      && seg.indexOf("drawWornItems(worn, cx, footY, 1, 1, 'front', false)") < seg.indexOf('ctx.restore()'), true);
+  }
+
+  /** ⑥ ★ 사망 연출에는 안 그린다 — 늘어나거나 떨어지는 몸에서 아이템만 제자리에 남는다 */
+  {
+    // `case P_STATE.STARE:` 는 update() 에도 있다 — render() 안의 것부터 본다
+    const stare = P.indexOf('case P_STATE.STARE:', P.indexOf('render(camX, worldX)'));
+    // 끝은 `drawItems` **메서드 정의**다 — 그 사이에 호출이 하나도 없어야 한다
+    const end = P.indexOf('drawItems(cx, footY, cut, behind)');
+    eq('★ STARE·FALL 에는 안 얹는다', P.slice(stare, end).includes('this.drawItems('), false);
+  }
+
+  /** ⑦ 프로필은 판이 시작될 때 한 번만 읽는다 (렌더에서 읽으면 초당 60번, §9-0-39) */
+  has('★ 판 시작에 한 번만', G, 'this.myItems = parseItems(packItems(getProfile().equippedItems));');
+  eq('★ 렌더가 프로필을 안 읽는다', /render\(\)[\s\S]*getProfile\(\)/.test(G.slice(G.indexOf('  render()'))), false);
+  /** ⑧ 착용한 것만 받는다 — 안 산 22장을 판마다 받을 이유가 없다 */
+  has('내 아이템 그림만 받는다', G, "...this.myItems.flatMap((id) => [");
+  has('상대 아이템 그림도 받는다', H, 'ensureItemAssets(parseItems(o.items))');
+
+  /**
+   * ⑨ ★ **서비스가 game/ 을 물면 안 된다.** 브라우저 전용 모듈(canvas·assets)이 딸려 와
+   *    노드 검사(`sim:multi`)가 그 자리에서 죽는다 — 포장 함수를 표 옆에 둔 이유다.
+   */
+  eq('★ 멀티 서비스는 game/ 을 안 문다', /from '\.\.\/game\//.test(read('src/services/multiplayer.js')), false);
+  has('방에 착용 아이템을 실어 보낸다', code(read('src/services/multiplayer.js')), 'items: packItems(profile.equippedItems).slice(0, ITEMS_MAX)');
+  has('다음 판에도 그대로 옮긴다', code(read('src/services/multiplayer.js')), "items: typeof v.items === 'string' ? v.items : ''");
+
+  /** ⑩ 규칙에 `items` 가 없으면 **입장 자체가 거부된다**(`$other: false`, §9-0-34) */
+  {
+    const doc = read('docs/FIREBASE_RULES.md');
+    const rules = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(doc.slice(doc.indexOf('## Realtime Database')))[1]).rules;
+    const v = rules.rooms.$code.players.$uid.items?.['.validate'] ?? '';
+    eq('★ 참가자.items 규칙이 있다', !!v, true);
+    has('남의 값은 못 바꾼다', v, "$uid == auth.uid || newData.val() == data.val()");
+    // 상한이 어긋나면 규칙이 통째로 거부하는데 화면에는 "입장이 안 된다"로만 보인다
+    eq('★ 상한이 코드와 규칙에서 같다', `length <= ${IT.ITEMS_MAX}`, /length <= \d+/.exec(v)?.[0]);
+  }
+
+  /** ⑪ 포장·해제가 실제로 도는가 (순수 함수라 여기서 바로 돌릴 수 있다) */
+  eq('포장', IT.packItems({ hat: 'hat_crown', wing: 'wing_angel', pet: null }), 'hat_crown,wing_angel');
+  eq('해제', IT.parseItems('hat_crown,wing_angel'), ['hat_crown', 'wing_angel']);
+  eq('모르는 id 는 버린다', IT.parseItems('hat_crown,없는것'), ['hat_crown']);
+  eq('빈 값', IT.parseItems(undefined), []);
+  eq('가장 긴 조합도 상한 안', IT.packItems({ hat: 'hat_dread', wing: 'wing_devil', pet: 'pet_star' }).length <= IT.ITEMS_MAX, true);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

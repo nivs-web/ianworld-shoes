@@ -63,7 +63,8 @@
     "qa:lobbyfit": "node tools/_lobbyfit.mjs",
     "perf:frame": "node tools/_frameperf.mjs",
     "//perf:boot": "부팅에서 첫 화면까지 걸린 시간과 받은 바이트. 반드시 npm run build 뒤에.",
-    "perf:boot": "node tools/_bootperf.mjs"
+    "perf:boot": "node tools/_bootperf.mjs",
+    "preview:wear": "node tools/_wear-preview.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0"

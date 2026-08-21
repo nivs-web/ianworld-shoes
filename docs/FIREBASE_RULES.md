@@ -275,6 +275,9 @@ service cloud.firestore {
             },
             "pauseUsed": {
               ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "items": {
+              ".validate": "newData.isString() && newData.val().length <= 64 && ($uid == auth.uid || newData.val() == data.val())"
             }
           }
         },

@@ -71,3 +71,33 @@ export const itemById = (id) => ITEMS.find((it) => it.id === id) ?? null;
 export const itemsOf = (cat) => ITEMS.filter((it) => it.cat === cat);
 /** `items/{id}_{cut}.png` — 옆모습의 반대편은 캐릭터처럼 **런타임에 뒤집는다** (§5) */
 export const itemSprite = (id, cut = 'front') => `/assets/items/${id}_${cut}.png`;
+
+/**
+ * 착용 목록을 **한 줄 문자열**로 주고받는다 — `"hat_crown,wing_angel"`.
+ * (2026-08-21 26차 후속)
+ *
+ * RTDB 에 객체로 넣으면 잎마다 `.validate` 를 새로 써야 하고 **슬롯이 늘 때마다 규칙을
+ * 다시 게시**해야 한다(규칙에 없는 필드는 그 update 를 통째로 막는다, §9-0-34).
+ * 문자열 하나면 슬롯이 늘어도 규칙이 그대로다.
+ *
+ * 이 두 함수가 화면이 아니라 **표 옆에** 있는 이유: 멀티 서비스(`multiplayer.js`)와
+ * 인게임 렌더(`game/wornItems.js`)가 둘 다 쓴다. 서비스가 `game/` 을 물면 브라우저
+ * 전용 모듈(canvas·assets)이 딸려 와 **노드 검사에서 그 자리에서 죽는다**.
+ */
+export function packItems(equipped) {
+  if (!equipped) return '';
+  return Object.values(equipped).filter(Boolean).join(',');
+}
+
+/** 문자열 → id 배열. 표에 없는 id 는 버린다(옛 클라이언트가 보낸 값일 수 있다) */
+export function parseItems(v) {
+  if (!v || typeof v !== 'string') return [];
+  return v.split(',').map((s) => s.trim()).filter((s) => !!itemById(s));
+}
+
+/**
+ * 방에 실어 보내는 문자열의 최대 길이 — **규칙의 `items` 상한과 같은 숫자여야 한다.**
+ * 지금 가장 긴 조합은 `hat_dread,wing_devil,pet_star`(31자)이고, 슬롯이 더 늘어도
+ * 버틸 만큼 여유를 뒀다.
+ */
+export const ITEMS_MAX = 64;
