@@ -15,7 +15,8 @@ import { ANIM } from '../config/balance.js';
 import { CHAR, CENTER_X, SHOE } from '../config/layout.js';
 import { img } from '../core/assets.js';
 import { getCtx } from '../core/canvas.js';
-import { drawScaled, drawScaledFlipped, drawFrameAt, drawFrameAtFlipped } from '../core/sprite.js';
+import { drawScaled, drawScaledFlipped, drawFrameAt, drawFrameAtFlipped, rect } from '../core/sprite.js';
+import { PAL } from './palette.js';
 import { drawWornItems } from './wornItems.js';
 import shoesData from '../data/shoes.json';
 import charMeta from '../data/characters.generated.json';
@@ -180,9 +181,11 @@ export class Player {
         const off = this.climbOffsetY();
         const x = cx - (CHAR.jumpDw >> 1);
         const y = CHAR.footY - CHAR.jumpDh + off;
-        this.drawItems(cx, CHAR.footY + off, 'side', true);
+        // ★ 번개가 **맨 뒤**다 — 캐릭터 앞에 그리면 몸을 가려 속도가 아니라 잡음이 된다
+        drawClimbSpark(cx, CHAR.footY + off, this.facing, this.timer);
+        this.drawItems(cx, CHAR.footY + off, 'jump', true);
         this.drawCut(jump, x, y, CHAR.jumpW, CHAR.jumpH, S, 'jump');
-        this.drawItems(cx, CHAR.footY + off, 'side', false);
+        this.drawItems(cx, CHAR.footY + off, 'jump', false);
         this.renderWornShoe(cx, CHAR.footY + off, 'jump');
         break;
       }
@@ -322,6 +325,58 @@ export class Player {
     if (flip) drawFrameAtFlipped(w, sx, sy, m.shoeW, m.shoeH, x, y, S);
     else drawFrameAt(w, sx, sy, m.shoeW, m.shoeH, x, y, S);
   }
+}
+
+/**
+ * ★ **계단 사이 상승 번개.** (2026-08-21 사용자 지정)
+ *
+ * *"계단을 올라가는 중간컷의 이미지에서 애니메이션 효과가 살짝 있었으면 좋겠어,
+ *   빠르게 올라가는 뒤에 파란 번개 불꽃처럼 붙어있는 느낌으로"*
+ *
+ * ## 왜 이렇게 그리나
+ *
+ * 이 컷은 **딱 3프레임**이다(`ANIM.effectFrames`). 크게 그리면 화면이 깜빡이는 것으로만
+ * 보이고, 매 프레임 같은 모양이면 정지 그림이 붙어 있는 것으로 보인다. 그래서
+ *   · **뒤쪽 아래**로만 뻗는다 — 올라온 자취라 앞이나 위로 가면 안 된다
+ *   · 프레임마다 **한 도트씩 어긋나게** 한다(`frame`) — 그 흔들림이 곧 속도다
+ *   · 난수를 안 쓴다 — 같은 프레임이면 항상 같은 그림이어야 미리보기·검사가 성립한다
+ *
+ * 색 세 단계(흰 → 파랑 → 진파랑)는 도트에서 빛을 내는 유일한 방법이다.
+ * 날개의 상승 컷에 구워 둔 번개(`tools/build-items.mjs` 의 `SPARK`)와 같은 값이라
+ * 날개를 낀 사람은 번개가 한 덩어리로 이어져 보인다.
+ *
+ * @param {number} facing 1 오른쪽 / -1 왼쪽 — 자취는 **반대쪽**으로 흐른다
+ * @param {number} frame  남은 이펙트 프레임 수 (3 → 2 → 1)
+ */
+export function drawClimbSpark(cx, footY, facing, frame) {
+  const back = -facing;                 // 올라온 쪽
+  const wob = frame & 1;                // 프레임마다 한 도트 어긋난다
+  /**
+   * [뒤로 얼마, 발끝에서 위로 얼마, 길이, 색]
+   *
+   * ⚠ **몸 밖에서 시작해야 한다.** 캐릭터는 1.5배로 그려져 좌우로 26도트씩 차지하므로,
+   * 20도트쯤에서 시작하면 자취가 몸에 통째로 가려 아무것도 안 보인다(처음에 그랬다).
+   */
+  const BOLTS = [
+    [22, 58, 4, PAL.sparkHot],
+    [30, 46, 5, PAL.sparkMid],
+    [26, 32, 4, PAL.sparkMid],
+    [36, 22, 3, PAL.sparkCold],
+  ];
+  for (let b = 0; b < BOLTS.length; b++) {
+    const [dx, up, len, color] = BOLTS[b];
+    let x = cx + back * (dx + (b & 1 ? wob : 0));
+    let y = footY - up + (b & 1 ? 0 : wob);
+    for (let s = 0; s < len; s++) {
+      // 지그재그 — 한 칸씩 뒤로 가면서 좌우로 흔들린다
+      rect(x, y, 2, 2, s === 0 ? PAL.sparkHot : color);
+      x += back * 2 + (s & 1 ? -back : back);
+      y += 3;
+    }
+  }
+  // 튀는 불티 둘 — 자취 끝에 점을 찍으면 "터졌다"가 된다
+  rect(cx + back * (42 + wob), footY - 38, 1, 1, PAL.sparkHot);
+  rect(cx + back * (33 - wob), footY - 10, 1, 1, PAL.sparkMid);
 }
 
 // ── 비정수 배율 헬퍼 (팝 연출 전용, 정지 프레임에만 쓴다) ──

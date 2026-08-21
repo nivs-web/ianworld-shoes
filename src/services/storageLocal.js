@@ -339,6 +339,23 @@ export function equipItem(slot, id) {
   return p;
 }
 
+/**
+ * 모두 벗기. (2026-08-21 사용자 지정 — 쇼핑 화면의 `[모든 아이템 착용 해제]`)
+ *
+ * 자리를 하나씩 지우지 않고 **빈 객체로 갈아 끼운다** — 자리가 늘어나도(슬롯이 셋에서
+ * 넷이 되어도) 이 함수는 안 고쳐도 된다.
+ *
+ * @returns {{off:number, profile:object}} 실제로 벗은 개수
+ */
+export function unequipAll() {
+  const p = loadProfile();
+  const off = Object.values(p.equippedItems ?? {}).filter(Boolean).length;
+  if (!off) return { off: 0, profile: p };
+  p.equippedItems = {};
+  saveProfile(p);
+  return { off, profile: p };
+}
+
 /** 캐릭터 구매 — 비용만큼 차감하고 해금 목록에 넣는다 */
 export function unlockCharacter(id) {
   const cost = UNLOCK_COST[id] ?? 0;

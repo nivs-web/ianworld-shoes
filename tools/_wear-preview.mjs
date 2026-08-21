@@ -29,9 +29,14 @@ const shots = [
   ['front', 'hat_crown,wing_angel,pet_dog', 'wear_front'],
   ['right', 'hat_crown,wing_angel,pet_dog', 'wear_right'],
   ['left', 'hat_crown,wing_angel,pet_dog', 'wear_left'],
-  ['right', 'hat_dread,wing_devil,pet_cat', 'wear_right2'],
-  ['right', 'hat_fedora,wing_dove,pet_star', 'wear_right3'],
+  ['right', 'hat_ironman,wing_devil,pet_cat', 'wear_right2'],
+  ['right', 'hat_batman,wing_dove,pet_star', 'wear_right3'],
   ['ghost', 'hat_crown,wing_angel,pet_dog', 'wear_ghost'],
+  // 계단 사이 상승 컷 — 접힌 날개 + 파란 번개 (2026-08-21)
+  ['jump', 'hat_crown,wing_angel,pet_dog', 'wear_jump'],
+  ['jumpleft', 'hat_batman,wing_devil,pet_dog', 'wear_jump2'],
+  // 아이템 없이 — **일반 상승 번개**만 보이는지 (아이템이 가리면 확인이 안 된다)
+  ['jump', '', 'wear_jump_bare'],
 ];
 for (const [cut, items, file] of shots) {
   await page.goto(`http://127.0.0.1:${PORT}/tools/_wear-preview.html?cut=${cut}&items=${items}`, { waitUntil: 'networkidle' });

@@ -23,6 +23,12 @@
  * `dx`·`dy` 는 그 상자의 왼쪽 위 기준이고, **`tools/build-items.mjs` 가 굽는 그림의
  * 크기(`w`·`h`)와 반드시 같아야 한다** — 다르면 빌드가 그 자리에서 멈춘다.
  * 사용자가 나중에 직접 그린 png 로 갈아 끼울 때도 이 표만 맞추면 된다.
+ *
+ * ## 옆모습은 자리가 다를 수 있다 (`sideDx`·`sideDy`)
+ *
+ * 반려견이 그렇다. 정면에서는 옆에 서 있으면 되지만 **옆모습에서는 주인 뒤(= 바라보는
+ * 반대쪽)에, 한 계단 아래**에 있어야 한다 — 앞에 서 있으면 주인이 반려견을 밟고 오르는
+ * 그림이 된다(사용자 지적). 없으면 `dx`·`dy` 를 그대로 쓴다.
  */
 
 /** 착용 미리보기 상자 — 캐릭터(35×50)를 (12,12) 에 놓는다 */
@@ -43,29 +49,65 @@ export const ITEM_CATS = [
  * @property {string} ko      화면에 쓰는 이름
  * @property {number} cost    신발 켤레
  * @property {number} w,h     그림 크기 (빌드가 대조한다)
- * @property {number} dx,dy   착용 상자 안에서의 왼쪽 위 좌표
- * @property {boolean} [behind] 캐릭터보다 **먼저** 그린다 (날개)
+ * @property {number} dx,dy   착용 상자 안에서의 왼쪽 위 좌표 (정면 컷)
+ * @property {number} [sideDx],[sideDy] 옆모습(=인게임 계단) 전용 좌표
+ * @property {boolean} [behind] 캐릭터보다 **먼저** 그린다 (날개 · 반려견)
+ * @property {boolean} [jumpCut] `_jump` 그림이 따로 있다 (계단 사이 상승 컷)
  */
 
-/** @type {Item[]} */
+/**
+ * ★ **한 자리(`slot`)에 하나만.** 악세사리 둘을 동시에 쓸 수 없고, 악세사리·날개·반려견은
+ * 자리가 달라 **각각 하나씩 셋을 다 착용할 수 있다**(사용자 지정). 그 규칙은 표가 아니라
+ * `storageLocal.equipItem(slot, id)` 한 곳이 지킨다 — 같은 자리에 새 id 를 쓰면 덮인다.
+ *
+ * @type {Item[]}
+ */
 export const ITEMS = [
   // ── 악세사리 (머리) ─────────────
   { id: 'hat_fedora',  cat: 'acc',  slot: 'hat',  ko: '중절모',       cost: 1000,  w: 22, h: 10, dx: 18, dy: 5 },
   { id: 'hat_cap',     cat: 'acc',  slot: 'hat',  ko: '야구모자',     cost: 1000,  w: 22, h: 9,  dx: 18, dy: 6 },
   { id: 'hat_beret',   cat: 'acc',  slot: 'hat',  ko: '베레모',       cost: 2000,  w: 22, h: 9,  dx: 18, dy: 6 },
   { id: 'hat_dread',   cat: 'acc',  slot: 'hat',  ko: '레게머리가발', cost: 3000,  w: 24, h: 32, dx: 17, dy: 9 },
-  { id: 'hat_crown',   cat: 'acc',  slot: 'hat',  ko: '왕관',         cost: 4000,  w: 22, h: 10, dx: 18, dy: 5 },
+  { id: 'hat_crown',   cat: 'acc',  slot: 'hat',  ko: '왕관',         cost: 5000,  w: 22, h: 10, dx: 18, dy: 5 },
+  /**
+   * ★ 가면 둘은 **얼굴을 통째로 덮는다.** 그래서 크기가 머리 실루엣과 같은 24×24 이고
+   * 자리도 머리에 딱 맞춰 뒀다 — 한 도트만 어긋나도 살색이 새어 나와 바로 티가 난다.
+   * 배트맨은 **귀가 머리 위로 솟으므로** 시작 y 가 머리보다 7도트 위다(12 → 5).
+   */
+  { id: 'hat_ironman', cat: 'acc',  slot: 'hat',  ko: '아이언맨마스크', cost: 7000, w: 24, h: 24, dx: 17, dy: 12 },
+  { id: 'hat_batman',  cat: 'acc',  slot: 'hat',  ko: '배트맨마스크',   cost: 7000, w: 24, h: 26, dx: 17, dy: 5 },
 
   // ── 날개 (등 뒤 — 캐릭터보다 먼저 그린다) ─────────────
-  { id: 'wing_dove',   cat: 'wing', slot: 'wing', ko: '비둘기날개',   cost: 3000,  w: 52, h: 26, dx: 4, dy: 26, behind: true },
-  { id: 'wing_angel',  cat: 'wing', slot: 'wing', ko: '천사날개',     cost: 5000,  w: 52, h: 26, dx: 4, dy: 24, behind: true },
-  { id: 'wing_devil',  cat: 'wing', slot: 'wing', ko: '악마날개',     cost: 10000, w: 52, h: 26, dx: 4, dy: 25, behind: true },
+  // `jumpCut` — 계단 사이 상승 컷에서는 **접힌 날개 + 번개**를 따로 굽는다
+  { id: 'wing_dove',   cat: 'wing', slot: 'wing', ko: '비둘기날개',   cost: 3000,  w: 52, h: 26, dx: 4, dy: 26, behind: true, jumpCut: true },
+  { id: 'wing_angel',  cat: 'wing', slot: 'wing', ko: '천사날개',     cost: 5000,  w: 52, h: 26, dx: 4, dy: 24, behind: true, jumpCut: true },
+  { id: 'wing_devil',  cat: 'wing', slot: 'wing', ko: '악마날개',     cost: 10000, w: 52, h: 26, dx: 4, dy: 25, behind: true, jumpCut: true },
 
-  // ── 반려견 (옆에 선다) ─────────────
-  { id: 'pet_dog',     cat: 'pet',  slot: 'pet',  ko: '강아지',       cost: 5000,  w: 14, h: 13, dx: 40, dy: 49 },
-  { id: 'pet_cat',     cat: 'pet',  slot: 'pet',  ko: '고양이',       cost: 5000,  w: 14, h: 13, dx: 40, dy: 49 },
-  { id: 'pet_star',    cat: 'pet',  slot: 'pet',  ko: '따라다니는별', cost: 5000,  w: 14, h: 11, dx: 41, dy: 30 },
+  /**
+   * ── 반려견 ─────────────
+   *
+   * **주인보다 먼저 그린다**(`behind`) — 앞에 서면 주인이 반려견을 밟고 오르는 그림이
+   * 된다(사용자 지적). 그리고 옆모습에서는 자리까지 다르다:
+   *
+   *   · 강아지·고양이 — 바라보는 **반대쪽으로 한 계단**(화면 가로 30 · 세로 20) 뒤.
+   *     원본 도트로는 배율 1.5 를 나눠 가로 20 · 세로 13 이다. 그러면 발이 **바로 뒤
+   *     계단 윗면**에 정확히 닿아 따라 올라오는 그림이 된다.
+   *   · 따라다니는별 — 예외로 **등 뒤 살짝 위**에 뜬다(사용자 지정). 별은 걷지 않는다.
+   */
+  { id: 'pet_dog',     cat: 'pet',  slot: 'pet',  ko: '강아지',       cost: 5000,  w: 14, h: 13, dx: 42, dy: 49, sideDx: 2, sideDy: 62, behind: true },
+  { id: 'pet_cat',     cat: 'pet',  slot: 'pet',  ko: '고양이',       cost: 5000,  w: 14, h: 13, dx: 42, dy: 49, sideDx: 2, sideDy: 62, behind: true },
+  { id: 'pet_star',    cat: 'pet',  slot: 'pet',  ko: '따라다니는별', cost: 10000, w: 14, h: 11, dx: 42, dy: 30, sideDx: 0, sideDy: 24, behind: true },
 ];
+
+/**
+ * 컷에 맞는 좌표. 정면은 `dx`·`dy`, 그 밖(옆·상승 컷)은 `sideDx`·`sideDy` 가 있으면 그것.
+ *
+ * **쇼핑 화면과 인게임이 같은 함수를 쓴다** — 두 곳이 각자 고르면 언젠가 한쪽만 고쳐진다.
+ */
+export function itemOffset(it, cut = 'front') {
+  if (cut === 'front' || it.sideDx == null) return { x: it.dx, y: it.dy };
+  return { x: it.sideDx, y: it.sideDy ?? it.dy };
+}
 
 export const itemById = (id) => ITEMS.find((it) => it.id === id) ?? null;
 export const itemsOf = (cat) => ITEMS.filter((it) => it.cat === cat);

@@ -1994,12 +1994,26 @@
   font-size: 12px;
   color: var(--c-line);
 }
+/*
+   ★ 뱃지 두 가지 — **산 것**과 **입은 것**. (2026-08-21 사용자 지정)
+   둘을 같은 모양으로 두면 "샀다"와 "입었다"가 구별이 안 되므로, 입은 것만 **채운
+   초록**으로 띄우고 산 것은 테두리만 준다. 초록은 이 화면에서 여기에만 쓴다.
+   글자를 10px 로 낮춘 것은 문구가 길어졌기 때문이다(`* 착용 가능한 아이템 *`) —
+   `qa:shop` 이 320px 폰에서 줄이 안 넘치는지 잰다.
+*/
 .shop-have {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 10px;
   padding: 1px 4px;
+  background: transparent;
+  border: 1px solid var(--c-good);
+  color: var(--c-good);
+}
+.shop-have.on {
   background: var(--c-good);
+  border-color: var(--c-good);
   color: #14300a;
+  font-weight: bold;
 }
 
 /* ── 아이템 착용 모습 ── */

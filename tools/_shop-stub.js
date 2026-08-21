@@ -30,3 +30,10 @@ export function equipItem(slot, id) {
   P = { ...P, equippedItems: cur };
   return P;
 }
+
+/** 모두 벗기 — 벗은 개수를 돌려준다(0이면 화면이 "착용한 아이템이 없습니다"를 띄운다) */
+export function unequipAll() {
+  const off = Object.values(P.equippedItems).filter(Boolean).length;
+  if (off) P = { ...P, equippedItems: {} };
+  return { off, profile: P };
+}

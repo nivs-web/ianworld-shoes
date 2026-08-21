@@ -98,8 +98,11 @@ await shot('07b_itemshop');
 console.log('아이템 쇼핑:', (await p.locator('.screen-title').innerText()).trim(),
   '| 카테고리:', await p.locator('.seg .pbtn').count(),
   '| 줄:', await p.locator('.shop-row').count(),
-  '| 착용 컷:', await p.locator('.wear-cut').count());
-await clickText('뒤로');
+  '| 착용 컷:', await p.locator('.wear-cut').count(),
+  '| 컷 이름:', (await p.locator('.wear-cut figcaption').allInnerTexts()).join('/'),
+  '| 맨 아래:', (await p.locator('.screen .pbtn').last().innerText()).trim());
+// 맨 아래 버튼이 [뒤로] → [나가기] 로 바뀌었다 (2026-08-21 사용자 지정)
+await clickText('나가기');
 
 // 설정 → 조작법 · 받은 메세지함 · 메세지 수신 설정
 await clickText('설정');

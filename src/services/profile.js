@@ -213,6 +213,13 @@ export function equipItem(slot, id) {
   return p;
 }
 
+/** 모두 벗기 — 벗은 개수를 돌려준다(0이면 화면이 "착용한 아이템이 없습니다"를 띄운다) */
+export function unequipAll() {
+  const r = L.unequipAll();
+  if (r.off) pushRemote({ equippedItems: {} }).catch(() => {});
+  return r;
+}
+
 /** @returns {{ok:boolean, profile:object}} */
 export function buyCharacter(id) {
   const r = L.unlockCharacter(id);

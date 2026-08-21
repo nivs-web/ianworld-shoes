@@ -3026,12 +3026,13 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
    */
   {
     const IT = await import('../src/data/items.js');
-    eq('열한 가지', IT.ITEMS.length, 11);
+    eq('열세 가지', IT.ITEMS.length, 13);
     eq('카테고리 셋', IT.ITEM_CATS.map((c) => c.id), ['acc', 'wing', 'pet']);
     eq('★ 값이 사용자 지정 그대로', IT.ITEMS.map((i) => [i.ko, i.cost]), [
-      ['중절모', 1000], ['야구모자', 1000], ['베레모', 2000], ['레게머리가발', 3000], ['왕관', 4000],
+      ['중절모', 1000], ['야구모자', 1000], ['베레모', 2000], ['레게머리가발', 3000], ['왕관', 5000],
+      ['아이언맨마스크', 7000], ['배트맨마스크', 7000],
       ['비둘기날개', 3000], ['천사날개', 5000], ['악마날개', 10000],
-      ['강아지', 5000], ['고양이', 5000], ['따라다니는별', 5000],
+      ['강아지', 5000], ['고양이', 5000], ['따라다니는별', 10000],
     ]);
     eq('날개는 캐릭터 뒤에', IT.itemsOf('wing').every((i) => i.behind === true), true);
     // 그림 22장이 실제로 있는지는 `qa:shop` 이 브라우저에서 본다
@@ -3039,11 +3040,12 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
       const f = `public/assets/items/${it.id}_front.png`;
       if (!fs.existsSync(f)) { eq(`그림 ${it.id}`, false, true); }
     }
-    eq('그림 22장', fs.readdirSync('public/assets/items').filter((f) => f.endsWith('.png')).length, 22);
+    // 정면·옆 2장씩 + 날개의 상승 컷 3장 = 13×2 + 3
+    eq('그림 29장', fs.readdirSync('public/assets/items').filter((f) => f.endsWith('.png')).length, 29);
 
     const shop = code(read('src/screens/ItemShop.js'));
-    has('★ 사기 전에도 미리보기가 나온다', shop, 'wearCut(p.selectedCharacter, \'front\', item, S.itemCutFront)');
-    has('날개는 먼저 붙인다 (= 뒤에 보인다)', shop, 'if (item?.behind) put(');
+    has('★ 사기 전에도 미리보기가 나온다', shop, 'wearCut(p.selectedCharacter, previewList(worn, item), S.itemCutPreview)');
+    has('날개·반려견은 먼저 붙인다 (= 뒤에 보인다)', shop, 'for (const it of list) if (it.behind) draw(it);');
     has('구매는 한 번 되묻는다', shop, 'await confirmDialog({');
     // 배율이 화면 코드에 흩어지면 언젠가 정수배가 깨진다 (§3-1)
     has('확대는 안쪽 상자 하나가 맡는다', css, '.wear-inner {');
@@ -3092,8 +3094,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
    * ① ★ **쇼핑 미리보기와 같은 표를 쓴다.** 여기서 좌표를 새로 적으면 두 화면이
    *    언젠가 갈라지고, 사용자가 직접 그린 png 로 갈아 끼울 때 한쪽만 따라온다.
    */
-  has('★ 표의 WEAR 기준을 그대로 환산한다', W, 'it.dx - WEAR.charX');
-  has('세로도 같은 기준', W, 'it.dy - WEAR.charY');
+  has('★ 표의 WEAR 기준을 그대로 환산한다', W, 'off.x - WEAR.charX');
+  has('세로도 같은 기준', W, 'off.y - WEAR.charY');
+  // 컷별 좌표 고르기는 **표 옆에 한 곳만** 있어야 한다 — 두 곳이 고르면 갈라진다
+  has('★ 컷별 좌표는 표가 고른다', W, 'itemOffset(it, cut)');
   /**
    * ② ★ **뒤집기는 원본 도트 단위에서** 한다. 화면 좌표를 뒤집으면 배율 1.5 가 곱해진
    *    뒤라 반올림 오차가 방향마다 다르게 남는다 — 오른쪽/왼쪽에서 모자 자리가 1px 튄다.
@@ -3104,7 +3108,9 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   /** ④ ★ 날개는 캐릭터보다 **먼저** — 캔버스는 나중에 그린 것이 위다 */
   eq('★ 날개 셋 전부 behind', IT.itemsOf('wing').every((i) => i.behind === true), true);
-  eq('모자·반려견은 앞', [...IT.itemsOf('acc'), ...IT.itemsOf('pet')].every((i) => !i.behind), true);
+  eq('모자는 앞', IT.itemsOf('acc').every((i) => !i.behind), true);
+  // 반려견은 **주인보다 뒤**로 바뀌었다 (2026-08-21 사용자 지적 — 앞에 서면 밟고 오른다)
+  eq('★ 반려견은 뒤', IT.itemsOf('pet').every((i) => i.behind === true), true);
   for (const cut of ['front', 'side']) {
     has(`내 캐릭터 — ${cut} 뒤 겹`, P, `this.drawItems(cx, CHAR.footY`);
   }
@@ -3137,7 +3143,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('★ 판 시작에 한 번만', G, 'this.myItems = parseItems(packItems(getProfile().equippedItems));');
   eq('★ 렌더가 프로필을 안 읽는다', /render\(\)[\s\S]*getProfile\(\)/.test(G.slice(G.indexOf('  render()'))), false);
   /** ⑧ 착용한 것만 받는다 — 안 산 22장을 판마다 받을 이유가 없다 */
-  has('내 아이템 그림만 받는다', G, "...this.myItems.flatMap((id) => [");
+  has('내 아이템 그림만 받는다', G, '...itemAssetList(this.myItems),');
   has('상대 아이템 그림도 받는다', H, 'ensureItemAssets(parseItems(o.items))');
 
   /**
@@ -3165,6 +3171,117 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   eq('모르는 id 는 버린다', IT.parseItems('hat_crown,없는것'), ['hat_crown']);
   eq('빈 값', IT.parseItems(undefined), []);
   eq('가장 긴 조합도 상한 안', IT.packItems({ hat: 'hat_dread', wing: 'wing_devil', pet: 'pet_star' }).length <= IT.ITEMS_MAX, true);
+}
+
+// ─────────────────────────────────────────────
+{
+  console.log('\n53) ★ 쇼핑 개편 · 반려견 뒤로 · 상승 번개 · 가면 둘 (2026-08-21)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(p, 'utf8');
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const no = (label, src, needle) => eq(label, src.includes(needle), false);
+  const IT = await import('../src/data/items.js');
+  const B = await import('../src/config/balance.js');
+  const S9 = (await import('../src/config/strings.ko.js')).default;
+  const shop = code(read('src/screens/ItemShop.js'));
+  const W = code(read('src/game/wornItems.js'));
+  const P = code(read('src/game/player.js'));
+  const L = await import('../src/config/layout.js');
+  const css = read('src/styles/screens.css').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  /** ① 값 조정 — 전부 사용자 지정 */
+  eq('★ 닉네임 변경 1,000켤레', B.NICKNAME.changeCost, 1000);
+  eq('★ 왕관 5,000켤레', IT.itemById('hat_crown').cost, 5000);
+  eq('★ 따라다니는별 10,000켤레', IT.itemById('pet_star').cost, 10000);
+  eq('★ 가면 둘 7,000켤레', [IT.itemById('hat_ironman').cost, IT.itemById('hat_batman').cost], [7000, 7000]);
+  // 가면도 악세사리 자리 — **악세사리는 동시에 하나만**이라는 규칙이 여기서 성립한다
+  eq('★ 가면은 악세사리 자리', [IT.itemById('hat_ironman').slot, IT.itemById('hat_batman').slot], ['hat', 'hat']);
+  eq('자리는 셋뿐 (셋을 각각 하나씩 낄 수 있다)', [...new Set(IT.ITEMS.map((i) => i.slot))].sort(), ['hat', 'pet', 'wing']);
+
+  /**
+   * ② ★ **한 자리에 하나만.** 규칙을 지키는 곳이 저장소 한 군데여야 한다 —
+   *    화면이 각자 막으면 새 화면이 생길 때마다 빠뜨린다.
+   */
+  const SL = code(read('src/services/storageLocal.js'));
+  has('★ 같은 자리는 덮어쓴다', SL, 'else cur[slot] = id;');
+  has('★ 모두 벗기는 자리를 통째로 비운다', SL, 'p.equippedItems = {};');
+  has('벗은 개수를 돌려준다', SL, 'return { off, profile: p };');
+  has('서버에도 올린다', code(read('src/services/profile.js')), "pushRemote({ equippedItems: {} })");
+
+  /** ③ 목록 뱃지 — 산 것 / 입은 것 */
+  eq('★ 착용 뱃지 문구', S9.itemWorn, '* 착용한 아이템 *');
+  eq('★ 보유 뱃지 문구', S9.itemOwned, '* 착용 가능한 아이템 *');
+  has('★ 입은 것만 색이 다르다', shop, "class: worn[it.slot] === it.id ? 'on' : '',");
+  has('입은 것 뱃지 규칙', css, '.shop-have.on {');
+
+  /** ④ 버튼 세 얼굴 · 맨 아래 두 줄 */
+  eq('★ 착용해제 문구', S9.itemTakeOff, '착용해제');
+  eq('★ 나가기 문구', S9.itemShopExit, '나가기');
+  eq('★ 모두 벗기 문구', S9.itemUnequipAll, '모든 아이템 착용 해제');
+  eq('★ 아무것도 안 입었을 때 문구', S9.itemNothingWorn, '착용한 아이템이 없습니다');
+  has('아무것도 안 입었으면 이유를 말한다', shop, 'toast(S.itemNothingWorn); return;');
+  has('맨 아래는 나가기', shop, 'backButton(S.itemShopExit, () => nav.back())');
+  // 순서 — 모두 벗기가 나가기 **위**에 있어야 한다
+  eq('★ [모두 벗기] 가 [나가기] 위', shop.indexOf('S.itemUnequipAll') < shop.indexOf('S.itemShopExit'), true);
+
+  /** ⑤ 두 컷 — 둘 다 정면, 하는 일이 다르다 */
+  eq('★ 컷 이름', [S9.itemCutPreview, S9.itemCutCurrent], ['미리보기', '현재 모습']);
+  no('옆모습 컷은 없앴다', shop, "'side'");
+  has('★ 왼쪽은 고른 것을 입어 본 모습', shop, 'wearCut(p.selectedCharacter, previewList(worn, item), S.itemCutPreview)');
+  has('★ 오른쪽은 실제 착용 모습', shop, 'wearCut(p.selectedCharacter, wornList(worn), S.itemCutCurrent)');
+  // 미리보기는 **고른 것의 자리만** 갈아 끼운다 — 홀로 보여 주면 이미 낀 것이 사라진다
+  has('★ 자리만 갈아 끼운다', shop, 'if (item) next[item.slot] = item.id;');
+
+  /** ⑥ ★ 반려견은 주인 뒤 · 옆모습은 한 계단 아래 (사용자 지적) */
+  for (const it of IT.itemsOf('pet')) {
+    eq(`★ ${it.ko} 는 주인보다 뒤`, it.behind === true, true);
+    eq(`${it.ko} 옆모습 좌표가 따로 있다`, typeof it.sideDx, 'number');
+  }
+  {
+    const dog = IT.itemById('pet_dog');
+    // 배율 1.5 를 나눈 값이라야 발이 **바로 뒤 계단 윗면**(가로 30 · 세로 20 화면px)에 닿는다
+    const 뒤로 = (IT.WEAR.charX + 35 / 2) - (dog.sideDx + dog.w / 2);
+    // 반려견(14폭)과 캐릭터(35폭)의 반쪽이 서로 홀짝이라 정확히 30이 안 나온다 — 1도트 허용
+    eq('★ 한 계단 뒤 (화면 30 ± 1)', Math.abs(뒤로 * 1.5 - 30) <= 1, true);
+    const 아래로 = (dog.sideDy + dog.h) - (IT.WEAR.charY + 50);
+    eq('★ 한 계단 아래 (원본 13도트 ≈ 화면 20)', Math.round(아래로 * 1.5), 20);
+  }
+  // 별만 예외 — 등 뒤 **살짝 위**에 뜬다
+  eq('★ 별은 어깨 위', IT.itemById('pet_star').sideDy < IT.WEAR.charY + 25, true);
+
+  /** ⑦ ★ 계단 사이 상승 번개 */
+  has('★ 상승 컷에 번개를 그린다', P, 'drawClimbSpark(cx, CHAR.footY + off, this.facing, this.timer)');
+  // 번개가 캐릭터보다 **먼저** — 나중에 그리면 몸을 가려 잡음이 된다
+  eq('★ 번개가 맨 뒤',
+    P.indexOf('drawClimbSpark(') < P.indexOf("this.drawItems(cx, CHAR.footY + off, 'jump', true)"), true);
+  has('자취는 **뒤쪽**으로만', P, 'const back = -facing;');
+  no('난수를 안 쓴다 (같은 프레임이면 같은 그림)', P, 'Math.random()');
+  has('색은 팔레트에서', P, 'PAL.sparkHot');
+  has('굽는 쪽도 같은 값', read('tools/build-items.mjs'), 'const SPARK = { hot: [223, 247, 255]');
+
+  /** ⑧ 날개는 상승 컷 그림이 따로 있다 (접힘 + 번개) */
+  eq('★ 날개 셋만 상승 컷', IT.ITEMS.filter((i) => i.jumpCut).map((i) => i.id), ['wing_dove', 'wing_angel', 'wing_devil']);
+  has('상승 컷 그림을 굽는다', read('tools/build-items.mjs'), "if (it.jumpCut) cuts.jump = makeWing(WING[it.id], it.w, it.h, 'left', true);");
+  has('★ 상승 컷은 전용 그림, 없으면 옆모습', W, "const artCut = (it, cut) => (cut === 'jump' ? (it.jumpCut ? 'jump' : 'side') : cut);");
+  for (const it of IT.ITEMS) {
+    if (!it.jumpCut) continue;
+    eq(`${it.ko} 상승 컷 그림`, fs.existsSync(`public/assets/items/${it.id}_jump.png`), true);
+  }
+
+  /**
+   * ⑨ ★ 상승 컷 보정 — 점프 그림은 몸이 1도트 왼쪽·3도트 아래에 있다.
+   *    **몸에 붙는 것만** 따라 옮긴다(반려견은 계단 기준).
+   */
+  eq('보정값이 layout 에 있다', [L.CHAR.jumpNudgeX, L.CHAR.jumpNudgeY], [-1, 3]);
+  has('★ 몸에 붙는 것만 옮긴다', W, "const 몸에붙음 = cut === 'jump' && it.sideDx == null;");
+
+  /** ⑩ 가면 그림이 실제로 있는가 (크기는 빌드가 표와 대조한다) */
+  for (const id of ['hat_ironman', 'hat_batman']) {
+    for (const cut of ['front', 'side']) {
+      eq(`${id}_${cut}`, fs.existsSync(`public/assets/items/${id}_${cut}.png`), true);
+    }
+  }
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

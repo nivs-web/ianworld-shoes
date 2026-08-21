@@ -31,8 +31,7 @@ import * as Room from '../services/multiplayer.js';
 import { roundOver, othersAllOut, slotIndex, graceOnExit, leaveGraceLeftMs, pauseLeftMs, canPause } from '../services/matchRules.js';
 import S from '../config/strings.ko.js';
 import { multiHud, multiGhosts, menuHit, TICKER_MS } from './multiHud.js';
-import { packItems, parseItems, itemKey } from './wornItems.js';
-import { itemSprite } from '../data/items.js';
+import { packItems, parseItems, itemAssetList } from './wornItems.js';
 
 export class GameScene {
   /**
@@ -179,11 +178,8 @@ export class GameScene {
       ...buttonAssets(this.controlMode),
       { key: 'gauge_frame', url: '/assets/ui/gauge_frame.png' },
       { key: 'btn_pause', url: '/assets/ui/btn_pause.png' },
-      // 내가 착용한 것만 받는다 — 안 산 아이템 22장을 판마다 받을 이유가 없다
-      ...this.myItems.flatMap((id) => [
-        { key: itemKey(id, 'front'), url: itemSprite(id, 'front') },
-        { key: itemKey(id, 'side'), url: itemSprite(id, 'side') },
-      ]),
+      // 내가 착용한 것만 받는다 — 안 산 아이템 스무 장 넘게를 판마다 받을 이유가 없다
+      ...itemAssetList(this.myItems),
     ];
     this.ready = false;
     loadAll(list).then(() => {

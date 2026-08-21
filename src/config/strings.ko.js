@@ -105,13 +105,26 @@ export const S = {
   itemBuyConfirm: (ko, n) => `${ko}를 신발 ${n.toLocaleString('en-US')}개로 구매할까요?`,
   itemBought: (ko) => `${ko} 구매 완료!`,
   itemNeedMore: (n) => `신발이 ${n.toLocaleString('en-US')}켤레 모자랍니다`,
-  itemOwned: '보유중',
-  itemWorn: '착용중',
+  /**
+   * ★ 목록의 뱃지 — **값 자리를 대신 쓴다.** (2026-08-21 사용자 지정)
+   * *"내가 이미 이 아이템을 샀구나 라는 것을 알 수 있으니까"* — 값은 살 사람에게만
+   * 필요한 정보라, 이미 산 줄에는 값 대신 상태를 적는 쪽이 한눈에 읽힌다.
+   */
+  itemOwned: '* 착용 가능한 아이템 *',
+  itemWorn: '* 착용한 아이템 *',
   itemWear: '착용하기',
-  itemTakeOff: '벗기',
+  itemTakeOff: '착용해제',
   itemWearTitle: '아이템 착용 모습',
-  itemCutFront: '정면',
-  itemCutSide: '옆모습',
+  /**
+   * 두 컷 다 **정면**이다(사용자 지정). 왼쪽은 지금 고른 것을 입어 본 모습,
+   * 오른쪽은 실제로 착용해 둔 모습 — 게임에 그대로 들어가는 그림이다.
+   */
+  itemCutPreview: '미리보기',
+  itemCutCurrent: '현재 모습',
+  itemUnequipAll: '모든 아이템 착용 해제',
+  itemNothingWorn: '착용한 아이템이 없습니다',
+  itemAllOff: '모든 아이템을 벗었습니다',
+  itemShopExit: '나가기',
   // 쇼핑 화면 전용 지갑 줄 — 값이 네 자리라 **자릿점**이 있어야 읽힌다
   itemWallet: (n) => `보유신발 ${n.toLocaleString('en-US')}켤레`,
   menuRename: '닉네임 변경하기',

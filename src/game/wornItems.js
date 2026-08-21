@@ -25,7 +25,7 @@
  */
 
 import { CHAR } from '../config/layout.js';
-import { WEAR, itemById, itemSprite } from '../data/items.js';
+import { WEAR, itemById, itemSprite, itemOffset } from '../data/items.js';
 import { img, loadAll, has } from '../core/assets.js';
 import { drawFrameAt, drawFrameAtFlipped } from '../core/sprite.js';
 
@@ -39,16 +39,41 @@ export const itemKey = (id, cut) => `item_${id}_${cut}`;
  */
 export { packItems, parseItems } from '../data/items.js';
 
+/**
+ * 컷 이름 두 가지를 구분한다 — **그림용**과 **좌표용**이 다르다.
+ *
+ *   · 그림 : 상승 컷(`jump`)에 전용 그림이 있는 것(날개)만 `_jump` 를 쓰고 나머지는 `_side`
+ *   · 좌표 : 정면이 아니면 전부 옆모습 좌표(`sideDx`·`sideDy`)
+ *
+ * 둘을 한 이름으로 묶으면 "모자는 `_jump` 그림이 없는데 왜 안 뜨지" 같은 자리가 생긴다.
+ */
+const artCut = (it, cut) => (cut === 'jump' ? (it.jumpCut ? 'jump' : 'side') : cut);
+
 /** 아직 안 받은 그림만 받는다. 못 받아도 게임은 그대로 돈다(빈칸으로 보일 뿐이다) */
 export function ensureItemAssets(ids) {
   const want = [];
   for (const id of ids ?? []) {
-    for (const cut of ['front', 'side']) {
+    const it = itemById(id);
+    if (!it) continue;
+    for (const cut of it.jumpCut ? ['front', 'side', 'jump'] : ['front', 'side']) {
       const k = itemKey(id, cut);
       if (!has(k)) want.push({ key: k, url: itemSprite(id, cut) });
     }
   }
   if (want.length) loadAll(want).catch(() => {});
+}
+
+/** 어떤 그림들을 받아야 하는가 — 판이 시작될 때 목록을 만드는 쪽(`GameScene`)도 쓴다 */
+export function itemAssetList(ids) {
+  const out = [];
+  for (const id of ids ?? []) {
+    const it = itemById(id);
+    if (!it) continue;
+    for (const cut of it.jumpCut ? ['front', 'side', 'jump'] : ['front', 'side']) {
+      out.push({ key: itemKey(id, cut), url: itemSprite(id, cut) });
+    }
+  }
+  return out;
 }
 
 /**
@@ -59,8 +84,8 @@ export function ensureItemAssets(ids) {
  * @param {number} footY       발끝 화면 y
  * @param {number} scale       캐릭터와 **같은 배율** (인게임 1.5, 고스트 1)
  * @param {number} facing      1 오른쪽 / -1 왼쪽
- * @param {'front'|'side'} cut 지금 그린 캐릭터 컷
- * @param {boolean} behind     true 면 날개처럼 **캐릭터보다 뒤**인 것만, false 면 나머지
+ * @param {'front'|'side'|'jump'} cut 지금 그린 캐릭터 컷
+ * @param {boolean} behind     true 면 날개·반려견처럼 **캐릭터보다 뒤**인 것만
  */
 export function drawWornItems(ids, cx, footY, scale, facing, cut, behind) {
   if (!ids?.length) return;
@@ -71,11 +96,18 @@ export function drawWornItems(ids, cx, footY, scale, facing, cut, behind) {
   for (const id of ids) {
     const it = itemById(id);
     if (!it || !!it.behind !== !!behind) continue;
-    const sprite = img(itemKey(id, cut));
+    const sprite = img(itemKey(id, artCut(it, cut)));
     if (!sprite) continue;
 
-    const relX = it.dx - WEAR.charX;
-    const relY = it.dy - WEAR.charY;
+    const off = itemOffset(it, cut);
+    /**
+     * ★ 상승 컷은 점프 그림이 **웅크린 자세**라 몸이 1도트 왼쪽·3도트 아래에 있다
+     * (`CHAR.jumpNudge*`). **몸에 붙는 것만** 따라 옮긴다 — `sideDx` 가 있는 것은
+     * 계단을 기준으로 자리를 잡으므로(반려견) 몸을 따라가면 안 된다.
+     */
+    const 몸에붙음 = cut === 'jump' && it.sideDx == null;
+    const relX = off.x - WEAR.charX + (몸에붙음 ? CHAR.jumpNudgeX : 0);
+    const relY = off.y - WEAR.charY + (몸에붙음 ? CHAR.jumpNudgeY : 0);
     // ★ 뒤집기는 **원본 도트 단위**에서 (위 주석)
     const rx = flip ? CHAR.w - relX - it.w : relX;
     const dx = left + Math.round(rx * scale);

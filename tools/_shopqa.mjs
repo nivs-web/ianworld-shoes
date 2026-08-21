@@ -3,11 +3,13 @@
  *
  * 사용자 지정을 브라우저에게 묻는다:
  *   ① 타이틀 `아이템 쇼핑`, 그 바로 아래 카테고리 셋 `[악세사리][날개][반려견]`
- *   ② 열한 가지의 이름과 값이 사용자가 준 그대로
- *   ③ 아래에 `아이템 착용 모습` — **정면과 옆모습 두 컷**
+ *   ② 열세 가지의 이름과 값이 사용자가 준 그대로
+ *   ③ 아래에 `아이템 착용 모습` — **미리보기 · 현재 모습 두 컷(둘 다 정면)**
  *   ④ 고르면 그 자리에서 캐릭터가 입는다 (사기 **전에도** 보인다 — 값이 최대 1만이다)
- *   ⑤ 날개는 캐릭터 **뒤**에 그려진다
+ *   ⑤ 날개·반려견은 캐릭터 **뒤**에 그려진다
  *   ⑥ 확대가 **정수배**다 (§3-1 — 1.93배면 도트가 뭉갠다)
+ *   ⑦ 버튼 하나가 **세 얼굴**을 한다 — 구매하기 / 착용하기 / 착용해제
+ *   ⑧ `[모든 아이템 착용 해제]` · `[나가기]`
  */
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -70,15 +72,18 @@ const pickTab = async (p, label) => {
   eq('제목', r.title, '아이템 쇼핑');
   eq('★ 카테고리 셋', r.tabs, ['악세사리', '날개', '반려견']);
   eq('처음엔 악세사리', r.on, '악세사리');
-  eq('★ 악세사리 다섯 (이름·값 사용자 지정 그대로)', r.rows, [
+  eq('★ 악세사리 일곱 (이름·값 사용자 지정 그대로)', r.rows, [
     ['중절모', '신발 1,000개'],
     ['야구모자', '신발 1,000개'],
     ['베레모', '신발 2,000개'],
     ['레게머리가발', '신발 3,000개'],
-    ['왕관', '신발 4,000개'],
+    ['왕관', '신발 5,000개'],
+    ['아이언맨마스크', '신발 7,000개'],
+    ['배트맨마스크', '신발 7,000개'],
   ]);
   eq('★ 착용 모습 타이틀', r.wearTitle, '아이템 착용 모습');
-  eq('★ 정면·옆모습 두 컷', r.cuts, ['정면', '옆모습']);
+  // 둘 다 정면이고 **하는 일이 다르다** — 왼쪽은 입어 본 모습, 오른쪽은 실제 착용
+  eq('★ 미리보기 · 현재 모습 두 컷', r.cuts, ['미리보기', '현재 모습']);
   await p.screenshot({ path: 'tools/_out/shop_acc.png' });
 
   await pickTab(p, '날개');
@@ -95,7 +100,7 @@ const pickTab = async (p, label) => {
     x.querySelector('.shop-name').textContent, x.querySelector('.shop-cost')?.textContent ?? ''])), [
     ['강아지', '신발 5,000개'],
     ['고양이', '신발 5,000개'],
-    ['따라다니는별', '신발 5,000개'],
+    ['따라다니는별', '신발 10,000개'],
   ]);
   await p.screenshot({ path: 'tools/_out/shop_pet.png' });
   await p.close();
@@ -120,7 +125,7 @@ const pickTab = async (p, label) => {
   eq('캐릭터 + 아이템 두 장', crown.n, 2);
   eq('★ 왕관이 얹힌다', crown.last, '/assets/items/hat_crown_front.png');
   eq('★ 그림이 실제로 뜬다', crown.broken, 0);
-  eq('안 산 것은 구매 버튼', crown.btn, '구매하기 (신발 4,000개)');
+  eq('안 산 것은 구매 버튼', crown.btn, '구매하기 (신발 5,000개)');
 
   await pickTab(p, '날개');
   await p.locator('.shop-row:has-text("천사날개")').click();
@@ -151,14 +156,95 @@ const pickTab = async (p, label) => {
     have: document.querySelector('.shop-row:nth-child(3) .shop-have')?.textContent ?? '',
     cost: document.querySelector('.shop-row:nth-child(3) .shop-cost')?.textContent ?? '',
     wallet: document.querySelector('.shop-wallet')?.textContent ?? '',
-    btn: [...document.querySelectorAll('.screen .pbtn')].map((x) => x.textContent).find((t) => t === '벗기' || t === '착용하기'),
+    btn: [...document.querySelectorAll('.screen .pbtn')].map((x) => x.textContent).find((t) => t === '착용해제' || t === '착용하기'),
   }));
   console.log('\n③-b 사면 바로 입는다');
-  eq('★ 값 대신 착용중 딱지', r.have, '착용중');
+  eq('★ 값 대신 착용 뱃지', r.have, '* 착용한 아이템 *');
   eq('값 표시는 사라진다', r.cost, '');
   eq('★ 지갑에서 2,000 빠진다', r.wallet, '보유신발 10,000켤레');
-  eq('버튼이 [벗기] 로 바뀐다', r.btn, '벗기');
+  eq('버튼이 [착용해제] 로 바뀐다', r.btn, '착용해제');
   await p.close();
+}
+
+// ── ⑦ 뱃지 두 가지 · 버튼 세 얼굴 ─────────────
+{
+  const p = await open('shoes=12000&own=hat_crown,hat_beret&wear=hat_crown');
+  console.log('\n⑦ 산 것 / 입은 것 뱃지 · 버튼 세 얼굴');
+  const badges = await p.evaluate(() => [...document.querySelectorAll('.shop-row')].map((x) => [
+    x.querySelector('.shop-name').textContent,
+    x.querySelector('.shop-have')?.textContent ?? x.querySelector('.shop-cost').textContent,
+    x.querySelector('.shop-have')?.classList.contains('on') ?? null,
+  ]));
+  eq('★ 안 산 것은 값', badges[0], ['중절모', '신발 1,000개', null]);
+  eq('★ 샀지만 안 입은 것', badges[2], ['베레모', '* 착용 가능한 아이템 *', false]);
+  eq('★ 입은 것', badges[4], ['왕관', '* 착용한 아이템 *', true]);
+  // 뱃지는 "떴다"가 아니라 "읽힌다"가 통과 조건이다 — 색을 계산값으로 본다 (§9-0-50)
+  const 색 = await p.evaluate(() => {
+    const on = document.querySelector('.shop-row:nth-child(5) .shop-have');
+    const off = document.querySelector('.shop-row:nth-child(3) .shop-have');
+    const g = (e) => [getComputedStyle(e).color, getComputedStyle(e).backgroundColor];
+    return { on: g(on), off: g(off) };
+  });
+  eq('★ 착용중은 채운 초록', 색.on[1] !== 'rgba(0, 0, 0, 0)' && 색.on[0] !== 색.on[1], true);
+  eq('★ 보유중은 테두리만', 색.off[1], 'rgba(0, 0, 0, 0)');
+
+  // 버튼 세 얼굴 — 입은 것 → 착용해제
+  // ⚠ `.seg` 의 카테고리 탭도 `.pbtn` 이다 — 걸러내지 않으면 '악세사리'가 잡힌다
+  eq('★ 입은 것: 착용해제', await p.evaluate(() =>
+    [...document.querySelectorAll('.screen .pbtn')].filter((b) => !b.closest('.seg'))[0].textContent), '착용해제');
+  await p.locator('.shop-row:has-text("베레모")').click();
+  await sleep(200);
+  eq('★ 샀지만 안 입은 것: 착용하기',
+    await p.evaluate(() => [...document.querySelectorAll('.screen .pbtn')].map((b) => b.textContent).find((t) => t === '착용하기' || t === '착용해제')), '착용하기');
+  await p.close();
+}
+
+// ── ⑧ 현재 모습은 **착용한 것 전부** · 미리보기는 고른 것을 입어 본 모습 ─────────────
+{
+  const p = await open('shoes=99999&own=hat_crown,wing_angel,pet_dog,hat_beret&wear=hat_crown,wing_angel,pet_dog');
+  console.log('\n⑧ 미리보기 vs 현재 모습');
+  const 컷 = await p.evaluate(() => [...document.querySelectorAll('.wear-cut')].map((c) =>
+    [...c.querySelectorAll('.wear-part')].map((i) => i.getAttribute('src').split('/').pop())));
+  eq('★ 현재 모습에 셋이 다 있다 (캐릭터 포함 네 장)', 컷[1].length, 4);
+  eq('★ 날개가 맨 먼저(= 뒤에)', 컷[1][0], 'wing_angel_front.png');
+  eq('★ 두 컷 다 정면 그림', 컷.flat().every((f) => f.endsWith('_front.png')), true);
+  // 베레모를 고르면 **모자 자리만** 갈린다 — 날개·반려견은 그대로 있어야 한다
+  await p.locator('.shop-row:has-text("베레모")').click();
+  await sleep(250);
+  const 미리 = await p.evaluate(() => [...document.querySelectorAll('.wear-cut')[0].querySelectorAll('.wear-part')].map((i) => i.getAttribute('src').split('/').pop()));
+  eq('★ 미리보기: 고른 모자로 갈린다', 미리.includes('hat_beret_front.png'), true);
+  eq('★ 미리보기: 날개·반려견은 그대로', 미리.includes('wing_angel_front.png') && 미리.includes('pet_dog_front.png'), true);
+  const 현재 = await p.evaluate(() => [...document.querySelectorAll('.wear-cut')[1].querySelectorAll('.wear-part')].map((i) => i.getAttribute('src').split('/').pop()));
+  eq('★ 현재 모습은 안 바뀐다 (착용하기를 눌러야 바뀐다)', 현재.includes('hat_crown_front.png'), true);
+  await p.close();
+}
+
+// ── ⑨ 모두 벗기 · 나가기 ─────────────
+{
+  console.log('\n⑨ [모든 아이템 착용 해제] · [나가기]');
+  // 아무것도 안 입었으면 — 눌러도 아무 일이 없되 **이유를 말한다**
+  const p0 = await open('shoes=9999&own=hat_crown');
+  eq('★ 맨 아래는 [나가기]',
+    await p0.evaluate(() => [...document.querySelectorAll('.screen .pbtn')].pop().textContent), '나가기');
+  eq('★ 그 위가 [모든 아이템 착용 해제]',
+    await p0.evaluate(() => [...document.querySelectorAll('.screen .pbtn')].slice(-2)[0].textContent), '모든 아이템 착용 해제');
+  await p0.locator('.pbtn:has-text("모든 아이템 착용 해제")').click();
+  await sleep(300);
+  eq('★ 착용한 게 없으면 문구로 말한다',
+    await p0.evaluate(() => document.querySelector('.toast')?.textContent ?? ''), '착용한 아이템이 없습니다');
+  await p0.close();
+
+  // 셋을 다 입은 상태에서 누르면 — 한 번에 전부 벗는다
+  const p1 = await open('shoes=9999&own=hat_crown,wing_angel,pet_dog&wear=hat_crown,wing_angel,pet_dog');
+  await p1.locator('.pbtn:has-text("모든 아이템 착용 해제")').click();
+  await sleep(350);
+  const after = await p1.evaluate(() => ({
+    parts: [...document.querySelectorAll('.wear-cut')[1].querySelectorAll('.wear-part')].length,
+    badges: [...document.querySelectorAll('.shop-have.on')].length,
+  }));
+  eq('★ 현재 모습이 캐릭터 한 장만 남는다', after.parts, 1);
+  eq('★ 착용중 뱃지가 사라진다', after.badges, 0);
+  await p1.close();
 }
 
 // ── ⑥ 확대는 정수배 · 좁은 폰에서 안 터진다 ─────────────
@@ -205,8 +291,12 @@ for (const w of [320, 360, 390, 412]) {
       if (!ok) bad.push(src);
     }
     return bad;
-  }, ITEMS.flatMap((it) => [`/assets/items/${it.id}_front.png`, `/assets/items/${it.id}_side.png`]));
-  console.log('\n⑦ 그림 22장이 전부 있는가');
+  }, ITEMS.flatMap((it) => [
+    `/assets/items/${it.id}_front.png`,
+    `/assets/items/${it.id}_side.png`,
+    ...(it.jumpCut ? [`/assets/items/${it.id}_jump.png`] : []),
+  ]));
+  console.log('\n⑩ 그림이 전부 있는가 (정면·옆 + 날개 상승 컷)');
   eq('★ 빠진 그림 없음', missing, []);
   await p.close();
 }

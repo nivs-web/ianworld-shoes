@@ -53,7 +53,10 @@ if (cut === 'ghost') {
   const p = new Player('ian');
   p.items = worn;
   if (cut === 'front') { p.state = P_STATE.INTRO; p.introT = 0; }   // 팝 전 = 정면 컷
-  else { p.state = P_STATE.IDLE; p.facing = cut === 'left' ? -1 : 1; }
+  else if (cut === 'jump' || cut === 'jumpleft') {
+    // 계단 사이 상승 컷 — 접힌 날개 + 파란 번개
+    p.state = P_STATE.EFFECT; p.timer = 2; p.facing = cut === 'jumpleft' ? -1 : 1;
+  } else { p.state = P_STATE.IDLE; p.facing = cut === 'left' ? -1 : 1; }
   p.render(0, 0);
 }
 

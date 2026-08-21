@@ -213,6 +213,187 @@ const PET = {
 };
 
 // ─────────────────────────────────────────────
+// 가면 — **머리 실루엣**을 그대로 덮는다 (2026-08-21 사용자 지정)
+// ─────────────────────────────────────────────
+
+/**
+ * ★ 가면은 모자와 달리 **얼굴이 한 도트도 새면 안 된다.** 그래서 도면을 손으로 적지 않고
+ * **캐릭터 스프라이트에서 실측한 머리 실루엣**을 채운다 — 손으로 적으면 어느 줄 하나가
+ * 반드시 한 도트 좁아지고, 거기서 살색이 비친다.
+ *
+ * 값은 `public/assets/characters/ian_{front,side}.png` 의 불투명 범위를 재서 옮긴 것이고,
+ * **원점은 스프라이트 x=5** 다(표의 `dx: 17` = 캐릭터 왼쪽 12 + 5). 캐릭터 아트를 다시
+ * 구우면 이 표도 같이 재야 한다.
+ */
+const HEAD_F = [
+  [7, 16], [5, 18], [4, 19], [3, 20], [2, 21], [1, 22], [1, 22], [0, 23],
+  [0, 23], [0, 23], [0, 23], [0, 23], [0, 23], [1, 22], [1, 22], [1, 22],
+  [1, 22], [2, 21], [3, 20], [4, 19], [5, 18], [5, 18], [4, 19], [4, 19],
+];
+/** 옆모습 — **오른쪽이 얼굴 앞**이다 (캐릭터 옆컷이 오른쪽을 본다) */
+const HEAD_S = [
+  [9, 16], [6, 18], [4, 20], [3, 21], [2, 21], [1, 22], [1, 22], [1, 23],
+  [0, 23], [0, 23], [0, 23], [0, 22], [0, 22], [0, 21], [1, 21], [1, 21],
+  [2, 21], [2, 21], [4, 21], [6, 21], [6, 20], [5, 19], [4, 18], [3, 17],
+];
+
+/** 실루엣 바깥인가 — 테두리를 칠할 자리를 찾는 데 쓴다 */
+const outside = (sil, x, y) => y < 0 || y >= sil.length || x < sil[y][0] || x > sil[y][1];
+const rim = (sil, x, y) =>
+  outside(sil, x - 1, y) || outside(sil, x + 1, y) || outside(sil, x, y - 1) || outside(sil, x, y + 1);
+
+/**
+ * 아이언맨 — 붉은 헬멧 + **가운데 금색 얼굴판** + 빛나는 눈.
+ *
+ * 눈은 캐릭터의 실제 눈 높이(원본 14~15행)에 맞춘다. 안 맞추면 헬멧이 아니라
+ * 얼굴에 붙인 판때기로 보인다.
+ */
+function ironMask(w, h, pal, side) {
+  const sil = side === 'side' ? HEAD_S : HEAD_F;
+  const img = blank(w, h);
+  const cx = side === 'side' ? 13.5 : 11.5;      // 옆모습은 얼굴이 오른쪽에 있다
+  /** 금색 얼굴판의 반폭 — 위아래로 좁아진다(턱이 뾰족해 보여야 한다) */
+  const panel = [-1, -1, 4, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 5, 4, 3, 2, 2];
+
+  /** 금색 판인가 — 판 **둘레에 테두리**를 두르려면 이웃도 물어봐야 한다 */
+  const gold = (x, y) =>
+    !outside(sil, x, y) && panel[y] >= 0 && Math.abs(x - cx) <= panel[y];
+
+  for (let y = 0; y < sil.length; y++) {
+    const [L, R] = sil[y];
+    for (let x = L; x <= R; x++) {
+      let role;
+      if (rim(sil, x, y)) role = 'K';
+      else if (gold(x, y)) {
+        /**
+         * ★ 금색 판 **둘레에 어두운 선**을 두른다. 없으면 붉은 헬멧과 금색 얼굴이
+         * 한 덩어리로 뭉개져서 "노란 달걀"로 보인다 — 실제로 첫 판이 그랬다.
+         */
+        const 경계 = !gold(x - 1, y) || !gold(x + 1, y) || !gold(x, y - 1) || !gold(x, y + 1);
+        if (경계) role = 'D';
+        else role = x < cx - panel[y] + 2 ? 'G' : (x > cx + panel[y] - 2 ? 'D' : 'A');
+      } else {
+        role = x <= L + 1 ? 'H' : (x >= R - 1 ? 'S' : 'B');
+      }
+      put(img, x, y, pal[role]);
+    }
+  }
+
+  /**
+   * 눈 — 캐릭터 눈(원본 14~15행)에 맞춘 발광 슬릿.
+   * **바깥쪽이 한 도트 높다**(`tilt`) — 수평으로 두면 순한 얼굴이 된다.
+   */
+  const eyes = side === 'side' ? [[14, 20, 1]] : [[4, 9, -1], [14, 19, 1]];
+  for (const [a, b, dir] of eyes) {
+    for (let x = a; x <= b; x++) {
+      // dir -1 = 바깥이 왼쪽, +1 = 바깥이 오른쪽
+      const 바깥쪽 = dir < 0 ? x <= a + 2 : x >= b - 2;
+      const t = 바깥쪽 ? -1 : 0;
+      for (let y = 13; y <= 15; y++) {
+        if (outside(sil, x, y + t)) continue;
+        put(img, x, y + t, y === 13 ? pal.K : (y === 15 ? pal.E : pal.W));
+      }
+    }
+  }
+
+  /** 입 — 가로 통풍구. 세로 줄이 하나 걸러 들어가야 통풍구로 읽힌다 */
+  const [ml, mr] = side === 'side' ? [12, 19] : [7, 16];
+  for (let x = ml; x <= mr; x++) {
+    if (!outside(sil, x, 18)) put(img, x, 18, pal.K);
+    if (!outside(sil, x, 19)) put(img, x, 19, (x - ml) % 2 === 0 ? pal.K : pal.D);
+    if (!outside(sil, x, 20)) put(img, x, 20, pal.K);
+  }
+  return img;
+}
+
+/**
+ * 배트맨 — 어두운 카울 + **머리 위로 솟은 귀** + 흰 눈구멍, 입·턱은 드러난다.
+ *
+ * 카울이 원본 16행까지만 덮는 이유: 그 아래(코·입·턱)를 가리면 배트맨이 아니라
+ * 복면강도가 된다. 대신 양옆 볼 조각을 두 줄 더 내려 얼굴선을 잡아 준다.
+ */
+function batMask(w, h, pal, side) {
+  const sil = side === 'side' ? HEAD_S : HEAD_F;
+  const img = blank(w, h);
+  const EAR = 7;                       // 귀가 머리 위로 솟는 높이
+  const COWL = 17;                     // 카울이 덮는 머리 줄 수 (원본 0~16행)
+
+  /**
+   * 귀 — **꼭짓점이 바깥쪽**인 삼각형이라 밖으로 눕는다. 좌우 대칭 삼각형으로 그리면
+   * 배트맨이 아니라 도깨비 뿔이 된다(첫 판이 그랬다).
+   * 옆모습은 한 짝만 보인다.
+   */
+  // 옆모습의 귀는 **뒤로 눕는다**(apex 가 왼쪽) — 앞으로 세우면 안테나로 보인다
+  const ears = side === 'side' ? [[4, 14, -1]] : [[6, 11, -1], [12, 17, 1]];
+  for (const [a, b, dir] of ears) {
+    for (let y = 0; y < EAR; y++) {
+      // 꼭짓점도 최소 두 도트 — 한 도트짜리 끝은 화면에서 안테나로 보인다
+      const 폭 = Math.max(1, Math.round(((y + 1) / EAR) * (b - a)));
+      const x0 = dir < 0 ? a : b - 폭;
+      const x1 = dir < 0 ? a + 폭 : b;
+      for (let x = x0; x <= x1; x++) {
+        const 끝 = x === x0 || x === x1 || y === 0;
+        put(img, x, y, 끝 ? pal.K : (x <= x0 + 1 ? pal.H : pal.B));
+      }
+    }
+  }
+
+  for (let y = 0; y < COWL; y++) {
+    const [L, R] = sil[y];
+    for (let x = L; x <= R; x++) {
+      // 카울 아랫변은 테두리로 닫는다 — 안 닫으면 얼굴과 경계가 없어 흐물거린다
+      const 아래끝 = y === COWL - 1;
+      const role = rim(sil, x, y) || 아래끝 ? 'K' : (x <= L + 1 ? 'H' : (x >= R - 1 ? 'S' : 'B'));
+      put(img, x, y + EAR, pal[role]);
+    }
+  }
+
+  /** 볼 조각 — 카울 아래로 두 줄, 양옆만 */
+  for (let y = COWL; y < COWL + 2; y++) {
+    const [L, R] = sil[y];
+    for (let x = L; x <= R; x++) {
+      const 옆 = x <= L + 3 || x >= R - 3;
+      if (!옆) continue;
+      const 끝 = x === L || x === R || y === COWL + 1;
+      put(img, x, y + EAR, 끝 ? pal.K : (x <= L + 1 ? pal.H : pal.S));
+    }
+  }
+
+  /** 눈구멍 — 캐릭터 눈(원본 14~15행)에 정확히 얹는다 */
+  const eyes = side === 'side' ? [[13, 19]] : [[5, 9], [14, 18]];
+  for (const [a, b] of eyes) {
+    for (let x = a; x <= b; x++) {
+      for (let y = 14; y <= 15; y++) {
+        if (outside(sil, x, y)) continue;
+        put(img, x, y + EAR, pal.W);
+      }
+      if (!outside(sil, x, 13)) put(img, x, 13 + EAR, pal.K);
+      if (!outside(sil, x, 16)) put(img, x, 16 + EAR, pal.K);
+    }
+  }
+  return img;
+}
+
+const MASK = {
+  hat_ironman: {
+    make: ironMask,
+    pal: {
+      K: [40, 8, 10], B: [176, 34, 34], H: [214, 66, 58], S: [116, 18, 22],
+      A: [240, 176, 44], G: [255, 214, 108], D: [176, 116, 18],
+      W: [223, 247, 255], E: [122, 206, 240],
+    },
+  },
+  hat_batman: {
+    make: batMask,
+    pal: {
+      K: [10, 12, 20], B: [52, 58, 76], H: [78, 86, 108], S: [28, 32, 46],
+      A: [52, 58, 76], G: [78, 86, 108], D: [28, 32, 46],
+      W: [236, 246, 255], E: [180, 196, 220],
+    },
+  },
+};
+
+// ─────────────────────────────────────────────
 // 날개 — 곡선 표 + 깃털 규칙 (좌우 대칭을 코드가 보장한다)
 // ─────────────────────────────────────────────
 
@@ -243,8 +424,9 @@ const BAT_LEN = [11, 24, 26, 24, 18];
 /**
  * @param {object} spec 팔레트와 성격(깃털 간격·박쥐 여부)
  * @param {'left'|'right'|null} only 옆모습은 몸에 가려 **한 장만** 보인다
+ * @param {boolean} fold 계단 사이 상승 컷 — **접은 날개 + 번개** (2026-08-21 사용자 지정)
  */
-function makeWing(spec, w, h, only = null) {
+function makeWing(spec, w, h, only = null, fold = false) {
   const img = blank(w, h);
   const { pal } = spec;
   const half = w >> 1;                 // 26
@@ -259,7 +441,13 @@ function makeWing(spec, w, h, only = null) {
     const j = Math.max(0, Math.min(segs - 1, Math.floor(u)));
     const f = u - j;
     // 구간 안 기울기를 0.35 로 눌러 두면 경계에서 **턱**이 생긴다 = 깃털 끝
-    const base = LEN[j] + (LEN[j + 1] - LEN[j]) * (f * 0.15);
+    let base = LEN[j] + (LEN[j + 1] - LEN[j]) * (f * 0.15);
+    /**
+     * ★ **상승 컷은 날개를 접는다.** 계단 사이를 튀어 오르는 3프레임인데 날개가
+     * 활짝 펴져 있으면 "떠 있다"로 읽혀서 오히려 속도감이 죽는다. 62%로 줄이고
+     * 위쪽(음수 θ)을 더 접어 뒤로 눕힌다 — 그래야 위로 쏘아 올라가는 모양이 된다.
+     */
+    if (fold) base *= t < 0 ? 0.52 : 0.68;
     if (!spec.bat) return base;
     /**
      * 박쥐는 살 사이가 **오목하게 파인다** — 그게 막(膜)의 성격이다.
@@ -307,8 +495,33 @@ function makeWing(spec, w, h, only = null) {
 
   if (only !== 'right') drawHalf(false);
   if (only !== 'left') drawHalf(true);
+
+  /**
+   * ★ **번개는 접힌 날개에만.** 상승 컷은 3프레임이라 크게 그리면 깜빡임으로 보인다 —
+   * 날개 끝을 따라 **파란 점 몇 개**만 얹는다. 자리를 난수로 뿌리지 않고 각도로 정해서
+   * 날개 모양이 바뀌어도 끝을 따라가게 했다(난수면 다시 구울 때마다 그림이 달라진다).
+   */
+  if (fold) {
+    const half = w >> 1;
+    const px = half - 1;
+    const py = 3;
+    for (const t of [-0.72, -0.28, 0.18, 0.62]) {
+      const R = 9 + Math.round(6 * Math.cos(t));
+      for (let k = 0; k < 3; k++) {
+        const r = R + k * 2;
+        const x = px - Math.round(r * Math.cos(t));
+        const y = py + Math.round(r * Math.sin(t)) + (k % 2 ? 1 : 0);
+        const c = k === 0 ? SPARK.hot : (k === 1 ? SPARK.mid : SPARK.cold);
+        if (only !== 'right') put(img, x, y, c);
+        if (only !== 'left') put(img, half + (half - 1 - x), y, c);
+      }
+    }
+  }
   return img;
 }
+
+/** 상승 번개 색 — 인게임 캔버스(`palette.SPARK`)와 **같은 값**이어야 한 덩어리로 보인다 */
+const SPARK = { hot: [223, 247, 255], mid: [63, 169, 245], cold: [27, 79, 160] };
 
 /**
  * 레게머리 — 돔 위에 **가닥을 내린다.**
@@ -416,7 +629,11 @@ mkdirSync(OUT, { recursive: true });
 let made = 0;
 for (const it of ITEMS) {
   const cuts = {};
-  if (HAT[it.id]) {
+  if (MASK[it.id]) {
+    const spec = MASK[it.id];
+    cuts.front = spec.make(it.w, it.h, spec.pal, 'front');
+    cuts.side = spec.make(it.w, it.h, spec.pal, 'side');
+  } else if (HAT[it.id]) {
     const spec = HAT[it.id];
     if (spec.make) {
       cuts.front = spec.make(it.w, it.h, spec.pal, 'front');
@@ -432,6 +649,8 @@ for (const it of ITEMS) {
     cuts.front = makeWing(WING[it.id], it.w, it.h);
     // 옆에서는 몸에 가려 **뒤쪽 한 장만** 보인다
     cuts.side = makeWing(WING[it.id], it.w, it.h, 'left');
+    // 계단 사이 상승 컷 — 접은 날개 + 번개 (표의 `jumpCut` 이 켜진 것만)
+    if (it.jumpCut) cuts.jump = makeWing(WING[it.id], it.w, it.h, 'left', true);
   } else {
     throw new Error(`그림 도면이 없는 아이템: ${it.id}`);
   }
@@ -450,8 +669,8 @@ for (const it of ITEMS) {
 }
 
 // 표에 없는 그림을 굽지 않았는지 되짚는다 (오타로 남는 파일을 막는다)
-for (const id of [...Object.keys(HAT), ...Object.keys(PET), ...Object.keys(WING)]) {
+for (const id of [...Object.keys(HAT), ...Object.keys(MASK), ...Object.keys(PET), ...Object.keys(WING)]) {
   if (!itemById(id)) throw new Error(`도면은 있는데 표에 없는 아이템: ${id}`);
 }
 
-console.log(`아이템 도트 ${made}장 → public/assets/items/ (악세사리 5 · 날개 3 · 반려견 3)`);
+console.log(`아이템 도트 ${made}장 → public/assets/items/ (악세사리 7 · 날개 3 · 반려견 3 · 상승 컷 3)`);
