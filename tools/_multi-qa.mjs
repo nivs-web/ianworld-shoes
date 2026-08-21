@@ -1635,7 +1635,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
     const mr = fs.readFileSync('src/services/matchRules.js', 'utf8');
     // 31차: `offAt` 에 `awayAt`(홈 버튼)이 합류하면서 **늦게 찍힌 쪽**을 본다 (56번 묶음)
-    has('끊긴 시각이 있으면 그걸 먼저 본다', mr, 'if (떠난시각) return now - 떠난시각 > 짧은유예;');
+    // 33차: 유예가 사람마다 달라져(아웃체크 1회) 상수 대신 `awayGraceMs` 를 부른다 (58번 묶음)
+    has('끊긴 시각이 있으면 그걸 먼저 본다', mr, 'if (떠난시각) return now - 떠난시각 > awayGraceMs(player);');
   }
 
   // ② 임계값 — 얼린 페이지가 2분짜리 통화를 버텨야 한다
@@ -1712,13 +1713,19 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
      * 조용함은 그대로 30초, 본인이 말한 이탈(`awayAt`·`offAt`)은 6초(56번 묶음).
      */
     has('조용함 판정이 30초 상수를 쓴다', mr, 'const 긴유예 = MULTI.absentSeconds * 1000;');
-    has('명시적 이탈은 짧은 유예를 쓴다', mr, 'const 짧은유예 = MULTI.awaySeconds * 1000;');
+    // 33차: 짧은 유예는 **두 번째 이탈부터** 쓰인다 — 판정이 `awayGraceMs` 안으로 옮겨 갔다
+    has('명시적 이탈은 짧은 유예를 쓴다', mr, ': MULTI.awaySeconds * 1000;');
     no('갈라져 있던 두 상수는 없다', mr, 'offlineGraceSeconds');
     const bal = fs.readFileSync('src/config/balance.js', 'utf8');
     no('밸런스에도 남아 있지 않다', bal, 'staleSeconds');
 
     const gs = fs.readFileSync('src/game/GameScene.js', 'utf8');
-    has('화면도 같은 숫자로 판단한다', gs, '비운시간 > MULTI.absentSeconds * 1000');
+    /**
+     * 33차: 유예가 사람마다 다르므로(첫 이탈 30초 · 그 뒤 6초) 상수를 못 박을 수 없다.
+     * **남들이 나를 뺀 그 함수**를 그대로 불러야 어긋나는 구간이 안 생긴다.
+     */
+    has('화면도 같은 숫자로 판단한다', gs, '비운시간 > 내유예');
+    has('그 숫자를 남들과 같은 함수에서 얻는다', gs, 'awayGraceMs(this.room?.players?.[this.multi.myUid])');
     has('30초를 넘기면 스스로 나간다', gs, 'kickOut()');
     has('나가면서 도장을 찍는다', gs, 'Room.markOut(code)');
     has('자리도 비운다', gs, 'Room.leaveRoom(code)');
@@ -1734,10 +1741,14 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('보고 있는 사람이 치운다', mp, 'export async function purgeAbsent(');
     has('대기 중인 방에서만', mp, "if (!room || room.state !== 'waiting') return 0;");
     has('방장 승계까지 한 번의 쓰기로', mp, "if (나갈사람.includes(room.hostUid)) patch.hostUid = 남는사람[0];");
-    has('전원 유령인 대기방은 방째로 지운다', mp, 'const 전원유령 = (r) => {');
-    has('목록에서도 감춘다', mp, 'return !list.length || list.some((v) => !isStale(v, 지금));');
-    // 판이 도는 방은 절대 안 지운다 — 진행 중인 게임이 통째로 사라진다
-    has('전원 유령 판정은 waiting 만', mp, "if (r.state !== 'waiting') return false;");
+    /**
+     * 33차: 판정을 `matchRules.roomAbandoned` 한 곳으로 모으고 **`state` 와 무관**하게 만들었다.
+     * 예전 조건(`state === 'waiting'` 일 때만)은 판이 한 번이라도 시작된 방을 통째로
+     * 비껴가서, 사용자가 신고한 "현재접속자엔 나 혼자인데 방은 2~3개"를 만들었다(58번 묶음).
+     */
+    has('전원 유령인 방은 방째로 지운다', mp, 'const 버려짐 = (r) => roomAbandoned(r, 서버지금, live);');
+    has('목록에서도 감춘다', mp, '.filter((r) => !roomAbandoned(r, 지금, live))');
+    no('★ 유령 판정이 waiting 에만 걸려 있지 않다', mp, "if (r.state !== 'waiting') return false;");
     const wr = fs.readFileSync('src/screens/multi/WaitingRoom.js', 'utf8');
     has('대기방이 스냅샷마다 치운다', wr, 'Room.purgeAbsent(code, r)');
     // 서버 왕복이라 스냅샷마다 무조건 부르면 헛왕복이 쌓인다
@@ -2512,7 +2523,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
    */
   {
     const pr = code(read('src/services/presence.js'));
-    has('60초 문턱', pr, 'export const ACTIVITY_TIMEOUT_MS = 60 * 1000;');
+    // 33차: 방 목록도 같은 잣대를 써야 해서 숫자를 `balance.js` 로 옮겼다 (58번 묶음)
+  has('60초 문턱', pr, 'export const ACTIVITY_TIMEOUT_MS = MULTI.onlineSeconds * 1000;');
     has('심장 박동 15초', pr, 'const HEARTBEAT_MS = 15 * 1000;');
     has('활동 시각은 서버가 찍는다', pr, 'lastActive: myFb.dbMod.serverTimestamp()');
     has('읽는 쪽에서 거른다', pr, 'export function isLive(card');
@@ -3581,11 +3593,15 @@ console.log('\n56) ★ 나간 사람 판단 · 결과 명함 · 숫자 4 (2026-0
     const 지금 = 1_000_000;
     const 짧 = B2.awaySeconds * 1000;
     const 긺 = B2.absentSeconds * 1000;
-    eq('★ awayAt 은 6초 유예', [
-      M2.isStale({ awayAt: 지금 - 짧 + 1000, seenAt: 지금 }, 지금),
-      M2.isStale({ awayAt: 지금 - 짧 - 1000, seenAt: 지금 }, 지금),
+    /**
+     * 33차: **긴 유예를 한 번 쓴 사람**(`awayCount: 1`)부터 이 6초가 적용된다.
+     * 첫 이탈은 30초(아웃체크중)라 58번 묶음이 따로 본다.
+     */
+    eq('★ awayAt 은 (두 번째부터) 6초 유예', [
+      M2.isStale({ awayAt: 지금 - 짧 + 1000, awayCount: 1, seenAt: 지금 }, 지금),
+      M2.isStale({ awayAt: 지금 - 짧 - 1000, awayCount: 1, seenAt: 지금 }, 지금),
     ], [false, true]);
-    eq('★ offAt 도 같은 유예', M2.isStale({ offAt: 지금 - 짧 - 1000, seenAt: 지금 }, 지금), true);
+    eq('★ offAt 도 같은 유예', M2.isStale({ offAt: 지금 - 짧 - 1000, awayCount: 1, seenAt: 지금 }, 지금), true);
     eq('★ 조용하기만 하면 30초까지 기다린다', [
       M2.isStale({ seenAt: 지금 - 긺 + 5000 }, 지금),
       M2.isStale({ seenAt: 지금 - 긺 - 5000 }, 지금),
@@ -3773,6 +3789,139 @@ console.log('\n57) ★ 로비 문구 · 이스터 에그 — 하루 5분만 열�
   const S6 = (await import('../src/config/strings.ko.js')).default;
   eq('★ 멀티게임 0승0게임', S6.myMultiRecord(0, 0), '멀티게임 0승0게임');
   eq('★ 빗금이 없다', S6.myMultiRecord(17, 50).includes('/'), false);
+}
+
+// ─────────────────────────────────────────────
+console.log('\n58) ★ 유령 방 · 아웃체크중 30초 (2026-08-21 33차, 사용자 신고)');
+{
+  const fs = await import('node:fs');
+  const read = (f) => fs.readFileSync(f.startsWith('..') ? f.slice(3) : f, 'utf8');
+  const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const has = (label, hay, needle) => eq(label, hay.includes(needle), true);
+  const no = (label, hay, needle) => eq(label, hay.includes(needle), false);
+
+  const M3 = await import('../src/services/matchRules.js');
+  const { MULTI: B3 } = await import('../src/config/balance.js');
+  const mp3 = code(read('src/services/multiplayer.js'));
+  const mr3 = code(read('src/services/matchRules.js'));
+  const gs3 = code(read('src/game/GameScene.js'));
+  const hud3 = code(read('src/game/multiHud.js'));
+
+  /**
+   * ① ★ **유령 방 판정은 `state` 와 무관해야 한다.**
+   *
+   * 판이 시작되면 `state` 는 `'countdown'` 으로 굳고 아무도 안 바꾼다(§9-0-61).
+   * 정리 세 곳이 전부 `'waiting'` 만 봤기 때문에 **한 번이라도 시작된 방은 아무도
+   * 못 치웠다** — 사용자가 본 "현재접속자엔 나 혼자인데 방은 2~3개"의 정체다.
+   */
+  {
+    const 지금 = 1_000_000;
+    const 산사람 = { seenAt: 지금 };
+    const 유령 = { seenAt: 지금 - (B3.absentSeconds + 10) * 1000 };
+    for (const st of ['waiting', 'countdown', 'playing', 'finished']) {
+      eq(`★ ${st}: 전원 유령이면 버려진 방`,
+        M3.roomAbandoned({ state: st, players: { a: 유령, b: 유령 } }, 지금), true);
+      eq(`${st}: 한 명이라도 살아 있으면 아니다`,
+        M3.roomAbandoned({ state: st, players: { a: 유령, b: 산사람 } }, 지금), false);
+    }
+    eq('자리가 없으면 버려진 방', M3.roomAbandoned({ state: 'waiting', players: {} }, 지금), true);
+  }
+
+  /**
+   * ② ★ **접속 목록과 연동한다** (사용자 지정).
+   *
+   * 방·판에 앉아 있으면 입력이 없어도 15초마다 심장 박동이 간다 — **방에는 있는데
+   * 접속 목록에 없으면 확실히 나간 것**이다. 다만 **모르면 안 쓴다**(`live === null`).
+   */
+  {
+    const 지금 = 1_000_000;
+    const 산사람 = { seenAt: 지금 };
+    const 방 = { state: 'countdown', players: { a: 산사람, b: 산사람 } };
+    eq('★ 접속 목록에 아무도 없으면 버려진 방', M3.roomAbandoned(방, 지금, new Set(['z'])), true);
+    eq('★ 한 명이라도 접속 중이면 아니다', M3.roomAbandoned(방, 지금, new Set(['b'])), false);
+    eq('★ 못 읽었으면(null) 근거로 안 쓴다', M3.roomAbandoned(방, 지금, null), false);
+    // 접속 판정은 두 화면이 **같은 함수**를 본다 (숫자가 갈리면 유령이 그대로 남는다)
+    eq('60초 안이면 살아 있다', M3.presenceLive({ lastActive: 지금 - 59_000 }, 지금), true);
+    eq('60초를 넘기면 아니다', M3.presenceLive({ lastActive: 지금 - 61_000 }, 지금), false);
+    eq('근거가 없으면 접속 중으로 안 본다', M3.presenceLive({}, 지금), false);
+    has('접속 판정은 matchRules 한 곳', code(read('src/services/presence.js')), 'return presenceLive(card, now);');
+  }
+
+  // ③ 목록·청소·대기방 셋이 전부 그 판정을 쓴다
+  has('★ 목록이 접속 목록을 함께 읽는다', mp3, 'Promise.all([scanOpenRooms(fb), readLiveUids(fb)])');
+  has('★ 목록을 여는 김에 청소한다', mp3, 'sweepEmptyRooms(fb, rooms, live);');
+  has('★ 대기방 정리도 접속 목록을 본다', mp3, 'const live = await readLiveUids(fb);');
+  has('내가 목록에 없으면 안 믿는다', mp3, 'live.has(fb.uid) ? live : null');
+  // 대기방이 스냅샷마다 부르므로 잠깐 재사용한다 — 안 그러면 1.2초마다 접속 노드를 통째로 읽는다
+  has('접속 목록은 잠깐 재사용한다', mp3, 'if (Date.now() - liveCache.at < LIVE_TTL_MS) return liveCache.set;');
+  // 판이 걸려 있으면 **먼저 끝낸다** — 순위 없이 지우면 항아리가 증발한다(§9-0-25)
+  has('★ 판이 걸린 방은 먼저 끝낸다', mp3, "if (roundRunning(r) && !r.result?.rankings) {");
+  has('★ 신발이 걸린 방은 목록에서만 내린다', mp3, "{ open: false }");
+  no('막 만든 빈 방은 안 건드린다 (그대로)', mp3, 'STALE_EMPTY_MS = 0');
+
+  /**
+   * ④ ★ **아웃체크중 — 첫 이탈 30초, 두 번째부터 6초** (사용자 지정 "딱 1회만").
+   */
+  eq('★ 아웃체크 30초', B3.outCheckSeconds, 30);
+  eq('★ 긴 유예는 1회', B3.outCheckAllowance, 1);
+  eq('짧은 유예는 그대로 6초', B3.awaySeconds, 6);
+  eq('★ 첫 이탈은 30초', M3.awayGraceMs({}), 30_000);
+  eq('★ 두 번째부터 6초', M3.awayGraceMs({ awayCount: 1 }), 6_000);
+  eq('세 번째도 6초', M3.awayGraceMs({ awayCount: 5 }), 6_000);
+  {
+    const 지금 = 1_000_000;
+    eq('★ 30초 남은 카운트다운', M3.outCheckLeftMs({ awayAt: 지금 - 10_000 }, 지금), 20_000);
+    eq('돌아오면 0 (셀 것이 없다)', M3.outCheckLeftMs({ awayAt: 0 }, 지금), 0);
+    eq('두 번째 이탈은 6초짜리 카운트다운',
+      M3.outCheckLeftMs({ awayAt: 지금 - 1000, awayCount: 1 }, 지금), 5_000);
+  }
+  // 돌아올 때 올린다 — 안 돌아온 사람에게는 횟수가 의미가 없다
+  has('★ 돌아올 때 횟수를 올린다', mp3, 'awayAt: null, awayCount: 다음값');
+  has('규칙이 없으면 표시 지우기만이라도 보낸다', mp3, "path(base, 'awayAt')), null)");
+  has('규칙에도 적혀 있다', read('docs/FIREBASE_RULES.md'), '"awayCount"');
+  // 다음 판에는 리셋된다 — `resetRoom` 이 players 를 통째로 다시 쓰며 이 키를 뺀다
+  no('★ 다음 판 준비에 awayCount 를 안 싣는다', mp3.slice(mp3.indexOf('export async function resetRoom'),
+    mp3.indexOf('export async function listRooms')), 'awayCount');
+
+  /**
+   * ⑤ ★ **아웃체크로 빠진 사람은 계단이 높아도 진다** (사용자 지정).
+   * 이게 없으면 앞설 때 홈 버튼을 누르는 것이 필승법이 된다(26차에 막은 그 구멍의 재발).
+   */
+  {
+    const 지금 = 1_000_000;
+    const 남은사람 = { uid: 'A', stairs: 5, seenAt: 지금 };
+    const 나간사람 = { uid: 'B', stairs: 90, awayAt: 지금 - 40_000, seenAt: 지금 };
+    eq('★ 남아 있는 쪽이 1등', M3.rankPlayers([남은사람, 나간사람], 지금)[0], 'A');
+    eq('아웃체크 판정', M3.disconnectedOut(나간사람, 지금), true);
+    // 기권(`나가기`)은 그대로 계단 우선이다 — §9-0-30 사용자 확정 규칙을 안 건드린다
+    const 기권자 = { uid: 'C', stairs: 90, out: true, outAt: 지금 - 40_000, seenAt: 지금 };
+    eq('★ 기권은 여전히 계단 우선', M3.rankPlayers([남은사람, 기권자], 지금)[0], 'C');
+    eq('기권은 아웃체크가 아니다', M3.disconnectedOut(기권자, 지금), false);
+  }
+
+  /**
+   * ⑥ 화면 — `아웃체크중` 문구와 카운트다운. 판정은 종료 판정과 **같은 함수**를 쓴다.
+   */
+  has('아웃체크 문구', code(read('src/config/strings.ko.js')), "outCheck: '아웃체크중'");
+  has('★ HUD 가 배너를 그린다', hud3, 'drawOutCheck(scene);');
+  has('★ 같은 함수로 남은 시간을 잰다', hud3, 'outCheckLeftMs(scene.room?.players?.[uid], now)');
+  has('내 것은 안 그린다', hud3, 'if (uid === me || v?.waiting) continue;');
+  // 게이지에는 나가기 유예와 **같은 빨간 숫자** — 뜻이 같으므로 그림도 같아야 한다
+  has('게이지에도 빨간 숫자', hud3, 'const exitOf = (uid) =>');
+  {
+    // 문구가 레이스 게이지(150~)를 침범하지 않는지 폰트 데이터로 잰다
+    const F = (await import('../src/data/font.generated.json', { with: { type: 'json' } })).default;
+    const w = (t) => [...t].reduce((a, c) => a + ((F.glyphs[c]?.w ?? F.glyphs['?'].w) + 1), 0) - 1;
+    const 폭 = w('아웃체크중');
+    const cx = 82;
+    eq('★ 아웃체크 문구가 게이지를 안 침범한다', cx + Math.ceil(폭 / 2) < 150, true);
+    eq('왼쪽으로도 안 넘친다', cx - Math.ceil(폭 / 2) > 0, true);
+  }
+
+  // ⑦ 내 화면도 남들과 **같은 유예**를 본다 (어긋나면 그게 곧 "튕김"이다)
+  has('★ 내 유예를 같은 함수에서 얻는다', gs3, 'const 내유예 = awayGraceMs(');
+  has('그 값으로 스스로 나간다', gs3, 'if (비운시간 > 내유예) return this.kickOut();');
+  no('★ 30초 상수를 다시 못 박지 않았다', gs3, '비운시간 > MULTI.absentSeconds');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

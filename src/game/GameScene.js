@@ -28,7 +28,7 @@ import * as Bgm from '../audio/bgm.js';
 import { AUDIO, SHOE_RARE_TIER_MAX, bgmTrackAt, MULTI } from '../config/balance.js';
 import shoesData from '../data/shoes.json';
 import * as Room from '../services/multiplayer.js';
-import { roundOver, othersAllOut, slotIndex, graceOnExit, leaveGraceLeftMs, pauseLeftMs, canPause } from '../services/matchRules.js';
+import { roundOver, othersAllOut, slotIndex, graceOnExit, leaveGraceLeftMs, pauseLeftMs, canPause, awayGraceMs } from '../services/matchRules.js';
 import S from '../config/strings.ko.js';
 import { multiHud, multiGhosts, menuHit, TICKER_MS } from './multiHud.js';
 import { packItems, parseItems, itemAssetList } from './wornItems.js';
@@ -298,8 +298,20 @@ export class GameScene {
       }
       const 비운시간 = this.hiddenAt ? Date.now() - this.hiddenAt : 0;
       this.hiddenAt = 0;
+      /**
+       * ★ **남들이 나를 뺀 그 시각과 같은 숫자를 본다.** (2026-08-21 33차)
+       *
+       * 유예는 이제 사람마다 다르다 — 첫 이탈은 30초(아웃체크중), 두 번째부터는 6초
+       * (`matchRules.awayGraceMs`, 사용자 지정 "딱 1회만"). 여기서 30초를 못 박아 두면
+       * 두 번째 이탈에서 **"나는 아직 게임 중인데 남들은 이미 나를 뺐다"** 는 구간이
+       * 생긴다 — 그게 사용자가 "튕긴다"고 부르던 바로 그 어긋남이다(§9-0-40).
+       *
+       * `this.room` 의 내 레코드는 **떠나기 전 값**이라 `awayCount` 가 아직 안 올랐다.
+       * 그게 정확히 이번 이탈에 적용된 유예다 — 아래 `markAway(false)` 가 그걸 올린다.
+       */
+      const 내유예 = awayGraceMs(this.room?.players?.[this.multi.myUid]);
       Room.markAway(this.multi.code, false).catch(() => {});
-      if (비운시간 > MULTI.absentSeconds * 1000) return this.kickOut();
+      if (비운시간 > 내유예) return this.kickOut();
       /**
        * ★ **자리를 비운 만큼 게이지가 닳는다.** (2026-08-21 26차)
        *

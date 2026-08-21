@@ -37,7 +37,7 @@ import { PAL, SLOT_COLORS, SLOT_DIM } from './palette.js';
 import { drawWornItems, ensureItemAssets, parseItems } from './wornItems.js';
 import { VIEW_W, VIEW_H, STAIR, CENTER_X, CHAR } from '../config/layout.js';
 import { MULTI } from '../config/balance.js';
-import { potShoes, slotIndex, rankPlayers, canRevive, leaveGraceLeftMs, graceTarget, pauseLeftMs } from '../services/matchRules.js';
+import { potShoes, slotIndex, rankPlayers, canRevive, leaveGraceLeftMs, graceTarget, pauseLeftMs, outCheckLeftMs } from '../services/matchRules.js';
 import { serverOffsetSync } from '../services/multiplayer.js';
 import S from '../config/strings.ko.js';
 
@@ -217,6 +217,7 @@ export function multiHud(scene) {
    * 겹칠 일이 없다(멈춤 → 메뉴 → 이탈 순으로 상태가 배타적이다).
    */
   drawPauseBanner(scene);
+  drawOutCheck(scene);
   drawMenu(scene);
   drawExitCountdown(scene);
 }
@@ -433,7 +434,19 @@ function drawRaceGauge(scene, list) {
    */
   const 유예 = leaveGraceLeftMs(scene.room, now);
   const 나가는사람 = 유예 > 0 ? graceTarget(scene.room, now) : null;
-  const exitOf = (uid) => (나가는사람 && uid === 나가는사람 ? Math.max(1, Math.ceil(유예 / 1000)) : null);
+  /**
+   * ★ **아웃체크중인 사람도 같은 빨간 숫자를 쓴다.** (2026-08-21 33차, 사용자 지정)
+   *
+   * 홈 버튼을 눌렀든 전화가 왔든 튕겼든, 남은 사람이 알아야 하는 것은 하나다 —
+   * *"쟤는 지금 나가 있고, 이 숫자가 0이 되면 내가 이긴다."* `나가기` 버튼의 유예와
+   * 뜻이 같으므로 **같은 그림**이어야 한다. 다르게 생기면 판단이 한 박자 늦는다.
+   */
+  const awayOf = (uid) => {
+    const left = outCheckLeftMs(scene.room?.players?.[uid], now);
+    return left > 0 ? Math.max(1, Math.ceil(left / 1000)) : null;
+  };
+  const exitOf = (uid) =>
+    (나가는사람 && uid === 나가는사람 ? Math.max(1, Math.ceil(유예 / 1000)) : awayOf(uid));
 
   /**
    * ★ **겹치면 왼쪽으로 비켜 세우되, 최대 2명까지만.** (2026-08-19)
@@ -848,6 +861,57 @@ function drawStartWarn(scene) {
   // 남은 초는 **올림**이다 — 4.2초 남았는데 4가 뜨면 1초를 손해 본 것처럼 보인다
   textCached(String(Math.ceil(left / 1000)), cx, WARN_BOX.y + 34, {
     scale: 2, color: PAL.gaugeWarn, align: 'center', outline: PAL.textShadow, mono: true });
+}
+
+/**
+ * ★ **아웃체크중 — 상대가 자리를 비웠다.** (2026-08-21 33차, 사용자 지정)
+ *
+ * *"게임하다가 중간에 홈버튼 전화가 와서 전화 받거나 해도, '아웃체크중' 이라고 뜨면서
+ *   30초 뜨게 만들자, 30초 안에 방에 복귀 안하면 그냥 승리하는걸로, disconnet 뜨면서
+ *   아웃 체크중 메세지 나오고 30초 카운트 다운 하는거야"*
+ *
+ * ## 왜 판을 안 깔았나
+ *
+ * 이탈 카운트다운(`drawExitCountdown`)과 **같은 이유**다 — 이 30초 동안 남은 사람은
+ * 계속 계단을 오른다. 화면을 덮으면 자기가 어디까지 왔는지를 못 본다. 게다가 상대가
+ * 돌아오면 그 즉시 사라져야 하는 표시라, 큰 판을 깔면 화면이 출렁인다.
+ *
+ * ## 자리
+ *
+ * 판돈 줄(y41~52) · 계단 숫자(y55~77) · 거리 줄(y80~91) **바로 아래인 y96**.
+ * 처음에 84로 뒀다가 미리보기에서 **거리 줄과 통째로 겹치는 것**을 보고 내렸다 —
+ * 위쪽 세 줄은 이미 자리가 꽉 차 있다. 가로 중심은 **82** —
+ * 오른쪽 레이스 게이지(150~178, 얼굴이 비켜서면 132까지)를 침범하지 않는 값이다
+ * (판돈 줄이 같은 이유로 쓰던 그 중심, §9-0-41).
+ *
+ * **내 카운트다운은 안 그린다.** 내가 자리를 비운 동안에는 어차피 화면이 안 보이고,
+ * 돌아온 순간에는 이미 표시가 지워져 있다. 여기 뜨는 숫자는 **상대의 것**뿐이다.
+ */
+const OUTCHECK_CX = 82;
+const OUTCHECK_Y = 96;
+
+function drawOutCheck(scene) {
+  const room = scene.room;
+  if (!room?.players || scene.countdownMs > 0) return;
+  /**
+   * 내가 나가는 중이면 안 그린다 — `drawExitCountdown` 이 같은 자리에 더 큰 숫자를
+   * 얹는다. 그 6초 동안 내가 봐야 하는 것은 **내 카운트다운과 역전 여부**뿐이다.
+   */
+  if (scene.exiting) return;
+  const now = Date.now() + serverOffsetSync();
+  const me = scene.multi?.myUid;
+  let left = 0;
+  for (const [uid, v] of Object.entries(room.players)) {
+    if (uid === me || v?.waiting) continue;
+    const ms = outCheckLeftMs(v, now);
+    if (ms > left) left = ms;                 // 여럿이면 **가장 오래 남은 쪽**을 보여 준다
+  }
+  if (left <= 0) return;
+  const n = Math.max(1, Math.ceil(left / 1000));
+  textCached(S.outCheck, OUTCHECK_CX, OUTCHECK_Y, {
+    color: PAL.goRed, outline: PAL.textShadow, align: 'center' });
+  textCached(String(n), OUTCHECK_CX, OUTCHECK_Y + 14, {
+    scale: 2, color: PAL.goRed, outline: PAL.textShadow, align: 'center', mono: true });
 }
 
 /**

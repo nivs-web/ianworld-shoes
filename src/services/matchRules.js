@@ -35,8 +35,21 @@ export function rankPlayers(players, now = Date.now()) {
    * 그 뒤는 먼저 도달한 순, 마지막은 uid 사전순(누가 계산해도 같은 답이 나와야 한다).
    */
   const 남아있다 = (p) => (outOfRound(p, now) ? 0 : 1);
+  /**
+   * ★ **아웃체크로 빠진 사람은 계단이 높아도 맨 아래다.** (2026-08-21 33차, 사용자 지정)
+   *
+   * *"홈버튼 누르거나 전화가 와서 아웃되었는데 복귀 안하는거면, 그냥 방에 남아 있는
+   *   사람이 승리되게 만들자"*
+   *
+   * 계단 우선 규칙(§9-0-30)은 그대로다 — **기권(`나가기`)은 여전히 계단으로 겨룬다.**
+   * 여기서 아래로 내리는 것은 `awayAt`·`offAt` 이 찍힌 채 유예를 넘긴 사람뿐이다.
+   * 이 한 줄이 없으면 앞서고 있을 때 홈 버튼을 누르는 것이 필승법이 된다(26차에 막은
+   * "나가기가 곧 승리 버튼"이 홈 버튼으로 부활한다).
+   */
+  const 돌아왔다 = (p) => (disconnectedOut(p, now) ? 0 : 1);
   return [...players]
     .sort((a, b) =>
+      돌아왔다(b) - 돌아왔다(a) ||
       (b.stairs ?? 0) - (a.stairs ?? 0) ||
       남아있다(b) - 남아있다(a) ||
       (a.reachedAt ?? Infinity) - (b.reachedAt ?? Infinity) ||
@@ -226,18 +239,71 @@ export function isStale(player, now) {
    * 돌아오면 `awayAt` 이 지워지므로 판정이 **저절로 원상 복구된다** — 도장이 아니라
    * 살아 있는 값이라 그렇다.
    */
-  const 짧은유예 = MULTI.awaySeconds * 1000;
   const 긴유예 = MULTI.absentSeconds * 1000;
 
-  const off = player?.offAt ?? 0;
-  const away = player?.awayAt ?? 0;
-  // 둘 다 있으면 **늦게 찍힌 쪽**이 지금 상태다 (끊겼다 붙은 뒤 홈 버튼 등)
-  const 떠난시각 = Math.max(off, away);
-  if (떠난시각) return now - 떠난시각 > 짧은유예;
+  const 떠난시각 = leftAt(player);
+  if (떠난시각) return now - 떠난시각 > awayGraceMs(player);
 
   const seen = player?.seenAt ?? 0;
   if (!seen) return false;
   return now - seen > 긴유예;
+}
+
+/**
+ * 이 사람이 **자리를 비운 서버 시각.** 0이면 아직 붙어 있다.
+ *
+ * 둘 다 있으면 **늦게 찍힌 쪽**이 지금 상태다(끊겼다 붙은 뒤 홈 버튼을 누른 경우 등).
+ */
+export function leftAt(player) {
+  return Math.max(player?.offAt ?? 0, player?.awayAt ?? 0);
+}
+
+/**
+ * ★ **아웃체크 유예 — 첫 번째는 30초, 두 번째부터는 6초.** (2026-08-21 33차, 사용자 지정)
+ *
+ * *"'아웃체크중' 이라고 뜨면서 30초 (…) 단 이것도 악용할 수 있으니 딱 1회만 가능하도록"*
+ *
+ * `awayCount` 는 **긴 유예를 이미 몇 번 썼는가**다. 돌아온 순간에 올라가므로
+ * (`multiplayer.markAway`), 지금 자리를 비운 이 한 번은 아직 안 세어져 있다 —
+ * 그래서 첫 이탈에는 0이고 30초를 받는다. 돌아오면 1이 되어 다음 이탈부터 6초다.
+ *
+ * 값이 없으면 0으로 본다. 규칙(RTDB)에 `awayCount` 가 아직 없으면 그 쓰기만 조용히
+ * 거부되므로 **모두가 매번 30초를 받게 된다** — 판정이 깨지는 게 아니라 너그러워질 뿐이다
+ * (새 필드는 항상 이렇게 넣는다, §9-0-34).
+ */
+export function awayGraceMs(player) {
+  const 쓴횟수 = Math.max(0, player?.awayCount ?? 0);
+  return 쓴횟수 < MULTI.outCheckAllowance
+    ? MULTI.outCheckSeconds * 1000
+    : MULTI.awaySeconds * 1000;
+}
+
+/**
+ * ★ **아웃체크 카운트다운 — 남은 ms.** 0이면 세고 있지 않다.
+ *
+ * 화면(`multiHud` 의 `아웃체크중`)과 종료 판정이 **같은 함수**를 본다. 둘이 갈리면
+ * "내 화면에는 아직 12초가 남았는데 상대는 이미 이겼다"가 된다.
+ */
+export function outCheckLeftMs(player, now) {
+  const at = leftAt(player);
+  if (!at) return 0;
+  return Math.max(0, at + awayGraceMs(player) - now);
+}
+
+/**
+ * ★ **아웃체크로 판에서 빠졌나** — 홈 버튼·전화·튕김으로 나가서 안 돌아온 사람.
+ *
+ * 기권(`나가기` 버튼)과 **구별해야 한다.** 기권은 이미 6초 유예를 주고 나가는 정식
+ * 경로라 계단 수로 승부를 가린다(§9-0-30 사용자 확정). 반면 이쪽은 사용자가 이번에
+ * 따로 못 박았다 — *"복귀 안하는거면, 그냥 방에 남아 있는 사람이 승리되게 만들자"*.
+ *
+ * 이 구별이 없으면 **앞서고 있을 때 홈 버튼을 누르는 것이 필승법**이 된다.
+ * 26차에 막은 "나가기가 곧 승리 버튼"이 홈 버튼으로 그대로 부활한다.
+ */
+export function disconnectedOut(player, now) {
+  const at = leftAt(player);
+  if (!at) return false;
+  return now - at > awayGraceMs(player);
 }
 
 // ─────────────────────────────────────────────
@@ -542,6 +608,57 @@ export function slotIndex(players, uid) {
     .sort((a, b) => (a[1]?.joinedAt ?? 0) - (b[1]?.joinedAt ?? 0) || a[0].localeCompare(b[0]))
     .map(([id]) => id);
   return order.indexOf(uid);
+}
+
+/**
+ * ★ **접속 카드가 살아 있나** — 60초 안에 활동이 있었나. (2026-08-19 19차 → 33차에 이리로)
+ *
+ * `presence.isLive` 가 이 함수를 부른다. 여기 있는 이유는 **방 목록도 같은 잣대를
+ * 써야 하기 때문**이다 — 두 화면이 서로 다른 숫자로 재면 "현재접속자는 0명인데
+ * 방은 3개"가 그대로 다시 생긴다(33차 사용자 신고).
+ *
+ * `lastActive` 가 없는 카드는 19차 이전 클라이언트가 쓴 것이라 `at`(폰 시계)으로라도
+ * 재 준다. 둘 다 없으면 **접속 중으로 보지 않는다** — 근거 없이 "여기 있다"고 말하는
+ * 쪽이 훨씬 나쁘다.
+ */
+export function presenceLive(card, now) {
+  const t = Number(card?.lastActive ?? card?.at ?? 0);
+  return t > 0 && now - t < MULTI.onlineSeconds * 1000;
+}
+
+/**
+ * ★ **이 방은 버려졌나 — 아무도 안 남았나.** (2026-08-21 33차, 사용자 신고)
+ *
+ * *"멀티게임에 방이 존재하는데, 현재접속자에는 나 혼자 뿐이야 (…) 현재접속자에
+ *   아무도 없는데 방이 2-3개 있다는게 말이 안되잖아"*
+ *
+ * ## 왜 지금까지 안 잡혔나
+ *
+ * 유령 정리 세 곳(`listRooms` 의 감추기 · `sweepEmptyRooms` · `purgeAbsent`)이 전부
+ * **`state === 'waiting'` 일 때만** 돌고 있었다. 그런데 판이 시작되면 `state` 는
+ * `'countdown'` 으로 굳고 **그 뒤로 아무도 안 바꾼다**(§9-0-61). 게다가 판이 시작되면
+ * `holdRoomSeat` 가 자동 이탈 예약을 취소하므로(잠깐 끊겼다고 자리를 잃으면 안 되니까)
+ * **앱을 꺼도 자리가 남는다.** 결과적으로 판이 한 번 시작된 방은 **아무도 못 치웠다.**
+ *
+ * ## 두 가지 근거를 함께 본다
+ *
+ *   ① `isStale` — 방 안의 신호(`seenAt`·`awayAt`·`offAt`)
+ *   ② **접속 목록**(`presence`) — 사용자가 지정한 그 연동이다
+ *
+ * ②가 강한 신호인 이유: 방이나 판에 앉아 있는 사람은 입력이 없어도 15초마다 심장
+ * 박동을 보낸다(`presence.heartbeat` 의 `inGame` 예외). 즉 **방에는 있는데 접속
+ * 목록에 없으면 확실히 나간 것이다.** 홈 버튼을 누르면 접속 카드가 그 자리에서
+ * 지워지므로 `seenAt` 30초보다 훨씬 빠르기도 하다.
+ *
+ * @param {object} room
+ * @param {number} now 서버 시각
+ * @param {Set<string>|null} live 접속 중인 uid 들. **믿을 수 없으면 `null`** —
+ *   모르는 것을 근거로 남을 방에서 빼면 안 된다(§9-0-39 의 그 교훈).
+ */
+export function roomAbandoned(room, now, live = null) {
+  const seats = Object.entries(room?.players ?? {});
+  if (!seats.length) return true;                 // 자리가 아예 없다
+  return seats.every(([uid, v]) => isStale(v, now) || (live ? !live.has(uid) : false));
 }
 
 export function playersInRound(players) {

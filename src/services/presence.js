@@ -23,6 +23,8 @@ import { getRtdb, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { markActive, msSinceActive } from '../core/activity.js';
+import { presenceLive } from './matchRules.js';
+import { MULTI } from '../config/balance.js';
 
 const PRESENCE = 'presence';
 const INBOX = 'inbox';
@@ -59,7 +61,7 @@ const START_DELAY_MS = 2500;
  * 그리고 **활동이 없으면 아예 안 쓴다.** 자리를 비운 사람의 비용이 0이 되고,
  * 60초가 지나면 저절로 목록에서 빠진다 — 따로 지우는 사람이 필요 없다.
  */
-export const ACTIVITY_TIMEOUT_MS = 60 * 1000;
+export const ACTIVITY_TIMEOUT_MS = MULTI.onlineSeconds * 1000;
 const HEARTBEAT_MS = 15 * 1000;
 const RECOMPUTE_MS = 5 * 1000;
 const WRITE_THROTTLE_MS = 10 * 1000;
@@ -372,9 +374,15 @@ export function refresh() {
  * "여기 있다"고 말하는 쪽이 훨씬 나쁘다(대결 신청이 허공으로 나간다).
  */
 export function isLive(card, now = serverNow()) {
-  const t = Number(card?.lastActive ?? card?.at ?? 0);
-  return t > 0 && now - t < ACTIVITY_TIMEOUT_MS;
+  /**
+   * ★ 판정은 **`matchRules` 한 곳**에 있다 (2026-08-21 33차). 방 목록도 같은 잣대로
+   * 재야 하는데(사용자 신고: "현재접속자엔 나 혼자인데 방은 3개"), 여기와 거기가 각자
+   * 60초를 세면 언젠가 한쪽만 고쳐진다.
+   */
+  return presenceLive(card, now);
 }
+
+
 
 /**
  * 접속자 목록을 구독한다.

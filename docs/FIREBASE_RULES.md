@@ -117,6 +117,30 @@ service cloud.firestore {
 
 `awayAt` 의 검증식은 `offAt` 과 **글자 그대로 같다**(본인 것만, 남의 것은 값이 그대로).
 
+### 아웃체크 1회 제한 — `awayCount` (2026-08-21 33차, 게시 완료)
+
+**게시 확인**: 되읽어 대조 — 한 줄 **10,063자 / djb2 `3629868605`**
+(게시 전 9,918 / 958749413 — **차이는 `awayCount` 잎 하나뿐**임을 문자열로 검산했다).
+
+**규칙 플레이그라운드 실측** — 게시했다는 것과 통과한다는 것은 다르다(§9-0-56):
+
+| 시뮬레이션 (`set /rooms/QA33`, uid=u1) | 결과 |
+|---|---|
+| `awayCount: 1` 을 포함한 방 쓰기 | **허용** (게시 전이면 `$other:false` 에 걸려 거부됐다) |
+| `awayCount: 100` (상한 99 초과) | **거부** — 검증이 실제로 돈다 |
+
+| 새 필드 | 무엇 | 규칙이 없으면 |
+|---|---|---|
+| `players/$uid/awayCount` | 이 판에서 **긴 유예(아웃체크 30초)를 몇 번 썼나** (0~99, 본인만) | 그 쓰기만 거부되고 **누구나 매번 30초**를 받는다 — 판정이 깨지는 게 아니라 너그러워질 뿐이다 |
+
+`markAway(false)`(= 돌아왔다)가 `awayAt: null` 과 함께 **한 번의 update** 로 보낸다.
+규칙이 아직 없으면 `$other: false` 때문에 그 update 가 통째로 거부되므로, 클라이언트는
+**표시 지우기만 따로 한 번 더** 보낸다 — 안 그러면 돌아온 사람의 `awayAt` 이 안 지워져
+억울하게 진다.
+
+다음 판 준비(`resetRoom`)는 `players` 맵을 통째로 다시 쓰면서 이 키를 **빼 버린다** —
+그래서 **판마다 1회**가 저절로 성립한다(`revives`·`out` 과 같은 취급).
+
 `result/cards` 는 **순위 확정 update 에 얹지 않았다.** `$other: false` 라 규칙에 없는
 필드는 그 update 를 통째로 막는데, 그러면 규칙이 아직 안 올라간 기기에서 **순위 확정
 자체가 거부되고 판이 영영 안 끝난다.** 명함은 화면에 예쁘게 보이자는 것이고 판을
@@ -285,6 +309,9 @@ service cloud.firestore {
             },
             "awayAt": {
               ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "awayCount": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99 && ($uid == auth.uid || newData.val() == data.val())"
             },
             "seenAt": {
               ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val() || (data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"

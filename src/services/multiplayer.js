@@ -14,10 +14,11 @@ import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { MULTI } from '../config/balance.js';
 import { packItems, ITEMS_MAX } from '../data/items.js';
-import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound, reviveFloor, canRevive, roundOver, isStale, canPause } from './matchRules.js';
+import { makeRoomCode, isRoomCode, rankPlayers, byPreference, hasSeat, playersInRound, reviveFloor, canRevive, roundOver, isStale, canPause, roomAbandoned, presenceLive, roundRunning } from './matchRules.js';
 
 const ROOMS = 'rooms';
 const MY_ROOMS = 'userRooms';
+const PRESENCE = 'presence';
 
 /** 방을 새로 팔 때 몇 번까지 코드 충돌을 다시 시도할지 */
 const CODE_RETRIES = 8;
@@ -505,6 +506,43 @@ export async function resetRoom(code) {
 }
 
 /**
+ * ★ **지금 접속 중인 uid 들** — 유령 방을 가려내는 두 번째 근거. (2026-08-21 33차, 사용자 지정)
+ *
+ * *"접속자 체크를 해서, 해당 접속자가 어차피 현재접속자에서 없게 표시되는 부분이라면
+ *   그것을 연동해서 동시에 빈 방을 사라지게 동기화 해"*
+ *
+ * **내가 그 목록에 없으면 `null` 을 돌려준다.** 내 접속 표시는 부팅 2.5초 뒤 한가할 때
+ * 붙으므로(§9-0-43), 아직 안 붙은 상태의 목록을 근거로 삼으면 **멀쩡한 방을 지운다.**
+ * 사용자가 말한 판정 기준도 정확히 이것이다 — *"현재접속자에 나 혼자 뿐이라면"*,
+ * 즉 **내가 보이는 상태**에서 남이 안 보이는 것이 근거다.
+ *
+ * 못 읽어도 `null` 이다. 그러면 예전처럼 `seenAt` 만 보고 판단한다 — 모르는 것을
+ * 근거로 남을 방에서 빼지 않는다(§9-0-39).
+ */
+/**
+ * 접속 목록은 **잠깐 재사용한다.** 대기방은 방 스냅샷마다 `purgeAbsent` 를 부르는데
+ * (4인이면 1.2초에 한 번, §9-0-45) 그때마다 접속 노드를 통째로 읽으면 왕복이 쌓인다.
+ * 3초면 홈 버튼을 누른 사람이 목록에서 빠지는 속도(즉시)에 비해 무시할 만한 지연이다.
+ */
+const LIVE_TTL_MS = 3000;
+let liveCache = { at: 0, set: null };
+
+export async function readLiveUids(fb) {
+  fb = fb ?? await rt();
+  if (!fb) return null;
+  if (Date.now() - liveCache.at < LIVE_TTL_MS) return liveCache.set;
+  const { val } = await readOnce(fb, PRESENCE).catch(() => ({ val: null }));
+  if (!val || typeof val !== 'object') return null;
+  const now = Date.now() + serverOffsetSync();
+  const live = new Set();
+  for (const [uid, card] of Object.entries(val)) {
+    if (presenceLive(card, now)) live.add(uid);
+  }
+  liveCache = { at: Date.now(), set: live.has(fb.uid) ? live : null };
+  return liveCache.set;
+}
+
+/**
  * 공개 방 목록 — 화면에 그대로 뿌릴 수 있는 모양으로. (2026-08-16)
  *
  * 게임 중인 방도 **숨기지 않는다.** 자리가 있으면 대기자로 들어가 다음 판을 기다리는 게
@@ -515,22 +553,34 @@ export async function listRooms() {
   const fb = await rt();
   if (!fb) return [];
   await waitConnected(fb);
-  const rooms = await scanOpenRooms(fb);
+  const [rooms, live] = await Promise.all([scanOpenRooms(fb), readLiveUids(fb)]);
   const max = MULTI.maxPlayers;
   const 지금 = Date.now() + serverOffsetSync();
+  /**
+   * ★ **목록을 여는 김에 유령 방을 치운다.** (2026-08-21 33차, 사용자 신고)
+   *
+   * 지금까지 청소는 `quickJoin`(= `방 입장` 버튼) 안에서만 돌았다. 그래서 **방 목록만
+   * 보는 사람은 유령을 하나도 못 치웠고**, 목록에 뜨는 그 방들이 그대로 남았다.
+   * 목록은 이 게임에서 가장 자주 열리는 멀티 화면이므로 여기가 청소할 자리다.
+   */
+  sweepEmptyRooms(fb, rooms, live);
   return rooms
     // 끝난 방은 목록에 올리지 않는다 — 들어가도 아무것도 못 한다
     .filter((r) => r && r.code && !r.isPrivate && r.state !== 'finished')
     /**
-     * ★ **전원이 자리를 비운 방도 감춘다.** (2026-08-19 10차)
-     * 들어가 봐야 상대가 없다. 지우는 건 `sweepEmptyRooms` 가 뒤에서 한다 —
-     * 목록에서 감추는 것과 지우는 것을 나눠 둬야 "지우기가 실패해도 안 보인다".
+     * ★ **아무도 안 남은 방은 감춘다 — 대기중이든 판 중이든.** (2026-08-21 33차)
+     *
+     * 예전에는 `state === 'waiting'` 인 방만 감췄다. 그런데 판이 시작되면 `state` 는
+     * `'countdown'` 으로 굳고 아무도 안 바꾼다(§9-0-61) — 즉 **한 번이라도 시작된 방은
+     * 이 필터를 통째로 비껴갔다.** 사용자가 신고한 "현재접속자엔 나 혼자인데 방은 2~3개"의
+     * 정체가 이것이다.
+     *
+     * 판정에는 접속 목록(`live`)도 함께 쓴다 — 방에 앉아 있는 사람은 입력이 없어도
+     * 15초마다 심장 박동을 보내므로, **방에는 있는데 접속 목록에 없으면 확실히 나간 것**이다.
+     *
+     * 감추는 것과 지우는 것은 여전히 따로다 — 지우기가 실패해도 안 보여야 한다.
      */
-    .filter((r) => {
-      if (r.state !== 'waiting') return true;
-      const list = Object.values(r.players ?? {});
-      return !list.length || list.some((v) => !isStale(v, 지금));
-    })
+    .filter((r) => !roomAbandoned(r, 지금, live))
     .map((r) => {
       const players = Object.values(r.players ?? {});
       const host = r.players?.[r.hostUid];
@@ -591,8 +641,15 @@ export async function purgeAbsent(code, known) {
   if (!room || room.state !== 'waiting') return 0;
 
   const now = Date.now() + serverOffsetSync();
+  /**
+   * ★ 접속 목록도 함께 본다 (2026-08-21 33차, 사용자 지정). 대기방에 앉아 있는 사람은
+   * 입력이 없어도 15초마다 심장 박동을 보내므로 **접속 목록에 없으면 확실히 나간 것**이고,
+   * 홈 버튼을 누르면 그 자리에서 카드가 지워지므로 `seenAt` 30초보다 훨씬 빠르다.
+   */
+  const live = await readLiveUids(fb);
+  const 없는사람 = (uid, v) => isStale(v, now) || (live ? !live.has(uid) : false);
   const 나갈사람 = Object.entries(room.players ?? {})
-    .filter(([uid, v]) => uid !== fb.uid && isStale(v, now))
+    .filter(([uid, v]) => uid !== fb.uid && 없는사람(uid, v))
     .map(([uid]) => uid);
   if (!나갈사람.length) return 0;
 
@@ -651,35 +708,64 @@ export async function refreshMyCard(code, known) {
   } catch { return false; }
 }
 
-function sweepEmptyRooms(fb, rooms) {
+function sweepEmptyRooms(fb, rooms, live = null) {
   const now = Date.now();
   const 서버지금 = now + serverOffsetSync();
   /**
-   * ★ **전원이 자리를 비운 대기방도 치운다.** (2026-08-19 10차, 사용자 신고)
+   * ★ **판이 시작된 방도 치운다 — 전원이 나갔다면.** (2026-08-21 33차, 사용자 신고)
    *
-   * 방만 만들고 창을 닫으면 그 방은 **참가자 1명짜리 유령 방**으로 남는다.
-   * 참가자가 0명이 아니므로 예전 조건(`players` 가 비었나)에는 안 걸렸고,
-   * 자동 매칭은 `open == true` 인 앞 12개만 훑으므로 이런 방 12개면 전원이
-   * 새 방만 파게 된다 — 폰 세 대가 전부 방장이 되던 그 증상이다(§9-0-17).
+   * 예전에는 `state === 'waiting'` 인 방만 봤다. 이유는 옳았다 — *"판이 도는 방은 잠깐
+   * 전원이 백그라운드일 수 있고, 그때 방을 지우면 진행 중인 게임이 통째로 사라진다."*
+   * 그런데 그 조심스러움 때문에 **한 번이라도 시작된 방은 영영 아무도 못 치웠다.**
    *
-   * **대기 중인 방에서만** 한다. 판이 도는 방은 잠깐 전원이 백그라운드일 수 있고,
-   * 그때 방을 지우면 진행 중인 게임이 통째로 사라진다.
+   * 세 가지가 겹쳐 있었다:
+   *   ① 판이 시작되면 `state` 는 `'countdown'` 으로 굳고 아무도 안 바꾼다(§9-0-61)
+   *   ② 판이 시작되면 `holdRoomSeat` 가 자동 이탈 예약을 취소한다 — 잠깐 끊겼다고
+   *      자리를 잃으면 안 되니까 맞는 설계지만, **영영 안 돌아오면 그 자리를 치울
+   *      사람이 없다**
+   *   ③ `leaveRoom` 은 판이 안 끝났으면 `'kept'` 로 물러난다(순위·정산의 근거를 지키려고)
+   *
+   * 그래서 판 도중에 앱을 끄거나 나가기를 누른 방이 `open:true` 인 채 그대로 쌓였다.
+   * 사용자가 본 "현재접속자엔 나 혼자인데 방은 2~3개"가 정확히 이 상태다(시뮬로 재현).
+   *
+   * 안전장치는 그대로다 — **전원이 나갔을 때만** 손댄다(`roomAbandoned`). 한 명이라도
+   * 살아 있으면 판이든 대기방이든 건드리지 않는다. 여기에 접속 목록(`live`)을 더해
+   * 판정을 더 확실하게 만들었다.
    */
-  const 전원유령 = (r) => {
-    if (r.state !== 'waiting') return false;
-    const list = Object.values(r.players ?? {});
-    return list.length > 0 && list.every((v) => isStale(v, 서버지금));
-  };
-  const dead = rooms
-    .filter((r) => r && r.code
-      && (!Object.keys(r.players ?? {}).length || 전원유령(r))
-      && !mustKeepRoom(r)   // 신발이 걸려 있는 방은 못 지운다 (증발하거나 패널티가 면제된다)
-      && (전원유령(r) || now - (r.createdAt ?? now) > STALE_EMPTY_MS))
+  const 버려짐 = (r) => roomAbandoned(r, 서버지금, live);
+  const 비었다 = (r) => !Object.keys(r.players ?? {}).length;
+  const 후보 = rooms
+    .filter((r) => r && r.code && 버려짐(r)
+      // 막 만들어진 빈 방은 건드리지 않는다 — 지금 막 들어가려는 사람이 있을 수 있다
+      && (!비었다(r) || now - (r.createdAt ?? now) > STALE_EMPTY_MS))
     .slice(0, 5);
-  for (const r of dead) {
+
+  for (const r of 후보) {
+    /**
+     * ★ **판이 걸려 있으면 먼저 끝낸다.** 순위를 안 박고 지우면 항아리에 걸린 신발이
+     * 통째로 증발한다(§9-0-25 에서 100켤레가 그렇게 사라졌다). `finalizeResult` 는
+     * 혼자 남아도 순위를 박을 수 있고, 그 뒤에는 `mustKeepRoom` 이 정산이 끝날 때까지
+     * 방을 지켜 준다.
+     */
+    if (roundRunning(r) && !r.result?.rankings) {
+      finalizeResult(r.code).catch(() => {});
+      continue;                                   // 다음 목록 갱신 때 마저 치운다
+    }
+    if (mustKeepRoom(r)) {
+      /**
+       * 신발이 걸린 방은 **지울 수 없지만 목록에 뜰 이유도 없다.** `open` 을 내려
+       * 매칭 쿼리(`open == true`)에서 빠지게 한다 — 예전에는 이런 방이 12칸을
+       * 갉아먹으며 영원히 목록에 남았다.
+       */
+      if (r.open) {
+        withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, r.code)), { open: false }),
+          undefined, '유령 방 내리기').catch(() => {});
+      }
+      continue;
+    }
     withTimeout(fb.dbMod.remove(fb.dbMod.ref(fb.rtdb, path(ROOMS, r.code))), undefined, '빈 방 정리').catch(() => {});
   }
-  return dead.length;
+  return 후보.length;
 }
 
 export async function scanRooms(fb) {
@@ -1026,11 +1112,45 @@ export function disarmPresence(code) {
 export async function markAway(code, away) {
   const fb = await rt();
   if (!fb) return;
-  const ref = fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid, 'awayAt'));
+  const base = path(ROOMS, code, 'players', fb.uid);
+  if (away) {
+    try {
+      await withTimeout(fb.dbMod.set(
+        fb.dbMod.ref(fb.rtdb, path(base, 'awayAt')), fb.dbMod.serverTimestamp()),
+        undefined, '자리 비움 표시');
+    } catch { /* 규칙이 아직 없거나 이미 방에서 빠졌다 — 예전 판정으로 돌아간다 */ }
+    return;
+  }
+
+  /**
+   * ★ **돌아올 때 아웃체크를 한 번 썼다고 적는다.** (2026-08-21 33차, 사용자 지정)
+   *
+   * *"단 이것도 악용할 수 있으니 딱 1회만 가능하도록"*
+   *
+   * **왜 나갈 때가 아니라 돌아올 때인가.** 안 돌아온 사람에게는 횟수가 아무 의미가 없다
+   * (어차피 30초 뒤에 진다). 제한이 필요한 대상은 **들락거리는 사람**이고, 그 사람은
+   * 정의상 돌아온다. 나갈 때 올리면 지금 이 이탈까지 세어져 첫 번째부터 6초가 된다.
+   *
+   * 값은 **읽어서 +1** 한다. `ServerValue.increment` 를 쓰면 규칙의 잎 검증
+   * (`newData.isNumber()`)과 맞물려 까다로워지고, 이 값은 경쟁이 없다 —
+   * 자기 칸은 자기만 쓴다.
+   */
+  const 지금값 = (await readOnce(fb, path(base, 'awayCount')).catch(() => ({ val: 0 }))).val;
+  const 다음값 = Math.min(99, Math.max(0, Number(지금값) || 0) + 1);
   try {
-    await withTimeout(fb.dbMod.set(ref, away ? fb.dbMod.serverTimestamp() : null),
-      undefined, '자리 비움 표시');
-  } catch { /* 규칙이 아직 없거나 이미 방에서 빠졌다 — 예전 판정으로 돌아간다 */ }
+    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, base),
+      { awayAt: null, awayCount: 다음값 }), undefined, '자리 비움 해제');
+  } catch {
+    /**
+     * 규칙에 `awayCount` 가 아직 없으면 이 update 는 **통째로** 거부된다($other:false).
+     * 그러면 `awayAt` 도 안 지워져 돌아온 사람이 억울하게 진다 — 그건 절대 안 된다.
+     * 그래서 표시 지우기만 따로 한 번 더 보낸다.
+     */
+    try {
+      await withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(base, 'awayAt')), null),
+        undefined, '자리 비움 해제');
+    } catch { /* 이미 방에서 빠졌다 */ }
+  }
 }
 
 export function resetProgressThrottle() {

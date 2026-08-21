@@ -60,6 +60,13 @@ if (state === 'exit') {
   scene.room.players.a = { stairs: 380, alive: false, out: true, revives: 2, deadAt: Date.now() - 1800 };
 } else if (state === 'pause') {
   scene.pauseLeftMs = 13400;
+} else if (state === 'outcheck') {
+  /**
+   * ★ 33차: **상대가 홈 버튼을 눌렀다.** `아웃체크중` + 빨간 카운트다운.
+   * 이 화면도 실기기 두 대가 있어야 보이는 자리라, 안 찍어 두면 문구가 레이스
+   * 게이지를 침범하는지·계단을 가리는지 확인할 방법이 없다.
+   */
+  scene.room.players.b = { stairs: 300, alive: true, revives: 1, awayAt: Date.now() - 8000 };
 } else if (state === 'menu') {
   scene.menu = { sel: 1, confirmExit: false };
   scene.menuItems = () => ([

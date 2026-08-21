@@ -1004,8 +1004,10 @@ console.log('\nS25) 정말 끊겼다 — 서버가 찍은 시각부터 유예가
 {
   /**
    * 자리 지킴의 반대쪽. 소켓이 죽으면 **서버가 그 순간을 `offAt` 에 찍는다.**
-   * 그러면 어림할 필요가 없다 — **짧은 유예(6초)** 가 지나면 판에서 뺀다(31차).
-   * 조용한 것(30초)과 달리 이건 짐작이 아니라 서버가 관측한 사실이다.
+   * 그러면 어림할 필요가 없다 — 조용한 것과 달리 서버가 관측한 사실이다.
+   *
+   * ★ 33차부터 **첫 이탈의 유예는 30초**(`outCheckSeconds`, 사용자 지정 "아웃체크중")다.
+   * 6초는 두 번째 이탈부터다 — 그쪽은 S45 가 본다.
    */
   const w = new World();
   const A = w.player('A', { shoes: 20 });
@@ -1020,7 +1022,7 @@ console.log('\nS25) 정말 끊겼다 — 서버가 찍은 시각부터 유예가
   eq('서버가 끊긴 시각을 찍었다', typeof 끊긴직후.players.B.offAt, 'number');
   eq('끊기자마자 빼지는 않는다', M.outOfRound({ uid: 'B', ...끊긴직후.players.B }, Date.now()), false);
 
-  advance((MULTI.awaySeconds + 2) * 1000);
+  advance((MULTI.outCheckSeconds + 2) * 1000);
   const 유예후 = w.db.read(`rooms/${code}`);
   eq('유예가 지나면 판에서 빠진다', M.outOfRound({ uid: 'B', ...유예후.players.B }, Date.now()), true);
   eq('1:1 이라 판이 끝난다', M.roundOver(유예후, Date.now()), true);
@@ -1496,12 +1498,21 @@ console.log('\nS40) ★ 홈 버튼으로 나가면 6초 뒤에 1:1 판이 끝난
   eq('누르자마자 빼지는 않는다', M.outOfRound({ uid: 'B', ...직후.players.B }, Date.now()), false);
   eq('그래서 판도 아직 안 끝났다', M.roundOver(직후, Date.now()), false);
 
+  /** ★ 33차: 첫 이탈은 **30초**(아웃체크중)를 준다. 6초는 두 번째부터다 — S45 참고 */
   advance((MULTI.awaySeconds + 1) * 1000);
+  eq('★ 6초로는 아직 안 빠진다 (첫 이탈은 30초)',
+    M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), false);
+  advance((MULTI.outCheckSeconds - MULTI.awaySeconds + 1) * 1000);
   const 유예후 = w.db.read(`rooms/${code}`);
-  eq('★ 6초가 지나면 판에서 빠진다', M.outOfRound({ uid: 'B', ...유예후.players.B }, Date.now()), true);
+  eq('★ 30초가 지나면 판에서 빠진다', M.outOfRound({ uid: 'B', ...유예후.players.B }, Date.now()), true);
   eq('★ 1:1 이라 판이 끝난다', M.roundOver(유예후, Date.now()), true);
-  // 30초짜리 조용함 판정이었다면 아직 안 끝났어야 한다 — 실제로 짧은 유예를 쓰는지 확인
-  eq('조용함(30초) 기준으로는 아직 멀었다', Date.now() - 유예후.players.B.seenAt < MULTI.absentSeconds * 1000, true);
+  /**
+   * ★ **명시적 신호를 실제로 쓰는지** 확인한다. 같은 시점에 `awayAt` 만 없는 사람
+   * (= 조용하기만 한 사람)은 `seenAt` 이 살아 있는 한 안 빠져야 한다.
+   * 이게 없으면 "그냥 30초 조용해서 빠진 것"과 구별이 안 된다.
+   */
+  eq('★ 신호가 없는 사람은 같은 시점에도 안 빠진다',
+    M.isStale({ seenAt: Date.now() - 1000 }, Date.now()), false);
 
   const before = w.total(code);
   await A.act(() => Room.finalizeResult(code));
@@ -1518,14 +1529,16 @@ console.log('\nS41) 잠깐 내렸다 올린 사람은 안 빠진다 (도장이 �
   const B = w.player('B', { shoes: 20 });
   const code = await startRound(w, A, [B]);
   await B.act(() => Room.markAway(code, true));
-  advance((MULTI.awaySeconds + 3) * 1000);
+  advance((MULTI.outCheckSeconds + 3) * 1000);
   eq('그동안은 빠진 것으로 본다',
     M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), true);
 
   await B.act(() => Room.markAway(code, false));    // 돌아왔다
   await B.act(() => Room.heartbeat(code));
+  await A.act(() => Room.heartbeat(code));          // A 는 그동안 계속 뛰고 있었다
   const 돌아온뒤 = w.db.read(`rooms/${code}`);
   eq('★ 표시가 지워졌다', 돌아온뒤.players.B.awayAt ?? null, null);
+  eq('★ 아웃체크를 한 번 썼다고 적힌다', 돌아온뒤.players.B.awayCount, 1);
   eq('★ 판정이 그 즉시 원상 복구된다', M.outOfRound({ uid: 'B', ...돌아온뒤.players.B }, Date.now()), false);
   eq('판도 다시 안 끝난 것이 된다', M.roundOver(돌아온뒤, Date.now()), false);
 }
@@ -1579,6 +1592,172 @@ console.log('\nS43) ★ 진 사람이 나가도 결과 화면에 이름이 남�
   const 방 = w.db.read(`rooms/${code}`);
   eq('자리는 사라졌다', 방.players?.B ?? null, null);
   eq('★ 그래도 이름은 읽을 수 있다', 방.result.cards.B.nickname, '토토');
+}
+
+console.log('\nS44) ★ 판 중에 앱을 꺼도 유령 방이 안 남는다 (33차 사용자 신고)');
+{
+  /**
+   * *"게임을 하고 나가고 반복 하다 보면, 멀티게임에 방이 존재하는데, 현재접속자에는
+   *   나 혼자 뿐이야"*
+   *
+   * 원인이 셋 겹쳐 있었다 — ① 판이 시작되면 `state` 가 `'countdown'` 으로 굳고(§9-0-61)
+   * 유령 정리 세 곳이 전부 `'waiting'` 일 때만 돌았다 ② 판이 시작되면 `holdRoomSeat` 가
+   * 자동 이탈 예약을 취소하므로 앱을 꺼도 **자리가 남는다** ③ 청소는 `quickJoin` 안에서만
+   * 돌아서 **방 목록만 보는 사람은 하나도 못 치웠다.**
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 200 });
+  const B = w.player('B', { shoes: 200 });
+  const codes = [];
+  for (let i = 0; i < 3; i++) {
+    const code = await startRound(w, A, [B]);
+    codes.push(code);
+    await A.act(() => Room.publishProgress(code, { stairs: 4 }, true));
+    await B.act(() => Room.publishProgress(code, { stairs: 7 }, true));
+    w.db.dropConnection('A');                      // 둘 다 그냥 앱을 껐다
+    w.db.dropConnection('B');
+  }
+  eq('자리는 그대로 남아 있다 (판 중이라 예약이 꺼져 있다)',
+    Object.keys(w.db.read(`rooms/${codes[0]}`).players).length, 2);
+  eq('방 상태는 countdown 에서 굳는다', w.db.read(`rooms/${codes[0]}`).state, 'countdown');
+
+  advance(끊김);
+  const 목록1 = await A.act(() => Room.listRooms());
+  eq('★ 목록에 하나도 안 뜬다', 목록1.length, 0);
+
+  // 청소는 목록을 여는 김에 돈다 — 판이 걸려 있으면 먼저 끝내고, 그 다음에 내린다
+  await new Promise((r) => setTimeout(r, 0));
+  await A.act(() => Room.listRooms());
+  await new Promise((r) => setTimeout(r, 0));
+  const 남은방 = codes.map((c) => w.db.read(`rooms/${c}`));
+  eq('★ 순위가 박혔다 (신발이 증발하지 않는다)', 남은방.map((r) => !!r?.result?.rankings), [true, true, true]);
+  eq('★ 매칭 창에서 빠졌다 (open:false)', 남은방.map((r) => r?.open ?? null), [false, false, false]);
+  eq('★ 스캔에도 안 걸린다', (await A.act(() => Room.scanRooms())).length, 0);
+}
+
+console.log('\nS45) ★ 아웃체크 30초 — 딱 1회, 두 번째부터는 6초 (33차 사용자 지정)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 200 });
+  const B = w.player('B', { shoes: 200 });
+  const code = await startRound(w, A, [B]);
+  await A.act(() => Room.publishProgress(code, { stairs: 10 }, true));
+
+  // ── 첫 이탈: 30초를 받는다
+  await B.act(() => Room.markAway(code, true));
+  advance((MULTI.awaySeconds + 2) * 1000);
+  eq('첫 이탈은 6초로 안 빠진다',
+    M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), false);
+  eq('★ 남은 사람 화면에 아웃체크 카운트다운이 뜬다',
+    M.outCheckLeftMs(w.db.read(`rooms/${code}`).players.B, Date.now()) > 0, true);
+
+  // 돌아왔다 — 여기서 횟수가 올라간다
+  await B.act(() => Room.markAway(code, false));
+  await B.act(() => Room.heartbeat(code));
+  await A.act(() => Room.heartbeat(code));
+  eq('★ 한 번 썼다고 적힌다', w.db.read(`rooms/${code}`).players.B.awayCount, 1);
+  eq('돌아오면 판정이 원상 복구',
+    M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), false);
+
+  // ── 두 번째 이탈: 6초뿐이다 (악용 차단)
+  await B.act(() => Room.markAway(code, true));
+  advance((MULTI.awaySeconds + 2) * 1000);
+  eq('★ 두 번째부터는 6초면 빠진다',
+    M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), true);
+  eq('★ 1:1 이라 판이 끝난다', M.roundOver(w.db.read(`rooms/${code}`), Date.now()), true);
+}
+
+console.log('\nS46) ★ 아웃체크로 빠진 사람은 계단이 높아도 진다 (33차 사용자 지정)');
+{
+  /**
+   * *"그럼에도 불구하고 상대방이 전호 홈버튼 누르거나 전화가 와서 아웃되었는데
+   *   복귀 안하는거면, 그냥 방에 남아 있는 사람이 승리되게 만들자"*
+   *
+   * 이게 없으면 **앞서고 있을 때 홈 버튼을 누르는 것이 필승법**이 된다 —
+   * 26차에 막은 "나가기가 곧 승리 버튼"이 홈 버튼으로 그대로 부활한다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 200 });
+  const B = w.player('B', { shoes: 200 });
+  const code = await startRound(w, A, [B]);
+  await A.act(() => Room.publishProgress(code, { stairs: 5 }, true));    // 남아 있는 사람
+  await B.act(() => Room.publishProgress(code, { stairs: 90 }, true));   // 훨씬 앞선 채 홈 버튼
+
+  await B.act(() => Room.markAway(code, true));
+  advance((MULTI.outCheckSeconds + 2) * 1000);
+  await A.act(() => Room.heartbeat(code));
+
+  const 방 = w.db.read(`rooms/${code}`);
+  eq('계단은 B 가 훨씬 높다', [방.players.A.stairs, 방.players.B.stairs], [5, 90]);
+  eq('★ 그래도 남아 있는 A 가 1등', M.rankPlayers(M.playersInRound(방.players), Date.now())[0], 'A');
+
+  const before = w.total(code);
+  await A.act(() => Room.finalizeResult(code));
+  eq('★ 순위도 A 가 먼저', w.db.read(`rooms/${code}`).result.rankings[0], 'A');
+  await resultScreen(A, code);
+  await reboot(B);                                // 진 사람이 낸다
+  await reboot(A);                                // 승자는 다음 접속에 걷는다
+  eq('총량 보존', w.total(code), before);
+  eq('★ 승자 A 가 1켤레 얻었다', A.wallet(), 201);
+}
+
+console.log('\nS47) ★ 접속 목록과 방 목록을 맞춘다 — 접속자에 없으면 빈 방 (33차 사용자 지정)');
+{
+  /**
+   * *"현재접속자에 나 혼자 뿐이라면 그 부분을 호출해서, 빈방, 즉 아무도 없단 뜻이니
+   *   빈방이라는것을 동시에 체크해서, 그런 유령방들이 사라지게 만들어줘"*
+   *
+   * 방·판에 앉아 있는 사람은 입력이 없어도 15초마다 심장 박동을 보내므로
+   * (`presence.heartbeat` 의 `inGame` 예외), **방에는 있는데 접속 목록에 없으면
+   * 확실히 나간 것**이다. `seenAt` 30초를 기다릴 이유가 없다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  // B 가 방을 만들어 두고 앱을 내려 뒀다. 소켓은 살아 있어 `seenAt` 도 `offAt` 도 멀쩡하다
+  // — **예전 판정으로는 영원히 안 걸리는 상태**다.
+  const code = await B.act(() => Room.createRoom({}));
+  eq('B 는 방에 멀쩡히 앉아 있다',
+    M.isStale(w.db.read(`rooms/${code}`).players.B, Date.now()), false);
+
+  // 접속 목록에는 A 뿐이다 (B 는 화면을 내려 카드가 지워졌다, §9-0-49)
+  w.db.write('presence/A', { nickname: 'A', state: 'lobby', at: Date.now(), lastActive: Date.now() });
+  eq('★ 접속자가 나뿐이면 그 방은 감춘다', (await A.act(() => Room.listRooms())).length, 0);
+
+  /**
+   * 접속 목록은 3초 재사용한다(`LIVE_TTL_MS`) — 대기방이 스냅샷마다 부르므로 그때마다
+   * 읽으면 왕복이 쌓인다. 그래서 목록이 바뀐 뒤에는 그만큼 지나야 한다.
+   */
+  advance(4000);
+  // B 가 접속 목록에 돌아오면 방도 돌아온다
+  w.db.write('presence/B', { nickname: 'B', state: 'playing', at: Date.now(), lastActive: Date.now() });
+  eq('★ 돌아오면 방도 다시 보인다', (await A.act(() => Room.listRooms())).length, 1);
+
+  // ★ 내가 목록에 없으면 근거로 쓰지 않는다 — 접속 표시가 아직 안 붙었을 수 있다
+  advance(4000);
+  w.db.write('presence', { Z: { nickname: 'Z', state: 'lobby', at: Date.now(), lastActive: Date.now() } });
+  eq('★ 내가 안 보이면 접속 목록을 안 믿는다', (await A.act(() => Room.listRooms())).length, 1);
+}
+
+console.log('\nS48) ★ 한 명이라도 살아 있으면 방을 안 건드린다 (오검출 방지)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  await A.act(() => Room.publishProgress(code, { stairs: 3 }, true));
+  w.db.dropConnection('B');                       // B 만 끊겼다
+  advance(끊김);
+  await A.act(() => Room.heartbeat(code));        // A 는 계속 뛰고 있다
+  // 접속 목록에도 A 는 살아 있다
+  w.db.write('presence/A', { nickname: 'A', state: 'playing', at: Date.now(), lastActive: Date.now() });
+
+  await A.act(() => Room.listRooms());
+  await new Promise((r) => setTimeout(r, 0));
+  eq('★ 방이 그대로 있다', !!w.db.read(`rooms/${code}`), true);
+  eq('★ 자리도 그대로다 (순위·정산의 근거)',
+    Object.keys(w.db.read(`rooms/${code}`).players).length, 2);
+  eq('★ 순위를 멋대로 박지 않는다', w.db.read(`rooms/${code}`).result?.rankings ?? null, null);
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n시뮬레이션 이상 없음');
