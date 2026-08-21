@@ -38,7 +38,18 @@ const eq = (label, got, want) => {
   console.log(`  FAIL ${label}\n       got  ${a}\n       want ${c}`);
 };
 
+/**
+ * ★ **시각을 못 박고 연다** (2026-08-21 32차).
+ *
+ * 하루 5분(19:30~19:35 KST) 동안 배트맨마스크가 500켤레가 되므로, 시각을 안 정하면
+ * **하필 그 5분에 돌린 검사만 실패한다** — 코드는 멀쩡한데 값이 다르다고 하는,
+ * 원인을 알 수 없는 종류의 실패다. 기본은 창 **밖**이고, 창 안을 보고 싶은 검사만
+ * `nowms` 를 직접 넘긴다.
+ */
+const 기본시각 = Date.parse('2026-08-21T12:00:00+09:00');
+
 const open = async (qs = '', w = 390) => {
+  if (!/(^|&)nowms=/.test(qs)) qs += `${qs ? '&' : ''}nowms=${기본시각}`;
   const p = await b.newPage({ viewport: { width: w, height: 980 } });
   p.on('pageerror', (e) => errs.push(String(e)));
   p.on('console', (m) => {
@@ -340,6 +351,68 @@ for (const w of [320, 360, 390, 412]) {
   console.log('\n⑩ 그림이 전부 있는가 (정면·옆 + 날개 상승 컷)');
   eq('★ 빠진 그림 없음', missing, []);
   await p.close();
+}
+
+// ── ⑪ 이스터 에그 — 하루 5분만 열리는 할인 (32차 사용자 지정) ─────────────
+/**
+ * *"매일 오후 7시 30분 부터 35분 사이에 배트맨 마스크 신발 500개에 파는 이스터 에그"*
+ *
+ * 시각을 손에 쥐어야 검사할 수 있다 — 미리보기 페이지가 `?nowms=` 로 `Date.now` 를
+ * 갈아 끼운다(검사 페이지에서만. 앱에는 그런 통로가 없다).
+ * **창 밖과 창 안 두 상태를 같은 화면 코드로** 띄워 놓고 값·배지·버튼을 나란히 본다.
+ */
+{
+  const 창밖 = Date.parse('2026-08-21T19:36:00+09:00');
+  const 창안 = Date.parse('2026-08-21T19:31:00+09:00');
+  const 읽기 = async (ms) => {
+    const p = await open(`shoes=12000&nowms=${ms}`);
+    await pickTab(p, '악세사리');
+    // 배트맨마스크 줄을 눌러 큰 버튼까지 그 아이템으로 맞춘다
+    await p.locator('.shop-row:has-text("배트맨마스크")').click();
+    await sleep(250);
+    const r = await p.evaluate(() => {
+      const row = [...document.querySelectorAll('.shop-row')]
+        .find((x) => x.querySelector('.shop-name').textContent === '배트맨마스크');
+      const iron = [...document.querySelectorAll('.shop-row')]
+        .find((x) => x.querySelector('.shop-name').textContent === '아이언맨마스크');
+      const big = [...document.querySelectorAll('.pbtn')]
+        .find((x) => /구매하기/.test(x.textContent));
+      const tag = row.querySelector('.shop-sale');
+      const cs = tag && getComputedStyle(tag);
+      return {
+        cost: row.querySelector('.shop-cost')?.textContent ?? '',
+        ironCost: iron.querySelector('.shop-cost')?.textContent ?? '',
+        tag: tag?.textContent ?? '',
+        tagBg: cs?.backgroundColor ?? '',
+        tagFg: cs?.color ?? '',
+        others: document.querySelectorAll('.shop-sale').length,
+        big: big?.textContent ?? '',
+      };
+    });
+    await p.screenshot({ path: `tools/_out/shop_egg_${ms === 창안 ? 'open' : 'shut'}.png` });
+    await p.close();
+    return r;
+  };
+
+  console.log('\n⑪ 이스터 에그 — 19:30~19:35 (KST) 배트맨마스크 500켤레');
+  const a = await 읽기(창밖);
+  eq('창 밖 — 정가 그대로', a.cost, '신발 7,000개');
+  eq('창 밖 — 큰 버튼도 정가', a.big, '구매하기 (신발 7,000개)');
+  eq('★ 창 밖에는 배지가 없다', a.others, 0);
+
+  const b2 = await 읽기(창안);
+  eq('★ 창 안 — 500켤레', b2.cost, '신발 500개');
+  eq('★ 창 안 — 큰 버튼도 500', b2.big, '구매하기 (신발 500개)');
+  eq('★ 다른 아이템은 그대로', b2.ironCost, '신발 7,000개');
+  eq('★ 배지는 그 줄에만 하나', b2.others, 1);
+  eq('배지 문구', b2.tag, '깜짝 할인');
+  /**
+   * 배지는 **"떴다"가 아니라 "읽힌다"가 통과 조건**이다 — §9-0-37 에서 방 목록의
+   * 보유신발 배지가 흰 글씨를 크림색 바탕에 얹어 사실상 안 보인 적이 있다.
+   * 그래서 클래스가 아니라 **계산된 색**을 본다.
+   */
+  eq('★ 배지 바탕이 빨강', b2.tagBg, 'rgb(208, 52, 43)');
+  eq('★ 배지 글씨가 밝다', b2.tagFg, 'rgb(255, 244, 214)');
 }
 
 eq('\n콘솔 오류 없음', errs, []);

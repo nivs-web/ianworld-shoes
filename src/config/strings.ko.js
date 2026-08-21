@@ -61,7 +61,13 @@ export const S = {
   playerName: '플레이어 이름',
   /** 로비 — 캐릭터 이름 자리에 있던 줄을 멀티 전적으로 바꿨다 (2026-08-19) */
   /** 빗금 앞뒤를 붙인다 (2026-08-19 17차, 사용자 지정) — 위 `myDexProgress` 와 같은 이유 */
-  myMultiRecord: (wins, games) => `멀티게임 ${wins}승/${games}게임`,
+  /**
+   * ★ 32차: 빗금을 뺐다(사용자 지정 — *"멀티게임 0승0게임"*).
+   * 숫자만 큰 비트맵으로 갈아 끼우므로(`statLine`) 빗금까지 있으면 큰 숫자와 작은
+   * 글자 사이가 두 번 벌어져 보인다 — 도감 줄(`myDexProgress`)은 빗금이 값의 일부라
+   * 그대로 두고, 이 줄만 붙인다.
+   */
+  myMultiRecord: (wins, games) => `멀티게임 ${wins}승${games}게임`,
   /** 로비 통계 — '나의' 를 뺐다 (2026-08-19 12차). 내 화면이라는 건 이미 안다 */
   /** 위 `myBestRecord` 와 같은 규칙 — 단위는 숫자에 붙는다 (18차) */
   myShoesOwned: (n) => `보유신발 ${n}켤레`,
@@ -101,6 +107,12 @@ export const S = {
   itemCatWing: '날개',
   itemCatPet: '반려견',
   itemCost: (n) => `신발 ${n.toLocaleString('en-US')}개`,
+  /**
+   * ★ **이스터 에그 뱃지** (2026-08-21 32차, 사용자 지정) — 하루 5분만 뜬다.
+   * 값이 왜 이렇게 싼지 한 글자로 말해 주는 자리다. 미리 알려 주지는 않는다
+   * (그게 이스터 에그다) — **열려 있는 동안 우연히 들어온 사람에게만** 보인다.
+   */
+  itemSaleTag: '깜짝 할인',
   itemBuy: (n) => `구매하기 (신발 ${n.toLocaleString('en-US')}개)`,
   itemBuyConfirm: (ko, n) => `${ko}를 신발 ${n.toLocaleString('en-US')}개로 구매할까요?`,
   itemBought: (ko) => `${ko} 구매 완료!`,

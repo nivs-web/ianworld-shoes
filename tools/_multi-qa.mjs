@@ -1281,7 +1281,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // ① 문구
   // 17차: 빗금 앞뒤를 붙였다 (사용자 지정) — 숫자만 크게 찍으므로 빈칸이 있으면 더 벌어져 보인다
-  has('로비 승률 문구', st, 'myMultiRecord: (wins, games) => `멀티게임 ${wins}승/${games}게임`');
+  // 32차: 빗금 자체를 뺐다 (사용자 지정) — `멀티게임 0승0게임`
+  has('로비 승률 문구', st, 'myMultiRecord: (wins, games) => `멀티게임 ${wins}승${games}게임`');
   has('캐릭터 변경', st, "menuCharacter: '캐릭터 변경'");
   has('멀티 안내 문구', st, "multiBetHint: '멀티 게임을 위해서는, 신발 1켤레가 필요합니다'");
   has('비밀방 생성', st, "createPrivateRoom: '비밀방 생성'");
@@ -2429,7 +2430,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     /** 네 줄 전부 **문장 하나**, 라벨 뒤 한 칸 · 단위 앞 0칸 (18차 사용자 지정) */
     eq('통계 네 문구', [S2.myBestRecord(5432), S2.myShoesOwned(1460),
       S2.myMultiRecord(17, 50), S2.myDexProgress(87)],
-      ['최고기록 5432계단', '보유신발 1460켤레', '멀티게임 17승/50게임', '신발도감 87켤레']);
+      ['최고기록 5432계단', '보유신발 1460켤레', '멀티게임 17승50게임', '신발도감 87켤레']);
     /**
      * ★ 22차 사용자 지정 — **다 모으면 문장이 바뀐다.**
      * *"도감 완성하면 '신발도감 130켤레, 도감완성' 으로 문구가 변경되게 (…)
@@ -3671,6 +3672,107 @@ console.log('\n56) ★ 나간 사람 판단 · 결과 명함 · 숫자 4 (2026-0
     eq('나머지 숫자 폭은 그대로', '012356789'.split('').map((c) => F11.glyphs[c].w),
       [8, 5, 8, 8, 8, 8, 8, 8, 8]);
   }
+}
+
+// ─────────────────────────────────────────────
+console.log('\n57) ★ 로비 문구 · 이스터 에그 — 하루 5분만 열리는 할인 (2026-08-21 32차, 사용자 지정)');
+{
+  const fs = await import('node:fs');
+  const read = (f) => fs.readFileSync(f.startsWith('..') ? f.slice(3) : f, 'utf8');
+  const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const has = (label, hay, needle) => eq(label, hay.includes(needle), true);
+  const no = (label, hay, needle) => eq(label, hay.includes(needle), false);
+
+  const E = await import('../src/config/easterEgg.js');
+  const I3 = await import('../src/data/items.js');
+  const shopSrc = code(read('src/screens/ItemShop.js'));
+  const localSrc = code(read('src/services/storageLocal.js'));
+
+  /** ① 사용자 지정 그대로 — 배트맨 마스크 · 500켤레 · 19:30~19:35 (KST) */
+  eq('★ 그 아이템', E.EASTER_EGG.itemId, 'hat_batman');
+  eq('★ 그때의 값 500', E.EASTER_EGG.price, 500);
+  eq('★ 19:30 부터', E.EASTER_EGG.from, 19 * 60 + 30);
+  eq('★ 19:35 까지 (미포함)', E.EASTER_EGG.to, 19 * 60 + 35);
+  eq('정가는 표 그대로 (7,000)', I3.itemById('hat_batman').cost, 7000);
+
+  /**
+   * ② ★ **KST 로 못 박혔나.** 로컬 시간으로 재면 사람마다 열리는 순간이 달라져
+   * "지금이야!" 하고 같이 몰려드는 재미가 통째로 사라진다(§9-0-49 의 기간 키와 같은 이유).
+   * 그래서 시각을 **`+09:00` 문자열로** 적어, 검사가 도는 기계의 시간대에 안 흔들리게 한다.
+   */
+  const t = (iso) => Date.parse(iso);
+  eq('★ 19:29:59 는 닫혀 있다', E.eggOpen(t('2026-08-21T19:29:59+09:00')), false);
+  eq('★ 19:30:00 에 열린다', E.eggOpen(t('2026-08-21T19:30:00+09:00')), true);
+  eq('★ 19:34:59 까지 열려 있다', E.eggOpen(t('2026-08-21T19:34:59+09:00')), true);
+  eq('★ 19:35:00 에 닫힌다', E.eggOpen(t('2026-08-21T19:35:00+09:00')), false);
+  eq('한낮에는 닫혀 있다', E.eggOpen(t('2026-08-21T12:00:00+09:00')), false);
+
+  /** ③ 값은 그 아이템만 · 그때만 바뀐다 */
+  const bat = I3.itemById('hat_batman');
+  const iron = I3.itemById('hat_ironman');
+  eq('★ 창 안이면 500', E.priceOf(bat, t('2026-08-21T19:31:00+09:00')), 500);
+  eq('★ 창 밖이면 정가', E.priceOf(bat, t('2026-08-21T19:36:00+09:00')), 7000);
+  eq('★ 다른 아이템은 그대로', [
+    E.priceOf(iron, t('2026-08-21T19:31:00+09:00')),
+    E.priceOf(iron, t('2026-08-21T19:36:00+09:00')),
+  ], [7000, 7000]);
+  eq('배지는 그 아이템·그때만', [
+    E.eggSale(bat, t('2026-08-21T19:31:00+09:00')),
+    E.eggSale(bat, t('2026-08-21T19:36:00+09:00')),
+    E.eggSale(iron, t('2026-08-21T19:31:00+09:00')),
+  ], [true, false, false]);
+
+  /** ④ 경계까지 남은 시간 — 화면이 1초마다 다시 그릴 이유가 없다 */
+  eq('★ 열기 1초 전 → 1초', E.msUntilEggChange(t('2026-08-21T19:29:59+09:00')), 1000);
+  eq('★ 열린 순간 → 5분', E.msUntilEggChange(t('2026-08-21T19:30:00+09:00')), 5 * 60000);
+  eq('★ 닫힌 순간 → 내일 19:30', E.msUntilEggChange(t('2026-08-21T19:35:00+09:00')),
+    (24 * 60 - (19 * 60 + 35) + 19 * 60 + 30) * 60000);
+  eq('★ 항상 양수 (0이면 타이머가 폭주한다)', [
+    '2026-08-21T00:00:00+09:00', '2026-08-21T19:30:00+09:00',
+    '2026-08-21T19:35:00+09:00', '2026-08-21T23:59:59+09:00',
+  ].every((x) => E.msUntilEggChange(t(x)) > 0), true);
+
+  /**
+   * ⑤ ★ **값은 화면이 넘기지 않는다.** 그리는 시각과 누르는 시각 사이에 창이 열리거나
+   * 닫힐 수 있어서, 화면이 값을 실어 보내면 "화면에는 500인데 7,000이 빠지는" 사고가 난다.
+   * 저장소가 표에게 직접 묻는지, 그리고 화면이 값을 안 넘기는지 둘 다 본다.
+   */
+  has('★ 저장소가 값을 스스로 계산한다', localSrc, 'const cost = priceOf(item);');
+  no('★ 저장소가 값을 인자로 받지 않는다', localSrc, 'export function buyItem(id, cost)');
+  has('★ 화면은 id 만 넘긴다', shopSrc, 'buyItem(item.id)');
+  no('화면이 값을 실어 보내지 않는다', shopSrc, 'buyItem(item.id, ');
+  // 대역도 같은 서명이어야 한다 — 옛 서명이면 화면을 고쳐 놓고도 검사만 통과한다
+  no('★ 쇼핑 대역도 새 서명', code(read('tools/_shop-stub.js')), 'buyItem(id, cost)');
+
+  /** ⑥ 화면의 값 세 자리가 전부 `priceOf` 를 지나는가 (`it.cost` 가 남아 있으면 안 된다) */
+  has('목록 값', shopSrc, 'S.itemCost(priceOf(it, now))');
+  has('큰 버튼', shopSrc, 'S.itemBuy(priceOf(item, now))');
+  has('살 수 있나 판정', shopSrc, "(p.shoesOwned ?? 0) >= priceOf(item, now) ? '' : 'dim'");
+  has('확인 문구·모자란 양', shopSrc, 'const cost = priceOf(item);');
+  no('★ 옛 값이 남아 있지 않다', shopSrc, 'S.itemCost(it.cost)');
+  no('★ 큰 버튼에도 옛 값이 없다', shopSrc, 'S.itemBuy(item.cost)');
+  // 한 화면 안에서 줄과 버튼의 값이 갈리면 안 되므로 `now` 를 한 번만 잡는다
+  eq('★ render 안의 now 는 하나뿐', (shopSrc.match(/const now = Date\.now\(\);/g) ?? []).length, 1);
+
+  /** ⑦ 경계에서 스스로 다시 그린다 (열어 둔 채 19:30 이 지나도 값이 안 어긋난다) */
+  has('경계 타이머', shopSrc, 'msUntilEggChange()');
+  has('★ 떠날 때 치운다', shopSrc, 'onLeave() { clearTimeout(eggTimer)');
+  // 배지는 **안 산 줄에만** — 이미 산 사람에게 값이 내려갔다는 소식은 쓸모가 없다
+  has('할인 배지', shopSrc, '!샀나 && eggSale(it, now)');
+  has('배지 문구', code(read('src/config/strings.ko.js')), "itemSaleTag: '깜짝 할인'");
+  has('배지 색', read('src/styles/screens.css'), '.shop-sale {');
+
+  /**
+   * ⑧ **표가 한 곳뿐인가.** 시각·값이 다른 파일에 또 적히면 언젠가 한쪽만 고쳐진다.
+   */
+  no('★ 화면이 시각을 다시 계산하지 않는다', shopSrc, '19 * 60');
+  no('★ 화면이 값을 다시 적지 않는다', shopSrc, '500');
+  no('★ 저장소도 마찬가지', localSrc, 'EASTER_EGG.price');
+
+  /** ⑨ 로비 문구 — 빗금을 뺐다 (사용자 지정) */
+  const S6 = (await import('../src/config/strings.ko.js')).default;
+  eq('★ 멀티게임 0승0게임', S6.myMultiRecord(0, 0), '멀티게임 0승0게임');
+  eq('★ 빗금이 없다', S6.myMultiRecord(17, 50).includes('/'), false);
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');

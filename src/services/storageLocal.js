@@ -9,6 +9,8 @@
 
 import { DEFAULT_DIFFICULTY, UNLOCK_COST, SHOE_TIERS, DEX_BADGE_REQUIRED } from '../config/balance.js';
 import { grantTestItems } from '../config/testAccount.js';
+import { itemById } from '../data/items.js';
+import { priceOf } from '../config/easterEgg.js';
 import { DEFAULT_CHARACTER, FREE_CHARACTERS } from '../data/characters.js';
 
 const KEY = {
@@ -323,17 +325,28 @@ export function consumeShoes(n) {
  * **캐릭터 구매와 같은 순서**를 쓴다(`consumeShoes` 먼저, 그 다음 소유 기록).
  * 반대로 하면 차감이 실패했을 때 공짜로 가진 것이 된다.
  *
- * @returns {{ok: boolean, profile: object}}
+ * ★ **값은 화면이 넘기지 않는다.** (2026-08-21 32차)
+ *
+ * 예전에는 `buyItem(id, cost)` 로 화면이 값을 넘겼다. 그런데 이스터 에그가 생기면서
+ * 값이 **시각에 따라 달라진다** — 화면을 19:29 에 그려 두고 19:40 에 누르면 화면에는
+ * 500이 적혀 있는데 실제로는 7,000이 빠져야 한다. 그 반대도 마찬가지다.
+ * **누르는 순간** 표에 물어보면 그 어긋남이 아예 생기지 않는다.
+ * (§6-4 의 "값을 믿지 않는다"와 같은 규칙이다 — 화면은 보여 줄 뿐이다)
+ *
+ * @returns {{ok: boolean, profile: object, cost: number}}
  */
-export function buyItem(id, cost) {
+export function buyItem(id) {
   const p = loadProfile();
-  if (p.ownedItems?.[id]) return { ok: true, profile: p };
-  if ((p.shoesOwned ?? 0) < cost) return { ok: false, profile: p };
+  if (p.ownedItems?.[id]) return { ok: true, profile: p, cost: 0 };
+  const item = itemById(id);
+  if (!item) return { ok: false, profile: p, cost: 0 };
+  const cost = priceOf(item);
+  if ((p.shoesOwned ?? 0) < cost) return { ok: false, profile: p, cost };
   consumeShoes(cost);
   const next = loadProfile();
   next.ownedItems = { ...(next.ownedItems ?? {}), [id]: true };
   saveProfile(next);
-  return { ok: true, profile: next };
+  return { ok: true, profile: next, cost };
 }
 
 /**

@@ -38,11 +38,30 @@ import { ITEM_CATS, itemsOf, itemById } from '../data/items.js';
  */
 import { wearCut, wornList } from './wearFigure.js';
 import { get as getProfile, buyItem, equipItem } from '../services/profile.js';
+/**
+ * ★ **값은 화면이 정하지 않는다** (2026-08-21 32차). 하루 5분만 열리는 할인 때문에
+ * 같은 아이템의 값이 시각에 따라 달라진다 — 목록·큰 버튼·확인 문구·실제 차감이 전부
+ * 이 함수 하나를 부르지 않으면 "화면에는 500인데 7,000이 빠지는" 사고가 난다.
+ */
+import { priceOf, eggSale, msUntilEggChange } from '../config/easterEgg.js';
 
 export default function ItemShop(nav) {
   let cat = ITEM_CATS[0].id;
   /** 지금 보고 있는 아이템 — 카테고리마다 따로 기억한다(탭을 오가도 자리를 안 잃는다) */
   const looking = {};
+  /**
+   * ★ 할인 창이 열리거나 닫히는 **그 순간에만** 다시 그린다(2026-08-21 32차).
+   *
+   * 1초마다 다시 그릴 이유가 없다 — 값이 바뀌는 순간은 하루에 딱 두 번이다.
+   * 이게 없으면 19:29 에 쇼핑을 열어 둔 사람은 화면에 7,000이 찍힌 채로 500에 사게
+   * 되거나(반대로) 19:35 에 500을 보고 눌렀다가 7,000이 빠진다 — 저장소가 값을
+   * 스스로 계산하므로 차감은 항상 옳지만, **화면이 거짓말을 하면 안 된다.**
+   */
+  let eggTimer = null;
+  function armEggTimer() {
+    clearTimeout(eggTimer);
+    eggTimer = setTimeout(() => { eggTimer = null; nav.refresh(); }, msUntilEggChange() + 50);
+  }
 
   const CAT_LABEL = { acc: S.itemCatAcc, wing: S.itemCatWing, pet: S.itemCatPet };
 
@@ -70,19 +89,25 @@ export default function ItemShop(nav) {
   };
 
   async function buy(item, p) {
-    if ((p.shoesOwned ?? 0) < item.cost) {
+    /**
+     * ★ 값은 **누르는 순간** 다시 묻는다. 그리는 시각과 누르는 시각 사이에 할인 창이
+     * 열리거나 닫힐 수 있는데, 그때 화면에 찍힌 옛 값으로 판단하면 확인 문구와 실제
+     * 차감이 어긋난다. 저장소도 같은 함수를 부르므로 둘은 항상 같은 답을 낸다.
+     */
+    const cost = priceOf(item);
+    if ((p.shoesOwned ?? 0) < cost) {
       Sfx.play('sfx_denied');
-      toast(S.itemNeedMore(item.cost - (p.shoesOwned ?? 0)));
+      toast(S.itemNeedMore(cost - (p.shoesOwned ?? 0)));
       return;
     }
     const ok = await confirmDialog({
-      message: S.itemBuyConfirm(item.ko, item.cost),
+      message: S.itemBuyConfirm(item.ko, cost),
       detail: S.purchaseWarning,
       yes: S.yes,
       no: S.no,
     });
     if (!ok) return;
-    const r = buyItem(item.id, item.cost);
+    const r = buyItem(item.id);
     if (r.ok) {
       Sfx.play('sfx_purchase');
       toast(S.itemBought(item.ko));
@@ -97,6 +122,9 @@ export default function ItemShop(nav) {
 
   return {
     render() {
+      armEggTimer();
+      /** 한 번만 잡는다 — 한 화면 안에서 줄과 버튼의 값이 갈리면 안 된다 */
+      const now = Date.now();
       const p = getProfile();
       const owned = p.ownedItems ?? {};
       const worn = p.equippedItems ?? {};
@@ -120,7 +148,12 @@ export default function ItemShop(nav) {
             ? el('div.shop-have', {
                 class: worn[it.slot] === it.id ? 'on' : '',
               }, worn[it.slot] === it.id ? S.itemWorn : S.itemOwned)
-            : el('div.shop-cost', S.itemCost(it.cost)),
+            : el('div.shop-cost', S.itemCost(priceOf(it, now))),
+          /**
+           * ★ 할인 중인 줄에만 붙는 빨간 배지. **안 산 줄에만** 뜬다 — 이미 산 사람에게
+           * 값이 내려갔다는 소식은 약이 오르기만 할 뿐 쓸모가 없다.
+           */
+          !샀나 && eggSale(it, now) ? el('div.shop-sale', S.itemSaleTag) : null,
         ]);
       }));
 
@@ -152,9 +185,9 @@ export default function ItemShop(nav) {
                 Sfx.play('sfx_menu_select');
                 nav.refresh();
               }, { primary: !입은것 })
-            : button(S.itemBuy(item.cost), () => buy(item, p), {
+            : button(S.itemBuy(priceOf(item, now)), () => buy(item, p), {
                 primary: true,
-                class: (p.shoesOwned ?? 0) >= item.cost ? '' : 'dim',
+                class: (p.shoesOwned ?? 0) >= priceOf(item, now) ? '' : 'dim',
               }))
           : null,
 
@@ -168,5 +201,6 @@ export default function ItemShop(nav) {
         backButton(S.itemShopExit, () => nav.back())
       );
     },
+    onLeave() { clearTimeout(eggTimer); eggTimer = null; },
   };
 }

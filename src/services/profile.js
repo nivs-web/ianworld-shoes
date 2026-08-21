@@ -210,8 +210,8 @@ export function setCharacter(id) {
  * 신발이 되살아난다 — §9-0-24 ⑥에서 부활 판돈이 그랬다).
  * @returns {{ok:boolean, profile:object}}
  */
-export function buyItem(id, cost) {
-  const r = L.buyItem(id, cost);
+export function buyItem(id) {
+  const r = L.buyItem(id);
   if (r.ok) {
     pushRemote({
       ownedItems: r.profile.ownedItems,
