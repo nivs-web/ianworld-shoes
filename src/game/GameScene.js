@@ -279,9 +279,26 @@ export class GameScene {
      * 남들의 판정과 내 화면이 어긋나는 구간을 아예 만들지 않는다.
      */
     this.onVisible = () => {
-      if (document.hidden) { this.hiddenAt = Date.now(); return; }
+      if (document.hidden) {
+        this.hiddenAt = Date.now();
+        /**
+         * ★ **홈 버튼을 누른 그 순간 상대에게 알린다.** (2026-08-21 31차, 사용자 신고)
+         *
+         * *"튕기거나 홈버튼 눌러서 나간 사람 판단해서 게임 종료되게 만들자"*
+         *
+         * 이게 없으면 남들이 아는 길은 생존 신호(`seenAt`)가 낡는 것뿐이라 **30초**가
+         * 걸린다 — 1:1 이면 이미 승부가 난 판을 30초 더 뛴다. 얼기 전에 한 줄만
+         * 보내면 상대는 6초 뒤에 판을 끝낼 수 있다(`matchRules.isStale`).
+         *
+         * 돌아오면 아래에서 지운다. **도장이 아니라 살아 있는 값**이라 지우는 즉시
+         * 판정이 원상 복구된다 — 잠깐 알림을 내렸다 올린 사람이 손해 보지 않는다.
+         */
+        Room.markAway(this.multi.code, true).catch(() => {});
+        return;
+      }
       const 비운시간 = this.hiddenAt ? Date.now() - this.hiddenAt : 0;
       this.hiddenAt = 0;
+      Room.markAway(this.multi.code, false).catch(() => {});
       if (비운시간 > MULTI.absentSeconds * 1000) return this.kickOut();
       /**
        * ★ **자리를 비운 만큼 게이지가 닳는다.** (2026-08-21 26차)
@@ -353,6 +370,17 @@ export class GameScene {
         }
       }
       this.opponents = next;
+      /**
+       * ★ **마지막으로 본 참가자 명단을 들고 있는다.** (2026-08-21 31차, 사용자 신고)
+       *
+       * 판이 끝나면 결과 화면은 방을 **처음부터 다시** 구독한다. 그런데 진 사람은
+       * 결과를 보고 곧장 나가므로(정상 동작) 그 사이에 `players/<uid>` 가 사라진다 —
+       * 뒤늦게 도착한 사람의 화면에는 이름이 `???` 로 뜬다.
+       * 나는 판 내내 그 사람을 보고 있었으므로, **그 값을 그대로 넘겨 주면 된다.**
+       * (서버 명함 `result.cards` 는 새로고침까지 견디는 근거이고, 이건 규칙 없이도
+       *  도는 근거다 — 둘이 서로를 받친다.)
+       */
+      if (r.players) this.lastRoster = { ...(this.lastRoster ?? {}), ...r.players };
 
       /**
        * ★ **판이 끝나는 조건이 바뀌었다.** (2026-08-18)
@@ -398,7 +426,14 @@ export class GameScene {
 
   /** 이번 판의 성과 — 로비/결과 화면이 계정에 반영할 때 쓴다 */
   resultOf() {
-    return { floor: this.floor, difficulty: this.diff.id, shoeIndices: this.shoeIndices };
+    return {
+      floor: this.floor, difficulty: this.diff.id, shoeIndices: this.shoeIndices,
+      /**
+       * ★ 판 내내 본 참가자 명단 — 결과 화면이 이름·얼굴을 잃지 않게 넘긴다.
+       * (2026-08-21 31차, 사용자 신고 *"상대방이 ??? 으로 나와"*)
+       */
+      roster: this.lastRoster ?? null,
+    };
   }
 
   /** 멀티 종료 — 부활 없이 곧장 정산으로 (기획서 §5-6 '멀티는 부활 없음') */

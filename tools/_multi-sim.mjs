@@ -1004,8 +1004,8 @@ console.log('\nS25) 정말 끊겼다 — 서버가 찍은 시각부터 유예가
 {
   /**
    * 자리 지킴의 반대쪽. 소켓이 죽으면 **서버가 그 순간을 `offAt` 에 찍는다.**
-   * 그러면 어림할 필요가 없다 — 유예(45초)가 지나면 판에서 뺀다.
-   * 예전 방식(마지막 신호로부터 90초)보다 **빠르고 정확하다.**
+   * 그러면 어림할 필요가 없다 — **짧은 유예(6초)** 가 지나면 판에서 뺀다(31차).
+   * 조용한 것(30초)과 달리 이건 짐작이 아니라 서버가 관측한 사실이다.
    */
   const w = new World();
   const A = w.player('A', { shoes: 20 });
@@ -1020,7 +1020,7 @@ console.log('\nS25) 정말 끊겼다 — 서버가 찍은 시각부터 유예가
   eq('서버가 끊긴 시각을 찍었다', typeof 끊긴직후.players.B.offAt, 'number');
   eq('끊기자마자 빼지는 않는다', M.outOfRound({ uid: 'B', ...끊긴직후.players.B }, Date.now()), false);
 
-  advance((MULTI.absentSeconds + 5) * 1000);
+  advance((MULTI.awaySeconds + 2) * 1000);
   const 유예후 = w.db.read(`rooms/${code}`);
   eq('유예가 지나면 판에서 빠진다', M.outOfRound({ uid: 'B', ...유예후.players.B }, Date.now()), true);
   eq('1:1 이라 판이 끝난다', M.roundOver(유예후, Date.now()), true);
@@ -1042,7 +1042,7 @@ console.log('\nS26) 돌아와서 다시 붙으면 끊김 표시가 지워진다'
   const B = w.player('B', { shoes: 20 });
   const code = await startRound(w, A, [B]);
   w.db.dropConnection('B');
-  advance(20000);                                   // 유예(45초) 안에 돌아온다
+  advance((MULTI.awaySeconds - 2) * 1000);          // 짧은 유예(6초) 안에 돌아온다
   eq('아직 판 안에 있다',
     M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), false);
 
@@ -1052,7 +1052,7 @@ console.log('\nS26) 돌아와서 다시 붙으면 끊김 표시가 지워진다'
   eq('끊김 표시가 지워졌다', room.players.B.offAt ?? null, null);
   await B.act(() => Room.heartbeat(code));
   advance(20000);
-  eq('그 뒤로는 30초 안이면 안 빠진다',
+  eq('그 뒤로는 (조용할 뿐이므로) 30초 안이면 안 빠진다',
     M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), false);
 }
 
@@ -1447,7 +1447,13 @@ console.log('\nS39) 일시정지 — 1인 1회, 20초, 전원 동시');
   const B = w.player('B', { shoes: 60 });
   const code = await startRound(w, A, [B]);
   await A.act(() => Room.publishProgress(code, { stairs: 10, shoesFound: 0 }, true));
-  w.db.write(`rooms/${code}/state`, 'playing');
+  /**
+   * ★ 31차: 여기서 `state` 를 `'playing'` 으로 **손으로 써 넣고 있었다.** 실제 게임은
+   * `startRound` 가 쓴 `'countdown'` 그대로 판이 끝날 때까지 간다 — 그래서 검사는
+   * 통과하는데 **화면에서는 일시정지가 한 번도 안 열렸다.** 손으로 만든 상태로 재면
+   * 통과도 실패도 의미가 없다(§9-0-39 의 그 교훈). 이제 실제 상태 그대로 검사한다.
+   */
+  eq('★ 실제 게임의 방 상태 그대로 (countdown)', w.db.read(`rooms/${code}`).state, 'countdown');
 
   eq('처음엔 쓸 수 있다', M.canPause(w.db.read(`rooms/${code}`), 'A', Date.now()), true);
   eq('A 가 멈춘다', await A.act(() => Room.pauseRound(code)), true);
@@ -1465,6 +1471,114 @@ console.log('\nS39) 일시정지 — 1인 1회, 20초, 전원 동시');
   // 죽어 있는 사람이 있으면 못 건다 — 부활 창을 20초 멈출 방법이 없기 때문이다
   await A.act(() => Room.reportDeath(code, { stairs: 10, shoesFound: 0 }));
   eq('★ 누가 죽어 있으면 못 건다', M.canPause(w.db.read(`rooms/${code}`), 'B', Date.now()), false);
+}
+
+
+console.log('\nS40) ★ 홈 버튼으로 나가면 6초 뒤에 1:1 판이 끝난다 (2026-08-21 31차, 사용자 신고)');
+{
+  /**
+   * *"튕기거나 홈버튼 눌러서 나간 사람 판단해서 게임 종료되게 만들자"*
+   *
+   * 예전에는 남들이 아는 길이 **생존 신호가 낡는 것**뿐이라 30초가 걸렸다. 그동안
+   * 나간 사람은 계단 위에 멀쩡히 서 있고, 1:1 이면 이미 승부가 난 판을 30초 더 뛴다.
+   * 이제 떠나는 쪽이 `awayAt` 을 스스로 찍는다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  await A.act(() => Room.publishProgress(code, { stairs: 40, shoesFound: 0 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 12, shoesFound: 0 }, true));
+
+  await B.act(() => Room.markAway(code, true));     // 홈 버튼
+  const 직후 = w.db.read(`rooms/${code}`);
+  eq('★ 떠난 시각이 찍혔다', typeof 직후.players.B.awayAt, 'number');
+  eq('누르자마자 빼지는 않는다', M.outOfRound({ uid: 'B', ...직후.players.B }, Date.now()), false);
+  eq('그래서 판도 아직 안 끝났다', M.roundOver(직후, Date.now()), false);
+
+  advance((MULTI.awaySeconds + 1) * 1000);
+  const 유예후 = w.db.read(`rooms/${code}`);
+  eq('★ 6초가 지나면 판에서 빠진다', M.outOfRound({ uid: 'B', ...유예후.players.B }, Date.now()), true);
+  eq('★ 1:1 이라 판이 끝난다', M.roundOver(유예후, Date.now()), true);
+  // 30초짜리 조용함 판정이었다면 아직 안 끝났어야 한다 — 실제로 짧은 유예를 쓰는지 확인
+  eq('조용함(30초) 기준으로는 아직 멀었다', Date.now() - 유예후.players.B.seenAt < MULTI.absentSeconds * 1000, true);
+
+  const before = w.total(code);
+  await A.act(() => Room.finalizeResult(code));
+  eq('계단이 높은 A 가 1등', w.db.read(`rooms/${code}`).result.rankings[0], 'A');
+  await resultScreen(A, code);
+  await reboot(B);
+  eq('총량 보존', w.total(code), before);
+}
+
+console.log('\nS41) 잠깐 내렸다 올린 사람은 안 빠진다 (도장이 아니라 살아 있는 값이다)');
+{
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  await B.act(() => Room.markAway(code, true));
+  advance((MULTI.awaySeconds + 3) * 1000);
+  eq('그동안은 빠진 것으로 본다',
+    M.outOfRound({ uid: 'B', ...w.db.read(`rooms/${code}`).players.B }, Date.now()), true);
+
+  await B.act(() => Room.markAway(code, false));    // 돌아왔다
+  await B.act(() => Room.heartbeat(code));
+  const 돌아온뒤 = w.db.read(`rooms/${code}`);
+  eq('★ 표시가 지워졌다', 돌아온뒤.players.B.awayAt ?? null, null);
+  eq('★ 판정이 그 즉시 원상 복구된다', M.outOfRound({ uid: 'B', ...돌아온뒤.players.B }, Date.now()), false);
+  eq('판도 다시 안 끝난 것이 된다', M.roundOver(돌아온뒤, Date.now()), false);
+}
+
+console.log('\nS42) ★ 상대가 방에서 통째로 사라져도 판이 끝난다 (31차)');
+{
+  /**
+   * `leaveRoom` 은 `players/<uid>` 를 지운다. 그러면 남은 사람은 목록에 **혼자**가
+   * 되는데, 예전 `roundOver` 는 그 하나를 `every` 로 훑어 "내가 살아 있으니 아직 안
+   * 끝났다"는 답을 냈다 — 겨룰 사람이 없는데 판이 영영 안 끝난다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+  await A.act(() => Room.publishProgress(code, { stairs: 30, shoesFound: 0 }, true));
+
+  w.db.write(`rooms/${code}/players/B`, null);      // 자리가 통째로 사라졌다
+  const 방 = w.db.read(`rooms/${code}`);
+  eq('참가자가 하나뿐이다', Object.keys(방.players).length, 1);
+  eq('★ 판이 끝났다고 본다', M.roundOver(방, Date.now()), true);
+  eq('★ 남은 사람 화면도 끝난다', M.othersAllOut(방, 'A', Date.now()), true);
+
+  await A.act(() => Room.finalizeResult(code));
+  eq('혼자라도 순위는 박힌다', w.db.read(`rooms/${code}`).result.rankings, ['A']);
+}
+
+console.log('\nS43) ★ 진 사람이 나가도 결과 화면에 이름이 남는다 (31차, 사용자 신고 "??? 으로 나와")');
+{
+  /**
+   * 순위표는 uid 목록뿐이라 이름·얼굴은 `players/<uid>` 에서 읽는다. 진 사람은 결과를
+   * 보고 곧장 나가는 것이 정상 동작이고, 그 순간 그 노드가 사라진다 —
+   * 뒤늦게 결과 화면에 온 사람은 `???` 을 본다. **결과는 자립해야 한다**(§9-0-34).
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20, nickname: '이안' });
+  const B = w.player('B', { shoes: 20, nickname: '토토' });
+  const code = await startRound(w, A, [B]);
+  await A.act(() => Room.publishProgress(code, { stairs: 50, shoesFound: 3 }, true));
+  await B.act(() => Room.publishProgress(code, { stairs: 20, shoesFound: 1 }, true));
+  await B.act(() => Room.markOut(code));
+  await A.act(() => Room.finalizeResult(code));
+
+  const 명함 = w.db.read(`rooms/${code}/result/cards`);
+  eq('★ 명함이 남는다', Object.keys(명함 ?? {}).sort(), ['A', 'B']);
+  eq('★ 이름이 들어 있다', 명함.B.nickname, '토토');
+  eq('★ 계단도 들어 있다', 명함.B.stairs, 20);
+
+  // 진 사람이 나간다 — 자리는 사라져도 명함은 남아야 한다
+  await B.act(() => Room.leaveRoom(code));
+  const 방 = w.db.read(`rooms/${code}`);
+  eq('자리는 사라졌다', 방.players?.B ?? null, null);
+  eq('★ 그래도 이름은 읽을 수 있다', 방.result.cards.B.nickname, '토토');
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n시뮬레이션 이상 없음');

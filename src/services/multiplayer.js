@@ -1003,6 +1003,36 @@ export function disarmPresence(code) {
   }
 }
 
+/**
+ * ★ **화면을 내렸다/올렸다를 서버에 곧바로 알린다.** (2026-08-21 31차, 사용자 신고)
+ *
+ * *"튕기거나 홈버튼 눌러서 나간 사람 판단해서 게임 종료되게 만들자"*
+ *
+ * 지금까지 "자리를 비웠다"는 것을 남들이 아는 길은 **생존 신호(`seenAt`)가 낡는 것**
+ * 하나뿐이었다. 5초마다 가는 신호가 여섯 번 연속 빠져야 하므로 **30초**가 걸린다 —
+ * 그동안 나간 사람이 계단 위에 멀쩡히 서 있고, 1:1 이면 남은 사람은 이길 게 뻔한
+ * 판을 30초 더 뛰어야 한다.
+ *
+ * `awayAt` 은 **떠나는 쪽이 스스로 찍는 도장**이다. 홈 버튼을 누른 그 순간
+ * `visibilitychange` 가 오고, 우리는 얼기 전에 한 줄을 보낼 수 있다(접속 표시가
+ * 같은 방법으로 목록에서 빠진다, §9-0-49). 짐작이 아니라 **본인이 말한 것**이므로
+ * 유예를 짧게 잡아도 된다 — `MULTI.awaySeconds`(= 나가기 유예와 같은 6초).
+ *
+ * 돌아오면 지운다. `isStale` 은 값이 있을 때만 보므로, 지우는 순간 **판정이 저절로
+ * 원상 복구된다**(도장이 아니라 살아 있는 값이다).
+ *
+ * 규칙에 `awayAt` 이 아직 없으면 이 쓰기만 조용히 거부되고 예전처럼 30초로 돈다.
+ */
+export async function markAway(code, away) {
+  const fb = await rt();
+  if (!fb) return;
+  const ref = fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid, 'awayAt'));
+  try {
+    await withTimeout(fb.dbMod.set(ref, away ? fb.dbMod.serverTimestamp() : null),
+      undefined, '자리 비움 표시');
+  } catch { /* 규칙이 아직 없거나 이미 방에서 빠졌다 — 예전 판정으로 돌아간다 */ }
+}
+
 export function resetProgressThrottle() {
   lastSent = { at: 0, stairs: -1, shoesFound: -1 };
 }
@@ -1401,6 +1431,41 @@ export async function finalizeResult(code) {
   } catch {
     return room;
   }
+
+  /**
+   * ★ **결과 화면이 읽을 명함을 따로 남긴다.** (2026-08-21 31차, 사용자 신고)
+   *
+   * *"끝까지 게임을 해보면 상대방이 ??? 으로 나와"* — 순위표는 uid 목록뿐이라
+   * 이름·캐릭터·아이템은 `players/<uid>` 에서 읽는다. 그런데 진 사람은 결과를 보고
+   * **곧장 나간다**(그게 정상 동작이다). 그 순간 `leaveRoom` 이 그 노드를 통째로
+   * 지우므로, 뒤늦게 결과 화면에 도착한 사람은 빈 칸을 보게 된다 →
+   * 이름은 `???`, 얼굴은 없고, 계단·신발은 0으로 뜬다.
+   *
+   * `result.found` 를 만들 때와 **똑같은 이유**다(§9-0-34) — **결과는 자립해야 한다.**
+   *
+   * ## 왜 위의 update 에 같이 안 싣나
+   *
+   * RTDB 규칙은 `$other: false` 라 **규칙에 없는 필드는 그 update 를 통째로 막는다.**
+   * 여기에 얹었다가 규칙이 아직 안 올라간 기기에서는 **순위 확정 자체가 거부되고 판이
+   * 영영 안 끝난다.** 명함은 화면에 예쁘게 보이자는 것이고 판을 끝내는 일은 그것보다
+   * 훨씬 무겁다 — 그래서 **따로, 실패해도 되는 쓰기**로 보낸다(§9-0-39 의 `offAt` 과
+   * 같은 방식). 규칙이 없으면 이 한 줄만 조용히 거부되고 나머지는 그대로 돈다.
+   */
+  const cards = {};
+  for (const p of players) {
+    cards[p.uid] = {
+      nickname: String(p.nickname ?? '').slice(0, 16),
+      characterId: String(p.characterId ?? ''),
+      items: String(p.items ?? '').slice(0, ITEMS_MAX),
+      stairs: Math.max(0, p.stairs ?? 0),
+      shoesFound: Math.max(0, p.shoesFound ?? 0),
+      revives: Math.max(0, p.revives ?? 0),
+      joinedAt: Math.max(0, p.joinedAt ?? 0),
+    };
+  }
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { 'result/cards': cards }),
+    undefined, '결과 명함').catch(() => { /* 규칙이 아직 없으면 조용히 넘어간다 */ });
+
   return (await readOnce(fb, path(ROOMS, code))).val ?? room;
 }
 

@@ -93,6 +93,38 @@ export default function MultiResult(nav, params = {}) {
   let unsub = () => {};
   let settled = false;
   let finalizing = false;
+  /**
+   * ★ **한 번 본 참가자는 기억한다.** (2026-08-21 31차, 사용자 신고)
+   *
+   * *"끝까지 게임을 해보면 상대방이 ??? 으로 나와"*
+   *
+   * 순위표(`result.rankings`)는 uid 목록뿐이고 이름·얼굴·계단은 `players/<uid>` 에서
+   * 읽는다. 그런데 진 사람은 결과를 보고 **곧장 나간다** — 그게 정상 동작이다.
+   * 그 순간 `leaveRoom` 이 그 노드를 지우므로 남아 있는 사람의 화면에서 그 줄이
+   * 통째로 비어 버린다(이름 `???`, 얼굴 없음, 계단·신발 0).
+   *
+   * 근거를 **세 겹**으로 둔다. 하나가 없어도 나머지가 받친다:
+   *   ① 지금 방에 있는 값 (`players[uid]`)
+   *   ② 여기서 기억해 둔 값 (`seen`) — 내가 보고 있는 동안 나간 사람
+   *   ③ 서버가 순위와 함께 남긴 명함 (`result.cards`) — 내가 오기 전에 나간 사람.
+   *      새로고침해도 살아남는 유일한 근거다(§9-0-34 의 `result.found` 와 같은 이유)
+   */
+  /**
+   * 인게임에서 넘겨받은 명단이 **출발점**이다. 결과 화면은 방을 처음부터 다시
+   * 구독하므로, 내가 도착하기 전에 나간 사람은 첫 스냅샷부터 이미 없다.
+   */
+  const seen = Object.assign(Object.create(null), runResult?.roster ?? {});
+  const remember = (players) => {
+    for (const [uid, v] of Object.entries(players ?? {})) {
+      if (v && typeof v === 'object') seen[uid] = { ...(seen[uid] ?? {}), ...v };
+    }
+  };
+  /** 한 줄에 쓸 값 — 살아 있는 값이 가장 정확하고, 없으면 기억 → 명함 순 */
+  const cardOf = (uid) => ({
+    ...(room?.result?.cards?.[uid] ?? {}),
+    ...(seen[uid] ?? {}),
+    ...(room?.players?.[uid] ?? {}),
+  });
   /** 정산 중에 자동 새로고침이 끼어들면 신발이 공중에 뜬다 */
   const release = hold();
   /**
@@ -140,6 +172,7 @@ export default function MultiResult(nav, params = {}) {
       return;
     }
     room = r;
+    remember(r.players);
     if (!r.result?.rankings) {
       const now = Date.now() + Room.serverOffsetSync();
       if (!finalizing && roundOver(r, now)) {
@@ -287,6 +320,12 @@ export default function MultiResult(nav, params = {}) {
       const rankings = room?.result?.rankings ?? [];
       const players = room?.players ?? {};
       /**
+       * 자리 색(`slotIndex`)은 `joinedAt` 순서로 정해진다. 나간 사람이 빠진 목록으로
+       * 세면 **남은 사람들의 색이 밀린다** — 인게임에서 외운 색과 결과 화면의 색이
+       * 달라지면 "저 빨강이 누구였지"가 무너진다. 그래서 기억해 둔 명단으로 센다.
+       */
+      const roster = { ...(room?.result?.cards ?? {}), ...seen, ...players };
+      /**
        * ★ **1등이면 메시지는 무조건 뜬다.** (2026-08-19)
        *
        * 예전에는 `settle` 이 있을 때만 승패 문구를 띄웠다. 그런데 정산은 여러 이유로
@@ -357,7 +396,7 @@ export default function MultiResult(nav, params = {}) {
             ]),
 
         el('div.rank-list', null, rankings.map((uid, i) =>
-          rankRow({ uid, v: players[uid] ?? {}, i, myUid, players }))),
+          rankRow({ uid, v: cardOf(uid), i, myUid, players: roster }))),
 
         el('div.spacer'),
         /**

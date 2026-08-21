@@ -106,6 +106,22 @@ service cloud.firestore {
 것만** 허용한다(`|| !newData.exists()`). 이게 있어야 방을 이미 나온 사람도 회수할 수 있다.
 순위가 박힌 뒤에는 그 신발이 승자 몫이므로 이 경로로 빼낼 수 없다.
 
+### 나간 사람 판단과 결과 명함 — `awayAt` · `result/cards` (2026-08-21 31차, 게시 완료)
+
+**게시 확인**: 되읽어 대조 — 한 줄 9,918자 / djb2 `958749413` (게시 전 9,221 / 2824372086).
+
+| 필드 | 무엇 | 없으면 |
+|---|---|---|
+| `players/$uid/awayAt` | **본인이** 홈 버튼을 누른 서버 시각 | 그 쓰기만 조용히 거부되고 예전처럼 조용함(30초)으로 판단한다 |
+| `result/cards/$uid` | 순위와 함께 남기는 이름·캐릭터·아이템·계단 스냅샷 | 결과 화면이 클라이언트 폴백(인게임에서 넘겨받은 명단)으로만 그린다 |
+
+`awayAt` 의 검증식은 `offAt` 과 **글자 그대로 같다**(본인 것만, 남의 것은 값이 그대로).
+
+`result/cards` 는 **순위 확정 update 에 얹지 않았다.** `$other: false` 라 규칙에 없는
+필드는 그 update 를 통째로 막는데, 그러면 규칙이 아직 안 올라간 기기에서 **순위 확정
+자체가 거부되고 판이 영영 안 끝난다.** 명함은 화면에 예쁘게 보이자는 것이고 판을
+끝내는 일은 그것보다 훨씬 무겁다 — 그래서 **따로, 실패해도 되는 쓰기**로 보낸다.
+
 ### 역전 배틀 — 새 필드 셋과 판돈 상한 (2026-08-18, 3차)
 
 `players/$uid` 에 `revives`(부활 횟수) · `deadAt`(죽은 서버 시각) · `out`(부활 포기)이 늘었다.
@@ -267,6 +283,9 @@ service cloud.firestore {
             "offAt": {
               ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
             },
+            "awayAt": {
+              ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val())"
+            },
             "seenAt": {
               ".validate": "newData.isNumber() && ($uid == auth.uid || newData.val() == data.val() || (data.parent().parent().parent().child('state').val() == 'finished' && newData.parent().parent().parent().child('state').val() == 'waiting' && !newData.parent().parent().parent().child('result').exists()))"
             },
@@ -293,6 +312,18 @@ service cloud.firestore {
           "found": {
             "$uid": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+            }
+          },
+          "cards": {
+            "$uid": {
+              "nickname": { ".validate": "newData.isString() && newData.val().length <= 16" },
+              "characterId": { ".validate": "newData.isString() && newData.val().length <= 24" },
+              "items": { ".validate": "newData.isString() && newData.val().length <= 64" },
+              "stairs": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+              "shoesFound": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000" },
+              "revives": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
+              "joinedAt": { ".validate": "newData.isNumber()" },
+              "$other": { ".validate": false }
             }
           },
           "given": {

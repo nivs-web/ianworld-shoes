@@ -208,24 +208,36 @@ export function outOfRound(player, now) {
  */
 export function isStale(player, now) {
   /**
-   * ★ **끊긴 시각이 있으면 그걸 먼저 본다.** (2026-08-19 8차)
+   * ★ **명시적인 신호가 있으면 그걸 먼저 본다.** (2026-08-19 8차 · 2026-08-21 31차)
    *
-   * `offAt` 은 **서버가** 소켓이 끊긴 순간에 찍는 값이다(`multiplayer.armPresence`).
-   * 이게 있으면 어림할 이유가 없다 — 유예는 그 시각부터 센다.
+   * 두 가지가 있고 **둘 다 짐작이 아니다.**
    *
-   * `offAt` 이 없다는 건 **아직 붙어 있다**는 뜻이다. 탭이 뒤로 가서 조용할 뿐인
-   * 사람을 판에서 빼면 안 된다 — 그게 바로 "잠깐 나갔다 오면 튕긴다"였다.
+   *   · `offAt`  — **서버가** 소켓이 끊긴 순간에 찍는다(`multiplayer.armPresence`).
+   *   · `awayAt` — **본인이** 홈 버튼을 누른 순간에 찍는다(`multiplayer.markAway`).
+   *
+   * 그래서 유예가 짧다(`MULTI.awaySeconds` 6초 = 나가기 버튼의 유예와 같은 값).
+   * 사용자에게는 홈 버튼도 나가기다 — 두 길이 다른 시간을 주면 그쪽이 요령이 된다.
+   *
+   * 값이 **없다는 것**은 "아직 붙어 있다"는 뜻이다. 탭이 뒤로 가서 조용할 뿐인 사람을
+   * 판에서 빼면 안 된다 — 그게 바로 "잠깐 나갔다 오면 튕긴다"였다(§9-0-39).
    * 그래서 아래 `seenAt` 판정은 **자리 지킴이 없는 옛 클라이언트를 위한 안전망**이고,
-   * 그만큼 넉넉하게 잡는다.
+   * 그만큼 넉넉하게(30초) 잡는다.
+   *
+   * 돌아오면 `awayAt` 이 지워지므로 판정이 **저절로 원상 복구된다** — 도장이 아니라
+   * 살아 있는 값이라 그렇다.
    */
-  const 한계 = MULTI.absentSeconds * 1000;
+  const 짧은유예 = MULTI.awaySeconds * 1000;
+  const 긴유예 = MULTI.absentSeconds * 1000;
 
   const off = player?.offAt ?? 0;
-  if (off) return now - off > 한계;
+  const away = player?.awayAt ?? 0;
+  // 둘 다 있으면 **늦게 찍힌 쪽**이 지금 상태다 (끊겼다 붙은 뒤 홈 버튼 등)
+  const 떠난시각 = Math.max(off, away);
+  if (떠난시각) return now - 떠난시각 > 짧은유예;
 
   const seen = player?.seenAt ?? 0;
   if (!seen) return false;
-  return now - seen > 한계;
+  return now - seen > 긴유예;
 }
 
 // ─────────────────────────────────────────────
@@ -311,6 +323,16 @@ export function pauseLeftMs(room, now = Date.now()) {
 }
 
 /**
+ * ★ **판이 도는 중인가.** (2026-08-21 31차)
+ *
+ * `startRound` 는 `state` 를 `'countdown'` 으로 쓰고 **그 뒤로 아무도 안 바꾼다** —
+ * 즉 판이 끝날 때까지 계속 `'countdown'` 이다. `'playing'` 만 보면 실제 게임에서는
+ * 한 번도 참이 되지 않는다(시뮬레이터가 손으로 써 넣어서 그동안 안 보였다).
+ * 그래서 **끝난 것도 대기 중인 것도 아니면 도는 중**으로 본다.
+ */
+export const roundRunning = (room) => room?.state === 'countdown' || room?.state === 'playing';
+
+/**
  * `uid` 가 지금 일시정지를 걸 수 있나.
  *
  * ★ **죽어 있는 사람이 하나라도 있으면 못 건다.** 부활 창과 이탈 카운트다운은 서버가
@@ -318,7 +340,13 @@ export function pauseLeftMs(room, now = Date.now()) {
  * 아무도 죽지 않은 순간에만 열어 두면 **멈춰야 할 시계가 게이지 하나로 줄어든다.**
  */
 export function canPause(room, uid, now = Date.now()) {
-  if (!room || room.state !== 'playing') return false;
+  /**
+   * ★ 31차: `state !== 'playing'` 이었다. 그런데 `startRound` 는 `'countdown'` 을 쓰고
+   * **그 뒤로 아무도 안 바꾼다** — 실제 게임에서는 이 조건이 한 번도 참이 아니라
+   * **일시정지가 통째로 죽어 있었다.** 시뮬레이터가 `'playing'` 을 손으로 써 넣어서
+   * 검사만 통과하고 있었다(§9-0-44 의 "미리보기가 거짓말을 한다"와 같은 모양이다).
+   */
+  if (!roundRunning(room)) return false;
   if (room.result?.rankings) return false;
   if (pauseLeftMs(room, now) > 0) return false;
   const list = playersInRound(room.players);
@@ -345,9 +373,25 @@ export function roundOver(room, now) {
    *
    * 셋 이상은 다르다 — 한 명이 빠져도 **남은 사람들끼리 판이 계속돼야** 한다.
    */
-  const 끝났다 = list.length === 2
-    ? list.some((p) => outOfRound(p, now))
-    : list.every((p) => outOfRound(p, now));
+  const 끝났다 = (list.length < MULTI.minPlayers && roundRunning(room))
+    /**
+     * ★ **자리가 통째로 사라진 경우.** (2026-08-21 31차)
+     *
+     * `leaveRoom` 은 `players/<uid>` 를 통째로 지운다. 그러면 남은 사람은 목록에
+     * **혼자**가 되는데, 예전 코드는 그 하나를 `every` 로 훑어 "내가 살아 있으니 아직
+     * 안 끝났다"는 답을 냈다 — 겨룰 사람이 없는데 **판이 영영 안 끝난다.**
+     * `othersAllOut` 도 `others.length === 0` 이면 false 를 돌려줘서 같은 구멍이었다.
+     *
+     * 혼자 남았으면 이미 승부가 났다. `finalizeResult` 는 한 명만 있어도 순위를
+     * 박을 수 있게 되어 있다(§9-0-25).
+     *
+     * **판이 도는 중일 때만** 그렇게 본다(`roundRunning`) — 대기방은 참가자가 하나뿐인
+     * 순간이 흔하고, 그걸 종료로 읽으면 시작도 안 한 판의 순위가 박힌다(§9-0-26).
+     */
+    ? true
+    : list.length === 2
+      ? list.some((p) => outOfRound(p, now))
+      : list.every((p) => outOfRound(p, now));
   if (!끝났다) return false;
   /**
    * ★ **1등이 빠져서 끝나는 판은 6초를 더 기다린다.** (2026-08-21 26차)
@@ -358,10 +402,17 @@ export function roundOver(room, now) {
   return leaveGraceLeftMs(room, now) <= 0;
 }
 
-/** 나 말고 전원이 판에서 빠졌나 — 마지막 한 명이 혼자 계속 뛸 이유는 없다 */
+/**
+ * 나 말고 전원이 판에서 빠졌나 — 마지막 한 명이 혼자 계속 뛸 이유는 없다.
+ *
+ * ★ 31차: **자리가 통째로 사라진 것도 "빠진 것"이다.** 예전에는 `others.length === 0`
+ * 이면 false 를 돌려줬는데, 그게 곧 "상대가 방에서 나가면 내 판이 안 끝난다"였다.
+ * 단 **판이 도는 중일 때만**(`roundRunning`) 그렇게 본다 — 대기방에서는 참가자가
+ * 하나뿐인 순간이 흔하고, 그걸 종료로 읽으면 시작도 안 한 판의 순위가 박힌다(§9-0-26).
+ */
 export function othersAllOut(room, myUid, now) {
   const others = playersInRound(room?.players).filter((p) => p.uid !== myUid);
-  if (!others.length) return false;
+  if (!others.length) return roundRunning(room);
   return others.every((p) => outOfRound(p, now));
 }
 

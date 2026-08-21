@@ -1633,7 +1633,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('끝난 판에는 안 들어간다', mp, "if (room.result?.rankings) return false;");
 
     const mr = fs.readFileSync('src/services/matchRules.js', 'utf8');
-    has('끊긴 시각이 있으면 그걸 먼저 본다', mr, 'if (off) return now - off > 한계;');
+    // 31차: `offAt` 에 `awayAt`(홈 버튼)이 합류하면서 **늦게 찍힌 쪽**을 본다 (56번 묶음)
+    has('끊긴 시각이 있으면 그걸 먼저 본다', mr, 'if (떠난시각) return now - 떠난시각 > 짧은유예;');
   }
 
   // ② 임계값 — 얼린 페이지가 2분짜리 통화를 버텨야 한다
@@ -1705,7 +1706,12 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ① 30초 하나로 통일 — 판정과 화면이 같은 숫자를 봐야 어긋나지 않는다
   {
     const mr = fs.readFileSync('src/services/matchRules.js', 'utf8');
-    has('판정이 30초 상수를 쓴다', mr, 'const 한계 = MULTI.absentSeconds * 1000;');
+    /**
+     * 31차: 상수가 **둘**이 됐다. 재는 대상이 다르기 때문이다 —
+     * 조용함은 그대로 30초, 본인이 말한 이탈(`awayAt`·`offAt`)은 6초(56번 묶음).
+     */
+    has('조용함 판정이 30초 상수를 쓴다', mr, 'const 긴유예 = MULTI.absentSeconds * 1000;');
+    has('명시적 이탈은 짧은 유예를 쓴다', mr, 'const 짧은유예 = MULTI.awaySeconds * 1000;');
     no('갈라져 있던 두 상수는 없다', mr, 'offlineGraceSeconds');
     const bal = fs.readFileSync('src/config/balance.js', 'utf8');
     no('밸런스에도 남아 있지 않다', bal, 'staleSeconds');
@@ -3552,6 +3558,119 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   /** 부르는 곳은 두 군데뿐이어야 한다 — 흩어지면 지울 때 남는다 */
   has('로컬은 loadProfile 에서', code(read('../src/services/storageLocal.js')), 'if (grantTestItems(p)) saveProfile(p);');
   has('서버는 pullAll 에서', code(read('../src/services/profile.js')), 'if (isTestAccount(me)) pushRemote({ ownedItems: me.ownedItems })');
+}
+
+
+// ─────────────────────────────────────────────
+console.log('\n56) ★ 나간 사람 판단 · 결과 명함 · 숫자 4 (2026-08-21 31차, 사용자 신고)');
+{
+  const fs = await import('node:fs');
+  const read = (f) => fs.readFileSync(f.startsWith('..') ? f.slice(3) : f, 'utf8');
+  const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const has = (label, hay, needle) => eq(label, hay.includes(needle), true);
+  const no = (label, hay, needle) => eq(label, hay.includes(needle), false);
+
+  const M2 = await import('../src/services/matchRules.js');
+  const { MULTI: B2 } = await import('../src/config/balance.js');
+
+  /** ① 홈 버튼·튕김은 **명시적 신호**라 유예가 짧다 (조용함은 그대로 30초) */
+  eq('★ 짧은 유예는 나가기 유예와 같은 값', B2.awaySeconds, B2.leaveGraceSeconds);
+  eq('조용함은 그대로 30초', B2.absentSeconds, 30);
+  {
+    const 지금 = 1_000_000;
+    const 짧 = B2.awaySeconds * 1000;
+    const 긺 = B2.absentSeconds * 1000;
+    eq('★ awayAt 은 6초 유예', [
+      M2.isStale({ awayAt: 지금 - 짧 + 1000, seenAt: 지금 }, 지금),
+      M2.isStale({ awayAt: 지금 - 짧 - 1000, seenAt: 지금 }, 지금),
+    ], [false, true]);
+    eq('★ offAt 도 같은 유예', M2.isStale({ offAt: 지금 - 짧 - 1000, seenAt: 지금 }, 지금), true);
+    eq('★ 조용하기만 하면 30초까지 기다린다', [
+      M2.isStale({ seenAt: 지금 - 긺 + 5000 }, 지금),
+      M2.isStale({ seenAt: 지금 - 긺 - 5000 }, 지금),
+    ], [false, true]);
+    // 돌아오면 값이 지워지므로 판정이 저절로 돌아온다 (도장이 아니다)
+    eq('★ 표시를 지우면 원상 복구', M2.isStale({ awayAt: 0, seenAt: 지금 }, 지금), false);
+    // 끊겼다 붙은 뒤 홈 버튼처럼 둘 다 있으면 **늦은 쪽**이 지금 상태다
+    eq('★ 둘 다 있으면 늦은 쪽', M2.isStale({ offAt: 지금 - 60000, awayAt: 지금 - 1000 }, 지금), false);
+  }
+  has('★ 홈 버튼을 누르면 곧바로 알린다', code(read('../src/game/GameScene.js')),
+    'Room.markAway(this.multi.code, true)');
+  has('★ 돌아오면 지운다', code(read('../src/game/GameScene.js')),
+    'Room.markAway(this.multi.code, false)');
+  has('규칙에도 적혀 있다', read('../docs/FIREBASE_RULES.md'), '"awayAt"');
+
+  /**
+   * ② ★ 방 상태는 판이 끝날 때까지 `countdown` 이다 — `'playing'` 만 보면 영영 거짓이다.
+   *    이 한 줄 때문에 **일시정지가 실제 게임에서 한 번도 안 열렸다**(시뮬은 손으로
+   *    `'playing'` 을 써 넣어 통과하고 있었다).
+   */
+  eq('★ countdown 도 도는 중이다', M2.roundRunning({ state: 'countdown' }), true);
+  eq('playing 도 도는 중', M2.roundRunning({ state: 'playing' }), true);
+  eq('waiting 은 아니다', M2.roundRunning({ state: 'waiting' }), false);
+  eq('finished 도 아니다', M2.roundRunning({ state: 'finished' }), false);
+  no('★ 일시정지가 playing 만 보지 않는다', code(read('../src/services/matchRules.js')),
+    "room.state !== 'playing'");
+  no('★ 시뮬이 상태를 손으로 써 넣지 않는다', code(read('tools/_multi-sim.mjs')),
+    "/state`, 'playing')");
+
+  /** ③ 자리가 통째로 사라져도 판이 끝난다 (1:1 에서 상대가 나가면 영영 안 끝났다) */
+  {
+    const 방 = { state: 'countdown', players: { A: { stairs: 10, alive: true, seenAt: Date.now() } } };
+    eq('★ 혼자 남으면 끝', M2.roundOver(방, Date.now()), true);
+    eq('★ 남은 사람 화면도 끝', M2.othersAllOut(방, 'A', Date.now()), true);
+    const 대기 = { ...방, state: 'waiting' };
+    eq('★ 대기방은 절대 끝난 판이 아니다', M2.roundOver(대기, Date.now()), false);
+    eq('대기방에서는 화면도 안 끝낸다', M2.othersAllOut(대기, 'A', Date.now()), false);
+  }
+
+  /** ④ 결과는 자립해야 한다 — 진 사람이 나가도 이름이 남는다 */
+  {
+    const MP = code(read('../src/services/multiplayer.js'));
+    has('★ 순위와 함께 명함을 남긴다', MP, "'result/cards': cards");
+    // 규칙이 아직 없어도 **판은 끝나야 한다** — 명함은 따로, 실패해도 되는 쓰기다
+    no('★ 순위 확정 update 에 얹지 않는다',
+      MP.slice(MP.indexOf("'result/rankings': ranked"), MP.indexOf("hostUid: ranked[0]")), 'cards');
+    has('명함 쓰기는 실패해도 넘어간다', MP, "'결과 명함').catch(");
+    has('규칙에도 적혀 있다', read('../docs/FIREBASE_RULES.md'), '"cards": {');
+
+    const MR = code(read('../src/screens/multi/MultiResult.js'));
+    has('★ 화면은 세 겹으로 읽는다', MR, 'const cardOf = (uid) => ({');
+    has('명함 → 기억 → 살아 있는 값 순', MR,
+      "...(room?.result?.cards?.[uid] ?? {}),");
+    has('★ 본 사람은 기억해 둔다', MR, 'remember(r.players);');
+    // 규칙 없이도 도는 근거 — 인게임이 판 내내 본 명단을 그대로 넘긴다
+    has('★ 인게임이 명단을 넘긴다', code(read('../src/game/GameScene.js')), 'roster: this.lastRoster ?? null,');
+    has('★ 결과 화면이 그걸 출발점으로 쓴다', MR, "runResult?.roster ?? {}");
+    no('★ 더 이상 빈 객체로 그리지 않는다', MR, 'v: players[uid] ?? {}');
+    // 자리 색은 joinedAt 순서라, 나간 사람이 빠진 목록으로 세면 남은 사람 색이 밀린다
+    has('★ 자리 색도 기억한 명단으로 센다', MR, 'players: roster');
+  }
+
+  /** ⑤ 숫자 4 — 갈무리11 볼드의 4 는 꼭대기에 구멍이 없다 */
+  {
+    const BF = read('../tools/build-font.mjs');
+    has('★ 글리프 교체표가 굽는 자리에 있다', code(BF), 'const GLYPH_FIX = {');
+    const F11 = JSON.parse(read('../src/data/font.generated.json'));
+    const g = F11.glyphs['4'];
+    eq('폭은 그대로 8 (문구 폭 검사가 흔들리면 안 된다)', g.w, 8);
+    eq('높이도 그대로', g.r.length, F11.h);
+    /**
+     * ★ **꼭대기 세 줄에 구멍이 있어야 한다.** 볼드 원본은 `..####..` 처럼 통째로
+     * 메워져서 배율 1·2·3 어디서 봐도 덩어리로 보였다("숫자 4가 깨져서 안보여").
+     * 구멍 = 획과 획 사이의 빈 도트. 각 줄의 첫 `1` 과 마지막 `1` 사이에 `0` 이 있나.
+     */
+    const 구멍 = (bits, w) => {
+      const s = bits.toString(2).padStart(w, '0');
+      const a = s.indexOf('1'); const b = s.lastIndexOf('1');
+      return a >= 0 && s.slice(a, b).includes('0');
+    };
+    eq('★ 위 세 줄에 구멍이 있다', [0, 1, 2].map((i) => 구멍(g.r[i], g.w)), [true, true, true]);
+    eq('★ 0 과 같은 규격 (구멍 3도트)', 구멍(F11.glyphs['0'].r[4], F11.glyphs['0'].w), true);
+    // 나머지 아홉 자는 손대지 않았다 — 폭이 하나라도 바뀌면 문구 폭 검사가 통째로 흔들린다
+    eq('나머지 숫자 폭은 그대로', '012356789'.split('').map((c) => F11.glyphs[c].w),
+      [8, 5, 8, 8, 8, 8, 8, 8, 8]);
+  }
 }
 
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
