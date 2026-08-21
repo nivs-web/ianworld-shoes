@@ -3420,5 +3420,58 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   has('★ 큰 호랑이도 옆모습은 같은 그림', bake, 'cuts.side = cuts.front;');
 }
 
+/**
+ * 55) ★ 테스트 계정 `토토` — 아이템 전부 보유 (2026-08-21 29차, 사용자 지정)
+ *
+ * 화면에서 실제로 그렇게 보이는지는 `qa:testacct` 가 진짜 앱을 띄워서 본다.
+ * 여기서는 **순수 함수의 규칙**만 확인한다 — 이 예외가 나중에 조용히 넓어지면 안 된다.
+ */
+{
+  console.log('\n55) ★ 테스트 계정 토토 — 아이템 전부 보유 (2026-08-21 29차)');
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const has = (label, src, needle) => eq(label, src.includes(needle), true);
+  const T = await import('../src/config/testAccount.js');
+  const IT = await import('../src/data/items.js');
+
+  eq('★ 대상은 토토 하나', T.TEST_ACCOUNTS.nicknames, ['토토']);
+  eq('토토는 테스트 계정', T.isTestAccount({ nickname: '토토' }), true);
+  eq('★ 다른 아이디는 아니다', T.isTestAccount({ nickname: '이안' }), false);
+  eq('빈 프로필도 안전', T.isTestAccount(null), false);
+
+  {
+    // 전부 채워 넣는다 — **표를 훑으므로** 새 아이템이 늘어도 저절로 따라온다
+    const p = { nickname: '토토' };
+    eq('★ 처음 한 번은 채운다', T.grantTestItems(p), true);
+    eq('열아홉 가지 전부', Object.keys(p.ownedItems).length, IT.ITEMS.length);
+    // 렌더마다 불리는 자리라, 두 번째부터는 **아무 일도 안 해야** 한다(헛저장 방지)
+    eq('★ 이미 다 있으면 안 건드린다', T.grantTestItems(p), false);
+  }
+  {
+    const p = { nickname: '이안', ownedItems: {} };
+    eq('★ 남의 계정은 그대로', T.grantTestItems(p), false);
+    eq('아이템도 안 생긴다', Object.keys(p.ownedItems).length, 0);
+  }
+  {
+    // uid 를 적어 두면 **이름을 흉내 내도** 안 걸린다 (더 좁히고 싶을 때의 길)
+    const saved = [...T.TEST_ACCOUNTS.uids];
+    T.TEST_ACCOUNTS.uids.push('abc');
+    eq('★ uid 를 적으면 uid 만 본다', T.isTestAccount({ nickname: '토토', uid: 'zzz' }), false);
+    eq('그 uid 는 걸린다', T.isTestAccount({ nickname: '아무개', uid: 'abc' }), true);
+    T.TEST_ACCOUNTS.uids.length = 0;
+    T.TEST_ACCOUNTS.uids.push(...saved);
+  }
+
+  /** ★ 아이템 말고는 아무것도 안 준다 — 신발을 얹으면 다른 검사가 실제 플레이와 달라진다 */
+  const src = code(read('../src/config/testAccount.js'));
+  for (const 금지 of ['shoesOwned', 'shoesByIndex', 'ownedCharacters', 'equippedItems']) {
+    eq(`★ ${금지} 는 안 건드린다`, src.includes(금지), false);
+  }
+  /** 부르는 곳은 두 군데뿐이어야 한다 — 흩어지면 지울 때 남는다 */
+  has('로컬은 loadProfile 에서', code(read('../src/services/storageLocal.js')), 'if (grantTestItems(p)) saveProfile(p);');
+  has('서버는 pullAll 에서', code(read('../src/services/profile.js')), 'if (isTestAccount(me)) pushRemote({ ownedItems: me.ownedItems })');
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n멀티 정산 로직 이상 없음');
 process.exit(fails ? 1 : 0);

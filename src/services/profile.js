@@ -9,6 +9,7 @@ import { getStore, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { NICKNAME } from '../config/balance.js';
+import { isTestAccount } from '../config/testAccount.js';
 import * as Dex from './collection.js';
 import * as Rank from './leaderboard.js';
 
@@ -87,6 +88,20 @@ export async function pullAll() {
    */
   const stamped = L.ensureDexBadge();
   if (stamped.dexBadgeAt) pushRemote({ dexBadgeAt: stamped.dexBadgeAt }).catch(() => {});
+  /**
+   * ★ **테스트 계정은 서버에도 한 번 밀어 올린다.** (2026-08-21 29차, 사용자 지정)
+   *
+   * 로컬 채우기는 `loadProfile()` 이 이미 했다(`config/testAccount.js`). 그런데 그건
+   * 이 기기에만 있는 값이라, 폰으로 갈아타면 원격 문서가 로컬을 덮으면서
+   * (`pullRemote` 의 `ownedItems` 합집합) 아이템이 없는 상태로 돌아갈 수 있다.
+   * 여기서 한 번 올려 두면 **어느 기기에서 들어와도 전부 가진 상태**가 된다.
+   *
+   * `get()` 이 곧 `loadProfile()` 이라 이 시점에는 이미 채워져 있다 — 그 값을 그대로 보낸다.
+   */
+  {
+    const me = L.loadProfile();
+    if (isTestAccount(me)) pushRemote({ ownedItems: me.ownedItems }).catch(() => {});
+  }
   /**
    * 이름 되살리기 — 이미 빈 이름으로 박제된 계정 문서를 고친다.
    * 이 사람들은 판을 한 번 더 돌기 전까지 순위표에 `???` 로 보인다.

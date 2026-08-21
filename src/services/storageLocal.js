@@ -8,6 +8,7 @@
  */
 
 import { DEFAULT_DIFFICULTY, UNLOCK_COST, SHOE_TIERS, DEX_BADGE_REQUIRED } from '../config/balance.js';
+import { grantTestItems } from '../config/testAccount.js';
 import { DEFAULT_CHARACTER, FREE_CHARACTERS } from '../data/characters.js';
 
 const KEY = {
@@ -128,9 +129,20 @@ export function loadProfile() {
   const p = { ...defaultProfile(), ...read(KEY.profile, {}) };
   if (p.walletVersion !== WALLET_VERSION) {
     migrateWallet(p);
+    grantTestItems(p);
     saveProfile(p); // 한 번만 돌면 되는 계산이라 결과를 굳힌다
     return p;
   }
+  /**
+   * ★ **테스트 계정은 아이템을 전부 가진 것으로 둔다.** (2026-08-21 29차, 사용자 지정)
+   *
+   * 여기에 둔 이유: `loadProfile()` 은 **모든 화면이 지나는 단 하나의 문**이라,
+   * 쇼핑·로비·인게임이 각자 확인할 필요가 없다. 새 아이템을 표에 더해도 이 계정은
+   * 저절로 따라온다 — 목록을 손으로 적어 두면 다음 회차에 반드시 빠뜨린다.
+   *
+   * 채워 넣은 것이 없으면 저장하지 않는다. 이 함수는 렌더마다 불린다.
+   */
+  if (grantTestItems(p)) saveProfile(p);
   /**
    * 합계·티어별은 **읽을 때마다** 신발별 보유량에서 다시 만든다.
    * 쓰기 시점에만 맞추면, 원격에서 내려온 문서나 손으로 고친 저장값처럼

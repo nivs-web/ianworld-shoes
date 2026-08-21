@@ -54,6 +54,8 @@
     "qa:chat": "node tools/_chatqa.mjs",
     "//qa:shop": "아이템 쇼핑 — 카테고리·값·착용 미리보기를 진짜 화면으로 확인한다.",
     "qa:shop": "node tools/_shopqa.mjs",
+    "//qa:testacct": "테스트 계정(토토)이 아이템을 전부 가진 것으로 뜨는지 — 진짜 프로필 경로로 확인한다.",
+    "qa:testacct": "node tools/_testacct-qa.mjs",
     "qa:mrank": "node tools/_mrankqa.mjs",
     "//qa:cardfocus": "유저상태창을 열면 커서가 입력칸 안에 있는지 — 19차에 부품을 합치며 조용히 사라졌던 동작이다(20차).",
     "qa:cardfocus": "node tools/_cardfocus.mjs",
