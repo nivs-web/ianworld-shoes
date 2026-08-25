@@ -41,7 +41,12 @@ export default function SplashLogin(nav) {
       enter();
     } catch (e) {
       // 왜 안 됐는지 말해 준다. '로그인 실패' 한 줄로는 사용자가 할 수 있는 게 없다
-      toast(e?.code === 'app/popup-required' ? S.loginPopupBlocked : S.loginFailed, 3200);
+      toast(
+        e?.code === 'app/popup-required' ? S.loginPopupBlocked
+        : e?.code === 'app/domain-blocked' ? S.loginDomainBlocked(location.host)
+        : S.loginFailed,
+        e?.code === 'app/domain-blocked' ? 5200 : 3200
+      );
       console.warn('[로그인] 실패', e?.code, e);
     } finally {
       busy = false;
