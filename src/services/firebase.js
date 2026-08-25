@@ -24,13 +24,26 @@
  * `vercel.json` 이 `/__/auth/*` 를 firebaseapp.com 으로 프록시하므로, authDomain 을
  * 우리 호스트로 바꾸면 로그인 핸들러가 **같은 출처**가 되어 칸막이가 사라진다.
  *
- * **선행 조건은 2026-08-15 에 전부 끝났고 실측으로 확인했다** (CLAUDE.md §9-0-10):
- *   1. Firebase → Authentication → 승인된 도메인에 `ianworld-shoes.vercel.app`
+ * **주소마다 콘솔 작업이 선행되어야 한다.** 셋 중 하나라도 빠지면 로그인이 통째로 막힌다:
+ *   1. Firebase → Authentication → 승인된 도메인에 그 주소
  *   2. Google Cloud → OAuth 클라이언트 → 승인된 리디렉션 URI 에
- *      `https://ianworld-shoes.vercel.app/__/auth/handler`
- *      (기존 firebaseapp.com 항목은 그대로 두고 **추가**했다 — 지우면 기존 경로가 끊긴다)
- *   3. `vercel.json` 의 `/__/auth/*` 프록시 배포
- * 그래서 이제 **기본값이 켜짐**이다. 새 도메인을 붙일 때는 위 2·3을 먼저 해야 한다.
+ *      `https://<그 주소>/__/auth/handler`
+ *      (기존 항목은 그대로 두고 **추가**한다 — 지우면 기존 경로가 끊긴다)
+ *   3. `vercel.json` 의 `/__/auth/*` 프록시 (주소와 무관하므로 한 번만 하면 된다)
+ *
+ * ★ **2026-08-26 에 이걸로 한 번 크게 데었다.**
+ *   `ianworld-shoes.vercel.app` → `ianworld.vercel.app` 로 주소를 옮긴 순간
+ *   **구글 로그인이 전부 죽었다.** 1·2를 안 한 상태였고, 옛 주소는 307 로 새 주소로
+ *   넘어가 버려서 **되돌아갈 대피처도 없었다.** 코드는 한 줄도 문제가 없었다 —
+ *   Firestore·RTDB·프록시·매니페스트 전부 새 주소에서 정상이었고 오직 1번만 비어 있었다.
+ *   그때 화면에는 '로그인 실패' 만 떠서 원인이 보이지 않았다(그 뒤로 화면이 직접
+ *   말하게 고쳤다 — `auth.js` 의 `app/domain-blocked`).
+ *
+ *   **주소를 옮기기 전에 1·2를 먼저 해 둘 것.** 순서가 반대면 그 사이 서비스가 멈춘다.
+ *
+ * 급히 되돌려야 하면 `VITE_FIREBASE_SELF_AUTH=0` 으로 2번 의존을 뺄 수 있다.
+ * 다만 **1번은 그래도 필요하다** — 승인된 도메인 검사는 authDomain 이 아니라
+ * **요청을 보낸 주소**를 본다.
  * 급히 되돌려야 하면 `VITE_FIREBASE_SELF_AUTH=0` 으로 끌 수 있다.
  */
 function resolveAuthDomain() {
