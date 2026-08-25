@@ -10,6 +10,7 @@ import { signOut } from '../services/auth.js';
 import Lobby from './Lobby.js';
 import SplashLogin from './SplashLogin.js';
 import { canInstall, promptInstall, isStandalone, onInstallChange } from '../services/pwa.js';
+import { enterFullscreen, exitFullscreen, isFullscreen } from '../core/fullscreen.js';
 import { lazyScreen } from './lazyScreen.js';
 
 /**
@@ -55,11 +56,42 @@ export default function Portal(nav) {
     else if (r === 'unavailable') toast(S.installBookmarkGuide, 3200);
   }
 
+  /**
+   * ★ **전체화면은 여기서 켠다.** (2026-08-26, 사용자 지정)
+   *
+   * 예전에는 게임을 시작할 때 켜고 판이 끝나면 껐다(`startGame.js` 의 `handleFinish`).
+   * 그래서 **한 판 끝날 때마다 풀렸고**, 중간에 도감이나 설정을 들렀다 오면 다시
+   * 안 켜졌다 — 사용자가 말한 "간혹 전체화면이 안 됨" 이 이것이다.
+   *
+   * 오락실에서 한 번 켜면 세션 내내 유지된다. `document.documentElement` 를 통째로
+   * 전체화면으로 만들기 때문에 화면을 옮겨 다녀도 그대로다.
+   *
+   * ⚠ **`await` 를 먼저 하면 안 된다.** 전체화면 요청은 클릭 핸들러 안에서 곧바로
+   * 나가야 브라우저가 받아 준다. 기다렸다 부르면 제스처 컨텍스트를 벗어나 거절당한다.
+   *
+   * 방향은 잠그지 않는다 — 신발은 세로, 드래곤은 가로라 **게임이 정한다**
+   * (`core/fullscreen.js` 의 `lockPortrait` / `lockLandscape` 주석).
+   */
+  function onFullscreen() {
+    if (isFullscreen()) { exitFullscreen(); return; }
+    enterFullscreen().then((ok) => { if (!ok) toast(S.fullscreenFailed, 2600); });
+  }
+
   // 설치 가능 신호는 화면이 그려진 뒤에 온다 — 도착하면 버튼을 다시 그린다
   const off = onInstallChange(() => nav.refresh());
+  // 전체화면이 켜지고 꺼질 때 버튼 글자를 바꿔야 한다 (사용자가 F11 로 껐을 수도 있다)
+  const onFsChange = () => nav.refresh();
+  for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
+    document.addEventListener(ev, onFsChange);
+  }
 
   return {
-    onLeave() { off(); },
+    onLeave() {
+      off();
+      for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
+        document.removeEventListener(ev, onFsChange);
+      }
+    },
     render() {
       const p = getProfile();
       return screen(
@@ -77,6 +109,11 @@ export default function Portal(nav) {
         el('div.spacer'),
         // 이미 홈 화면 앱으로 돌고 있으면 바로가기가 무의미하므로 감춘다
         !isStandalone() ? button(S.installShortcut, onInstall) : null,
+        /**
+         * 홈 화면 앱(standalone)은 이미 주소창이 없다 — 그 상태에서 전체화면 버튼은
+         * 아무것도 바꾸지 못하면서 자리만 차지한다.
+         */
+        !isStandalone() ? button(isFullscreen() ? S.fullscreenOff : S.fullscreenOn, onFullscreen) : null,
         backButton(S.logout, onLogout)
       );
     },

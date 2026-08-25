@@ -36,11 +36,31 @@ export async function exitFullscreen() {
 }
 
 /**
- * 화면 방향을 세로로 고정한다. 세로 전용 게임이라 가로로 돌아가면 계단이 안 보인다.
- * 안드로이드 크롬만 지원한다 — 없으면 그냥 넘어간다.
+ * 화면 방향 고정.
+ *
+ * ★ **방향은 오락실이 아니라 "게임"이 정한다.** (2026-08-26)
+ *
+ * 예전에는 전체화면에 들어갈 때 무조건 세로로 잠갔다. 게임이 신발을 찾아서 하나뿐일
+ * 때는 맞는 처리였지만, 드래곤 스트라이커는 **가로** 게임이다. 오락실 화면에서 세로로
+ * 잠가 버리면 드래곤은 시작하자마자 화면이 눕는다.
+ *
+ * 그래서 오락실은 전체화면만 켜고 방향은 건드리지 않는다. 각 게임이 시작할 때
+ * 자기 방향을 걸고, 끝나면 푼다.
+ *
+ * 안드로이드 크롬만 지원하고 **전체화면이 아니면 실패한다** — 둘 다 조용히 넘어간다.
  */
-export async function lockPortrait() {
+export async function lockPortrait() { return lockOrientation('portrait'); }
+export async function lockLandscape() { return lockOrientation('landscape'); }
+
+async function lockOrientation(dir) {
   try {
-    await screen.orientation?.lock?.('portrait');
+    await screen.orientation?.lock?.(dir);
   } catch { /* 지원 안 하거나 전체화면이 아니면 실패한다 — 무시 */ }
+}
+
+/** 게임에서 나올 때 — 오락실·로비는 폰을 돌리는 대로 따라가는 게 낫다 */
+export function unlockOrientation() {
+  try {
+    screen.orientation?.unlock?.();
+  } catch { /* 지원 안 하면 무시 */ }
 }

@@ -16,7 +16,14 @@ import * as Bgm from './audio/bgm.js';
 import { nav, bindHardwareBack, bindEscBack } from './screens/router.js';
 import { bindMenuNav } from './screens/menuNav.js';
 import SplashLogin from './screens/SplashLogin.js';
-import Lobby from './screens/Lobby.js';
+/**
+ * ★ **첫 화면은 오락실(포털)이다.** (2026-08-26, 게임이 둘이 되면서)
+ *
+ * 예전에는 재방문자를 신발게임 로비로 **직행**시켰다. 게임이 하나뿐일 때는 한 번 덜
+ * 누르게 하는 좋은 처리였지만, 드래곤 스트라이커가 들어오면서 **다른 게임으로 갈
+ * 길이 없어졌다.** 로비 맨 아래 [오락실 화면으로 돌아가기] 를 눌러야만 보였다.
+ */
+import Portal from './screens/Portal.js';
 import { initAuth, onUserChanged } from './services/auth.js';
 import { get as getProfile, pullAll } from './services/profile.js';
 import { selftest } from './services/diagnose.js';
@@ -105,7 +112,7 @@ async function boot() {
    * 그래서 콘솔에서 직접 찔러 볼 수 있게 열어 둔다: `await __dbg.multi.diagnose()`
    */
   window.__dbg = {
-    Scene, Audio, Sfx, Bgm, nav, profile: getProfile, screens: { Lobby, SplashLogin }, selftest,
+    Scene, Audio, Sfx, Bgm, nav, profile: getProfile, screens: { Portal, SplashLogin }, selftest,
     multi: {
       raw: () => import('./services/multiplayer.js'),
       async diagnose(code) {
@@ -132,7 +139,7 @@ async function boot() {
    * 닉네임만으로는 안 된다 — 로그인이 게임의 전제이므로 **계정이 있어야** 통과시킨다.
    * 세션 확인이 늦게 끝나면 일단 로그인 화면을 띄우고, 확인되는 순간 넘어간다.
    */
-  const routeFor = (u) => (u && getProfile().nickname ? Lobby : SplashLogin);
+  const routeFor = (u) => (u && getProfile().nickname ? Portal : SplashLogin);
 
   /**
    * **세션이 복원됐을 때도 서버와 한 번 맞춘다.**
@@ -199,23 +206,23 @@ async function boot() {
    * 그 사이에 싱글게임을 시작해도 문제가 없다(기록은 로컬에 남고 다음 접속에 올라간다).
    */
   const 로컬 = getProfile();
-  const 미리로비 = !!(로컬.nickname && 로컬.uid && 로컬.uid !== 'guest');
-  if (미리로비) {
-    nav.reset(Lobby);
+  const 미리오락실 = !!(로컬.nickname && 로컬.uid && 로컬.uid !== 'guest');
+  if (미리오락실) {
+    nav.reset(Portal);
     hideBoot();
   }
 
-  /** 지금 로비를 띄워 뒀나 — 같은 화면을 두 번 세우지 않으려고 기억한다 */
-  let 로비중 = 미리로비;
+  /** 지금 오락실을 띄워 뒀나 — 같은 화면을 두 번 세우지 않으려고 기억한다 */
+  let 오락실중 = 미리오락실;
 
   const u = await authReady;
-  if (미리로비) {
+  if (미리오락실) {
     // 세션이 끝났다 — 그제야 로그인 화면으로 되돌린다
-    if (!u) { nav.reset(SplashLogin); 로비중 = false; }
+    if (!u) { nav.reset(SplashLogin); 오락실중 = false; }
   } else {
     const 첫화면 = routeFor(u);
     nav.reset(첫화면);
-    로비중 = 첫화면 === Lobby;
+    오락실중 = 첫화면 === Portal;
     hideBoot();
   }
   if (u && !u.guest) syncOnce();
@@ -225,9 +232,9 @@ async function boot() {
      * **이미 로비면 다시 세우지 않는다**: `reset` 은 화면 인스턴스를 새로 만들어
      * 로비의 미리받기·접속 표시가 한 번 더 돈다(2026-08-19 13차, '미리 로비' 이후).
      */
-    if (next && !로비중 && nav.depth() === 1 && routeFor(next) === Lobby) {
-      nav.reset(Lobby);
-      로비중 = true;
+    if (next && !오락실중 && nav.depth() === 1 && routeFor(next) === Portal) {
+      nav.reset(Portal);
+      오락실중 = true;
     }
     if (next && !next.guest) syncOnce();
   });

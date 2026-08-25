@@ -9,7 +9,7 @@
  */
 
 import * as Scene from '../core/scene.js';
-import { enterFullscreen, exitFullscreen, lockPortrait } from '../core/fullscreen.js';
+import { enterFullscreen, lockPortrait, unlockOrientation } from '../core/fullscreen.js';
 import { get as getProfile } from '../services/profile.js';
 import * as Room from '../services/multiplayer.js';
 import { currentUser } from '../services/auth.js';
@@ -56,7 +56,8 @@ export async function startMultiGame(nav, { code, room }) {
      * 승패를 아는 결과 화면(`MultiResult`)이 판단한다.
      */
     onFinish: (result) => {
-      exitFullscreen();
+      /* 전체화면은 유지하고 방향 잠금만 푼다 — 이유는 startGame.js 의 handleFinish 주석 */
+      unlockOrientation();
       /**
        * ★ **화면부터 넘긴다.** (2026-08-19)
        *
@@ -80,7 +81,7 @@ export async function startMultiGame(nav, { code, room }) {
      * 고장으로 보인다.
      */
     onAbsent: () => {
-      exitFullscreen();
+      unlockOrientation();
       Scene.clear();
       nav.reset(Lobby);
       toast(S.kickedAbsent(MULTI.absentSeconds), 3200);

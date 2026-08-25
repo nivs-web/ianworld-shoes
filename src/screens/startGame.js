@@ -9,7 +9,7 @@ import { get as getProfile, finishRun } from '../services/profile.js';
 import { ELEVATOR } from '../config/balance.js';
 import * as L from '../services/storageLocal.js';
 import * as Scene from '../core/scene.js';
-import { enterFullscreen, exitFullscreen, lockPortrait } from '../core/fullscreen.js';
+import { enterFullscreen, lockPortrait, unlockOrientation } from '../core/fullscreen.js';
 import { nav } from './router.js';
 import Lobby from './Lobby.js';
 import { loadGameModule } from '../game/loadGame.js';
@@ -41,6 +41,12 @@ export async function startGame(navigator, opt = {}) {
    * 전체화면 요청은 **클릭 핸들러 안**에서 곧바로 해야 브라우저가 받아 준다.
    * await 하지 않는 이유도 같다 — 기다렸다 부르면 제스처 컨텍스트를 벗어난다.
    * 실패해도(아이폰 등) 게임은 그대로 시작한다.
+   *
+   * 보통은 오락실 화면에서 이미 켜 두었으므로 `enterFullscreen()` 이 곧바로
+   * true 를 돌려준다(`isFullscreen()` 이면 아무것도 하지 않는다).
+   * 여기 남겨 두는 것은 **거기서 안 켠 사람**을 위한 것이다.
+   *
+   * 방향은 여기서 건다 — 신발을 찾아서는 세로 전용이다. 가로로 돌아가면 계단이 안 보인다.
    */
   enterFullscreen().then((ok) => { if (ok) lockPortrait(); });
 
@@ -91,7 +97,18 @@ export function handleFinish(result, action) {
     startGame(nav, {});   // 전체화면은 유지된다
     return;
   }
-  exitFullscreen();       // 로비는 브라우저 UI가 있는 편이 낫다
+  /**
+   * ★ **전체화면을 끄지 않는다.** (2026-08-26, 사용자 지정)
+   *
+   * 예전에는 여기서 `exitFullscreen()` 을 불렀다. 그래서 **한 판 끝날 때마다 풀렸고**,
+   * 다시 켜려면 [싱글게임] 을 눌러야 했다 — 중간에 도감이나 설정을 들렀다 오면
+   * 그마저 안 켜졌다. 사용자가 말한 "간혹 전체화면이 안 됨" 의 정체가 이것이다.
+   * 이제 오락실 화면에서 켜고, 사용자가 직접 끄기 전까지 유지한다.
+   *
+   * 방향 잠금만 푼다 — 로비·오락실은 폰을 돌리는 대로 따라가는 게 낫고,
+   * 무엇보다 **세로로 잠근 채 두면 드래곤 스트라이커가 시작하자마자 눕는다.**
+   */
+  unlockOrientation();
   /**
    * ★ **씬 스택을 반드시 비운다.** (2026-08-16)
    * 이게 없어서 로비·도감을 보는 내내 죽은 GameScene 을 60fps 로 계속 그리고 있었다.
