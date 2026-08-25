@@ -29,7 +29,7 @@ page.on('console', (m) => {
   if (/favicon|status of 404/.test(t)) return;
   errors.push(t);
 });
-const TARGETS = { result: '_result-preview', room: '_room-preview', rooms: '_roomlist-preview', bg: '_bgsettings-preview', hof: '_hof-preview', msg: '_msg-preview' };
+const TARGETS = { result: '_result-preview', room: '_room-preview', rooms: '_roomlist-preview', bg: '_bgsettings-preview', hof: '_hof-preview', msg: '_msg-preview', dragon: '_dragonscreen-preview' };
 const target = TARGETS[process.argv[2]] ?? '_screen-preview';
 await page.goto(`http://127.0.0.1:${PORT}/tools/${target}.html`, { waitUntil: 'networkidle' });
 await page.waitForFunction('window.__ready === true', null, { timeout: 20000 }).catch(() => {});
