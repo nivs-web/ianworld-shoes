@@ -102,6 +102,19 @@ export function defaultProfile() {
     multiWins: 0,
     multiLosses: 0,
     /**
+     * ★ **드래곤 스트라이커** (오락실 2번째 게임).
+     *
+     * 신발게임과 지갑을 섞지 않는다 — 점수 단위도 규칙도 다른 게임이라
+     * `shoesOwned` 같은 걸 공유하면 한쪽 밸런스를 고칠 때마다 다른 쪽이 흔들린다.
+     * 계정(닉네임·로그인)만 같이 쓰고 기록은 `dragon*` 칸에 따로 쌓는다.
+     */
+    dragonBest: 0,          // 최고 점수
+    dragonBestStage: 0,     // 최고로 깬 스테이지
+    dragonBestLevel: 0,     // 그 판의 파이어 레벨
+    dragonPlays: 0,         // 총 플레이 판수
+    dragonDifficulty: 'normal',
+    dragonCharacter: 0,     // 고른 드래곤 번호 (0~9)
+    /**
      * 기간별 멀티 승수 (2026-08-19 23차) — 멀티게임순위의 오늘·주간·월간 탭.
      * `{ dy: {k, n}, wk: {k, n}, mo: {k, n} }` — `k` 는 그 기간의 키, `n` 은 승수.
      * 키가 바뀌면 `n` 을 1부터 다시 센다(그게 곧 리셋이다).

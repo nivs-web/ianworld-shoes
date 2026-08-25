@@ -190,6 +190,47 @@ export async function pullRemote() {
 // ─────────────────────────────────────────────
 
 export const setDifficulty = (d) => patch({ difficulty: d });
+
+// ── 드래곤 스트라이커 ──────────────────────────
+export const setDragonDifficulty = (d) => patch({ dragonDifficulty: d });
+export const setDragonCharacter = (i) => patch({ dragonCharacter: i | 0 });
+
+/**
+ * 드래곤 스트라이커 한 판이 끝났다.
+ *
+ * ★ **기록은 큰 쪽만 남기고, 판수는 무조건 올린다.**
+ * `patch()` 는 넘긴 칸만 원격에 merge 하므로 갱신이 없으면 아예 쓰지 않는다 —
+ * 판마다 무조건 쓰면 최고기록이 그대로인데도 Firestore 쓰기가 계속 나간다.
+ *
+ * ★ **점수는 게임(iframe)이 보내온 값이다.** 사람이 고칠 수 있는 값이라
+ * 믿을 수 있는 상한을 넘으면 버린다 — 순위표가 있는 게임에서 이 검사가 없으면
+ * 콘솔 한 줄로 1등이 된다. 지금은 순위표가 없지만 곧 붙일 자리라 미리 막아 둔다.
+ *
+ * @param {{score:number, stage:number, level:number}} r
+ * @returns {{profile:object, isBest:boolean}}
+ */
+export function finishDragonRun(r) {
+  const before = L.loadProfile();
+  const score = Math.max(0, Math.min(DRAGON_SCORE_CAP, Math.round(Number(r?.score) || 0)));
+  const stage = clampInt(r?.stage, 0, 20);
+  const level = clampInt(r?.level, 0, 10);
+
+  const next = { dragonPlays: (before.dragonPlays || 0) + 1 };
+  const isBest = score > (before.dragonBest || 0);
+  if (isBest) { next.dragonBest = score; next.dragonBestLevel = level; }
+  if (stage > (before.dragonBestStage || 0)) next.dragonBestStage = stage;
+
+  return { profile: patch(next), isBest };
+}
+
+/**
+ * 한 판에서 나올 수 있는 점수의 상한.
+ * 20스테이지를 2인으로 완주해도 20만점 근처라 100만이면 넉넉하다 —
+ * 넉넉하게 잡되 "무한대"는 아니게 하는 것이 요점이다.
+ */
+const DRAGON_SCORE_CAP = 1000000;
+const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)));
+
 export const setControlMode = (m) => patch({ controlMode: m });
 /** 싱글 게임 배경 — 'random' 또는 BUILDINGS 의 id (2026-08-19) */
 export const setSingleBg = (id) => patch({ singleBg: id });

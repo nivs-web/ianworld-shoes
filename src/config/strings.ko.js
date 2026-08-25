@@ -185,6 +185,21 @@ export const S = {
   /** 종류 수 — 이쪽이 130 기준이다 */
   dexProgress: (have, all) => `신발 종류 도감 ${have}/${all}개 완성`,
 
+  // ── 드래곤 스트라이커 (오락실 2번째 게임) ────
+  dragonTitle: '드래곤 스트라이커',
+  /** 포털 카드 밑줄 · 로비 통계 — 둘이 같은 문구를 쓴다 */
+  dragonBestScore: (n) => `나의 최고 스코어 ${n.toLocaleString('en-US')}점`,
+  dragonBestStage: (n) => `최고 스테이지 ${n}단계`,
+  dragonPlays: (n) => `플레이 ${n.toLocaleString('en-US')}판`,
+  dragonFireLv: (n) => `최고 파이어 LV${n}`,
+  dragonMenuCharacter: '드래곤 변경',
+  dragonMenuSettings: '설정',
+  dragonHint: '난이도를 높이면 적이 많아지고 점수도 많이 오릅니다',
+  /** 준비 중인 메뉴 — 눌러도 되지만 아직 아무것도 없다고 분명히 말한다 */
+  dragonSoon: '준비 중입니다',
+  dragonLoading: '게임을 불러오는 중…',
+  dragonNewBest: (n) => `신기록! ${n.toLocaleString('en-US')}점`,
+
   // ── 뱃지 ───────────────────────────────────
   badgeDexTop: '도감',
   badgeDexBottom: '완성',

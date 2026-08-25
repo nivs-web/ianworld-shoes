@@ -6,7 +6,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/__/auth/:path*", "destination": "https://find-shoes-f5c55.firebaseapp.com/__/auth/:path*" },
-    { "source": "/((?!assets/|icons/|manifest.webmanifest|sw.js|__/).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|icons/|dragon/|manifest.webmanifest|sw.js|__/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

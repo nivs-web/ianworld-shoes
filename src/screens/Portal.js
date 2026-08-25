@@ -10,9 +10,22 @@ import { signOut } from '../services/auth.js';
 import Lobby from './Lobby.js';
 import SplashLogin from './SplashLogin.js';
 import { canInstall, promptInstall, isStandalone, onInstallChange } from '../services/pwa.js';
+import { lazyScreen } from './lazyScreen.js';
 
+/**
+ * ★ **2번째 게임은 누를 때 받는다.** (드래곤 스트라이커)
+ * 신발게임만 하는 사람에게 드래곤 로비 코드를 부팅 번들로 내려보낼 이유가 없다.
+ * 카드에 보이는 건 제목과 최고 점수뿐이고 그 둘은 프로필에 이미 있다.
+ */
+const DragonLobby = lazyScreen(() => import('./DragonLobby.js'), S.dragonTitle);
+
+/**
+ * 게임 카드.  `sub` 는 카드 제목 아래 한 줄 — 게임마다 자랑할 숫자가 다르다
+ * (신발은 모은 켤레, 드래곤은 최고 점수).
+ */
 const CARDS = [
-  { id: 'find_shoes', title: S.gameTitle, screen: () => Lobby, ready: true },
+  { id: 'find_shoes', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
+  { id: 'dragon_striker', title: S.dragonTitle, sub: (p) => S.dragonBestScore(p.dragonBest || 0), screen: () => DragonLobby, ready: true },
 ];
 
 export default function Portal(nav) {
@@ -57,7 +70,7 @@ export default function Portal(nav) {
         ...CARDS.map((c) =>
           el('div.game-card', null, [
             el('div.game-card-title', c.title),
-            el('div.game-card-sub', S.totalShoesCount(p.shoesOwned)),
+            el('div.game-card-sub', c.sub(p)),
             button(S.touchToStart, () => nav.push(c.screen()), { primary: true }),
           ])
         ),

@@ -1,0 +1,40 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>드래곤 스트라이커 로비 미리보기</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<style>
+  body { background:#1b1410; padding:14px; display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap }
+  .frame { width:380px; background:#0d0a08; padding:10px; border:2px solid #4a3b2a }
+  .cap { color:#c8b28a; font:12px/1.6 monospace; padding-bottom:6px }
+  #ui, #ui2 { position:static }
+</style>
+<!-- 진짜 DragonLobby.js · Portal.js 를 그대로 띄운다. 바꾸는 것은 profile.js 하나뿐. -->
+<script type="importmap">
+{ "imports": { "/src/services/profile.js": "/tools/_dragon-stub.js" } }
+</script>
+</head>
+<body class="ui-mode">
+<div class="frame"><div class="cap">S03 포털 — 게임 카드 2장</div><div id="ui2" class="active"></div></div>
+<div class="frame"><div class="cap">S19 드래곤 스트라이커 로비</div><div id="ui" class="active"></div></div>
+<script type="module">
+import DragonLobby from '/src/screens/DragonLobby.js';
+import Portal from '/src/screens/Portal.js';
+
+function mount(rootId, factory) {
+  const root = document.getElementById(rootId);
+  let live = null;
+  const nav = {
+    refresh() { if (!live) return; root.innerHTML = ''; root.append(live.render(nav)); },
+    back() {}, push() {}, reset() {},
+  };
+  live = factory(nav);
+  nav.refresh();
+  return live;
+}
+
+mount('ui2', Portal);
+mount('ui', DragonLobby);
+window.__ready = true;
+</script>
+</body></html>
