@@ -177,6 +177,16 @@ export async function signInGoogle() {
     }
     // 사용자가 창을 직접 닫은 건 실패가 아니다 — 조용히 제자리
     if (e?.code === 'auth/popup-closed-by-user') return null;
+    /**
+     * ★ **승인 안 된 도메인은 화면이 사실대로 말해야 한다.** (2026-08-26)
+     * 새 주소로 옮기면 Firebase 가 이 코드로 거부하는데, 예전에는 '로그인 실패' 로만
+     * 보여서 사장님도 사용자도 무엇을 고쳐야 하는지 알 수 없었다.
+     */
+    if (e?.code === 'auth/unauthorized-domain') {
+      const blocked = new Error('domain-not-authorized');
+      blocked.code = 'app/domain-blocked';
+      throw blocked;
+    }
     console.warn('[auth] 구글 로그인 실패', e?.code, e);
     throw e;
   }

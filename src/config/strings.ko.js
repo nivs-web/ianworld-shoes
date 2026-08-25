@@ -15,6 +15,17 @@ export const S = {
   loginUnavailable: '지금은 로그인 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요',
   /** 팝업이 막혔는데 리다이렉트도 못 쓰는 환경 — 헛걸음 대신 사실대로 알린다 */
   loginPopupBlocked: '브라우저가 로그인 창을 막았습니다. 팝업을 허용하고 다시 눌러주세요',
+  /**
+   * ★ **도메인을 바꾸면 로그인이 통째로 막힌다.** (2026-08-26)
+   *
+   * Firebase 는 승인된 도메인 목록에 없는 주소에서 오는 로그인을 거부한다
+   * (`auth/unauthorized-domain`). 그런데 화면에는 '로그인 실패' 한 줄만 떠서,
+   * 무엇이 문제인지 알 길이 없었다 — 실제로 ianworld-shoes.vercel.app 에서
+   * ianworld.vercel.app 으로 옮긴 날 로그인이 전부 죽었는데 원인이 안 보였다.
+   * 도메인을 옮기는 건 앞으로도 있을 일이라, 화면이 직접 원인을 말하게 한다.
+   */
+  loginDomainBlocked: (host) =>
+    `이 주소(${host})는 아직 로그인이 허용되지 않았습니다. 관리자에게 알려주세요`,
   installShortcut: '앱 바로가기 만들기',
   installIosGuide: '공유 버튼 → "홈 화면에 추가"를 눌러주세요',
   installDone: '홈 화면에 추가되었습니다',
