@@ -27,6 +27,13 @@ export const S = {
   loginDomainBlocked: (host) =>
     `이 주소(${host})는 아직 로그인이 허용되지 않았습니다. 관리자에게 알려주세요`,
   installShortcut: '앱 바로가기 만들기',
+  /**
+   * ★ **전체화면은 오락실 화면에서 한 번만 켠다.** (2026-08-26, 사용자 지정)
+   * 게임마다 켜고 끄면 판이 끝날 때마다 풀려서 "간혹 전체화면이 안 된다" 가 된다.
+   */
+  fullscreenOn: '전체화면으로 보기',
+  fullscreenOff: '전체화면 끄기',
+  fullscreenFailed: '이 브라우저에서는 전체화면을 쓸 수 없습니다',
   installIosGuide: '공유 버튼 → "홈 화면에 추가"를 눌러주세요',
   installDone: '홈 화면에 추가되었습니다',
   /**

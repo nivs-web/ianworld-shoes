@@ -1,0 +1,65 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>부팅 라우팅 검사</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<script>
+  /**
+   * 부팅 라우팅 검사 — "로그인된 사람의 첫 화면이 오락실(포털)인가".
+   *
+   * 진짜 main.js 를 그대로 부팅시킨다. 바꾸는 것은 services/auth.js 하나뿐이다 —
+   * 검사에서 구글 로그인을 할 수는 없으니 세션이 있는 척만 해 준다.
+   *
+   * 주의: Vite 는 편집된 파일에 ?t=<mtime> 을 붙여 내보낸다. 그래서 importmap 에
+   * '/src/services/auth.js' 만 적으면 조용히 안 먹는다 - 오류 없이 진짜 모듈이
+   * 로드되고 화면만 이상해진다. (tools/_shop-stub.js 를 쓰는 다른 미리보기들도
+   * 같은 함정이 있다 - 스텁 대상 파일을 한 번이라도 고치면 그 뒤로 무시된다.)
+   * 그래서 여기서는 실제로 서빙되는 경로를 읽어 그 키까지 함께 넣는다.
+   */
+  localStorage.setItem('sf_profile', JSON.stringify({
+    uid: 'testuid123', nickname: '아빠게임왕', email: 't@t.com',
+    selectedCharacter: 'ian', shoesOwned: 4213, shoesByIndex: {}, walletVersion: 1,
+    bestStairs: 10769, dragonBest: 128400
+  }));
+
+  /* 화면 전환 기록기. 즉시 시작해야 한다 - type=module 은 defer 라
+     DOMContentLoaded 보다 먼저 돌고, 거기서 시작하면 첫 화면을 놓친다. */
+  window.__frames = [];
+  (function () {
+    var t0 = performance.now();
+    var iv = setInterval(function () {
+      var ui = document.getElementById('ui');
+      var t = (ui ? ui.textContent : '').replace(/\s+/g, ' ').trim().slice(0, 80);
+      var last = window.__frames[window.__frames.length - 1];
+      if (t && (!last || last.indexOf(t) === -1)) {
+        window.__frames.push(Math.round(performance.now() - t0) + 'ms: ' + t);
+      }
+      if (performance.now() - t0 > 6000) { clearInterval(iv); window.__ready = true; }
+    }, 16);
+  })();
+</script>
+</head>
+<body>
+<div id="boot">…</div>
+<canvas id="game"></canvas>
+<div id="ui"></div>
+<script>
+  (async function () {
+    var STUB = '/tools/_boot-stub-auth.js';
+    var imports = { '/src/services/auth.js': STUB };
+    try {
+      var src = await (await fetch('/src/main.js')).text();
+      var m = src.match(/["'](\/src\/services\/auth\.js[^"']*)["']/);
+      if (m && m[1] !== '/src/services/auth.js') imports[m[1]] = STUB;
+    } catch (e) { /* 못 읽으면 기본 키로만 시도한다 */ }
+
+    var im = document.createElement('script');
+    im.type = 'importmap';
+    im.textContent = JSON.stringify({ imports: imports });
+    document.head.appendChild(im);
+    window.__mapped = Object.keys(imports);
+
+    await import('/src/main.js');
+  })();
+</script>
+</body></html>
