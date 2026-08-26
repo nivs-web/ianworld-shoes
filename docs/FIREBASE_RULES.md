@@ -5,6 +5,12 @@ Firebase 콘솔에 **그대로 붙여넣는** 규칙이다. 프로덕션/잠금 
 > Firebase 웹 설정값(`apiKey` 등)은 **비밀이 아니다.** 번들에 그대로 들어가고 누구나 볼 수 있다.
 > 실제 보호는 전부 아래 규칙이 한다. 그래서 규칙을 대충 두면 키를 숨겨도 아무 의미가 없다.
 
+> **이 문서는 2026-08-26 에 실제 배포본과 맞췄다.**
+>
+> 그 전에는 문서가 낡아 있었다 — 콘솔에서만 더한 항목이 문서에 없어서,
+> 문서를 그대로 올렸다면 그것들이 **지워졌을** 것이다.
+> 규칙을 고칠 때는 반드시 **콘솔 것을 먼저 받아** 그 위에 얹어라.
+
 ---
 
 ## Firestore
@@ -37,16 +43,12 @@ service cloud.firestore {
     //
     // 문서 ID를 uid_난이도_기간키 로 못 박는 게 이 규칙의 핵심이다.
     // ID를 자유롭게 두면 한 사람이 문서를 여러 장 만들어 순위표를 도배할 수 있다.
-    // (예전처럼 판마다 한 장씩 쌓는다면 클라이언트가 uid로 접어야 하는데,
-    //  그건 300건을 읽어야 하고 닉네임을 바꿔도 옛 이름이 그대로 남는다.)
     match /scores/{scoreId} {
       allow read: if true;
 
       function d() { return request.resource.data; }
 
-      // 기간 필드는 셋 중 **하나만** 들어간다. 셋을 다 넣으면 주간 색인이 일간 문서까지 훑는다.
-      // 2026-08-19 19차: 연간(yr)을 빼고 일간(dy)을 넣었다. 옛 yr 문서는 남아 있으므로
-      // 그 갱신까지 막지 않으려면 yr 항을 지우면 안 된다 — 조회만 안 할 뿐이다.
+      // 기간 필드는 셋 중 하나만 들어간다.
       function periodOk() {
         return (d().period == 'dy' && d().dy == d().key)
             || (d().period == 'wk' && d().wk == d().key)
@@ -67,8 +69,8 @@ service cloud.firestore {
 
       allow create: if signedIn() && valid();
 
-      // 덮어쓰기는 **점수가 내려가지 않을 때만**. 같은 값도 통과시키는 건
-      // 닉네임·캐릭터만 고치는 갱신(leaderboard.syncIdentity)이 지나가야 하기 때문이다.
+      // 덮어쓰기는 점수가 내려가지 않을 때만.
+      // 같은 값도 통과시키는 건 닉네임·캐릭터만 고치는 갱신이 지나가야 하기 때문이다.
       allow update: if signedIn() && valid()
                     && d().stairs >= resource.data.stairs
                     && d().difficulty == resource.data.difficulty
