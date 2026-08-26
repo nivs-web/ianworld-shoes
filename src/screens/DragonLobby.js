@@ -21,6 +21,7 @@ import { lazyScreen } from './lazyScreen.js';
 const DragonShop = lazyScreen(() => import('./DragonShop.js'), S.dragonShopTitle);
 const DragonItems = lazyScreen(() => import('./DragonItems.js'), S.dragonItemTitle);
 const DragonSettings = lazyScreen(() => import('./DragonSettings.js'), S.dragonMenuSettings);
+const DragonRanking = lazyScreen(() => import('./DragonRanking.js'), S.dragonRankScore);
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -147,8 +148,8 @@ export default function DragonLobby(nav) {
         ]),
 
         el('div.row', null, [
-          soon(S.dragonRankScore),
-          soon(S.dragonRankCoin),
+          button(S.dragonRankScore, () => nav.push(DragonRanking, { kind: 'score' })),
+          button(S.dragonRankCoin, () => nav.push(DragonRanking, { kind: 'coin' })),
         ]),
 
         button(S.dragonMenuSettings, () => nav.push(DragonSettings)),

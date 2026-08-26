@@ -258,6 +258,8 @@ export const S = {
   /** 명예의 전당을 둘로 나눴다 — 겨루는 것이 서로 다르다 */
   dragonRankScore: '점수 순위',
   dragonRankCoin: '금화왕 순위',
+  dragonRankAllScore: '계정에 남은 최고점수 — 난이도 구분 없이 한 줄씩',
+  dragonRankAllCoin: '지금까지 주운 금화를 모두 더한 값 — 절대로 줄지 않습니다',
   dragonMultiRecord: (w, g) => `멀티게임 ${w}승 ${g}게임`,
   dragonMenuSettings: '설정',
   dragonHint: '난이도를 높이면 적이 많아지고 점수도 많이 오릅니다',

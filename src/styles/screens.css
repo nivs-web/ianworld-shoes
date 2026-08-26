@@ -2411,3 +2411,18 @@
 
 /* 계단에서 이미 산 칸 — 벗을 수 없으니 '착용 중' 이 아니라 '보유 중' 이다 */
 .it-card.on.owned .it-name { color: var(--c-accent); }
+
+/* 드래곤 순위표의 얼굴 칸 — 명예의 전당의 캐릭터 칸과 같은 자리, 같은 크기.
+   두 게임의 순위표가 같은 모양이어야 오락실 안에서 눈이 헤매지 않는다. */
+.rank-face {
+  width: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.rank-face canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  max-width: 100%;
+  height: auto;
+}

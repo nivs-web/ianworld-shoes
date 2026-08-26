@@ -304,7 +304,20 @@ export function finishDragonRun(r) {
   if (isBest) { next.dragonBest = score; next.dragonBestLevel = level; }
   if (stage > (before.dragonBestStage || 0)) next.dragonBestStage = stage;
 
-  return { profile: patch(next), isBest };
+  const profile = patch(next);
+
+  /**
+   * 순위에 올린다. **기다리지 않는다** — 결과 화면이 네트워크를
+   * 기다리면 비행기 모드에서 멈춰 버린다. 실패해도 다음 판이 끝날 때
+   * 더 높은 기록으로 다시 올라간다.
+   */
+  Rank.submitDragonRun({
+    score, coins, stage,
+    difficulty: profile.dragonDifficulty || 'normal',
+    dragon: profile.dragonCharacter | 0,
+  }).catch(() => {});
+
+  return { profile, isBest };
 }
 
 /**

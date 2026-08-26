@@ -77,6 +77,52 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── 드래곤 스트라이커 순위 (2026-08-26 E단계) ──────────────────
+    //
+    // 점수판과 금화판을 **다른 컬렉션**에 둔다. 점수가 잘 나온 판과 금화를 많이 먹은
+    // 판은 보통 다른 판이라, 한 문서에 같이 넣으면 "점수는 올랐는데 금화는 줄었다" 는
+    // 갱신을 규칙이 통째로 막아 버린다. 따로 두면 각자 '내려가지 않는다' 만 지키면 된다.
+    //
+    // ★ 복합 색인이 필요 없다. 정렬 열쇠 `sk` 하나에 난이도·기간키·값을 모두 담아
+    //   (`hard|2026-08-26#9871600`) 범위 조회 + 같은 필드 정렬로 뽑기 때문이다.
+    //   그래서 콘솔에서 만들 색인이 **하나도 없다** — 이 규칙만 붙이면 된다.
+
+    function dgValid(id, d, field, maxV) {
+      return d.uid == request.auth.uid
+          && id == d.uid + '_' + d.difficulty + '_' + d.key
+          && d.difficulty in ['easy', 'normal', 'hard']
+          && d.key is string
+          && d.sk is string
+          && d.sk.size() < 64
+          && d[field] is int
+          && d[field] >= 0
+          && d[field] <= maxV
+          && ((d.period == 'dy' && d.dy == d.key)
+           || (d.period == 'wk' && d.wk == d.key)
+           || (d.period == 'mo' && d.mo == d.key));
+    }
+
+    match /dragonScores/{id} {
+      allow read: if true;
+      allow create: if signedIn() && dgValid(id, request.resource.data, 'score', 1000000);
+      // 같은 값도 통과시킨다 — 닉네임·드래곤만 고치는 갱신이 지나가야 한다
+      allow update: if signedIn() && dgValid(id, request.resource.data, 'score', 1000000)
+                    && request.resource.data.score >= resource.data.score
+                    && request.resource.data.difficulty == resource.data.difficulty
+                    && request.resource.data.key == resource.data.key;
+      allow delete: if false;
+    }
+
+    match /dragonCoins/{id} {
+      allow read: if true;
+      allow create: if signedIn() && dgValid(id, request.resource.data, 'coins', 20000);
+      allow update: if signedIn() && dgValid(id, request.resource.data, 'coins', 20000)
+                    && request.resource.data.coins >= resource.data.coins
+                    && request.resource.data.difficulty == resource.data.difficulty
+                    && request.resource.data.key == resource.data.key;
+      allow delete: if false;
+    }
+
     // 집계 캐시 — 읽기 전용. 쓰기는 서버(Cloud Functions)만.
     match /leaderboards/{doc} {
       allow read: if true;

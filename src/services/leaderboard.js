@@ -547,6 +547,176 @@ export async function fetchMyCrowns() {
  * Firestore 가 색인을 자동으로 만들어 준다 — **콘솔에서 할 일이 없다.**
  * (기간별 순위는 복합 색인이 필요해서 별도 단계로 미뤄 뒀다)
  */
+// ─────────────────────────────────────────────
+// 드래곤 스트라이커 순위 (E단계)
+// ─────────────────────────────────────────────
+
+/**
+ * ★ **복합 색인을 하나도 안 쓴다.**
+ *
+ * `where(난이도) + where(기간) + orderBy(점수)` 는 Firestore 가 복합 색인을 요구한다.
+ * 그건 콘솔에서 손으로 만들어야 하고, 없으면 그 탭이 통째로 빈 채로 뜬다 —
+ * 게다가 탭 x 난이도 조합마다 하나씩이라 열 개 넘게 만들어야 한다.
+ *
+ * 그래서 신발게임의 멀티 순위가 쓰는 수법을 그대로 가져왔다:
+ * **난이도 · 기간키 · 점수를 한 필드에 담는다.**
+ *
+ *     hard|2026-08-26#9871600      (점수 128,400)
+ *
+ * 앞부분이 같은 것만 범위로 집어내고 같은 필드로 정렬하니
+ * **자동으로 생기는 단일 필드 색인만으로** 돌아간다. 콘솔에서 할 일이 규칙뿐이다.
+ *
+ * 점수는 `최대값 - 점수` 로 뒤집어 넣는다 — 오름차순이 곧 '높은 점수 순'이다.
+ * 자릿수를 채워야 문자열 비교가 숫자 비교와 같아진다(`999` < `99` 같은 사고 방지).
+ */
+const DG_SCORE_MAX = 9999999;      // 7자리 (한 판 상한 100만)
+const DG_COIN_MAX = 999999;        // 6자리 (한 판 상한 2만)
+
+const dgKey = (difficulty, key, value, max) => {
+  const digits = String(max).length;
+  const inv = max - Math.min(max, Math.max(0, value | 0));
+  return `${difficulty}|${key}#${String(inv).padStart(digits, '0')}`;
+};
+const dgValue = (sk, max) => {
+  const n = Number(String(sk ?? '').split('#')[1]);
+  return Number.isFinite(n) ? max - n : 0;
+};
+
+/** 두 순위표의 차이를 한 곳에 모아 둔다 — 늘릴 때 여기만 본다 */
+const DG_BOARDS = {
+  score: { col: 'dragonScores', max: DG_SCORE_MAX, cache: 'dgs', field: 'score',
+           allField: 'dragonBest' },
+  coin:  { col: 'dragonCoins',  max: DG_COIN_MAX,  cache: 'dgc', field: 'coins',
+           allField: 'dragonCoinsTotal' },
+};
+
+/**
+ * 드래곤 한 판의 기록을 올린다. 점수판과 금화판에 각각, 기간 3종에 각각.
+ *
+ * ★ **점수와 금화를 다른 문서에 넣는 이유**
+ * 점수가 잘 나온 판과 금화를 많이 먹은 판은 보통 다른 판이다. 한 문서에 같이 넣으면
+ * "점수는 올랐는데 금화는 줄었다" 는 갱신을 규칙이 통째로 막아 버린다.
+ * 따로 두면 각자 "내려가지 않는다" 만 지키면 된다.
+ *
+ * 실패해도 게임은 멈추지 않는다 — 다음 판이 끝날 때 더 높은 기록으로 다시 올라간다.
+ *
+ * @param {{score:number, coins:number, stage:number, difficulty:string, dragon:number, at?:number}} run
+ */
+export async function submitDragonRun(run) {
+  const u = currentUser();
+  if (!configured() || !u || u.guest) return false;
+  const fb = await getStore();
+  if (!fb) return false;
+
+  const prof = L.loadProfile();
+  const when = run.at ? new Date(run.at) : new Date();
+  const difficulty = DIFFICULTIES.includes(run.difficulty) ? run.difficulty : 'normal';
+  const keep = currentKeys(when);
+
+  let settled = true;
+  for (const [kind, B] of Object.entries(DG_BOARDS)) {
+    const value = Math.max(0, Math.min(B.max, (kind === 'score' ? run.score : run.coins) | 0));
+    for (const period of PERIODS) {
+      const key = period.keyOf(when);
+      const id = scoreDocId(u.uid, difficulty, key);
+      const cacheId = `${B.cache}_${id}`;
+      /* 이 기간에 이미 더 높은 값을 올려 뒀으면 규칙이 어차피 막는다 — 헛품을 아낀다 */
+      if (value <= L.periodBest(cacheId)) continue;
+
+      try {
+        await withTimeout(fb.storeMod.setDoc(fb.storeMod.doc(fb.db, B.col, id), {
+          uid: u.uid,
+          nickname: prof.nickname ?? '',
+          dragon: prof.dragonCharacter | 0,
+          difficulty,
+          key,
+          period: period.field,
+          [period.field]: key,
+          sk: dgKey(difficulty, key, value, B.max),
+          [B.field]: value,
+          stage: run.stage | 0,
+          updatedAt: fb.storeMod.serverTimestamp(),
+        }), undefined, '드래곤 기록 제출');
+        L.notePeriodBest(cacheId, value, keep.map((k) => k));
+      } catch (e) {
+        /* 규칙이 막았다면 다른 기기에서 더 높은 기록을 올린 것이다 — 재시도할 일이 아니다 */
+        if (e?.code === 'permission-denied') { L.notePeriodBest(cacheId, value); continue; }
+        console.warn('[드래곤 순위] 제출 실패', e);
+        settled = false;
+      }
+    }
+  }
+  return settled;
+}
+
+/**
+ * 순위표 한 장.
+ * @param {'score'|'coin'} kind
+ * @param {'daily'|'weekly'|'monthly'|'alltime'} tab
+ * @param {string} difficulty 역대 탭에서는 무시된다 (계정 최고는 난이도 구분이 없다)
+ */
+export async function fetchDragonBoard(kind, tab, difficulty) {
+  const B = DG_BOARDS[kind];
+  if (!B) return fail('offline');
+  if (!configured()) return fail('offline');
+  if (!currentUser()) return fail('auth');
+  const fb = await getStore();
+  if (!fb) return fail('offline');
+  const { collection, query, orderBy, where, limit, getDocs } = fb.storeMod;
+  const top = LEADERBOARD.topN;
+
+  try {
+    let rows;
+    if (tab === 'alltime') {
+      /* 계정 문서를 그대로 정렬한다 — 한 사람에 한 줄이라 접을 필요가 없다 */
+      const snap = await withTimeout(getDocs(
+        query(collection(fb.db, 'users'), orderBy(B.allField, 'desc'), limit(top))
+      ), undefined, '드래곤 순위 조회');
+      if (offline(snap)) return fail('offline');
+      rows = snap.docs.map((d) => {
+        const v = d.data();
+        return {
+          uid: d.id,
+          nickname: v.nickname ?? '',
+          dragon: v.dragonCharacter | 0,
+          value: v[B.allField] ?? 0,
+          stage: v.dragonBestStage ?? 0,
+        };
+      });
+    } else {
+      const period = PERIOD_BY_TAB[tab];
+      if (!period) return fail('offline');
+      /* 앞부분이 `난이도|기간키#` 인 것만 — 범위 조회 + 같은 필드 정렬이라 색인이 저절로 생긴다 */
+      const pre = `${difficulty}|${period.keyOf()}#`;
+      const snap = await withTimeout(getDocs(
+        query(
+          collection(fb.db, B.col),
+          where('sk', '>=', pre),
+          where('sk', '<', `${pre}\uffff`),
+          orderBy('sk'),
+          limit(top)
+        )
+      ), undefined, '드래곤 순위 조회');
+      if (offline(snap)) return fail('offline');
+      rows = snap.docs.map((d) => {
+        const v = d.data();
+        return {
+          uid: v.uid,
+          nickname: v.nickname ?? '',
+          dragon: v.dragon | 0,
+          value: v[B.field] ?? dgValue(v.sk, B.max),
+          stage: v.stage ?? 0,
+        };
+      });
+    }
+    rows.sort((a, b) => b.value - a.value);
+    return { ok: true, rows: rows.slice(0, top) };
+  } catch (e) {
+    console.warn('[드래곤 순위] 조회 실패', e);
+    return fail('error');
+  }
+}
+
 export async function fetchDragonCrowns() {
   const u = currentUser();
   if (!configured() || !u || u.guest) return null;
