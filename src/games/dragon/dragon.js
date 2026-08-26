@@ -793,6 +793,35 @@ const Input = {
 class Scene {
   enter(){}  exit(){}  update(dt){}  render(ctx){}
 }
+/**
+ * ★ **결과 화면 자리값.** (2026-08-26, 사용자 지적: "그게 뭐야 덕지덕지")
+ *
+ * 캔버스는 **세로 720px** 인데 예전 배치는 마지막 줄이 686 까지 내려가 있었다.
+ * 제목 9배, 표 4배, 버튼 4배 — 전부 한 뼘씩 크고 줄간격은 54 라 다섯 줄이
+ * 316~532 를 먹었다. 그 아래 문구·버튼·안내가 차례로 밀려 화면 끝에 닿았다.
+ *
+ * 글자를 한 단계씩 줄이고(제목 9->7, 표 4->3, 버튼 4->3) 줄간격을 54->44 로
+ * 좁혀 표를 232~408 안에 넣는다. 아래로 문구 476, 버튼 528, 안내 616 —
+ * 마지막 줄과 화면 끝 사이에 여백이 남는다.
+ *
+ * 한곳에 모아 둔 이유: 자리값이 그리는 코드 안에 흩어져 있으면
+ * 한 줄을 옮길 때 아래 것들을 같이 못 옮겨서 또 겹친다.
+ */
+const END_TITLE_Y = 104;
+const END_ROW_Y   = 232, END_ROW_GAP = 44;   // 다섯 줄 -> 232 ~ 408
+const END_LABEL_X = 470;                     // 이름 (왼쪽 정렬)
+const END_NUM_R   = 758;                     // 숫자가 끝나는 자리 (오른쪽 정렬)
+/**
+ * 단위도 **오른쪽 끝을 맞춘다.** 오락실 글꼴은 글자마다 폭이 달라서
+ * 왼쪽에 나란히 세우면 '점'(799) · '마리'(835) · '초'(802) 처럼
+ * 오른쪽 끝이 36px 씩 들쭉날쭉해진다 — 표가 삐뚤어 보이는 진짜 이유다.
+ * 숫자 끝(758)과 단위 끝(830), 두 줄을 곧게 세운다.
+ */
+const END_UNIT_R  = 830;
+const END_ASK_Y   = 466;                     // 버튼(519)과 18px 띄운다
+const END_BTN_Y   = 528;                     // 버튼 높이 52 -> 580 에서 끝난다
+const END_HINT_Y  = 616;
+
 class SceneManager {
   constructor(){ this.current = null; this.next = null; this.state = 'idle'; this.t = 0; this.fade = 0; this.dur = 0.26; }
   get busy(){ return this.state !== 'idle'; }
@@ -3123,8 +3152,13 @@ const FIRE_INTERVAL = 0.05;                  // Lv1 기준
  * 그만큼 오래 버틴다 — 그게 이번에 노리는 것이다.
  */
 const FIRE = [ null,
-  { n: 1, bt:26.0, th: 26, dmg:  18.3, spd:1500, pierce:0, len:170 },  // Lv1  1줄= 26px  (죽으면 여기로)
-  { n: 1, bt:26.0, th: 26, dmg:  19.4, spd:1500, pierce:0, len:176 },  // Lv2  1줄= 26px
+  /* ★ **Lv1 도 두 줄이다.** (2026-08-26, 사용자 지정 — 한 판 해보고)
+     한 줄짜리 26px 는 너무 초라했다. 죽으면 여기로 돌아오는데 그 모습이
+     "이걸로 뭘 하나" 싶으면 다시 붙을 마음이 안 든다.
+     **데미지는 그대로 두고 보이는 것만** 두 줄로 올린다 —
+     세기가 오르는 게 아니라 초라해 보이지 않게 하는 것이 목적이다. */
+  { n: 2, bt:26.0, th: 52, dmg:  18.3, spd:1500, pierce:0, len:170 },  // Lv1  2줄= 52px  (죽으면 여기로)
+  { n: 2, bt:26.0, th: 52, dmg:  19.4, spd:1500, pierce:0, len:176 },  // Lv2  2줄= 52px
   { n: 2, bt:26.0, th: 52, dmg:  20.6, spd:1510, pierce:0, len:182 },  // Lv3  2줄= 52px
   { n: 2, bt:26.0, th: 52, dmg:  21.8, spd:1520, pierce:0, len:188 },  // Lv4  2줄= 52px
   { n: 2, bt:26.0, th: 52, dmg:  23.1, spd:1530, pierce:0, len:194 },  // Lv5  2줄= 52px
@@ -5920,11 +5954,19 @@ class GameScene extends Scene {
       ? [{ k:'continue', t:'다음 스테이지' }, { k:'quit', t:'오락실로' }]
       : [{ k:'quit', t:'오락실로' }];
   }
-  /** 결과 화면 버튼 자리 — 그리기와 터치가 같은 값을 쓴다 */
+  /**
+   * 결과 화면 버튼 자리 — 그리기와 터치가 같은 값을 쓴다.
+   *
+   * ★ **개수를 세어 나눈다.** (2026-08-26, 사용자 지적)
+   * 예전에는 `i === 0 ? 420 : 860` 이라 **한 개나 두 개일 때만** 맞았다.
+   * 이어하기가 생겨 세 개가 되자 2번과 3번이 **같은 자리에 겹쳐** 그려졌다 —
+   * 글자 위에 글자가 찍히니 덕지덕지로 보일 수밖에 없다.
+   */
   endRect(i){
-    const items = this.endItems(), w = 300, h = 56, y = 610;
-    const x = items.length === 1 ? 640 : (i === 0 ? 420 : 860);
-    return { x: x - w/2, y, w, h };
+    const n = this.endItems().length;
+    const w = n >= 3 ? 296 : 300, h = 52, gap = 22;
+    const total = n*w + (n - 1)*gap;
+    return { x: Math.round(640 - total/2 + i*(w + gap)), y: END_BTN_Y, w, h };
   }
   endHit(px, py){
     for(let i=0;i<this.endItems().length;i++){
@@ -6801,7 +6843,7 @@ class GameScene extends Scene {
     if(this.stateT < 0.35) return;
     const title = clear ? (this.duel ? '결투 종료' : '스테이지 클리어')
                         : (this.endReason || '게임오버');
-    ko(ctx, title, 640, 164, 9,
+    ko(ctx, title, 640, END_TITLE_Y, 7,
       { align:'center', color: clear ? PAL.gold : '#c81f2e', outline:PAL.outline });
     if(this.stateT > 0.6){
       /**
@@ -6832,28 +6874,33 @@ class GameScene extends Scene {
            ['남은 시간', String(Math.ceil(this.timeLeft)), '초'],
            ['획득 금화', String(RUN.coins), '개']];
 
-      const NUM_R = 800;          // 숫자가 끝나는 자리 (여기에 오른쪽 끝을 맞춘다)
-      const UNIT_X = 812;         // 단위가 시작하는 자리
+      /* 표의 위아래에 얇은 줄 — 어디서 시작하고 끝나는지 눈이 먼저 안다 */
+      const ruleW = END_UNIT_R + 4 - END_LABEL_X;
+      ctx.fillStyle = '#3a3358';
+      ctx.fillRect(END_LABEL_X, END_ROW_Y - 22, ruleW, PX);
+      ctx.fillRect(END_LABEL_X, END_ROW_Y + (rows.length - 1)*END_ROW_GAP + 34, ruleW, PX);
+
       for(let i=0;i<rows.length;i++){
-        /* 줄간격 42 -> 54. 다섯 줄이 316~532 라 아래 문구(556)와 안 겹친다 */
-        const y = 312 + i*54;
-        if(this.stateT < 0.6 + i*0.12) break;
+        const y = END_ROW_Y + i*END_ROW_GAP;
+        if(this.stateT < 0.6 + i*0.10) break;
         const gold = rows[i][0] === '획득 금화';
         const c = gold ? '#ffd24a' : PAL.white;
-        ko(ctx, rows[i][0], 420, y, 4, { color: gold ? '#ffd24a' : '#8a9bbf', outline:PAL.outline });
+        ko(ctx, rows[i][0], END_LABEL_X, y, 3,
+          { color: gold ? '#ffd24a' : '#8a9bbf', outline:PAL.outline });
         /* ★ 오른쪽 정렬 열에서는 **고정폭**이 맞다. 글자마다 폭이 다르면
            숫자 끝이 줄마다 몇 px 씩 흔들려서 표가 삐뚤어 보인다.
            (로비 상태창은 문장 속이라 반대로 고정폭을 껐다 — 자리가 다르면 답도 다르다.) */
-        drawText(ctx, rows[i][1], NUM_R, y, 4,
+        drawText(ctx, rows[i][1], END_NUM_R, y, 3,
           { align:'right', color:c, outline:PAL.outline, mono:true });
-        if(rows[i][2]) ko(ctx, rows[i][2], UNIT_X, y + 4, 3, { color: gold ? '#c8880f' : '#8a9bbf' });
+        if(rows[i][2]) ko(ctx, rows[i][2], END_UNIT_R, y, 3,
+          { align:'right', color: gold ? '#c8880f' : '#8a9bbf' });
       }
     }
     if(this.stateT <= 1.1) return;
     // ---- 다음 행동 선택 ----
     const items = this.endItems();
     if(clear && this.stage < 20)
-      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', 640, 556, 4,
+      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', 640, END_ASK_Y, 3,
         { align:'center', color:'#cfe6ff', outline:PAL.outline });
     for(let i=0;i<items.length;i++){
       const on = i === this.endIdx;
@@ -6862,7 +6909,9 @@ class GameScene extends Scene {
       ctx.fillRect(r.x - PX, r.y - PX, r.w + PX*2, r.h + PX*2);
       ctx.fillStyle = on ? '#3a2a05' : '#120d24';
       ctx.fillRect(r.x, r.y, r.w, r.h);
-      ko(ctx, items[i].t, r.x + r.w/2, r.y + 14, 4,
+      /* 세 개가 나란히 서면 한 칸이 좁아진다 — 글자도 같이 줄인다 */
+      const bs = items.length >= 3 ? 3 : 4;
+      ko(ctx, items[i].t, r.x + r.w/2, r.y + (bs === 3 ? 15 : 11), bs,
         { align:'center', color: on ? PAL.gold : '#7f8bb0', outline:PAL.outline });
       if(on){
         const g = Math.round(Math.sin(this.stateT*7))*PX;
@@ -6870,7 +6919,7 @@ class GameScene extends Scene {
         ctx.strokeRect(r.x - PX*2 - g, r.y - PX*2 - g, r.w + (PX*2+g)*2, r.h + (PX*2+g)*2);
       }
     }
-    ko(ctx, '화면을 눌러도 됩니다', 640, 686, 3, { align:'center', color:'#8a7bb8' });
+    ko(ctx, '화면을 눌러도 됩니다', 640, END_HINT_Y, 2, { align:'center', color:'#8a7bb8' });
   }
 
   renderDebug(ctx){

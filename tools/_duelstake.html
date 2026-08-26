@@ -18,6 +18,7 @@
 import * as L from '/src/services/storageLocal.js';
 import * as P from '/src/services/profile.js';
 import * as D from '/src/services/dragonSettle.js';
+const ST = D.DUEL_STAKE;
 
 const lines = [];
 const say = (s) => lines.push(s);
@@ -39,8 +40,8 @@ setCoins(5000);
 say('■ 걸기');
 const ok1 = D.stakeDuel('T1');
 check('걸 수 있었나', ok1, true);
-check('지갑에서 1,000 빠졌나', coins(), 4000);
-check('장부에 남았나', ledger(), ['T1:1000']);
+check('지갑에서 판돈이 빠졌나', coins(), 5000 - ST);
+check('장부에 남았나', ledger(), ['T1:' + ST]);
 
 say('■ 환불 (상대가 안 왔을 때)');
 D.refundDuel('T1');
@@ -53,28 +54,28 @@ check('장부에 없는 코드로 환불', D.refundDuel('T1'), 0);
 check('지갑 그대로', coins(), c0);
 check('두 번 불러도 그대로', (D.refundDuel('T1'), coins()), c0);
 
-say('■ 돈이 모자라면 못 건다');
-setCoins(999);
-check('999 금화로 걸기', D.stakeDuel('T2'), false);
-check('지갑 그대로', coins(), 999);
+say('■ 돈이 모자라면 못 건다 (판돈 ' + ST + ')');
+setCoins(ST - 1);
+check('판돈보다 적은 금화로 걸기', D.stakeDuel('T2'), false);
+check('지갑 그대로', coins(), ST - 1);
 check('장부 비어 있음', ledger(), []);
 
 say('■ 여러 판이 밀려도 각각 남는다');
 setCoins(5000);
 D.stakeDuel('A'); D.stakeDuel('B');
-check('둘 다 장부에', ledger(), ['A:1000', 'B:1000']);
-check('지갑에서 2,000 빠짐', coins(), 3000);
+check('둘 다 장부에', ledger(), ['A:' + ST, 'B:' + ST]);
+check('두 판만큼 빠짐', coins(), 5000 - ST*2);
 D.refundDuel('A');
-check('A 만 지워짐', ledger(), ['B:1000']);
-check('A 만 돌아옴', coins(), 4000);
+check('A 만 지워짐', ledger(), ['B:' + ST]);
+check('A 만 돌아옴', coins(), 5000 - ST);
 
 say('■ 같은 방에 두 번 걸어도 한 번만 빠진다 (돈이 사라지면 안 된다)');
 localStorage.setItem('sf_duelStakes', '[]');
 setCoins(5000);
 D.stakeDuel('C'); D.stakeDuel('C');
-check('장부에 하나만', ledger(), ['C:1000']);
-check('지갑에서 1,000 만 빠짐', coins(), 4000);
-check('환불하면 정확히 1,000', D.refundDuel('C'), 1000);
+check('장부에 하나만', ledger(), ['C:' + ST]);
+check('한 번만 빠짐', coins(), 5000 - ST);
+check('환불하면 정확히 판돈만큼', D.refundDuel('C'), ST);
 check('본전으로 돌아옴', coins(), 5000);
 
 say('');

@@ -20,6 +20,8 @@ import { slotIndex } from '../../services/matchRules.js';
 import { SLOT_COLORS } from '../../game/palette.js';
 import { hold } from '../../core/hold.js';
 import { startMultiGame } from '../startMultiGame.js';
+import { loadDragon } from '../DragonGame.js';
+import { DUEL_STAKE } from '../../services/dragonSettle.js';
 import Lobby from '../Lobby.js';
 import { roomChat } from './roomChat.js';
 
@@ -64,6 +66,27 @@ export default function WaitingRoom(nav, params = {}) {
    */
   const game = params.game === 'dragon' ? 'dragon' : 'shoes';
   const code = params.code;
+  /**
+   * ★★ **드래곤 방은 드래곤 방처럼 보여야 한다.** (2026-08-26, 사용자 신고)
+   *
+   * *"멀티게임에서 방입장 누르면, 왜 신발을 찾아서 방이 생성 되냐고"*
+   *
+   * 방은 처음부터 `game:'dragon'` 으로 제대로 파고 있었고 시작 다리도 결투로
+   * 갔다. 그런데 **이 화면이 두 게임에서 그대로 공용**이라, 드래곤 방에서도
+   * 신발 캐릭터 얼굴과 "보유신발 12켤레" 배지가 뜨고 제목이 "멀티게임 3번 방"
+   * 이었다. 화면만 보면 신발게임 방을 판 것과 구별이 안 된다 —
+   * **개발이 안 된 게 아니라 옷을 안 갈아입은 것**이었다.
+   *
+   * 방 기록(RTDB)에는 손대지 않는다. 규칙에 없는 칸을 하나라도 더하면
+   * 그 write 가 통째로 거부된다 — 이미 한 번 크게 당했다.
+   * 이미 실려 있는 `dragon`(드래곤 번호)만으로 얼굴과 이름을 만든다.
+   */
+  let dragonMod = null;
+  if (game === 'dragon') {
+    loadDragon()
+      .then((m) => { dragonMod = m; if (!left && !launched) nav.refresh(); })
+      .catch(() => {});   // 못 받아도 이름과 자리 번호는 나온다
+  }
   /**
    * ★ 대기방은 **'게임중'** 으로 표시한다. (2026-08-19 11차)
    * 이미 한 방에 앉아 있는 사람이 다른 방 초대를 수락하면 앞 방에 유령으로 남는다 —
@@ -299,7 +322,7 @@ export default function WaitingRoom(nav, params = {}) {
       const allReady = enough && inRound.every((p) => p.ready || p.uid === room.hostUid);
 
       return screen(
-        title(S.multiRoomTitle(code)),
+        title(game === 'dragon' ? S.duelRoomTitle(code) : S.multiRoomTitle(code)),
 
         // 비밀방은 코드가 커야 한다 — 친구한테 불러 줘야 하니까
         room.isPrivate
@@ -328,13 +351,26 @@ export default function WaitingRoom(nav, params = {}) {
               // 노랑 위의 흰 글씨는 안 보인다 — 밝은 자리 색만 글씨를 어둡게
               style: { background: SLOT_COLORS[slot] ?? SLOT_COLORS[0], color: slot === 1 ? '#3A1F0C' : '#FFF4D6' },
             }),
-            ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko }) : el('div.rank-face'),
+            /* 드래곤 방이면 드래곤 얼굴, 신발 방이면 신발 캐릭터 */
+            game === 'dragon'
+              ? el('div.rank-face', null,
+                  [dragonMod ? dragonMod.dragonPortrait(p.dragon | 0, 2) : null].filter(Boolean))
+              : (ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko })
+                    : el('div.rank-face')),
             // 이름을 누르면 캐릭터 그림 + 승률/보유신발 카드 (§9·§11)
             el('div.player-name', { text: p.nickname || '???', onclick: () => playerStatPopup(p, slot) }),
-            el('div.player-shoes', null, [
-              el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
-              el('span', S.playerShoesOwned(p.shoesOwned ?? 0)),
-            ]),
+            /* 배지도 게임에 맞게 — 드래곤 방에서 "보유신발" 은 아무 뜻이 없다.
+               방 기록에 이미 있는 드래곤 번호만 쓴다 (새 칸을 더하지 않는다) */
+            game === 'dragon'
+              ? el('div.player-shoes', null, [
+                  el('span', dragonMod
+                    ? (dragonMod.dragonList()[p.dragon | 0]?.ko ?? '')
+                    : ''),
+                ])
+              : el('div.player-shoes', null, [
+                  el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
+                  el('span', S.playerShoesOwned(p.shoesOwned ?? 0)),
+                ]),
             el('div.player-gap'),
             // 태그는 **마지막 칸 안에서만** 늘었다 줄었다 한다 — 앞칸을 밀지 않는다
             el('div.player-tags', null, [
@@ -346,6 +382,8 @@ export default function WaitingRoom(nav, params = {}) {
         })),
 
         el('div.hint', S.roomSlots(players.length, room.maxPlayers ?? MULTI.maxPlayers)),
+        /* 무엇을 걸고 무엇을 겨루는지 — 시작을 누르기 전에 알아야 한다 */
+        game === 'dragon' ? el('div.hint.duel-rule', S.duelRoomRule(DUEL_STAKE)) : null,
 
         el('div.diff-title', S.difficultyTitle),
         isHost

@@ -475,6 +475,9 @@ export const S = {
   settleLater: '정산은 다음 접속 때 반영됩니다',
   roomCode: '방 코드',
   multiRoomTitle: (n) => `멀티게임 ${n}번 방`,
+  duelRoomTitle: (n) => `드래곤 결투 ${n}번 방`,
+  duelRoomRule: (n) =>
+    `금화 ${n}개씩 걸고 300초 안에 보스를 더 많이 잡는 쪽이 전부 가져갑니다`,
   ready: '레디',
   cancelReady: '레디 취소',
   startGame: '시작하기',
