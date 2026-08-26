@@ -456,6 +456,7 @@ export const S = {
   waitingPlayers: '다른 플레이어를 기다리는 중',
   hostOnlyDifficulty: '방장만 난이도를 설정할 수 있습니다',
   roomNotFound: '방을 찾을 수 없습니다',
+  roomWrongGame: '다른 게임의 방입니다',
 
   // ── 방 목록 (2026-08-16) ───────────────────
   roomListTitle: '방 목록',

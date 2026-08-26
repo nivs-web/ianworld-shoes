@@ -36,7 +36,7 @@ export default function CodeInput(nav) {
       toast(S.roomJoinedAsWaiter, 2600);
       return nav.replace(WaitingRoom, { code });
     }
-    toast({ full: S.roomFull, started: S.roomAlreadyStarted, notfound: S.roomNotFound }[r] ?? S.networkError);
+    toast({ full: S.roomFull, started: S.roomAlreadyStarted, notfound: S.roomNotFound , wronggame: S.roomWrongGame }[r] ?? S.networkError);
     code = '';
     nav.refresh();
   }

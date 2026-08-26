@@ -48,7 +48,7 @@ export default function RoomList(nav) {
       toast(S.roomJoinedAsWaiter, 2600);
       return nav.replace(WaitingRoom, { code });
     }
-    toast({ full: S.roomFull, notfound: S.roomNotFound, started: S.roomAlreadyStarted }[r] ?? S.networkError);
+    toast({ full: S.roomFull, notfound: S.roomNotFound, started: S.roomAlreadyStarted , wronggame: S.roomWrongGame }[r] ?? S.networkError);
     load();   // 목록이 낡았을 것이다 — 다시 받는다
   }
 

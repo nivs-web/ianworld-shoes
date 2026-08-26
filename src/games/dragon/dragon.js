@@ -3324,15 +3324,24 @@ const BOSS_ADD_INTERVAL = 5.5;  // 보스전 중 잡몹 보충 주기
 const TWIN_MID_STAGE = 10;      // 이 스테이지를 넘으면 중간보스가 2마리
 
 class Director {
-  constructor(scene, stage){
+  constructor(scene, stage, duel){
     this.s = scene; this.stage = stage || 1;
+    this.duel = !!duel;
     this.t = 0; this.idx = 0;
     this.midKilledAt = -1; this.bossSpawned = false; this.midSpawned = false;
     this.midAlive = 0;                 // 살아있는 중간보스 수 (2마리일 수 있다)
     this.addT = BOSS_ADD_INTERVAL;     // 보스전 중 잡몹 보충 타이머
+    /**
+     * 결투 : 보스 사다리.
+     * 한 마리를 무너뜨리면 잠깐 숨 돌릴 틈을 주고 **더 센 놈**이 올라온다.
+     * 세기는 스테이지 값으로 매긴다 — 이미 있는 눈금을 다시 만들 이유가 없다.
+     */
+    this.duelN = 0;                    // 지금까지 내보낸 보스 수
+    this.duelWait = duel ? 2.5 : 0;    // 다음 보스까지 남은 시간
   }
   update(dt){
     this.t += dt;
+    if(this.duel){ this.updateDuel(dt); return; }
     // 스크립트 소화
     while(this.idx < TIMELINE.length && this.t >= TIMELINE[this.idx].t){
       const e = TIMELINE[this.idx++];
@@ -3351,6 +3360,43 @@ class Director {
       }
     }
   }
+  /**
+   * 결투의 진행.
+   * 보스가 없으면 다음 놈을 부르고, 그 사이사이 잡몹이 계속 흘러들어온다 —
+   * 보스만 덩그러니 있으면 300초가 지루하다.
+   */
+  updateDuel(dt){
+    const s = this.s;
+    const bossAlive = s.enemies.some(e => e.isBoss && !e.dead);
+
+    if(!bossAlive){
+      this.duelWait -= dt;
+      if(this.duelWait <= 0 && this.duelN < DUEL.BOSSES){
+        this.duelN++;
+        const st = DUEL.bossStage(this.duelN);
+        this.stage = st;
+        CUR_STAGE = st;                       // 적 생성자가 이 값을 본다
+        /* 홀수 번째는 기사, 짝수 번째는 최종보스형 — 열 마리가 다 같으면 지겹다 */
+        const b = (this.duelN % 2 === 1)
+          ? new MidBoss(st, s.p1.level)
+          : new Boss(st, s.p1.level);
+        s.enemies.push(b); s.boss = b;
+        s.bossBannerT = 2.2;
+        s.duelBossNo = this.duelN;
+        Shake.add(6, 0.4); SND.sfx('warn');
+      }
+    }else{
+      this.duelWait = 2.5;                    // 다음 놈까지의 틈
+    }
+
+    /* 잡몹 보충 — 보스전 사이의 빈 시간을 채운다 */
+    this.addT -= dt;
+    if(this.addT <= 0){
+      this.addT = BOSS_ADD_INTERVAL;
+      this.spawnGroup(Math.random() < 0.7 ? 'zombie' : 'rider', Math.random() < 0.5 ? 2 : 3);
+    }
+  }
+
   spawnGroup(kind, n){
     const s = this.s;
     n = Math.max(1, Math.round(n * enemyScale(this.stage)));
@@ -3418,6 +3464,11 @@ class Director {
     SND.sfx('warn');
   }
   onBossKilled(b){
+    if(this.duel){
+      /* 사다리는 `updateDuel` 이 "보스가 없으면 다음" 으로 굴린다 — 여기서 할 일이 없다 */
+      this.s.boss = null;
+      return;
+    }
     if(b instanceof MidBoss){
       this.midAlive = Math.max(0, this.midAlive - 1);
       // 2마리일 때는 둘 다 잡아야 최종보스가 나온다
@@ -4358,6 +4409,33 @@ const DROP_PLAN = [
 ];
 const COIN_INTERVAL = 2.6;          // 황금동전 뭉치가 나오는 주기
 const COIN_PER_ARC  = 6;            // 한 뭉치에 몇 개
+/**
+ * ★ **드래곤 결투** (2026-08-26 F단계, 사용자 지정)
+ *
+ * 싱글게임과 규칙이 아예 다르다. 스테이지가 없고, **한 판 300초 안에 보스 열 마리**를
+ * 누가 더 많이 무너뜨렸는지로 겨룬다.
+ *
+ * ★ **둘이 같은 판을 따로 뛴다.** 화면을 실시간으로 맞추지 않는다 —
+ * 같은 씨앗으로 같은 순서의 보스가 나오고, 오가는 것은 **점수·금화·보스 수뿐**이다.
+ * 탄막 게임을 프레임 단위로 동기화하려면 서버가 필요하고, 그건 이 게임의 규모가 아니다.
+ * 대신 끊겨도 내 판은 안 멈추고, 지연이 있어도 억울할 일이 없다.
+ *
+ * 하트 아이템이 안 나오고 목숨이 다섯으로 고정인 이유: 목숨이 늘어나는 판은
+ * "누가 오래 버티나" 가 되어 300초 제한이 무의미해진다.
+ */
+const DUEL = {
+  TIME: 300,            // 한 판 300초
+  LIVES: 5,             // 하트 다섯 고정 (아이템으로 안 늘어난다)
+  BOSSES: 10,           // 보스 열 마리
+  DIFFICULTY: 'hard',   // 어려움 고정 — 둘이 같은 조건이어야 겨루기가 된다
+  /** 보스 n(1부터) 이 몇 스테이지짜리 세기인가. 열째가 20스테이지 보스만큼 세다 */
+  bossStage: (n) => Math.min(20, n * 2),
+  /** 죽으면 점수를 이만큼 잃는다 — 뺏기는 게 아니라 사라진다 */
+  DEATH_PENALTY: 0.20,
+  /** 보스 하나를 무너뜨릴 때마다 받는 몫 */
+  BOSS_SCORE: 3000,
+};
+
 const STAGE_TIME = 80;              // 중간보스가 나올 때까지의 제한 시간 (초).
                                     // 보스가 등장하면 타이머는 멈춘다. 보스전은 시간제한 없이.
 const TIME_BAR = { x: 400, y: 16, w: 480, h: 26 };   // 상단 중앙 시간 게이지 (터치 시 일시정지)
@@ -4365,8 +4443,14 @@ const P1_COLOR = '#8fd0ff', P2_COLOR = '#ffa8d0';
 
 class GameScene extends Scene {
   /* carry : 이전 스테이지에서 이어받는 플레이어 상태 (컨티뉴) */
-  constructor(stage, carry){
+  /**
+   * @param {number} stage
+   * @param {object} [carry] 이전 스테이지에서 이어받는 상태 (컨티뉴)
+   * @param {boolean} [duel]  결투 한 판인가
+   */
+  constructor(stage, carry, duel){
     super();
+    this.duel = !!duel;
     this.stageNo = clamp(stage || 1, 1, 20);
     CUR_STAGE = this.stageNo;         // 적 생성자가 참조한다
     this.carry = carry || null;
@@ -4473,7 +4557,9 @@ class GameScene extends Scene {
     Freeze.reset(); Flash.reset(); Popups.clear();
 
     this.state = 'play'; this.stateT = 0;
-    this.timeLeft = STAGE_TIME; this.endReason = ''; this.bonus = 0;
+    this.timeLeft = this.duel ? DUEL.TIME : STAGE_TIME;
+    this.endReason = ''; this.bonus = 0;
+    this.duelBossKills = 0;           // 무너뜨린 보스 수 (결투 점수의 뼈대)
     this.finalBossKilled = false; this.menuIdx = 0; this.endIdx = 0;
     this.tapIdx = -1;                 // 터치로 고른 메뉴 번호
     /**
@@ -4492,7 +4578,8 @@ class GameScene extends Scene {
      */
     this.dragId = null; this.dragOff = { x:0, y:0 }; this.dragT = 0;
 
-    this.director = new Director(this, this.stage);
+    this.director = new Director(this, this.stage, this.duel);
+    if(this.duel) for(const p of this.allPlayers()) p.lives = DUEL.LIVES;
     this.best = Save.data.best[this.stage] || 0;
     applyAudioOpt();
 
@@ -4567,6 +4654,13 @@ class GameScene extends Scene {
   onBossKilled(b){
     this.director.onBossKilled(b);
     if(this.boss === b) this.boss = null;
+    if(this.duel){
+      this.duelBossKills++;
+      /* 보스는 결투 점수의 뼈대다 — 잡몹만 잡아서는 이길 수 없어야 한다 */
+      this.addScore(DUEL.BOSS_SCORE, 1);
+      Popups.add(GAME_W/2, 220, '보스 ' + this.duelBossKills + ' / ' + DUEL.BOSSES,
+                 PAL.gold, 5, true);
+    }
     const big = !(b instanceof MidBoss);
     if(big) this.finalBossKilled = true;
     this.bossDeathT = big ? 3.0 : 2.0;
@@ -4590,7 +4684,8 @@ class GameScene extends Scene {
       for(let i=0;i<n;i++){
         const dy = (i - (n-1)/2)*300;
         this.items.push(new Item(e.x - 80, e.y + dy, ITEM_KIND.POWER));
-        if(giveHeart) this.items.push(new Item(e.x + 80, e.y + dy, ITEM_KIND.HEART));
+        /* 결투에서는 하트가 안 나온다 — 목숨이 늘면 300초 제한이 무의미해진다 */
+        if(giveHeart && !this.duel) this.items.push(new Item(e.x + 80, e.y + dy, ITEM_KIND.HEART));
       }
       return;
     }
@@ -4679,6 +4774,8 @@ class GameScene extends Scene {
        ★ 계정의 주인은 **1P** 다. 2P 는 같은 화면에 낀 손님이라 씬 합계를 보내면
        남이 번 점수까지 내 기록이 된다. */
     DG.onFinish({
+      duel: !!this.duel,
+      bosses: this.duelBossKills | 0,
       score: this.p1.score,
       total: this.score,
       stage: kind === 'clear' ? this.stage : Math.max(0, this.stage - 1),
@@ -4687,7 +4784,8 @@ class GameScene extends Scene {
       cleared: kind === 'clear' && this.stage >= 20,
     });
     if(kind === 'clear'){
-      this.bonus = Math.round(this.timeLeft) * 100 + this.totalLives() * 500;
+      /* 결투는 남은 목숨으로 점수를 주지 않는다 — 겨루는 값은 오직 보스와 금화다 */
+      this.bonus = this.duel ? 0 : Math.round(this.timeLeft) * 100 + this.totalLives() * 500;
       const alive = this.players();
       if(alive.length){
         const each = Math.round(this.bonus / alive.length);
@@ -4777,6 +4875,8 @@ class GameScene extends Scene {
     };
   }
   endItems(){
+    /* 결투는 한 판으로 끝난다 — 이어서 갈 스테이지도, 다시 할 것도 없다 */
+    if(this.duel) return [{ k:'quit', t:'결과 보기' }];
     if(this.state !== 'clear') return [{ k:'retry', t:'처음부터 다시' }, { k:'quit', t:'오락실로' }];
     return this.stage < 20
       ? [{ k:'continue', t:'다음 스테이지' }, { k:'quit', t:'오락실로' }]
@@ -4912,13 +5012,33 @@ class GameScene extends Scene {
     if(Freeze.t > 0){ Freeze.t -= dt; Flash.update(dt); return; }
 
     this.t += dt;
-    // 중간보스가 등장하기 전까지만 시간이 흐른다.
-    // 보스전까지 90초로 묶으면 고스테이지에서 물리적으로 못 깬다.
-    if(!this.director.midSpawned){
+    if(this.duel){
+      /* 결투는 시계가 멈추지 않는다 — 300초가 곧 한 판이다 */
       this.timeLeft -= dt;
-      if(this.timeLeft <= 0){ this.timeLeft = 0; this.finish('over', 'TIME UP'); return; }
+      if(this.timeLeft <= 0){ this.timeLeft = 0; this.finish('clear', '시간 종료'); return; }
+      /* 오락실에 지금 상황을 알린다 (상대 화면의 숫자가 여기서 움직인다) */
+      this.duelPushT = (this.duelPushT ?? 0) - dt;
+      if(this.duelPushT <= 0){
+        this.duelPushT = 1.0;
+        DG.onProgress({ score: this.p1.score, coins: RUN.coins,
+                        bosses: this.duelBossKills, alive: !this.p1.out,
+                        timeLeft: Math.max(0, Math.round(this.timeLeft)) });
+      }
+    }else{
+      // 중간보스가 등장하기 전까지만 시간이 흐른다.
+      // 보스전까지 90초로 묶으면 고스테이지에서 물리적으로 못 깬다.
+      if(!this.director.midSpawned){
+        this.timeLeft -= dt;
+        if(this.timeLeft <= 0){ this.timeLeft = 0; this.finish('over', 'TIME UP'); return; }
+      }
     }
-    if(this.finalBossKilled && this.bossDeathT <= 0){ this.finish('clear'); return; }
+    /**
+     * ★ **결투는 보스를 잡았다고 안 끝난다.** (2026-08-26 F단계)
+     * 사다리의 짝수 번째가 최종보스형이라 두 번째 보스를 무너뜨리는 순간
+     * `finalBossKilled` 가 서서 **41초 만에 판이 끝났다.** 결투를 끝내는 것은
+     * 오직 300초와 목숨 다섯뿐이다.
+     */
+    if(!this.duel && this.finalBossKilled && this.bossDeathT <= 0){ this.finish('clear'); return; }
 
     // ---- 2P 난입 / 캐릭터 선택 ----
     if(!this.p2 && !this.joining && Input.pressed('p2join')) this.startJoin();
@@ -5153,6 +5273,19 @@ class GameScene extends Scene {
       Shake.add(14, 0.5);
       this.booms.push(new Boom(p.x, p.y, 120, 0.6));
       Particles.spawn(p.x, p.y, 34, { spd:460, life:0.8 });
+      /**
+       * ★ **결투에서 죽으면 점수를 20% 잃는다.** (2026-08-26, 사용자 지정)
+       * 목숨이 다섯이라 그냥 몸으로 밀고 들어가는 게 이득이 되면 안 된다 —
+       * 죽는 데 값을 매겨야 피하는 것도 실력이 된다.
+       */
+      if(this.duel && p.pid === 1){
+        const lost = Math.round(p.score * DUEL.DEATH_PENALTY);
+        if(lost > 0){
+          p.score = Math.max(0, p.score - lost);
+          this.score = Math.max(0, this.score - lost);
+          Popups.add(p.x, p.y - 100, '-' + lost.toLocaleString('en-US'), '#ff4d5a', 5);
+        }
+      }
       if(p.lives <= 0){
         // 이 플레이어만 탈락. 남은 사람이 있으면 게임은 계속된다
         p.hp = 0; p.out = true;
@@ -6141,6 +6274,8 @@ const DG = {
   onFinish() {},
   onExit() {},
   onCharacter() {},
+  /** 결투 중 1초마다 — 상대 화면의 숫자가 이걸로 움직인다 */
+  onProgress() {},
 };
 
 /** 한 판 동안 쌓이는 것 — 판이 끝나면 오락실이 가져간다 */
@@ -6322,10 +6457,12 @@ function frame(now) {
 export function mount(host, opts = {}) {
   if (canvas) unmount();                       // 두 번 붙는 사고 방지
 
-  DG.difficulty = opts.difficulty || 'normal';
+  /* 결투는 둘이 같은 조건이어야 겨루기가 된다 — 난이도를 고른 값으로 두면 안 된다 */
+  DG.difficulty = opts.mode === 'duel' ? DUEL.DIFFICULTY : (opts.difficulty || 'normal');
   DG.onFinish = opts.onFinish || (() => {});
   DG.onExit = opts.onExit || (() => {});
   DG.onCharacter = opts.onCharacter || (() => {});
+  DG.onProgress = opts.onProgress || (() => {});
   setEquipment(opts.equipment);        // 낌 아이템은 한 판 내내 고정이다
   RUN.coins = 0;
 
@@ -6380,7 +6517,8 @@ export function mount(host, opts = {}) {
   /* 타이틀도 스테이지 선택도 없다. 로비가 이미 "시작" 을 받았고,
      이 게임의 한 판은 언제나 1스테이지에서 시작한다. */
   scenes.set(
-    opts.mode === 'chars' ? new CharacterSelectScene()
+    opts.mode === 'duel' ? new GameScene(1, null, true)
+    : opts.mode === 'chars' ? new CharacterSelectScene()
     : opts.mode === 'options' ? new OptionsScene()
     : new GameScene(1)
   );

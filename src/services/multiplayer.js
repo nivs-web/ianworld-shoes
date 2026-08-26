@@ -139,7 +139,21 @@ function meRecord(profile, fb) {
  * `open` 은 자동 매칭 쿼리용 플래그다. RTDB 는 "state=waiting 이고 인원<정원"
  * 같은 복합 조건을 못 걸어서, 그 답을 **미리 계산해 한 필드에 적어 둔다.**
  */
-export async function createRoom({ isPrivate = false, difficulty } = {}) {
+/**
+ * ★ **방은 게임마다 따로 논다.** (2026-08-26 F단계)
+ *
+ * 오락실에 게임이 둘이 되면서 방 목록을 나눠 쓰게 됐다. 표식이 없으면
+ * 신발 하러 온 사람이 드래곤 결투 방에 앉는다 — 서로 규칙이 아예 다르므로
+ * 그 방은 시작조차 못 한다.
+ *
+ * `game` 이 **없는 방은 신발방**이다. 이 표식을 만들기 전에 파인 방들이 그렇고,
+ * 그것들이 갑자기 목록에서 사라지면 안 된다.
+ */
+export const GAME_SHOES = 'shoes';
+export const GAME_DRAGON = 'dragon';
+const gameOf = (room) => (room && room.game) || GAME_SHOES;
+
+export async function createRoom({ isPrivate = false, difficulty, game = GAME_SHOES } = {}) {
   const fb = await rt();
   if (!fb) return null;
   const p = L.loadProfile();
@@ -152,6 +166,7 @@ export async function createRoom({ isPrivate = false, difficulty } = {}) {
       if (cur) return; // 이미 있는 코드 — 중단하고 다시 뽑는다
       return {
         code,
+        game,
         isPrivate: !!isPrivate,
         open: !isPrivate,          // 비밀방은 자동 매칭에 걸리면 안 된다
         hostUid: fb.uid,
@@ -329,7 +344,7 @@ export async function readOnce(fb, path_, ms = 8000) {
  *   **정원 초과는 쓰고 나서 다시 확인해 스스로 물러나므로**(아래) 낡은 값으로
  *   판단해도 안전하다 — 그게 이 함수의 원래 안전장치다.
  */
-export async function joinRoom(code, known) {
+export async function joinRoom(code, known, game = GAME_SHOES) {
   const fb = await rt();
   if (!fb) return 'error';
   const p = L.loadProfile();
@@ -358,6 +373,12 @@ export async function joinRoom(code, known) {
     room = read.val;
   }
   if (!room) return 'notfound';
+  /**
+   * ★ **다른 게임 방에는 못 들어간다.** (2026-08-26 F단계)
+   * 코드를 직접 치거나 대결 신청을 눌러 들어오는 길은 목록을 거치지 않으므로
+   * 여기서 한 번 더 막는다. 규칙이 아예 달라서 들어가 봐야 시작조차 못 한다.
+   */
+  if (gameOf(room) !== game) return 'wronggame';
   if (room.players?.[fb.uid]) { await noteMyRoom(fb, code); return 'ok'; }  // 재입장
 
   const max = room.maxPlayers ?? MULTI.maxPlayers;
@@ -549,11 +570,11 @@ export async function readLiveUids(fb) {
  * 보통의 온라인 게임이고, 목록에 아무것도 없으면 사용자는 방을 새로 팔 수밖에 없다 —
  * 그게 "다들 방장만 된다"의 사용자 쪽 원인이기도 했다.
  */
-export async function listRooms() {
+export async function listRooms(game = GAME_SHOES) {
   const fb = await rt();
   if (!fb) return [];
   await waitConnected(fb);
-  const [rooms, live] = await Promise.all([scanOpenRooms(fb), readLiveUids(fb)]);
+  const [rooms, live] = await Promise.all([scanOpenRooms(fb, game), readLiveUids(fb)]);
   const max = MULTI.maxPlayers;
   const 지금 = Date.now() + serverOffsetSync();
   /**
@@ -768,13 +789,22 @@ function sweepEmptyRooms(fb, rooms, live = null) {
   return 후보.length;
 }
 
-export async function scanRooms(fb) {
+export async function scanRooms(fb, game) {
   fb = fb ?? await rt();
   if (!fb) return [];
-  return scanOpenRooms(fb);
+  return scanOpenRooms(fb, game);
 }
 
-async function scanOpenRooms(fb) {
+/**
+ * 열려 있는 방들.
+ *
+ * ★ 게임 거르기는 **받아 온 뒤 여기서** 한다. RTDB 에서 두 필드로 거르려면
+ * `.indexOn` 을 손으로 더 걸어야 하는데(콘솔 작업), 방은 어차피 앞에서
+ * `SCAN_LIMIT` 장만 보므로 받아서 거르는 편이 싸고 확실하다.
+ *
+ * @param {string} [game] 이 게임의 방만 (생략하면 전부)
+ */
+async function scanOpenRooms(fb, game) {
   const { ref, query, orderByChild, equalTo, limitToFirst, get } = fb.dbMod;
   const snap = await withTimeout(
     get(query(ref(fb.rtdb, ROOMS), orderByChild('open'), equalTo(true), limitToFirst(SCAN_LIMIT))),
@@ -782,7 +812,7 @@ async function scanOpenRooms(fb) {
   );
   const rooms = [];
   snap.forEach((c) => { rooms.push(c.val()); });
-  return rooms;
+  return game ? rooms.filter((r) => gameOf(r) === game) : rooms;
 }
 
 /**
@@ -799,7 +829,7 @@ async function scanOpenRooms(fb) {
  * 내 방을 접고 그쪽으로 옮긴다. 판정 기준이 (생성시각, 코드)로 결정적이라
  * 양쪽이 같은 답을 내고 **정확히 한 명만** 움직인다.
  */
-export async function quickJoin({ difficulty } = {}) {
+export async function quickJoin({ difficulty, game = GAME_SHOES } = {}) {
   const fb = await rt();
   if (!fb) return null;
   await waitConnected(fb);
@@ -821,7 +851,7 @@ export async function quickJoin({ difficulty } = {}) {
   };
 
   try {
-    let raw = await scanOpenRooms(fb);
+    let raw = await scanOpenRooms(fb, game);
     sweepEmptyRooms(fb, raw);
     /**
      * 막 붙은 직후의 빈 목록은 "없다"가 아니라 "아직 못 받았다"일 수 있다.
@@ -831,7 +861,7 @@ export async function quickJoin({ difficulty } = {}) {
      */
     if (!raw.length && Date.now() - connectedAt < CONNECTION_WARM_MS) {
       await new Promise((r) => setTimeout(r, EMPTY_RESCAN_MS));
-      raw = await scanOpenRooms(fb);
+      raw = await scanOpenRooms(fb, game);
     }
     const free = raw.filter((r) => hasSeat(r, fb.uid, MULTI.maxPlayers));
     const 대기중 = free.filter((r) => r.state === 'waiting').sort(byPreference);
@@ -841,7 +871,7 @@ export async function quickJoin({ difficulty } = {}) {
     if (got) return got;
   } catch { /* 못 찾으면 새로 판다 */ }
 
-  const mine = await createRoom({ isPrivate: false, difficulty });
+  const mine = await createRoom({ isPrivate: false, difficulty, game });
   if (!mine) return null;
 
   // 같은 순간에 만들어진 방이 있으면 한쪽만 옮겨 간다 (동시 입장 해소)
@@ -850,7 +880,7 @@ export async function quickJoin({ difficulty } = {}) {
     const mineRoom = await readRoom(mine);
     if (Object.keys(mineRoom?.players ?? {}).length > 1) return mine;
 
-    const older = (await scanOpenRooms(fb))
+    const older = (await scanOpenRooms(fb, game))
       .filter((r) => hasSeat(r, fb.uid, MULTI.maxPlayers) && r.code !== mine && r.state === 'waiting')
       .filter((r) => byPreference(r, mineRoom ?? { code: mine, createdAt: Infinity }) < 0)
       .sort(byPreference)[0];
