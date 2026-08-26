@@ -135,10 +135,12 @@ export default function DragonLobby(nav) {
             el('div.char-name', p.nickname || '???'),
           ]),
           el('div.stats', null, [
-            statLine(S.dragonBestScore(p.dragonBest || 0), statNum,
-              c?.score ? S.crownDragonScore(c.score) : null, c?.score),
+            /* ★ 보유금화가 맨 위다 (2026-08-26, 사용자 지정) —
+               점수는 순위표용이고 실제로 쓰는 돈은 금화다 */
             statLine(S.dragonCoinsOwned(p.dragonCoins || 0), statNum,
               c?.coins ? S.crownDragonCoin(c.coins) : null, c?.coins),
+            statLine(S.dragonBestScore(p.dragonBest || 0), statNum,
+              c?.score ? S.crownDragonScore(c.score) : null, c?.score),
             statLine(S.dragonMultiRecord(wins, games), statNum,
               c?.wins ? S.crownDragonWins(c.wins) : null, c?.wins),
             statLine(S.dragonPlays(p.dragonPlays || 0), statNum),

@@ -2312,6 +2312,48 @@ const Popups = {
   clear(){ this.list.length = 0; }
 };
 
+/**
+ * 금화 한 닢. (2026-08-26, 사용자 지정 — "슈퍼마리오 참고해서 다시")
+ *
+ * 예전 것은 그냥 **네모**였다. 가로만 줄였다 늘렸다 해서 회전을 흉내냈는데,
+ * 네모가 납작해지는 것은 회전이 아니라 그냥 얇은 판으로 보인다.
+ *
+ * 마리오 동전이 동전으로 읽히는 이유는 셋이다:
+ *   · 정면일 때 **동그랗다** (네모가 아니다)
+ *   · 가운데에 **어두운 홈**이 있어 두께가 느껴진다
+ *   · 옆으로 돌 때 **테두리는 남고 안쪽만 좁아진다**
+ * 그래서 원을 그리고, 폭만 코사인으로 줄이고, 테두리를 항상 유지한다.
+ */
+function drawCoin(ctx, cx, cy, r, t){
+  const a = t * 4.2;
+  const w = Math.abs(Math.cos(a));                 // 1=정면, 0=옆모습
+  const halfW = Math.max(PX, snap(r * w));
+  const py = PX;                                   // 세로 도트 크기
+
+  for(let dy = -r; dy <= r; dy += py){
+    /* 이 높이에서 원이 갖는 반폭 — 이것이 '동그람' 을 만든다 */
+    const k = Math.sqrt(Math.max(0, 1 - (dy/r)*(dy/r)));
+    const half = Math.max(PX, snap(halfW * k));
+    if(half < PX) continue;
+    const yy = snap(cy + dy);
+    ctx.fillStyle = '#6b4a08';                     // 테두리 (옆모습에서도 남는다)
+    ctx.fillRect(snap(cx - half - PX), yy, half*2 + PX*2, py);
+    ctx.fillStyle = '#ffd24a';                     // 금
+    ctx.fillRect(snap(cx - half), yy, half*2, py);
+    /* 왼쪽 위 하이라이트 — 빛이 한쪽에서 오는 느낌 */
+    if(dy < 0 && half > PX*2){
+      ctx.fillStyle = '#fff3b0';
+      ctx.fillRect(snap(cx - half), yy, Math.max(PX, snap(half*0.7)), py);
+    }
+  }
+  /* 가운데 홈 — 정면일 때만 보인다 (옆모습에서는 두께에 가린다) */
+  if(w > 0.55){
+    const ih = Math.max(PX, snap(r*0.9)), iw = Math.max(PX, snap(halfW*0.34));
+    ctx.fillStyle = '#c8880f';
+    ctx.fillRect(snap(cx - iw), snap(cy - ih/2), iw*2, ih);
+  }
+}
+
 /* ---------------- 파티클 ---------------- */
 const MAX_PARTICLES = 520;          // 순수 장식. 900개는 프레임당 fillRect 900번이라 과했다.
 /* 파티클은 미리 전부 할당해두고 재사용한다.
@@ -3017,7 +3059,7 @@ const MB_CELL = 7.2;                                 // FORM B x7.2 = 259 x 230 
 class MidBoss extends EnemyBase {
   constructor(stage, level){
     super(GAME_W + 180, GAME_H/2, midBossHpOf(stage, level), 5000);
-    this.isBoss = true; this.name = 'DRAGON KNIGHT';
+    this.isBoss = true; this.name = '드래곤 기사';
     this.stageNo = stage;
     this.hurtDmg = Math.round(22 * stagePowerOf(stage));
     this.phase = 'enter'; this.pt = 0; this.pi = 0;
@@ -3951,12 +3993,7 @@ class Item {
 
     switch(this.kind){
       case ITEM_KIND.COIN: {
-        const sp = Math.abs(Math.sin(this.t*3.4));           // 회전하는 느낌
-        const w = Math.max(PX, snap(20*sp) || PX);
-        ctx.fillStyle = '#6b4a08'; ctx.fillRect(x - w/2 - PX, y - 18, w + PX*2, 36);
-        ctx.fillStyle = '#ffd24a'; ctx.fillRect(x - w/2, y - 15, w, 30);
-        ctx.fillStyle = '#fff3b0'; ctx.fillRect(x - w/2, y - 15, w, PX*2);
-        if(w > PX*3){ ctx.fillStyle = '#c8880f'; ctx.fillRect(x - w/2 + PX, y - PX, w - PX*2, PX*2); }
+        drawCoin(ctx, x, y, 15, this.t);
         break;
       }
       case ITEM_KIND.APPLE:
@@ -4713,8 +4750,19 @@ class GameScene extends Scene {
         const gain = Math.round(COIN_BASE * p.coinChain * (p.pid === 1 ? (1 + EQ.coinBonus) : 1));
         RUN.coins++;                       // 지갑에 넣을 개수 (오락실이 가져간다)
         this.addScore(gain, p.pid);
-        Popups.add(it.x, it.y - 20, '+' + gain + (p.coinChain > 1 ? ' x' + p.coinChain : ''),
-                   '#ffd24a', p.coinChain > 4 ? 4 : 3);
+        /**
+         * ★ **"+1000 x10" 이 무슨 뜻인지 아무도 몰랐다.** (2026-08-26, 사용자 지적)
+         *
+         * 금화는 **한 닢이 한 개**다. 늘 +1 이다.
+         * 저 숫자는 금화 개수가 아니라 **점수**였고, `x10` 은 연속으로 주웠을 때
+         * 붙는 배수였다(100점 x 연쇄 10 = 1000점). 개수와 점수가 한 줄에 섞여 있으니
+         * "금화가 10개 들어왔나?" 로 읽힐 수밖에 없었다.
+         *
+         * 그래서 갈라 놓는다 — 위에 `금화 +1`, 아래에 `점수 +1000 (10연속)`.
+         */
+        Popups.add(it.x, it.y - 34, '금화 +1', '#ffd24a', 4, true);
+        Popups.add(it.x, it.y - 6, '+' + gain + (p.coinChain > 1 ? ' (' + p.coinChain + '연속)' : ''),
+                   '#cfe6ff', 3, p.coinChain > 1);
         SND.sfx('coin');
         return;                                  // 동전은 안내 문구를 띄우지 않는다
       }
@@ -4938,13 +4986,21 @@ class GameScene extends Scene {
   updatePlayer(p, dt){
     let mv;
     if(p.pid === 1){
-      /* 손으로 잡아 끄는 중이면 위치는 이미 정해졌다 — 가속 계산을 건너뛰라고 알린다 */
-      if(this.dragId !== null){ this.dragT += dt; p.update(dt, { x:0, y:0, grabbed:true }); }
       const kv = Input.moveVectorFor(1);
       if(kv.x || kv.y) this.p1UsesKeys = true;          // 방향키를 쓰면 스틱을 감춘다
       const sv = this.stickVisible() ? this.stick.vector() : {x:0,y:0};
       mv = (sv.x || sv.y) ? sv : kv;
-      if(this.dragId !== null) return;                  // 위는 이미 처리했다
+      /**
+       * ★ **잡아 끄는 것은 '이동 방법' 일 뿐이다.** (2026-08-26, 사용자 지적)
+       *
+       * 처음엔 여기서 `return` 해 버렸다 — 그래서 손가락을 대고 있는 동안
+       * **불도 안 나가고 무기도 안 먹혔다.** 게임이 멈춘 것처럼 보였다.
+       *
+       * 잡기가 바꾸는 것은 **자리를 어떻게 정하느냐** 하나뿐이다.
+       * 발사·무기·무적시간·쉴드·콤보는 키보드로 놀 때와 **완전히 똑같이** 돌아야 하고,
+       * 적과 부딪히면 당연히 아파야 한다. `grabbed` 는 가속 계산만 건너뛰게 한다.
+       */
+      if(this.dragId !== null){ this.dragT += dt; mv = { x:0, y:0, grabbed:true }; }
     }else{
       mv = Input.moveVectorFor(2);
     }
@@ -5477,10 +5533,20 @@ class GameScene extends Scene {
   drawPlayerPanel(ctx, p, x, y0, col){
     const W = 216;
     let y = y0;
-    // 점수 (하트 위)
+    /**
+     * 점수와 금화를 한 줄에 나란히. (2026-08-26, 사용자 지정)
+     * 금화를 화면 구석에 따로 두었더니 먹으면서 눈이 두 군데를 오갔다 —
+     * 내 것끼리 붙어 있어야 늘어나는 게 바로 보인다.
+     */
     ko(ctx, '점수', x, y - 2, 2, { color:'#8a93b8' });
     drawDigits(ctx, String(Math.min(999999, p.score|0)).padStart(6, '0'), x + 52, y - 2, 3,
       { color: col, outline:PAL.outline });
+    if(p.pid === 1){
+      /* 금화는 1P 것만 센다 — 지갑의 주인이 1P 다 */
+      ko(ctx, '금화', x + 150, y - 2, 2, { color:'#8a93b8' });
+      drawDigits(ctx, String(Math.min(9999, RUN.coins|0)), x + 186, y - 2, 3,
+        { color:'#ffd24a', outline:PAL.outline });
+    }
     y += 24;
     // 하트
     const rows = ['.XX.XX.','XXXXXXX','.XXXXX.','..XXX..','...X...'];
@@ -5519,7 +5585,13 @@ class GameScene extends Scene {
       this.drawPlayerPanel(ctx, this.p1, LX, TY, P1_COLOR);
     }
 
-    ko(ctx, this.stage + '스테이지 · ' + this.theme.n, 640, 46, 3,
+    /**
+     * ★ **물음표의 정체는 가운뎃점(·) 이었다.** (2026-08-26, 사용자 지적)
+     * 오락실 한글 글꼴은 실제로 쓰는 글자만 구워 넣는데(`tools/build-font.mjs` 가
+     * 소스에서 한글만 훑는다) '·' 는 한글이 아니라서 빠졌고, 없는 글자는 '?' 로 나온다.
+     * 하이픈으로 바꿨다 — 굳이 글꼴을 늘릴 이유가 없다.
+     */
+    ko(ctx, this.stage + '스테이지 - ' + this.theme.n, 640, 46, 3,
       { align:'center', color:'#cfe6ff' });
     if(false) drawText(ctx, 'STAGE ' + this.stage, 640, 52, 2,
       { align:'center', color:'#dff0ff', shadow:'#0a1830' });
@@ -5531,9 +5603,10 @@ class GameScene extends Scene {
      * 안내는 안내답게 흐리게 — 계속 떠 있는 글씨가 진하면 화면이 시끄럽다.
      */
     if(!this.p2 && !this.joining){
+      /* ★ 맨 아래로 내렸다 — 위쪽은 보스 이름·체력바와 겹쳐서 글자가 서로 파먹었다 */
       const pa = ctx.globalAlpha;
-      ctx.globalAlpha = pa * 0.42;
-      ko(ctx, 'W A S D 를 누르면 2인 플레이', 640, 86, 2,
+      ctx.globalAlpha = pa * 0.28;
+      ko(ctx, 'W A S D 를 누르면 2인 플레이', 640, GAME_H - 20, 2,
         { align:'center', color:P2_COLOR });
       ctx.globalAlpha = pa;
     }
@@ -5561,7 +5634,7 @@ class GameScene extends Scene {
      * 2P 가 붙으면 1P 정보창이 오른쪽 위로 가므로 금화도 오른쪽 아래로 따라간다 —
      * 내 정보는 한쪽에 모여 있어야 눈이 왔다 갔다 하지 않는다.
      */
-    this.drawCoinCounter(ctx);
+    /* 금화는 이제 점수 옆(정보창)에 있다 — 여기서 또 그리면 두 군데가 된다 */
 
     /**
      * ★ **2P 는 손님이다.** (2026-08-26, 사용자 지정)
@@ -5572,8 +5645,8 @@ class GameScene extends Scene {
      */
     if(this.p2){
       const pa = ctx.globalAlpha;
-      ctx.globalAlpha = pa * 0.5;
-      ko(ctx, '점수와 금화는 1P 에게만 쌓입니다', 640, 86, 2,
+      ctx.globalAlpha = pa * 0.42;
+      ko(ctx, '점수와 금화는 1P 에게만 쌓입니다', 640, GAME_H - 20, 2,
         { align:'center', color:P2_COLOR });
       ctx.globalAlpha = pa;
     }
@@ -5608,21 +5681,44 @@ class GameScene extends Scene {
         { align:'center', color:(r)=>PAL.fire[r], outline:PAL.outline, shadow:'#000', shadowOff:10 });
     }
 
-    const B = TIME_BAR, tk = clamp(this.timeLeft / STAGE_TIME, 0, 1);
+    /**
+     * ★ **시간은 '줄어드는 막대' 가 아니라 '지나가는 눈금' 이다.** (2026-08-26, 사용자 지정)
+     *
+     * 예전에는 통짜 막대에 가운데 숫자를 박아 뒀더니 **보스 체력바처럼 보였다** —
+     * 실제로 "이게 뭔지 모르겠다" 는 말을 들었다. 색이 빨강→노랑으로 채워지는 것도
+     * 체력 게이지의 신호라 더 헷갈렸다.
+     *
+     * 그래서 모래시계처럼 바꿨다. 눈금이 촘촘히 박힌 자를 두고, **지나간 쪽은 비고
+     * 남은 쪽만 채워진 채 왼쪽으로 흘러간다.** 숫자는 뺐다 — 시간이 얼마나 남았는지는
+     * 채워진 길이로 충분하고, 세 자리 숫자가 붙어 있으면 그게 체력처럼 읽힌다.
+     */
+    const B = TIME_BAR;
+    const full = this.duel ? DUEL.TIME : STAGE_TIME;
+    const tk = clamp(this.timeLeft / full, 0, 1);
+    const low = tk <= 0.18;
+
     ctx.fillStyle = '#0a0a14'; ctx.fillRect(B.x - PX, B.y - PX, B.w + PX*2, B.h + PX*2);
-    ctx.fillStyle = '#1d2536'; ctx.fillRect(B.x, B.y, B.w, B.h);
-    const seg = 16, sw = B.w / seg;
-    for(let i=0;i<seg;i++){
-      if(i / seg >= tk) break;
-      const f = i / (seg - 1);
-      ctx.fillStyle = rampColor([{p:0,c:'#ff2b2b'},{p:0.5,c:'#ff9a2e'},{p:1,c:'#ffe14a'}], f);
-      ctx.fillRect(snap(B.x + i*sw), B.y, Math.ceil(sw), B.h);
+    ctx.fillStyle = '#141a26'; ctx.fillRect(B.x, B.y, B.w, B.h);
+
+    /* 남은 시간 — 왼쪽에서부터 채워져 있고 오른쪽 끝이 깎여 나간다 */
+    const lw = snap(B.w * tk);
+    ctx.fillStyle = low ? '#c81f2e' : '#3c6ea5';
+    ctx.fillRect(B.x, B.y + 6, lw, B.h - 12);
+    ctx.fillStyle = low ? '#ff6b6b' : '#7fc8ff';
+    ctx.fillRect(B.x, B.y + 6, lw, 4);
+
+    /* 눈금 — 10초마다 한 칸. 칸이 하나씩 사라지는 게 곧 시간이다 */
+    const per = 10, ticks = Math.max(1, Math.round(full / per));
+    for(let i=1;i<ticks;i++){
+      const gx = snap(B.x + (B.w * i) / ticks);
+      ctx.fillStyle = (i / ticks) < tk ? 'rgba(10,12,20,.55)' : 'rgba(120,140,180,.22)';
+      ctx.fillRect(gx, B.y + 4, PX, B.h - 8);
     }
-    ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fillRect(B.x, B.y, snap(B.w*tk), 5);
-    const secs = Math.ceil(this.timeLeft);
-    const urgent = secs <= 10 && Math.floor(this.t*5) % 2 === 0;
-    drawText(ctx, String(secs).padStart(3,'0'), B.x + B.w/2, B.y + 5, 3,
-      { align:'center', color: urgent ? '#ffffff' : PAL.outline, outline: urgent ? '#c81f2e' : null });
+    /* 지금 이 순간의 끝 — 깜빡이는 머리 */
+    if(tk > 0){
+      ctx.fillStyle = low && Math.floor(this.t*6) % 2 === 0 ? '#ffffff' : (low ? '#ff9a9a' : '#cfe6ff');
+      ctx.fillRect(snap(B.x + lw - PX*2), B.y + 2, PX*2, B.h - 4);
+    }
 
     drawText(ctx, this.p2 ? '1P: ARROWS / RSHIFT / RALT     2P: WASD / ` / 1'
                           : '1P: ARROWS / RSHIFT / RALT     ESC: PAUSE', 640, 700, 2,
@@ -5659,22 +5755,32 @@ class GameScene extends Scene {
     ctx.fillStyle = clear ? '#0d1a10' : '#160a0e'; ctx.fillRect(0,0,GAME_W,GAME_H);
     ctx.globalAlpha = 1;
     if(this.stateT < 0.35) return;
-    const title = clear ? '스테이지 클리어' : (this.endReason || '게임 오버');
+    const title = clear ? (this.duel ? '결투 종료' : '스테이지 클리어')
+                        : (this.endReason || '게임오버');
     ko(ctx, title, 640, 164, 9,
       { align:'center', color: clear ? PAL.gold : '#c81f2e', outline:PAL.outline });
     if(this.stateT > 0.6){
+      /**
+       * ★ 한글로 바꾸고 **획득 금화**를 넣었다. (2026-08-26, 사용자 지정)
+       * 금화가 이 게임의 화폐인데 정작 한 판 끝나고 얼마 벌었는지 볼 데가 없었다.
+       * 왼쪽 이름은 한글이라 오락실 글꼴로, 오른쪽 값은 숫자가 많아 게임 글꼴로 그린다.
+       */
       const rows = clear
-        ? [['SCORE', String(this.score)], ['TIME BONUS', '+' + this.bonus],
-           ['KILLS', String(this.kills)],
-           ['FIRE LV', String(this.p1.level) + (this.p1.level >= MAX_LEVEL ? '  MAX' : '')],
-           ['LIFE', String(this.totalLives()) + '  (+1)']]
-        : [['SCORE', String(this.score)], ['KILLS', String(this.kills)],
-           ['FIRE LV', String(this.p1.level)], ['TIME LEFT', Math.ceil(this.timeLeft) + 'S']];
+        ? [['점수', String(this.score)], ['시간 보너스', '+' + this.bonus],
+           ['킬수', String(this.kills)],
+           ['파이어 레벨', String(this.p1.level) + (this.p1.level >= MAX_LEVEL ? '  MAX' : '')],
+           ['획득 금화', String(RUN.coins)]]
+        : [['점수', String(this.score)], ['킬수', String(this.kills)],
+           ['파이어 레벨', String(this.p1.level)],
+           ['남은 시간', Math.ceil(this.timeLeft) + '초'],
+           ['획득 금화', String(RUN.coins)]];
       for(let i=0;i<rows.length;i++){
-        const y = 320 + i*46;
+        const y = 316 + i*42;
         if(this.stateT < 0.6 + i*0.12) break;
-        drawText(ctx, rows[i][0], 430, y, 4, { color:'#8a9bbf', outline:PAL.outline });
-        drawText(ctx, rows[i][1], 860, y, 4, { align:'right', color:PAL.white, outline:PAL.outline });
+        const gold = rows[i][0] === '획득 금화';
+        ko(ctx, rows[i][0], 420, y, 4, { color: gold ? '#ffd24a' : '#8a9bbf', outline:PAL.outline });
+        drawText(ctx, rows[i][1], 870, y, 4,
+          { align:'right', color: gold ? '#ffd24a' : PAL.white, outline:PAL.outline });
       }
     }
     if(this.stateT <= 1.1) return;

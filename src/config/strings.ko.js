@@ -209,6 +209,9 @@ export const S = {
   dragonTitle: '드래곤 스트라이커',
   /** 포털 카드 밑줄 · 로비 통계 — 둘이 같은 문구를 쓴다 */
   dragonBestScore: (n) => `최고점수 ${n.toLocaleString('en-US')}점`,
+  /* 오락실 카드에는 점수 대신 금화를 적는다 — 점수는 순위표용이고,
+     이 게임에서 실제로 돈 구슬을 하는 것은 금화다 (2026-08-26, 사용자 지정) */
+  dragonTotalCoins: (n) => `총 금화 보유 ${n.toLocaleString('en-US')}개`,
   dragonBestStage: (n) => `최고 스테이지 ${n}단계`,
   dragonPlays: (n) => `싱글게임 ${n.toLocaleString('en-US')}게임`,
   dragonFireLv: (n) => `최고 파이어 LV${n}`,

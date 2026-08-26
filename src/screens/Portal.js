@@ -26,7 +26,7 @@ const DragonLobby = lazyScreen(() => import('./DragonLobby.js'), S.dragonTitle);
  */
 const CARDS = [
   { id: 'find_shoes', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
-  { id: 'dragon_striker', title: S.dragonTitle, sub: (p) => S.dragonBestScore(p.dragonBest || 0), screen: () => DragonLobby, ready: true },
+  { id: 'dragon_striker', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
 ];
 
 export default function Portal(nav) {
