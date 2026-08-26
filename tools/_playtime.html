@@ -1,0 +1,112 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>완주 시간과 금화 벌이</title>
+<style>body{background:#111;color:#ddd;font:13px/1.7 monospace;padding:16px;white-space:pre}</style>
+</head>
+<body><div id="out">돌리는 중… (20판을 끝까지 돌리므로 좀 걸린다)</div><div id="host" style="display:none"></div>
+<script type="module">
+/**
+ * **20판 완주에 몇 분이 걸리고 금화를 얼마나 버는가.**
+ *
+ * 두 가지를 한 번에 잰다 — 둘은 같이 움직이기 때문이다. 보스 체력을 올리면
+ * 시간이 늘고, 시간이 늘면 금화도 는다. 따로 재면 한쪽만 보고 판단하게 된다.
+ *
+ * 봇은 **동전을 쫓는다.** 가만히 있는 봇으로 재면 잘 노는 사람의 벌이를 못 보고,
+ * 동전만 쫓는 봇으로 재면 시간이 왜곡된다 — 실제로 예전에 그 둘이 1,349 대
+ * 6,700 으로 다섯 배 갈렸고, 그게 "적을 잡아도 금화가 나오게" 바꾼 이유다.
+ *
+ * ★ `scenes.update` 로 돌린다(`__test.pump`). 씬을 직접 `update` 하면
+ *   스테이지 전환이 안 일어나 다음 판이 0초에 끝난 것처럼 보인다.
+ */
+import * as DR from '/src/games/dragon/dragon.js';
+
+const lines = []; const say = (s) => lines.push(s);
+const show = () => { document.getElementById('out').textContent = lines.join('\n'); };
+
+const host = document.getElementById('host');
+const DT = 1 / 60;
+
+for (const diff of ['easy', 'normal', 'hard']) {
+  DR.mount(host, { onExit() {}, onEnd() {}, difficulty: diff });
+  const T = DR.__test;
+  for (let i = 0; i < 400 && T.scene !== 'GameScene'; i++) { T.press('confirm'); T.pump(DT); }
+
+  let t = 0, lastStage = 1, per = [], died = 0;
+  /* 보스전이 전체의 얼마인지 — 보스 체력을 건드릴 때 그 영향을 가늠하는 잣대다 */
+  let bossT = 0, bossHp = 0; const seen = new Set();
+  const CAP = 60 * 60;                       // 한 시간이면 무언가 잘못된 것이다
+  let stageT = 0;
+
+  while (t < CAP) {
+    const sc = T.scene0();
+    if (!sc || !sc.p1) break;
+
+    /**
+     * 봇. 보스가 있으면 **보스 높이에 붙는다** — 안 그러면 화력이 허공으로 나가
+     * 판당 시간이 두 배로 나온다 (처음에 134초가 나왔던 이유가 이것이다).
+     * 그 외에는 동전을 쫓는다.
+     */
+    let tx = 320, ty = 440;
+    const boss = (sc.enemies || []).find((e) => e.isBoss);
+    if (boss) { tx = boss.x - 300; ty = boss.y; }   // 보스에 붙는다
+    else if (sc.items && sc.items.length) {
+      let best = null, bd = 1e9;
+      for (const it of sc.items) {
+        const d = Math.hypot(it.x - sc.p1.x, it.y - sc.p1.y);
+        if (d < bd) { bd = d; best = it; }
+      }
+      if (best) { tx = best.x; ty = best.y; }
+    }
+    sc.p1.x += Math.max(-9, Math.min(9, tx - sc.p1.x));
+    sc.p1.y += Math.max(-9, Math.min(9, ty - sc.p1.y));
+    sc.p1.hp = 100;                          // 죽지 않는 봇 — 재는 것은 진행 속도다
+    if (sc.p1.lives < 3) { died += 3 - sc.p1.lives; sc.p1.lives = 3; }
+
+    /* 무기를 쓴다 — 안 쓰는 봇으로 재면 보스전이 두 배로 늘어난다 */
+    if (sc.p1.missileCount > 0) T.press('p1missile');
+    if (boss && sc.p1.bombCount > 0) T.press('p1bomb');
+
+    T.pump(DT); t += DT; stageT += DT;
+    if (boss) {
+      bossT += DT;
+      if (!seen.has(boss)) { seen.add(boss); bossHp += boss.maxHp; }
+    }
+
+    if (sc.stage !== lastStage) { per.push(stageT); stageT = 0; lastStage = sc.stage; }
+    /**
+     * ★ `clear` 는 **게임 클리어가 아니라 판 클리어**다 — 다음 판으로 넘기는
+     * 메뉴가 뜬다. 여기서 멈추면 "1판 완주 2분" 같은 소리가 나온다 (한 번 속았다).
+     */
+    if (sc.state === 'clear') {
+      const items = sc.endItems();
+      const i = items.findIndex((x) => x.k === 'continue');
+      if (i < 0) { per.push(stageT); break; }      // 다음 판이 없다 = 진짜 완주
+      sc.endIdx = i; sc.doEndPick();
+      for (let k = 0; k < 400 && T.scene0() === sc; k++) { T.pump(DT); t += DT; }
+    }
+    if (sc.state === 'over') break;
+  }
+
+  const sc = T.scene0();
+  const done = sc && sc.state === 'clear' && sc.stage >= 20;
+  const mins = t / 60;
+  const coins = T.coins;
+  say(`■ ${diff}`);
+  say(`   ${done ? '완주' : '중단(' + (sc ? sc.state : '?') + ' ' + (sc ? sc.stage : '?') + '판)'}` +
+      `   ${mins.toFixed(1)}분   금화 ${coins.toLocaleString()}   점수 ${(sc ? sc.score : 0).toLocaleString()}`);
+  if (per.length) {
+    const srt = [...per].sort((a, b) => a - b);
+    say(`   판당 ${Math.min(...per).toFixed(0)}~${Math.max(...per).toFixed(0)}초 ` +
+        `(가운데 ${srt[srt.length >> 1].toFixed(0)}초)   ${per.length}판`);
+  }
+  say(`   보스전 ${(bossT / 60).toFixed(1)}분 (전체의 ${(bossT / t * 100).toFixed(0)}%)   보스 총체력 ${bossHp.toLocaleString()}`);
+  say(`   분당 금화 ${(coins / mins).toFixed(0)}   불레벨 ${sc && sc.p1 ? sc.p1.level : '?'}   죽은 횟수 ${died}`);
+  DR.unmount();
+  show();
+}
+
+say('');
+say('노리는 값: 완주 19~25분');
+show();
+window.__done = true;
+</script>
+</body></html>
