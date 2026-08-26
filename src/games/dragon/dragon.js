@@ -5565,6 +5565,42 @@ const DROP_PLAN = [
    */
   { kind:'bomb',    rounds: 3, every:42.0, first:20 }   // 핵무기 (5/30초 -> 3/42초)
 ];
+/**
+ * ★ **스칠수록 번다.** (기획 6, 2026-08-27)
+ *
+ * 금화는 **줍는 것**뿐이었다. 그래서 잘하는 길이 "동전을 쫓아다니기" 가 되고
+ * **피하는 행위 자체에는 아무 보상이 없었다** — 안전한 구석에 붙어 있는 것이
+ * 언제나 옳았다.
+ *
+ * 적탄 둘레에 얇은 띠를 하나 더 두고, 맞지 않고 그 띠를 지나가면 점수를 준다.
+ * 일정 수를 채울 때마다 금화 한 닢. 그러면 **회피가 곧 수입**이 되어
+ * 구석이 아니라 탄 사이로 들어가게 된다.
+ *
+ * 판정 상자는 **좌우로만** 넓힌다. 탄은 대개 가로로 오므로 위아래로 넓히면
+ * "스쳤다" 가 아니라 "맞을 뻔했다" 가 되어 셈이 헐거워진다.
+ */
+const GRAZE_PAD = 36;              // 판정 상자를 좌우로 이만큼 넓힌다
+const GRAZE_SCORE = 20;            // 한 번 스칠 때 점수
+/* 25 로 뒀더니 1분에 한 닢도 안 나왔다 — 있으나 마나 한 보상은 안 하느니만 못하다 */
+const GRAZE_PER_COIN = 12;
+
+/**
+ * ★ **연쇄가 끊기기 전에.** (기획 7, 2026-08-27)
+ *
+ * 연속 처치는 예전부터 세고 있었지만 **화면에 거의 안 보였고 끊기지도 않았다.**
+ * 시간 제한을 두면 이야기가 달라진다 — 끊기지 않으려면 가만히 있을 수가 없어서
+ * **플레이어가 스스로 위험한 쪽으로 간다.** 난이도를 강요하지 않고 올리는 길이다.
+ */
+const CHAIN_HOLD = 2.6;            // 이 시간 안에 다음을 못 잡으면 끊긴다
+/**
+ * 배수 상한. 처음에 9.9 로 뒀더니 봇이 60초 만에 66연속으로 **상한에 닿았다** —
+ * 적이 늘 열댓 마리 떠 있으니 2.6초 안에 하나 잡는 것은 어렵지 않다.
+ * 그러면 점수가 통째로 열 배가 되어 옛 기록과 비교가 안 되고,
+ * 무엇보다 **상한에 닿는 순간 배수가 사라진 것과 같아진다.**
+ * 4.0 이면 계속 오를 여지가 남으면서 점수 눈금도 안 무너진다.
+ */
+const CHAIN_MAX = 4.0;
+
 const COIN_INTERVAL = 2.6;          // 황금동전 뭉치가 나오는 주기
 const COIN_PER_ARC  = 6;            // 한 뭉치에 몇 개
 /**
@@ -5744,9 +5780,16 @@ class GameScene extends Scene {
     this.score = this.carry ? this.carry.score : 0;
     this.kills = 0;
     /* 새 판이 아니라 **이어지는 스테이지**면 동전을 이어서 센다 */
-    if(!this.carry){ RUN.coins = 0; RUN.coinFrac = 0; RUN.banked = 0; }
+    if(!this.carry){ RUN.coins = 0; RUN.coinFrac = 0; RUN.banked = 0; RUN.noHitRun = 0; }
     this.boss = null; this.bossBannerT = 0; this.bossDeathT = 0;
     this.killStreak = 0;
+    this.chainT = 0;                 // 연쇄가 끊기기까지 남은 시간
+    this.chainBest = 0;              // 이 스테이지에서 가장 길었던 연쇄
+    this.grazeN = 0;                 // 스친 횟수 (금화로 바뀔 몫)
+    this.grazeTotal = 0;             // 이 판 전체
+    this.grazeFlash = 0;             // 표시가 잠깐 커지는 연출
+    this.stageHits = 0;              // 이 스테이지에서 맞은 횟수 (무피격 보너스)
+    this.noHit = false; this.noHitBonus = 0; this.noHitCoin = 0;
     // 아이템 투하 예약표 (인원수만큼 위아래로 나눠 떨어진다)
     this.dropQ = DROP_PLAN.map(d => ({ kind:d.kind, left:d.rounds, t:d.first, every:d.every }));
     /* ★ **첫 뭉치를 곧바로 뿌린다.** 뭔가 먹을 게 있어야 움직인다 (사용자 지정) */
@@ -5923,6 +5966,9 @@ class GameScene extends Scene {
      * 두 마리에 한 닢으로 올려 **싸우는 것도 버는 길**로 만든다.
      */
     this.killStreak++;
+    /* ★ 연쇄를 이어 붙인다. 끊기기 전에 다음을 잡으면 배수가 오른다 (기획 7) */
+    this.chainT = CHAIN_HOLD;
+    if(this.killStreak > this.chainBest) this.chainBest = this.killStreak;
     if(this.killStreak % 2 === 0) this.items.push(new Item(e.x, e.y, ITEM_KIND.COIN));
   }
 
@@ -6050,7 +6096,30 @@ class GameScene extends Scene {
     });
     if(kind === 'clear'){
       /* 결투는 남은 목숨으로 점수를 주지 않는다 — 겨루는 값은 오직 보스와 금화다 */
-      this.bonus = this.duel ? 0 : Math.round(this.timeLeft) * 100 + this.totalLives() * 500;
+      /**
+       * ★ **안 맞고 깨면 크게 준다.** (기획 10, 2026-08-27)
+       *
+       * 지금까지는 피하든 몸으로 밀든 결과가 같았다. 다섯 판을 무피격으로 깬
+       * 사람과 겨우 살아 깬 사람이 같은 금화를 받으면 **잘하려는 이유가
+       * 순위표밖에 없다.** 안 맞는 것에 값이 붙어야 피하는 것이 실력이 된다.
+       *
+       * 연속으로 이어 가면 더 준다 — 한 판 잘한 것보다 **계속 잘하는 것**이
+       * 훨씬 어렵고 그래서 훨씬 값지다. 다섯 판에서 멈춘다(끝이 없으면 셈이 무너진다).
+       *
+       * 금화로도 준다 — 점수만 주면 순위표를 안 보는 사람에겐 없는 것과 같다.
+       */
+      this.noHit = !this.duel && this.stageHits === 0;
+      if(this.noHit){
+        RUN.noHitRun = (RUN.noHitRun || 0) + 1;
+        const step = Math.min(5, RUN.noHitRun);
+        this.noHitBonus = 1500 * step;
+        this.noHitCoin = 10 * step;
+        RUN.coins += this.noHitCoin;
+      }else{
+        RUN.noHitRun = 0; this.noHitBonus = 0; this.noHitCoin = 0;
+      }
+      this.bonus = this.duel ? 0
+        : Math.round(this.timeLeft) * 100 + this.totalLives() * 500 + this.noHitBonus;
       const alive = this.players();
       if(alive.length){
         const each = Math.round(this.bonus / alive.length);
@@ -6145,10 +6214,22 @@ class GameScene extends Scene {
   }
   /* 다음 스테이지로 그대로 넘길 상태 */
   /* 점수는 씬 합계와 플레이어별로 같이 쌓는다 */
-  addScore(v, pid){
-    this.score += v;
+  /** 지금 연쇄 배수 (1.0 ~ CHAIN_MAX). 세 마리째부터 붙는다 */
+  chainMul(){
+    if(this.chainT <= 0 || this.killStreak < 3) return 1;
+    return Math.min(CHAIN_MAX, 1 + (this.killStreak - 2) * 0.06);
+  }
+  /**
+   * @param raw 참이면 배수를 안 먹인다 (스침·보너스처럼 이미 정해진 값)
+   *
+   * ★ 연쇄 배수는 **적을 잡아 버는 점수에만** 곱한다 (기획 7).
+   * 스침 점수에까지 곱하면 탄 많은 판에서 숫자가 통제 불능으로 커진다.
+   */
+  addScore(v, pid, raw){
+    const gain = raw ? v : Math.round(v * this.chainMul());
+    this.score += gain;
     const p = pid === 2 ? this.p2 : (pid === 1 ? this.p1 : null);
-    if(p) p.score += v;
+    if(p) p.score += gain;
   }
   makeCarry(){
     return {
@@ -6485,6 +6566,16 @@ class GameScene extends Scene {
     for(const it of this.items)    it.update(dt, pull);
     for(const r of this.roars)     r.update(dt, this);
     Particles.update(dt); Popups.update(dt); Flash.update(dt); Shake.update(dt);
+    if(this.grazeFlash > 0) this.grazeFlash -= dt;
+    /* 연쇄는 가만히 있으면 끊긴다 — 이것이 이 장치의 전부다 */
+    if(this.chainT > 0){
+      this.chainT -= dt;
+      if(this.chainT <= 0 && this.killStreak >= 3){
+        Popups.add(this.p1.x, this.p1.y - 120, '연쇄 끊김', '#8a9bbf', 4, true);
+        SND.sfx('deny');
+      }
+      if(this.chainT <= 0) this.killStreak = 0;
+    }
 
     // ---- 충돌: 불 vs 적 ----
     for(const b of this.bolts){
@@ -6542,6 +6633,29 @@ class GameScene extends Scene {
           struck = true; break;
         }
         if(struck) break;
+      }
+      /**
+       * ★ **스침.** 맞지 않은 탄만 센다 — 위에서 `struck` 이 참이면 여기 안 온다.
+       * 탄 하나는 **한 번만** 세어진다(`grazed`). 안 그러면 느린 탄 하나가
+       * 옆에 붙어 있는 동안 점수가 무한히 오른다.
+       */
+      if(!struck && p.pid === 1){
+        const gz = { x: hb.x - GRAZE_PAD, y: hb.y, w: hb.w + GRAZE_PAD*2, h: hb.h };
+        for(const list of [this.arrows, this.eshots]){
+          for(const o of list){
+            if(o.dead || o.grazed || !overlap(o.box, gz)) continue;
+            o.grazed = true;
+            this.grazeN++; this.grazeTotal++; this.grazeFlash = 0.3;
+            this.addScore(GRAZE_SCORE, 1, true);
+            Particles.spawn(o.x, o.y, 3,
+              { spd:170, life:0.24, pal:['#ffffff','#cfe8ff','#7fb8ff'] });
+            if(this.grazeN >= GRAZE_PER_COIN){
+              this.grazeN = 0;
+              this.items.push(new Item(p.x + 60, p.y, ITEM_KIND.COIN));
+              SND.sfx('coin');
+            }
+          }
+        }
       }
       if(!struck) for(const e of this.enemies){ if(!e.dead && overlap(e.box, hb)){ struck = true; break; } }
       if(!struck) for(const w of this.waves){
@@ -6629,6 +6743,7 @@ class GameScene extends Scene {
     SND.sfx('hurt'); Input.rumble(0.9, 0.7, 260);
     /* 기본 피해 25 -> 34. 목숨 하나가 네 대에서 세 대로 줄어든다 */
     /* 마스크를 꼈으면 피해가 줄어든다 (1P 한테만) */
+    if(p.pid === 1) this.stageHits++;      // 무피격 보너스 판정용 (기획 10)
     p.hp -= (dmg || 34) * (p.pid === 1 ? (1 - EQ.dmgCut) : 1);
     if(p.hp <= 0){
       p.lives = Math.max(0, p.lives - 1);
@@ -6934,6 +7049,35 @@ class GameScene extends Scene {
      */
     ko(ctx, this.stage + '스테이지 - ' + this.theme.n, 640, 46, 3,
       { align:'center', color:'#cfe6ff' });
+
+    /**
+     * ★ **연쇄와 스침.** (기획 7·6, 2026-08-27)
+     *
+     * 연쇄는 **남은 시간을 막대로** 같이 보여준다 — 숫자만 있으면 언제 끊기는지를
+     * 몰라서 서두를 이유가 안 생긴다. 그 막대가 줄어드는 것을 보는 것이
+     * 이 장치의 전부다.
+     */
+    if(!this.p2){
+      const CX = GAME_W - 150;
+      if(this.chainT > 0 && this.killStreak >= 3){
+        const mul = this.chainMul();
+        const k = clamp(this.chainT / CHAIN_HOLD, 0, 1);
+        const hot = k < 0.34 && Math.floor(this.t*10) % 2 === 0;   // 끊기기 직전에 깜빡
+        drawText(ctx, 'x' + mul.toFixed(1), CX, 86, 5,
+          { align:'center', color: hot ? '#ff4d5a' : PAL.gold, outline:PAL.outline, shadow:'#000' });
+        ko(ctx, this.killStreak + '연속', CX, 130, 2, { align:'center', color:'#cfe6ff' });
+        ctx.fillStyle = '#1a2440'; ctx.fillRect(CX - 60, 152, 120, PX*2);
+        ctx.fillStyle = hot ? '#ff4d5a' : PAL.fire[3];
+        ctx.fillRect(CX - 60, 152, snap(120*k), PX*2);
+      }
+      if(this.grazeTotal > 0){
+        const big = this.grazeFlash > 0;
+        ctx.globalAlpha = big ? 1 : 0.62;
+        ko(ctx, '스침 ' + this.grazeTotal, CX, 174, big ? 3 : 2,
+          { align:'center', color: big ? '#ffffff' : '#8fb8e0' });
+        ctx.globalAlpha = 1;
+      }
+    }
     if(false) drawText(ctx, 'STAGE ' + this.stage, 640, 52, 2,
       { align:'center', color:'#dff0ff', shadow:'#0a1830' });
     /**
@@ -7093,6 +7237,7 @@ class GameScene extends Scene {
       const rows = clear
         ? [['점수', String(this.score), '점'],
            ['시간 보너스', '+' + this.bonus, '점'],
+           ...(this.noHit ? [['무피격 보너스', '+' + this.noHitCoin, '금화']] : []),
            ['킬수', String(this.kills), '마리'],
            ['파이어 레벨', String(this.p1.level), this.p1.level >= MAX_LEVEL ? '최대' : ''],
            ['획득 금화', String(RUN.coins), '개']]
@@ -7742,7 +7887,7 @@ const DG = {
  * 보내는데 `coins` 는 누적값이라, 뺀 만큼을 기억해 두지 않으면 같은 금화를
  * 스무 번 넣게 된다.
  */
-const RUN = { coins: 0, coinFrac: 0, banked: 0 };
+const RUN = { coins: 0, coinFrac: 0, banked: 0, noHitRun: 0 };
 
 /**
  * ★ **낀 아이템은 1P 것이다.** (2026-08-26)
