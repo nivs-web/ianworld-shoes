@@ -591,8 +591,24 @@ const Input = {
     BracketRight:['lvup'], BracketLeft:['lvdown'],
     KeyM:['mute'], KeyF:['fullscreen'], F3:['debug']
   },
-  _pad:{ confirm:false, back:false, missile:false, bomb:false },
-  padAxis:{ x:0, y:0 },        // 게임패드 왼쪽 스틱
+  /**
+   * ★ **게임패드 세 가지 방식** (2026-08-26, 사용자 지정)
+   *
+   *   패드 0개 : 키보드 / 터치
+   *   패드 1개 : 기본은 1P 전용. **[스틱 나눠 쓰기]** 를 켜면 한 패드로 두 명이 논다 —
+   *              오른쪽 스틱+RB/RT 가 1P, 왼쪽 스틱+LB/LT 가 2P.
+   *   패드 2개 : 첫째가 1P, 둘째가 2P. 각자 A=미사일 B=핵무기.
+   *
+   * 표준 배치(`mapping === 'standard'`) 기준 번호다:
+   *   버튼 0=A 1=B 2=X 3=Y / 4=LB 5=RB 6=LT 7=RT / 8=View 9=Menu(햄버거)
+   *   축   0=왼쪽X 1=왼쪽Y / 2=오른쪽X 3=오른쪽Y
+   */
+  pads: [null, null],          // 사람별 패드 상태
+  padCount: 0,                 // 지금 붙어 있는 패드 수
+  splitPad: false,             // 패드 하나를 둘로 갈라 쓰는 중인가
+  _prev: [{}, {}],             // 직전 프레임의 버튼 상태 (눌린 순간을 잡으려고)
+  padAxis:{ x:0, y:0 },        // 1P 이동 (하위 호환)
+  padAxis2:{ x:0, y:0 },       // 2P 이동
   padName: null, _padRef: null,
   taps: 0,                     // 이번 프레임 탭 횟수 (타이틀용)
   pointerHandler: null,        // 씬이 등록하는 포인터 핸들러 {down,move,up}
@@ -654,38 +670,103 @@ const Input = {
     canvas.addEventListener('pointerup', up);
     canvas.addEventListener('pointercancel', up);
   },
-  /* 게임패드는 프레임당 1회 폴링 (A / Start = confirm, B / Select = back, 왼쪽 스틱 = 이동) */
-  pollPad(){
-    const pads = navigator.getGamepads ? navigator.getGamepads() : null;
-    if(!pads) return;
-    for(let i=0;i<pads.length;i++){
-      const p = pads[i]; if(!p) continue;
-      this._padRef = p;
-      if(!this.padName) this.padName = (p.id || 'GAMEPAD').slice(0, 22).toUpperCase();
-      const b = n => !!(p.buttons[n] && p.buttons[n].pressed);
-      const conf = b(0) || b(9), back = b(1) || b(8);
-      const msl = b(4), bmb = b(5);                    // LB / RB
-      if(conf && !this._pad.confirm) this.just.add('confirm');
-      if(back && !this._pad.back)    this.just.add('back');
-      if(msl  && !this._pad.missile) this.just.add('p1missile');
-      if(bmb  && !this._pad.bomb)    this.just.add('p1bomb');
-      this._pad.confirm = conf; this._pad.back = back;
-      this._pad.missile = msl;   this._pad.bomb = bmb;
+  /** 스틱 하나를 데드존 처리해 0~1 로 재정규화 */
+  _stick(p, xi, yi, out){
+    const ax = p.axes[xi] || 0, ay = p.axes[yi] || 0;
+    const d = Math.hypot(ax, ay), DZ = 0.18;
+    if(d > DZ){
+      const n = Math.min(1, (d - DZ) / (1 - DZ));
+      out.x = ax/d * n; out.y = ay/d * n;
+    }else{
+      out.x = out.y = 0;
+    }
+  },
 
-      // 아날로그 스틱: 데드존 처리 후 0~1 로 재정규화
-      const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
-      const d = Math.hypot(ax, ay), DZ = 0.18;
-      if(d > DZ){
-        const n = Math.min(1, (d - DZ) / (1 - DZ));
-        this.padAxis.x = ax/d * n; this.padAxis.y = ay/d * n;
-      }else{
-        this.padAxis.x = this.padAxis.y = 0;
-      }
+  /**
+   * 눌린 **순간**만 잡아 동작으로 바꾼다.
+   * @param {number} slot 0=1P 1=2P (직전 상태를 사람별로 따로 기억한다)
+   */
+  _edge(slot, name, nowDown, action){
+    const prev = this._prev[slot];
+    if(nowDown && !prev[name]) this.just.add(action);
+    prev[name] = nowDown;
+  },
+
+  /* 게임패드는 프레임당 1회 폴링 */
+  pollPad(){
+    const raw = navigator.getGamepads ? navigator.getGamepads() : null;
+    if(!raw){ this.padCount = 0; return; }
+    const list = [];
+    for(let i=0;i<raw.length;i++) if(raw[i]) list.push(raw[i]);
+    this.padCount = list.length;
+
+    if(!list.length){
+      this._padRef = null; this.padName = null;
+      this.padAxis.x = this.padAxis.y = 0;
+      this.padAxis2.x = this.padAxis2.y = 0;
+      this._prev[0] = {}; this._prev[1] = {};
       return;
     }
-    this._pad.confirm = this._pad.back = false;
-    this._padRef = null; this.padName = null;
-    this.padAxis.x = this.padAxis.y = 0;
+
+    this._padRef = list[0];
+    if(!this.padName) this.padName = (list[0].id || 'GAMEPAD').slice(0, 22).toUpperCase();
+    const held = (p, n) => !!(p.buttons[n] && p.buttons[n].pressed);
+
+    /* ── 메뉴 버튼(햄버거)은 언제나 일시정지 ── */
+    this._edge(0, 'menu', list.some(p => held(p, 9)), 'pause');
+    this._edge(0, 'view', list.some(p => held(p, 8)), 'back');
+
+    if(list.length >= 2){
+      /* ── 패드 두 개 : 한 사람에 하나씩. 각자 A=미사일 B=핵무기 ── */
+      this.splitPad = false;
+      const [g1, g2] = list;
+      this._stick(g1, 0, 1, this.padAxis);
+      this._stick(g2, 0, 1, this.padAxis2);
+      /* 2P 는 패드를 잡은 것만으로 난입한 것으로 친다 */
+      if(held(g2,0)||held(g2,1)||Math.hypot(this.padAxis2.x,this.padAxis2.y) > 0.5)
+        this.just.add('p2join');
+
+      this._edge(0, 'a', held(g1,0) || held(g1,5), 'p1missile');   // A 또는 RB
+      this._edge(0, 'b', held(g1,1) || held(g1,7), 'p1bomb');      // B 또는 RT
+      this._edge(1, 'a', held(g2,0) || held(g2,5), 'p2missile');
+      this._edge(1, 'b', held(g2,1) || held(g2,7), 'p2bomb');
+      /* 메뉴 조작은 1P 패드가 맡는다 — 둘 다 먹으면 커서가 두 칸씩 뛴다 */
+      this._edge(0, 'ok', held(g1,0), 'confirm');
+      return;
+    }
+
+    const g = list[0];
+    if(this.splitPad){
+      /**
+       * ── 패드 하나를 둘로 갈라 쓴다 ──
+       *
+       * 오른손잡이 기준으로 **오른쪽 스틱이 1P**, 왼쪽 스틱이 2P 다.
+       * 무기는 같은 쪽 어깨로 몬다 — 1P 는 RB/RT, 2P 는 LB/LT.
+       *
+       * ★ 얼굴 버튼(A/B)은 여기서 **쓰지 않는다.** 오른손 엄지가 오른쪽 스틱을
+       *   잡고 있어서 A 를 누르려면 스틱에서 손을 떼야 한다 — 그 순간 1P 가 멈춘다.
+       *   어깨 버튼은 검지가 따로 맡으므로 스틱과 동시에 눌린다.
+       */
+      this._stick(g, 2, 3, this.padAxis);     // 오른쪽 스틱 = 1P
+      this._stick(g, 0, 1, this.padAxis2);    // 왼쪽 스틱  = 2P
+      this._edge(0, 'rb', held(g,5), 'p1missile');
+      this._edge(0, 'rt', held(g,7), 'p1bomb');
+      this._edge(1, 'lb', held(g,4), 'p2missile');
+      this._edge(1, 'lt', held(g,6), 'p2bomb');
+      if(held(g,4)||held(g,6)||Math.hypot(this.padAxis2.x,this.padAxis2.y) > 0.5)
+        this.just.add('p2join');
+      this._edge(0, 'ok', held(g,0), 'confirm');
+      return;
+    }
+
+    /* ── 패드 하나, 혼자 : 두 스틱 모두 1P 이동으로 받는다 ── */
+    this.splitPad = false;
+    this._stick(g, 0, 1, this.padAxis);
+    if(!this.padAxis.x && !this.padAxis.y) this._stick(g, 2, 3, this.padAxis);
+    this.padAxis2.x = this.padAxis2.y = 0;
+    this._edge(0, 'a', held(g,0) || held(g,5) || held(g,4), 'p1missile');
+    this._edge(0, 'b', held(g,1) || held(g,7) || held(g,6), 'p1bomb');
+    this._edge(0, 'ok', held(g,0), 'confirm');
   },
   /* 플레이어별 이동 벡터 (대각선 정규화). pid 1=방향키, 2=WASD */
   moveVectorFor(pid){
@@ -696,8 +777,8 @@ const Input = {
     if(this.held(pre+'up'))    y -= 1;
     if(this.held(pre+'down'))  y += 1;
     if(x || y){ const d = Math.hypot(x,y); return { x:x/d, y:y/d }; }
-    if(pid !== 2 && (this.padAxis.x || this.padAxis.y))
-      return { x:this.padAxis.x, y:this.padAxis.y };
+    const pa = pid === 2 ? this.padAxis2 : this.padAxis;
+    if(pa.x || pa.y) return { x:pa.x, y:pa.y };
     return { x:0, y:0 };
   },
   moveVector(){ return this.moveVectorFor(1); },
@@ -1841,6 +1922,8 @@ class Player {
     if(this.growT > 0) this.growT -= dt;
 
     // --- 가감속: 목표 속도로 일정 가속도만큼 접근 (0.07초 도달) ---
+    /* 손으로 잡아 끄는 중에는 위치를 직접 정하므로 가속 계산을 건너뛴다 */
+    if(mv && mv.grabbed) return;
     /* 다리무장은 조금 빨라지게 해 준다 — 세게 만드는 것이 아니라
        피하기 편해지는 정도다 (최대 12%) */
     const sm = this.pid === 1 ? EQ.speed : 1;
@@ -4349,17 +4432,25 @@ class GameScene extends Scene {
           this.uiTap = true; return;
         }
         if(this.state !== 'play'){ this.uiTap = true; return; }
+        /* 무기 버튼이 먼저다 — 버튼 위에서 시작한 터치는 이동이 아니다 */
         if(this.btnMsl.down(id,x,y)) return;
         if(this.btnBomb.down(id,x,y)) return;
         if(this.btnMsl2 && this.btnMsl2.down(id,x,y)) return;
         if(this.btnBomb2 && this.btnBomb2.down(id,x,y)) return;
+        /* 그다음이 **캐릭터 잡기**. 스틱보다 먼저 봐야 한다 —
+           스틱이 화면 아무 데나 뜨는 설정이면 캐릭터 위에서도 스틱이 잡힌다 */
+        if(this.grabDown(id,x,y)) return;
         if(this.stickVisible()) this.stick.down(id,x,y);
       },
-      move:(id,x,y) => { if(this.stickVisible()) this.stick.move(id,x,y); },
+      move:(id,x,y) => {
+        if(this.grabMove(id,x,y)) return;
+        if(this.stickVisible()) this.stick.move(id,x,y);
+      },
       up:  (id)     => {
         this.btnMsl.up(id); this.btnBomb.up(id);
         if(this.btnMsl2) this.btnMsl2.up(id);
         if(this.btnBomb2) this.btnBomb2.up(id);
+        if(this.dragId === id) this.dragId = null;
         this.stick.up(id);
       }
     };
@@ -4385,6 +4476,21 @@ class GameScene extends Scene {
     this.timeLeft = STAGE_TIME; this.endReason = ''; this.bonus = 0;
     this.finalBossKilled = false; this.menuIdx = 0; this.endIdx = 0;
     this.tapIdx = -1;                 // 터치로 고른 메뉴 번호
+    /**
+     * ★ **캐릭터를 직접 잡고 끄는 조작.** (2026-08-26, 사용자 지정)
+     *
+     * 스틱은 방향만 주므로 **최고 속도가 정해져 있다.** 화면을 가로지르려면
+     * 스틱을 끝까지 밀고 기다려야 한다. 캐릭터를 손가락으로 집어서 끌면
+     * 손이 움직인 만큼 그대로 따라오니 훨씬 빠르고, 정확히 원하는 자리에 놓인다.
+     *
+     * 잡는 범위는 **필살기 쉴드만 한 원**이다 — 몸통만 하면 너무 작아서 못 잡고,
+     * 화면 아무 데나면 실수로 잡힌다. 쉴드는 이미 이 게임에서 "내 몸 주변" 을
+     * 뜻하는 크기라 손이 기억하기 좋다.
+     *
+     * `dragOff` : 잡은 순간의 (캐릭터 - 손가락) 차이. 이걸 유지해야 캐릭터가
+     *   손가락 밑으로 순간이동하지 않고 **잡은 그 자세 그대로** 따라온다.
+     */
+    this.dragId = null; this.dragOff = { x:0, y:0 }; this.dragT = 0;
 
     this.director = new Director(this, this.stage);
     this.best = Save.data.best[this.stage] || 0;
@@ -4409,7 +4515,12 @@ class GameScene extends Scene {
 
   /* 1P 가 터치로 조작 중이면(방향키를 쓴 적이 없으면) 스틱을 남겨둔다.
      폰에서 1P 터치 + 2P 키보드 조합도 가능하도록. */
-  stickVisible(){ return !this.p2 || !this.p1UsesKeys; }
+  /**
+   * 스틱을 보여 줄 때.
+   * ★ **캐릭터를 잡고 끄는 동안에는 감춘다.** (2026-08-26, 사용자 지정)
+   * 두 조작이 같이 떠 있으면 뭘로 움직이고 있는지 헷갈리고, 스틱이 화면을 가린다.
+   */
+  stickVisible(){ return this.dragId === null && (!this.p2 || !this.p1UsesKeys); }
 
   /* 1인일 때는 오른쪽에만, 2인일 때는 좌우로 나눠 배치한다 */
   buildButtons(){
@@ -4535,10 +4646,16 @@ class GameScene extends Scene {
   startJoin(){
     if(this.p2 || this.joining) return;
     this.joining = true; this.joinT = 0;
-    this.joinSel = (Save.data.dragon + 1) % DRAGONS.length;
+    /* 1P 와 다른 놈으로 시작하되, 산 것 중에서 고른다 */
+    this.joinSel = 0;
+    for(let n=1;n<=10;n++){
+      const i = (Save.data.dragon + n) % DRAGONS.length;
+      if(ownsDragon(i)){ this.joinSel = i; break; }
+    }
     SND.sfx('confirm');
   }
   confirmJoin(){
+    if(!ownsDragon(this.joinSel)){ SND.sfx('deny'); return; }
     this.joining = false;
     this.p2 = new Player(320, GAME_H/2 + 90, START_FIRE_LV, this.joinSel, 2);
     this.p2.lives = Math.max(1, this.p1.lives);      // 난입 시 1P 와 비슷한 잔기로 시작
@@ -4546,7 +4663,7 @@ class GameScene extends Scene {
     this.p2.bombCount = this.p1.bombCount;
     if(this.p1UsesKeys) this.stick.up(this.stick.pid);
     this.buildButtons();
-    Popups.add(this.p2.x, this.p2.y - 90, '2P JOIN!', P2_COLOR, 5);
+    Popups.add(this.p2.x, this.p2.y - 90, '2P 참가!', P2_COLOR, 5, true);
     SND.sfx('levelup'); Flash.add(P2_COLOR, 0.2, 0.35);
   }
 
@@ -4721,10 +4838,13 @@ class GameScene extends Scene {
   updatePlayer(p, dt){
     let mv;
     if(p.pid === 1){
+      /* 손으로 잡아 끄는 중이면 위치는 이미 정해졌다 — 가속 계산을 건너뛰라고 알린다 */
+      if(this.dragId !== null){ this.dragT += dt; p.update(dt, { x:0, y:0, grabbed:true }); }
       const kv = Input.moveVectorFor(1);
       if(kv.x || kv.y) this.p1UsesKeys = true;          // 방향키를 쓰면 스틱을 감춘다
       const sv = this.stickVisible() ? this.stick.vector() : {x:0,y:0};
       mv = (sv.x || sv.y) ? sv : kv;
+      if(this.dragId !== null) return;                  // 위는 이미 처리했다
     }else{
       mv = Input.moveVectorFor(2);
     }
@@ -4786,6 +4906,7 @@ class GameScene extends Scene {
   }
 
   update(dt){
+    this.lastDt = dt;                 // 끌기가 속도를 되계산할 때 쓴다
     if(this.state === 'pause'){ this.updatePaused(dt); return; }
     if(this.state !== 'play'){ this.updateEnd(dt); return; }
     if(Freeze.t > 0){ Freeze.t -= dt; Flash.update(dt); return; }
@@ -4807,10 +4928,17 @@ class GameScene extends Scene {
         this.joining = false; SND.sfx('deny');
         return;
       }
-      if(Input.pressed('p2left'))  { this.joinSel = (this.joinSel + 9) % 10; SND.sfx('blip'); }
-      if(Input.pressed('p2right')) { this.joinSel = (this.joinSel + 1) % 10; SND.sfx('blip'); }
-      if(Input.pressed('p2up'))    { this.joinSel = (this.joinSel + 5) % 10; SND.sfx('blip'); }
-      if(Input.pressed('p2down'))  { this.joinSel = (this.joinSel + 5) % 10; SND.sfx('blip'); }
+      /* 잠긴 것은 건너뛴다 — 고를 수 없는 칸에 커서가 서면 왜 안 되는지 모른다 */
+      const step = (dir) => {
+        for(let n=1;n<=10;n++){
+          const i = (this.joinSel + dir*n + 100) % 10;
+          if(ownsDragon(i)){ this.joinSel = i; SND.sfx('blip'); return; }
+        }
+      };
+      if(Input.pressed('p2left'))  step(-1);
+      if(Input.pressed('p2right')) step(1);
+      if(Input.pressed('p2up'))    step(-5);
+      if(Input.pressed('p2down'))  step(5);
       if(Input.pressed('p2missile') || Input.pressed('p2bomb') || Input.pressed('confirm')) this.confirmJoin();
     }
 
@@ -5108,33 +5236,111 @@ class GameScene extends Scene {
 
   /* 2P 캐릭터 선택 (화면 상단) */
   renderJoin(ctx){
-    const H = 128, y0 = 150;
-    ctx.globalAlpha = 0.86; ctx.fillStyle = '#0a0618';
+    const H = 172, y0 = 140;
+    ctx.globalAlpha = 0.88; ctx.fillStyle = '#0a0618';
     ctx.fillRect(0, y0, GAME_W, H); ctx.globalAlpha = 1;
     ctx.fillStyle = P2_COLOR; ctx.fillRect(0, y0, GAME_W, PX); ctx.fillRect(0, y0+H-PX, GAME_W, PX);
-    drawText(ctx, '2P  SELECT DRAGON', 640, y0 + 8, 4,
-      { align:'center', color:P2_COLOR, outline:PAL.outline, shadow:'#000' });
+    ko(ctx, '2P 드래곤 고르기', 640, y0 + 8, 4,
+      { align:'center', color:P2_COLOR, outline:PAL.outline });
+
     for(let i=0;i<10;i++){
-      const d = DRAGONS[i], on = i === this.joinSel;
-      const x = 130 + i*110, y = y0 + 48;
+      const d = DRAGONS[i], on = i === this.joinSel, has = ownsDragon(i);
+      const x = 130 + i*110, y = y0 + 52;
       ctx.fillStyle = on ? P2_COLOR : '#241c3e';
       ctx.fillRect(x - 44, y - 4, 88, 56);
       ctx.fillStyle = on ? '#2a2140' : '#120d24';
       ctx.fillRect(x - 40, y, 80, 48);
-      const f = FORMS.A, cell = 1.7;
-      drawGrid(ctx, f.wings[2], snap(x - f.cols*cell/2), snap(y + 2), f.cols, cell, d.pal, false, null);
-      drawGrid(ctx, f.body,     snap(x - f.cols*cell/2), snap(y + 2), f.cols, cell, d.pal, false, null);
-      ctx.fillStyle = d.pal.M; ctx.fillRect(x - 40, y + 42, 80, 6);
+      /* 안 산 것은 실루엣만 — 생김새를 숨겨야 사고 싶어진다 */
+      const cell = 1.5, f = FORMS.B;
+      const ox = snap(x - f.cols*cell/2), oy = snap(y - 2);
+      const pal = has ? d.pal : null;
+      if(has){
+        drawGrid(ctx, f.wings[2], ox, oy, f.cols, cell, pal, false, null);
+        if(f.horns) drawGrid(ctx, f.horns[i], ox, oy, f.cols, cell, pal, false, null);
+        drawGrid(ctx, f.body,    ox, oy, f.cols, cell, pal, false, null);
+      }else{
+        drawGrid(ctx, f.body, ox, oy, f.cols, cell, d.pal, false, '#3a3350');
+        ko(ctx, '잠김', x, y + 30, 2, { align:'center', color:'#6b6280' });
+      }
+      ctx.fillStyle = has ? d.pal.M : '#332c4a';
+      ctx.fillRect(x - 40, y + 42, 80, 6);
     }
-    drawText(ctx, DRAGONS[this.joinSel].id, 640, y0 + H - 30, 3,
-      { align:'center', color:PAL.white, outline:PAL.outline });
+
+    ko(ctx, DRAGONS[this.joinSel].ko + (ownsDragon(this.joinSel) ? '' : '  (아직 안 샀습니다)'),
+      640, y0 + H - 58, 3,
+      { align:'center', color: ownsDragon(this.joinSel) ? PAL.white : '#8a7bb8', outline:PAL.outline });
+
+    /**
+     * ★ **기록은 1P 것이라고 여기서 못박는다.** (2026-08-26, 사용자 지정)
+     *
+     * 이 문구가 있어야 "혼자서 2P 를 하나 더 켜 두는" 놀이가 성립한다 —
+     * 2P 는 보조로 쓰고 1P 로 금화를 쓸어 담으면 된다는 걸 알아야 그렇게 논다.
+     * 중간보스를 잡으면 파이어 레벨업이 **두 개** 떨어지는 것도 그래서 켜 둘 만하다.
+     */
+    ko(ctx, '금화 및 스코어의 점수 기록은 1P 기준으로 기록됩니다.', 640, y0 + H - 36, 2,
+      { align:'center', color:PAL.gold });
+
     if(Math.floor(this.joinT*2.4) % 2 === 0)
-      drawText(ctx, 'A D : SELECT      ` OR 1 : JOIN      ESC : CANCEL', 640, y0 + H - 8, 2,
-        { align:'center', color:PAL.gold });
+      ko(ctx, 'A D : 고르기      ` 또는 1 : 참가      ESC : 취소', 640, y0 + H - 16, 2,
+        { align:'center', color:'#8a93b8' });
   }
 
   /* 플레이어 정보 블록 : 하트 -> 생명 게이지 -> 레벨.
      1인일 땐 왼쪽 위, 2P 가 합류하면 1P 는 오른쪽 위로 옮기고 2P 가 왼쪽 위를 쓴다 */
+  /**
+   * 캐릭터를 잡았는가. 잡았으면 이 터치는 이동 전용이 된다.
+   * 1P 만 잡을 수 있다 — 2P 는 키보드/패드로 들어온 사람이라 화면을 만지지 않는다.
+   */
+  grabDown(id, x, y){
+    if(this.state !== 'play' || this.dragId !== null) return false;
+    const p = this.p1;
+    if(!p || p.out) return false;
+    const r = p.shieldR;
+    if(Math.hypot(x - p.x, y - p.y) > r) return false;
+    this.dragId = id;
+    this.dragOff.x = p.x - x; this.dragOff.y = p.y - y;
+    this.dragT = 0;
+    /* 스틱이 떠 있었다면 놓아 준다 — 둘이 동시에 밀면 서로 싸운다 */
+    this.stick.up(this.stick.pid);
+    return true;
+  }
+
+  /** 잡은 손가락을 따라간다. 화면 밖으로는 안 나가게 가둔다 */
+  grabMove(id, x, y){
+    if(this.dragId !== id) return false;
+    const p = this.p1;
+    if(!p || p.out){ this.dragId = null; return false; }
+    const m = p.metrics;
+    const nx = clamp(x + this.dragOff.x, m.bL + PLAYER.MARGIN, GAME_W - m.bR - PLAYER.MARGIN);
+    const ny = clamp(y + this.dragOff.y, m.bT + PLAYER.MARGIN, GAME_H - m.bB - PLAYER.MARGIN);
+    /**
+     * 속도를 기록해 둔다 — 잔상과 날갯짓이 "지금 얼마나 빠른가" 를 보고 정해지는데,
+     * 끌어서 옮기면 위치만 바뀌고 속도가 0 이라 **날개가 멈춘 채 미끄러진다.**
+     */
+    const dt = Math.max(1/240, this.lastDt || 1/60);
+    p.vx = (nx - p.x) / dt; p.vy = (ny - p.y) / dt;
+    p.x = nx; p.y = ny;
+    return true;
+  }
+
+  /** 모은 금화 — 동전 그림 + 개수 */
+  drawCoinCounter(ctx){
+    /* 2P 가 붙으면 1P 정보창이 오른쪽으로 가므로 금화도 같이 간다 */
+    const right = !!this.p2;
+    const x = right ? GAME_W - 150 : 150;
+    const y = GAME_H - 54;
+
+    /* 동전 (아이템으로 떨어지는 것과 같은 모양이라 뭘 센 건지 바로 안다) */
+    const t = this.t * 3.4;
+    const w = Math.max(PX, snap(20 * Math.abs(Math.sin(t))) || PX);
+    ctx.fillStyle = '#6b4a08'; ctx.fillRect(x - w/2 - PX, y - 15, w + PX*2, 30);
+    ctx.fillStyle = '#ffd24a'; ctx.fillRect(x - w/2, y - 12, w, 24);
+    ctx.fillStyle = '#fff3b0'; ctx.fillRect(x - w/2, y - 12, w, PX*2);
+
+    drawText(ctx, String(RUN.coins), x + 22, y - 10, 4,
+      { color:'#ffd24a', outline:PAL.outline, shadow:'#000' });
+  }
+
   drawPlayerPanel(ctx, p, x, y0, col){
     const W = 216;
     let y = y0;
@@ -5198,6 +5404,32 @@ class GameScene extends Scene {
         { align:'center', color:P2_COLOR });
       ctx.globalAlpha = pa;
     }
+    /**
+     * 잡고 있다는 표시 — 필살기 쉴드와 **같은 크기**지만 훨씬 옅다.
+     * 쉴드처럼 진하게 그리면 무적인 줄 안다. "눌린 느낌" 만 나면 된다.
+     */
+    if(this.dragId !== null && this.p1 && !this.p1.out){
+      const p = this.p1, r = p.shieldR;
+      const k = Math.min(1, this.dragT * 6);          // 잡는 순간 부드럽게 나타난다
+      ctx.globalAlpha = 0.16 * k;
+      fillPixelCircle(ctx, p.x, p.y, r, '#9fd8ff');
+      ctx.globalAlpha = 0.42 * k;
+      drawPixelRing(ctx, p.x, p.y, r, PX*2, '#9fd8ff');
+      ctx.globalAlpha = 1;
+    }
+
+    /**
+     * ★ **금화를 화면에 띄운다.** (2026-08-26, 사용자 지정)
+     *
+     * 이 게임에서 금화는 점수만큼 중요한데(순위표가 따로 있다) 정작 게임 중에는
+     * 몇 개를 모았는지 볼 데가 없었다. 먹는 재미가 숫자로 보여야 더 먹으러 다닌다.
+     *
+     * 자리는 **1P 정보창 반대쪽 아래**다. 혼자면 정보창이 왼쪽 위라 금화는 왼쪽 아래,
+     * 2P 가 붙으면 1P 정보창이 오른쪽 위로 가므로 금화도 오른쪽 아래로 따라간다 —
+     * 내 정보는 한쪽에 모여 있어야 눈이 왔다 갔다 하지 않는다.
+     */
+    this.drawCoinCounter(ctx);
+
     /**
      * ★ **2P 는 손님이다.** (2026-08-26, 사용자 지정)
      *
@@ -5429,7 +5661,13 @@ function currentDragon(){ return DRAGONS[clamp(Save.data.dragon | 0, 0, DRAGONS.
 const OPT_DEFAULT = {
   stickSize:1, stickAlpha:0.42, stickFloat:0,     // 0=좌하단 고정, 1=터치한 곳에 생성
   btnSize:1,   btnAlpha:0.5,
-  bgmOn:1, sfxOn:1
+  bgmOn:1, sfxOn:1,
+  /**
+   * 패드 하나를 스틱 둘로 갈라 두 사람이 쓰는가. (2026-08-26, 사용자 지정)
+   * 패드가 하나뿐인 사람도 2인 플레이를 볼 수 있게 하려는 것이고,
+   * 혼자서 캐릭터 둘을 굴리는 것도 된다.
+   */
+  splitPad:0
 };
 const STICK_R = [62, 78, 96], BTN_R = [54, 68, 82];
 
@@ -5438,6 +5676,7 @@ function optGet(){
   const o = Save.data.opt;
   if(!o || o._v !== 1)
     Save.data.opt = Object.assign({ _v:1 }, OPT_DEFAULT, o || {});
+  Input.splitPad = !!Save.data.opt.splitPad;
   return Save.data.opt;
 }
 /* 설정을 실제 컨트롤에 반영 */
@@ -5535,6 +5774,8 @@ class OptionsScene extends Scene {
       { k:'조작 투명도', v:pct(o.btnAlpha),
         set:d=>{ const a = clamp(+(o.btnAlpha + d*0.1).toFixed(2), 0.2, 0.8);
                  o.btnAlpha = a; o.stickAlpha = a; } },
+      { k:'패드 스틱 나눠쓰기', v:o.splitPad ? '켜짐 (1P 오른쪽 · 2P 왼쪽)' : '꺼짐',
+        set:d=>{ o.splitPad = o.splitPad?0:1; Input.splitPad = !!o.splitPad; } },
       { k:'배경음',      v:o.bgmOn ? '켜짐' : '꺼짐', set:d=>{ o.bgmOn = o.bgmOn?0:1; applyAudioOpt(); } },
       { k:'효과음',      v:o.sfxOn ? '켜짐' : '꺼짐', set:d=>{ o.sfxOn = o.sfxOn?0:1; applyAudioOpt(); } },
       { k:'배경음 곡',   v:(Save.data.bgm+1) + '. ' + BGM_TRACKS[Save.data.bgm].name,
@@ -5916,6 +6157,14 @@ const EQ = { dmgCut:0, atk:1, magnet:0, coinBonus:0, speed:1, pal:null, head:nul
              startMissiles: START_MISSILES, startBombs: START_BOMBS };
 
 /**
+ * 산 드래곤 번호들. 오락실이 알려준다.
+ * ★ **2P 도 산 드래곤만 고를 수 있다.** (2026-08-26, 사용자 지정)
+ * 안 산 것은 회색으로 보여 준다 — 감추면 뭘 더 살 수 있는지 모른다.
+ */
+let OWNED = null;
+const ownsDragon = (i) => (OWNED ? OWNED.has(i | 0) : (i | 0) < 5);
+
+/**
  * 오락실이 낀 것을 알려준다. 한 판 중에는 바뀔 수 없고,
  * 로비에서 바꿔 다시 들어올 때마다 mount() 가 다시 불러준다.
  */
@@ -5933,6 +6182,7 @@ export function setEquipment(eff){
   /* 계단 아이템 — 끼고 벗는 게 아니라 산 만큼 들고 시작한다 */
   EQ.startMissiles = clamp(+e.startMissiles || START_MISSILES, START_MISSILES, MAX_MISSILE);
   EQ.startBombs    = clamp(+e.startBombs    || START_BOMBS,    START_BOMBS,    MAX_BOMB);
+  OWNED = Array.isArray(e.owned) ? new Set(e.owned.map(Number)) : null;
   _fireCache.clear();              // 불꽃 색이 바뀌었을 수 있다 — 구워둔 그림을 버린다
 }
 
@@ -6037,11 +6287,26 @@ function frame(now) {
 
   acc += dt;
   let steps = 0;
-  while (acc >= FIXED && steps < MAX_STEPS) { scenes.update(FIXED); acc -= FIXED; steps++; }
+  while (acc >= FIXED && steps < MAX_STEPS) {
+    scenes.update(FIXED);
+    /**
+     * ★ **누른 순간은 한 걸음에서만 소비된다.** (2026-08-26, 실측으로 찾음)
+     *
+     * `pressed()` 는 `just` 집합을 **읽기만 하고 비우지 않는다.** 그런데 이 루프는
+     * 한 화면에 최대 다섯 걸음까지 돈다 — 프레임이 한 번 밀리면 두세 걸음이 몰아서
+     * 도는데, 그동안 `just` 에 남아 있는 'p1missile' 을 **걸음마다 다시 읽어서
+     * 한 번 누른 미사일이 두세 발 나갔다.**
+     *
+     * 미사일이 늘 모자란 느낌이었던 원인 중 하나가 이것이다.
+     * 프레임 끝이 아니라 **걸음 끝**에서 비워야 한 번 누른 것이 한 번만 먹힌다.
+     */
+    Input.endFrame();
+    acc -= FIXED; steps++;
+  }
   if (steps === MAX_STEPS) acc = 0;
 
   scenes.render(ctx);
-  if (steps > 0) Input.endFrame();
+  if (steps === 0) Input.endFrame();     // 한 걸음도 안 돌았으면 여기서 비운다
 
   Perf._acc += dt; Perf._n++;
   if (Perf._acc >= 0.5) { Perf.fps = Math.round(Perf._n / Perf._acc); Perf._acc = 0; Perf._n = 0; }
@@ -6293,6 +6558,13 @@ export const __test = {
   get keysDown() { return Input.down.size; },
   press(action) { Input.just.add(action); },
   scene0() { return scenes ? scenes.current : null; },
+  /* 검사용 — rAF 가 멈춰 있는 환경에서 패드 폴링과 설정을 직접 부른다 */
+  pollPad() { Input.pollPad(); },
+  endFrame() { Input.endFrame(); },
+  get splitPad() { return Input.splitPad; },
+  set splitPad(v) { optGet().splitPad = v ? 1 : 0; Input.splitPad = !!v; },
+  get padAxis() { return { p1: { ...Input.padAxis }, p2: { ...Input.padAxis2 } }; },
+  get padCount() { return Input.padCount; },
 };
 
 /**

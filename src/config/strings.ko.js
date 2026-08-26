@@ -210,11 +210,11 @@ export const S = {
   /** 포털 카드 밑줄 · 로비 통계 — 둘이 같은 문구를 쓴다 */
   dragonBestScore: (n) => `최고점수 ${n.toLocaleString('en-US')}점`,
   dragonBestStage: (n) => `최고 스테이지 ${n}단계`,
-  dragonPlays: (n) => `싱글게임 ${n.toLocaleString('en-US')}판`,
+  dragonPlays: (n) => `싱글게임 ${n.toLocaleString('en-US')}게임`,
   dragonFireLv: (n) => `최고 파이어 LV${n}`,
-  dragonMenuCharacter: '드래곤 변경',
+  dragonMenuCharacter: '드래곤변경',
   /** 드래곤 상점 — 다섯은 처음부터, 나머지는 금화로 산다 */
-  dragonShopTitle: '드래곤 변경',
+  dragonShopTitle: '드래곤변경',
   dragonOwned: '보유 중',
   dragonInUse: '사용 중',
   dragonSelect: '이 드래곤으로',
@@ -223,10 +223,10 @@ export const S = {
   dragonBought: (name) => `${name} 획득!`,
   dragonWallet: (n) => `보유금화 ${n}`,
   backToGameLobby: '게임로비로 돌아가기',
-  dragonMenuShop: '아이템 쇼핑',
+  dragonMenuShop: '아이템쇼핑',
 
   /* ── 아이템 상점 (D단계) ── */
-  dragonItemTitle: '아이템 쇼핑',
+  dragonItemTitle: '아이템쇼핑',
   dragonItemEquipped: '착용 중',
   dragonItemEquip: '착용하기',
   dragonItemUnequip: '벗기',
@@ -256,8 +256,8 @@ export const S = {
   dragonStartMissiles: (n) => `초기 미사일 보유 ${n}개`,
   dragonStartBombs: (n) => `초기 핵무기 보유 ${n}개`,
   /** 명예의 전당을 둘로 나눴다 — 겨루는 것이 서로 다르다 */
-  dragonRankScore: '점수 순위',
-  dragonRankCoin: '금화왕 순위',
+  dragonRankScore: '점수순위',
+  dragonRankCoin: '금화순위',
   dragonRankAllScore: '계정에 남은 최고점수 — 난이도 구분 없이 한 줄씩',
   dragonRankAllCoin: '지금까지 주운 금화를 모두 더한 값 — 절대로 줄지 않습니다',
   dragonMultiRecord: (w, g) => `멀티게임 ${w}승 ${g}게임`,

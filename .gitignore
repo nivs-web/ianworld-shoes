@@ -13,6 +13,11 @@ dist/
 !.env.example
 firebase.env.txt
 
+# MCP 서버 설정 — Retro Diffusion API 키가 이 안에 들어간다.
+# 이 저장소는 공개라 올라가면 **남이 내 돈을 쓴다**.
+.mcp.json
+.mcp.local.json
+
 # 원본 아트 (수백 MB, tools 스크립트의 입력) — 로컬에만 둔다
 etc/
 

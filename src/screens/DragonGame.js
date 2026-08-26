@@ -18,7 +18,7 @@
 
 import S from '../config/strings.ko.js';
 import { el, toast } from './ui.js';
-import { get as getProfile, finishDragonRun, setDragonCharacter , dragonEquipment } from '../services/profile.js';
+import { get as getProfile, finishDragonRun, setDragonCharacter , dragonEquipment , hasDragon } from '../services/profile.js';
 import { effectsOf, startMissiles, startBombs } from '../games/dragon/items.js';
 import { lockLandscape, unlockOrientation } from '../core/fullscreen.js';
 import { setGameGuard } from './router.js';
@@ -117,6 +117,8 @@ export default function DragonGame(nav, opt = {}) {
           equipment: Object.assign(effectsOf(dragonEquipment()), {
             startMissiles: startMissiles(p),
             startBombs: startBombs(p),
+            /* 2P 도 산 드래곤만 고를 수 있다 — 안 산 것은 회색 실루에으로 보인다 */
+            owned: Array.from({ length: 10 }, (_, i) => i).filter(hasDragon),
           }),
 
           /** 한 판 끝 */
