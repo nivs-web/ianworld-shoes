@@ -97,6 +97,9 @@
             "done": {
               ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
             },
+            "dragon": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 29 && ($uid == auth.uid || newData.val() == data.val())"
+            },
             "$other": {
               ".validate": false
             },
