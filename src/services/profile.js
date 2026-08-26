@@ -195,6 +195,14 @@ export const setDifficulty = (d) => patch({ difficulty: d });
 export const setDragonDifficulty = (d) => patch({ dragonDifficulty: d });
 export const setDragonCharacter = (i) => patch({ dragonCharacter: i | 0 });
 
+/** 아이템을 산다 — 지갑에서만 빠지고 누적은 그대로다 (금화왕 순위가 안 떨어진다) */
+export function spendDragonCoins(n) {
+  const p = L.loadProfile();
+  const cost = Math.max(0, Math.round(n) || 0);
+  if ((p.dragonCoins || 0) < cost) return { ok: false, profile: p };
+  return { ok: true, profile: patch({ dragonCoins: (p.dragonCoins || 0) - cost }) };
+}
+
 /**
  * 드래곤 스트라이커 한 판이 끝났다.
  *
@@ -215,7 +223,13 @@ export function finishDragonRun(r) {
   const stage = clampInt(r?.stage, 0, 20);
   const level = clampInt(r?.level, 0, 10);
 
-  const next = { dragonPlays: (before.dragonPlays || 0) + 1 };
+  /* 금화는 지갑과 누적 양쪽에 넣는다. 누적은 순위용이라 절대 줄지 않는다 */
+  const coins = Math.max(0, Math.min(DRAGON_COIN_CAP, Math.round(Number(r?.coins) || 0)));
+  const next = {
+    dragonPlays: (before.dragonPlays || 0) + 1,
+    dragonCoins: (before.dragonCoins || 0) + coins,
+    dragonCoinsTotal: (before.dragonCoinsTotal || 0) + coins,
+  };
   const isBest = score > (before.dragonBest || 0);
   if (isBest) { next.dragonBest = score; next.dragonBestLevel = level; }
   if (stage > (before.dragonBestStage || 0)) next.dragonBestStage = stage;
@@ -229,6 +243,11 @@ export function finishDragonRun(r) {
  * 넉넉하게 잡되 "무한대"는 아니게 하는 것이 요점이다.
  */
 const DRAGON_SCORE_CAP = 1000000;
+/**
+ * 한 판에서 넣을 수 있는 금화의 상한.
+ * 무적 봇으로 20스테이지를 완주해도 6,600개였다 — 넉넉하게 잡되 "무한대"는 아니게.
+ */
+const DRAGON_COIN_CAP = 20000;
 const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)));
 
 export const setControlMode = (m) => patch({ controlMode: m });

@@ -2230,3 +2230,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 .dg-quit:active { transform: translateY(2px); }
+
+/* 게임로비의 드래곤 그림 자리. 모듈이 늦게 와도 자리는 미리 잡아 둔다 */
+.dg-figure {
+  width: 108px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+}
+.dg-figure canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  max-width: 100%;
+  height: auto;
+}

@@ -1,10 +1,9 @@
 /**
- * S19 드래곤 스트라이커 로비 — 신발게임 로비(`Lobby.js`)와 **같은 레이아웃 순서**.
+ * S19 드래곤 스트라이커 **게임로비** — [싱글게임] 을 누르면 판이 시작되는 화면.
  *
- *   로고 / 기록 패널 / 난이도 / 메뉴 / 싱글·멀티 / 포털 복귀
- *
+ * 신발게임 로비(`Lobby.js`)와 같은 레이아웃 순서를 따른다:
+ *   제목 / 로비유저상태창 / 난이도 / 메뉴 / 싱글·멀티 / 오락실 복귀
  * 두 게임의 로비가 서로 다르게 생기면 오락실이 아니라 그냥 딴 사이트다.
- * 그래서 `screen()`·`panel`·`segmented` 같은 부품을 그대로 쓴다.
  */
 
 import S from '../config/strings.ko.js';
@@ -13,7 +12,7 @@ import { get as getProfile, setDragonDifficulty } from '../services/profile.js';
 import { PAL } from '../game/palette.js';
 import { pixelText } from './pixelText.js';
 import Portal from './Portal.js';
-import DragonGame, { prefetchDragon } from './DragonGame.js';
+import DragonGame, { prefetchDragon, dragonFigure } from './DragonGame.js';
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -25,37 +24,65 @@ const DIFFS = [
 const STAT_SCALE = 2;
 
 /**
- * `숫자 + 단위` 한 줄. 신발 로비의 `statLine` 과 같은 모양이지만,
- * 저쪽은 왕관 딱지까지 받는 함수라 그대로 가져오면 안 쓰는 인자가 따라온다.
- * 필요한 만큼만 여기 둔다.
+ * `라벨 1,234 단위` 한 줄.
+ *
+ * ★ **숫자만 도트 글꼴로 찍는다.** (2026-08-26, 버그 수정)
+ *
+ * 예전에는 문장을 통째로 `pixelText(..., { mini:true })` 에 넘겼다. 그런데 mini 는
+ * **숫자 전용 9px 글꼴**이라 한글이 한 자도 없다 — 화면에 `?????????0?` 로 나왔다.
+ * 신발게임 로비는 진작부터 숫자만 뽑아 쓰고 있었다(`Lobby.js` 의 `statLine`).
+ * 같은 방식으로 되돌린다: 숫자는 도트로, 한글은 평범한 글자로.
  */
-function statLine(text, numOpt) {
-  return el('div', null, [pixelText(text, numOpt)]);
+function statLine(str, numOpt, tag) {
+  const parts = String(str).split(/([\d,]+)/);
+  const line = el('div.stat-line', null, parts.map((part, i) => {
+    if (!/^[\d,]+$/.test(part)) return part;
+    const cv = pixelText(part, numOpt);
+    /* 캔버스 사방의 외곽선 여백이 없는 띄어쓰기를 만든다 — 음수 여백으로 상쇄 */
+    const pad = Number(cv.dataset.pad || 0);
+    cv.style.marginLeft = /\s$/.test(parts[i - 1] ?? '') ? '0' : `-${pad}px`;
+    cv.style.marginRight = `-${pad}px`;
+    return cv;
+  }));
+  if (tag) line.append(el('span.stat-tag', tag));
+  return line;
 }
 
 export default function DragonLobby(nav) {
-  /* 로비를 보는 동안 게임 코드를 미리 받아 둔다 — [게임 시작] 을 누를 때는 이미 있다 */
-  prefetchDragon();
+  /**
+   * 게임 코드를 미리 받아 둔다. [싱글게임] 을 누를 때 이미 있고,
+   * **로비유저상태창의 드래곤 그림도 이 모듈이 그려 준다** — 도트가 거기에만 있다.
+   * 도착하면 화면을 한 번 다시 그린다 (신발 로비가 왕관 딱지를 받는 것과 같은 방식).
+   */
+  let live = true;
+  prefetchDragon().then(() => { if (live) nav.refresh(); }).catch(() => {});
+
   return {
+    onLeave() { live = false; },
+
     render() {
       const p = getProfile();
       const statNum = { scale: STAT_SCALE, mini: true, color: PAL.text, mono: true };
 
-      /**
-       * 아직 안 만든 메뉴는 **버튼을 감추지 않고 눌리게 두되 사실대로 말한다.**
-       * 감춰 두면 "언제 생기나" 를 물어볼 데가 없고, 조용히 아무 일도 안 하면
-       * 고장으로 읽힌다.
-       */
+      /* 아직 안 만든 메뉴는 감추지 않고 사실대로 말한다 — 감추면 물어볼 데가 없다 */
       const soon = (label) => button(label, () => toast(S.dragonSoon), { class: 'dim' });
+
+      const wins = p.dragonMultiWins ?? 0;
+      const games = wins + (p.dragonMultiLosses ?? 0);
 
       return screen(
         el('div.dragon-title', S.dragonTitle),
 
+        /* ── 로비유저상태창 : 고른 드래곤 + 내 기록 ── */
         el('div.panel', null, [
+          el('div.char-cell', null, [
+            dragonFigure(p.dragonCharacter | 0),
+            el('div.char-name', p.nickname || '???'),
+          ]),
           el('div.stats', null, [
             statLine(S.dragonBestScore(p.dragonBest || 0), statNum),
-            statLine(S.dragonBestStage(p.dragonBestStage || 0), statNum),
-            statLine(S.dragonFireLv(p.dragonBestLevel || 0), statNum),
+            statLine(S.dragonCoinsOwned(p.dragonCoins || 0), statNum),
+            statLine(S.dragonMultiRecord(wins, games), statNum),
             statLine(S.dragonPlays(p.dragonPlays || 0), statNum),
           ]),
         ]),
@@ -69,12 +96,15 @@ export default function DragonLobby(nav) {
         /**
          * 드래곤 변경·설정은 **게임 안 화면을 그대로 연다**(`DragonGame` 의 mode).
          * 도트 10종을 그리는 코드가 게임 쪽에만 있어서, 여기에 또 만들면
-         * 캐릭터를 하나 추가할 때마다 두 곳을 고쳐야 한다.
+         * 드래곤을 하나 추가할 때마다 두 곳을 고쳐야 한다.
          */
         button(S.dragonMenuCharacter, () => nav.push(DragonGame, { mode: 'chars' })),
+        soon(S.dragonMenuShop),
+        el('div.row', null, [
+          soon(S.dragonRankScore),
+          soon(S.dragonRankCoin),
+        ]),
         button(S.dragonMenuSettings, () => nav.push(DragonGame, { mode: 'options' })),
-        soon(S.menuHallOfFame),
-        soon(S.menuItemShop),
 
         el('div.row', null, [
           button(S.playSingle, () => nav.push(DragonGame, { mode: 'play' }), { primary: true }),

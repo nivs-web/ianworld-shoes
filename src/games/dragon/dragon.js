@@ -1985,7 +1985,7 @@ class Arrow {
 class WingZombie {
   constructor(x, y, speed){
     this.x = x; this.y = y;
-    this.hp = this.maxHp = enemyHp(30);      // 스테이지에 비례해 단단해진다
+    this.hp = this.maxHp = enemyHp(46);      // 스테이지에 비례해 단단해진다
     this.vx = -(speed || 175) * diffSpeed(); this.vy = 0;
     this.t = Math.random()*6;
     this.baseY = y;
@@ -2661,13 +2661,24 @@ class Boss extends EnemyBase {
 /* ==================================================================
    웨이브 디렉터 : 90초 타임라인
    ================================================================== */
+/**
+ * ★ **한 판을 짧게 다시 짰다.** (2026-08-26, 사용자 지정)
+ *
+ * 20스테이지 완주에 41분이 걸렸다 — 그걸 끝까지 앉아서 할 사람은 많지 않다.
+ * 스테이지당 124초를 **65초 안팎**으로 줄여 완주 20~25분을 노린다.
+ * 잡몹 물결을 앞당기고 중간보스를 절반 시점에 내보낸다.
+ */
 const TIMELINE = [
-  { t: 1.5, k:'zombie', n:3 }, { t: 5.0, k:'zombie', n:4 }, { t: 8.5, k:'zombie', n:5 },
-  { t:12.0, k:'rider',  n:1 }, { t:15.0, k:'zombie', n:4 }, { t:18.5, k:'rider',  n:2 },
-  { t:22.0, k:'zombie', n:5 }, { t:25.0, k:'heavy',  n:1 }, { t:28.5, k:'rider',  n:2 },
-  { t:32.0, k:'zombie', n:5 }, { t:35.0, k:'heavy',  n:1 }, { t:38.0, k:'rider',  n:2 },
-  { t:41.0, k:'zombie', n:5 }, { t:43.0, k:'heavy',  n:1 },
-  { t:40.0, k:'midboss' }
+  { t: 1.0, k:'zombie', n:3 }, { t: 3.5, k:'zombie', n:4 }, { t: 6.0, k:'zombie', n:5 },
+  { t: 8.0, k:'rider',  n:1 }, { t:10.0, k:'zombie', n:4 }, { t:12.0, k:'rider',  n:2 },
+  { t:14.0, k:'zombie', n:5 }, { t:16.0, k:'heavy',  n:1 }, { t:18.0, k:'rider',  n:2 },
+  { t:20.0, k:'zombie', n:5 }, { t:22.0, k:'heavy',  n:1 },
+  { t:24.0, k:'rider',  n:2 }, { t:26.0, k:'zombie', n:5 },
+  { t:28.0, k:'heavy',  n:1 }, { t:30.0, k:'rider',  n:2 },
+  { t:32.0, k:'zombie', n:6 }, { t:34.0, k:'heavy',  n:1 },
+  { t:36.0, k:'rider',  n:2 }, { t:38.0, k:'zombie', n:6 },
+  { t:40.0, k:'heavy',  n:1 }, { t:42.0, k:'rider',  n:2 },
+  { t:44.0, k:'midboss' }
 ];
 /* 스테이지가 오를수록 적이 20% 씩 늘어난다 (화면이 꽉 차도록).
    다만 무한정 늘리면 프레임이 무너지므로 배율과 동시 등장 수에 상한을 둔다. */
@@ -2688,7 +2699,7 @@ const DIAGONAL_STAGE = 10;          // 이 스테이지를 넘으면 위/아래 
 
 /* 최종보스는 "중간보스를 잡은 뒤" 에만 나온다.
    예전엔 시간이 되면 중간보스가 살아있어도 최종보스가 겹쳐 나와서 난장판이었다. */
-const BOSS_AFTER_MID = 5;       // 중간보스 전멸 후 최종보스까지의 뜸
+const BOSS_AFTER_MID = 4;       // 중간보스 전멸 후 최종보스까지의 뜸
 const BOSS_ADD_INTERVAL = 5.5;  // 보스전 중 잡몹 보충 주기
 const TWIN_MID_STAGE = 10;      // 이 스테이지를 넘으면 중간보스가 2마리
 
@@ -2812,7 +2823,7 @@ function bossPowerScale(level){ return Math.pow(fireDpsOf(level) / fireDpsOf(1),
 
 // 불 화력을 절반으로 낮췄으므로 보스 기준 체력도 같이 내린다.
 // (이 값이 그대로면 보스전 시간이 2배가 되어 제한시간 안에 못 잡는다)
-const MID_BOSS_BASE = 3200, BOSS_MUL = 2.4;
+const MID_BOSS_BASE = 8200, BOSS_MUL = 2.8;
 /* 스테이지가 1 오를 때마다 보스가 5% 씩 단단해지고 5% 씩 세게 때린다.
    1스테이지와 20스테이지 보스가 똑같으면 스테이지를 올라갈 이유가 없다.
    20스테이지 기준 2.53배. */
@@ -2824,7 +2835,7 @@ function enemyToughOf(stage){ return Math.pow(1.08, clamp(stage|0, 1, 20) - 1); 
 let CUR_STAGE = 1;                  // 적 생성 시 참조할 현재 스테이지
 function enemyHp(base){ return Math.round(base * enemyToughOf(CUR_STAGE) * diffHp()); }
 function midBossHpOf(stage, level){
-  return Math.round(MID_BOSS_BASE * bossPowerScale(level || 1) * stagePowerOf(stage));
+  return Math.round(MID_BOSS_BASE * bossPowerScale(level || 1) * stagePowerOf(stage) * diffBoss());
 }
 function bossHpOf(stage, level){ return Math.round(midBossHpOf(stage, level) * BOSS_MUL); }
 
@@ -3697,7 +3708,7 @@ const DROP_PLAN = [
 ];
 const COIN_INTERVAL = 2.6;          // 황금동전 뭉치가 나오는 주기
 const COIN_PER_ARC  = 6;            // 한 뭉치에 몇 개
-const STAGE_TIME = 90;              // 중간보스가 나올 때까지의 제한 시간 (초).
+const STAGE_TIME = 80;              // 중간보스가 나올 때까지의 제한 시간 (초).
                                     // 보스가 등장하면 타이머는 멈춘다. 보스전은 시간제한 없이.
 const TIME_BAR = { x: 400, y: 16, w: 480, h: 26 };   // 상단 중앙 시간 게이지 (터치 시 일시정지)
 const P1_COLOR = '#8fd0ff', P2_COLOR = '#ffa8d0';
@@ -4328,7 +4339,7 @@ class GameScene extends Scene {
       if(p.hurtT > 0) continue;
       const hb = p.hitbox;
       let struck = false;
-      let dmg = 25;
+      let dmg = 34;
       for(const list of [this.arrows, this.eshots, this.missiles, this.bombs]){
         for(const o of list){
           if(o.dead || !overlap(o.box, hb)) continue;
@@ -4344,7 +4355,7 @@ class GameScene extends Scene {
         const d = Math.hypot(p.x - w.x, p.y - w.y);
         if(Math.abs(d - w.r) < 30){ w.hitDone = true; struck = true; break; }
       }
-      if(struck) this.hurtPlayer(p, dmg);
+      if(struck) this.hurtPlayer(p, Math.round(dmg * diffAtk()));
     }
 
     // ---- 정리 ----
@@ -4743,52 +4754,52 @@ function mkDragonPal(o){
 }
 
 const DRAGONS = [
-  { id:'NOVART',    theme:'BLACK / CRIMSON EYE', trait:'THE STARTER',       always:[],
+  { id:'NOVART', ko:'노바트', koTheme:'검은 비늘 · 붉은 눈', koTrait:'처음 함께하는 드래곤',    theme:'BLACK / CRIMSON EYE', trait:'THE STARTER',       always:[],
     pal: mkDragonPal({ line:'#0d0912', dark:'#241d33', mid:'#3a3050', light:'#544772',
       wing:'#2e2743', bone:'#4a3d68', eye:'#ff2b3c', eyeHi:'#ffd9dc',
       horn:'#b8a9d4', spike:'#8f7ec4' }) },
 
-  { id:'SOLARIS',   theme:'YELLOW / AMBER BELLY', trait:'BORN OF THE SUN',  always:[],
+  { id:'SOLARIS', ko:'솔라리스', koTheme:'황금빛 · 호박색 배', koTrait:'태양에서 태어났다',   theme:'YELLOW / AMBER BELLY', trait:'BORN OF THE SUN',  always:[],
     pal: mkDragonPal({ line:'#3a1c05', dark:'#a85f12', mid:'#d98b1c', light:'#ffc93c',
       wing:'#b56a15', bone:'#e0952a', eye:'#ff5a1e', eyeHi:'#fff0c0',
       horn:'#fff0b0', spike:'#ffae3a' }) },
 
-  { id:'AQUANTIS',  theme:'SKY / WHITE',          trait:'FINNED WINGS',     always:[],
+  { id:'AQUANTIS', ko:'아쿠안티스', koTheme:'하늘색 · 흰 배', koTrait:'지느러미 날개',  theme:'SKY / WHITE',          trait:'FINNED WINGS',     always:[],
     pal: mkDragonPal({ line:'#0a2540', dark:'#1d5a86', mid:'#2f86b4', light:'#7fd0e8',
       wing:'#2a6f9e', bone:'#4fa8cc', eye:'#d8f6ff', eyeHi:'#ffffff',
       horn:'#eaffff', spike:'#9fe4f4' }) },
 
-  { id:'FORESTIA',  theme:'GREEN / LEAF',         trait:'LEAF PATTERNED',   always:[],
+  { id:'FORESTIA', ko:'포레스티아', koTheme:'초록 · 잎사귀 무늬', koTrait:'숲의 수호자',  theme:'GREEN / LEAF',         trait:'LEAF PATTERNED',   always:[],
     pal: mkDragonPal({ line:'#0d2410', dark:'#245c26', mid:'#3d8a34', light:'#8fd44a',
       wing:'#2c6b2a', bone:'#57a83e', eye:'#ffe14a', eyeHi:'#fffbe0',
       horn:'#d8f0a0', spike:'#a8d860' }) },
 
-  { id:'CRIMSONDE', theme:'SCARLET / BLACK',      trait:'TWIN HORNS',       always:['crest'],
+  { id:'CRIMSONDE', ko:'크림슨데', koTheme:'진홍 · 검정', koTrait:'쌍뿔의 전사', theme:'SCARLET / BLACK',      trait:'TWIN HORNS',       always:['crest'],
     pal: mkDragonPal({ line:'#14040a', dark:'#6b0f22', mid:'#a3162e', light:'#d93a44',
       wing:'#4a0a18', bone:'#7d1526', eye:'#ffd24a', eyeHi:'#fffbe0',
       horn:'#ffd0c0', spike:'#ff6a4a' }) },
 
-  { id:'FROSTWING', theme:'WHITE / BLUE',         trait:'FROSTED WINGS',    always:[],
+  { id:'FROSTWING', ko:'프로스트윙', koTheme:'흰빛 · 얼음 파랑', koTrait:'서리 날개', theme:'WHITE / BLUE',         trait:'FROSTED WINGS',    always:[],
     pal: mkDragonPal({ line:'#0e2440', dark:'#6f93b8', mid:'#a8c8e0', light:'#e8f6ff',
       wing:'#7fa8cc', bone:'#b8d8f0', eye:'#4fd0ff', eyeHi:'#ffffff',
       horn:'#ffffff', spike:'#cfeaff' }) },
 
-  { id:'VOLTTAIL',  theme:'VIOLET / YELLOW',      trait:'LIGHTNING TAIL',   always:['ridge'],
+  { id:'VOLTTAIL', ko:'볼트테일', koTheme:'보라 · 번개 노랑', koTrait:'번개 꼬리',  theme:'VIOLET / YELLOW',      trait:'LIGHTNING TAIL',   always:['ridge'],
     pal: mkDragonPal({ line:'#150829', dark:'#45208a', mid:'#6a35b8', light:'#9a5fe0',
       wing:'#3a1a70', bone:'#7a45c0', eye:'#ffe14a', eyeHi:'#fffbe0',
       horn:'#ffe14a', spike:'#ffd24a' }) },
 
-  { id:'SANDSCALE', theme:'SAND / BROWN',         trait:'SPINED BACK',      always:['ridge'],
+  { id:'SANDSCALE', ko:'샌드스케일', koTheme:'모래빛 · 갈색', koTrait:'가시 등딱지', theme:'SAND / BROWN',         trait:'SPINED BACK',      always:['ridge'],
     pal: mkDragonPal({ line:'#2a1a08', dark:'#8a6a34', mid:'#b8934a', light:'#e0c078',
       wing:'#6b4f26', bone:'#a07a3a', eye:'#ff9a3a', eyeHi:'#ffe8c0',
       horn:'#f0dcb0', spike:'#c9a05a' }) },
 
-  { id:'SHADOWFEN', theme:'NAVY / SILVER',        trait:'SILVER EYES',      always:[],
+  { id:'SHADOWFEN', ko:'섀도우펜', koTheme:'남색 · 은빛', koTrait:'은빛 눈동자', theme:'NAVY / SILVER',        trait:'SILVER EYES',      always:[],
     pal: mkDragonPal({ line:'#05060f', dark:'#141a3a', mid:'#232c56', light:'#3a4578',
       wing:'#101632', bone:'#2b3560', eye:'#e0e8f8', eyeHi:'#ffffff',
       horn:'#c8d0e0', spike:'#9aa8c8' }) },
 
-  { id:'GOLDREX',   theme:'GOLD / WHITE',         trait:'THE LEGEND',       always:['crest','ridge'],
+  { id:'GOLDREX', ko:'골드렉스', koTheme:'황금 · 흰빛', koTrait:'전설의 드래곤',   theme:'GOLD / WHITE',         trait:'THE LEGEND',       always:['crest','ridge'],
     pal: mkDragonPal({ line:'#3a2a05', dark:'#a8801a', mid:'#d9a92c', light:'#ffe07a',
       wing:'#b8891f', bone:'#e8c04a', eye:'#ffffff', eyeHi:'#fffbe0',
       horn:'#fffbe0', spike:'#ffe8a0', armor:'#fff0b0' }) }
@@ -4887,27 +4898,33 @@ class OptionsScene extends Scene {
     this.pAlpha = o.btnAlpha;
   }
 
+  /**
+   * 설정 항목. **12줄에서 8줄로 줄였다.** (2026-08-26)
+   *
+   * 덜어낸 것과 이유:
+   *   · 전체화면  — 오락실 화면에 있다. 두 곳에 두면 어느 쪽이 진짜인지 헷갈린다.
+   *   · 게임패드  — 연결 상태를 보여줄 뿐 바꿀 수 있는 게 없다. 설정이 아니다.
+   *   · 진행 초기화 — 기록이 계정에 있는 지금은 여기서 지울 것이 없다. 위험하기만 하다.
+   *   · 스틱/버튼 투명도 두 줄 — 따로 맞출 이유가 없어 「조작 투명도」 하나로 합쳤다.
+   */
   get rows(){
     const o = optGet();
     const pct = v => Math.round(v*100) + '%';
+    const SIZE = ['작게','보통','크게'];
     return [
-      { k:'STICK SIZE',    v:['SMALL','MEDIUM','LARGE'][o.stickSize],  set:d=>{ o.stickSize = clamp(o.stickSize+d,0,2); } },
-      { k:'STICK OPACITY', v:pct(o.stickAlpha),  set:d=>{ o.stickAlpha = clamp(+(o.stickAlpha + d*0.1).toFixed(2), 0.2, 0.8); } },
-      { k:'STICK MODE',    v:o.stickFloat ? 'FLOATING' : 'FIXED',      set:d=>{ o.stickFloat = o.stickFloat ? 0 : 1; } },
-      { k:'BUTTON SIZE',   v:['SMALL','MEDIUM','LARGE'][o.btnSize],    set:d=>{ o.btnSize = clamp(o.btnSize+d,0,2); } },
-      { k:'BUTTON OPACITY',v:pct(o.btnAlpha),    set:d=>{ o.btnAlpha = clamp(+(o.btnAlpha + d*0.1).toFixed(2), 0.2, 0.8); } },
-      { k:'BGM',           v:o.bgmOn ? 'ON' : 'OFF',                   set:d=>{ o.bgmOn = o.bgmOn?0:1; applyAudioOpt(); } },
-      { k:'SOUND EFFECT',  v:o.sfxOn ? 'ON' : 'OFF',                   set:d=>{ o.sfxOn = o.sfxOn?0:1; applyAudioOpt(); } },
-      { k:'BGM TRACK',     v:(Save.data.bgm+1) + '  ' + BGM_TRACKS[Save.data.bgm].name,
+      { k:'스틱 크기',   v:SIZE[o.stickSize],  set:d=>{ o.stickSize = clamp(o.stickSize+d,0,2); } },
+      { k:'스틱 방식',   v:o.stickFloat ? '누른 자리에' : '고정',
+        set:d=>{ o.stickFloat = o.stickFloat ? 0 : 1; } },
+      { k:'버튼 크기',   v:SIZE[o.btnSize],    set:d=>{ o.btnSize = clamp(o.btnSize+d,0,2); } },
+      { k:'조작 투명도', v:pct(o.btnAlpha),
+        set:d=>{ const a = clamp(+(o.btnAlpha + d*0.1).toFixed(2), 0.2, 0.8);
+                 o.btnAlpha = a; o.stickAlpha = a; } },
+      { k:'배경음',      v:o.bgmOn ? '켜짐' : '꺼짐', set:d=>{ o.bgmOn = o.bgmOn?0:1; applyAudioOpt(); } },
+      { k:'효과음',      v:o.sfxOn ? '켜짐' : '꺼짐', set:d=>{ o.sfxOn = o.sfxOn?0:1; applyAudioOpt(); } },
+      { k:'배경음 곡',   v:(Save.data.bgm+1) + '. ' + BGM_TRACKS[Save.data.bgm].name,
         set:d=>{ Save.data.bgm = (Save.data.bgm + d + BGM_TRACKS.length) % BGM_TRACKS.length;
                  SND.resume(); SND.switchBgm(Save.data.bgm); } },
-      { k:'FULLSCREEN',    v: isFullscreen() ? 'ON   (TAP / F)' : 'OFF  (TAP / F)',
-        act:()=>{ toggleFullscreen(); } },
-      { k:'GAMEPAD',       v:Input.padName || 'NOT CONNECTED' },
-      { k:'RESET PROGRESS',v:this.confirmReset > 0 ? 'ENTER AGAIN' : 'PRESS ENTER',
-        act:()=>{ if(this.confirmReset > 0){ Save.clearAll(); this.confirmReset = 0; SND.sfx('deny'); }
-                  else this.confirmReset = 3; } },
-      { k:'BACK',          v:'',  act:()=>{ backOut(this.mgr); } }
+      { k:'게임로비로 돌아가기', v:'',  act:()=>{ backOut(this.mgr); } }
     ];
   }
   rowY(i){ return 132 + i*40; }
@@ -4948,9 +4965,9 @@ class OptionsScene extends Scene {
         ctx.fillStyle = 'rgba(255,210,74,.14)'; ctx.fillRect(48, y - 8, 660, 34);
         drawText(ctx, '>', 56, y, 4, { color:PAL.gold, outline:PAL.outline });
       }
-      drawText(ctx, rows[i].k, 92, y, 3, { color: on ? PAL.white : '#7f8bb0' });
+      ko(ctx, rows[i].k, 92, y - 2, 3, { color: on ? PAL.white : '#7f8bb0' });
       if(rows[i].v)
-        drawText(ctx, rows[i].v, 700, y, 3,
+        ko(ctx, rows[i].v, 700, y - 2, 3,
           { align:'right', color: on ? PAL.gold : '#5f6a8c' });
       if(on && rows[i].set){
         drawText(ctx, '<', 716, y, 3, { color:PAL.gold });
@@ -4960,7 +4977,7 @@ class OptionsScene extends Scene {
     // ---- 미리보기 ----
     ctx.fillStyle = 'rgba(10,8,22,.55)'; ctx.fillRect(760, 120, 496, 480);
     ctx.fillStyle = PAL.outline; ctx.fillRect(760, 120, 496, PX);
-    drawText(ctx, 'PREVIEW', 1008, 132, 3, { align:'center', color:'#8a7bb8' });
+    ko(ctx, '미리보기', 1008, 130, 3, { align:'center', color:'#8a7bb8' });
     const o = optGet();
     // 스틱 (설정한 크기/투명도로)
     const sc = makeStickCfg();
@@ -5077,10 +5094,11 @@ class CharacterSelectScene extends Scene {
     if(pose === 3) drawGrid(ctx, f.wings[pose], ox, oy, f.cols, cell, d.pal, false, null);
 
     // ---- 이름 / 설명 ----
-    drawText(ctx, d.id, 640, 452, 8,
+    ko(ctx, d.ko, 640, 448, 7, { align:'center', color:PAL.gold, outline:PAL.outline });
+    if(false) drawText(ctx, d.id, 640, 452, 8,
       { align:'center', color:(r)=>PAL.fire[r], outline:PAL.outline, shadow:'#000', shadowOff:8 });
-    drawText(ctx, d.theme, 640, 512, 3, { align:'center', color:'#cfe0ff', shadow:'#0a1830' });
-    drawText(ctx, d.trait, 640, 534, 2, { align:'center', color:PAL.gold });
+    ko(ctx, d.koTheme, 640, 512, 3, { align:'center', color:'#cfe0ff' });
+    ko(ctx, d.koTrait, 640, 542, 3, { align:'center', color:PAL.gold });
     drawText(ctx, String(this.sel+1).padStart(2,'0') + ' / 10', 1252, 34, 3,
       { align:'right', color:PAL.gold, outline:PAL.outline });
 
@@ -5278,15 +5296,32 @@ const RUN = { coins: 0 };
    점수 배율은 두지 않는다 — 순위를 난이도별로 나눌 것이라 배율을 곱해 봐야
    그 난이도 전원이 똑같이 부풀 뿐이고, 나중에 배율을 손대면 과거 기록이 의미를 잃는다.
    어려움을 고를 이유는 배율이 아니라 **적이 많아 잡을 게 많다는 것**이 만든다. */
+/**
+ * ★ **난이도는 다섯 축을 한꺼번에 움직인다.** (2026-08-26, 사용자 지정)
+ *
+ * 예전에는 적 수·속도·체력 셋뿐이라 "빨라지고 많아질 뿐" 이었다.
+ * 실제로 어려우려면 **맞았을 때 아픈 정도**와 **내 화력이 통하는 정도**가 같이 변해야 한다.
+ *
+ *   count  적이 몇 마리 나오나
+ *   speed  적과 적탄이 얼마나 빠른가
+ *   hp     적이 얼마나 단단한가
+ *   atk    적의 한 방이 얼마나 아픈가      <- 새로 넣었다
+ *   boss   보스가 얼마나 단단한가          <- 새로 넣었다
+ */
 const DIFFS = {
-  easy:   { count: 0.75, speed: 0.85, hp: 0.85 },
-  normal: { count: 1.00, speed: 1.00, hp: 1.00 },
-  hard:   { count: 1.35, speed: 1.18, hp: 1.20 },
+  /* atk 은 **목숨당 맞는 횟수**가 실제로 갈리도록 잡았다 (기본 한 방 34, 체력 100):
+     쉬움 26 -> 4대 · 보통 34 -> 3대 · 어려움 53 -> 2대.
+     1.45 로 두었을 때는 49 라 어려움도 3대였다 — 반올림에 묻혀 차이가 안 났다. */
+  easy:   { count: 0.80, speed: 0.88, hp: 0.80, atk: 0.75, boss: 0.80 },
+  normal: { count: 1.00, speed: 1.00, hp: 1.00, atk: 1.00, boss: 1.00 },
+  hard:   { count: 1.40, speed: 1.20, hp: 1.35, atk: 1.55, boss: 1.25 },
 };
 function diffOf() { return DIFFS[DG.difficulty] || DIFFS.normal; }
 function diffScale() { return diffOf().count; }
 function diffSpeed() { return diffOf().speed; }
 function diffHp() { return diffOf().hp; }
+function diffAtk() { return diffOf().atk; }     // 적의 공격력
+function diffBoss() { return diffOf().boss; }   // 보스 체력
 
 /* 타이틀로 나가던 자리. 이제 타이틀이 없다 — 오락실 로비로 돌아간다 */
 function backOut() { DG.onExit(); }
@@ -5427,6 +5462,34 @@ export function mount(host, opts = {}) {
 
   last = performance.now(); acc = 0;
   rafId = requestAnimationFrame(frame);
+}
+
+/**
+ * 게임로비의 「로비유저상태창」에 고른 드래곤을 그려 준다.
+ *
+ * 드래곤 도트는 이 모듈 안의 그리드·팔레트로만 그려진다 — 그림 파일이 없다.
+ * 그래서 로비가 직접 그릴 수가 없고, 여기서 캔버스 하나를 만들어 넘긴다.
+ * (로비는 어차피 `prefetchDragon()` 으로 이 모듈을 미리 받아 둔다)
+ *
+ * @param {number} idx 드래곤 번호 0~9
+ * @param {number} cell 도트 한 칸 크기 (로비에서는 작게)
+ */
+export function dragonPortrait(idx, cell = 3) {
+  const d = DRAGONS[clamp(idx | 0, 0, 9)];
+  const f = FORMS.B;
+  const w = Math.ceil(f.cols * cell), h = Math.ceil(f.rows * cell);
+  const { cv, c } = makeCanvas(w, h);
+  /* 날개를 편 자세(pose 2)가 가장 드래곤처럼 보인다 */
+  drawGrid(c, f.wings[2], 0, 0, f.cols, cell, d.pal, false, null);
+  drawGrid(c, f.body,     0, 0, f.cols, cell, d.pal, false, null);
+  for(const nm of (d.always || [])) if(f.parts[nm]) drawGrid(c, f.parts[nm], 0, 0, f.cols, cell, d.pal, false, null);
+  return cv;
+}
+
+/** 드래곤 이름 (로비에서 "지금 고른 드래곤" 을 보여줄 때) */
+export function dragonName(idx) {
+  const d = DRAGONS[clamp(idx | 0, 0, 9)];
+  return (d && (d.ko || d.name)) || '';
 }
 
 /**

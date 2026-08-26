@@ -34,11 +34,31 @@ async function loadDragon() {
   if (!mod) mod = await import('../games/dragon/dragon.js');
   return mod;
 }
-/** 로비에 들어오면 한가할 때 미리 받아 둔다 — 누를 때는 이미 있다 */
+/**
+ * 로비에 들어오면 한가할 때 미리 받아 둔다 — 누를 때는 이미 있다.
+ * 게임로비의 드래곤 그림도 이 모듈이 그려 주므로, 도착을 기다릴 수 있게
+ * 프라미스를 돌려준다.
+ */
 export function prefetchDragon() {
-  const go = () => loadDragon().catch(() => {});
-  if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 3000 });
-  else setTimeout(go, 1200);
+  return new Promise((resolve) => {
+    const go = () => loadDragon().then(resolve, resolve);
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 3000 });
+    else setTimeout(go, 1200);
+  });
+}
+
+/**
+ * 게임로비의 「로비유저상태창」에 들어갈 드래곤 그림.
+ *
+ * 드래곤 도트는 게임 모듈 안의 그리드·팔레트로만 그려진다 — 그림 파일이 없다.
+ * 그래서 여기서 직접 만들 수가 없고, 모듈이 도착한 뒤에야 채워진다.
+ * 아직이면 **빈 자리를 같은 크기로 잡아 둔다** — 나중에 그림이 들어오면서
+ * 화면이 출렁이지 않게 한다.
+ */
+export function dragonFigure(idx) {
+  const box = el('div.dg-figure');
+  if (mod && mod.dragonPortrait) box.append(mod.dragonPortrait(idx, 3));
+  return box;
 }
 
 /**

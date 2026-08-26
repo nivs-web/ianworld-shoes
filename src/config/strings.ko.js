@@ -208,9 +208,20 @@ export const S = {
   /** 포털 카드 밑줄 · 로비 통계 — 둘이 같은 문구를 쓴다 */
   dragonBestScore: (n) => `나의 최고 스코어 ${n.toLocaleString('en-US')}점`,
   dragonBestStage: (n) => `최고 스테이지 ${n}단계`,
-  dragonPlays: (n) => `플레이 ${n.toLocaleString('en-US')}판`,
+  dragonPlays: (n) => `싱글 플레이 ${n.toLocaleString('en-US')}판`,
   dragonFireLv: (n) => `최고 파이어 LV${n}`,
   dragonMenuCharacter: '드래곤 변경',
+  dragonMenuShop: '아이템 쇼핑',
+  /**
+   * ★ **'동전' 을 '금화' 로 통일한다.** (2026-08-26, 사용자 지정)
+   * 금으로 된 화폐라는 개념이 분명해지고, 신발게임의 '신발' 처럼 이 게임의 돈이
+   * 무엇인지 한 단어로 읽힌다.
+   */
+  dragonCoinsOwned: (n) => `보유 금화 ${n.toLocaleString('en-US')}개`,
+  /** 명예의 전당을 둘로 나눴다 — 겨루는 것이 서로 다르다 */
+  dragonRankScore: '스코어 순위',
+  dragonRankCoin: '금화왕 순위',
+  dragonMultiRecord: (w, g) => `멀티게임 ${w}승 ${g}게임`,
   dragonMenuSettings: '설정',
   dragonHint: '난이도를 높이면 적이 많아지고 점수도 많이 오릅니다',
   /** 준비 중인 메뉴 — 눌러도 되지만 아직 아무것도 없다고 분명히 말한다 */

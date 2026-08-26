@@ -112,6 +112,19 @@ export function defaultProfile() {
     dragonBestStage: 0,     // 최고로 깬 스테이지
     dragonBestLevel: 0,     // 그 판의 파이어 레벨
     dragonPlays: 0,         // 총 플레이 판수
+    /**
+     * ★ **금화** — 이 게임의 돈. 신발을 찾아서의 신발과 같은 자리다.
+     *
+     *   `dragonCoins`      지금 들고 있는 금화. 아이템을 사면 줄어든다.
+     *   `dragonCoinsTotal` 지금까지 주운 누적. **절대 줄지 않는다.**
+     *
+     * 둘로 나누는 이유: 순위(금화왕)를 지갑으로 세면 **아이템을 살 때마다 순위가
+     * 떨어져서 아무도 안 산다.** 신발게임이 도감(누적)과 지갑을 나눠 둔 것과 같은 이유다.
+     */
+    dragonCoins: 0,
+    dragonCoinsTotal: 0,
+    dragonMultiWins: 0,
+    dragonMultiLosses: 0,
     dragonDifficulty: 'normal',
     dragonCharacter: 0,     // 고른 드래곤 번호 (0~9)
     /**
