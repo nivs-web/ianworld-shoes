@@ -7287,6 +7287,34 @@ export function dragonAnim(idx, cell = 3) {
 }
 
 /**
+ * 불꽃 한 줄기를 그려 돌려준다 — 상점에서 고르기 전에 **보고** 고르라고. (2026-08-26, 사용자 지정)
+ *
+ * ★ **게임에서 쓰는 그 그림 그대로다.** 미리보기용으로 따로 그리면 언젠가 둘이
+ * 다른 모양이 되고, 그러면 미리보기가 거짓말을 한다. `paintFireBolt` 을 같이 쓴다.
+ *
+ * 레벨은 2로 고정한다(사용자 지정) — 1은 한 줄이라 색만 보이고 굵기 차이를 모르고,
+ * 10은 화면 절반이라 작은 칸에 안 들어간다. 2가 "불꽃답게 보이는" 최소 크기다.
+ *
+ * @param {string} palKey  FLAME_PALS 의 열쇠 ('red'|'ember'|'blue'|'yellow'|'green'|'abyss')
+ * @param {number} [lv]    파이어 레벨 (기본 2)
+ * @param {number} [scale] 0~1 로 줄인다 (칸에 맞추려고)
+ */
+export function flamePreview(palKey, lv = 2, scale = 1) {
+  const L = clamp(lv | 0, 1, MAX_LEVEL);
+  const c = FIRE[L];
+  const pal = FLAME_PALS[palKey] || PAL.fire;
+  const W = Math.max(8, Math.round(c.len * scale));
+  const H = Math.max(8, Math.round((c.th * 1.15 + 8) * scale));
+  const { cv, c: ctx } = makeCanvas(W, H);
+  ctx.save();
+  ctx.scale(scale, scale);
+  /* 위상 0 — 정지 그림이므로 가장 곧게 뻗은 순간을 고른다 */
+  paintFireBolt(ctx, c.len, (c.th * 1.15 + 8) / 2, L, 0, pal);
+  ctx.restore();
+  return cv;
+}
+
+/**
  * 드래곤 열 마리의 명단. 상점 화면이 쓴다.
  *
  * ★ **앞의 다섯은 처음부터 갖고 있고, 뒤의 다섯은 금화로 산다.** (2026-08-26, 사용자 지정)

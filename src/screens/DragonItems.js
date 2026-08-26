@@ -129,9 +129,22 @@ export default function DragonItems(nav) {
         }
       }
 
-      /* 맨 아래 — 착용류는 입어 본 모습, 계단은 몇 개로 시작하는지 */
+      /* 맨 아래 — 불꽃은 불줄기, 나머지 착용류는 입어 본 모습, 계단은 개수 */
       let footer;
-      if (ladder) {
+      if (cat === 'flame') {
+        /**
+         * ★ **불꽃은 드래곤이 아니라 불을 보여줘야 한다.** (2026-08-26, 사용자 지정)
+         * 드래곤 그림 위에서는 불꽃 색이 안 보인다 — 불은 입에서 나가는 것이라
+         * 서 있는 드래곤에는 안 그려진다. 고른 불이 실제로 어떻게 뻗는지를 보여준다.
+         */
+        const it2 = item;
+        footer = el('div.wear-box', null, [
+          el('div.wear-title', S.dragonFlameTitle),
+          el('div.flame-strip', { class: 산것 ? '' : 'locked' },
+            [mod && it2 ? mod.flamePreview(it2.pal, 2, 0.62) : null].filter(Boolean)),
+          el('div.wear-cap', 산것 ? it2?.ko : S.dragonFlameLocked),
+        ]);
+      } else if (ladder) {
         const now = cat === 'startMsl' ? startMissiles(p) : startBombs(p);
         const after = item ? item.qty : now;
         footer = el('div.wear-title', null, [

@@ -2516,3 +2516,50 @@
   font-size: 11px;
   color: var(--c-panel-dark);
 }
+
+/* 불꽃 미리보기 — 왼쪽(입) 에서 오른쪽으로 뻗는다. 게임과 같은 방향이라야 읽힌다. */
+.flame-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 42px;
+  padding: 4px 6px;
+  background: rgba(10, 8, 22, 0.55);
+  border: 2px solid var(--c-line);
+  overflow: hidden;
+}
+.flame-strip canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  max-width: 100%;
+  height: auto;
+}
+/* 안 산 불꽃 — 모양만 비치고 색은 감춘다 (마스크 미리보기와 같은 방침) */
+.flame-strip.locked canvas { filter: grayscale(1) brightness(0.45); }
+
+/* 드래곤변경 — 신발 캐릭터 선택(.char-stage)과 같은 무대를 쓰되 칸만 드래곤 크기로 */
+.dg-stagepic {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  min-height: 132px;
+}
+.dg-stagepic canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  max-width: 100%;
+  height: auto;
+}
+/* 안 산 드래곤 — 실루엣만. 생김새를 숨겨야 궁금해진다 */
+.dg-stagepic.locked canvas { filter: grayscale(1) brightness(0.28); }
+
+.dg-theme { text-align: center; font-size: 11px; color: var(--c-text-light); opacity: 0.75; }
+.dg-trait { text-align: center; font-size: 11px; color: var(--c-panel-dark); margin-bottom: 2px; }
+/* 지금 쓰는 드래곤 — 누를 것이 없으니 버튼이 아니라 표시다 */
+.dg-using {
+  text-align: center;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--c-accent);
+  padding: 8px 0;
+}

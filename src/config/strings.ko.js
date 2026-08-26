@@ -221,6 +221,9 @@ export const S = {
   dragonOwned: '보유 중',
   dragonInUse: '사용 중',
   dragonSelect: '이 드래곤으로',
+  dragonBuyBtn: '이 드래곤 사기',
+  dragonBuyConfirm: (name) => `${name} 을(를) 사시겠습니까?`,
+  dragonLocked: '아직 안 산 드래곤',
   dragonBuy: (n) => `${n.toLocaleString('en-US')} 금화로 사기`,
   dragonNeedCoins: (n) => `금화가 ${n.toLocaleString('en-US')}개 더 필요합니다`,
   dragonBought: (name) => `${name} 획득!`,
@@ -243,6 +246,8 @@ export const S = {
   dragonItemOwned: '보유 중',
   dragonItemStepLocked: '앞 단계부터',
   dragonItemHint: '머리무장과 다리무장은 공격력을 올리지 않습니다 — 금화를 끌어오고 화려해집니다',
+  dragonFlameTitle: '불꽃 모양',
+  dragonFlameLocked: '사면 이 불로 바뀝니다',
 
   /* ── 닉네임 변경 (드래곤 변경 화면 안) ── */
   dragonRename: '닉네임 변경',
