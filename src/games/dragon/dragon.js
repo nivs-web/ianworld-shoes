@@ -3486,6 +3486,12 @@ const PURPLE_DRAGON_PAL = mkPal({       // 적3 : 통통한 보라 드래곤
  * 조준선이 뜨기 전에도 "저건 돌진하는 놈" 인 것을 알아봐야 비킬 준비를 한다.
  * 잿빛 몸에 형광 주황 — 화면의 어느 배경 위에서도 튄다.
  */
+/** 도둑. 노란 눈에 검은 몸 — 금화를 물고 있으면 더 눈에 띈다 */
+const THIEF_PAL = mkPal({
+  K:'#0a0a0c', D:'#1e1e26', M:'#2e2e3a', L:'#44445a', T:'#242430',
+  E:'#ffd24a', H:'#fff6c2', N:'#060608', G:'#8a8aa0', S:'#ffd24a',
+  C:'#d8d8e8', W:'#fff4f4', P:'#3a3a4a', w:'#141419', f:'#242430', k:'#0c0c10'
+});
 const CHARGER_PAL = mkPal({
   K:'#120c08', D:'#3a2a1c', M:'#5c422a', L:'#8a6038', T:'#46301e',
   E:'#ff5a1a', H:'#ffd8a0', N:'#0c0805', G:'#ffb070', S:'#ff7a2e',
@@ -3782,6 +3788,81 @@ function drawFrontShield(ctx, e, flashT){
   ctx.fillRect(x, snap(mid + half - PX*2), PX*3, PX*2);
   ctx.fillStyle = lit ? '#ffffff' : '#3f5f8a';
   ctx.fillRect(x + PX*3, snap(mid - half + PX*3), PX, snap(half*2 - PX*6));
+}
+
+/* ---------------- 적5 : 동전 도둑 ----------------
+   ★ **스스로 위험한 곳으로 가게 만든다.** (기획 9, 2026-08-27)
+
+   떨어진 금화를 물고 화면 밖으로 달아난다. 잡으면 뱉는다.
+   게임이 "저기 가라" 고 시키지 않아도 **플레이어가 알아서 간다** — 금화 경제와
+   직결되기 때문이다. 강요하지 않고 올리는 압박이 가장 좋은 압박이다.
+
+   훔쳐 간 금화는 **정말로 사라진다.** 안 그러면 무시하는 것이 최적이 되어
+   이 적이 아무 의미가 없어진다. 대신 도둑은 약하고 느긋하게 도망간다 —
+   쫓아갈 수 있어야 쫓을 마음이 든다. */
+const THIEF_CELL = 3.4;
+class CoinThief extends EnemyBase {
+  constructor(x, y){
+    super(x, y, enemyHp(52), 400);
+    this.vx = -(210 + Math.random()*60);
+    this.carry = 0;                  // 물고 있는 금화 개수
+    this.fleeing = false;
+  }
+  get box(){ return { x:this.x - 26, y:this.y - 24, w:53, h:48 }; }
+  update(dt, scene){
+    this.t += dt;
+    if(this.flash > 0) this.flash -= dt;
+    if(this.knock > 0) this.knock = Math.max(0, this.knock - 900*dt);
+    this.flapUpdate(dt, 0.09);
+
+    if(!this.fleeing){
+      /* 가장 가까운 금화로 간다 */
+      let best = null, bd = 1e9;
+      for(const it of scene.items){
+        if(it.dead || it.kind !== ITEM_KIND.COIN) continue;
+        const d = Math.hypot(it.x - this.x, it.y - this.y);
+        if(d < bd){ bd = d; best = it; }
+      }
+      if(best){
+        const a = Math.atan2(best.y - this.y, best.x - this.x);
+        this.x += Math.cos(a)*300*dt; this.y += Math.sin(a)*300*dt;
+        if(bd < 34){                 // 물었다
+          best.dead = true; this.carry++;
+          Popups.add(this.x, this.y - 34, '도둑!', '#ff9a5a', 3);
+          SND.sfx('deny');
+          if(this.carry >= 3) this.fleeing = true;
+        }
+      }else{
+        this.x += this.vx*dt;
+        this.y = this.baseY + Math.sin(this.t*2.4)*36;
+      }
+      /* 오래 못 찾으면 그냥 도망간다 — 화면에 눌러앉으면 성가시다 */
+      if(this.t > 9) this.fleeing = true;
+    }else{
+      this.x += 420*dt;              // 오른쪽으로 달아난다
+      this.y += Math.sin(this.t*7)*3;
+    }
+    this.baseY = this.y;
+    if(this.x < -120 || this.x > GAME_W + 160) this.dead = true;
+  }
+  /** 잡히면 물고 있던 것을 전부 뱉는다 */
+  die(scene){
+    super.die(scene);
+    for(let i=0;i<this.carry;i++)
+      scene.items.push(new Item(this.x + (i-1)*26, this.y, ITEM_KIND.COIN));
+    scene.booms.push(new Boom(this.x, this.y, 70, 0.36));
+    Particles.spawn(this.x, this.y, 22, { spd:420, life:0.5, pal:['#fff6c2','#ffd24a','#c98a10'] });
+    Popups.add(this.x, this.y - 34, this.carry > 0 ? '금화 회수' : this.score, PAL.gold, 4, this.carry > 0);
+    Shake.add(7, 0.12);
+    SND.sfx('boomS');
+  }
+  render(ctx){
+    drawFormDragon(ctx, THIEF_PAL, 'A', THIEF_CELL, this.x, this.y, this.pose, !this.fleeing,
+      this.flash > 0 ? '#ffffff' : null, [A_RIDER]);
+    /* 물고 있는 금화를 머리 위에 띄운다 — 잡을 값어치가 보여야 쫓는다 */
+    for(let i=0;i<this.carry;i++)
+      drawCoin(ctx, this.x - 22 + i*22, this.y - 44, 9, this.t*4 + i);
+  }
 }
 
 /* ---------------- 적4 : 돌진병 ----------------
@@ -4206,10 +4287,10 @@ const TIMELINE = [
      헤비 라이더 셋이 한꺼번에 오는 것으로 "작은 고비" 를 만든다. */
   { t:19.0, k:'heavy',  n:3 }, { t:21.0, k:'charger' },
   { t:22.0, k:'zombie', n:5 },
-  { t:24.0, k:'rider',  n:2 }, { t:26.0, k:'zombie', n:5 },
+  { t:24.0, k:'rider',  n:2 }, { t:25.0, k:'thief' }, { t:26.0, k:'zombie', n:5 },
   { t:28.0, k:'heavy',  n:1 }, { t:30.0, k:'rider',  n:2 },
   { t:32.0, k:'zombie', n:6 }, { t:33.0, k:'charger' }, { t:34.0, k:'heavy',  n:1 },
-  { t:36.0, k:'rider',  n:2 }, { t:38.0, k:'zombie', n:6 },
+  { t:36.0, k:'rider',  n:2 }, { t:37.0, k:'thief' }, { t:38.0, k:'zombie', n:6 },
   { t:40.0, k:'heavy',  n:1 }, { t:42.0, k:'rider',  n:2 },
   { t:44.0, k:'midboss' }
 ];
@@ -4404,6 +4485,10 @@ class Director {
     while(this.idx < TIMELINE.length && this.t >= TIMELINE[this.idx].t){
       const e = TIMELINE[this.idx++];
       if(e.k === 'midboss'){ this.spawnMid(); }
+      else if(e.k === 'thief'){
+        /* 도둑은 **금화가 바닥에 있을 때만** 의미가 있다. 2스테이지부터 하나씩 */
+        if(CUR_STAGE >= 2) this.spawnGroup('thief', 1);
+      }
       else if(e.k === 'charger'){
         /* ★ 돌진병은 **4스테이지부터** 나온다 (기획 3).
            첫 세 판은 조작을 익히는 자리라 읽고 비키는 것까지 요구하지 않는다. */
@@ -4488,6 +4573,7 @@ class Director {
     const make = (x, y) => kind === 'zombie' ? new WingZombie(x, y, 160 + Math.random()*70)
                          : kind === 'rider'  ? new DragonRider(x, y)
                          : kind === 'charger'? new Charger(x, y)
+                         : kind === 'thief'  ? new CoinThief(x, y)
                          :                     new HeavyRider(x, y);
 
     for(let i=0;i<spots.length;i++){
@@ -4849,6 +4935,12 @@ function pickTargets(scene, x, y, n){
 /* 드래곤 뢰 = 초필살 핵. 5단계로 온 화면을 덮는다.
    0 차징(빛이 빨려들어옴) -> 1 섬광 -> 2 핵 화구 팽창 -> 3 다중 충격파 -> 4 잔광/재 */
 // 화면을 다 덮지 않도록 짧고 작게. 대신 위력과 쉴드로 강해진다.
+/**
+ * 핵무기 한 방으로 금화가 될 수 있는 적탄의 최대 개수.
+ * 후반에는 화면에 아흔 개도 뜨는데 전부 주면 한 방에 한 판치를 번다.
+ */
+const BOMBER_COIN_MAX = 30;
+
 /* 필살기 쉴드 : 어떤 공격도 튕겨내는 10초짜리 보호막 */
 function drawShield(ctx, p){
   const c = p.shieldC, R = p.shieldR, T = p.shieldT;
@@ -4923,9 +5015,33 @@ class DragonRoar {
       Shake.add(24, 1.0);
       Flash.add('#ffffff', 0.16, 0.35);     // 시야를 가리지 않을 만큼만
       Freeze.add(0.12);
-      // 화면 내 모든 적 탄환 제거
-      for(const list of [scene.arrows, scene.eshots, scene.missiles, scene.bombs])
-        for(const o of list) o.dead = true;
+      /**
+       * ★★ **적탄이 금화로 바뀐다.** (기획 8, 2026-08-27)
+       *
+       * 예전 핵무기는 그냥 **강한 버튼**이었다. 빨리 쓰든 늦게 쓰든 결과가 같으니
+       * "언제 쓰나" 라는 물음 자체가 없었다.
+       *
+       * 터지는 순간 화면의 적탄을 **전부 금화로** 바꾼다. 그러면 셈이 생긴다 —
+       * 일찍 쓰면 안전하고, **탄이 가장 많을 때까지 버티다 쓰면 크게 번다.**
+       * 아끼는 이유와 쓰는 쾌감이 같은 버튼에 들어간다.
+       *
+       * 한도를 둔다: 후반에는 화면에 탄이 아흔 개도 뜨는데 그걸 전부 금화로
+       * 주면 한 방에 한 판치를 번다. 서른 개까지만 바꾸고 나머지는 그냥 지운다.
+       */
+      let turned = 0;
+      for(const list of [scene.arrows, scene.eshots, scene.missiles, scene.bombs]){
+        for(const o of list){
+          if(!o.dead && turned < BOMBER_COIN_MAX && o.x > -40 && o.x < GAME_W + 40){
+            turned++;
+            scene.items.push(new Item(o.x, o.y, ITEM_KIND.COIN));
+          }
+          o.dead = true;
+        }
+      }
+      if(turned > 0){
+        Popups.add(scene.p1.x, scene.p1.y - 150, '적탄 ' + turned + ' → 금화', PAL.gold, 5, true);
+        SND.sfx('coin');
+      }
       // 일반 적 즉사 / 보스는 최대 HP 의 28% 감소
       for(const e of scene.enemies){
         if(e.dead) continue;
