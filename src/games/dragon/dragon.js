@@ -7241,6 +7241,14 @@ export const __test = {
   /* 검사용 — rAF 가 멈춰 있는 환경에서 패드 폴링과 설정을 직접 부른다 */
   pollPad() { Input.pollPad(); },
   endFrame() { Input.endFrame(); },
+  /**
+   * 검사용 — **씨 매니저**를 한 걸음 돌린다.
+   *
+   * 씨를 직접 `update` 하면 스테이지 전환(`mgr.change`)이 **안 일어난다** —
+   * 전환은 매니저의 페이드 타이머가 끜다. 그걸 몰라서 재면
+   * 다음 판이 **0초에 끝난 것처럼** 보인다 (실제로 한 번 속았다).
+   */
+  pump(dt) { if (scenes) scenes.update(dt); Input.endFrame(); },
   get splitPad() { return Input.splitPad; },
   set splitPad(v) { optGet().splitPad = v ? 1 : 0; Input.splitPad = !!v; },
   get padAxis() { return { p1: { ...Input.padAxis }, p2: { ...Input.padAxis2 } }; },
