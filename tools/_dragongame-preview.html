@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>드래곤 게임 모듈 검사</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+</head>
+<body>
+<div id="host" style="position:fixed;inset:0"></div>
+<script type="module">
+/**
+ * 게임 모듈을 직접 붙였다 떼 본다 — iframe 을 걷어낸 뒤의 핵심 검사 둘:
+ *   1. 화면 아무 데나 터치한 뒤에도 방향키가 게임에 닿는가
+ *   2. 붙였다 떼기를 반복해도 리스너/오디오가 새지 않는가
+ */
+const m = await import('/src/games/dragon/dragon.js');
+window.__dg = m;
+window.__host = document.getElementById('host');
+window.__log = [];
+window.__mountOnce = (opts) => m.mount(window.__host, Object.assign({
+  difficulty: 'normal', character: 0,
+  onFinish: (r) => window.__log.push(['finish', r]),
+  onExit:   ()  => window.__log.push(['exit']),
+  onCharacter: (i) => window.__log.push(['character', i]),
+}, opts || {}));
+window.__ready = true;
+</script>
+</body></html>

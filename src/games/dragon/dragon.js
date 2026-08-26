@@ -1,93 +1,12 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0a0616">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="DRAGON STRIKER">
-<meta name="screen-orientation" content="landscape">
-<title>DRAGON STRIKER</title>
-<style>
-  *{ margin:0; padding:0; box-sizing:border-box; }
-  html,body{
-    width:100%; height:100%; height:100dvh; background:#000; overflow:hidden;
-    font-family:"Courier New",monospace;
-    -webkit-tap-highlight-color:transparent;
-    touch-action:none; user-select:none; -webkit-user-select:none;
-  }
-  #stage{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#000; }
-  /* 전체화면 API 가 막힌 모바일에서 주소창을 접기 위한 차선책 */
-  body.pfs{ overflow:auto; }
-  body.pfs #stage{ position:absolute; top:0; left:0; right:0; height:100dvh; }
-  body.pfs #spacer{ display:block; height:calc(100dvh + 120px); }
-  #spacer{ display:none; }
-  #game{
-    display:block; background:#000;
-    image-rendering:pixelated; image-rendering:crisp-edges;
-    box-shadow:0 0 60px rgba(255,90,20,.18);
-  }
-  /* 세로 모드 안내 오버레이 */
-  #rotate{
-    position:fixed; inset:0; z-index:10; background:#0a0616; color:#ffd24a;
-    display:none; flex-direction:column; align-items:center; justify-content:center;
-    gap:22px; text-align:center; padding:20px;
-  }
-  #rotate.show{ display:flex; }
-  .rot-icon{ width:74px; height:120px; border:6px solid #ffd24a; border-radius:12px; animation:rot 1.8s ease-in-out infinite; }
-  @keyframes rot{ 0%,40%{ transform:rotate(0deg) } 60%,100%{ transform:rotate(-90deg) } }
-  #rotate .ko{ font-size:19px; letter-spacing:3px; }
-  #rotate .en{ font-size:12px; letter-spacing:2px; color:#8a7bb8; }
-  #rotate button{
-    margin-top:6px; padding:14px 22px; font-size:16px; font-weight:800;
-    font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;
-    color:#ffd24a; background:rgba(10,6,22,.9); border:3px solid #ffd24a; cursor:pointer;
-  }
+/**
+ * 드래곤 스트라이커 — 오락실 이안월드의 2번째 게임.
+ *
+ * 아래 5,200여 줄은 단일 HTML 이던 시절 그대로다(렌더·물리·보스·사운드 합성).
+ * 맨 끝의 「모듈 경계」 만 오락실에 붙이려고 새로 썼다.
+ */
+import { enterFullscreen, exitFullscreen, isFullscreen, lockLandscape } from '../../core/fullscreen.js';
 
-  /* 전체화면 버튼 : 캔버스 위에 올리는 진짜 DOM 버튼.
-     실제 click 이벤트가 가장 강한 사용자 제스처라 브라우저가 허용할 확률이 가장 높다 */
-  #fsbtn{
-    position:fixed; z-index:20; display:none;
-    padding:13px 20px 14px; min-height:48px;          /* 모바일 터치 타깃 확보 */
-    font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;
-    font-size:16px; font-weight:800; letter-spacing:2px; line-height:1;
-    white-space:nowrap;                                /* 세로로 줄바꿈되지 않게 */
-    color:#ffd24a; background:rgba(10,6,22,.85);
-    border:3px solid #ffd24a; border-radius:0;
-    box-shadow:0 0 0 3px #2a0a14, 0 5px 0 #2a0a14;
-    cursor:pointer; -webkit-user-select:none; user-select:none;
-    -webkit-tap-highlight-color:transparent; touch-action:manipulation;
-    text-shadow:0 2px 0 #2a0a14;
-  }
-  #fsbtn:hover{ background:#3a2405; color:#fff6c2; }
-  #fsbtn:active{ transform:translateY(3px); box-shadow:0 0 0 3px #2a0a14, 0 2px 0 #2a0a14; }
-  #fstoast{
-    position:fixed; left:50%; transform:translateX(-50%); z-index:21; display:none;
-    padding:14px 22px; max-width:90vw; text-align:center;
-    font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;
-    font-size:15px; font-weight:700; line-height:1.6;
-    color:#ffd0b0; background:rgba(18,6,10,.95); border:3px solid #c81f2e;
-    box-shadow:0 0 0 3px #14040a;
-  }
-  #fstoast b{ color:#ffd24a; }
-  #fstoast button{ -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
-</style>
-</head>
-<body>
-<div id="stage"><canvas id="game" width="1280" height="720"></canvas></div>
-<div id="spacer"></div>
-<button id="fsbtn" type="button">전체화면</button>
-<div id="fstoast"></div>
-<div id="rotate">
-  <div class="rot-icon"></div>
-  <p class="ko">가로 모드로 전환해주세요</p>
-  <p class="en">PLEASE ROTATE YOUR DEVICE</p>
-  <p class="en">아래 버튼을 누르면 전체화면 + 가로 고정을 시도합니다</p>
-  <button id="rotfs" type="button">전체화면으로 열기</button>
-</div>
-<script>
+
 'use strict';
 /* ==================================================================
    DRAGON STRIKER  -  횡스크롤 도트 슈팅 (좌 -> 우 진행)
@@ -679,7 +598,7 @@ const Input = {
   },
 
   init(canvas){
-    addEventListener('keydown', e => {
+    on(window, 'keydown', e => {
       SND.resume();                       // 자동재생 정책상 첫 입력에서 오디오 활성화
       const code = resolveKeyCode(e);
       this.lastKey = code || ('?' + (e.keyCode||0));
@@ -693,11 +612,11 @@ const Input = {
       if(e.repeat) return;
       for(const a of acts){ this.down.add(a); this.just.add(a); }
     });
-    addEventListener('keyup', e => {
+    on(window, 'keyup', e => {
       const acts = this.KEYMAP[resolveKeyCode(e)];
       if(acts) for(const a of acts) this.down.delete(a);
     });
-    addEventListener('blur', () => { this.down.clear(); this.just.clear(); });
+    on(window, 'blur', () => { this.down.clear(); this.just.clear(); });
 
     /* --- 포인터(터치/마우스): 캔버스 CSS 좌표 -> 게임 좌표로 변환 --- */
     const toGame = e => {
@@ -1982,7 +1901,7 @@ const Z_W = Z_COLS*Z_CELL, Z_H = Z_ROWS*Z_CELL;   // 80 x 80
 /* 적 화살 */
 class Arrow {
   constructor(x, y){
-    this.x = x; this.y = y; this.vx = -340; this.dead = false;
+    this.x = x; this.y = y; this.vx = -340 * diffSpeed(); this.dead = false;
   }
   get box(){ return { x:this.x, y:this.y - 5, w:38, h:10 }; }
   update(dt){ this.x += this.vx*dt; if(this.x < -60) this.dead = true; }
@@ -2005,7 +1924,7 @@ class WingZombie {
   constructor(x, y, speed){
     this.x = x; this.y = y;
     this.hp = this.maxHp = enemyHp(30);      // 스테이지에 비례해 단단해진다
-    this.vx = -(speed || 175); this.vy = 0;
+    this.vx = -(speed || 175) * diffSpeed(); this.vy = 0;
     this.t = Math.random()*6;
     this.baseY = y;
     this.animT = 0; this.wing = 0;
@@ -2841,7 +2760,7 @@ function stagePowerOf(stage){ return Math.pow(1.05, clamp(stage|0, 1, 20) - 1); 
    S20 기준 4.3배. */
 function enemyToughOf(stage){ return Math.pow(1.08, clamp(stage|0, 1, 20) - 1); }
 let CUR_STAGE = 1;                  // 적 생성 시 참조할 현재 스테이지
-function enemyHp(base){ return Math.round(base * enemyToughOf(CUR_STAGE)); }
+function enemyHp(base){ return Math.round(base * enemyToughOf(CUR_STAGE) * diffHp()); }
 function midBossHpOf(stage, level){
   return Math.round(MID_BOSS_BASE * bossPowerScale(level || 1) * stagePowerOf(stage));
 }
@@ -3795,7 +3714,8 @@ class GameScene extends Scene {
     this.pmissiles = []; this.items = []; this.roars = [];
     this.score = this.carry ? this.carry.score : 0;
     this.kills = 0;
-    IW.send({ type:'ianworld:start', stage: this.stageNo });
+    /* 새 판이 아니라 **이어지는 스테이지**면 동전을 이어서 센다 */
+    if(!this.carry) RUN.coins = 0;
     this.boss = null; this.bossBannerT = 0; this.bossDeathT = 0;
     this.killStreak = 0;
     // 아이템 투하 예약표 (인원수만큼 위아래로 나눠 떨어진다)
@@ -3926,6 +3846,7 @@ class GameScene extends Scene {
         p.coinChain = (p.coinT > 0) ? Math.min(COIN_CHAIN_MAX, p.coinChain + 1) : 1;
         p.coinT = COIN_WINDOW;
         const gain = COIN_BASE * p.coinChain;
+        RUN.coins++;                       // 지갑에 넣을 개수 (오락실이 가져간다)
         this.addScore(gain, p.pid);
         Popups.add(it.x, it.y - 20, '+' + gain + (p.coinChain > 1 ? ' x' + p.coinChain : ''),
                    '#ffd24a', p.coinChain > 4 ? 4 : 3);
@@ -3978,14 +3899,16 @@ class GameScene extends Scene {
     this.state = kind; this.stateT = 0; this.endReason = reason || '';
     this.stick.up(this.stick.pid);
     /* 오락실에 기록을 올린다. 클리어든 게임오버든 한 판은 한 판이다.
-       컨티뉴로 이어가면 다음 판이 끝날 때 더 높은 점수로 다시 올라간다. */
-    /* ★ 오락실 계정의 주인은 **1P** 다. 2P 는 같은 화면에 낀 손님이라
-       씬 합계(this.score)를 보내면 남이 번 점수까지 내 기록이 된다. */
-    IW.send({ type:'ianworld:result',
-              score: this.p1.score,
-              total: this.score,
-              stage: kind === 'clear' ? this.stage : Math.max(0, this.stage - 1),
-              level: this.p1.level });
+       ★ 계정의 주인은 **1P** 다. 2P 는 같은 화면에 낀 손님이라 씬 합계를 보내면
+       남이 번 점수까지 내 기록이 된다. */
+    DG.onFinish({
+      score: this.p1.score,
+      total: this.score,
+      stage: kind === 'clear' ? this.stage : Math.max(0, this.stage - 1),
+      level: this.p1.level,
+      coins: RUN.coins,
+      cleared: kind === 'clear' && this.stage >= 20,
+    });
     if(kind === 'clear'){
       this.bonus = Math.round(this.timeLeft) * 100 + this.totalLives() * 500;
       const alive = this.players();
@@ -4022,14 +3945,12 @@ class GameScene extends Scene {
       const pick = this.pauseItems()[this.menuIdx];
       if(pick === 'RESUME') this.setPause(false);
       else if(pick === '2P LEAVE'){ this.leave2P(); this.menuIdx = 0; this.setPause(false); }
-      else if(IW.on) IW.send({ type:'ianworld:exit' });
-      else this.mgr.change(new StageSelectScene(this.stage));
+      else DG.onExit();
     }
   }
   /* 다음 스테이지로 그대로 넘길 상태 */
   /* 점수는 씬 합계와 플레이어별로 같이 쌓는다 */
   addScore(v, pid){
-    v = Math.round(v * diffScale());     // 어려울수록 점수도 더 준다
     this.score += v;
     const p = pid === 2 ? this.p2 : (pid === 1 ? this.p1 : null);
     if(p) p.score += v;
@@ -4046,7 +3967,7 @@ class GameScene extends Scene {
     };
   }
   endItems(){
-    if(this.state !== 'clear') return ['RETRY STAGE', 'QUIT TO MENU'];
+    if(this.state !== 'clear') return ['RETRY FROM 1', 'QUIT TO MENU'];
     return this.stage < 20 ? ['CONTINUE', 'QUIT TO MENU'] : ['QUIT TO MENU'];
   }
   doEndPick(){
@@ -4054,12 +3975,13 @@ class GameScene extends Scene {
     if(pick === 'CONTINUE'){
       SND.sfx('confirm');
       this.mgr.change(new GameScene(this.stage + 1, this.makeCarry()));
-    }else if(pick === 'RETRY STAGE'){
+    }else if(pick === 'RETRY FROM 1'){
+      /* 스테이지 선택을 없앴으므로 다시하기는 언제나 1스테이지부터다.
+         죽으면 처음부터 — 그게 이 게임의 한 판이다. */
       SND.sfx('confirm');
-      this.mgr.change(new GameScene(this.stage));
+      this.mgr.change(new GameScene(1));
     }else{
-      if(IW.on) IW.send({ type:'ianworld:exit' });
-      else this.mgr.change(new StageSelectScene(this.stage));
+      DG.onExit();
     }
   }
   updateEnd(dt){
@@ -4779,165 +4701,15 @@ function applyAudioOpt(){
   SND.setBgmOn(!!o.bgmOn); SND.setSfxOn(!!o.sfxOn);
 }
 
-/* 전체화면
-   주의: requestFullscreen 은 "사용자 제스처 핸들러 안에서" 호출해야만 허용된다.
-   requestAnimationFrame 루프(=update) 에서 부르면 브라우저가 조용히 거부한다.
-   그래서 키다운/포인터다운 리스너에서 직접 호출한다. */
-function isFullscreen(){
-  return !!(document.fullscreenElement || document.webkitFullscreenElement);
-}
-function lockLandscape(){
-  // 가로 고정은 전체화면 상태에서만 허용되고, 데스크톱에서는 거부된다 (무시)
-  try{
-    if(screen.orientation && screen.orientation.lock)
-      screen.orientation.lock('landscape').catch(function(){});
-  }catch(e){}
-}
-const IN_IFRAME = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();
-const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const IS_TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-function isStandalone(){
-  return window.navigator.standalone === true
-      || (window.matchMedia && (window.matchMedia('(display-mode: fullscreen)').matches
-                             || window.matchMedia('(display-mode: standalone)').matches));
-}
+/* 전체화면 — 오락실의 core/fullscreen.js 가 맡는다.
+   단일 HTML 이던 시절에는 이 게임이 자체 구현(전체화면 버튼·안내 토스트·
+   유사 전체화면 폴백)을 들고 있었다. 이제 그 DOM 이 없고, 무엇보다 오락실에
+   같은 일을 하는 모듈이 이미 있다 — 두 벌을 두면 한쪽만 고치게 된다.
 
-/* 전체화면 안내 토스트 (한글). 캔버스 폰트가 ASCII 전용이라 DOM 으로 띄운다 */
-let _fsToastT = null;
-function fsToast(html, ms){
-  const el = document.getElementById('fstoast');
-  if(!el) return;
-  el.innerHTML = html;
-  el.style.display = 'block';
-  clearTimeout(_fsToastT);
-  _fsToastT = setTimeout(function(){ el.style.display = 'none'; }, ms || 6000);
-}
-let FS_ERR = '';                       // 마지막 실패 사유 (추측하지 않고 실제 오류를 보여준다)
-function fsDiag(){
-  return '<span style="font-size:12px;color:#8a7bb8">'
-       + 'BUILD ' + BUILD + ' / ' + location.protocol
-       + ' / fsEnabled=' + document.fullscreenEnabled
-       + ' / iframe=' + IN_IFRAME
-       + (FS_ERR ? '<br>' + FS_ERR : '') + '</span>';
-}
-/* iframe 안에서는 부모가 allow="fullscreen" 을 주지 않으면 절대 안 된다.
-   게임 쪽에서 뚫을 방법이 없으므로 최상위 탭으로 여는 길을 열어준다. */
-function openTopLevel(){
-  try{ window.open(location.href, '_blank', 'noopener'); }
-  catch(e){ try{ window.top.location.href = location.href; }catch(e2){} }
-}
-
-/* 안드로이드 크롬 등에서 전체화면 API 가 막혔을 때의 차선책:
-   페이지를 살짝 스크롤 가능하게 만들어 주소창을 접는다. */
-function pseudoFullscreen(){
-  document.body.classList.add('pfs');
-  const go = () => window.scrollTo(0, 1);
-  go(); setTimeout(go, 60); setTimeout(go, 260);
-  setTimeout(resize, 340);
-}
-function exitPseudoFullscreen(){
-  document.body.classList.remove('pfs');
-  window.scrollTo(0, 0);
-  setTimeout(resize, 120);
-}
-function isPseudo(){ return document.body.classList.contains('pfs'); }
-
-/* 환경별로 실제로 통하는 방법을 안내한다 */
-function fsBlocked(){
-  const isFile = location.protocol === 'file:';
-  // iframe 안에 박혀 있으면 이게 100% 원인이다 (부모가 권한을 줘야 함)
-  if(IN_IFRAME || document.fullscreenEnabled === false){
-    pseudoFullscreen();
-    fsToast('이 게임이 <b>다른 페이지 안(iframe)에</b> 들어가 있어서<br>'
-          + '브라우저가 전체화면을 막고 있습니다.<br><br>'
-          + '<button id="fsopen" style="padding:12px 20px;font-size:16px;font-weight:800;'
-          + 'font-family:inherit;color:#0a0616;background:#ffd24a;border:none;cursor:pointer">'
-          + '새 탭에서 열기</button><br><br>'
-          + '<span style="font-size:13px">영구 해결: 감싸고 있는 iframe 태그에 '
-          + '<b>allow="fullscreen"</b> 를 넣어주세요</span><br>' + fsDiag(), 20000);
-    const ob = document.getElementById('fsopen');
-    if(ob) ob.addEventListener('click', function(e){ e.preventDefault(); openTopLevel(); });
-    return;
-  }
-  if(isFile && IS_TOUCH){
-    // 안드로이드/아이폰에서 파일을 직접 연 경우 - 이게 가장 흔한 원인
-    pseudoFullscreen();
-    fsToast('휴대폰에서 <b>파일을 직접 열면</b> 브라우저가 전체화면을 막습니다.<br>'
-          + 'PC에서 아래를 실행하고, 폰에서 그 주소로 접속하세요.<br>'
-          + '<b>python -m http.server 8000</b><br>'
-          + '→ 폰 브라우저에 <b>http://(PC아이피):8000</b> 입력<br>'
-          + '(우선 주소창만 접어두었습니다)<br>' + fsDiag(), 13000);
-  }else if(isFile){
-    pseudoFullscreen();
-    fsToast('파일을 직접 열면 브라우저가 전체화면을 막습니다.<br>'
-          + '<b>F11</b> 키를 누르거나, 로컬 서버로 열어주세요.<br>'
-          + '<b>python -m http.server 8000</b> → http://localhost:8000<br>' + fsDiag());
-  }else if(IS_IOS){
-    pseudoFullscreen();
-    fsToast('아이폰 사파리는 전체화면 API 를 지원하지 않습니다.<br>'
-          + '공유 버튼 → <b>홈 화면에 추가</b> 후<br>'
-          + '홈 화면 아이콘으로 실행하면 전체화면으로 열립니다.<br>' + fsDiag(), 11000);
-  }else if(IS_TOUCH){
-    pseudoFullscreen();
-    fsToast('브라우저가 전체화면을 막고 있어 주소창만 접었습니다.<br>'
-          + '브라우저 메뉴 → <b>홈 화면에 추가</b> 후 아이콘으로 실행하면<br>'
-          + '완전한 전체화면으로 열립니다.<br>' + fsDiag(), 11000);
-  }else{
-    fsToast('이 환경에서는 브라우저가 전체화면을 막고 있습니다.<br>'
-          + '<b>F11</b> 키를 누르면 전체화면이 됩니다.<br>' + fsDiag());
-  }
-}
-
-/* 전체화면 요청 : 대상 요소를 바꿔가며 여러 번 시도한다.
-   환경에 따라 documentElement 는 막히고 body/canvas 는 되는 경우가 있다. */
-function requestFsChain(){
-  FS_ERR = '';
-  const targets = [document.documentElement, document.body,
-                   document.getElementById('stage'), document.getElementById('game')];
-  let i = 0;
-  const done = () => { exitPseudoFullscreen(); lockLandscape(); updateFsBtn(); resize(); };
-  const fail = (e) => {
-    // 첫 실패 사유만 기록한다. 이후 시도는 제스처가 소진돼 사유가 달라지기 때문
-    if(!FS_ERR && e) FS_ERR = (e.name || 'Error') + ': ' + String(e.message || e).slice(0, 60);
-    tryNext();
-  };
-  const tryNext = () => {
-    if(isFullscreen()){ done(); return; }
-    if(i >= targets.length){ fsBlocked(); return; }
-    const el = targets[i++];
-    if(!el){ tryNext(); return; }
-    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-    if(!req){ fail({ name:'Unsupported', message:'requestFullscreen 없음' }); return; }
-    let p = null;
-    try{ p = req.call(el, { navigationUI:'hide' }); }
-    catch(e){ fail(e); return; }
-    if(p && p.then) p.then(done, fail);
-    else setTimeout(function(){ isFullscreen() ? done() : fail(null); }, 160);
-  };
-  tryNext();
-}
+   방향은 여기서 가로로 건다. 신발을 찾아서는 세로라 각자 자기 것을 건다. */
 function toggleFullscreen(){
-  if(isPseudo() && !isFullscreen()){ exitPseudoFullscreen(); updateFsBtn(); return; }
-  if(isFullscreen()){
-    try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
-    try{
-      const ex = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-      if(ex) ex.call(document);
-    }catch(e){}
-    setTimeout(function(){ updateFsBtn(); resize(); }, 120);
-    return;
-  }
-  if(isStandalone()){                      // 홈 화면 앱으로 실행 중이면 이미 전체화면
-    fsToast('이미 전체화면으로 실행 중입니다.', 2500);
-    return;
-  }
-  requestFsChain();
-}
-function updateFsBtn(){
-  const b = document.getElementById('fsbtn');
-  if(!b) return;
-  b.textContent = (isFullscreen() || isPseudo()) ? '전체화면 해제' : '전체화면';
+  if(isFullscreen()){ exitFullscreen(); return; }
+  enterFullscreen().then((ok) => { if(ok) lockLandscape(); });
 }
 
 /* 전체화면 아이콘 (네 모서리 꺾쇠). on=true 면 안쪽을 향하는 축소 아이콘 */
@@ -5130,10 +4902,9 @@ class CharacterSelectScene extends Scene {
     if(this.mgr.busy) return;
     SND.sfx('confirm');
     Save.data.dragon = this.sel; Save.save();
-    IW.send({ type:'ianworld:character', index: this.sel });
+    DG.onCharacter(this.sel);
     /* 로비에서 [드래곤 변경] 으로 들어왔으면 고르는 순간 볼일이 끝났다 */
-    if(IW.on && IW.mode === 'chars'){ IW.send({ type:'ianworld:exit' }); return; }
-    this.mgr.change(new StageSelectScene(Save.data.unlocked));
+    DG.onExit();
   }
 
   update(dt){
@@ -5345,187 +5116,203 @@ function drawHUDDebug(ctx){
   drawText(ctx, Perf.ms.toFixed(2) + ' MS', GAME_W-178, 34, 2, { color: PAL.dim });
 }
 
+
 /* ==================================================================
-   부트스트랩 : 캔버스 / 리사이즈 / 방향 / 메인 루프
+   모듈 경계 — 오락실이 붙였다 뗐다 한다
+   ------------------------------------------------------------------
+   이 아래만 새로 쓴 코드다. 위쪽 5,200여 줄(렌더·물리·보스·사운드 합성)은
+   단일 HTML 이던 시절 그대로다.
+
+   예전에는 이 게임이 iframe 으로 떴다. 그러면 **화면 아무 데나 터치한 뒤
+   키보드가 죽는다**(포커스가 부모로 가면 keydown 이 게임에 닿지 않는다).
+   전체화면·뒤로가기·소리가 따로 노는 것도 전부 같은 뿌리였다.
+   이제 같은 문서 안에서 돈다.
    ================================================================== */
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d', { alpha:false });
-ctx.imageSmoothingEnabled = false;
 
-const rotateEl = document.getElementById('rotate');
-let portrait = false;
+/** 오락실이 넘겨준 것들. mount() 가 채운다 */
+const DG = {
+  difficulty: 'normal',
+  onFinish() {},
+  onExit() {},
+  onCharacter() {},
+};
 
-const fsBtnEl = document.getElementById('fsbtn');
-function positionFsBtn(){
-  if(!fsBtnEl) return;
-  const r = canvas.getBoundingClientRect();
-  fsBtnEl.style.left = Math.round(r.right - fsBtnEl.offsetWidth - 18) + 'px';
-  fsBtnEl.style.top  = Math.round(r.top + 18) + 'px';
-  const t = document.getElementById('fstoast');
-  if(t) t.style.bottom = Math.max(16, Math.round(window.innerHeight - r.bottom + 28)) + 'px';
+/** 한 판 동안 쌓이는 것 — 판이 끝나면 오락실이 가져간다 */
+const RUN = { coins: 0 };
+
+/* 난이도 : 적 수 · 적 속도 · 적 체력 세 축으로 가른다.
+   ★ **플레이어 속도는 건드리지 않는다.** 내 드래곤까지 느려지면 쉬운 게 아니라
+   그냥 답답해진다. 어려움을 어렵게 만드는 것은 "적이 빠른 것" 이다.
+
+   점수 배율은 두지 않는다 — 순위를 난이도별로 나눌 것이라 배율을 곱해 봐야
+   그 난이도 전원이 똑같이 부풀 뿐이고, 나중에 배율을 손대면 과거 기록이 의미를 잃는다.
+   어려움을 고를 이유는 배율이 아니라 **적이 많아 잡을 게 많다는 것**이 만든다. */
+const DIFFS = {
+  easy:   { count: 0.75, speed: 0.85, hp: 0.85 },
+  normal: { count: 1.00, speed: 1.00, hp: 1.00 },
+  hard:   { count: 1.35, speed: 1.18, hp: 1.20 },
+};
+function diffOf() { return DIFFS[DG.difficulty] || DIFFS.normal; }
+function diffScale() { return diffOf().count; }
+function diffSpeed() { return diffOf().speed; }
+function diffHp() { return diffOf().hp; }
+
+/* 타이틀로 나가던 자리. 이제 타이틀이 없다 — 오락실 로비로 돌아간다 */
+function backOut() { DG.onExit(); }
+
+/* ------------------------------------------------------------------
+   붙인 것을 반드시 되돌린다.
+   window/document 에 건 리스너가 남으면 로비로 돌아온 뒤에도 방향키가 먹고,
+   오디오 노드가 남으면 소리가 계속 난다. 캔버스에 건 것은 캔버스가 사라질 때
+   같이 죽으므로 여기 기록하지 않아도 된다.
+   ------------------------------------------------------------------ */
+const bound = [];
+function on(target, ev, fn, opt) {
+  target.addEventListener(ev, fn, opt);
+  bound.push([target, ev, fn, opt]);
 }
-function resize(){
+function unbindAll() {
+  for (const [t, e, f, o] of bound) t.removeEventListener(e, f, o);
+  bound.length = 0;
+}
+
+let canvas = null;
+let ctx = null;
+let scenes = null;
+let rafId = 0;
+let portrait = false;
+let hostEl = null;
+let rotateEl = null;
+let last = 0, acc = 0;
+
+const FIXED = 1 / 60, MAX_STEPS = 5;
+/** 레터박스. 오락실 캔버스(180x320 정수배)와 달리 이 게임은 1280x720 을 소수배로 맞춘다 */
+function resize() {
+  if (!canvas) return;
   const vw = window.innerWidth, vh = window.innerHeight;
   portrait = vh > vw;
-  rotateEl.classList.toggle('show', portrait);
+  if (rotateEl) rotateEl.classList.toggle('show', portrait);
   const scale = Math.min(vw / GAME_W, vh / GAME_H);
-  canvas.style.width  = Math.floor(GAME_W * scale) + 'px';
+  canvas.style.width = Math.floor(GAME_W * scale) + 'px';
   canvas.style.height = Math.floor(GAME_H * scale) + 'px';
-  positionFsBtn();
-}
-addEventListener('resize', resize);
-addEventListener('orientationchange', () => setTimeout(resize, 120));
-resize();
-
-Save.load();
-optGet();
-Input.init(canvas);
-
-/* 홈 화면에 추가하면 전체화면으로 뜨도록 매니페스트를 동적으로 붙인다 (단일 파일 유지) */
-try{
-  const mf = { name:'DRAGON STRIKER', short_name:'DRAGON', display:'fullscreen',
-               orientation:'landscape', background_color:'#000000', theme_color:'#0a0616',
-               start_url:location.href.split('#')[0] };
-  const lk = document.createElement('link');
-  lk.rel = 'manifest';
-  lk.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(mf));
-  document.head.appendChild(lk);
-}catch(e){}
-
-/* 전체화면 버튼 : 진짜 click 이벤트에서 직접 호출해야 브라우저가 허용한다 */
-if(fsBtnEl){
-  fsBtnEl.addEventListener('click', function(e){
-    e.preventDefault(); e.stopPropagation();
-    SND.resume(); SND.sfx('confirm');
-    toggleFullscreen();
-  });
-  updateFsBtn();
-}
-/* 세로 모드 안내의 버튼도 동일 동작 (폰에서 세로로 열었을 때의 진입점) */
-const rotFsEl = document.getElementById('rotfs');
-if(rotFsEl) rotFsEl.addEventListener('click', function(e){
-  e.preventDefault(); SND.resume(); toggleFullscreen();
-});
-for(const ev of ['fullscreenchange','webkitfullscreenchange']){
-  document.addEventListener(ev, function(){ updateFsBtn(); resize(); });
-}
-if(screen.orientation && screen.orientation.addEventListener)
-  screen.orientation.addEventListener('change', function(){ setTimeout(resize, 120); });
-
-/* ==================================================================
-   오락실 이안월드 다리
-   ------------------------------------------------------------------
-   이 파일은 혼자서도 완전히 돌아간다. 오락실 앱이 iframe 으로 띄울 때만
-   ?embed=1 이 붙고, 그때만 계정/기록을 부모와 주고받는다.
-
-   부모 -> 게임 : { type:'ianworld:profile', nickname, difficulty, character }
-   게임 -> 부모 : ready / start / result / character / exit
-
-   ★ targetOrigin 에 '*' 를 쓰지 않는다. 부모와 같은 오리진에 있으므로
-     정확한 값을 줄 수 있고, 그러면 점수·닉네임이 엉뚱한 곳으로 갈 수 없다.
-     받을 때도 같은 값으로 걸러낸다.
-   ================================================================== */
-const IW = (function(){
-  let qs;
-  try{ qs = new URLSearchParams(location.search); }catch(e){ qs = new URLSearchParams(''); }
-  const embedded = qs.get('embed') === '1' && window.parent && window.parent !== window;
-  /* 부모의 오리진. 같은 사이트에 얹히므로 referrer 가 곧 부모다 */
-  const origin = (function(){
-    try{ return document.referrer ? new URL(document.referrer).origin : location.origin; }
-    catch(e){ return location.origin; }
-  })();
-  const api = {
-    on: embedded,
-    mode: qs.get('mode') || 'play',
-    nickname: '',
-    difficulty: 'normal',            // 로비에서 고른 난이도
-    send(msg){
-      if(!embedded) return;
-      try{ window.parent.postMessage(msg, origin); }catch(e){}
-    }
-  };
-  if(embedded){
-    window.addEventListener('message', function(e){
-      if(e.origin !== origin) return;
-      const d = e.data;
-      if(!d || typeof d !== 'object' || d.type !== 'ianworld:profile') return;
-      api.nickname = String(d.nickname || '');
-      if(d.difficulty) api.difficulty = String(d.difficulty);
-      /* 로비에서 고른 드래곤이 저장값보다 우선한다 — 방금 고른 게 최신이다 */
-      if(typeof d.character === 'number'){
-        Save.data.dragon = clamp(d.character | 0, 0, 9);
-        Save.save();
-      }
-    });
-  }
-  return api;
-})();
-
-/* 난이도 : 적 수와 점수에 같은 배율을 건다.
-   적이 많아지면 위험도 커지므로 점수도 같이 올라가야 어려움을 고를 이유가 생긴다. */
-const DIFF_MUL = { easy: 0.75, normal: 1, hard: 1.35 };
-function diffScale(){ return DIFF_MUL[IW.difficulty] || 1; }
-
-/* 타이틀로 나가는 자리. 임베드면 타이틀 대신 오락실 로비로 돌아간다 */
-function backOut(mgr){
-  if(IW.on){ IW.send({ type:'ianworld:exit' }); return; }
-  mgr.change(new TitleScene());
 }
 
-const scenes = new SceneManager();
-scenes.set(new TitleScene());
-
-/* 임베드로 들어오면 타이틀을 건너뛰고 부모가 지정한 화면부터 연다.
-   오락실 로비가 이미 "시작" 을 받은 뒤라 타이틀을 한 번 더 보여줄 이유가 없다. */
-if(IW.on){
-  if(IW.mode === 'chars')        scenes.set(new CharacterSelectScene());
-  else if(IW.mode === 'options') scenes.set(new OptionsScene());
-  else                           scenes.set(new StageSelectScene(Save.data.unlocked));
-  IW.send({ type:'ianworld:ready' });
-}
-
-const FIXED = 1/60, MAX_STEPS = 5;
-let last = performance.now(), acc = 0;
-
-document.addEventListener('visibilitychange', () => { if(!document.hidden) last = performance.now(); });
-
-function frame(now){
-  requestAnimationFrame(frame);
+function frame(now) {
+  rafId = requestAnimationFrame(frame);
   let dt = (now - last) / 1000;
   last = now;
 
-  if(portrait){ acc = 0; Input.endFrame(); return; }   // 세로 모드: 게임 로직 완전 정지
-  if(dt > 0.25) dt = 0.25;
+  if (portrait) { acc = 0; Input.endFrame(); return; }   // 세로 모드: 게임 로직 완전 정지
+  if (dt > 0.25) dt = 0.25;
 
   const t0 = performance.now();
   Input.pollPad();
-  SND.update();                          // BGM 스텝 스케줄링
-  if(Input.pressed('debug')) DEBUG = !DEBUG;
+  SND.update();
+  if (Input.pressed('debug')) DEBUG = !DEBUG;
 
   acc += dt;
   let steps = 0;
-  while(acc >= FIXED && steps < MAX_STEPS){ scenes.update(FIXED); acc -= FIXED; steps++; }
-  if(steps === MAX_STEPS) acc = 0;                     // 과부하 시 시간 누적 폐기
+  while (acc >= FIXED && steps < MAX_STEPS) { scenes.update(FIXED); acc -= FIXED; steps++; }
+  if (steps === MAX_STEPS) acc = 0;
 
   scenes.render(ctx);
-  // 전체화면 버튼은 타이틀에서만 노출 (게임 중에는 우상단 아이콘 사용)
-  if(fsBtnEl){
-    // 게임 중에는 숨기고 로비(타이틀/옵션/캐릭터/스테이지 선택)에서만 노출
-    const showFs = !portrait && !isStandalone() && !(scenes.current instanceof GameScene);
-    const want = showFs ? 'block' : 'none';
-    if(fsBtnEl.style.display !== want){
-      fsBtnEl.style.display = want;
-      if(showFs){ positionFsBtn(); requestAnimationFrame(positionFsBtn); }  // 폭 확정 후 재배치
-    }
-  }
-  if(steps > 0) Input.endFrame();                      // 고주사율에서 입력 유실 방지
+  if (steps > 0) Input.endFrame();
 
-  // FPS 측정
   Perf._acc += dt; Perf._n++;
-  if(Perf._acc >= 0.5){ Perf.fps = Math.round(Perf._n / Perf._acc); Perf._acc = 0; Perf._n = 0; }
+  if (Perf._acc >= 0.5) { Perf.fps = Math.round(Perf._n / Perf._acc); Perf._acc = 0; Perf._n = 0; }
   Perf.ms = performance.now() - t0;
 }
-requestAnimationFrame(frame);
-</script>
-</body>
-</html>
+
+/**
+ * 게임을 띄운다.
+ * @param {HTMLElement} host  이 안에 캔버스를 만든다. 비어 있어야 한다.
+ * @param {{difficulty?:string, character?:number, mode?:'play'|'chars',
+ *          onFinish?:Function, onExit?:Function, onCharacter?:Function}} opts
+ */
+export function mount(host, opts = {}) {
+  if (canvas) unmount();                       // 두 번 붙는 사고 방지
+
+  DG.difficulty = opts.difficulty || 'normal';
+  DG.onFinish = opts.onFinish || (() => {});
+  DG.onExit = opts.onExit || (() => {});
+  DG.onCharacter = opts.onCharacter || (() => {});
+  RUN.coins = 0;
+
+  hostEl = host;
+  host.innerHTML = '';
+
+  const stage = document.createElement('div');
+  stage.className = 'dg-stage';
+  canvas = document.createElement('canvas');
+  canvas.width = GAME_W; canvas.height = GAME_H;
+  canvas.className = 'dg-canvas';
+  stage.appendChild(canvas);
+
+  /* 가로 전용이다. 오락실(신발게임)은 세로 전용이라 이 안내를 들고 있지 않다 */
+  rotateEl = document.createElement('div');
+  rotateEl.className = 'dg-rotate';
+  rotateEl.innerHTML =
+    '<div class="dg-rot-icon"></div>' +
+    '<p>가로 모드로 돌려주세요</p>' +
+    '<p class="dg-sub">PLEASE ROTATE YOUR DEVICE</p>';
+  stage.appendChild(rotateEl);
+  host.appendChild(stage);
+
+  ctx = canvas.getContext('2d', { alpha: false });
+  ctx.imageSmoothingEnabled = false;
+
+  Save.load();
+  optGet();
+  if (typeof opts.character === 'number') {
+    Save.data.dragon = clamp(opts.character | 0, 0, 9);
+    Save.save();
+  }
+  Input.init(canvas);
+
+  on(window, 'resize', resize);
+  on(window, 'orientationchange', () => setTimeout(resize, 120));
+  on(document, 'visibilitychange', () => { if (!document.hidden) last = performance.now(); });
+  resize();
+
+  scenes = new SceneManager();
+  /* 타이틀도 스테이지 선택도 없다. 로비가 이미 "시작" 을 받았고,
+     이 게임의 한 판은 언제나 1스테이지에서 시작한다. */
+  scenes.set(
+    opts.mode === 'chars' ? new CharacterSelectScene()
+    : opts.mode === 'options' ? new OptionsScene()
+    : new GameScene(1)
+  );
+
+  last = performance.now(); acc = 0;
+  rafId = requestAnimationFrame(frame);
+}
+
+/**
+ * 검사용 창구. 게임 내부는 모듈 스코프라 밖에서 보이지 않는데,
+ * "붙였다 뗐을 때 정말 아무것도 안 남는가" 같은 것은 안을 봐야만 확인된다.
+ * 화면 코드는 이걸 쓰지 않는다 — `tools/_dragongame-preview.html` 전용이다.
+ */
+export const __test = {
+  get scene() { return scenes && scenes.current ? scenes.current.constructor.name : null; },
+  get stage() { return scenes && scenes.current ? scenes.current.stage : null; },
+  get difficulty() { return DG.difficulty; },
+  get coins() { return RUN.coins; },
+  get boundCount() { return bound.length; },
+  get running() { return rafId !== 0; },
+  get keysDown() { return Input.down.size; },
+  press(action) { Input.just.add(action); },
+  scene0() { return scenes ? scenes.current : null; },
+};
+
+/** 게임을 뗀다. 붙인 것을 하나도 남기지 않는다 */
+export function unmount() {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+  unbindAll();
+  try { SND.stopBgm(); } catch (e) { /* 소리를 못 껐다고 화면이 멈추면 안 된다 */ }
+  try { Input.down.clear(); Input.just.clear(); } catch (e) { /* 위와 같다 */ }
+  scenes = null;
+  ctx = null;
+  canvas = null;
+  rotateEl = null;
+  if (hostEl) { hostEl.innerHTML = ''; hostEl = null; }
+}

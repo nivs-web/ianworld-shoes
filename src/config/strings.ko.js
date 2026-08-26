@@ -216,6 +216,7 @@ export const S = {
   /** 준비 중인 메뉴 — 눌러도 되지만 아직 아무것도 없다고 분명히 말한다 */
   dragonSoon: '준비 중입니다',
   dragonLoading: '게임을 불러오는 중…',
+  dragonLoadFailed: '게임을 불러오지 못했습니다. 연결을 확인하고 다시 시도해주세요',
   dragonNewBest: (n) => `신기록! ${n.toLocaleString('en-US')}점`,
 
   // ── 뱃지 ───────────────────────────────────

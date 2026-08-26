@@ -13,7 +13,7 @@ import { get as getProfile, setDragonDifficulty } from '../services/profile.js';
 import { PAL } from '../game/palette.js';
 import { pixelText } from './pixelText.js';
 import Portal from './Portal.js';
-import DragonGame from './DragonGame.js';
+import DragonGame, { prefetchDragon } from './DragonGame.js';
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -34,6 +34,8 @@ function statLine(text, numOpt) {
 }
 
 export default function DragonLobby(nav) {
+  /* 로비를 보는 동안 게임 코드를 미리 받아 둔다 — [게임 시작] 을 누를 때는 이미 있다 */
+  prefetchDragon();
   return {
     render() {
       const p = getProfile();

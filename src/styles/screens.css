@@ -2142,7 +2142,7 @@
   padding: 6px 0 2px;
 }
 
-/* ── S20 드래곤 스트라이커 게임(iframe) ──────────────────────
+/* ── S20 드래곤 스트라이커 게임 ──────────────────────────────
    게임이 제 안에서 레터박스를 잡으므로 여기서는 검은 판때기만 준다.
    .screen 을 안 쓰기 때문에 여백·세로배치가 끼어들지 않는다. */
 .dragon-stage {
@@ -2152,18 +2152,59 @@
   z-index: 1;
 }
 
-.dragon-frame {
+/* 게임 모듈이 이 안에 자기 캔버스를 만든다 */
+.dg-host { position: absolute; inset: 0; }
+
+.dg-stage {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
-  /* iframe 이 뜨기 전 흰 판이 번쩍이지 않게 */
+  display: grid;
+  place-items: center;
   background: #000;
+  overflow: hidden;
 }
 
-/* iframe 이 그려지면 그 위를 덮으므로 따로 지울 필요가 없다 */
+.dg-canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #000;
+  touch-action: none;          /* 스크롤·확대가 조작을 먹지 않게 */
+}
+
+/* 가로 전용 안내. 신발게임은 세로 전용이라 오락실 껍데기에는 이런 게 없다 */
+.dg-rotate {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  background: #0a0616;
+  color: #ffd24a;
+  text-align: center;
+  padding: 24px;
+  z-index: 2;
+}
+.dg-rotate.show { display: grid; }
+.dg-rotate p { margin: 0; font-size: 15px; font-weight: 700; }
+.dg-rotate .dg-sub { font-size: 11px; color: #8a7bb8; font-weight: 400; letter-spacing: 1px; }
+.dg-rot-icon {
+  width: 46px; height: 74px;
+  border: 4px solid #ffd24a;
+  border-radius: 6px;
+  margin: 0 auto;
+  animation: dg-tilt 1.8s ease-in-out infinite;
+}
+@keyframes dg-tilt {
+  0%, 40% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dg-rot-icon { animation: none; transform: rotate(-90deg); }
+}
+
+/* 게임이 뜨면 그 위를 덮으므로 따로 지울 필요가 없다 */
 .dragon-loading {
   position: absolute;
   inset: 0;

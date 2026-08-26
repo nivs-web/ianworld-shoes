@@ -195,17 +195,6 @@ self.addEventListener('fetch', (e) => {
 
   const p = url.pathname;
 
-  /**
-   * ★ **드래곤 스트라이커는 제 문서다 — 앱 셸과 절대 섞지 않는다.**
-   *
-   * iframe 로드는 `mode === 'navigate'` 로 온다. 그대로 두면 `docFirst()` 가
-   * 이 응답을 **`/index.html` 로 캐시해 버린다** — 오락실 앱 껍데기가 드래곤
-   * 게임 HTML 로 바뀌어서, 다음 방문에 로비 대신 게임이 통째로 뜬다.
-   * 반대로 네트워크가 느리면 iframe 안에 오락실 앱이 뜨는 무한 중첩도 된다.
-   * 브라우저에 그냥 맡긴다.
-   */
-  if (p.startsWith('/dragon/')) return;
-
   if (req.mode === 'navigate') return e.respondWith(docFirst(req));
   if (IS_ART(p)) return e.respondWith(staleWhileRevalidate(req, ART, 400, e));
   if (IS_BUILD(p)) return e.respondWith(cacheFirst(req, BUILD, 120));
