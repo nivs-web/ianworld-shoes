@@ -39,11 +39,28 @@ export const FLAME_PALS = {
  * `pick` 은 착용 효과를 한 줄로 설명한 것이고, 실제 수치는 아이템마다 다르다.
  */
 export const SLOTS = [
+  /**
+   * ★ **사다리 자리 둘이 맨 위다.** (2026-08-26, 사용자 지정)
+   *
+   * 적은 스무 배로 늘었는데 손에 쥔 미사일과 핵무기는 그대로라 쓸 일이 없었다.
+   * 이 둘은 끼고 벗는 물건이 아니라 **한 번 사면 영영 그만큼 들고 시작**하는
+   * 계단이다. 앞 칸을 사야 다음 칸을 살 수 있고, 값은 칸마다 세 배씩 뛴다 —
+   * 금화를 쏟아부을 데가 있어야 금화를 벌 이유가 생긴다.
+   */
+  { key:'startMsl',  ko:'초기 미사일', ladder:true,
+    note:'아이템이 없으면, 기본 미사일은 5개로 시작합니다' },
+  { key:'startBomb', ko:'초기 핵무기', ladder:true,
+    note:'아이템이 없으면, 기본 핵무기는 2개로 시작합니다' },
+
   { key:'mask',  ko:'마스크',   note:'맞을 때 받는 피해를 줄여준다' },
   { key:'flame', ko:'불꽃',     note:'기본 공격의 색과 위력이 바뀐다' },
   { key:'head',  ko:'머리무장', note:'장식이다 — 금화를 끌어당긴다' },
   { key:'leg',   ko:'다리무장', note:'장식이다 — 더 빠르게 움직인다' },
 ];
+
+/** 안 사고 시작할 때의 손 안 (게임의 START_MISSILES / START_BOMBS 와 같은 값) */
+export const BASE_MISSILES = 5;
+export const BASE_BOMBS = 2;
 
 /**
  * 아이템 하나.
@@ -53,6 +70,24 @@ export const SLOTS = [
  *   tint   상점 카드와 드래곤 장식에 쓰는 색
  */
 export const ITEMS = [
+  /* ---------------- 초기 미사일 : 968,000 (계단, 세 배씩) ----------------
+     첫 칸 8,000 은 20스테이지 완주 두 번 값이다 — 손에 잡히는 첫 목표.
+     그 뒤로는 세 배씩 뛰어서 50개짜리는 완주 백 수십 판이 된다.
+     끝까지 가라고 만든 값이 아니라, **평생 쓸 데가 남아 있으라고** 만든 값이다. */
+  { id:'msl10', slot:'startMsl', ko:'미사일 10개로 시작',  price:   8000, qty:10, tint:'#8fd0ff', desc:'게임을 미사일 10개로 시작합니다' },
+  { id:'msl20', slot:'startMsl', ko:'미사일 20개로 시작',  price:  24000, qty:20, tint:'#6ab8ff', desc:'게임을 미사일 20개로 시작합니다' },
+  { id:'msl30', slot:'startMsl', ko:'미사일 30개로 시작',  price:  72000, qty:30, tint:'#4a94ff', desc:'게임을 미사일 30개로 시작합니다' },
+  { id:'msl40', slot:'startMsl', ko:'미사일 40개로 시작',  price: 216000, qty:40, tint:'#2e6ef0', desc:'게임을 미사일 40개로 시작합니다' },
+  { id:'msl50', slot:'startMsl', ko:'미사일 50개로 시작',  price: 648000, qty:50, tint:'#1a44c8', desc:'게임을 미사일 50개로 시작합니다 (최대)' },
+
+  /* ---------------- 초기 핵무기 : 1,452,000 (계단, 세 배씩) ----------------
+     핵무기가 이 게임에서 제일 중요한 물건이라 미사일보다 한 칸 비싸게 시작한다. */
+  { id:'nuke4',  slot:'startBomb', ko:'핵무기 4개로 시작',  price:  12000, qty: 4, tint:'#ffd24a', desc:'게임을 핵무기 4개로 시작합니다' },
+  { id:'nuke6',  slot:'startBomb', ko:'핵무기 6개로 시작',  price:  36000, qty: 6, tint:'#ffa82e', desc:'게임을 핵무기 6개로 시작합니다' },
+  { id:'nuke8',  slot:'startBomb', ko:'핵무기 8개로 시작',  price: 108000, qty: 8, tint:'#ff7a1e', desc:'게임을 핵무기 8개로 시작합니다' },
+  { id:'nuke10', slot:'startBomb', ko:'핵무기 10개로 시작', price: 324000, qty:10, tint:'#f0451f', desc:'게임을 핵무기 10개로 시작합니다' },
+  { id:'nuke12', slot:'startBomb', ko:'핵무기 12개로 시작', price: 972000, qty:12, tint:'#c81f2e', desc:'게임을 핵무기 12개로 시작합니다 (최대)' },
+
   /* ---------------- 마스크 : 7,000 ---------------- */
   { id:'mask1', slot:'mask', ko:'가죽 마스크',   price:  800, tint:'#a4703c', eff:{ dmgCut:0.03 }, desc:'받는 피해 3% 감소' },
   { id:'mask2', slot:'mask', ko:'무쇠 마스크',   price:1100, tint:'#8c94a8', eff:{ dmgCut:0.05 }, desc:'받는 피해 5% 감소' },
@@ -121,6 +156,44 @@ export function effectsOf(equip) {
   e.speed  = Math.min(1.15, e.speed);
   e.magnet = Math.min(200,  e.magnet);
   return e;
+}
+
+/**
+ * 계단 자리에서 지금 서 있는 칸.
+ * 산 것 중 가장 높은 칸이 곧 효과다 — 끼고 벗을 것이 없다.
+ * @param {object} profile 오락실 프로필 (`dragonItems` 만 본다)
+ * @param {string} slotKey 'startMsl' | 'startBomb'
+ */
+function ladderQty(profile, slotKey, base) {
+  const owned = (profile && profile.dragonItems) || {};
+  let q = base;
+  for (const it of ITEMS) {
+    if (it.slot !== slotKey) continue;
+    if (owned[it.id] && it.qty > q) q = it.qty;
+  }
+  return q;
+}
+
+/** 이 사람이 게임을 몇 개로 시작하는가 */
+export const startMissiles = (profile) => ladderQty(profile, 'startMsl', BASE_MISSILES);
+export const startBombs    = (profile) => ladderQty(profile, 'startBomb', BASE_BOMBS);
+
+/**
+ * 계단에서 **지금 살 수 있는 칸**. 앞 칸을 안 샀으면 못 산다 —
+ * 8,000원짜리를 건너뛰고 648,000원짜리부터 사는 사람은 없지만,
+ * 순서를 강제해야 값이 세 배씩 뛰는 것이 계단으로 읽힌다.
+ */
+export function ladderState(profile, slotKey) {
+  const owned = (profile && profile.dragonItems) || {};
+  const rungs = ITEMS.filter((i) => i.slot === slotKey);
+  let nextIdx = rungs.findIndex((i) => !owned[i.id]);
+  if (nextIdx < 0) nextIdx = rungs.length;      // 전부 샀다
+  return rungs.map((it, i) => ({
+    item: it,
+    owned: !!owned[it.id],
+    buyable: i === nextIdx,
+    locked: i > nextIdx,
+  }));
 }
 
 /** 도감 전체를 사는 데 드는 금화 (기획 확인용) */

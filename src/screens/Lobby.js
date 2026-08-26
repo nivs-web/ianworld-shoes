@@ -264,17 +264,6 @@ export default function Lobby(nav) {
           nav.refresh();
         }),
 
-        /**
-         * ★ **[싱글게임] 을 난이도 바로 아래로 올렸다.** (2026-08-26, 사용자 지정)
-         * 가장 자주 누르는 버튼이 메뉴 다섯 개 아래에 있어서 매번 스크롤해야 했다.
-         * 드래곤 스트라이커 로비도 같은 순서로 맞췄다 — 두 게임이 같은 자리에 있어야
-         * 오락실 안에서 손이 헤매지 않는다.
-         */
-        el('div.row', null, [
-          button(S.playSingle, () => startGame(nav, {}), { primary: true }),
-          button(S.playMulti, () => nav.push(MultiMenu)),
-        ]),
-
         button(S.menuHallOfFame, () => nav.push(HallOfFame)),
         button(S.menuCollection, () => nav.push(Collection)),
         el('div.row', null, [
@@ -282,6 +271,19 @@ export default function Lobby(nav) {
           button(S.menuItemShop, () => nav.push(ItemShop)),
         ]),
         button(S.menuSettings, () => nav.push(Settings)),
+
+        /**
+         * ★ **[싱글게임] 은 설정 아래, 맨 아래다.** (2026-08-26, 사용자 지정)
+         *
+         * 하루 전에 난이도 바로 아래로 올렸다가 다시 내려놓았다 —
+         * 직접 보고 "역시 아래쪽이 예쁘다" 는 판단이 나왔다.
+         * 시작 버튼이 맨 아래에 있으면 오락실 기계의 큰 버튼처럼 읽힌다.
+         * 드래곤 스트라이커도 같은 자리다 — 두 게임이 같아야 손이 헤매지 않는다.
+         */
+        el('div.row', null, [
+          button(S.playSingle, () => startGame(nav, {}), { primary: true }),
+          button(S.playMulti, () => nav.push(MultiMenu)),
+        ]),
 
         elevatorUnlocked
           ? button(S.elevatorButton, onElevator, { disabled: false, class: canAffordElevator ? '' : 'dim' })

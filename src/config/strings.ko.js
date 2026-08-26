@@ -210,7 +210,7 @@ export const S = {
   /** 포털 카드 밑줄 · 로비 통계 — 둘이 같은 문구를 쓴다 */
   dragonBestScore: (n) => `최고점수 ${n.toLocaleString('en-US')}점`,
   dragonBestStage: (n) => `최고 스테이지 ${n}단계`,
-  dragonPlays: (n) => `싱글 플레이 ${n.toLocaleString('en-US')}판`,
+  dragonPlays: (n) => `싱글게임 ${n.toLocaleString('en-US')}판`,
   dragonFireLv: (n) => `최고 파이어 LV${n}`,
   dragonMenuCharacter: '드래곤 변경',
   /** 드래곤 상점 — 다섯은 처음부터, 나머지는 금화로 산다 */
@@ -221,7 +221,7 @@ export const S = {
   dragonBuy: (n) => `${n.toLocaleString('en-US')} 금화로 사기`,
   dragonNeedCoins: (n) => `금화가 ${n.toLocaleString('en-US')}개 더 필요합니다`,
   dragonBought: (name) => `${name} 획득!`,
-  dragonWallet: (n) => `보유 금화 ${n}`,
+  dragonWallet: (n) => `보유금화 ${n}`,
   backToGameLobby: '게임로비로 돌아가기',
   dragonMenuShop: '아이템 쇼핑',
 
@@ -234,10 +234,14 @@ export const S = {
   dragonItemBought: (name) => `${name} 구입! 바로 착용했습니다`,
   dragonItemConfirm: (name, n) => `${name} 을(를) ${n.toLocaleString('en-US')} 금화에 사시겠습니까?`,
   dragonItemNone: '안 낌 상태',
+  dragonItemOwned: '보유 중',
+  dragonItemStepLocked: '앞 단계부터',
   dragonItemHint: '머리무장과 다리무장은 공격력을 올리지 않습니다 — 금화를 끌어오고 화려해집니다',
 
   /* ── 닉네임 변경 (드래곤 변경 화면 안) ── */
   dragonRename: '닉네임 변경',
+  dragonRenameNow: (n) => `지금 이름은 '${n}' 입니다`,
+  dragonMenuControls: '조작 · 소리 설정',
   dragonRenameCost: (n) => `* 닉네임 변경에는 금화 ${n.toLocaleString('en-US')}개가 필요합니다`,
   dragonRenameNeed: (n) => `금화가 ${n.toLocaleString('en-US')}개 더 필요합니다`,
   dragonRenameSame: '지금 쓰는 이름과 같습니다',
@@ -247,7 +251,10 @@ export const S = {
    * 금으로 된 화폐라는 개념이 분명해지고, 신발게임의 '신발' 처럼 이 게임의 돈이
    * 무엇인지 한 단어로 읽힌다.
    */
-  dragonCoinsOwned: (n) => `보유 금화 ${n.toLocaleString('en-US')}개`,
+  dragonCoinsOwned: (n) => `보유금화 ${n.toLocaleString('en-US')}개`,
+  /* 로비유저상태창 맨 아래 두 줄 — 아이템으로 늘릴 수 있다는 걸 여기서 알린다 */
+  dragonStartMissiles: (n) => `초기 미사일 보유 ${n}개`,
+  dragonStartBombs: (n) => `초기 핵무기 보유 ${n}개`,
   /** 명예의 전당을 둘로 나눴다 — 겨루는 것이 서로 다르다 */
   dragonRankScore: '점수 순위',
   dragonRankCoin: '금화왕 순위',

@@ -9,6 +9,7 @@
 import S from '../config/strings.ko.js';
 import { el, button, backButton, segmented, screen, toast } from './ui.js';
 import { get as getProfile, setDragonDifficulty } from '../services/profile.js';
+import { startMissiles, startBombs } from '../games/dragon/items.js';
 import { PAL } from '../game/palette.js';
 import { pixelText } from './pixelText.js';
 import Portal from './Portal.js';
@@ -19,6 +20,7 @@ import { lazyScreen } from './lazyScreen.js';
 /** 드래곤 변경은 이제 DOM 상점 화면이다 — 가로로 돌릴 필요가 없다 */
 const DragonShop = lazyScreen(() => import('./DragonShop.js'), S.dragonShopTitle);
 const DragonItems = lazyScreen(() => import('./DragonItems.js'), S.dragonItemTitle);
+const DragonSettings = lazyScreen(() => import('./DragonSettings.js'), S.dragonMenuSettings);
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -71,7 +73,17 @@ export default function DragonLobby(nav) {
 
     render() {
       const p = getProfile();
-      const statNum = { scale: STAT_SCALE, mini: true, color: PAL.text, mono: true };
+      /**
+       * ★ **숫자를 고정폭으로 찍지 않는다.** (2026-08-26, 사용자 지정)
+       *
+       * "숫자와 숫자 사이 간격이 넘다" 는 지적을 재 보았다 —
+       * `mono` 는 자릿수마다 가장 넣은 숫자('4')의 폭에 맞춰 밀어넣기 때문에
+       * "128,400" 이 78px 으로 끝날 것을 **98px** 로 벌려 놓았다. 20px 이 전부 사이 간격이다.
+       *
+       * 고정폭은 숫자가 제자리에서 바뀌는 계기판에나 쓸모가 있다.
+       * 이건 화면을 드나들 때만 다시 그려지는 문장이라 흔들릴 일이 없다.
+       */
+      const statNum = { scale: STAT_SCALE, mini: true, color: PAL.text };
 
       /* 아직 안 만든 메뉴는 감추지 않고 사실대로 말한다 — 감추면 물어볼 데가 없다 */
       const soon = (label) => button(label, () => toast(S.dragonSoon), { class: 'dim' });
@@ -81,9 +93,16 @@ export default function DragonLobby(nav) {
       const c = Crowns.cached();
 
       /**
-       * ★ **화면 순서 개편.** (2026-08-26, 사용자 지정)
-       * 가장 자주 누르는 것을 위로: 난이도 → 게임 시작 → 순위 → 꾸미기 → 설정.
-       * 예전에는 [싱글게임] 이 메뉴 다섯 개 아래에 있어서 매번 스크롤해야 했다.
+       * ★ **화면 순서** (2026-08-26, 사용자 지정 — 두 번 고쳤다)
+       *
+       * 처음엔 [싱글게임] 을 맨 위로 올렸는데, 직접 보고 나서
+       * "역시 아래쪽이 예쁘다" 는 판단이 나왔다. 시작 버튼이 화면 맨 아래에
+       * 있는 편이 오락실 기계의 큰 버튼처럼 읽힌다.
+       *
+       *   난이도 → 드래곤 변경·아이템 쇼핑 → 순위 둘 → 설정 → 싱글·멀티 → 오락실
+       *
+       * 꾸미기가 순위보다 위인 것도 지정이다 — 순위는 가끔 보고,
+       * 드래곤과 아이템은 게임 들어가기 전에 매번 들른다.
        */
       return screen(
         el('div.dragon-title', S.dragonTitle),
@@ -102,6 +121,13 @@ export default function DragonLobby(nav) {
             statLine(S.dragonMultiRecord(wins, games), statNum,
               c?.wins ? S.crownDragonWins(c.wins) : null, c?.wins),
             statLine(S.dragonPlays(p.dragonPlays || 0), statNum),
+            /**
+             * ★ **초기 보유량을 여기 적어 둔다.** (2026-08-26, 사용자 지정)
+             * 아이템 쇼핑에 [초기 미사일]·[초기 핵무기] 가 생겼는데, 상점에 들어가야만
+             * 보이면 그런 게 있는 줄도 모른다. 로비에서 매번 눈에 밟혀야 사러 간다.
+             */
+            statLine(S.dragonStartMissiles(startMissiles(p)), statNum),
+            statLine(S.dragonStartBombs(startBombs(p)), statNum),
           ]),
         ]),
 
@@ -110,16 +136,6 @@ export default function DragonLobby(nav) {
           setDragonDifficulty(v);
           nav.refresh();
         }),
-
-        el('div.row', null, [
-          button(S.playSingle, () => nav.push(DragonGame, { mode: 'play' }), { primary: true }),
-          soon(S.playMulti),
-        ]),
-
-        el('div.row', null, [
-          soon(S.dragonRankScore),
-          soon(S.dragonRankCoin),
-        ]),
 
         /**
          * 드래곤 변경은 DOM 상점(`DragonShop`), 설정은 게임 안 화면이다.
@@ -130,7 +146,18 @@ export default function DragonLobby(nav) {
           button(S.dragonMenuShop, () => nav.push(DragonItems)),
         ]),
 
-        button(S.dragonMenuSettings, () => nav.push(DragonGame, { mode: 'options' })),
+        el('div.row', null, [
+          soon(S.dragonRankScore),
+          soon(S.dragonRankCoin),
+        ]),
+
+        button(S.dragonMenuSettings, () => nav.push(DragonSettings)),
+
+        /* 시작 버튼은 맨 아래 — 오락실 기계의 큰 버튼 자리다 */
+        el('div.row', null, [
+          button(S.playSingle, () => nav.push(DragonGame, { mode: 'play' }), { primary: true }),
+          soon(S.playMulti),
+        ]),
 
         el('div.spacer'),
         backButton(S.backToPortal, () => nav.reset(Portal))

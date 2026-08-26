@@ -19,7 +19,7 @@
 import S from '../config/strings.ko.js';
 import { el, toast } from './ui.js';
 import { get as getProfile, finishDragonRun, setDragonCharacter , dragonEquipment } from '../services/profile.js';
-import { effectsOf } from '../games/dragon/items.js';
+import { effectsOf, startMissiles, startBombs } from '../games/dragon/items.js';
 import { lockLandscape, unlockOrientation } from '../core/fullscreen.js';
 import { setGameGuard } from './router.js';
 import { stopLoop, startLoop, isRunning } from '../core/loop.js';
@@ -113,7 +113,11 @@ export default function DragonGame(nav, opt = {}) {
           difficulty: p.dragonDifficulty || 'normal',
           character: p.dragonCharacter | 0,
           /* 산 아이템의 효과. 게임은 도감을 몰라도 되게 합쳐놓은 수치만 받는다 */
-          equipment: effectsOf(dragonEquipment()),
+          /* 산 아이템의 효과 + 계단으로 올린 초기 보유량 */
+          equipment: Object.assign(effectsOf(dragonEquipment()), {
+            startMissiles: startMissiles(p),
+            startBombs: startBombs(p),
+          }),
 
           /** 한 판 끝 */
           onFinish(r) {

@@ -2399,3 +2399,15 @@
 @media (min-width: 420px) {
   .it-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* 계단 자리(초기 미사일·핵무기) — 아직 못 사는 칸은 눌리지 않는다.
+   감추지 않고 흐리게 보여 준다: 다음에 뭐가 오는지 알아야 모을 마음이 생긴다. */
+.it-card.step-locked {
+  opacity: 0.42;
+  cursor: default;
+}
+.it-card.step-locked:active { transform: none; }
+.it-tag.step { color: #7a6a80; }
+
+/* 계단에서 이미 산 칸 — 벗을 수 없으니 '착용 중' 이 아니라 '보유 중' 이다 */
+.it-card.on.owned .it-name { color: var(--c-accent); }
