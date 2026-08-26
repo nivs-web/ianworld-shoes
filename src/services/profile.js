@@ -338,11 +338,16 @@ export function finishDragonRun(r) {
 
   /* 금화는 지갑과 누적 양쪽에 넣는다. 누적은 순위용이라 절대 줄지 않는다 */
   const coins = Math.max(0, Math.min(DRAGON_COIN_CAP, Math.round(Number(r?.coins) || 0)));
+  /**
+   * ★ **금화는 차액으로 온다.** (2026-08-27)
+   * 게임이 스테이지마다 부르되 이미 넣은 만큼을 빼고 보낸다 — 여기서 더하면 맞다.
+   * 판수는 다르다: 한 판을 스무 번 세면 안 되므로 **진짜 끝났을 때만** 올린다.
+   */
   const next = {
-    dragonPlays: (before.dragonPlays || 0) + 1,
     dragonCoins: (before.dragonCoins || 0) + coins,
     dragonCoinsTotal: (before.dragonCoinsTotal || 0) + coins,
   };
+  if (!r?.midRun) next.dragonPlays = (before.dragonPlays || 0) + 1;
   const isBest = score > (before.dragonBest || 0);
   if (isBest) { next.dragonBest = score; next.dragonBestLevel = level; }
   if (stage > (before.dragonBestStage || 0)) next.dragonBestStage = stage;

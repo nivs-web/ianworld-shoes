@@ -147,9 +147,21 @@ export default function DragonGame(nav, opt = {}) {
 
           /** 한 판 끝 */
           onFinish(r) {
-            if (settled) return;
-            settled = true;
+            /**
+             * ★★ **래치는 결투에만 있어야 한다.** (2026-08-27, 사용자 신고)
+             *
+             * 예전에는 여기 맨 위에 `if (settled) return` 이 있었다. 그런데 게임은
+             * **스테이지가 끝날 때마다** 이 함수를 부른다 — 20판을 깨면 스무 번이다.
+             * 그래서 1스테이지 것만 들어가고 나머지 열아홉 판, 30분치 금화가
+             * 통째로 버려졌다. 한 판만 하고 나가면 멀쩡해 보였던 이유이기도 하다.
+             *
+             * 이제 금화는 **차액**으로 오므로(게임 쪽 `RUN.banked`) 여러 번 불려도
+             * 두 번 들어가지 않는다. 결투는 한 판으로 끝나고 정산이 따로 있어
+             * 래치를 그대로 둔다.
+             */
             if (duelCode) {
+              if (settled) return;
+              settled = true;
               /**
                * ★ **결투 기록은 싱글 기록에 안 섞는다.**
                * 어려움 고정에 300초짜리라 최고점수·최고 스테이지 눈금이 다르다 —
@@ -161,7 +173,8 @@ export default function DragonGame(nav, opt = {}) {
               return;
             }
             const { isBest } = finishDragonRun(r);
-            if (isBest) toast(S.dragonNewBest(Math.round(Number(r.score) || 0)), 2600);
+            /* 최고기록 알림은 판이 진짜 끝났을 때만 — 판마다 뜨면 스무 번 뜬다 */
+            if (isBest && !r.midRun) toast(S.dragonNewBest(Math.round(Number(r.score) || 0)), 2600);
           },
 
           /** 게임 안에서 드래곤을 바꿨다 — 로비 카드에도 같은 것이 보여야 한다 */

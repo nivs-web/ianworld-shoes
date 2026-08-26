@@ -1,0 +1,115 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>금화가 지갑까지 들어오는가</title>
+<style>body{background:#111;color:#ddd;font:13px/1.7 monospace;padding:16px;white-space:pre}</style>
+</head>
+<body><div id="out">20판을 돌리는 중… (몇 분 걸린다)</div><div id="host" style="display:none"></div>
+<script type="module">
+/**
+ * ★★ **올클리어했는데 금화가 안 늘던 것**을 잡아 두는 검사.
+ *
+ * *"올클리어 30-40분 넘게 20판까지 다 깻는데 (...) 금화가 1도 늘어나지 않았어,
+ *   싱글게임 1판만 하면 금화 수집한거 잘 수집 되는데"*
+ *
+ * 원인은 `DragonGame.onFinish` 맨 위의 `if (settled) return` 한 줄이었다.
+ * 게임은 **스테이지가 끝날 때마다** 그 함수를 부르는데(20판이면 스무 번)
+ * 래치가 첫 번째만 통과시켜 1스테이지 것만 지갑에 들어갔다.
+ * 한 판만 하고 나가면 그게 첫 번째라 멀쩡해 보였던 것이다.
+ *
+ * 그래서 이 검사는 **판 전체**를 돌린다 — 한 판만 돌리면 옛 버그를 못 잡는다.
+ * 게임이 센 금화(`__test.coins`)와 지갑에 실제로 들어간 양이 같아야 한다.
+ */
+import * as DR from '/src/games/dragon/dragon.js';
+
+const lines = []; const say = (s) => lines.push(s);
+const show = () => { document.getElementById('out').textContent = lines.join('\n'); };
+let fail = 0;
+const check = (name, got, want) => {
+  const ok = JSON.stringify(got) === JSON.stringify(want);
+  if (!ok) fail++;
+  say(`${ok ? '  OK  ' : '  ★틀림 '}${name}\n        받음 ${JSON.stringify(got)}  기대 ${JSON.stringify(want)}`);
+};
+
+const DT = 1 / 60;
+const host = document.getElementById('host');
+
+/** 오락실 지갑을 흉내 낸다 — 실제 `finishDragonRun` 과 같은 셈(더하기)이다 */
+function run(label, stopAfter) {
+  let wallet = 0, plays = 0, calls = 0;
+  DR.mount(host, {
+    onExit() {}, onEnd() {},
+    onFinish(r) {
+      calls++;
+      wallet += Math.max(0, Math.round(Number(r.coins) || 0));
+      if (!r.midRun) plays++;
+    },
+  });
+  const T = DR.__test;
+  for (let i = 0; i < 400 && T.scene !== 'GameScene'; i++) { T.press('confirm'); T.pump(DT); }
+
+  let t = 0, stages = 0;
+  while (t < 60 * 60) {
+    const sc = T.scene0();
+    if (!sc || !sc.p1) break;
+    let tx = 320, ty = 440;
+    const boss = (sc.enemies || []).find((e) => e.isBoss);
+    if (boss) { tx = boss.x - 300; ty = boss.y; }
+    else if (sc.items && sc.items.length) {
+      let best = null, bd = 1e9;
+      for (const it of sc.items) {
+        const d = Math.hypot(it.x - sc.p1.x, it.y - sc.p1.y);
+        if (d < bd) { bd = d; best = it; }
+      }
+      if (best) { tx = best.x; ty = best.y; }
+    }
+    sc.p1.x += Math.max(-9, Math.min(9, tx - sc.p1.x));
+    sc.p1.y += Math.max(-9, Math.min(9, ty - sc.p1.y));
+    sc.p1.hp = 100; sc.p1.lives = 3;
+    if (sc.p1.missileCount > 0) T.press('p1missile');
+    if (boss && sc.p1.bombCount > 0) T.press('p1bomb');
+    T.pump(DT); t += DT;
+
+    if (sc.state === 'clear') {
+      stages++;
+      if (stages >= stopAfter) {
+        /* 사람이 하듯 '오락실로' 를 눌러 나간다 — 판수는 그때 세진다 */
+        const q = sc.endItems().findIndex((x) => x.k === 'quit');
+        if (q >= 0) { sc.endIdx = q; sc.doEndPick(); }
+        break;
+      }
+      const items = sc.endItems();
+      const i = items.findIndex((x) => x.k === 'continue');
+      if (i < 0) break;
+      sc.endIdx = i; sc.doEndPick();
+      for (let k = 0; k < 600 && T.scene0() === sc; k++) { T.pump(DT); t += DT; }
+    }
+    if (sc.state === 'over') break;
+  }
+  const counted = DR.__test.coins;
+  DR.unmount();
+  return { label, wallet, counted, plays, calls, stages, mins: t / 60 };
+}
+
+/* ① 한 판만 — 옛 버그에서도 멀쩡했던 경우 */
+const one = run('1스테이지만', 1);
+say(`■ ${one.label} (${one.mins.toFixed(1)}분)`);
+say(`   게임이 센 금화 ${one.counted} / 지갑에 들어간 것 ${one.wallet}`);
+check('한 판도 맞는가', one.wallet, one.counted);
+check('판수는 1', one.plays, 1);
+show();
+
+/* ② 스무 판 완주 — 여기서 30분치가 사라졌었다 */
+const all = run('20스테이지 완주', 20);
+say('');
+say(`■ ${all.label} (${all.mins.toFixed(1)}분, onFinish ${all.calls}번 불림)`);
+say(`   게임이 센 금화 ${all.counted} / 지갑에 들어간 것 ${all.wallet}`);
+check('깬 스테이지', all.stages, 20);
+check('★ 완주해도 한 닢도 안 사라지는가', all.wallet, all.counted);
+check('★ 스무 번 불려도 판수는 한 번', all.plays, 1);
+say(`   (옛 버그였다면 지갑에 ${'1스테이지분'} 만 들어와 ${all.counted} 중 대부분이 사라졌다)`);
+
+say('');
+say(fail ? `★ ${fail} 건 틀림` : '전부 통과');
+show();
+window.__done = true; window.__fail = fail;
+</script>
+</body></html>

@@ -952,6 +952,23 @@ export async function setReady(code, ready) {
     .catch(() => {});
 }
 
+/**
+ * ★ **방에 적힌 내 지갑을 지금 값으로 고친다.** (2026-08-27, 사용자 지정)
+ *
+ * `wallet` 은 방에 들어오는 **그 순간**의 지갑이라 그대로 두면 낡는다 —
+ * 결투를 한 판 하고 돌아오면 판돈이 오갔는데 옛 숫자가 그대로 붙어 있다.
+ * 대기방이 방 스냅샷을 받을 때마다 적힌 값과 지금 값을 견줘,
+ * **다를 때만** 다시 쓴다 (같으면 안 쓰므로 쓰기가 늘지 않는다).
+ */
+export async function refreshMyWallet(code, wallet) {
+  const fb = await rt();
+  if (!fb) return;
+  await withTimeout(
+    fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid, 'wallet')),
+      Math.max(0, Math.round(Number(wallet) || 0))),
+    undefined, '지갑 갱신').catch(() => {});
+}
+
 /** 난이도는 방장만 바꾼다 (기획서 §5-9 — 승자 기록이 이 난이도 랭킹으로 간다) */
 export async function setRoomDifficulty(code, difficulty) {
   const fb = await rt();

@@ -12,6 +12,7 @@ import S from '../../config/strings.ko.js';
 import { el, button, backButton, segmented, screen, title, toast } from '../ui.js';
 import { openUserCard } from '../UserCard.js';
 import { fetchUserCard } from '../../services/leaderboard.js';
+import { get as getProfile } from '../../services/profile.js';
 import * as Presence from '../../services/presence.js';
 import { characterById, characterSprite } from '../../data/characters.js';
 import { MULTI } from '../../config/balance.js';
@@ -196,6 +197,14 @@ export default function WaitingRoom(nav, params = {}) {
   let lastView = null;
 
   unsub = Room.subscribeRoom(code, (r) => {
+    /**
+     * ★ 방에 적힌 내 지갑이 낡았으면 고친다 (드래곤 방만 — 신발 방은 안 쓴다).
+     * 다를 때만 쓰므로 평소에는 쓰기가 한 번도 안 일어난다.
+     */
+    if (game === 'dragon' && r && myUid && r.players && r.players[myUid]) {
+      const now = getProfile().dragonCoins ?? 0;
+      if ((r.players[myUid].wallet ?? -1) !== now) Room.refreshMyWallet(code, now);
+    }
     room = r;
     if (!r) {
       // 방장이 나가서 방이 사라진 경우

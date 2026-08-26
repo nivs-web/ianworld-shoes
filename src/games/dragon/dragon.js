@@ -5568,7 +5568,7 @@ class GameScene extends Scene {
     this.score = this.carry ? this.carry.score : 0;
     this.kills = 0;
     /* 새 판이 아니라 **이어지는 스테이지**면 동전을 이어서 센다 */
-    if(!this.carry){ RUN.coins = 0; RUN.coinFrac = 0; }
+    if(!this.carry){ RUN.coins = 0; RUN.coinFrac = 0; RUN.banked = 0; }
     this.boss = null; this.bossBannerT = 0; this.bossDeathT = 0;
     this.killStreak = 0;
     // 아이템 투하 예약표 (인원수만큼 위아래로 나눠 떨어진다)
@@ -5595,6 +5595,7 @@ class GameScene extends Scene {
     this.duelBossKills = 0;           // 무너뜨린 보스 수 (결투 점수의 뼈대)
     /* 이어하기로 들어왔으면 몇 번 썼는지 이어받는다 (한 판에 두 번까지) */
     this.continuesUsed = (this.carry && this.carry.continues) | 0;
+    this.runEnded = false;      // 이 판의 끝을 이미 알렸는가
     this.finalBossKilled = false; this.menuIdx = 0; this.endIdx = 0;
     this.tapIdx = -1;                 // 터치로 고른 메뉴 번호
     /**
@@ -5837,6 +5838,28 @@ class GameScene extends Scene {
     /* 오락실에 기록을 올린다. 클리어든 게임오버든 한 판은 한 판이다.
        ★ 계정의 주인은 **1P** 다. 2P 는 같은 화면에 낀 손님이라 씬 합계를 보내면
        남이 번 점수까지 내 기록이 된다. */
+    /**
+     * ★★ **스테이지마다 보낸다. 금화는 차액만.** (2026-08-27, 사용자 신고)
+     *
+     * *"올클리어 30-40분 넘게 20판까지 다 깻는데 (...) 금화가 1도 늘어나지 않았어"*
+     *
+     * 이 함수는 **스테이지가 끝날 때마다** 불린다 — 20판을 깨면 스무 번이다.
+     * 그런데 받는 쪽(`DragonGame.onFinish`)에 `if (settled) return` 한 줄이 있어서
+     * **첫 번째만 통과**했다. 그래서 1스테이지에서 주운 것만 지갑에 들어가고
+     * 2~20스테이지의 30분치가 통째로 버려졌다.
+     * "1판만 하면 잘 수집된다" 던 것도 같은 이유다 — 1판은 첫 번째라서 통과한다.
+     *
+     * 래치를 떼는 것만으로는 안 된다. `RUN.coins` 는 **판 전체의 누적**이라
+     * 그대로 스무 번 보내면 이번엔 금화가 스무 배로 불어난다.
+     * **이미 넣은 만큼(`banked`)을 빼고 차액만** 보낸다.
+     *
+     * 스테이지마다 넣는 편이 판 끝에 한 번 몰아 넣는 것보다 낫다 —
+     * 30분 하다 창을 닫아도 그때까지 번 것은 남는다.
+     */
+    const delta = Math.max(0, RUN.coins - RUN.banked);
+    RUN.banked = RUN.coins;
+    /* 게임오버·포기는 그 자체로 판의 끝이다 — 나갈 때 또 세지 않는다 */
+    if(kind !== 'clear' || this.stage >= 20) this.runEnded = true;
     DG.onFinish({
       duel: !!this.duel,
       bosses: this.duelBossKills | 0,
@@ -5844,8 +5867,10 @@ class GameScene extends Scene {
       total: this.score,
       stage: kind === 'clear' ? this.stage : Math.max(0, this.stage - 1),
       level: this.p1.level,
-      coins: RUN.coins,
+      coins: delta,
       cleared: kind === 'clear' && this.stage >= 20,
+      /* 판이 계속되는가 — 판수(`dragonPlays`)는 진짜 끝났을 때만 센다 */
+      midRun: kind === 'clear' && this.stage < 20,
     });
     if(kind === 'clear'){
       /* 결투는 남은 목숨으로 점수를 주지 않는다 — 겨루는 값은 오직 보스와 금화다 */
@@ -5907,6 +5932,28 @@ class GameScene extends Scene {
   giveUp(){
     this.finish('over', '게임 포기');
     DG.onExit();
+  }
+  /**
+   * ★ **판이 여기서 끝난다고 알린다.** (2026-08-27)
+   *
+   * `finish('clear')` 는 스테이지마다 불리므로 `midRun` 을 달고 나간다 —
+   * 그래야 판수(`dragonPlays`)가 스무 번 세지 않는다. 그런데 클리어 화면에서
+   * **다음 판으로 안 가고 나가면** 그 판은 영영 안 세진다.
+   * 나가는 그 순간에 한 번만 더 알린다. 금화는 0 이다 —
+   * 이미 스테이지마다 차액으로 다 넣었다.
+   */
+  endRun(){
+    if(this.duel || this.runEnded) return;
+    this.runEnded = true;
+    DG.onFinish({
+      duel: false, bosses: 0,
+      score: this.p1.score, total: this.score,
+      stage: this.state === 'clear' ? this.stage : Math.max(0, this.stage - 1),
+      level: this.p1.level,
+      coins: 0,                 // 금화는 스테이지마다 이미 넣었다
+      cleared: this.state === 'clear' && this.stage >= 20,
+      midRun: false,
+    });
   }
   updatePaused(dt){
     this.stateT += dt;
@@ -6019,6 +6066,7 @@ class GameScene extends Scene {
       SND.sfx('confirm');
       this.mgr.change(new GameScene(1));
     }else{
+      this.endRun();            // 여기서 판이 끝난다 — 판수를 센다
       DG.onExit();
     }
   }
@@ -7507,7 +7555,14 @@ const DG = {
 };
 
 /** 한 판 동안 쌓이는 것 — 판이 끝나면 오락실이 가져간다 */
-const RUN = { coins: 0, coinFrac: 0 };
+/**
+ * 한 판(스테이지 1~20 전체) 동안의 금화.
+ *
+ * `banked` 는 **이미 오락실 지갑에 넣은 만큼**이다. 스테이지가 끝날 때마다
+ * 보내는데 `coins` 는 누적값이라, 뺀 만큼을 기억해 두지 않으면 같은 금화를
+ * 스무 번 넣게 된다.
+ */
+const RUN = { coins: 0, coinFrac: 0, banked: 0 };
 
 /**
  * ★ **낀 아이템은 1P 것이다.** (2026-08-26)
@@ -7706,7 +7761,7 @@ export function mount(host, opts = {}) {
   DG.spendCoins = opts.spendCoins || (() => false);
   DG.addCoins = opts.addCoins || (() => {});
   setEquipment(opts.equipment);        // 낌 아이템은 한 판 내내 고정이다
-  RUN.coins = 0;
+  RUN.coins = 0; RUN.coinFrac = 0; RUN.banked = 0;
 
   hostEl = host;
   host.innerHTML = '';
