@@ -75,7 +75,7 @@ export default function SplashLogin(nav) {
       return screen(
         el('div.splash', null, [
           el('div.splash-logo', S.portalTitle),
-          el('div.splash-sub', S.gameTitle),
+          el('div.splash-sub', S.splashGames),
         ]),
         el('div.spacer'),
         signedIn

@@ -18,6 +18,7 @@ import { lazyScreen } from './lazyScreen.js';
 
 /** 드래곤 변경은 이제 DOM 상점 화면이다 — 가로로 돌릴 필요가 없다 */
 const DragonShop = lazyScreen(() => import('./DragonShop.js'), S.dragonShopTitle);
+const DragonItems = lazyScreen(() => import('./DragonItems.js'), S.dragonItemTitle);
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -126,7 +127,7 @@ export default function DragonLobby(nav) {
          */
         el('div.row', null, [
           button(S.dragonMenuCharacter, () => nav.push(DragonShop)),
-          soon(S.dragonMenuShop),
+          button(S.dragonMenuShop, () => nav.push(DragonItems)),
         ]),
 
         button(S.dragonMenuSettings, () => nav.push(DragonGame, { mode: 'options' })),

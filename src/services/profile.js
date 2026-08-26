@@ -218,6 +218,53 @@ export function buyDragon(idx, price) {
   return { ok: true, profile: patch({ dragonCoins: have - cost, dragonOwned: owned }), short: 0 };
 }
 
+/**
+ * 드래곤 아이템 보관함.
+ *
+ * ★ 신발게임의 `buyItem`/`equipItem` 과 **이름을 겁치지 않았다.**
+ * 둘은 같은 계정에 들어 있을 뿐 서로 전혀 다른 물건이다 —
+ * 한쪽을 고치다 다른 쪽 지갑을 건드리는 사고를 막으려고 이름을 나눠 둔다.
+ */
+
+/** 드래곤 아이템을 갖고 있나 */
+export function hasDragonItem(id) {
+  return !!(L.loadProfile().dragonItems || {})[id];
+}
+
+/** 낌 것 전부 — 게임에 넘겨줄 모양 그대로 */
+export function dragonEquipment() {
+  const e = L.loadProfile().dragonEquip || {};
+  return { mask: e.mask || null, flame: e.flame || null, head: e.head || null, leg: e.leg || null };
+}
+
+/**
+ * 드래곤 아이템을 산다. 사면 **곷바로 낌다** — 사놓고 또 눌러야 끼는 건 번거롭다.
+ * @returns {{ok:boolean, profile:object, short:number}} short = 모자란 금화
+ */
+export function buyDragonItem(id, slot, price) {
+  const p = L.loadProfile();
+  const cost = Math.max(0, Math.round(price) || 0);
+  if (hasDragonItem(id)) return { ok: true, profile: p, short: 0 };
+  const have = p.dragonCoins || 0;
+  if (have < cost) return { ok: false, profile: p, short: cost - have };
+  const items = { ...(p.dragonItems || {}), [id]: true };
+  const equip = { ...(p.dragonEquip || {}), [slot]: id };
+  /* 지갑에서만 빼다 — 누적(dragonCoinsTotal)은 그대로라 금화왕 순위가 안 떨어진다 */
+  return { ok: true, short: 0,
+           profile: patch({ dragonCoins: have - cost, dragonItems: items, dragonEquip: equip }) };
+}
+
+/**
+ * 끼거나 벗는다. 이미 낌 것을 다시 누르면 벗는다.
+ * 갖고 있지 않은 것은 끼지 않는다 — 저장이 망가져도 공짜로 끼는 일은 없다.
+ */
+export function equipDragonItem(slot, id) {
+  const p = L.loadProfile();
+  const cur = (p.dragonEquip || {})[slot] || null;
+  const next = (id == null || cur === id) ? null : (hasDragonItem(id) ? id : cur);
+  return patch({ dragonEquip: { ...(p.dragonEquip || {}), [slot]: next } });
+}
+
 /** 아이템을 산다 — 지갑에서만 빠지고 누적은 그대로다 (금화왕 순위가 안 떨어진다) */
 export function spendDragonCoins(n) {
   const p = L.loadProfile();

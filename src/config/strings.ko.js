@@ -7,6 +7,8 @@ export const S = {
   // ── 브랜드 ────────────────────────────────
   portalTitle: '오락실 이안월드',
   gameTitle: '신발을 찾아서',
+  /* 로그인 화면은 오락실 입구다 — 게임이 둘이 됐으니 한 쪽 이름만 걸어두면 안 된다 */
+  splashGames: '신발을 찾아서 · 드래곤 스트라이커',
 
   // ── S01 로그인 ────────────────────────────
   touchToStart: '터치해서 시작',
@@ -222,6 +224,24 @@ export const S = {
   dragonWallet: (n) => `보유 금화 ${n}`,
   backToGameLobby: '게임로비로 돌아가기',
   dragonMenuShop: '아이템 쇼핑',
+
+  /* ── 아이템 상점 (D단계) ── */
+  dragonItemTitle: '아이템 쇼핑',
+  dragonItemEquipped: '착용 중',
+  dragonItemEquip: '착용하기',
+  dragonItemUnequip: '벗기',
+  dragonItemBuy: (n) => `${n.toLocaleString('en-US')} 금화`,
+  dragonItemBought: (name) => `${name} 구입! 바로 착용했습니다`,
+  dragonItemConfirm: (name, n) => `${name} 을(를) ${n.toLocaleString('en-US')} 금화에 사시겠습니까?`,
+  dragonItemNone: '안 낌 상태',
+  dragonItemHint: '머리무장과 다리무장은 공격력을 올리지 않습니다 — 금화를 끌어오고 화려해집니다',
+
+  /* ── 닉네임 변경 (드래곤 변경 화면 안) ── */
+  dragonRename: '닉네임 변경',
+  dragonRenameCost: (n) => `* 닉네임 변경에는 금화 ${n.toLocaleString('en-US')}개가 필요합니다`,
+  dragonRenameNeed: (n) => `금화가 ${n.toLocaleString('en-US')}개 더 필요합니다`,
+  dragonRenameSame: '지금 쓰는 이름과 같습니다',
+  dragonRenameDone: '닉네임을 바꿨습니다',
   /**
    * ★ **'동전' 을 '금화' 로 통일한다.** (2026-08-26, 사용자 지정)
    * 금으로 된 화폐라는 개념이 분명해지고, 신발게임의 '신발' 처럼 이 게임의 돈이

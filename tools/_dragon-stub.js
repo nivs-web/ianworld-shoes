@@ -69,3 +69,26 @@ export function buyDragon(idx, price){
   return { ok:true, profile:P, short:0 };
 }
 export const spendDragonCoins = () => ({ ok:false, profile:P });
+
+/* ── D단계 : 아이템 보관함 (실제 profile.js 와 같은 규칙으로 흉내낸다) ── */
+export const hasDragonItem = (id) => !!(P.dragonItems || {})[id];
+export function dragonEquipment() {
+  const e = P.dragonEquip || {};
+  return { mask: e.mask || null, flame: e.flame || null, head: e.head || null, leg: e.leg || null };
+}
+export function buyDragonItem(id, slot, price) {
+  const cost = Math.max(0, Math.round(price) || 0);
+  if (hasDragonItem(id)) return { ok: true, profile: P, short: 0 };
+  const have = P.dragonCoins || 0;
+  if (have < cost) return { ok: false, profile: P, short: cost - have };
+  return { ok: true, short: 0, profile: patch({
+    dragonCoins: have - cost,
+    dragonItems: { ...(P.dragonItems || {}), [id]: true },
+    dragonEquip: { ...(P.dragonEquip || {}), [slot]: id },
+  }) };
+}
+export function equipDragonItem(slot, id) {
+  const cur = (P.dragonEquip || {})[slot] || null;
+  const next = (id == null || cur === id) ? null : (hasDragonItem(id) ? id : cur);
+  return patch({ dragonEquip: { ...(P.dragonEquip || {}), [slot]: next } });
+}

@@ -2320,3 +2320,82 @@
 @media (min-width: 420px) {
   .dg-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ── S22 아이템 쇼핑 ────────────────────────────────────────
+   자리(마스크/불꽃/머리무장/다리무장)마다 다섯 개씩 한 줄로 늘어놓는다.
+   드래곤 카드와 달리 그림 대신 **색 조각** 하나로 등급을 알린다 —
+   스무 개짜리 도트를 따로 그리는 것보다 한눈에 갈리고 훨씬 가볍다. */
+.it-slot { margin: 0 0 14px; }
+
+.it-slot-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 2px 6px;
+  border-bottom: 2px solid var(--c-line);
+  margin-bottom: 8px;
+}
+.it-slot-name { font-size: 14px; font-weight: bold; color: var(--c-panel); }
+.it-slot-note { font-size: 10px; color: var(--c-text-light); opacity: 0.72; }
+
+.it-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 6px;
+}
+
+.it-card {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  text-align: left;
+  background: rgba(245, 217, 160, 0.10);
+  border: 3px solid var(--c-line);
+  font-family: inherit;
+  color: var(--c-text-light);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.it-card:active { transform: translateY(2px); }
+.it-card:focus-visible { outline: 3px solid var(--c-accent); outline-offset: 2px; }
+
+/* 지금 낀 것 */
+.it-card.on {
+  border-color: var(--c-accent);
+  background: rgba(217, 79, 43, 0.18);
+}
+/* 아직 안 산 것 — 색 조각을 눌러 둬서 "잠긴 것" 으로 읽힌다 */
+.it-card.locked .it-chip { filter: grayscale(0.85) brightness(0.5); }
+
+.it-chip {
+  width: 22px;
+  height: 22px;
+  background: var(--it, #888);
+  border: 2px solid var(--c-line);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28);
+}
+.it-card.on .it-chip { border-color: var(--c-accent); }
+
+.it-name { font-size: 13px; font-weight: bold; color: var(--c-panel); }
+.it-card.on .it-name { color: var(--c-accent); }
+.it-desc { font-size: 10px; color: var(--c-panel-dark); line-height: 1.35; }
+
+.it-tag {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 3px 8px;
+  border: 2px solid currentColor;
+}
+.it-tag.on       { color: var(--c-accent); }
+.it-tag.owned    { color: var(--c-good); }
+.it-tag.price.ok { color: var(--c-panel-dark); }
+.it-tag.price.no { color: #7a6a80; }
+
+@media (min-width: 420px) {
+  .it-grid { grid-template-columns: repeat(2, 1fr); }
+}

@@ -128,6 +128,14 @@ export function defaultProfile() {
      * 한 번 사면 사라지지 않는다.
      */
     dragonOwned: {},
+    /**
+     * 산 아이템과 지금 낀 아이템.
+     *   `dragonItems`  { 'mask3': true, ... }  — 한 번 사면 영원히 갖는다
+     *   `dragonEquip`  { mask:'mask3', flame:'fire2', head:null, leg:null }
+     * 자리마다 하나씩만 낄 수 있고, 벗었다 다시 끼는 데는 돈이 들지 않는다.
+     */
+    dragonItems: {},
+    dragonEquip: { mask: null, flame: null, head: null, leg: null },
     dragonMultiWins: 0,
     dragonMultiLosses: 0,
     dragonDifficulty: 'normal',

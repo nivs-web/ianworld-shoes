@@ -6,6 +6,7 @@
  */
 import { enterFullscreen, exitFullscreen, isFullscreen, lockLandscape } from '../../core/fullscreen.js';
 import { text as koBlit } from '../../core/pixelfont.js';
+import { FLAME_PALS } from './items.js';
 
 /**
  * 한글 도트 글자. 이 게임의 자체 글꼴(FONT)은 5x7 아스키뿐이라 한글이 없다.
@@ -1290,6 +1291,68 @@ function drawDragon(ctx, pal, level, cx, cy, pose, flip, tint, always){
     (c, x, y) => paintDragon(c, pal, level, x, y, pose, flip, tint, always));
 }
 
+/**
+ * 머리·다리 무장 장식.
+ *
+ * ★ **이 둘은 세지 않다. 대신 눈에 띈다.** (2026-08-26, 사용자 지정)
+ * 산 사람이 산 티가 나야 사는 보람이 있는데, 효과가 약하니 티가 날 곳은 그림뿐이다.
+ * 그래서 뿔 위에 관을 얹고 발톱에 광을 내고 반짝임을 흘린다.
+ *
+ * 드래곤 도트 자체를 고치지 않고 **위에 덧그린다** — 열 마리 x 열 레벨의 도트를
+ * 스무 벌 더 만드는 것은 감당이 안 되고, 굽어 있는 그림 캐시도 전부 무효가 된다.
+ */
+function drawGear(ctx, cx, cy, m, t, headTint, legTint){
+  if(!headTint && !legTint) return;
+  const u = Math.max(2, Math.round(m.cell));           // 장식 한 칸 = 드래곤 한 칸
+  const sh = Math.sin(t*4);
+  ctx.save();
+
+  if(headTint){
+    /* 머리는 오른쪽 위 — 뿔이 난 자리 바로 위에 관을 얹는다 */
+    const hx = snap(cx + m.w*0.16), hy = snap(cy - m.h*0.30);
+    ctx.fillStyle = '#0a0616';
+    ctx.fillRect(hx - u*5, hy - u, u*10, u*2 + 1);      // 관테 그림자
+    ctx.fillStyle = headTint;
+    ctx.fillRect(hx - u*4, hy - u, u*8, u*2);           // 관테
+    for(let i=-2;i<=2;i++){                            // 뾰족한 다섯 갈래
+      const h = (i === 0) ? u*3 : (Math.abs(i) === 1 ? u*2 : u);
+      ctx.fillRect(hx + i*u*2 - u/2, hy - u - h, u, h);
+    }
+    /* 한가운데 보석이 숨쉰다 */
+    ctx.globalAlpha = 0.55 + sh*0.35;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(hx - u/2, hy - u*3, u, u);
+    ctx.globalAlpha = 1;
+  }
+
+  if(legTint){
+    /* 다리는 아래쪽 두 갈래 — 각반을 두르고 발톱에 광을 낸다.
+       ★ 숫자는 눈으로 맞췄다 — 첫 판에는 0.30 이라 각반이 **배에** 붙어 있었다.
+       B 형태의 다리는 36x32 격자의 29~31줄, 가로로는 9~17칸이다. */
+    const ly = snap(cy + m.h*0.42);
+    for(const dx of [-m.w*0.21, -m.w*0.07]){
+      const lx = snap(cx + dx);
+      ctx.fillStyle = '#0a0616';
+      ctx.fillRect(lx - u*2 - 1, ly - 1, u*4 + 2, u*3 + 2);
+      ctx.fillStyle = legTint;
+      ctx.fillRect(lx - u*2, ly, u*4, u*2);            // 각반
+      ctx.fillRect(lx - u*2, ly + u*2, u, u);          // 발톱 셋
+      ctx.fillRect(lx,       ly + u*2, u, u);
+      ctx.fillRect(lx + u*2 - u, ly + u*2, u, u);
+    }
+    /* 뒤로 흐르는 잔광 — 빨라 보이게 하는 눈속임이다.
+       몸 바로 뒤에서 시작해 점점 짧아진다 — 띄어진 자리에서 띄우면
+       잔광이 아니라 그냥 흘러다니는 점으로 보인다. */
+    for(let i=1;i<=3;i++){
+      ctx.globalAlpha = (0.34 + sh*0.16) * (1 - (i-1)*0.28);
+      ctx.fillStyle = legTint;
+      ctx.fillRect(snap(cx - m.w*0.24 - i*u*3), ly + u, u*(4-i), u);
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
 /* ==================================================================
    플레이어
    ================================================================== */
@@ -1368,7 +1431,10 @@ class Player {
     if(this.growT > 0) this.growT -= dt;
 
     // --- 가감속: 목표 속도로 일정 가속도만큼 접근 (0.07초 도달) ---
-    const tvx = mv.x * PLAYER.SPEED, tvy = mv.y * PLAYER.SPEED;
+    /* 다리무장은 조금 빨라지게 해 준다 — 세게 만드는 것이 아니라
+       피하기 편해지는 정도다 (최대 12%) */
+    const sm = this.pid === 1 ? EQ.speed : 1;
+    const tvx = mv.x * PLAYER.SPEED * sm, tvy = mv.y * PLAYER.SPEED * sm;
     const d = PLAYER.ACCEL * dt;
     this.vx += clamp(tvx - this.vx, -d, d);
     this.vy += clamp(tvy - this.vy, -d, d);
@@ -1433,6 +1499,9 @@ class Player {
     }
     const dg = this.dragon;
     drawDragon(ctx, dg.pal, this.level, this.x, this.y + bob, pose, false, null, dg.always);
+    /* 산 무장은 1P 것이다 — 2P 는 맨몸으로 낀 손님이다 */
+    if(this.pid === 1 && (EQ.head || EQ.leg))
+      drawGear(ctx, this.x, this.y + bob, this.metrics, this.t, EQ.head, EQ.leg);
   }
 }
 
@@ -1851,8 +1920,11 @@ class FireBolt {
     const c = FIRE[lv];
     this.x = x; this.y = y;
     this.vx = c.spd; this.vy = vy;
-    this.th = c.th; this.len = c.len; this.dmg = c.dmg;
+    this.th = c.th; this.len = c.len;
     this.pierce = c.pierce; this.lv = lv; this.pid = pid || 1;
+    /* 불꽃 아이템은 1P 에게만 걸린다 (지갑의 주인이 1P 다) */
+    this.dmg = this.pid === 1 ? c.dmg * EQ.atk : c.dmg;
+    this.fp  = firePalOf(this.pid);
     this.ph = Math.random()*Math.PI*2;
     this.t = 0; this.dead = false;
     this.hitSet = null;                       // 관통 시 중복 타격 방지
@@ -1866,15 +1938,16 @@ class FireBolt {
   render(ctx){
     if(this.x < -20 || this.x - this.len > GAME_W + 20) return;
     if(this.y < -80 || this.y > GAME_H + 80) return;
-    drawFireBolt(ctx, snap(this.x), snap(this.y), this.lv, this.t, this.ph);
+    drawFireBolt(ctx, snap(this.x), snap(this.y), this.lv, this.t, this.ph, this.fp);
   }
 }
 
 /* 불줄기 한 발.  줄(band)들이 서로 맞닿은 채 나란히 나간다.
    줄 하나하나를 가늘게 만들지 않고 "다발 전체"를 앞으로 갈수록 두껍게 한다.
    줄 간격과 줄 두께에 같은 배율을 걸기 때문에 어디서 잘라도 틈이 생기지 않는다. */
-function paintFireBolt(ctx, L, cy, lv, ph){
+function paintFireBolt(ctx, L, cy, lv, ph, fp){
   const c = FIRE[lv];
+  const F = fp || PAL.fire;
   const N = c.n, BT = c.bt, seg = 24;
   for(let sx=0; sx<L; sx+=seg){
     const p    = sx / L;
@@ -1886,10 +1959,10 @@ function paintFireBolt(ctx, L, cy, lv, ph){
       const bh  = BT * bs * 1.10 * wob;                     // 1.10 = 이웃과 겹쳐 틈 제거
       const by  = cy + (bi - (N-1)/2) * BT * bs;
       const y0  = Math.round(by - bh/2), y1 = Math.round(by + bh/2);
-      ctx.fillStyle = PAL.fire[4];
+      ctx.fillStyle = F[4];
       ctx.fillRect(sx, y0, w, Math.max(1, y1-y0));
       const ih = Math.max(1, Math.round((y1-y0)*0.5));
-      ctx.fillStyle = PAL.fire[1];
+      ctx.fillStyle = F[1];
       ctx.fillRect(sx, Math.round(by - ih/2), w, ih);
     }
     // 덩어리 한가운데를 지나는 흰 코어
@@ -1904,24 +1977,29 @@ function paintFireBolt(ctx, L, cy, lv, ph){
    화면에 12발이 깔릴 때 프레임당 3000번이 넘어가 폰에서 버벅인다. */
 const FIRE_FRAMES = 6, FIRE_CACHE_MAX = 3;   // 6장이면 일렁임이 충분히 자연스럽다
 const _fireCache = new Map();
-function fireSheet(lv){
-  let sh = _fireCache.get(lv);
+function fireSheet(lv, fp){
+  /* 색까지 열쇠에 넣는다 — 1P 가 파란 불을 끼면 2P 는 빨간 불이라
+     레벨만으로 구워두면 둘이 서로의 그림을 빼앗는다. */
+  const F = fp || PAL.fire;
+  const key = lv + '|' + F[4];
+  let sh = _fireCache.get(key);
   if(sh) return sh;
   const c = FIRE[lv];
   const W = c.len, H = Math.ceil(c.th * 1.15) + 8;
   const frames = [];
   for(let f=0; f<FIRE_FRAMES; f++){
     const { cv, c:cx } = makeCanvas(W, H);
-    paintFireBolt(cx, W, H/2, lv, f * (Math.PI*2/FIRE_FRAMES));
+    paintFireBolt(cx, W, H/2, lv, f * (Math.PI*2/FIRE_FRAMES), F);
     frames.push(cv);
   }
   sh = { frames, W, H };
-  if(_fireCache.size >= FIRE_CACHE_MAX) _fireCache.delete(_fireCache.keys().next().value);
-  _fireCache.set(lv, sh);
+  /* 두 색이 번갈아 들어올 수 있으니 칸을 두 배로 둔다 */
+  if(_fireCache.size >= FIRE_CACHE_MAX*2) _fireCache.delete(_fireCache.keys().next().value);
+  _fireCache.set(key, sh);
   return sh;
 }
-function drawFireBolt(ctx, x, y, lv, t, ph){
-  const sh = fireSheet(lv);
+function drawFireBolt(ctx, x, y, lv, t, ph, fp){
+  const sh = fireSheet(lv, fp);
   // 위상에 발마다 다른 ph 를 섞어 같은 프레임만 나란히 뜨지 않게 한다
   const fi = ((((t*26 + ph) / (Math.PI*2) * FIRE_FRAMES) | 0) % FIRE_FRAMES + FIRE_FRAMES) % FIRE_FRAMES;
   ctx.drawImage(sh.frames[fi], x - sh.W, y - (sh.H >> 1));
@@ -3263,8 +3341,22 @@ class Item {
     this.vx = -110; this.t = Math.random()*6; this.dead = false; this.life = 14;
   }
   get box(){ return { x:this.x - this.r, y:this.y - this.r, w:this.r*2, h:this.r*2 }; }
-  update(dt){
+  update(dt, pull){
     this.t += dt; this.life -= dt;
+    /**
+     * 머리무장의 금화 자석.
+     * ★ **금화에만 걸린다.** 사과나 목숨까지 빨려오면 잡아야 할 것을 잡지 않고도
+     * 다 먹게 돼서 게임이 쉬워진다. 자석이 하는 일은 "동전 줍기" 하나뿐이다.
+     */
+    if(pull && this.kind === ITEM_KIND.COIN){
+      const dx = pull.x - this.x, dy = pull.y - this.y;
+      const d  = Math.hypot(dx, dy);
+      if(d > 1 && d < pull.r){
+        const k = (1 - d/pull.r) * 900;          // 가까울수록 세게 끌린다
+        this.x += (dx/d)*k*dt;
+        this.y += (dy/d)*k*dt;
+      }
+    }
     this.x += this.vx*dt;
     this.y += Math.sin(this.t*2.4)*38*dt;
     if(this.x < -60 || this.life <= 0) this.dead = true;
@@ -3962,7 +4054,8 @@ class GameScene extends Scene {
       case ITEM_KIND.COIN: {
         p.coinChain = (p.coinT > 0) ? Math.min(COIN_CHAIN_MAX, p.coinChain + 1) : 1;
         p.coinT = COIN_WINDOW;
-        const gain = COIN_BASE * p.coinChain;
+        /* 용왕의 관을 쓴 사람은 금화 점수가 조금 더 붙는다 (지갑 개수는 그대로) */
+        const gain = Math.round(COIN_BASE * p.coinChain * (p.pid === 1 ? (1 + EQ.coinBonus) : 1));
         RUN.coins++;                       // 지갑에 넣을 개수 (오락실이 가져간다)
         this.addScore(gain, p.pid);
         Popups.add(it.x, it.y - 20, '+' + gain + (p.coinChain > 1 ? ' x' + p.coinChain : ''),
@@ -4323,7 +4416,12 @@ class GameScene extends Scene {
     for(const w of this.waves)     w.update(dt);
     for(const b of this.booms)     b.update(dt);
     for(const m of this.pmissiles) m.update(dt, this);
-    for(const it of this.items)    it.update(dt);
+    /* 머리무장을 낀 1P 만 금화를 끌어당긴다. 죽어 있는 동안에는 안 끌린다 —
+       화면에 없는 드래곤한테 동전이 빨려가면 보기에 이상하다. */
+    const pull = (EQ.magnet > 0 && this.p1 && !this.p1.out && this.p1.hp > 0)
+      ? { x: this.p1.x, y: this.p1.y, r: EQ.magnet }
+      : null;
+    for(const it of this.items)    it.update(dt, pull);
     for(const r of this.roars)     r.update(dt, this);
     Particles.update(dt); Popups.update(dt); Flash.update(dt); Shake.update(dt);
 
@@ -4467,7 +4565,8 @@ class GameScene extends Scene {
     Shake.add(10, 0.25);
     SND.sfx('hurt'); Input.rumble(0.9, 0.7, 260);
     /* 기본 피해 25 -> 34. 목숨 하나가 네 대에서 세 대로 줄어든다 */
-    p.hp -= (dmg || 34);
+    /* 마스크를 꼈으면 피해가 줄어든다 (1P 한테만) */
+    p.hp -= (dmg || 34) * (p.pid === 1 ? (1 - EQ.dmgCut) : 1);
     if(p.hp <= 0){
       p.lives = Math.max(0, p.lives - 1);
       p.setLevel(p.level - 1);
@@ -5325,6 +5424,38 @@ const DG = {
 /** 한 판 동안 쌓이는 것 — 판이 끝나면 오락실이 가져간다 */
 const RUN = { coins: 0 };
 
+/**
+ * ★ **낀 아이템은 1P 것이다.** (2026-08-26)
+ *
+ * 이 게임은 오락실 계정 하나로 돌아간다. 2P 는 같은 화면에 끼어든 손님이라
+ * 지갑도 보관함도 없다. 그래서 모든 효과는 `pid === 1` 에게만 걸린다 —
+ * 안 그랬다가는 내가 산 물건으로 남이 세지는 이상한 일이 된다.
+ */
+const EQ = { dmgCut:0, atk:1, magnet:0, coinBonus:0, speed:1, pal:null, head:null, leg:null, mask:null };
+
+/**
+ * 오락실이 낀 것을 알려준다. 한 판 중에는 바뀔 수 없고,
+ * 로비에서 바꿔 다시 들어올 때마다 mount() 가 다시 불러준다.
+ */
+export function setEquipment(eff){
+  const e = eff || {};
+  EQ.dmgCut    = Math.min(0.20, +e.dmgCut    || 0);
+  EQ.atk       = Math.min(1.30, +e.atk       || 1);
+  EQ.magnet    = Math.min(200,  +e.magnet    || 0);
+  EQ.coinBonus = Math.min(0.20, +e.coinBonus || 0);
+  EQ.speed     = Math.min(1.15, +e.speed     || 1);
+  EQ.pal       = e.pal  || null;
+  EQ.head      = e.head || null;   // 장식 색 (그림에만 쓴다)
+  EQ.leg       = e.leg  || null;
+  EQ.mask      = e.mask || null;
+  _fireCache.clear();              // 불꽃 색이 바뀌었을 수 있다 — 구워둔 그림을 버린다
+}
+
+/** 불꽃 색 — 안 꼈거나 2P 면 기본 빨간 불이다 */
+function firePalOf(pid){
+  return (pid === 1 && EQ.pal && FLAME_PALS[EQ.pal]) ? FLAME_PALS[EQ.pal] : PAL.fire;
+}
+
 /* 난이도 : 적 수 · 적 속도 · 적 체력 세 축으로 가른다.
    ★ **플레이어 속도는 건드리지 않는다.** 내 드래곤까지 느려지면 쉬운 게 아니라
    그냥 답답해진다. 어려움을 어렵게 만드는 것은 "적이 빠른 것" 이다.
@@ -5438,6 +5569,7 @@ export function mount(host, opts = {}) {
   DG.onFinish = opts.onFinish || (() => {});
   DG.onExit = opts.onExit || (() => {});
   DG.onCharacter = opts.onCharacter || (() => {});
+  setEquipment(opts.equipment);        // 낌 아이템은 한 판 내내 고정이다
   RUN.coins = 0;
 
   hostEl = host;
@@ -5519,6 +5651,15 @@ export function dragonPortrait(idx, cell = 3) {
   drawGrid(c, f.wings[2], 0, 0, f.cols, cell, d.pal, false, null);
   drawGrid(c, f.body,     0, 0, f.cols, cell, d.pal, false, null);
   for(const nm of (d.always || [])) if(f.parts[nm]) drawGrid(c, f.parts[nm], 0, 0, f.cols, cell, d.pal, false, null);
+  /**
+   * ★ **산 무장은 로비에서도 보여야 한다.** (2026-08-26 D단계)
+   * 머리무장과 다리무장은 세지 않은 대신 비싸고 화려한 물건이라,
+   * 게임 안에서만 보이면 산 보람이 절반으로 줄어든다.
+   */
+  if(EQ.head || EQ.leg){
+    const mm = { w, h, cell };
+    drawGear(c, w/2, h/2, mm, 0.4, EQ.head, EQ.leg);
+  }
   return cv;
 }
 

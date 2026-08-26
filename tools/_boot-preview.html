@@ -16,8 +16,10 @@
    * 같은 함정이 있다 - 스텁 대상 파일을 한 번이라도 고치면 그 뒤로 무시된다.)
    * 그래서 여기서는 실제로 서빙되는 경로를 읽어 그 키까지 함께 넣는다.
    */
+  /* ?nonick=1 : 구글 로그인은 됐지만 닉네임을 아직 안 정한 신규 사용자 */
+  var __noNick = new URLSearchParams(location.search).get('nonick') === '1';
   localStorage.setItem('sf_profile', JSON.stringify({
-    uid: 'testuid123', nickname: '아빠게임왕', email: 't@t.com',
+    uid: 'testuid123', nickname: __noNick ? '' : '아빠게임왕', email: 't@t.com',
     selectedCharacter: 'ian', shoesOwned: 4213, shoesByIndex: {}, walletVersion: 1,
     bestStairs: 10769, dragonBest: 128400
   }));
