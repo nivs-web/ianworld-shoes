@@ -32,7 +32,9 @@ for (const diff of ['easy', 'normal', 'hard']) {
 
   let t = 0, lastStage = 1, per = [], died = 0;
   /* 보스전이 전체의 얼마인지 — 보스 체력을 건드릴 때 그 영향을 가늠하는 잣대다 */
-  let bossT = 0, bossHp = 0; const seen = new Set();
+  let bossT = 0, bossHp = 0, hits = 0; const seen = new Set();
+  const hitsBy = [];                          // 스테이지별로 몇 대 맞았나
+  let hitMark = 0;
   const CAP = 60 * 60;                       // 한 시간이면 무언가 잘못된 것이다
   let stageT = 0;
 
@@ -58,7 +60,11 @@ for (const diff of ['easy', 'normal', 'hard']) {
     }
     sc.p1.x += Math.max(-9, Math.min(9, tx - sc.p1.x));
     sc.p1.y += Math.max(-9, Math.min(9, ty - sc.p1.y));
-    sc.p1.hp = 100;                          // 죽지 않는 봇 — 재는 것은 진행 속도다
+    /**
+     * 죽지 않는 봇이다 — 재려는 것은 **진행 속도**이지 봇의 회피 실력이 아니다.
+     * 대신 **몇 대나 맞는지**를 세어 둔다. 적이 실제로 사나워졌는지는 그 숫자가 말한다.
+     */
+    if (sc.p1.hp < 100) { hits++; sc.p1.hp = 100; }
     if (sc.p1.lives < 3) { died += 3 - sc.p1.lives; sc.p1.lives = 3; }
 
     /* 무기를 쓴다 — 안 쓰는 봇으로 재면 보스전이 두 배로 늘어난다 */
@@ -71,7 +77,10 @@ for (const diff of ['easy', 'normal', 'hard']) {
       if (!seen.has(boss)) { seen.add(boss); bossHp += boss.maxHp; }
     }
 
-    if (sc.stage !== lastStage) { per.push(stageT); stageT = 0; lastStage = sc.stage; }
+    if (sc.stage !== lastStage) {
+      per.push(stageT); stageT = 0; lastStage = sc.stage;
+      hitsBy.push(hits - hitMark); hitMark = hits;
+    }
     /**
      * ★ `clear` 는 **게임 클리어가 아니라 판 클리어**다 — 다음 판으로 넘기는
      * 메뉴가 뜬다. 여기서 멈추면 "1판 완주 2분" 같은 소리가 나온다 (한 번 속았다).
@@ -98,6 +107,7 @@ for (const diff of ['easy', 'normal', 'hard']) {
     say(`   판당 ${Math.min(...per).toFixed(0)}~${Math.max(...per).toFixed(0)}초 ` +
         `(가운데 ${srt[srt.length >> 1].toFixed(0)}초)   ${per.length}판`);
   }
+  say(`   맞은 횟수 ${hits} (초반 5판 ${hitsBy.slice(0,5).reduce((a,b)=>a+b,0)} → 후반 5판 ${hitsBy.slice(-5).reduce((a,b)=>a+b,0)})`);
   say(`   보스전 ${(bossT / 60).toFixed(1)}분 (전체의 ${(bossT / t * 100).toFixed(0)}%)   보스 총체력 ${bossHp.toLocaleString()}`);
   say(`   분당 금화 ${(coins / mins).toFixed(0)}   불레벨 ${sc && sc.p1 ? sc.p1.level : '?'}   죽은 횟수 ${died}`);
   DR.unmount();

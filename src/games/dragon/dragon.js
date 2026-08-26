@@ -3098,17 +3098,41 @@ const FIRE_INTERVAL = 0.05;                  // Lv1 기준
 /* 레벨별 불줄기.
    n  = 나란히 붙어서 나가는 줄 수 (벌어지지 않고 서로 맞닿아 한 덩어리)
    bt = 줄 하나의 두께.  전체 두께 th = n * bt */
+/**
+ * ★★ **강해지지 않는다.** (2026-08-26, 사용자 지정)
+ *
+ * *"너무 재미가 없어, 강해지지 않았으면 좋겠어 (...) 너무 강하니깐 재미가 없어"*
+ *
+ * 예전 Lv10 은 **두께 228px 에 관통 무한**이었다. 화면 세로의 4분의 1을 덮는
+ * 빔이 앞의 모든 것을 뚫고 지나가니, 뒤로 갈수록 **피할 일도 조준할 일도**
+ * 없어졌다. 적을 아무리 늘려도 빔 앞에서는 다 같은 벽지였다.
+ * 재미가 없어진 진짜 원인이 난이도가 아니라 **내 화력**이었다.
+ *
+ * 그래서 열 단계를 **예전의 Lv1~Lv4 사이에 다시 욱여넣는다.**
+ *   · 두께는 78px(예전 Lv3)에서 멈춘다 — 화면을 덮지 않는다
+ *   · 관통은 1이 상한 — 줄줄이 꿰는 맛은 남기되 벽지는 안 된다
+ *   · 데미지는 18.3 -> 31.0 (예전 Lv4 수준). 예전 상한 94.6 의 3분의 1이다
+ *
+ * 레벨업이 무의미해지지는 않는다 — 두께 1줄->3줄, 관통 0->1, 사거리 170->224,
+ * 그리고 연사 속도가 함께 오른다. 다만 **판을 뒤집는 힘**은 주지 않는다.
+ *
+ * ## 보스 체력은 저절로 따라온다
+ *
+ * `bossPowerScale` 이 보스 체력을 **지금 내 화력**에 연동해 두었다. 표를 낮추면
+ * 보스도 같이 얇아져서 보스전 길이는 거의 그대로다. 반면 **잡몹은 체력이 고정**이라
+ * 그만큼 오래 버틴다 — 그게 이번에 노리는 것이다.
+ */
 const FIRE = [ null,
-  { n: 1, bt:26.0, th: 26, dmg:  18.3, spd:1500, pierce:0 , len:170 },  // Lv1   1줄= 26px 간격150<길이170
-  { n: 2, bt:26.0, th: 52, dmg:  22.0, spd:1500, pierce:0 , len:178 },  // Lv2   2줄= 52px 간격150<길이178
-  { n: 3, bt:26.0, th: 78, dmg:  26.4, spd:1520, pierce:1 , len:186 },  // Lv3   3줄= 78px 간격152<길이186
-  { n: 5, bt:24.0, th:120, dmg:  31.7, spd:1520, pierce:1 , len:196 },  // Lv4   5줄=120px 간격152<길이196
-  { n: 6, bt:23.0, th:138, dmg:  38.0, spd:1560, pierce:2 , len:206 },  // Lv5   6줄=138px 간격156<길이206
-  { n: 7, bt:22.0, th:154, dmg:  45.6, spd:1560, pierce:3 , len:216 },  // Lv6   7줄=154px 간격156<길이216
-  { n: 8, bt:21.0, th:168, dmg:  54.7, spd:1620, pierce:4 , len:226 },  // Lv7   8줄=168px 간격162<길이226
-  { n: 9, bt:20.5, th:184, dmg:  65.7, spd:1620, pierce:6 , len:236 },  // Lv8   9줄=184px 간격162<길이236
-  { n:10, bt:20.0, th:200, dmg:  78.8, spd:1700, pierce:8 , len:248 },  // Lv9  10줄=200px 간격170<길이248
-  { n:12, bt:19.0, th:228, dmg:  94.6, spd:1800, pierce:99, len:260 }   // Lv10 12줄=228px 간격180<길이260
+  { n: 1, bt:26.0, th: 26, dmg:  18.3, spd:1500, pierce:0, len:170 },  // Lv1  1줄= 26px  (죽으면 여기로)
+  { n: 1, bt:26.0, th: 26, dmg:  19.4, spd:1500, pierce:0, len:176 },  // Lv2  1줄= 26px
+  { n: 2, bt:26.0, th: 52, dmg:  20.6, spd:1510, pierce:0, len:182 },  // Lv3  2줄= 52px
+  { n: 2, bt:26.0, th: 52, dmg:  21.8, spd:1520, pierce:0, len:188 },  // Lv4  2줄= 52px
+  { n: 2, bt:26.0, th: 52, dmg:  23.1, spd:1530, pierce:0, len:194 },  // Lv5  2줄= 52px
+  { n: 3, bt:26.0, th: 78, dmg:  24.5, spd:1540, pierce:1, len:200 },  // Lv6  3줄= 78px  ← 여기서 두께 상한
+  { n: 3, bt:26.0, th: 78, dmg:  26.0, spd:1550, pierce:1, len:206 },  // Lv7
+  { n: 3, bt:26.0, th: 78, dmg:  27.6, spd:1560, pierce:1, len:212 },  // Lv8
+  { n: 3, bt:26.0, th: 78, dmg:  29.3, spd:1570, pierce:1, len:218 },  // Lv9
+  { n: 3, bt:26.0, th: 78, dmg:  31.0, spd:1580, pierce:1, len:224 }   // Lv10 예전 Lv4 데미지 수준
 ];
 
 class FireBolt {
@@ -3289,7 +3313,8 @@ class WingZombie {
     if(this.x < GAME_W - 60){
       this.shootT -= dt;
       if(this.shootT <= 0){
-        this.shootT = 1.6 + Math.random()*1.2;
+        /* 레벨이 오르면 화살이 잦아진다 (1.6~2.8초 -> 0.9~1.6초) */
+        this.shootT = (1.6 - 0.7*enemyLv()) + Math.random()*(1.2 - 0.5*enemyLv());
         scene.arrows.push(new Arrow(this.x - 30, this.y + 8));
       }
     }
@@ -3594,7 +3619,7 @@ const DR_CELL = 3.6;                                 // FORM A x3.6 = 108 x 101 
 class DragonRider extends EnemyBase {
   constructor(x, y){
     super(x, y, enemyHp(84), 300);
-    this.vx = -(150 + Math.random()*50);
+    this.vx = -(150 + Math.random()*50) * (1 + 0.30*enemyLv());   // 뒤로 갈수록 빨리 들어온다
     this.shootT = 1.0 + Math.random()*1.4;
   }
   get box(){ return { x:this.x - 38, y:this.y - 34, w:77, h:67 }; }
@@ -3609,10 +3634,16 @@ class DragonRider extends EnemyBase {
     if(this.x < GAME_W - 80){
       this.shootT -= dt;
       if(this.shootT <= 0){
-        this.shootT = 2.2 + Math.random()*0.9;
-        // 3방향 불꽃 (중앙 + 상하 30도)
-        for(const a of [-Math.PI/6, 0, Math.PI/6])
-          scene.eshots.push(new EnemyFire(this.x - 34, this.y + 6, Math.PI + a, 330, 11));
+        const el = enemyLv();
+        /* 연사 2.2~3.1초 -> 1.2~1.7초 */
+        this.shootT = (2.2 - 1.0*el) + Math.random()*(0.9 - 0.4*el);
+        /* 중반부터 3방향이 5방향이 된다 — 위아래로 빠져나갈 틈이 좁아진다 */
+        const spread = el >= 0.45
+          ? [-Math.PI/5, -Math.PI/12, 0, Math.PI/12, Math.PI/5]
+          : [-Math.PI/6, 0, Math.PI/6];
+        const base = enemyAim(scene, this.x - 34, this.y + 6);
+        for(const a of spread)                       // 탄속 330 -> 520
+          scene.eshots.push(new EnemyFire(this.x - 34, this.y + 6, base + a, 330 + 190*el, 11));
       }
     }
     if(this.x < -120) this.dead = true;
@@ -3660,12 +3691,15 @@ class HeavyRider extends EnemyBase {
     if(this.x < GAME_W - 60){
       this.missileT -= dt;
       if(this.missileT <= 0){
-        this.missileT = 2.6 + Math.random()*1.0;
-        scene.missiles.push(new HomingMissile(this.x - 46, this.y, scene.nearestPlayer(this.x, this.y), 250, 1.9));
+        const el = enemyLv();
+        /* 유도탄이 잦아지고(2.6~3.6 -> 1.5~2.1초) 빨라지고(250 -> 380) 오래 쫓는다 */
+        this.missileT = (2.6 - 1.1*el) + Math.random()*(1.0 - 0.4*el);
+        scene.missiles.push(new HomingMissile(this.x - 46, this.y,
+          scene.nearestPlayer(this.x, this.y), 250 + 130*el, 1.9 + 0.9*el));
       }
       this.bombT -= dt;
       if(this.bombT <= 0){
-        this.bombT = 3.2 + Math.random()*1.4;
+        this.bombT = (3.2 - 1.3*enemyLv()) + Math.random()*(1.4 - 0.5*enemyLv());
         scene.bombs.push(new Bomb(this.x, this.y + 30));
       }
     }
@@ -4329,9 +4363,19 @@ function fireDpsOf(level){
 }
 function bossPowerScale(level){ return Math.pow(fireDpsOf(level) / fireDpsOf(1), 0.8); }
 
-// 불 화력을 절반으로 낮췄으므로 보스 기준 체력도 같이 내린다.
-// (이 값이 그대로면 보스전 시간이 2배가 되어 제한시간 안에 못 잡는다)
-const MID_BOSS_BASE = 8200, BOSS_MUL = 2.8;
+/**
+ * ★ **보스를 얇게.** (2026-08-26)
+ *
+ * 화력 상한을 낮추자 보스전이 전체 시간의 **51%** 를 차지했다 (판당 60초씩,
+ * 그걸 스무 번). `bossPowerScale` 이 체력을 화력에 연동해 두었지만 지수가 0.8 이라
+ * 화력이 내려가면 **오히려 보스전이 길어진다** (시간 = 화력^-0.2).
+ *
+ * 어차피 지금 노리는 재미는 **피하는 것**이지 두꺼운 과녁을 오래 깎는 것이 아니다.
+ * 맷집은 지루함을 만들고 탄은 긴장을 만든다 — 8200 -> 2600 으로 내려
+ * 보스전을 판당 20초 안팎으로 되돌린다. 미사일 데미지도 이 값에서 나오므로
+ * (`missileDamageOf`) 함께 따라 내려간다.
+ */
+const MID_BOSS_BASE = 2600, BOSS_MUL = 2.8;
 /* 스테이지가 1 오를 때마다 보스가 5% 씩 단단해지고 5% 씩 세게 때린다.
    1스테이지와 20스테이지 보스가 똑같으면 스테이지를 올라갈 이유가 없다.
    20스테이지 기준 2.53배. */
@@ -4340,6 +4384,45 @@ function stagePowerOf(stage){ return Math.pow(1.05, clamp(stage|0, 1, 20) - 1); 
    이게 없으면 고스테이지에서도 불 몇 방에 녹아버려 난이도가 그대로다.
    S20 기준 4.3배. */
 function enemyToughOf(stage){ return Math.pow(1.08, clamp(stage|0, 1, 20) - 1); }
+/**
+ * ★★ **적도 레벨업한다.** (2026-08-26, 사용자 지정)
+ *
+ * *"상대 캐릭터들도 랩업이 되면서 점점 강해져야 하는데 나 혼자만 강하니깐"*
+ *
+ * 예전에 스테이지가 올라가며 바뀌는 것은 **적의 수와 맷집뿐**이었다. 쏘는 속도도,
+ * 쏘는 간격도, 쏘는 방향도 1스테이지와 20스테이지가 똑같았다. 그래서 뒤로 갈수록
+ * "더 단단한 과녁이 더 많이" 나올 뿐, **피할 것이 늘지는 않았다** — 지루해지는
+ * 두 번째 이유가 이것이다.
+ *
+ * 이제 스테이지를 적의 레벨로 삼아 세 가지를 함께 올린다:
+ *   · **탄속** — 반응할 시간이 줄어든다
+ *   · **연사** — 화면에 깔리는 탄이 늘어난다
+ *   · **조준** — 중반부터 내 위치를 보고 쏜다 (가만히 있으면 맞는다)
+ *
+ * 맷집을 올리는 것과 다르다. 맷집은 **지루함**을 만들고 탄은 **긴장**을 만든다.
+ */
+function enemyLv(){ return clamp((CUR_STAGE - 1) / 19, 0, 1); }
+/** 조준이 시작되는 지점. 초반에는 정직하게 앞으로만 쏜다 */
+const AIM_FROM = 0.35;
+/**
+ * 쏘는 방향. 레벨이 낮으면 그냥 왼쪽(Math.PI), 높으면 **가까운 플레이어 쪽**이다.
+ * 완전 조준이 아니라 레벨만큼만 조준선 쪽으로 기울인다 — 갑자기 백발백중이 되면
+ * 피할 수 있는 게임이 아니라 운에 맡기는 게임이 된다.
+ */
+function enemyAim(scene, x, y){
+  const el = enemyLv();
+  if(el < AIM_FROM || !scene.nearestPlayer) return Math.PI;
+  const p = scene.nearestPlayer(x, y);
+  if(!p) return Math.PI;
+  const want = Math.atan2(p.y - y, p.x - x);
+  /* Math.PI 에서 조준선까지 (el - AIM_FROM) 만큼만 간다 */
+  const k = clamp((el - AIM_FROM) / (1 - AIM_FROM), 0, 1) * 0.85;
+  let d = want - Math.PI;
+  while(d >  Math.PI) d -= Math.PI*2;
+  while(d < -Math.PI) d += Math.PI*2;
+  return Math.PI + d * k;
+}
+
 let CUR_STAGE = 1;                  // 적 생성 시 참조할 현재 스테이지
 function enemyHp(base){ return Math.round(base * enemyToughOf(CUR_STAGE) * diffHp()); }
 function midBossHpOf(stage, level){
@@ -4374,8 +4457,13 @@ const FIRST_POWER_AT = 5;
  * 그 레벨의 발사 간격(초). 레벨이 오르면 짧아진다 — Lv10 은 Lv1 의 두 배 속도다.
  * `MAX_LEVEL` 은 아래에서 선언되지만 이 함수는 부를 때 읽으므로 문제없다.
  */
+/**
+ * ★ 연사도 완만하게. (2026-08-26)
+ * 0.34 는 Lv10 에서 초당 30발이었다 — 두께·관통을 묶어도 연사가 그대로면
+ * 화력은 결국 그만큼 오른다. 0.16 으로 낮춰 초당 20 -> 23.8 발에 그친다.
+ */
 const fireGap = (lv) =>
-  FIRE_INTERVAL * (1 - 0.34 * (clamp(lv | 0, 1, MAX_LEVEL) - 1) / (MAX_LEVEL - 1));
+  FIRE_INTERVAL * (1 - 0.16 * (clamp(lv | 0, 1, MAX_LEVEL) - 1) / (MAX_LEVEL - 1));
 function missileDamageOf(stage, level){
   // 1회 발사가 3발(연속 시 6/9발)이라 한 방이 너무 강했다. 기존의 1/3 로 낮춤
   return midBossHpOf(stage, level) / 54;
@@ -5249,7 +5337,15 @@ const MAX_LIVES = 10;
  * 핵무기는 최종보스가 따로 하나 더 떨구므로 7 + 1 = 8, 예전 3 + 1 = 4 의 두 배다.
  */
 const DROP_PLAN = [
-  { kind:'missile', rounds:20, every: 3.3, first: 3 },   // 1인당 20개 (10 -> 20)
+  /**
+   * ★ **남아돌지 않게 줄인다.** (2026-08-26, 사용자 지적)
+   * *"핵무기 미사일 남아돌고 진짜 너무 재미가 없어"*
+   *
+   * 한 판에 20개씩 주우면 상한 50 을 늘 꽉 채운 채로 다닌다. 그러면 미사일은
+   * **아껴 쓰는 물건이 아니라 그냥 두 번째 발사 버튼**이 된다.
+   * 절반으로 줄여서 "지금 쓸까 아낄까" 를 생각하게 만든다.
+   */
+  { kind:'missile', rounds:10, every: 5.5, first: 4 },   // 1인당 10개 (20 -> 10)
   { kind:'apple',   rounds:10, every: 6.5, first: 7 },   // 1인당 10개 (그대로)
   /**
    * ★ **핵무기는 30초에 하나.** (2026-08-26, 사용자 지적)
@@ -5260,7 +5356,7 @@ const DROP_PLAN = [
    * 처음에 두 개를 들고 시작하고 상점에서 열두 개까지 늘릴 수 있으니
    * 떨어지는 것을 줄여도 쓸 기회는 충분하다.
    */
-  { kind:'bomb',    rounds: 5, every:30.0, first:12 }
+  { kind:'bomb',    rounds: 3, every:42.0, first:20 }   // 핵무기 (5/30초 -> 3/42초)
 ];
 const COIN_INTERVAL = 2.6;          // 황금동전 뭉치가 나오는 주기
 const COIN_PER_ARC  = 6;            // 한 뭉치에 몇 개
@@ -6267,14 +6363,21 @@ class GameScene extends Scene {
     if(p.hp <= 0){
       p.lives = Math.max(0, p.lives - 1);
       /**
-       * ★ **죽어도 파이어 레벨은 안 내려간다.** (2026-08-26, 사용자 지정)
+       * ★★ **죽으면 파이어 레벨이 1로 돌아간다.** (2026-08-26, 사용자 지정)
        *
-       * 파이어 레벨은 **중간보스를 잡아야만** 오른다 — 한 스테이지에 한 번뿐인
-       * 귀한 것이다. 그런데 한 대 맞고 죽을 때마다 한 칸씩 깎으니, 어렵게 올린
-       * 화력이 순식간에 1로 돌아가 다시 올릴 길이 없었다.
-       * 목숨이 남아 있는 한 죽기 전 레벨 그대로 부활한다.
-       * (컨티뉴는 여전히 1부터다 — 판이 바뀌는 것과 목숨 하나 잃는 것은 다르다.)
+       * *"랩업을 하다가도 하트가 1개 죽으면 다시 1부터 랩업을 해야 하는걸로 가자"*
+       *
+       * 전에는 안 내렸다. 레벨이 중간보스 격파로만 오르는데 죽을 때마다 깎으면
+       * 되돌릴 길이 없다는 이유였다. 그 이유가 **이번 표 개편으로 사라졌다** —
+       * Lv1 과 Lv10 의 차이가 예전만큼 크지 않으므로(데미지 18.3 대 31.0,
+       * 두께 26 대 78) 1 로 떨어져도 게임을 못 할 정도가 아니다.
+       * 스테이지마다 한 칸씩 다시 오르므로 남은 판으로 되찾을 수도 있다.
+       *
+       * 그리고 이게 있어야 **맞는 것이 아프다.** 목숨만 깎이고 화력이 그대로면
+       * 몸으로 밀고 들어가는 편이 이득이라 피할 이유가 없었다.
        */
+      p.setLevel(1);
+      Popups.add(p.x, p.y - 130, '파이어 LV1', '#ff9a5a', 4, true);
       p.hurtT = 1.8;
       Shake.add(14, 0.5);
       this.booms.push(new Boom(p.x, p.y, 120, 0.6));
