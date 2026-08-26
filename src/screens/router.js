@@ -88,7 +88,7 @@ function mount() {
   live = top.factory(nav, top.params);
   draw();
   // DOM 화면으로 돌아왔다 — 밀린 쪽지를 지금 띄운다 (인게임 동안은 서버에 그대로 뒀다)
-  Presence.setState('lobby');
+  Presence.setState('lobby', 'shoes');   // 신발게임에서 나오면 신발 로비다
   mountHook?.();
 }
 

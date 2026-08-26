@@ -53,14 +53,25 @@ const s = sc();
 s.p1.lives = 0; s.p1.hp = 0; s.p1.out = true;
 s.state = 'over'; s.endIdx = 0;
 
-say('■ 게임오버 메뉴');
+say('■ 게임오버 메뉴 — 언제나 버튼 셋 (2026-08-27 사용자 지정)');
 check('이어하기가 맨 위에', menu(), ['continue2', 'retry', 'quit']);
 
-say('■ 돈이 없으면 안 보인다');
+/**
+ * 예전에는 못 사면 버튼이 **사라졌다.** 그러면 개수가 둘이었다 셋이었다 해서
+ * 누르려던 것이 다른 것으로 바뀐다. 이제 자리는 그대로 두고 **막는다.**
+ */
+say('■ 돈이 없으면 자리는 그대로, 누르면 안 된다');
 const keep = wallet; wallet = 499;
-check('499 금화', menu(), ['retry', 'quit']);
+check('버튼 개수는 그대로', menu(), ['continue2', 'retry', 'quit']);
+check('이어하기가 막혀 있나', sc().endItems()[0].off, true);
+{
+  const before = wallet, was = sc();
+  sc().endIdx = 0; sc().doEndPick();
+  check('눌러도 지갑 그대로', wallet, before);
+  check('눌러도 판이 안 바뀜', sc() === was, true);
+}
 wallet = keep;
-check('되돌리면 다시', menu(), ['continue2', 'retry', 'quit']);
+check('돈이 생기면 다시 눌린다', sc().endItems()[0].off, false);
 
 say('■ 실제로 사 본다');
 s.score = 12345; s.p1.score = 12345;
@@ -80,7 +91,7 @@ pick('continue2'); untilNewScene(s2);
 check('두 번째도 빠졌나', wallet, 4000);
 const s3 = sc();
 s3.p1.lives = 0; s3.state = 'over'; s3.endIdx = 0;
-check('세 번째는 안 보인다', menu(), ['retry', 'quit']);
+check('세 번째는 막혀 있다', s3.endItems()[0].off, true);
 
 say('■ 처음부터 다시 하면 횟수가 초기화된다');
 pick('retry'); untilNewScene(s3);

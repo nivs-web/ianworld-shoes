@@ -105,7 +105,7 @@ export default function WaitingRoom(nav, params = {}) {
    * 그 경로를 아예 만들지 않는다. 방을 나가면 다음 화면이 뜨면서 `router.mount` 가
    * 다시 '대기중' 으로 되돌린다.
    */
-  Presence.setState('playing');
+  Presence.setState('playing', params.game === 'dragon' ? 'dragon' : 'shoes');
   const myUid = currentUser()?.uid;
   let room = null;
   let unsub = () => {};

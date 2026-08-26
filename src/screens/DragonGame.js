@@ -87,7 +87,7 @@ export default function DragonGame(nav, opt = {}) {
       setGameGuard(null);
       unlockOrientation();
       if (mod) mod.unmount();
-      Presence.setState('lobby');
+      Presence.setState('lobby', 'dragon');   // 드래곤 게임에서 나오면 드래곤 로비다
       /**
        * 멈춰 뒀던 오락실 루프를 되살린다. 이게 없으면 로비로 돌아온 뒤
        * 신발게임이 영영 안 돈다 — 화면은 DOM 이라 멀쩡해 보여서 늦게 발견된다.

@@ -23,6 +23,7 @@ const DragonItems = lazyScreen(() => import('./DragonItems.js'), S.dragonItemTit
 const DragonSettings = lazyScreen(() => import('./DragonSettings.js'), S.dragonMenuSettings);
 const DragonRanking = lazyScreen(() => import('./DragonRanking.js'), S.dragonRankScore);
 const DragonMultiMenu = lazyScreen(() => import('./multi/DragonMultiMenu.js'), S.duelTitle);
+import * as Presence from '../services/presence.js';
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -69,6 +70,9 @@ export default function DragonLobby(nav) {
   prefetchDragon().then(() => { if (live) nav.refresh(); }).catch(() => {});
   /* 딱지는 없어도 화면이 성립한다 — 늦게 와도 그 줄만 다시 그린다 */
   const offCrowns = Crowns.refresh(() => { if (live) nav.refresh(); });
+
+  /* ★ 이 화면에 있는 동안 남의 카드에 "드래곤 스트라이커 로비" 로 보인다 (2026-08-27) */
+  Presence.setState('lobby', 'dragon');
 
   return {
     onLeave() { live = false; offCrowns(); },

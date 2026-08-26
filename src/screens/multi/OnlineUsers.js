@@ -18,7 +18,7 @@ import { currentUser } from '../../services/auth.js';
 import * as Presence from '../../services/presence.js';
 import { openUserCard } from '../UserCard.js';
 
-export default function OnlineUsers(nav) {
+export default function OnlineUsers(nav, params = {}) {
   const myUid = currentUser()?.uid;
   let list = null;          // null = 아직 못 받았다 (빈 배열과 구분한다)
   /** 못 붙었다 — "아무도 없다"와 다른 말을 해야 한다 */
@@ -78,22 +78,32 @@ export default function OnlineUsers(nav) {
     unsub = listen();
   }
 
+  const isDragon = params.game === 'dragon';
+
   function row(u) {
     const ch = characterById(u.characterId);
     const isMe = u.uid === myUid;
     const playing = u.state === 'playing';
     return el('div.online-row', {
       class: isMe ? 'me' : '',
-      onclick: () => openUserCard(u, {
-        // 이미 아는 상태를 넘긴다 — 서버에 한 번 더 묻지 않는다
-        status: playing ? 'playing' : 'lobby',
-        nav,
-      }),
+      onclick: () => openUserCard(
+        isDragon ? { ...u, dragonCoins: u.coins ?? 0, dragonCharacter: u.dragon | 0 } : u,
+        {
+          // 이미 아는 상태를 넘긴다 — 서버에 한 번 더 묻지 않는다
+          status: playing ? 'playing' : 'lobby',
+          game: isDragon ? 'dragon' : 'shoes',
+          nav,
+        }),
     }, [
       ch ? el('img.online-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko, loading: 'lazy', decoding: 'async' })
          : el('div.online-face'),
       el('div.online-name', `${u.nickname || '???'}${isMe ? ` (${S.meTag})` : ''}`),
-      el('div.online-shoes', S.roomShoes(u.shoesOwned ?? 0)),
+      /**
+       * ★ **드래곤 쪽에서 "신발 N켤레" 가 뜨면 안 된다.** (2026-08-27, 사용자 지적)
+       * *"이 게임은 드래곤 스트라이커야, '신발 0켤레' 이렇게 뜨는게 아니라,
+       *   '보유 금화 0개' 이렇게 뜨게끔 통일시켜"*
+       */
+      el('div.online-shoes', isDragon ? S.roomCoins(u.coins ?? 0) : S.roomShoes(u.shoesOwned ?? 0)),
       el('div.online-state', { class: playing ? 'playing' : 'idle' },
         playing ? S.stateShortPlaying : S.stateShortIdle),
     ]);

@@ -265,6 +265,9 @@
         "game": {
           ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon')"
         },
+        "coins": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+        },
         "$other": {
           ".validate": false
         }

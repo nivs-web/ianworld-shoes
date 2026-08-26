@@ -94,15 +94,37 @@ export function openUserCard(p, opt = {}) {
    * 값이 늦게 오므로 자리를 먼저 잡아 둔다(상태 줄과 같은 이유 — 높이가 튀면 안 된다).
    */
   const loginLine = el('div.user-card-login', S.lastLogin(S.lastLoginNone));
+  /**
+   * ★★ **현재위치.** (2026-08-27, 사용자 지정)
+   *
+   * *"현재위치 : 드래곤 스트라이커 로비 (...) 즉, 뭐하고 있는지, 어디에 있는지"*
+   *
+   * `현재상태` 는 게임중/대기중까지만 말한다. 게임이 둘이 되면서 그것만으로는
+   * **어느 게임 앞에 앉아 있는지**를 알 수 없다 — 드래곤 대결을 신청하려는데
+   * 상대가 신발게임 로비에 있으면 그걸 알고 눌러야 한다.
+   * 상태 줄과 같은 이유로 **자리를 먼저 잡아 두고** 값이 오면 글자만 바꾼다.
+   */
+  const placeLine = el('div.user-card-place', S.whereAt(S.whereUnknown));
+  /** presence 의 (state, game) 을 사람이 읽는 한 줄로 */
+  function placeText(state, game){
+    if (state === 'offline') return S.whereUnknown;
+    if (game === 'dragon') return state === 'playing' ? S.whereDragonPlay : S.whereDragonLobby;
+    if (game === 'shoes') return state === 'playing' ? S.whereShoesPlay : S.whereShoesLobby;
+    return state === 'playing' ? S.whereUnknown : S.whereArcade;
+  }
+  const paintPlace = () => {
+    placeLine.textContent = S.whereAt(placeText(status, where));
+  };
   const row = el('div.row.user-card-actions');
   const face = el('div.player-card-face',
     { style: { '--slot': SLOT_COLORS[opt.slot ?? 0] ?? SLOT_COLORS[0] } },
     (!isDragon && ch) ? [el('img', { src: characterSprite(ch.id, 'front'), alt: ch.ko })] : []);
   const charLine = el('div.player-card-char', (!isDragon && ch) ? ch.ko : '');
-  /* 금화는 한 줄을 통째로 준다 — 결투에서 제일 먼저 보는 숫자다 */
-  const coinLine = isDragon ? el('div.dialog-detail.wallet-line', S.walletCoins(p.dragonCoins ?? 0)) : null;
+  /* 보유 금화는 전적 줄 안에 들어간다 — 신발의 `보유신발 N켤레` 와 같은 자리다 */
+  const coinLine = null;
+  /* ★ 두 게임이 **같은 자리·같은 모양**이다 — 신발은 켤레, 드래곤은 금화 (2026-08-27) */
   const statLine = el('div.dialog-detail', isDragon
-    ? S.dragonCardStat(p.dragonBestStage ?? 0, p.dragonMultiWins ?? 0, p.dragonMultiLosses ?? 0)
+    ? S.playerStatDragon(p.dragonMultiWins ?? 0, games, p.dragonCoins ?? 0)
     : S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0));
 
   /** 드래곤 얼굴과 이름을 지금 아는 값으로 다시 칠한다 */
@@ -132,7 +154,17 @@ export function openUserCard(p, opt = {}) {
    * 입력칸은 받은 쪽지 팝업과 **같은 부품**(`replyInput`)을 쓴다 — 각자 만들면
    * 언젠가 둘이 다른 말을 한다(§9-0-44 에서 같은 이유로 뺐다).
    */
-  const compose = (isMe || !p.uid || opt.actions === false) ? null : replyInput(p, close);
+  /**
+   * ★ **입력칸과 버튼은 한 세트다.** (2026-08-27, 사용자 지정)
+   *
+   * *"[보낼 메세지를 입력하세요] 메세지 보내기 [1:1대결신청][닫기]
+   *   이런 버튼이 뜨거든, 무조건 이 버튼은 셋트야"*
+   *
+   * 예전에는 화면마다 `actions:false` 로 꺼서 어떤 카드는 입력칸이 있고 어떤
+   * 카드는 없었다 — **같은 창인데 열리는 곳마다 다르면** 무엇을 할 수 있는지
+   * 매번 다시 봐야 한다. 내 카드에서만 뺀다(나에게 쪽지를 보낼 일은 없다).
+   */
+  const compose = (isMe || !p.uid) ? null : replyInput(p, close);
 
   const overlay = el('div.dialog-overlay', { onclick: close }, [
     el('div.dialog', { onclick: (e) => e.stopPropagation() }, [
@@ -143,6 +175,7 @@ export function openUserCard(p, opt = {}) {
       coinLine,
       statLine,
       statusLine,
+      placeLine,
       loginLine,
       compose?.node ?? null,
       // 큼직하고 긴 빨간 버튼 — 이 창에서 제일 자주 누르는 것이라 눈에 먼저 들어와야 한다
@@ -164,9 +197,8 @@ export function openUserCard(p, opt = {}) {
       if (full.lastLoginAt) lastLoginAt = full.lastLoginAt;
       paintLogin();
       if (isDragon) {
-        if (coinLine) coinLine.textContent = S.walletCoins(full.dragonCoins ?? 0);
-        statLine.textContent = S.dragonCardStat(
-          full.dragonBestStage ?? 0, full.dragonMultiWins ?? 0, full.dragonMultiLosses ?? 0);
+        const dg = (full.dragonMultiWins ?? 0) + (full.dragonMultiLosses ?? 0);
+        statLine.textContent = S.playerStatDragon(full.dragonMultiWins ?? 0, dg, full.dragonCoins ?? 0);
         paintDragon(full);
         return;
       }
@@ -183,6 +215,7 @@ export function openUserCard(p, opt = {}) {
 
   /** 지금 아는 상태로 버튼을 다시 만든다 */
   let status = opt.status ?? null;
+  let where = p.game ?? '';          // presence 의 game — 현재위치를 만드는 값
   let lastLoginAt = p.lastLoginAt ?? 0;
 
   function paintLogin() {
@@ -194,6 +227,7 @@ export function openUserCard(p, opt = {}) {
     loginLine.textContent = S.lastLogin(lastLoginAt ? stampFull(lastLoginAt) : S.lastLoginNone);
   }
   paintLogin();
+  paintPlace();
 
   /**
    * 아래 줄은 **`[1:1대결신청] [닫기]` 두 개, 색 없이**다(19차 사용자 지정).
@@ -202,7 +236,8 @@ export function openUserCard(p, opt = {}) {
    */
   function paintActions() {
     row.textContent = '';
-    const canChallenge = !isMe && p.uid && opt.actions !== false && opt.challenge !== false;
+    /* ★ 대결신청도 세트다 — 같은 방에 이미 앉아 있는 경우(challenge:false)만 뺀다 */
+    const canChallenge = !isMe && p.uid && opt.challenge !== false;
     if (canChallenge) {
       row.append(button(S.challengeUser, () => {
         /**
@@ -211,7 +246,7 @@ export function openUserCard(p, opt = {}) {
          */
         if (status !== 'lobby') return toast(S.cantChallengeNow, 2200);
         close();
-        startChallenge(p, opt.nav);
+        startChallenge(p, opt.nav, isDragon ? 'dragon' : 'shoes');
       }));
     }
     row.append(button(S.close, close, { sfx: 'sfx_menu_back' }));
@@ -247,14 +282,29 @@ export function openUserCard(p, opt = {}) {
       .catch(() => {});
   }
 
-  if (!opt.status && p.uid && !isMe) {
+  if (p.uid && !isMe) {
+    /**
+     * ★ 상태를 이미 알아도 **위치는 물어봐야 한다.** (2026-08-27)
+     * 부르는 화면이 넘겨 주는 것은 `playing/lobby` 까지이고,
+     * 어느 게임인지는 presence 에만 있다.
+     */
     Presence.readOne(p.uid).then((v) => {
-      status = v?.state === 'playing' ? 'playing' : (v ? 'lobby' : 'offline');
-      statusLine.textContent = STATUS_TEXT[status];
-      paintLogin();
-      fetchLastLogin();
-      paintActions();
+      if (!opt.status) {
+        status = v?.state === 'playing' ? 'playing' : (v ? 'lobby' : 'offline');
+        statusLine.textContent = STATUS_TEXT[status];
+        paintLogin();
+        paintActions();
+      }
+      /**
+       * ★ **모르면 지우지 말고 알던 것을 둔다.** (2026-08-27)
+       * `where = v?.game || ''` 이라 접속 정보가 없을 때 부르는 화면이 알려 준
+       * 게임까지 지워져서 "오락실" 로 떨어졌다. 아는 것이 없을 때만 비운다.
+       */
+      if (v && v.game) where = v.game;
+      else if (!v) status = status ?? 'offline';
+      paintPlace();
     }).catch(() => {});
+    fetchLastLogin();
   } else {
     fetchLastLogin();
   }

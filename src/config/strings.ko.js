@@ -737,6 +737,21 @@ export const S = {
 
   /** 유저상태창 맨 아래 (2026-08-19 12차) */
   lastLogin: (when) => `마지막로그인: ${when}`,
+  /**
+   * ★ 현재위치 (2026-08-27, 사용자 지정)
+   * "어디에 있는지, 뭐하고 있는지" 를 한 줄로. 두 게임 모두 같은 모양이다.
+   */
+  whereAt: (place) => `현재위치: ${place}`,
+  whereShoesLobby: '신발을 찾아서 로비',
+  whereShoesPlay: '신발을 찾아서 게임중',
+  whereDragonLobby: '드래곤 스트라이커 로비',
+  whereDragonPlay: '드래곤 스트라이커 게임중',
+  whereArcade: '오락실',
+  whereUnknown: '알 수 없음',
+  /* 드래곤 카드의 전적 줄 — 신발의 playerStatPopup 과 같은 자리, 같은 모양 */
+  playerStatDragon: (wins, games, coins) =>
+    `승률 ${wins}승 / ${games}게임\n보유 금화 ${Number(coins || 0).toLocaleString('en-US')}개`,
+  roomCoins: (n) => `금화 ${Number(n || 0).toLocaleString('en-US')}`,
   lastLoginNow: '현재로그인중',
   lastLoginNone: '기록 없음',
 

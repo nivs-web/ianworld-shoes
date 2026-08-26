@@ -162,6 +162,12 @@ function myCard() {
      * 로비에 있으면 빈 값이다 (아무 게임도 안 하는 중).
      */
     game: myGame,
+    /**
+     * ★ **드래곤 지갑.** (2026-08-27, 사용자 지정)
+     * 현재접속자 목록이 드래곤 쪽에서도 "신발 0켤레" 를 띄우고 있었다.
+     * 이 게임의 화폐는 금화이므로 그 숫자를 같이 싣는다.
+     */
+    coins: p.dragonCoins ?? 0,
     at: Date.now(),
   };
 }
@@ -335,7 +341,16 @@ export function startLater(after, delay = START_DELAY_MS) {
  */
 export function setState(state, game) {
   const next = state === 'playing' ? 'playing' : 'lobby';
-  const nextGame = next === 'playing' ? (game || myGame || 'shoes') : '';
+  /**
+   * ★★ **로비에 있어도 어느 게임의 로비인지 남긴다.** (2026-08-27, 사용자 지정)
+   *
+   * *"현재위치 : 드래곤 스트라이커 로비 (...) 어디에 있는지 (...) 떴으면 좋겠다"*
+   *
+   * 예전에는 로비면 게임을 지웠다(`''`). 그래서 남의 카드에 뜨는 것이
+   * "대기중" 뿐이었고 **어느 게임 앞에 앉아 있는지**를 알 수 없었다.
+   * 이제 지우지 않는다 — 오락실 첫 화면만 빈 값이다.
+   */
+  const nextGame = game || (next === 'playing' ? (myGame || 'shoes') : myGame);
   if (next === myState && nextGame === myGame) return;
   myState = next;
   myGame = nextGame;
