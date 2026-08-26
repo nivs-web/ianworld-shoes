@@ -2313,6 +2313,138 @@ const Popups = {
 };
 
 /**
+ * 남은 시간 게이지.
+ *
+ * ★ **신발을 찾아서의 게이지를 그대로 본떴다.** (2026-08-26, 사용자 지정)
+ *
+ * 그 게이지가 예쁜 이유는 장식이 많아서가 아니라 **층이 또렷해서**다.
+ * `public/assets/ui/gauge_frame.png` 를 도트로 뜯어 보면 네 겹이다:
+ *
+ *     ┌ 모서리를 깎은 검은 외곽선          ← 배경에서 확실히 떨어진다
+ *     │ ┌ 밝은 베벨 한 줄                  ← 금속처럼 도드라진다
+ *     │ │ ┌ 깊고 어두운 우물                ← 채움이 "담겨" 보인다
+ *     │ │ │ 채움 (30% 밑이면 경고색)
+ *
+ * 내 앞 판은 이 층이 없이 통짜 막대에 눈금만 그어서 자(尺)처럼 보였다.
+ *
+ * 체력바와 헷갈리지 않게 두 가지를 더한다:
+ *   · 왼쪽 끝에 **모래시계** — 이게 시간이라는 걸 한 글자로 말한다
+ *   · 채움이 **오른쪽에서 깎여 나간다** — 체력은 줄기만 하지만 시간은 '지나간다'
+ */
+function drawTimeBar(ctx, B, k, t){
+  const low = k <= 0.25;
+  const R = PX * 2;                       // 깎아 낼 모서리 크기
+
+  /* ── 외곽선 (모서리를 깎아 둥글게) ── */
+  ctx.fillStyle = '#0a0a14';
+  ctx.fillRect(B.x - PX, B.y - PX + R, B.w + PX*2, B.h + PX*2 - R*2);
+  ctx.fillRect(B.x - PX + R, B.y - PX, B.w + PX*2 - R*2, B.h + PX*2);
+
+  /* ── 베벨 (윗면은 밝고 아랫면은 어둡다 — 빛이 위에서 온다) ── */
+  ctx.fillStyle = '#5a6480';
+  ctx.fillRect(B.x, B.y, B.w, B.h);
+  ctx.fillStyle = '#8a94b0';
+  ctx.fillRect(B.x + R, B.y, B.w - R*2, PX);
+  ctx.fillStyle = '#2a3040';
+  ctx.fillRect(B.x + R, B.y + B.h - PX, B.w - R*2, PX);
+
+  /* ── 우물 (안쪽으로 파인 자리) ── */
+  const w = { x: B.x + PX*2, y: B.y + PX*2, w: B.w - PX*4, h: B.h - PX*4 };
+  ctx.fillStyle = '#10131c';
+  ctx.fillRect(w.x, w.y, w.w, w.h);
+
+  /* ── 채움 ── */
+  const fw = Math.max(0, snap(w.w * k));
+  if(fw > 0){
+    ctx.fillStyle = low ? '#c81f2e' : '#2f8fd8';
+    ctx.fillRect(w.x, w.y, fw, w.h);
+    /* 위쪽 유리광 — 한 줄만 밝게 두면 유리에 담긴 것처럼 보인다 */
+    ctx.fillStyle = low ? '#ff7a7a' : '#7fd8ff';
+    ctx.fillRect(w.x, w.y, fw, PX);
+    ctx.fillStyle = low ? '#8f0f1c' : '#1b5d94';
+    ctx.fillRect(w.x, w.y + w.h - PX, fw, PX);
+
+    /* 흐르는 빗금 — 시간이 '지나가는 중' 이라는 신호. 체력바는 안 움직인다 */
+    const prev = ctx.globalAlpha;
+    ctx.globalAlpha = prev * 0.16;
+    ctx.fillStyle = '#ffffff';
+    const step = PX * 8, off = Math.floor((t * 26) % step);
+    for(let sx = -step + off; sx < fw; sx += step){
+      for(let dy = 0; dy < w.h; dy += PX){
+        const px_ = w.x + sx + (w.h - dy);      // 오른쪽으로 기운 빗금
+        if(px_ >= w.x && px_ < w.x + fw) ctx.fillRect(snap(px_), w.y + dy, PX*2, PX);
+      }
+    }
+    ctx.globalAlpha = prev;
+
+    /* 깎여 나가는 끝 — 얼마 안 남았을 때만 깜빡인다 */
+    if(low && Math.floor(t*6) % 2 === 0){
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(snap(w.x + fw - PX*2), w.y, PX*2, w.h);
+    }
+  }
+
+  /* ── 모래시계 — 이게 시간이라는 표시 ── */
+  drawHourglass(ctx, B.x - 22, B.y + B.h/2, low, t);
+}
+
+/**
+ * 작은 모래시계 — 타임바 왼쪽에 붙는다.
+ *
+ * ★ **격자로 찍는다.** 처음엔 사각형을 계산해서 쌓았는데 48px 짜리 덩어리가 나왔다
+ * (바는 26px 이다). 모래시계처럼 생긴 것을 만들려면 **모양을 직접 그리는 편**이
+ * 계산으로 흉내내는 것보다 작고 정확하다 — 이 게임의 다른 도트들과 같은 방식이다.
+ *
+ *   X 유리   o 모래   . 빈칸
+ */
+const HOURGLASS = [
+  'XXXXXXX',
+  'X.....X',
+  '.Xooo X'.replace(' ', 'X'),
+  '..XoX..',
+  '...X...',
+  '..X.X..',
+  '.X...X.',
+  'X.....X',
+  'XXXXXXX',
+];
+
+function drawHourglass(ctx, cx, cy, low, t){
+  const D = 2;                                   // 도트 한 칸 (7x9 격자 -> 14x18px)
+  const W = 7, H = HOURGLASS.length;
+  const ox = snap(cx - W*D/2), oy = snap(cy - H*D/2);
+  const glass = low ? '#ff8f8f' : '#cfe6ff';
+  const sand  = low ? '#ffd24a' : '#ffe9a8';
+
+  /* 배경 — 하늘 위에 떠 있어도 읽히게 한 겹 깔아 준다 */
+  ctx.fillStyle = '#0a0a14';
+  ctx.fillRect(ox - D, oy - D, W*D + D*2, H*D + D*2);
+
+  for(let r=0;r<H;r++){
+    for(let c=0;c<W;c++){
+      const ch = HOURGLASS[r][c];
+      if(ch === '.') continue;
+      ctx.fillStyle = ch === 'o' ? sand : glass;
+      ctx.fillRect(ox + c*D, oy + r*D, D, D);
+    }
+  }
+
+  /**
+   * 모래가 흐른다 — 위가 줄고 아래가 쌓인다.
+   * 실제 남은 시간과 맞추지 않는다. 남은 양은 옆의 막대가 이미 정확히 말하고 있고,
+   * 이건 "시간이 가고 있다" 는 것만 보여 주면 된다.
+   */
+  const k = (t * 0.5) % 1;
+  ctx.fillStyle = sand;
+  const topRows = Math.round((1 - k) * 2);
+  for(let i=0;i<topRows;i++) ctx.fillRect(ox + (2+i)*D, oy + (2+i)*D, (3-i*2)*D, D);
+  const botRows = Math.round(k * 2);
+  for(let i=0;i<botRows;i++) ctx.fillRect(ox + (2-i)*D, oy + (7-i)*D, (3+i*2)*D, D);
+  /* 떨어지는 한 알 */
+  if(Math.floor(t*8) % 2 === 0) ctx.fillRect(ox + 3*D, oy + 5*D, D, D);
+}
+
+/**
  * 금화 한 닢. (2026-08-26, 사용자 지정 — "슈퍼마리오 참고해서 다시")
  *
  * 예전 것은 그냥 **네모**였다. 가로만 줄였다 늘렸다 해서 회전을 흉내냈는데,
@@ -4584,7 +4716,16 @@ const MAX_LIVES = 10;
 const DROP_PLAN = [
   { kind:'missile', rounds:20, every: 3.3, first: 3 },   // 1인당 20개 (10 -> 20)
   { kind:'apple',   rounds:10, every: 6.5, first: 7 },   // 1인당 10개 (그대로)
-  { kind:'bomb',    rounds: 7, every: 8.0, first: 8 }    // +최종보스 1 = 1인당 8개 (4 -> 8)
+  /**
+   * ★ **핵무기는 30초에 하나.** (2026-08-26, 사용자 지적)
+   *
+   * 8초에 하나씩 떨어뜨렸더니 **핵무기가 핵무기가 아니게 됐다.** 한 방이
+   * 15초짜리 무적 쉰드를 같이 주는 물건인데 그게 계속 손에 들어오면 그냥 계속 무적이다.
+   * 30초 간격이면 한 스테이지에 두세 개 — 아껴 쓰다가 위험할 때 꺼내는 물건이 된다.
+   * 처음에 두 개를 들고 시작하고 상점에서 열두 개까지 늘릴 수 있으니
+   * 떨어지는 것을 줄여도 쓸 기회는 충분하다.
+   */
+  { kind:'bomb',    rounds: 5, every:30.0, first:12 }
 ];
 const COIN_INTERVAL = 2.6;          // 황금동전 뭉치가 나오는 주기
 const COIN_PER_ARC  = 6;            // 한 뭉치에 몇 개
@@ -5468,7 +5609,15 @@ class GameScene extends Scene {
     p.hp -= (dmg || 34) * (p.pid === 1 ? (1 - EQ.dmgCut) : 1);
     if(p.hp <= 0){
       p.lives = Math.max(0, p.lives - 1);
-      p.setLevel(p.level - 1);
+      /**
+       * ★ **죽어도 파이어 레벨은 안 내려간다.** (2026-08-26, 사용자 지정)
+       *
+       * 파이어 레벨은 **중간보스를 잡아야만** 오른다 — 한 스테이지에 한 번뿐인
+       * 귀한 것이다. 그런데 한 대 맞고 죽을 때마다 한 칸씩 깎으니, 어렵게 올린
+       * 화력이 순식간에 1로 돌아가 다시 올릴 길이 없었다.
+       * 목숨이 남아 있는 한 죽기 전 레벨 그대로 부활한다.
+       * (컨티뉴는 여전히 1부터다 — 판이 바뀌는 것과 목숨 하나 잃는 것은 다르다.)
+       */
       p.hurtT = 1.8;
       Shake.add(14, 0.5);
       this.booms.push(new Boom(p.x, p.y, 120, 0.6));
@@ -5688,20 +5837,28 @@ class GameScene extends Scene {
     const W = 216;
     let y = y0;
     /**
-     * 점수와 금화를 한 줄에 나란히. (2026-08-26, 사용자 지정)
-     * 금화를 화면 구석에 따로 두었더니 먹으면서 눈이 두 군데를 오갔다 —
-     * 내 것끼리 붙어 있어야 늘어나는 게 바로 보인다.
+     * ★ **한 줄에 몰지 않는다.** (2026-08-26, 사용자 지적)
+     *
+     * 점수와 금화를 나란히 놨더니 여섯 자리 점수가 길어질 때 **글자가 겹쳤다.**
+     * 폭을 재서 밀어 넣는 방법도 있지만, 자릿수가 바뀔 때마다 금화가 좌우로
+     * 흔들려서 읽기 나쁘다. 줄을 하나 늘리는 편이 낫다 —
+     *
+     *     점수 000000
+     *     금화 000
+     *     (하트)
      */
+    const LBL = 52;                      // 라벨 뒤 숫자가 시작하는 자리
     ko(ctx, '점수', x, y - 2, 2, { color:'#8a93b8' });
-    drawDigits(ctx, String(Math.min(999999, p.score|0)).padStart(6, '0'), x + 52, y - 2, 3,
+    drawDigits(ctx, String(Math.min(999999, p.score|0)).padStart(6, '0'), x + LBL, y - 2, 3,
       { color: col, outline:PAL.outline });
+    y += 24;
     if(p.pid === 1){
       /* 금화는 1P 것만 센다 — 지갑의 주인이 1P 다 */
-      ko(ctx, '금화', x + 150, y - 2, 2, { color:'#8a93b8' });
-      drawDigits(ctx, String(Math.min(9999, RUN.coins|0)), x + 186, y - 2, 3,
+      ko(ctx, '금화', x, y - 2, 2, { color:'#8a93b8' });
+      drawDigits(ctx, String(Math.min(9999, RUN.coins|0)), x + LBL, y - 2, 3,
         { color:'#ffd24a', outline:PAL.outline });
+      y += 24;
     }
-    y += 24;
     // 하트
     const rows = ['.XX.XX.','XXXXXXX','.XXXXX.','..XXX..','...X...'];
     for(let i=0;i<Math.min(MAX_LIVES, 8);i++){
@@ -5844,44 +6001,8 @@ class GameScene extends Scene {
         { align:'center', color:(r)=>PAL.fire[r], outline:PAL.outline, shadow:'#000', shadowOff:10 });
     }
 
-    /**
-     * ★ **시간은 '줄어드는 막대' 가 아니라 '지나가는 눈금' 이다.** (2026-08-26, 사용자 지정)
-     *
-     * 예전에는 통짜 막대에 가운데 숫자를 박아 뒀더니 **보스 체력바처럼 보였다** —
-     * 실제로 "이게 뭔지 모르겠다" 는 말을 들었다. 색이 빨강→노랑으로 채워지는 것도
-     * 체력 게이지의 신호라 더 헷갈렸다.
-     *
-     * 그래서 모래시계처럼 바꿨다. 눈금이 촘촘히 박힌 자를 두고, **지나간 쪽은 비고
-     * 남은 쪽만 채워진 채 왼쪽으로 흘러간다.** 숫자는 뺐다 — 시간이 얼마나 남았는지는
-     * 채워진 길이로 충분하고, 세 자리 숫자가 붙어 있으면 그게 체력처럼 읽힌다.
-     */
-    const B = TIME_BAR;
-    const full = this.duel ? DUEL.TIME : STAGE_TIME;
-    const tk = clamp(this.timeLeft / full, 0, 1);
-    const low = tk <= 0.18;
-
-    ctx.fillStyle = '#0a0a14'; ctx.fillRect(B.x - PX, B.y - PX, B.w + PX*2, B.h + PX*2);
-    ctx.fillStyle = '#141a26'; ctx.fillRect(B.x, B.y, B.w, B.h);
-
-    /* 남은 시간 — 왼쪽에서부터 채워져 있고 오른쪽 끝이 깎여 나간다 */
-    const lw = snap(B.w * tk);
-    ctx.fillStyle = low ? '#c81f2e' : '#3c6ea5';
-    ctx.fillRect(B.x, B.y + 6, lw, B.h - 12);
-    ctx.fillStyle = low ? '#ff6b6b' : '#7fc8ff';
-    ctx.fillRect(B.x, B.y + 6, lw, 4);
-
-    /* 눈금 — 10초마다 한 칸. 칸이 하나씩 사라지는 게 곧 시간이다 */
-    const per = 10, ticks = Math.max(1, Math.round(full / per));
-    for(let i=1;i<ticks;i++){
-      const gx = snap(B.x + (B.w * i) / ticks);
-      ctx.fillStyle = (i / ticks) < tk ? 'rgba(10,12,20,.55)' : 'rgba(120,140,180,.22)';
-      ctx.fillRect(gx, B.y + 4, PX, B.h - 8);
-    }
-    /* 지금 이 순간의 끝 — 깜빡이는 머리 */
-    if(tk > 0){
-      ctx.fillStyle = low && Math.floor(this.t*6) % 2 === 0 ? '#ffffff' : (low ? '#ff9a9a' : '#cfe6ff');
-      ctx.fillRect(snap(B.x + lw - PX*2), B.y + 2, PX*2, B.h - 4);
-    }
+    /* 남은 시간 — 신발게임 게이지와 같은 짜임새 (아래 drawTimeBar 주석) */
+    drawTimeBar(ctx, TIME_BAR, clamp(this.timeLeft / (this.duel ? DUEL.TIME : STAGE_TIME), 0, 1), this.t);
 
     drawText(ctx, this.p2 ? '1P: ARROWS / RSHIFT / RALT     2P: WASD / ` / 1'
                           : '1P: ARROWS / RSHIFT / RALT     ESC: PAUSE', 640, 700, 2,
