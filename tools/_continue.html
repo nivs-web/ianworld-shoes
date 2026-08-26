@@ -1,0 +1,112 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>이어하기 검사</title>
+<style>body{background:#111;color:#ddd;font:13px/1.7 monospace;padding:16px;white-space:pre}canvas{display:none}</style>
+</head>
+<body><div id="out">검사 중…</div><div id="host"></div>
+<script type="module">
+/**
+ * ★ **금화로 사는 이어하기**가 실제로 도는지 검사한다.
+ *
+ * 지갑은 `mount` 의 창구로 넘긴다 — 그래서 `profile.js` 를 스텁으로 바꿔치기할 필요가 없다.
+ * (importmap 으로 바꿔치기하면 Vite 의 `?t=` 때문에 같은 모듈이 두 번 로드되어
+ *  한쪽에서 뺀 금화가 다른 쪽에서 안 보인다 — 돈 세는 검사에서 치명적이다.)
+ */
+import * as DR from '/src/games/dragon/dragon.js';
+
+const lines = []; const say = (s) => lines.push(s);
+let fail = 0;
+const check = (name, got, want) => {
+  const ok = JSON.stringify(got) === JSON.stringify(want);
+  if (!ok) fail++;
+  say(`${ok ? '  OK  ' : '  ★틀림 '}${name}\n        받음 ${JSON.stringify(got)}  기대 ${JSON.stringify(want)}`);
+};
+
+let wallet = 5000;
+const host = document.getElementById('host');
+DR.mount(host, {
+  onExit() {}, onEnd() {},
+  coins: () => wallet,
+  spendCoins: (n) => (wallet >= n ? ((wallet -= n), true) : false),
+  addCoins: (n) => { wallet += n; },
+});
+
+const T = DR.__test;
+const sc = () => T.scene0();
+const menu = () => (sc().endItems ? sc().endItems().map((x) => x.k) : null);
+/** 씬이 실제로 바뀔 때까지 돌린다 — 페이드가 끝나야 `mgr.change` 가 반영된다 */
+const untilNewScene = (was) => {
+  for (let i = 0; i < 2000 && sc() === was; i++) T.pump(1 / 60);
+  if (sc() === was) { fail++; say('  ★틀림 씬이 안 바뀜'); return; }
+  /* 페이드가 다 끝날 때까지 — 전환 중에는 다음 change 가 버려진다 */
+  for (let i = 0; i < 200 && T.busy; i++) T.pump(1 / 60);
+};
+/** 메뉴에서 이름으로 고른다 — 자리를 숫자로 찍으면 메뉴가 바뀔 때 엉뚱한 걸 산다 */
+const pick = (k) => { sc().endIdx = menu().indexOf(k); sc().doEndPick(); };
+
+/* 게임 화면까지 들어간다 */
+for (let i = 0; i < 400 && T.scene !== 'GameScene'; i++) { T.press('confirm'); T.pump(1 / 60); }
+check('게임 화면에 들어왔나', T.scene, 'GameScene');
+
+/* 5스테이지까지 올려두고 거기서 죽인다 — 이어하기가 그 자리를 지키는지 보려면 1판이면 안 된다 */
+sc().stage = 5;
+const s = sc();
+s.p1.lives = 0; s.p1.hp = 0; s.p1.out = true;
+s.state = 'over'; s.endIdx = 0;
+
+say('■ 게임오버 메뉴');
+check('이어하기가 맨 위에', menu(), ['continue2', 'retry', 'quit']);
+
+say('■ 돈이 없으면 안 보인다');
+const keep = wallet; wallet = 499;
+check('499 금화', menu(), ['retry', 'quit']);
+wallet = keep;
+check('되돌리면 다시', menu(), ['continue2', 'retry', 'quit']);
+
+say('■ 실제로 사 본다');
+s.score = 12345; s.p1.score = 12345;
+pick('continue2'); untilNewScene(s);
+check('지갑에서 500 빠졌나', wallet, 4500);
+check('죽은 그 스테이지에서 다시', sc().stage, 5);
+check('점수 이어짐', sc().score, 12345);
+check('화력은 1로', sc().p1.level, 1);
+check('하트 셋', sc().p1.lives, 3);
+check('살아 있나', sc().p1.out, false);
+
+say('■ 한 판에 두 번까지');
+const s2 = sc();
+s2.p1.lives = 0; s2.state = 'over'; s2.endIdx = 0;
+check('한 번 썼으니 아직 보인다', menu(), ['continue2', 'retry', 'quit']);
+pick('continue2'); untilNewScene(s2);
+check('두 번째도 빠졌나', wallet, 4000);
+const s3 = sc();
+s3.p1.lives = 0; s3.state = 'over'; s3.endIdx = 0;
+check('세 번째는 안 보인다', menu(), ['retry', 'quit']);
+
+say('■ 처음부터 다시 하면 횟수가 초기화된다');
+pick('retry'); untilNewScene(s3);
+check('1스테이지로', sc().stage, 1);
+check('이어하기 횟수 초기화', sc().continuesUsed, 0);
+check('점수도 0', sc().score, 0);
+
+say('■ 전환 중에 눌러도 금화가 증발하지 않는다');
+{
+  const cur = sc();
+  cur.p1.lives = 0; cur.state = 'over';
+  const before = wallet;
+  cur.mgr.change(new (cur.constructor)(1));   // 일부러 전환 중으로 만든다
+  cur.endIdx = 0; cur.doEndPick();            // 전환 중에 이어하기를 누른다
+  check('지갑 그대로', wallet, before);
+  for (let i = 0; i < 400 && T.busy; i++) T.pump(1 / 60);
+}
+
+say('■ 클리어 화면에는 이어하기가 없다');
+const s4 = sc(); s4.state = 'clear'; s4.endIdx = 0;
+check('클리어 메뉴', menu().includes('continue2'), false);
+
+DR.unmount();
+say('');
+say(fail ? `★ ${fail} 건 틀림` : '전부 통과');
+document.getElementById('out').textContent = lines.join('\n');
+window.__done = true; window.__fail = fail;
+</script>
+</body></html>

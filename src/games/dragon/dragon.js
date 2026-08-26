@@ -800,9 +800,14 @@ class SceneManager {
     if(this.current) this.current.exit();
     this.current = scene; this.current.mgr = this; this.current.enter();
   }
+  /**
+   * 다음 씬으로 넘긴다. **받아들였는지 알려준다** — 전환 중이면 조용히 버려지는데,
+   * 부르는 쪽이 그걸 모르면 금화를 치르고도 판이 안 넘어간다 (실제로 그랬다).
+   */
   change(scene){
-    if(this.busy) return;
+    if(this.busy) return false;
     this.next = scene; this.state = 'out'; this.t = 0;
+    return true;
   }
   update(dt){
     if(this.state === 'out'){
@@ -4898,6 +4903,23 @@ const DUEL = {
   BOSS_SCORE: 3000,
 };
 
+/**
+ * ★ **금화로 사는 컨티뉴.** (2026-08-26)
+ *
+ * 20판 완주가 24분이다. 18판에서 죽으면 그 24분이 통째로 날아가고 1판부터 다시다 —
+ * 한 번의 실수에 물리는 값으로 너무 크다.
+ *
+ * 죽은 자리에서 이어 붙이되 **값을 매긴다**: 금화 500, 한 판에 두 번까지.
+ *   · 금화 소비처가 하나 늘어 버는 이유가 생긴다
+ *   · 무한이면 죽는 것이 무의미해지므로 두 번으로 묶는다
+ *   · 값이 오르는 것도 아니게 둔다 — 계산이 복잡해지면 살지 말지를 못 정한다
+ *
+ * 파이어 레벨은 **1로 돌아간다.** 목숨 하나 잃는 것과 판을 다시 사는 것은 다르다 —
+ * 화력까지 그대로면 컨티뉴가 그냥 목숨 추가가 된다.
+ */
+const CONTINUE_COST = 500;
+const CONTINUE_MAX = 2;
+
 const STAGE_TIME = 80;              // 중간보스가 나올 때까지의 제한 시간 (초).
                                     // 보스가 등장하면 타이머는 멈춘다. 보스전은 시간제한 없이.
 const TIME_BAR = { x: 400, y: 16, w: 480, h: 26 };   // 상단 중앙 시간 게이지 (터치 시 일시정지)
@@ -5008,7 +5030,7 @@ class GameScene extends Scene {
     this.score = this.carry ? this.carry.score : 0;
     this.kills = 0;
     /* 새 판이 아니라 **이어지는 스테이지**면 동전을 이어서 센다 */
-    if(!this.carry) RUN.coins = 0;
+    if(!this.carry){ RUN.coins = 0; RUN.coinFrac = 0; }
     this.boss = null; this.bossBannerT = 0; this.bossDeathT = 0;
     this.killStreak = 0;
     // 아이템 투하 예약표 (인원수만큼 위아래로 나눠 떨어진다)
@@ -5033,6 +5055,8 @@ class GameScene extends Scene {
     this.timeLeft = this.duel ? DUEL.TIME : STAGE_TIME;
     this.endReason = ''; this.bonus = 0;
     this.duelBossKills = 0;           // 무너뜨린 보스 수 (결투 점수의 뼈대)
+    /* 이어하기로 들어왔으면 몇 번 썼는지 이어받는다 (한 판에 두 번까지) */
+    this.continuesUsed = (this.carry && this.carry.continues) | 0;
     this.finalBossKilled = false; this.menuIdx = 0; this.endIdx = 0;
     this.tapIdx = -1;                 // 터치로 고른 메뉴 번호
     /**
@@ -5173,8 +5197,18 @@ class GameScene extends Scene {
     }
     // 잡몹은 아이템을 떨구지 않는다. 적이 늘어난다고 아이템까지 늘면
     // 먹는 재미가 사라진다. 대신 가끔 황금동전 하나를 남긴다.
+    /**
+     * ★ **적을 잡으면 금화가 나온다.** (2026-08-26)
+     *
+     * 예전에는 네 마리에 한 닢이었다. 그런데 금화는 하늘에서 곡선으로 뿌려지는 것이
+     * 대부분이라, **잘 잡는 것보다 돌아다니며 줍는 것이 훨씬 많이 벌렸다.**
+     * 실측으로 안 움직이는 봇이 1,349, 동전만 쫓는 봇이 6,700 — 다섯 배다.
+     * 그러면 아이템 값을 정할 기준이 없다.
+     *
+     * 두 마리에 한 닢으로 올려 **싸우는 것도 버는 길**로 만든다.
+     */
     this.killStreak++;
-    if(this.killStreak % 4 === 0) this.items.push(new Item(e.x, e.y, ITEM_KIND.COIN));
+    if(this.killStreak % 2 === 0) this.items.push(new Item(e.x, e.y, ITEM_KIND.COIN));
   }
 
   pickup(it, who){
@@ -5186,7 +5220,13 @@ class GameScene extends Scene {
         p.coinT = COIN_WINDOW;
         /* 용왕의 관을 쓴 사람은 금화 점수가 조금 더 붙는다 (지갑 개수는 그대로) */
         const gain = Math.round(COIN_BASE * p.coinChain * (p.pid === 1 ? (1 + EQ.coinBonus) : 1));
-        RUN.coins++;                       // 지갑에 넣을 개수 (오락실이 가져간다)
+        /**
+         * ★ 난이도 배수 — 어려움이면 한 닢이 1.4 개다. (2026-08-26)
+         * 소수를 쌓아 두고 정수가 될 때만 지갑에 넣는다 — 한 닢마다 반올림하면
+         * 1.4 가 1 로 깎여서 배수가 통째로 사라진다.
+         */
+        RUN.coinFrac = (RUN.coinFrac || 0) + diffCoin();
+        while(RUN.coinFrac >= 1){ RUN.coins++; RUN.coinFrac -= 1; }
         this.addScore(gain, p.pid);
         /**
          * ★ **"+1000 x10" 이 무슨 뜻인지 아무도 몰랐다.** (2026-08-26, 사용자 지적)
@@ -5363,7 +5403,15 @@ class GameScene extends Scene {
   endItems(){
     /* 결투는 한 판으로 끝난다 — 이어서 갈 스테이지도, 다시 할 것도 없다 */
     if(this.duel) return [{ k:'quit', t:'결과 보기' }];
-    if(this.state !== 'clear') return [{ k:'retry', t:'처음부터 다시' }, { k:'quit', t:'오락실로' }];
+    if(this.state !== 'clear'){
+      /* 컨티뉴는 살 수 있을 때만 보인다 — 못 사는 버튼이 떠 있으면 눌러 보고 실망한다 */
+      const canCont = this.continuesUsed < CONTINUE_MAX && DG.coins() >= CONTINUE_COST;
+      return [
+        ...(canCont ? [{ k:'continue2', t:'이어하기 (금화 ' + CONTINUE_COST + ')' }] : []),
+        { k:'retry', t:'처음부터 다시' },
+        { k:'quit', t:'오락실로' },
+      ];
+    }
     return this.stage < 20
       ? [{ k:'continue', t:'다음 스테이지' }, { k:'quit', t:'오락실로' }]
       : [{ k:'quit', t:'오락실로' }];
@@ -5383,6 +5431,39 @@ class GameScene extends Scene {
   }
   doEndPick(){
     const pick = (this.endItems()[this.endIdx] || {}).k;
+    if(pick === 'continue2'){
+      /**
+       * 죽은 그 스테이지를 다시 연다. 지금까지 번 금화·점수는 그대로 들고 간다 —
+       * 이어하기는 "판을 사는" 것이지 "처음부터"가 아니다.
+       */
+      /**
+       * ★ **넘어가는 것이 확실할 때만 값을 치른다.**
+       * `change` 는 전환 중이면 씬을 버린다. 금화를 먼저 빼면 그때 **증발**한다.
+       */
+      if(this.mgr.busy) return;
+      if(!DG.spendCoins(CONTINUE_COST)){ SND.sfx('deny'); return; }
+      /**
+       * carry 는 이미 있는 모양을 그대로 쓴다(`makeCarry`) — 형식을 새로 만들면
+       * 이어받는 자리가 두 갈래가 되고, 한쪽만 고치는 사고가 난다.
+       * 다만 **부활 조건은 컨티뉴답게** 다시 매긴다: 하트 셋, 화력 1, 무기 기본.
+       */
+      const carry = {
+        players: [{
+          pid: 1, dragonIdx: this.p1.dragonIdx, level: START_FIRE_LV,
+          lives: 3, hp: 100, score: this.p1.score,
+          missileCount: EQ.startMissiles, bombCount: EQ.startBombs,
+        }],
+        score: this.score,
+        p1UsesKeys: this.p1UsesKeys,
+        continues: this.continuesUsed + 1,
+      };
+      if(!this.mgr.change(new GameScene(this.stage, carry))){
+        DG.addCoins(CONTINUE_COST);          // 못 넘어갔으면 돌려준다 (여기로 오면 안 되지만)
+        SND.sfx('deny'); return;
+      }
+      SND.sfx('levelup');
+      return;
+    }
     if(pick === 'continue'){
       SND.sfx('confirm');
       this.mgr.change(new GameScene(this.stage + 1, this.makeCarry()));
@@ -6856,10 +6937,17 @@ const DG = {
   onCharacter() {},
   /** 결투 중 1초마다 — 상대 화면의 숫자가 이걸로 움직인다 */
   onProgress() {},
+  /**
+   * 이어하기 값을 치를 지갑. 게임은 오락실 지갑을 모르므로 창구로만 만진다.
+   * 기본값은 "돈이 없다" 다 — 창구가 안 붙었으면 이어하기가 안 보인다.
+   */
+  coins: () => 0,
+  spendCoins: () => false,
+  addCoins: () => {},
 };
 
 /** 한 판 동안 쌓이는 것 — 판이 끝나면 오락실이 가져간다 */
-const RUN = { coins: 0 };
+const RUN = { coins: 0, coinFrac: 0 };
 
 /**
  * ★ **낀 아이템은 1P 것이다.** (2026-08-26)
@@ -6930,8 +7018,8 @@ const DIFFS = {
   /* atk 은 **목숨당 맞는 횟수**가 실제로 갈리도록 잡았다 (기본 한 방 34, 체력 100):
      쉬움 26 -> 4대 · 보통 34 -> 3대 · 어려움 53 -> 2대.
      1.45 로 두었을 때는 49 라 어려움도 3대였다 — 반올림에 묻혀 차이가 안 났다. */
-  easy:   { count: 0.80, speed: 0.88, hp: 0.80, atk: 0.75, boss: 0.80 },
-  normal: { count: 1.00, speed: 1.00, hp: 1.00, atk: 1.00, boss: 1.00 },
+  easy:   { count: 0.80, speed: 0.88, hp: 0.80, atk: 0.75, boss: 0.80, coin: 0.8 },
+  normal: { count: 1.00, speed: 1.00, hp: 1.00, atk: 1.00, boss: 1.00, coin: 1.0 },
   /**
    * ★ **어려움을 눅였다.** (2026-08-26, 실제로 해 보고)
    *
@@ -6939,7 +7027,7 @@ const DIFFS = {
    * 1.30 이면 세 대 — 보통(세 대)과 같은 횟수지만 적이 많고 빨라서 여전히 어렵다.
    * 어려움이 어려워야 할 이유는 "한 대가 아픈 것" 이 아니라 "쉴 틈이 없는 것" 이다.
    */
-  hard:   { count: 1.28, speed: 1.18, hp: 1.30, atk: 1.30, boss: 1.20 },
+  hard:   { count: 1.28, speed: 1.18, hp: 1.30, atk: 1.30, boss: 1.20, coin: 1.4 },
 };
 function diffOf() { return DIFFS[DG.difficulty] || DIFFS.normal; }
 function diffScale() { return diffOf().count; }
@@ -6947,6 +7035,16 @@ function diffSpeed() { return diffOf().speed; }
 function diffHp() { return diffOf().hp; }
 function diffAtk() { return diffOf().atk; }     // 적의 공격력
 function diffBoss() { return diffOf().boss; }   // 보스 체력
+/**
+ * ★ **어려울수록 금화를 더 준다.** (2026-08-26)
+ *
+ * 예전에는 어려움으로 깨나 쉬움으로 깨나 금화가 같았다 — 그러면 어려움을 고를
+ * 이유가 순위표뿐이고, 대부분은 쉬움으로 돌린다. 위험을 더 지면 더 받아야 한다.
+ *
+ * 점수가 아니라 **금화**에 배수를 거는 이유: 점수는 순위표가 난이도별로 이미 갈려
+ * 있어서 배수를 걸면 비교가 오히려 흐려진다. 금화는 하나뿐이라 여기가 맞는 자리다.
+ */
+function diffCoin() { return diffOf().coin; }
 
 /* 타이틀로 나가던 자리. 이제 타이틀이 없다 — 오락실 로비로 돌아간다 */
 function backOut() { DG.onExit(); }
@@ -7044,6 +7142,9 @@ export function mount(host, opts = {}) {
   DG.onExit = opts.onExit || (() => {});
   DG.onCharacter = opts.onCharacter || (() => {});
   DG.onProgress = opts.onProgress || (() => {});
+  DG.coins = opts.coins || (() => 0);
+  DG.spendCoins = opts.spendCoins || (() => false);
+  DG.addCoins = opts.addCoins || (() => {});
   setEquipment(opts.equipment);        // 낌 아이템은 한 판 내내 고정이다
   RUN.coins = 0;
 
@@ -7351,6 +7452,8 @@ export const __test = {
   get difficulty() { return DG.difficulty; },
   get coins() { return RUN.coins; },
   get boundCount() { return bound.length; },
+  /* 씬 전환(페이드) 중인가 — 전환 중에는 다음 change 가 버려진다 */
+  get busy() { return !!(scenes && scenes.busy); },
   get running() { return rafId !== 0; },
   get keysDown() { return Input.down.size; },
   press(action) { Input.just.add(action); },

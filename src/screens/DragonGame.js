@@ -18,7 +18,7 @@
 
 import S from '../config/strings.ko.js';
 import { el, toast } from './ui.js';
-import { get as getProfile, finishDragonRun, setDragonCharacter , dragonEquipment , hasDragon } from '../services/profile.js';
+import { get as getProfile, finishDragonRun, setDragonCharacter , dragonEquipment , hasDragon , spendDragonCoins , patch as patchProfile } from '../services/profile.js';
 import { effectsOf, startMissiles, startBombs } from '../games/dragon/items.js';
 import { lockLandscape, unlockOrientation } from '../core/fullscreen.js';
 import { setGameGuard } from './router.js';
@@ -132,6 +132,14 @@ export default function DragonGame(nav, opt = {}) {
            * 결투 중 1초마다 — 상대 화면의 숫자가 이걸로 움직인다.
            * 혼자 하는 판에서는 아무 데도 안 간다.
            */
+          /**
+           * 이어하기 값을 치를 지갑. 결투에서는 안 붙인다 —
+           * 결투는 한 판으로 끝나고, 판돈이 걸린 판에서 목숨을 사면 형평이 깨진다.
+           */
+          coins: () => (duelCode ? 0 : (getProfile().dragonCoins || 0)),
+          spendCoins: (n) => (duelCode ? false : spendDragonCoins(n).ok),
+          addCoins: (n) => { if (!duelCode) patchProfile({ dragonCoins: (getProfile().dragonCoins || 0) + n }); },
+
           onProgress(r) {
             if (!live || !duelCode) return;
             Room.publishDuelProgress(duelCode, r).catch(() => {});
