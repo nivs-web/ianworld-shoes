@@ -2385,7 +2385,7 @@ function drawTimeBar(ctx, B, k, t){
   }
 
   /* ── 모래시계 — 이게 시간이라는 표시 ── */
-  drawHourglass(ctx, B.x - 22, B.y + B.h/2, low, t);
+  drawHourglass(ctx, B.x - 22, B.y + B.h/2, low, t, k);
 }
 
 /**
@@ -2397,19 +2397,35 @@ function drawTimeBar(ctx, B, k, t){
  *
  *   X 유리   o 모래   . 빈칸
  */
+/**
+ * 모래시계 유리 — **모래는 여기 없다.**
+ *
+ * ★ 처음에는 윗부분 모래를 이 그림에 박아 뒀다. 그래서 시간이 다 지나도
+ *   위쪽 모래가 그대로 남아 있었다 — 아래만 쌓이고 위는 안 줄어드는 이상한 시계였다.
+ *   변하는 것은 그림이 아니라 **상태**다. 유리만 그려 두고 모래는 그때그때 채운다.
+ */
 const HOURGLASS = [
-  'XXXXXXX',
-  'X.....X',
-  '.Xooo X'.replace(' ', 'X'),
-  '..XoX..',
-  '...X...',
-  '..X.X..',
-  '.X...X.',
-  'X.....X',
-  'XXXXXXX',
+  'XXXXXXX',   // 0 윗 뚜껑
+  'X.....X',   // 1 ─┐
+  '.X...X.',   // 2  │ 위쪽 깔때기 (모래가 여기 담긴다)
+  '..X.X..',   // 3 ─┘
+  '...X...',   // 4 목
+  '..X.X..',   // 5 ─┐
+  '.X...X.',   // 6  │ 아래쪽 깔때기
+  'X.....X',   // 7 ─┘
+  'XXXXXXX',   // 8 아래 뚜껑
 ];
 
-function drawHourglass(ctx, cx, cy, low, t){
+/**
+ * 작은 모래시계 — 타임바 왼쪽에 붙는다.
+ *
+ * ★ **격자로 찍는다.** 처음엔 사각형을 계산해 쌓았는데 48px 짜리 덩어리가 나왔다
+ * (바는 26px 이다). 모양을 만들 때는 **직접 그리는 편**이 계산으로 흉내내는 것보다
+ * 작고 정확하다 — 이 게임의 다른 도트들과 같은 방식이다.
+ *
+ * @param {number} k 남은 시간 비율 (1=가득, 0=다 빠짐)
+ */
+function drawHourglass(ctx, cx, cy, low, t, k){
   const D = 2;                                   // 도트 한 칸 (7x9 격자 -> 14x18px)
   const W = 7, H = HOURGLASS.length;
   const ox = snap(cx - W*D/2), oy = snap(cy - H*D/2);
@@ -2420,28 +2436,35 @@ function drawHourglass(ctx, cx, cy, low, t){
   ctx.fillStyle = '#0a0a14';
   ctx.fillRect(ox - D, oy - D, W*D + D*2, H*D + D*2);
 
-  for(let r=0;r<H;r++){
-    for(let c=0;c<W;c++){
-      const ch = HOURGLASS[r][c];
-      if(ch === '.') continue;
-      ctx.fillStyle = ch === 'o' ? sand : glass;
-      ctx.fillRect(ox + c*D, oy + r*D, D, D);
-    }
-  }
+  /* 유리 */
+  for(let r=0;r<H;r++)
+    for(let c=0;c<W;c++)
+      if(HOURGLASS[r][c] === 'X'){ ctx.fillStyle = glass; ctx.fillRect(ox + c*D, oy + r*D, D, D); }
 
   /**
-   * 모래가 흐른다 — 위가 줄고 아래가 쌓인다.
-   * 실제 남은 시간과 맞추지 않는다. 남은 양은 옆의 막대가 이미 정확히 말하고 있고,
-   * 이건 "시간이 가고 있다" 는 것만 보여 주면 된다.
+   * ★ **실제 남은 시간대로 줄어든다.** (2026-08-26, 사용자 지정)
+   *
+   * 깔때기가 세 층이라 남은 양을 세 칸으로만 나타낸다. 그래서 반올림이 아니라
+   * **올림**으로 센다 — 한 톨이라도 남았으면 위에 모래가 보여야지, 20%가 남았는데
+   * 위가 텅 비어 있으면 다 끝난 줄 안다.
+   *
+   * 층마다 담기는 폭이 다르다: 위에서부터 5칸 / 3칸 / 1칸.
    */
-  const k = (t * 0.5) % 1;
+  const kk = clamp(k, 0, 1);
   ctx.fillStyle = sand;
-  const topRows = Math.round((1 - k) * 2);
-  for(let i=0;i<topRows;i++) ctx.fillRect(ox + (2+i)*D, oy + (2+i)*D, (3-i*2)*D, D);
-  const botRows = Math.round(k * 2);
-  for(let i=0;i<botRows;i++) ctx.fillRect(ox + (2-i)*D, oy + (7-i)*D, (3+i*2)*D, D);
-  /* 떨어지는 한 알 */
-  if(Math.floor(t*8) % 2 === 0) ctx.fillRect(ox + 3*D, oy + 5*D, D, D);
+
+  /* 위 — 목에서부터 차오른다 (3층 -> 2층 -> 1층 순으로 빈다) */
+  const top = Math.ceil(kk * 3);
+  const TOP = [[3, 1, 5], [2, 2, 3], [1, 3, 1]];   // [줄, 시작칸, 폭]
+  for(let i=0;i<top;i++){ const [r, c0, w] = TOP[i]; ctx.fillRect(ox + c0*D, oy + r*D, w*D, D); }
+
+  /* 아래 — 바닥부터 쌓인다 */
+  const bot = Math.ceil((1 - kk) * 3);
+  const BOT = [[7, 1, 5], [6, 2, 3], [5, 3, 1]];
+  for(let i=0;i<bot;i++){ const [r, c0, w] = BOT[i]; ctx.fillRect(ox + c0*D, oy + r*D, w*D, D); }
+
+  /* 떨어지는 한 알 — 아직 남았을 때만 */
+  if(kk > 0 && Math.floor(t*8) % 2 === 0) ctx.fillRect(ox + 3*D, oy + 4*D, D, D);
 }
 
 /**
@@ -6108,22 +6131,44 @@ class GameScene extends Scene {
        * 금화가 이 게임의 화폐인데 정작 한 판 끝나고 얼마 벌었는지 볼 데가 없었다.
        * 왼쪽 이름은 한글이라 오락실 글꼴로, 오른쪽 값은 숫자가 많아 게임 글꼴로 그린다.
        */
+      /**
+       * ★ **[이름, 숫자, 단위] 세 칸이다.** (2026-08-26, 사용자 지적)
+       *
+       * 예전에는 숫자와 단위를 한 덩어리로 붙여 `'12초'` 를 게임 글꼴로 그렸다.
+       * 그 글꼴에는 **'초' 가 없다** — 이 게임 글꼴은 영문·숫자용이고 한글은
+       * 오락실 글꼴(`ko`)에만 있다. 없는 글자가 끼면 폭 계산이 어긋나서
+       * **오른쪽 정렬이 그 줄만 밀렸다.** "남은시간만 왼쪽 정렬 같다" 는 게 이것이다.
+       *
+       * 셋으로 가르면 숫자는 같은 오른쪽 끝에 딱 맞고, 단위는 그 뒤에서 왼쪽으로
+       * 나란히 선다 — 표가 표처럼 보인다.
+       */
       const rows = clear
-        ? [['점수', String(this.score)], ['시간 보너스', '+' + this.bonus],
-           ['킬수', String(this.kills)],
-           ['파이어 레벨', String(this.p1.level) + (this.p1.level >= MAX_LEVEL ? '  MAX' : '')],
-           ['획득 금화', String(RUN.coins)]]
-        : [['점수', String(this.score)], ['킬수', String(this.kills)],
-           ['파이어 레벨', String(this.p1.level)],
-           ['남은 시간', Math.ceil(this.timeLeft) + '초'],
-           ['획득 금화', String(RUN.coins)]];
+        ? [['점수', String(this.score), '점'],
+           ['시간 보너스', '+' + this.bonus, '점'],
+           ['킬수', String(this.kills), '마리'],
+           ['파이어 레벨', String(this.p1.level), this.p1.level >= MAX_LEVEL ? '최대' : ''],
+           ['획득 금화', String(RUN.coins), '개']]
+        : [['점수', String(this.score), '점'],
+           ['킬수', String(this.kills), '마리'],
+           ['파이어 레벨', String(this.p1.level), ''],
+           ['남은 시간', String(Math.ceil(this.timeLeft)), '초'],
+           ['획득 금화', String(RUN.coins), '개']];
+
+      const NUM_R = 800;          // 숫자가 끝나는 자리 (여기에 오른쪽 끝을 맞춘다)
+      const UNIT_X = 812;         // 단위가 시작하는 자리
       for(let i=0;i<rows.length;i++){
-        const y = 316 + i*42;
+        /* 줄간격 42 -> 54. 다섯 줄이 316~532 라 아래 문구(556)와 안 겹친다 */
+        const y = 312 + i*54;
         if(this.stateT < 0.6 + i*0.12) break;
         const gold = rows[i][0] === '획득 금화';
+        const c = gold ? '#ffd24a' : PAL.white;
         ko(ctx, rows[i][0], 420, y, 4, { color: gold ? '#ffd24a' : '#8a9bbf', outline:PAL.outline });
-        drawText(ctx, rows[i][1], 870, y, 4,
-          { align:'right', color: gold ? '#ffd24a' : PAL.white, outline:PAL.outline });
+        /* ★ 오른쪽 정렬 열에서는 **고정폭**이 맞다. 글자마다 폭이 다르면
+           숫자 끝이 줄마다 몇 px 씩 흔들려서 표가 삐뚤어 보인다.
+           (로비 상태창은 문장 속이라 반대로 고정폭을 껐다 — 자리가 다르면 답도 다르다.) */
+        drawText(ctx, rows[i][1], NUM_R, y, 4,
+          { align:'right', color:c, outline:PAL.outline, mono:true });
+        if(rows[i][2]) ko(ctx, rows[i][2], UNIT_X, y + 4, 3, { color: gold ? '#c8880f' : '#8a9bbf' });
       }
     }
     if(this.stateT <= 1.1) return;
