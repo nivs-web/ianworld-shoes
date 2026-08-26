@@ -19,7 +19,8 @@
 import S from '../config/strings.ko.js';
 import { el, backButton, screen, title, segmented } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
-import { fetchDragonBoard, fetchDragonCrownBoard } from '../services/leaderboard.js';
+import { fetchDragonBoard, fetchDragonCrownBoard, fetchUserCard } from '../services/leaderboard.js';
+import { openUserCard } from './UserCard.js';
 import { loadDragon } from './DragonGame.js';
 
 /** 점수순위 — 기간 x 난이도 */
@@ -81,6 +82,20 @@ export default function DragonRanking(nav, opt = {}) {
   }
   load();
 
+  /**
+   * 누른 줄의 유저상태창을 띄운다.
+   * **기다렸다 띄우지 않는다** — "눌렀는데 아무 일도 안 난다" 가 되기 때문이다.
+   * 아는 값으로 먼저 띄우고, 계정 문서가 도착하면 카드가 그 줄만 갈아 끼운다.
+   */
+  function openCard(r) {
+    const known = { uid: r.uid, nickname: r.nickname };
+    const load = fetchUserCard(r.uid).then((full) => {
+      if (full) Object.assign(r, full);
+      return full;
+    }).catch(() => null);
+    openUserCard(known, { nav, load, game: 'dragon' });
+  }
+
   function row(r, i) {
     const rank = i + 1;
     /* 승률은 소수 한 자리, 나머지는 자릿수 구분 */
@@ -89,6 +104,12 @@ export default function DragonRanking(nav, opt = {}) {
       : `${Number(r.value || 0).toLocaleString('en-US')}${state.unit}`;
     return el('div.rank-row', {
       class: [r.uid === me.uid ? 'me' : '', rank <= 3 ? `crowned c${rank}` : ''].filter(Boolean).join(' '),
+      /**
+       * ★ **줄을 누르면 유저상태창이 뜬다.** (2026-08-26, 사용자 지정)
+       * 명예의 전당과 **같은 부품**(`openUserCard`)을 쓴다 — 오락실 안에서 남의 카드는
+       * 어디서 눌러도 같은 모양이어야 한다. 두 화면이 각자 만들면 언젠가 다른 말을 한다.
+       */
+      onclick: () => openCard(r),
     }, [
       el('div.rank-place', null, [el('span.rank-no', S.rankPlace(rank))]),
       /* 그 사람이 쓰는 드래곤 얼굴 — 순위표는 남이 내 드래곤을 보는 거의 유일한 화면이다 */

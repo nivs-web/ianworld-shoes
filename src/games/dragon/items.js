@@ -89,11 +89,19 @@ export const ITEMS = [
   { id:'nuke12', slot:'startBomb', ko:'핵무기 12개로 시작', price: 972000, qty:12, tint:'#c81f2e', desc:'게임을 핵무기 12개로 시작합니다 (최대)' },
 
   /* ---------------- 마스크 : 7,000 ---------------- */
-  { id:'mask1', slot:'mask', ko:'가죽 마스크',   price:  800, tint:'#a4703c', eff:{ dmgCut:0.03 }, desc:'받는 피해 3% 감소' },
-  { id:'mask2', slot:'mask', ko:'무쇠 마스크',   price:1100, tint:'#8c94a8', eff:{ dmgCut:0.05 }, desc:'받는 피해 5% 감소' },
-  { id:'mask3', slot:'mask', ko:'은빛 마스크',   price:1400, tint:'#d8e2f0', eff:{ dmgCut:0.07 }, desc:'받는 피해 7% 감소' },
-  { id:'mask4', slot:'mask', ko:'흑요석 마스크', price:1700, tint:'#5a4a70', eff:{ dmgCut:0.09 }, desc:'받는 피해 9% 감소' },
-  { id:'mask5', slot:'mask', ko:'용왕의 마스크', price:2000, tint:'#ffd24a', eff:{ dmgCut:0.12 }, desc:'받는 피해 12% 감소' },
+  /**
+    * ★ **값이 칸마다 두 배씩 뛴다.** (2026-08-26, 사용자 지정)
+    * 800 -> 1,600 -> 3,200 -> 6,400 -> 12,800 (합 24,800).
+    * 예전에는 300씩 올라서 다섯 개를 한 판에 다 살 수 있었다 — 고를 이유가 없었다.
+    *
+    * `lv` 는 **생김새의 등급**이다. 얼굴에 그려지는 모양이 등급마다 달라진다
+    * (`drawMask`). 값만 다르고 똑같이 생겼으면 비싼 것을 살 이유가 없다.
+    */
+  { id:'mask1', slot:'mask', ko:'가죽 마스크',   price:   800, lv:1, tint:'#a4703c', eff:{ dmgCut:0.03 }, desc:'받는 피해 3% 감소 · 코를 덮는 가죽끈' },
+  { id:'mask2', slot:'mask', ko:'무쇠 마스크',   price:  1600, lv:2, tint:'#8c94a8', eff:{ dmgCut:0.05 }, desc:'받는 피해 5% 감소 · 대갈못 박은 무쇠판' },
+  { id:'mask3', slot:'mask', ko:'은빛 마스크',   price:  3200, lv:3, tint:'#d8e2f0', eff:{ dmgCut:0.07 }, desc:'받는 피해 7% 감소 · 은빛 송곳니' },
+  { id:'mask4', slot:'mask', ko:'흑요석 마스크', price:  6400, lv:4, tint:'#5a4a70', eff:{ dmgCut:0.09 }, desc:'받는 피해 9% 감소 · 눈까지 덮는 흑요석' },
+  { id:'mask5', slot:'mask', ko:'용왕의 마스크', price: 12800, lv:5, tint:'#ffd24a', eff:{ dmgCut:0.12 }, desc:'받는 피해 12% 감소 · 뿔과 송곳니가 달린 용왕의 얼굴' },
 
   /* ---------------- 불꽃 : 18,000 ---------------- */
   { id:'fire1', slot:'flame', ko:'달군 불꽃',   price:2600, tint:'#ff8c2e', pal:'ember',  eff:{ atk:1.06 }, desc:'공격력 6% · 붉게 달아오른 불' },
@@ -125,7 +133,7 @@ export const itemById = (id) => BY_ID.get(id) || null;
 
 /** 아무것도 안 낀 상태 */
 export const EFFECT_ZERO = { dmgCut:0, atk:1, magnet:0, coinBonus:0, speed:1, pal:null,
-                             mask:null, head:null, leg:null };
+                             mask:null, maskLv:0, head:null, leg:null };
 
 /**
  * 착용 중인 것들을 하나의 효과로 합친다.
@@ -148,7 +156,7 @@ export function effectsOf(equip) {
     /* 장식 색도 같이 넘긴다 — 게임은 도감을 몰라도 되게 수치와 색만 받는다 */
     if (slot.key === 'head') e.head = it.tint;
     if (slot.key === 'leg')  e.leg  = it.tint;
-    if (slot.key === 'mask') e.mask = it.tint;
+    if (slot.key === 'mask') { e.mask = it.tint; e.maskLv = it.lv || 1; }
   }
   /* 안전장치 — 도감을 잘못 고쳐도 게임이 망가지지 않게 상한을 둔다 */
   e.dmgCut = Math.min(0.20, e.dmgCut);

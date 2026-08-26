@@ -1785,8 +1785,91 @@ function drawDragon(ctx, pal, level, cx, cy, pose, flip, tint, always, horn, maw
  * 드래곤 도트 자체를 고치지 않고 **위에 덧그린다** — 열 마리 x 열 레벨의 도트를
  * 스무 벌 더 만드는 것은 감당이 안 되고, 굽어 있는 그림 캐시도 전부 무효가 된다.
  */
-function drawGear(ctx, cx, cy, m, t, headTint, legTint){
-  if(!headTint && !legTint) return;
+/**
+ * 마스크. (2026-08-26, 사용자 신고 — "아무것도 안 떠, 변화가 없어")
+ *
+ * ★ 마스크는 **그리는 코드가 아예 없었다.** 효과(받는 피해 감소)만 있고 얼굴에는
+ * 아무 일도 안 일어났다. 산 사람이 산 티를 못 내는 물건이었다.
+ *
+ * 자리는 **주둥이**다. B 형태 격자에서 눈은 10~11줄, 주둥이는 11~14줄이고
+ * 가로로는 22~33칸이다. 화면 좌표로 옮기면 얼굴 앞쪽 절반이 된다.
+ *
+ * 등급마다 덮는 범위가 넓어진다 — 코끈 → 무쇠판 → 송곳니 → 눈까지 → 용왕의 얼굴.
+ * 값이 두 배씩 뛰는 물건이라 **눈에 보이는 차이**가 있어야 한다.
+ */
+function drawMask(ctx, cx, cy, m, tint, lv){
+  const u = Math.max(2, Math.round(m.cell));
+  /* 주둥이 앞끝과 위아래 — 격자 좌표에서 옮겨온 값이다 */
+  const x0 = snap(cx + u*4);        // 주둥이 시작 (눈 바로 앞)
+  const x1 = snap(cx + u*15);       // 코끝
+  const yM = snap(cy - u*3);        // 주둥이 한가운데
+  const dark = '#0a0616';
+
+  const band = (bx, bw, by, bh, c) => {
+    ctx.fillStyle = dark; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+    ctx.fillStyle = c;    ctx.fillRect(bx, by, bw, bh);
+  };
+
+  /* 1등급 — 코를 가로지르는 가죽끈 하나 */
+  band(x0 + u*4, u*5, yM - u, u*2, tint);
+
+  /* 2등급부터 — 주둥이를 덮는 판 */
+  if(lv >= 2){
+    band(x0, x1 - x0, yM - u*2, u*4, tint);
+    /* 대갈못 — 판이 판처럼 보이게 하는 것은 결국 이 점들이다 */
+    ctx.fillStyle = dark;
+    for(let i=0;i<4;i++) ctx.fillRect(snap(x0 + u*2 + i*u*3), yM - u, u, u);
+  }
+
+  /* 3등급부터 — 아래로 뻗은 송곳니 */
+  if(lv >= 3){
+    ctx.fillStyle = dark;
+    for(let i=0;i<3;i++) ctx.fillRect(snap(x0 + u*3 + i*u*4) - 1, yM + u*2 - 1, u + 2, u*3 + 2);
+    ctx.fillStyle = '#fff4f4';
+    for(let i=0;i<3;i++) ctx.fillRect(snap(x0 + u*3 + i*u*4), yM + u*2, u, u*3);
+  }
+
+  /* 4등급부터 — 눈까지 덮는 면갑 */
+  if(lv >= 4){
+    band(snap(cx - u*2), u*7, yM - u*5, u*3, tint);
+    /* 눈구멍 — 뚫려 있어야 눈이 살아 보인다 */
+    ctx.fillStyle = dark;
+    ctx.fillRect(snap(cx - u), yM - u*4, u*2, u);
+  }
+
+  /**
+   * 5등급 — 용왕의 얼굴.
+   * ★ "진짜 크고 멋진 용왕 얼굴" (사용자 지정). 앞의 넷이 '덮개' 라면 이건 **가면**이다:
+   * 위로 뻗은 뿔 한 쌍, 이마의 보석, 볼을 감싸는 판, 아래로 자란 엄니.
+   */
+  if(lv >= 5){
+    /* 뿔 한 쌍 — 이마에서 위로 */
+    for(const dx of [-u*2, u*3]){
+      ctx.fillStyle = dark;
+      ctx.fillRect(snap(cx + dx) - 1, yM - u*10 - 1, u + 2, u*5 + 2);
+      ctx.fillStyle = tint;
+      ctx.fillRect(snap(cx + dx), yM - u*10, u, u*5);
+      ctx.fillRect(snap(cx + dx) + (dx < 0 ? -u : u), yM - u*10, u, u*2);   // 갈라진 끝
+    }
+    /* 이마 보석 — 숨쉬듯 밝아진다 */
+    ctx.fillStyle = dark;
+    ctx.fillRect(snap(cx) - 1, yM - u*7 - 1, u*2 + 2, u*2 + 2);
+    ctx.fillStyle = '#ff4d6a';
+    ctx.fillRect(snap(cx), yM - u*7, u*2, u*2);
+    /* 볼을 감싸는 판 */
+    band(snap(cx + u*2), u*10, yM - u*2, u*5, tint);
+    /* 엄니 — 아래로 크게 두 개 */
+    for(const dx of [u*3, u*10]){
+      ctx.fillStyle = dark;
+      ctx.fillRect(snap(cx + dx) - 1, yM + u*3 - 1, u*2 + 2, u*5 + 2);
+      ctx.fillStyle = '#fff4f4';
+      ctx.fillRect(snap(cx + dx), yM + u*3, u*2, u*5);
+    }
+  }
+}
+
+function drawGear(ctx, cx, cy, m, t, headTint, legTint, maskTint, maskLv){
+  if(!headTint && !legTint && !maskTint) return;
   const u = Math.max(2, Math.round(m.cell));           // 장식 한 칸 = 드래곤 한 칸
   const sh = Math.sin(t*4);
   ctx.save();
@@ -1808,6 +1891,8 @@ function drawGear(ctx, cx, cy, m, t, headTint, legTint){
     ctx.fillRect(hx - u/2, hy - u*3, u, u);
     ctx.globalAlpha = 1;
   }
+
+  if(maskTint) drawMask(ctx, cx, cy, m, maskTint, maskLv || 1);
 
   if(legTint){
     /* 다리는 아래쪽 두 갈래 — 각반을 두르고 발톱에 광을 낸다.
@@ -2004,8 +2089,9 @@ class Player {
     drawDragon(ctx, dg.pal, this.level, this.x, this.y + bob, pose, false, null, dg.always,
                this.dragonIdx, this.mawT > 0);
     /* 산 무장은 1P 것이다 — 2P 는 맨몸으로 낀 손님이다 */
-    if(this.pid === 1 && (EQ.head || EQ.leg))
-      drawGear(ctx, this.x, this.y + bob, this.metrics, this.t, EQ.head, EQ.leg);
+    if(this.pid === 1 && (EQ.head || EQ.leg || EQ.mask))
+      drawGear(ctx, this.x, this.y + bob, this.metrics, this.t,
+               EQ.head, EQ.leg, EQ.mask, EQ.maskLv);
   }
 }
 
@@ -6782,7 +6868,7 @@ const RUN = { coins: 0 };
  * 지갑도 보관함도 없다. 그래서 모든 효과는 `pid === 1` 에게만 걸린다 —
  * 안 그랬다가는 내가 산 물건으로 남이 세지는 이상한 일이 된다.
  */
-const EQ = { dmgCut:0, atk:1, magnet:0, coinBonus:0, speed:1, pal:null, head:null, leg:null, mask:null,
+const EQ = { dmgCut:0, atk:1, magnet:0, coinBonus:0, speed:1, pal:null, head:null, leg:null, mask:null, maskLv:0,
              startMissiles: START_MISSILES, startBombs: START_BOMBS };
 
 /**
@@ -6808,6 +6894,7 @@ export function setEquipment(eff){
   EQ.head      = e.head || null;   // 장식 색 (그림에만 쓴다)
   EQ.leg       = e.leg  || null;
   EQ.mask      = e.mask || null;
+  EQ.maskLv    = clamp(+e.maskLv || 0, 0, 5);
   /* 계단 아이템 — 끼고 벗는 게 아니라 산 만큼 들고 시작한다 */
   EQ.startMissiles = clamp(+e.startMissiles || START_MISSILES, START_MISSILES, MAX_MISSILE);
   EQ.startBombs    = clamp(+e.startBombs    || START_BOMBS,    START_BOMBS,    MAX_BOMB);
@@ -7058,7 +7145,9 @@ export function dragonPortrait(idx, cell = 3, padFlame, gear) {
    */
   const gh = gear ? gear.head : EQ.head;
   const gl = gear ? gear.leg  : EQ.leg;
-  if(gh || gl) drawGear(c, w/2, h/2, { w, h, cell }, 0.4, gh, gl);
+  const gm = gear ? gear.mask : EQ.mask;
+  const gmv = gear ? (gear.maskLv || 1) : EQ.maskLv;
+  if(gh || gl || gm) drawGear(c, w/2, h/2, { w, h, cell }, 0.4, gh, gl, gm, gmv);
   return cv;
 }
 

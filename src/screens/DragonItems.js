@@ -143,6 +143,9 @@ export default function DragonItems(nav) {
         const gearOf = (eq) => ({
           head: itemById(eq.head)?.tint || null,
           leg: itemById(eq.leg)?.tint || null,
+          /* 마스크는 색만으로 부족하다 — 등급마다 생김새가 달라서 등급도 같이 넘긴다 */
+          mask: itemById(eq.mask)?.tint || null,
+          maskLv: itemById(eq.mask)?.lv || 0,
         });
         const tryOn = { ...worn, [item?.slot ?? 'mask']: item?.id };
         /**
