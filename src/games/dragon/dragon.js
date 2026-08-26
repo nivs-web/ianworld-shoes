@@ -931,6 +931,331 @@ function buildRidge(seed, baseY, amp, rough, color, shape){
   return cv;
 }
 
+/* ==================================================================
+   ★ 스테이지 랜드마크 (2026-08-26)
+
+   배경은 네 겹 능선인데 형태가 여섯 가지(구릉·험준·침엽수·활엽수·유적·평지)뿐이라
+   **스무 판이 색만 다르고 구조가 같았다.** 13~20판은 아예 하늘과 구름뿐이라
+   어디를 날고 있는지 알 수가 없었다.
+
+   그래서 판마다 **한눈에 알아보는 큰 것 하나**를 세운다 — 피라미드, 등대, 빙산,
+   비행선, 지구. 능선과 같은 명암 규칙(윗면 밝게 / 그늘 어둡게)으로 그려
+   따로 노는 그림이 되지 않게 한다.
+
+   중경 속도로 흐르므로 한 바퀴에 한 번 지나간다. 배경 캔버스는 GAME_W 폭으로
+   순환하니 **가장자리에 걸치면 이음새가 보인다** — x 는 0.30~0.70 사이로 둔다.
+   ================================================================== */
+function drawLandmark(c, kind, cx, baseY, W, H, color, seed){
+  const body = color;
+  const top  = mixHex(color, '#ffffff', 0.30);
+  const deep = mixHex(color, '#000000', 0.42);
+  const lit  = mixHex(color, '#ffffff', 0.55);
+  const R = (x, y, w, h, col) => {
+    if(w <= 0 || h <= 0) return;
+    c.fillStyle = col; c.fillRect(snap(x), snap(y), Math.max(PX, snap(w)), Math.max(PX, snap(h)));
+  };
+  /** 기둥 하나 — 세로로 긴 것들은 전부 이걸로 쌓는다 (도트 결이 유지된다) */
+  const col1 = (x, yA, yB, cBody, cTop) => {
+    R(x, yA, PX, yB - yA, cBody);
+    if(cTop) R(x, yA, PX, PX*2, cTop);
+  };
+  /** 가로로 훑으며 위/아래 경계를 주는 것 — 원반·타원·소행성이 전부 이 모양이다 */
+  const sweep = (x0, x1, fn) => {
+    for(let x = snap(x0); x < x1; x += PX){
+      const r = fn(x);
+      if(!r) continue;
+      col1(x, r[0], r[1], r[2] || body, r[3]);
+    }
+  };
+  const rnd = mulberry32((seed | 0) ^ 0x5f3a);
+  const yTop = baseY - H;
+
+  if(kind === 'pyramid'){                                   // 대피라미드 — 계단식
+    const N = 15, sh = H / N;
+    for(let i = 0; i < N; i++){
+      const w = W * (i + 1) / N, y = yTop + i * sh;
+      R(cx - w/2, y, w, sh + PX, body);
+      R(cx, y, w/2, sh + PX, deep);                          // 오른쪽 절반이 그늘
+      R(cx - w/2, y, w, PX, top);                            // 단의 윗면
+    }
+    R(cx - W*0.06, baseY - H*0.30, W*0.12, H*0.30, deep);    // 입구
+  }else if(kind === 'columns'){                              // 신전 — 박공지붕과 열주
+    const pw = W, px0 = cx - pw/2;
+    R(px0, baseY - PX*4, pw, PX*4, deep);                    // 기단
+    R(px0 + PX*2, baseY - PX*8, pw - PX*4, PX*4, body);
+    const colTop = yTop + H*0.34, nCol = 9;
+    for(let i = 0; i < nCol; i++){                           // 기둥
+      const x = px0 + PX*6 + (pw - PX*12) * i / (nCol - 1);
+      R(x - PX*2, colTop, PX*4, baseY - PX*8 - colTop, body);
+      R(x - PX*2, colTop, PX, baseY - PX*8 - colTop, top);   // 왼쪽에 빛
+      R(x + PX,   colTop, PX, baseY - PX*8 - colTop, deep);
+    }
+    R(px0, colTop - PX*5, pw, PX*5, body);                   // 처마
+    R(px0, colTop - PX*5, pw, PX, top);
+    const ph = H*0.34 - PX*5;
+    for(let i = 0; i * PX < ph; i++){                        // 삼각 박공
+      const t = i * PX / ph, w = pw * (1 - t);
+      R(cx - w/2, colTop - PX*5 - (i+1)*PX, w, PX, i < 2 ? top : body);
+    }
+  }else if(kind === 'ziggurat'){                             // 정글 유적 — 계단 신전
+    const N = 6, sh = H*0.80 / N;
+    for(let i = 0; i < N; i++){
+      const w = W * (0.34 + 0.66 * (i + 1) / N), y = yTop + H*0.20 + i * sh;
+      R(cx - w/2, y, w, sh + PX, body);
+      R(cx + w*0.18, y, w*0.32, sh + PX, deep);
+      R(cx - w/2, y, w, PX, top);
+    }
+    R(cx - W*0.16, yTop, W*0.32, H*0.20 + PX, body);         // 정상 신전
+    R(cx - W*0.16, yTop, W*0.32, PX*2, top);
+    R(cx - W*0.05, yTop + H*0.08, W*0.10, H*0.12, deep);     // 문
+    for(let i = 0; i * PX*3 < H*0.80; i++)                   // 정면 계단
+      R(cx - W*0.07, yTop + H*0.20 + i*PX*3, W*0.14, PX, deep);
+  }else if(kind === 'bigtree'){                              // 거대 침엽수
+    R(cx - PX*3, baseY - H*0.30, PX*6, H*0.30, deep);        // 줄기
+    R(cx - PX*3, baseY - H*0.30, PX*2, H*0.30, body);
+    const N = 5;
+    for(let i = 0; i < N; i++){
+      const t = i / N, w = W * (0.34 + 0.66*t);
+      const yb = yTop + H*0.16 + (H*0.62)*t + H*0.24, hh = H*0.30;
+      for(let k = 0; k*PX < hh; k++){
+        const u = k*PX/hh, ww = w*u;
+        R(cx - ww/2, yb - hh + k*PX, ww, PX, k < 2 ? top : (u > 0.6 ? body : mixHex(body,'#000000',0.15)));
+      }
+    }
+  }else if(kind === 'arch'){                                 // 자연 아치 바위
+    const hw = W/2, hole = W*0.30, hh = H*0.62;
+    sweep(cx - hw, cx + hw, (x) => {
+      const d = Math.abs(x - cx) / hw;
+      const t = yTop + H*0.16*(d*d) + (rnd() < 0.10 ? PX*2 : 0);
+      if(Math.abs(x - cx) < hole){                           // 구멍 위쪽만 남는다
+        const u = Math.abs(x - cx) / hole;
+        return [t, baseY - hh * Math.sqrt(Math.max(0, 1 - u*u)), body, top];
+      }
+      return [t, baseY, body, top];
+    });
+    R(cx - hw, baseY - PX*3, W, PX*3, deep);
+  }else if(kind === 'pagoda'){                               // 오층탑
+    const N = 5, th = H / (N + 0.6);
+    for(let i = 0; i < N; i++){
+      const t = i / (N - 1), ww = W * (0.52 + 0.48*t);   // 아래로 갈수록 넓다
+      const y = yTop + H*0.14 + i * th;
+      R(cx - ww/2, y, ww, PX*2, deep);                       // 처마 (넓게 뻗는다)
+      R(cx - ww/2, y, ww, PX, top);
+      R(cx - ww*0.34, y + PX*2, ww*0.68, th - PX*2, body);   // 몸통
+      R(cx + ww*0.10, y + PX*2, ww*0.24, th - PX*2, deep);
+    }
+    R(cx - PX, yTop, PX*2, H*0.14, top);                     // 상륜
+    R(cx - PX*3, yTop + H*0.05, PX*6, PX, top);
+  }else if(kind === 'waterfall'){                            // 절벽 사이 폭포
+    const gap = W*0.26;
+    for(const s of [-1, 1]){                                 // 양쪽 절벽
+      const xa = cx + s*gap/2, xb = cx + s*(W/2);
+      sweep(Math.min(xa, xb), Math.max(xa, xb), (x) => {
+        const d = Math.abs(x - cx) - gap/2;
+        return [yTop + H*0.30 * Math.exp(-d/(W*0.14)), baseY, body, top];
+      });
+    }
+    const wt = mixHex(color, '#ffffff', 0.70);
+    R(cx - gap*0.40, yTop + H*0.26, gap*0.80, H*0.74, wt);   // 물줄기
+    for(let i = 0; i < 26; i++){                             // 흰 물살
+      const x = cx - gap*0.40 + rnd()*gap*0.80;
+      const y = yTop + H*0.30 + rnd()*H*0.64;
+      R(x, y, PX, PX*(2 + (rnd()*5|0)), '#ffffff');
+    }
+    R(cx - gap*0.52, baseY - PX*5, gap*1.04, PX*5, wt);      // 아래 물보라
+  }else if(kind === 'iceberg'){                              // 빙산
+    const hw = W/2;
+    sweep(cx - hw, cx + hw, (x) => {
+      const d = (x - cx) / hw;
+      const t = yTop + H * (d < -0.2 ? (0.30 + 0.9*Math.abs(d + 0.2))
+                          : d < 0.15 ? Math.abs(d + 0.2)*0.5
+                          : 0.10 + 1.05*(d - 0.15));
+      return [Math.min(t, baseY), baseY, d > 0.15 ? deep : body, top];
+    });
+    for(let i = 0; i < 7; i++){                              // 갈라진 면
+      const x = cx - hw*0.5 + rnd()*hw, y = yTop + H*0.35 + rnd()*H*0.5;
+      R(x, y, PX, PX*(4 + (rnd()*8|0)), lit);
+    }
+  }else if(kind === 'lighthouse'){                           // 등대
+    const rockW = W*0.9;
+    sweep(cx - rockW/2, cx + rockW/2, (x) => {
+      const d = Math.abs(x - cx)/(rockW/2);
+      return [baseY - H*0.16*(1 - d*d), baseY, deep, body];
+    });
+    const tb = baseY - H*0.16, tt = yTop + H*0.16;
+    for(let y = snap(tt); y < tb; y += PX){                  // 위로 갈수록 가늘어진다
+      const u = (y - tt)/(tb - tt), w = W*(0.16 + 0.16*u);
+      const band = (((y - tt)/(PX*6))|0) % 2 === 0;
+      R(cx - w/2, y, w, PX, band ? body : top);
+      R(cx + w*0.14, y, w*0.36, PX, deep);
+    }
+    R(cx - W*0.13, tt - PX*5, W*0.26, PX*5, deep);           // 전망대
+    R(cx - W*0.10, tt - PX*10, W*0.20, PX*5, '#ffe98a');     // 등불
+    R(cx - W*0.13, tt - PX*13, W*0.26, PX*3, body);          // 지붕
+    R(cx - PX, tt - PX*16, PX*2, PX*3, top);
+  }else if(kind === 'deadtree'){                             // 죽은 나무
+    const branch = (x, y, len, ang, w) => {
+      if(len < PX*4) return;
+      const ex = x + Math.cos(ang)*len, ey = y + Math.sin(ang)*len;
+      const n = Math.max(2, (len/PX)|0);
+      for(let i = 0; i <= n; i++){
+        const px = x + (ex - x)*i/n, py = y + (ey - y)*i/n;
+        R(px - w/2, py, w, PX, i < n*0.3 ? body : deep);
+      }
+      branch(ex, ey, len*0.68, ang - 0.5 - rnd()*0.35, Math.max(PX, w - PX));
+      branch(ex, ey, len*0.66, ang + 0.5 + rnd()*0.35, Math.max(PX, w - PX));
+    };
+    R(cx - PX*4, baseY - H*0.42, PX*8, H*0.42, body);
+    R(cx + PX,   baseY - H*0.42, PX*3, H*0.42, deep);
+    branch(cx, baseY - H*0.42, H*0.30, -Math.PI/2, PX*5);
+  }else if(kind === 'torii'){                                // 도리이
+    const hw = W/2, pt = yTop + H*0.22;
+    for(const s of [-1, 1]){                                 // 기둥
+      const x = cx + s*hw*0.62;
+      R(x - PX*3, pt, PX*6, baseY - pt, body);
+      R(x + PX,   pt, PX*2, baseY - pt, deep);
+      R(x - PX*3, pt, PX*2, baseY - pt, top);
+    }
+    R(cx - hw*0.74, pt + H*0.18, hw*1.48, PX*4, body);       // 아래 관통 기둥
+    for(let i = 0; i < 6; i++){                              // 위 가사기 (양끝이 들린다)
+      const w = hw*2 * (1 - i*0.02);
+      R(cx - w/2, pt - PX*6 + i*PX, w, PX, i < 2 ? top : body);
+    }
+    R(cx - hw*0.9, pt - PX*8, hw*1.8, PX*2, deep);
+  }else if(kind === 'windmill'){                             // 풍차
+    const tb = baseY, tt = yTop + H*0.34;
+    for(let y = snap(tt); y < tb; y += PX){
+      const u = (y - tt)/(tb - tt), w = W*(0.20 + 0.24*u);
+      R(cx - w/2, y, w, PX, body);
+      R(cx + w*0.12, y, w*0.38, PX, deep);
+      R(cx - w/2, y, PX*2, PX, top);
+    }
+    R(cx - W*0.24, tt - PX*4, W*0.48, PX*4, deep);           // 지붕
+    /**
+     * 날개 넷. 축에서 뻗는 **대와 돛**을 따로 그린다 — 굵은 점을 이어 붙이면
+     * 네 갈래가 서로 뭉개져 X 자 얼룩이 된다 (한 번 그렇게 나왔다).
+     */
+    const hubY = tt - PX*4, bl = H*0.34;
+    for(let k = 0; k < 4; k++){
+      const a = k*Math.PI/2 + Math.PI/4;                     // 45도 — X 자로 읽힌다
+      const ux = Math.cos(a), uy = Math.sin(a);
+      const nx = -uy, ny = ux;                               // 대에 수직인 방향 (돛의 폭)
+      /* 타일을 PX*2 로 겹쳐 찍는다 — PX 한 칸씩이면 비스듬한 선이 점선으로 끊긴다 */
+      for(let i = 3; i*PX < bl; i++){
+        const t = i*PX/bl;
+        R(cx + ux*i*PX - PX, hubY + uy*i*PX - PX, PX*2, PX*2, top);
+        if(t > 0.34) for(let j = 1; j <= 4; j++)             // 바깥쪽 돛
+          R(cx + ux*i*PX + nx*j*PX - PX, hubY + uy*i*PX + ny*j*PX - PX, PX*2, PX*2, body);
+      }
+    }
+    R(cx - PX*3, hubY - PX*3, PX*6, PX*6, deep);             // 축
+  }else if(kind === 'airship'){                              // 비행선
+    const hw = W/2, hh = H*0.30, cy = yTop + H*0.34;
+    sweep(cx - hw, cx + hw, (x) => {
+      const d = (x - cx)/hw, k = Math.sqrt(Math.max(0, 1 - d*d));
+      return [cy - hh*k, cy + hh*k, body, top];
+    });
+    for(let i = -2; i <= 2; i++)                             // 세로 띠
+      R(cx + i*W*0.16, cy - hh*0.92, PX*2, hh*1.84, deep);
+    R(cx + hw*0.72, cy - hh*0.9, PX*3, hh*1.8, deep);        // 꼬리 날개
+    R(cx + hw*0.60, cy - PX, hw*0.34, PX*2, deep);
+    R(cx - W*0.11, cy + hh + PX*2, W*0.22, PX*6, deep);      // 곤돌라
+    for(let i = 0; i < 4; i++) R(cx - W*0.08 + i*W*0.05, cy + hh + PX*3, PX*2, PX*2, '#ffe98a');
+  }else if(kind === 'skyfort'){                              // 떠 있는 섬 요새
+    const hw = W/2, gy = yTop + H*0.42;
+    sweep(cx - hw, cx + hw, (x) => {                         // 아래로 뾰족한 바위섬
+      const d = Math.abs(x - cx)/hw;
+      return [gy, gy + H*0.52*(1 - d*d)*(0.6 + 0.4*rnd()), deep, body];
+    });
+    R(cx - hw, gy, W, PX*3, top);                            // 지면
+    for(const s of [-1, 0, 1]){                              // 탑 셋
+      const w = s === 0 ? W*0.18 : W*0.11, h = s === 0 ? H*0.42 : H*0.26;
+      const x = cx + s*W*0.28;
+      R(x - w/2, gy - h, w, h, body);
+      R(x - w/2, gy - h, PX*2, h, top);
+      for(let i = 0; i*PX*4 < w; i++)                        // 총안
+        R(x - w/2 + i*PX*4, gy - h - PX*2, PX*2, PX*2, body);
+      R(x - w*0.2, gy - h*0.6, w*0.2, PX*4, deep);
+    }
+  }else if(kind === 'sun'){                                  // 거대한 해
+    const r = W/2, cy = yTop + r;
+    sweep(cx - r, cx + r, (x) => {
+      const d = (x - cx)/r, k = Math.sqrt(Math.max(0, 1 - d*d));
+      return [cy - r*k, cy + r*k, body, null];
+    });
+    for(let i = 0; i < 7; i++){                              // 가로로 잘린 띠 (도트 해)
+      const y = cy - r + r*2*(0.42 + i*0.09);
+      const d = (y - cy)/r, k = Math.sqrt(Math.max(0, 1 - d*d));
+      R(cx - r*k, y, r*2*k, PX*(1 + (i > 3 ? 1 : 0)), lit);
+    }
+  }else if(kind === 'raincloud'){                            // 거대 먹구름
+    for(let i = 0; i < 22; i++){
+      const t = i/21, x = cx - W/2 + W*t;
+      const w = W*0.16*(0.5 + rnd()), h = H*(0.30 + 0.55*Math.sin(Math.PI*t)*rnd());
+      R(x - w/2, yTop + H*0.55 - h/2, w, h, i % 3 === 0 ? deep : body);
+    }
+    R(cx - W/2, yTop + H*0.30, W, PX*2, top);
+    for(let i = 0; i < 30; i++)                              // 아래로 늘어진 비
+      R(cx - W/2 + rnd()*W, yTop + H*0.75 + rnd()*H*0.3, PX, PX*(3 + (rnd()*6|0)), deep);
+  }else if(kind === 'spire'){                                // 폭풍의 첨탑
+    const tb = baseY, tt = yTop + H*0.12;
+    for(let y = snap(tt); y < tb; y += PX){
+      const u = (y - tt)/(tb - tt), w = W*(0.06 + 0.34*u*u);
+      R(cx - w/2, y, w, PX, body);
+      R(cx + w*0.10, y, w*0.40, PX, deep);
+      R(cx - w/2, y, PX*2, PX, top);
+    }
+    let bx = cx, by = tt;                                    // 내리치는 번개
+    for(let i = 0; i < 14 && by > yTop - H*0.5; i++){
+      R(bx, by - PX*4, PX*2, PX*4, '#fff6a0');
+      by -= PX*4; bx += (rnd() < 0.5 ? -PX*3 : PX*3);
+    }
+  }else if(kind === 'planet'){                               // 지구의 곡률
+    const r = W*1.10, cy = baseY + r - H;
+    const edge = (x) => {
+      const d = (x - cx)/r;
+      return cy - r*Math.sqrt(Math.max(0, 1 - d*d));
+    };
+    sweep(cx - W/2, cx + W/2, (x) => [edge(x), baseY, body, null]);
+    sweep(cx - W/2, cx + W/2, (x) => [edge(x) - PX*3, edge(x) + PX*2, lit, null]);
+    for(let i = 0; i < 5; i++){                              // 대륙
+      const x = cx - W*0.4 + rnd()*W*0.8, w = W*(0.08 + rnd()*0.14);
+      R(x, edge(x) + PX*(4 + (rnd()*10|0)), w, PX*(3 + (rnd()*6|0)), deep);
+    }
+  }else if(kind === 'asteroid'){                             // 거대 소행성
+    const hw = W/2, cy = yTop + H/2;
+    const lump = (a) => 1 + 0.16*Math.sin(a*3 + seed) + 0.10*Math.sin(a*5 - seed*0.7);
+    sweep(cx - hw, cx + hw, (x) => {
+      const d = (x - cx)/hw;
+      if(Math.abs(d) >= 1) return null;
+      const k = Math.sqrt(1 - d*d), a = Math.acos(clamp(d, -1, 1));
+      return [cy - (H/2)*k*lump(a), cy + (H/2)*k*lump(-a), body, top];
+    });
+    for(let i = 0; i < 9; i++){                              // 분화구
+      const a = rnd()*Math.PI*2, rr = rnd()*0.6;
+      const x = cx + Math.cos(a)*hw*rr, y = cy + Math.sin(a)*(H/2)*rr;
+      const sz = PX*(2 + (rnd()*4|0));
+      R(x - sz, y - sz/2, sz*2, sz, deep);
+      R(x - sz, y - sz/2, sz*2, PX, mixHex(color, '#000000', 0.62));
+    }
+  }else if(kind === 'galaxy'){                               // 은하 원반
+    const hw = W/2, cy = yTop + H/2, sq = H/W;
+    sweep(cx - hw, cx + hw, (x) => {                         // 흐릿한 원반
+      const d = (x - cx)/hw, k = Math.sqrt(Math.max(0, 1 - d*d));
+      return [cy - hw*sq*k, cy + hw*sq*k, body, null];
+    });
+    for(let arm = 0; arm < 2; arm++){                        // 나선 팔
+      for(let i = 4; i < 96; i++){
+        const t = i/96, a = arm*Math.PI + t*3.4, rr = t*hw;
+        R(cx + Math.cos(a)*rr, cy + Math.sin(a)*rr*sq, PX*2, PX*2,
+          t < 0.5 ? lit : mixHex(color, '#ffffff', 0.28));
+      }
+    }
+    R(cx - PX*4, cy - PX*3, PX*8, PX*6, '#fff4d0');          // 중심핵
+    R(cx - PX*6, cy - PX*2, PX*12, PX*4, '#ffe8b0');
+  }
+}
+
 /* 스테이지 미리보기 썸네일 (선택 화면용. 1회만 생성) */
 function buildThumb(si, W, H){
   const st = STAGES[si];
@@ -2130,76 +2455,76 @@ const Save = {
    layers : [원경, 중경, 근경, 전경] 각각 {s:형태, b:기준선, a:진폭, r:거칠기, c:색}
    형태 : hill(구릉) peak(험준) tree(침엽수) leaf(활엽수) temple(유적) flat(평지) none(없음)  */
 const STAGES = [null,
-  { n:'모래의 피라미드', acc:'#e0a83a', line:'#fff0c0', cloud:'#ffe6b0', cloudA:0.22, fx:null,
+  { n:'모래의 피라미드', mark:{ s:'pyramid', x:0.50, y:700, w:420, h:330, c:'#a4794c', l:'mid' }, acc:'#e0a83a', line:'#fff0c0', cloud:'#ffe6b0', cloudA:0.22, fx:null,
     sky:[{p:0,c:'#3a2a6b'},{p:.3,c:'#7a4a86'},{p:.58,c:'#d8874f'},{p:.8,c:'#f0b96a'},{p:1,c:'#f7dca0'}],
     layers:[{s:'temple',b:600,a:150,r:14,c:'#8a6a45'},{s:'temple',b:668,a:110,r:16,c:'#6b4f34'},
             {s:'flat',  b:736,a: 46,r:26,c:'#c79a5c'},{s:'flat',b:794,a:44,r:34,c:'#8a6535'}] },
-  { n:'대리석 신전', acc:'#e8eef7', line:'#ffffff', cloud:'#ffffff', cloudA:0.30, fx:null,
+  { n:'대리석 신전', mark:{ s:'columns', x:0.46, y:700, w:380, h:300, c:'#d6dbe4', l:'mid' }, acc:'#e8eef7', line:'#ffffff', cloud:'#ffffff', cloudA:0.30, fx:null,
     sky:[{p:0,c:'#2a5a9e'},{p:.35,c:'#5a9ccc'},{p:.65,c:'#a8d4e0'},{p:.85,c:'#dcecd8'},{p:1,c:'#f4f0dc'}],
     layers:[{s:'peak',  b:588,a:130,r:22,c:'#7e93b4'},{s:'temple',b:664,a:118,r:12,c:'#c9cfd8'},
             {s:'temple',b:736,a: 66,r:14,c:'#9aa3b0'},{s:'flat',b:792,a:44,r:30,c:'#6b7280'}] },
-  { n:'잊혀진 정글 유적',      acc:'#c9a227', line:'#e8ffd0', cloud:'#dff0d0', cloudA:0.24, fx:null,
+  { n:'잊혀진 정글 유적', mark:{ s:'ziggurat', x:0.52, y:706, w:400, h:320, c:'#7d7a54', l:'mid' },      acc:'#c9a227', line:'#e8ffd0', cloud:'#dff0d0', cloudA:0.24, fx:null,
     sky:[{p:0,c:'#1c3a4a'},{p:.32,c:'#2f6b6a'},{p:.6,c:'#5d9a6a'},{p:.84,c:'#a8c47a'},{p:1,c:'#e0d89a'}],
     layers:[{s:'temple',b:596,a:146,r:16,c:'#6d6a4a'},{s:'tree', b:672,a:104,r:20,c:'#2f5a38'},
             {s:'leaf',  b:738,a: 70,r:24,c:'#1e3f26'},{s:'flat',b:792,a:46,r:34,c:'#14291a'}] },
-  { n:'북녘 침엽수림',  acc:'#6fd0c0', line:'#dffaff', cloud:'#cfe4f0', cloudA:0.26, fx:'snow',
+  { n:'북녘 침엽수림', mark:{ s:'bigtree', x:0.44, y:720, w:300, h:400, c:'#16413f', l:'mid' },  acc:'#6fd0c0', line:'#dffaff', cloud:'#cfe4f0', cloudA:0.26, fx:'snow',
     sky:[{p:0,c:'#122a4a'},{p:.34,c:'#28527e'},{p:.62,c:'#4f86a8'},{p:.85,c:'#9cc4cc'},{p:1,c:'#dcecec'}],
     layers:[{s:'peak',b:580,a:158,r:26,c:'#5e7a96'},{s:'tree',b:664,a:118,r:18,c:'#1f4442'},
             {s:'tree',b:740,a: 84,r:22,c:'#12302f'},{s:'tree',b:806,a:60,r:26,c:'#0a1e1e'}] },
-  { n:'붉게 물든 단풍 계곡',     acc:'#ff7a2e', line:'#ffe0c0', cloud:'#ffd9b8', cloudA:0.26, fx:'leaf',
+  { n:'붉게 물든 단풍 계곡', mark:{ s:'arch', x:0.54, y:712, w:400, h:300, c:'#8d5a4a', l:'mid' },     acc:'#ff7a2e', line:'#ffe0c0', cloud:'#ffd9b8', cloudA:0.26, fx:'leaf',
     sky:[{p:0,c:'#4a2038'},{p:.32,c:'#8a3a44'},{p:.6,c:'#c96a44'},{p:.84,c:'#e8a45c'},{p:1,c:'#f6d89a'}],
     layers:[{s:'hill',b:594,a:132,r:22,c:'#7a4a55'},{s:'leaf',b:668,a:112,r:20,c:'#b84a2a'},
             {s:'leaf',b:742,a: 82,r:24,c:'#8a2f1e'},{s:'leaf',b:806,a:58,r:28,c:'#5a1d14'}] },
-  { n:'안개 낀 대나무 숲',     acc:'#8fe36b', line:'#eaffd0', cloud:'#e0f4d0', cloudA:0.22, fx:null,
+  { n:'안개 낀 대나무 숲', mark:{ s:'pagoda', x:0.48, y:716, w:260, h:380, c:'#35704a', l:'mid' },     acc:'#8fe36b', line:'#eaffd0', cloud:'#e0f4d0', cloudA:0.22, fx:null,
     sky:[{p:0,c:'#1e4230'},{p:.34,c:'#3a7a4a'},{p:.62,c:'#6fae62'},{p:.85,c:'#b4d894'},{p:1,c:'#e6f2c4'}],
     layers:[{s:'hill',b:596,a:124,r:20,c:'#3f7a52'},{s:'tree',b:670,a:120,r:14,c:'#2b6238'},
             {s:'tree',b:744,a: 92,r:16,c:'#1a4526'},{s:'tree',b:808,a:64,r:20,c:'#0f2c18'}] },
-  { n:'피오르드 절벽',     acc:'#6fb8ff', line:'#dff0ff', cloud:'#cfe0f0', cloudA:0.28, fx:null,
+  { n:'피오르드 절벽', mark:{ s:'waterfall', x:0.50, y:748, w:460, h:380, c:'#33526f', l:'mid' },     acc:'#6fb8ff', line:'#dff0ff', cloud:'#cfe0f0', cloudA:0.28, fx:null,
     sky:[{p:0,c:'#0e2440'},{p:.32,c:'#1f4a76'},{p:.6,c:'#3f7fa8'},{p:.84,c:'#8fbcc8'},{p:1,c:'#d0e4e4'}],
     layers:[{s:'peak',b:566,a:186,r:30,c:'#4a6684'},{s:'peak',b:660,a:140,r:28,c:'#2c4560'},
             {s:'flat',b:742,a: 38,r:12,c:'#1b3d5c'},{s:'flat',b:796,a:34,r:16,c:'#10283f'}] },
-  { n:'얼어붙은 설원',   acc:'#cfe8ff', line:'#ffffff', cloud:'#e8f2ff', cloudA:0.32, fx:'snow',
+  { n:'얼어붙은 설원', mark:{ s:'iceberg', x:0.52, y:744, w:420, h:330, c:'#8ba3bb', l:'mid' },   acc:'#cfe8ff', line:'#ffffff', cloud:'#e8f2ff', cloudA:0.32, fx:'snow',
     sky:[{p:0,c:'#1b2a44'},{p:.34,c:'#3a5a80'},{p:.62,c:'#6f8fae'},{p:.85,c:'#b8cdd8'},{p:1,c:'#eef4f6'}],
     layers:[{s:'peak',b:578,a:162,r:26,c:'#7b90a8'},{s:'tree',b:668,a:112,r:18,c:'#2a4450'},
             {s:'tree',b:744,a: 80,r:22,c:'#1a2e36'},{s:'flat',b:800,a:48,r:30,c:'#dfe9f0'} ] },
-  { n:'남쪽 바다의 해안',     acc:'#3fe0c8', line:'#dffff8', cloud:'#ffffff', cloudA:0.30, fx:null,
+  { n:'남쪽 바다의 해안', mark:{ s:'lighthouse', x:0.46, y:736, w:220, h:380, c:'#e8e2d2', l:'mid' },     acc:'#3fe0c8', line:'#dffff8', cloud:'#ffffff', cloudA:0.30, fx:null,
     sky:[{p:0,c:'#1a5a8e'},{p:.32,c:'#2f8fb4'},{p:.6,c:'#5fc4c4'},{p:.84,c:'#a8e4cc'},{p:1,c:'#f0e8c0'}],
     layers:[{s:'hill',b:592,a:118,r:20,c:'#3a7f86'},{s:'leaf',b:668,a: 96,r:20,c:'#237a5e'},
             {s:'flat',b:742,a: 40,r:10,c:'#2fb0a8'},{s:'flat',b:796,a:40,r:26,c:'#e8d69a'}] },
-  { n:'검은 늪지대',      acc:'#9fc04a', line:'#d8e8b0', cloud:'#b8c49a', cloudA:0.26, fx:null,
+  { n:'검은 늪지대', mark:{ s:'deadtree', x:0.50, y:740, w:300, h:360, c:'#2c3324', l:'mid' },      acc:'#9fc04a', line:'#d8e8b0', cloud:'#b8c49a', cloudA:0.26, fx:null,
     sky:[{p:0,c:'#20281c'},{p:.34,c:'#3d4a2c'},{p:.62,c:'#5f6f3a'},{p:.85,c:'#8a9450'},{p:1,c:'#b6b878'}],
     layers:[{s:'leaf',b:600,a:112,r:24,c:'#4a5730'},{s:'leaf',b:672,a: 96,r:26,c:'#333d20'},
             {s:'flat',b:744,a: 34,r:12,c:'#3f4a28'},{s:'flat',b:798,a:42,r:30,c:'#232a15'}] },
-  { n:'봄빛 해안선',     acc:'#ff9ec4', line:'#ffe8f2', cloud:'#ffd8e8', cloudA:0.28, fx:'leaf',
+  { n:'봄빛 해안선', mark:{ s:'torii', x:0.50, y:736, w:320, h:300, c:'#c4423c', l:'mid' },     acc:'#ff9ec4', line:'#ffe8f2', cloud:'#ffd8e8', cloudA:0.28, fx:'leaf',
     sky:[{p:0,c:'#4a3a6b'},{p:.32,c:'#8a5f96'},{p:.6,c:'#d08fae'},{p:.84,c:'#f4c0cc'},{p:1,c:'#ffe8dc'}],
     layers:[{s:'hill',b:592,a:126,r:20,c:'#8f7aa8'},{s:'leaf',b:668,a: 98,r:20,c:'#d47f9e'},
             {s:'flat',b:742,a: 38,r:10,c:'#7fa8c4'},{s:'flat',b:796,a:40,r:28,c:'#5a6f96'}] },
-  { n:'황금빛 해안',     acc:'#ffc44a', line:'#fff0c8', cloud:'#ffe2b0', cloudA:0.26, fx:'leaf',
+  { n:'황금빛 해안', mark:{ s:'windmill', x:0.46, y:736, w:260, h:360, c:'#b98a4e', l:'mid' },     acc:'#ffc44a', line:'#fff0c8', cloud:'#ffe2b0', cloudA:0.26, fx:'leaf',
     sky:[{p:0,c:'#40285a'},{p:.32,c:'#8a4a5e'},{p:.6,c:'#d08a4a'},{p:.84,c:'#f0bc6a'},{p:1,c:'#ffe8b8'}],
     layers:[{s:'hill',b:592,a:130,r:22,c:'#8a6a58'},{s:'leaf',b:668,a: 98,r:22,c:'#c98a3a'},
             {s:'flat',b:742,a: 38,r:10,c:'#7a86a8'},{s:'flat',b:796,a:40,r:28,c:'#4f5f80'}] },
-  { n:'구름 한 점 없는 하늘',        acc:'#6fc8ff', line:'#ffffff', cloud:'#ffffff', cloudA:0.42, fx:null,
+  { n:'구름 한 점 없는 하늘', mark:{ s:'airship', x:0.50, y:470, w:520, h:300, c:'#d8dee8', l:'far' },        acc:'#6fc8ff', line:'#ffffff', cloud:'#ffffff', cloudA:0.42, fx:null,
     sky:[{p:0,c:'#1f5fae'},{p:.34,c:'#4a94d4'},{p:.64,c:'#8fc4ea'},{p:.86,c:'#c4e2f4'},{p:1,c:'#eaf6ff'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'잿빛 구름바다',         acc:'#b8c4d4', line:'#e8eef4', cloud:'#c8d2de', cloudA:0.5, fx:null,
+  { n:'잿빛 구름바다', mark:{ s:'skyfort', x:0.48, y:500, w:460, h:380, c:'#6d7688', l:'far' },         acc:'#b8c4d4', line:'#e8eef4', cloud:'#c8d2de', cloudA:0.5, fx:null,
     sky:[{p:0,c:'#3a4356'},{p:.34,c:'#5c6779'},{p:.64,c:'#848e9e'},{p:.86,c:'#aeb6c2'},{p:1,c:'#d2d8e0'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'노을이 타는 하늘',      acc:'#ff8a3a', line:'#ffd8b0', cloud:'#ffb884', cloudA:0.40, fx:null,
+  { n:'노을이 타는 하늘', mark:{ s:'sun', x:0.52, y:640, w:460, h:460, c:'#ff9440', l:'far' },      acc:'#ff8a3a', line:'#ffd8b0', cloud:'#ffb884', cloudA:0.40, fx:null,
     sky:[{p:0,c:'#2a1a52'},{p:.28,c:'#6b2a6b'},{p:.55,c:'#c0455a'},{p:.78,c:'#f08040'},{p:1,c:'#ffd07a'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'쏟아지는 빗줄기',         acc:'#7fd0e0', line:'#cfe8f0', cloud:'#8fa0b0', cloudA:0.46, fx:'rain',
+  { n:'쏟아지는 빗줄기', mark:{ s:'raincloud', x:0.50, y:430, w:700, h:280, c:'#4a5768', l:'far' },         acc:'#7fd0e0', line:'#cfe8f0', cloud:'#8fa0b0', cloudA:0.46, fx:'rain',
     sky:[{p:0,c:'#1e2836'},{p:.34,c:'#334154'},{p:.64,c:'#4f6072'},{p:.86,c:'#6f8090'},{p:1,c:'#8fa0ae'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'천둥이 치는 폭풍',     acc:'#c8a0ff', line:'#e0d0ff', cloud:'#6a5f86', cloudA:0.5, fx:'storm',
+  { n:'천둥이 치는 폭풍', mark:{ s:'spire', x:0.50, y:800, w:300, h:520, c:'#3b3155', l:'mid' },     acc:'#c8a0ff', line:'#e0d0ff', cloud:'#6a5f86', cloudA:0.5, fx:'storm',
     sky:[{p:0,c:'#14102a'},{p:.34,c:'#241e46'},{p:.64,c:'#3a2f62'},{p:.86,c:'#54467e'},{p:1,c:'#6f5f96'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'지구 궤도',      acc:'#5fd0ff', line:'#bfe8ff', cloud:'#3a6fae', cloudA:0.16, fx:'stars',
+  { n:'지구 궤도', mark:{ s:'planet', x:0.50, y:860, w:900, h:300, c:'#2a5a96', l:'far' },      acc:'#5fd0ff', line:'#bfe8ff', cloud:'#3a6fae', cloudA:0.16, fx:'stars',
     sky:[{p:0,c:'#05060f'},{p:.4,c:'#0a0f24'},{p:.7,c:'#101a3a'},{p:.9,c:'#1c2f5c'},{p:1,c:'#2a4a86'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'소행성 지대',    acc:'#c8b89a', line:'#e0d8c8', cloud:'#4a4238', cloudA:0.18, fx:'stars',
+  { n:'소행성 지대', mark:{ s:'asteroid', x:0.46, y:480, w:420, h:320, c:'#6b6050', l:'far' },    acc:'#c8b89a', line:'#e0d8c8', cloud:'#4a4238', cloudA:0.18, fx:'stars',
     sky:[{p:0,c:'#07060c'},{p:.4,c:'#0d0b18'},{p:.72,c:'#171326'},{p:.92,c:'#241c38'},{p:1,c:'#33284a'}],
     layers:[{s:'peak',b:640,a:96,r:44,c:'#4a4238'},{s:'none'},{s:'peak',b:790,a:70,r:52,c:'#2b261f'},{s:'none'}] },
-  { n:'은하의 끝',       acc:'#c08fff', line:'#e8d0ff', cloud:'#6a3f9e', cloudA:0.22, fx:'stars',
+  { n:'은하의 끝', mark:{ s:'galaxy', x:0.52, y:430, w:620, h:260, c:'#7a45a8', l:'far' },       acc:'#c08fff', line:'#e8d0ff', cloud:'#6a3f9e', cloudA:0.22, fx:'stars',
     sky:[{p:0,c:'#06040f'},{p:.32,c:'#140b2a'},{p:.58,c:'#2a1250'},{p:.8,c:'#4a1f72'},{p:1,c:'#7a3f9e'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] }
 ];
@@ -4949,6 +5274,26 @@ class GameScene extends Scene {
     this.mid  = L[1].s === 'none' ? null : buildRidge(sd+1, L[1].b, L[1].a, L[1].r, L[1].c, L[1].s);
     this.near = L[2].s === 'none' ? null : buildRidge(sd+2, L[2].b, L[2].a, L[2].r, L[2].c, L[2].s);
     this.fg   = L[3].s === 'none' ? null : buildRidge(sd+3, L[3].b, L[3].a, L[3].r, L[3].c, L[3].s);
+
+    /**
+     * ★ **판마다 하나뿐인 큰 것.** (2026-08-26)
+     *
+     * 배경 겹 위에 그대로 얹는다 — 그러면 그 겹의 시차 속도로 같이 흐르고,
+     * 겹이 아예 없는 하늘 판(13~20)에서는 빈 캔버스를 하나 새로 만들어 얹는다.
+     * 능선 캔버스는 GAME_W 폭으로 순환하므로 랜드마크도 한 바퀴에 한 번 지나간다.
+     */
+    const mk = st.mark;
+    if(mk){
+      const key = mk.l === 'far' ? 'far' : 'mid';
+      if(!this[key]){
+        const made = makeCanvas(GAME_W, GAME_H);
+        made.cv._top = 0; this[key] = made.cv;
+      }
+      drawLandmark(this[key].getContext('2d'), mk.s, snap(GAME_W*mk.x),
+                   mk.y, mk.w, mk.h, mk.c, sd);
+      /* 랜드마크가 능선보다 높이 솟으면 잘림 판정(_top)도 같이 올려야 한다 */
+      this[key]._top = Math.min(this[key]._top ?? 0, Math.max(0, mk.y - mk.h - PX*8));
+    }
     this.weather = st.fx ? new Weather(st.fx, sd) : null;
     this.offFar = 0; this.offMid = 0; this.offNear = 0; this.offFg = 0;
     this.scrollK = 1; this.camLead = 0;
@@ -7452,6 +7797,10 @@ export const __test = {
   get difficulty() { return DG.difficulty; },
   get coins() { return RUN.coins; },
   get boundCount() { return bound.length; },
+  /* 검사용 — 랜드마크만 따로 그려 본다 (능선과 섞이면 픽셀을 셀 수 없다) */
+  landmark(c, mk, seed) {
+    if (mk) drawLandmark(c, mk.s, snap(GAME_W * mk.x), mk.y, mk.w, mk.h, mk.c, seed);
+  },
   /* 씬 전환(페이드) 중인가 — 전환 중에는 다음 change 가 버려진다 */
   get busy() { return !!(scenes && scenes.busy); },
   get running() { return rafId !== 0; },

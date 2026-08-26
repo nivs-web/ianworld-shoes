@@ -1,0 +1,78 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>스테이지 랜드마크 눈으로 보기</title>
+<style>
+body{background:#0b0b10;color:#ccc;font:12px/1.5 monospace;padding:12px;margin:0}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+figure{margin:0}figcaption{padding:3px 0;color:#9fb}
+canvas{width:100%;display:block;image-rendering:pixelated;border:1px solid #222}
+#sum{padding:8px 0;white-space:pre}
+</style></head>
+<body>
+<div id="sum">그리는 중…</div>
+<div class="grid" id="g"></div>
+<div id="host" style="display:none"></div>
+<script type="module">
+/**
+ * 스무 판의 배경을 나란히 놓고 본다 — **판마다 다르게 생겼는가**가 전부다.
+ *
+ * 눈으로도 보지만 숫자로도 센다: 랜드마크를 얹기 전/후로 바뀐 픽셀 수를 재서
+ * 실제로 무언가 그려졌는지 확인한다. 0 이면 그 판은 그냥 하늘만 나온 것이다.
+ */
+import * as DR from '/src/games/dragon/dragon.js';
+
+const host = document.getElementById('host');
+DR.mount(host, { onExit() {}, onEnd() {} });
+const T = DR.__test;
+for (let i = 0; i < 400 && T.scene !== 'GameScene'; i++) { T.press('confirm'); T.pump(1 / 60); }
+
+const sc = T.scene0();
+const W = 1280, H = 880;
+const out = [];
+let empty = 0;
+
+/** 겹 하나를 세어 본다 — 투명하지 않은 픽셀이 몇 개인가 */
+const solid = (cv) => {
+  if (!cv) return 0;
+  const d = cv.getContext('2d').getImageData(0, 0, W, H).data;
+  let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++;
+  return n;
+};
+
+for (let n = 1; n <= 20; n++) {
+  sc.stageNo = n; sc.enter();
+
+  const fig = document.createElement('figure');
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.drawImage(sc.sky, 0, 0);
+  for (const k of ['far', 'mid', 'near', 'fg']) if (sc[k]) c.drawImage(sc[k], 0, 0);
+
+  const cap = document.createElement('figcaption');
+  const mk = sc.theme.mark;
+  /* 랜드마크만 따로 그려 픽셀 수를 센다 — 능선과 섞이면 셈이 안 된다 */
+  const only = document.createElement('canvas');
+  only.width = W; only.height = H;
+  DR.__test.landmark(only.getContext('2d'), mk, 1000 + n * 17);
+  const px = solid(only);
+  if (px < 500) empty++;
+  cap.textContent = `${n}. ${sc.theme.n} — ${mk.s} (${px.toLocaleString()}px)`;
+  if (px < 500) cap.style.color = '#f66';
+  out.push(`${String(n).padStart(2)}. ${mk.s.padEnd(11)} ${String(px).padStart(7)}px  ${sc.theme.n}`);
+
+  fig.appendChild(cv); fig.appendChild(cap);
+  document.getElementById('g').appendChild(fig);
+}
+
+/* 스무 종류가 서로 다른가 — 같은 그림이 두 번 나오면 고른 보람이 없다 */
+const kinds = new Set();
+for (let n = 1; n <= 20; n++) { sc.stageNo = n; sc.enter(); kinds.add(sc.theme.mark.s); }
+
+document.getElementById('sum').textContent =
+  out.join('\n') + `\n\n서로 다른 랜드마크 ${kinds.size}종 / 20판` +
+  (empty ? `\n★ 거의 안 그려진 판 ${empty}개` : '\n전부 그려졌다');
+window.__done = true; window.__empty = empty; window.__kinds = kinds.size;
+</script>
+</body></html>
