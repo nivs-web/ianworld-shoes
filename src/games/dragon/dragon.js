@@ -2536,21 +2536,68 @@ function bossTierOf(stage){
   const s = clamp(stage|0, 1, 20);
   return s <= 4 ? 0 : s <= 8 ? 1 : s <= 12 ? 2 : s <= 16 ? 3 : 4;
 }
-const BOSS_TIER_NAME = ['ZOMBIE DRAGON LORD', 'CURSED DRAGON LORD', 'ABYSS DRAGON LORD',
-                        'DOOM DRAGON LORD', 'CHAOS DRAGON LORD'];
-/* 등급별로 덧붙는 파츠 : 등가시 -> 꼬리칼날 순으로 늘어난다 */
-function bossOverlaysOf(tier){
-  const f = FORMS.B, ov = [B_RIDER_KING];
-  if(tier >= 1) ov.unshift(f.parts.ridge);
-  if(tier >= 3) ov.unshift(f.parts.tail);
-  return ov;
+/**
+ * ★ **보스 10종.** (2026-08-26)
+ *
+ * 예전에는 스무 판의 보스가 **전부 같은 실루엣**이었다 — 몸통도 날개도 하나뿐이고
+ * 등급(4판마다)에 따라 등가시와 꼬리칼날이 붙는 것, 그리고 색이 스테이지 테마를
+ * 따라가는 것이 전부였다. 10판째 보스와 18판째 보스를 나란히 놓으면 구별이 안 됐다.
+ *
+ * 새 그림을 그리는 대신 **이미 있는 파츠를 조합**한다. 뿔은 열 벌이 이미 있고
+ * (`B_HORNS`, 플레이어 드래곤 열 마리가 쓰던 것), 벌린 아가리(`B_MAW`),
+ * 등가시, 꼬리칼날, 왕관 기수가 있다. 여기에 크기와 색을 얹으면
+ * **열 마리가 서로 다른 덩치와 윤곽**을 갖는다.
+ *
+ * 두 판에 한 마리씩 — 20판이면 열 마리를 두 번 만난다. 뒤로 갈수록 파츠가
+ * 늘고 덩치가 커져서 "더 험한 놈이 나왔다" 가 눈으로 읽힌다.
+ *
+ * ## 덩치를 키우면 맞히기 쉬워진다
+ *
+ * 판정 상자를 크기에서 뽑으므로 큰 보스는 그만큼 잘 맞는다. 그래서 **체력을
+ * 덩치에 비례해 올린다** — 안 그러면 마지막 보스가 제일 쉬운 보스가 된다.
+ */
+const BOSS_KINDS = [
+  /* 뿔 / 등가시 / 꼬리칼날 / 벌린 아가리 / 덩치 / 색 */
+  { n:'ROTGRAVE',  horn:0, ridge:0, tail:0, maw:0, cell:10.0, hue:'#7f9a6a' },
+  { n:'SPINEBACK', horn:2, ridge:1, tail:0, maw:0, cell:10.3, hue:'#6a8fb4' },
+  { n:'ASHMAW',    horn:4, ridge:0, tail:0, maw:1, cell:10.5, hue:'#b47a4a' },
+  { n:'TWISTHORN', horn:6, ridge:1, tail:0, maw:0, cell:10.8, hue:'#8f6ab4' },
+  { n:'BLADETAIL', horn:3, ridge:0, tail:1, maw:0, cell:10.8, hue:'#4aa494' },
+  { n:'ABYSSJAW',  horn:7, ridge:1, tail:0, maw:1, cell:11.1, hue:'#3f5f9e' },
+  { n:'CROWNWYRM', horn:5, ridge:1, tail:1, maw:0, cell:11.3, hue:'#c4a03a' },
+  { n:'DOOMHORN',  horn:8, ridge:1, tail:1, maw:1, cell:11.6, hue:'#a4404a' },
+  { n:'VOIDKING',  horn:9, ridge:1, tail:1, maw:1, cell:11.9, hue:'#5a3f8f' },
+  { n:'CHAOSLORD', horn:1, ridge:1, tail:1, maw:1, cell:12.3, hue:'#d0402a' },
+];
+/** 두 판에 한 마리 — 1~2판이 첫째, 19~20판이 열째다 */
+function bossKindOf(stage){
+  return BOSS_KINDS[clamp(((clamp(stage | 0, 1, 20) - 1) / 2) | 0, 0, 9)];
+}
+/**
+ * 이 보스가 걸치는 것들. 뿔은 **몸통보다 먼저** 그려야 밑동이 두개골에 가려
+ * 자연스럽게 박혀 보인다 (`paintDragon` 이 같은 이유로 그렇게 한다).
+ */
+function bossPartsOf(kind){
+  const f = FORMS.B;
+  const under = f.horns ? [f.horns[kind.horn % f.horns.length]] : [];
+  const over = [];
+  if(kind.tail)  over.push(f.parts.tail);
+  if(kind.ridge) over.push(f.parts.ridge);
+  if(kind.maw && f.maw) over.push(f.maw);
+  over.push(B_RIDER_KING);
+  return { under, over };
 }
 function bossPalOf(stage){
   if(_bossPalCache[stage]) return _bossPalCache[stage];
   const acc = STAGES[clamp(stage,1,20)].acc;
   const tier = bossTierOf(stage);
+  /**
+   * ★ 스테이지 테마색만 섞으면 이웃한 판의 보스가 서로 닮는다 (2026-08-26).
+   * 종류 고유색을 함께 섞어 **열 마리가 각자의 색**을 갖게 한다.
+   */
+  const hue = bossKindOf(stage).hue;
   const p = {};
-  for(const k in BOSS_PAL) p[k] = mixHex(BOSS_PAL[k], acc, 0.5);
+  for(const k in BOSS_PAL) p[k] = mixHex(mixHex(BOSS_PAL[k], acc, 0.34), hue, 0.30);
   // 등급이 오를수록 몸을 어둡게 가라앉히고 가시/발톱은 핏빛으로 -> 악의 기운
   if(tier > 0){
     const dark = tier * 0.13;
@@ -3375,13 +3422,18 @@ function overlayId(ovs){
   }
   return k;
 }
-function drawFormDragon(ctx, pal, formKey, cell, cx, cy, pose, flip, tint, overlays){
+/**
+ * @param overlays 몸통 **위**에 얹을 것들 (등가시·꼬리칼날·기수)
+ * @param unders   몸통 **아래**에 깔 것들 (뿔 — 밑동이 두개골에 가려야 박혀 보인다)
+ */
+function drawFormDragon(ctx, pal, formKey, cell, cx, cy, pose, flip, tint, overlays, unders){
   const f = FORMS[formKey];
   const ox = snap(cx - f.cols*cell/2), oy = snap(cy - f.rows*cell/2);
   const key = 'F|'+formKey+'|'+palId(pal)+'|'+cell+'|'+pose+'|'+(flip?1:0)+'|'+(tint||'-')
-            + '|'+overlayId(overlays);
+            + '|'+overlayId(overlays)+'|'+overlayId(unders);
   blitCached(ctx, key, f.cols*cell, f.rows*cell, ox, oy, (c, x, y) => {
     drawGrid(c, f.wings[pose], x, y, f.cols, cell, pal, flip, tint);
+    if(unders) for(const L of unders) drawGrid(c, L, x, y, f.cols, cell, pal, flip, tint);
     drawGrid(c, f.body,        x, y, f.cols, cell, pal, flip, tint);
     if(overlays) for(const L of overlays) drawGrid(c, L, x, y, f.cols, cell, pal, flip, tint);
   });
@@ -3737,7 +3789,12 @@ const BOSS_CELL = 10.8;                              // FORM B x10.8 = 389 x 346
 class Boss extends EnemyBase {
   constructor(stage, level){
     super(GAME_W + 280, GAME_H/2, bossHpOf(stage, level), 12000);
-    this.isBoss = true; this.name = BOSS_TIER_NAME[bossTierOf(stage)];
+    this.kind = bossKindOf(stage);
+    this.cell = this.kind.cell;
+    this.isBoss = true; this.name = this.kind.n;
+    /* 덩치가 크면 그만큼 잘 맞는다 — 체력을 비례해 올려 난이도를 맞춘다 */
+    this.maxHp = Math.round(this.maxHp * this.cell / BOSS_CELL);
+    this.hp = this.maxHp;
     this.phase = 'enter'; this.pt = 0; this.pi = 0;
     this.homeX = GAME_W - 250; this.homeY = GAME_H/2;
     this.enraged = false;
@@ -3748,9 +3805,14 @@ class Boss extends EnemyBase {
     this.tier = bossTierOf(stage);               // 스테이지대별 외형 등급
     this.absorb = stage > 10 ? Math.min(0.5, 0.3 + (stage-11)*0.022) : 0;  // 미사일 흡수 확률
     this.absorbT = 0;
-    this.pal = bossPalOf(stage);                 // 스테이지 테마색 연동
+    this.pal = bossPalOf(stage);                 // 스테이지 테마색 + 종류 고유색
   }
-  get box(){ return { x:this.x - 144, y:this.y - 125, w:288, h:250 }; }
+  /* 판정 상자는 **덩치에서 뽑는다** — 보이는 것과 맞는 것이 어긋나면 억울하다.
+     144/125 는 BOSS_CELL(10.8) 일 때의 값이었다. */
+  get box(){
+    const hw = 13.333 * this.cell, hh = 11.574 * this.cell;
+    return { x:this.x - hw, y:this.y - hh, w:hw*2, h:hh*2 };
+  }
   get rate(){ return this.enraged ? 1.35 : 1; }
   update(dt, scene){
     this.t += dt;
@@ -3876,8 +3938,9 @@ class Boss extends EnemyBase {
   }
   render(ctx){
     const pal = this.enraged ? BOSS_PAL_RAGE : this.pal;
-    drawFormDragon(ctx, pal, 'B', BOSS_CELL, this.x, this.y, this.pose, true,
-      this.flash > 0 ? '#ffffff' : null, bossOverlaysOf(this.tier));
+    const P = bossPartsOf(this.kind);
+    drawFormDragon(ctx, pal, 'B', this.cell, this.x, this.y, this.pose, true,
+      this.flash > 0 ? '#ffffff' : null, P.over, P.under);
     // 미사일을 튕겨내는 보호막 (10스테이지 초과)
     if(this.absorbT > 0){
       const k = this.absorbT / 0.35;
@@ -7797,6 +7860,14 @@ export const __test = {
   get difficulty() { return DG.difficulty; },
   get coins() { return RUN.coins; },
   get boundCount() { return bound.length; },
+  /* 검사용 — 그 스테이지의 보스를 하나 만들어 준다 (열 마리가 정말 다른지 보려면 필요하다) */
+  boss(stage) {
+    const b = new Boss(stage, 1);
+    return {
+      name: b.name, cell: b.cell, hp: b.maxHp, box: b.box,
+      draw(c, cx, cy) { b.x = cx; b.y = cy; b.pose = 2; b.render(c); },
+    };
+  },
   /* 검사용 — 랜드마크만 따로 그려 본다 (능선과 섞이면 픽셀을 셀 수 없다) */
   landmark(c, mk, seed) {
     if (mk) drawLandmark(c, mk.s, snap(GAME_W * mk.x), mk.y, mk.w, mk.h, mk.c, seed);
