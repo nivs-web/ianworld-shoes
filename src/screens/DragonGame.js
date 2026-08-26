@@ -172,9 +172,14 @@ export default function DragonGame(nav, opt = {}) {
               Room.publishDuelProgress(duelCode, r, true).catch(() => {});
               return;
             }
-            const { isBest } = finishDragonRun(r);
-            /* 최고기록 알림은 판이 진짜 끝났을 때만 — 판마다 뜨면 스무 번 뜬다 */
-            if (isBest && !r.midRun) toast(S.dragonNewBest(Math.round(Number(r.score) || 0)), 2600);
+            /**
+             * ★ **신기록 알림을 없앴다.** (2026-08-27, 사용자 지정)
+             * *"[신기록] 이라고 팝업 뜨는데 그거 없애, 신기록이던 아니던
+             *   아무튼 그건 안뜨는게 맞는거 같아"*
+             * 결과 화면에 점수가 이미 크게 떠 있고, 최고 기록은 순위표에서 본다.
+             * 판이 끝나는 자리에 알림이 겹쳐 뜨면 표를 가린다.
+             */
+            finishDragonRun(r);
           },
 
           /** 게임 안에서 드래곤을 바꿨다 — 로비 카드에도 같은 것이 보여야 한다 */

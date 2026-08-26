@@ -5,7 +5,7 @@
  * 맨 끝의 「모듈 경계」 만 오락실에 붙이려고 새로 썼다.
  */
 import { enterFullscreen, exitFullscreen, isFullscreen, lockLandscape } from '../../core/fullscreen.js';
-import { text as koBlit } from '../../core/pixelfont.js';
+import { text as koBlit, measure as koMeasure } from '../../core/pixelfont.js';
 import { FLAME_PALS } from './items.js';
 
 /**
@@ -18,6 +18,44 @@ import { FLAME_PALS } from './items.js';
  */
 function ko(ctx, str, x, y, scale, opt){
   koBlit(str, x, y, Object.assign({ ctx, scale }, opt || {}));
+}
+const KO_H = 11;                   // 갈무리11 — 글자 한 줄 높이(배율 1)
+/** 세 자리마다 쉼표. 결과 표의 숫자는 이걸로 찍는다 */
+const num = (v) => Number(v || 0).toLocaleString('en-US');
+
+/**
+ * ★★ **박스에 맞춰 그린다.** (2026-08-27, 사용자 지적)
+ *
+ * *"박스 다 깨고 나오고 뭉게짐 (...) 매번 이런식으로 디자인 하는 이유를 전혀 모르겠다"*
+ *
+ * 지금까지는 글자 배율을 **박스와 상관없이 손으로** 정했다. 그러니 문구가
+ * 한 글자만 길어져도(`이어하기 (금화 500)`) 박스를 뚫고 나오고, 눈대중으로
+ * 배율을 낮추면 이번엔 딴 데가 헐거워진다.
+ *
+ * 이제 **들어가는 가장 큰 배율을 골라** 그린다. 문구가 길어지든 짧아지든
+ * 박스 안에 있는 것이 보장된다 — 이 종류의 사고가 다시 안 난다.
+ */
+function koFitScale(str, box, max){
+  const availW = box.w - PX*10, availH = box.h - PX*6;
+  let s = max;
+  while(s > 1 && (koMeasure(String(str), s) > availW || KO_H*s > availH)) s -= 0.5;
+  return s;
+}
+/**
+ * ★ **나란히 선 버튼은 글자 크기가 같아야 한다.** (2026-08-27)
+ * 각자 알아서 맞추면 문구가 긴 버튼만 글자가 작아져서 **셋이 따로 논다.**
+ * 가장 빡빡한 것에 맞춰 전부 같은 배율로 그린다.
+ */
+function koFitAll(labels, boxes, max){
+  let s = max;
+  for(let i=0;i<labels.length;i++) s = Math.min(s, koFitScale(labels[i], boxes[i], max));
+  return s;
+}
+function koFitBox(ctx, str, box, max, opt){
+  const s = typeof max === 'number' ? koFitScale(str, box, max) : max;
+  ko(ctx, str, box.x + box.w/2, Math.round(box.y + (box.h - KO_H*s)/2), s,
+     Object.assign({ align:'center' }, opt || {}));
+  return s;
 }
 
 
@@ -809,18 +847,12 @@ class Scene {
  */
 const END_TITLE_Y = 104;
 const END_ROW_Y   = 232, END_ROW_GAP = 44;   // 다섯 줄 -> 232 ~ 408
-const END_LABEL_X = 470;                     // 이름 (왼쪽 정렬)
-const END_NUM_R   = 758;                     // 숫자가 끝나는 자리 (오른쪽 정렬)
-/**
- * 단위도 **오른쪽 끝을 맞춘다.** 오락실 글꼴은 글자마다 폭이 달라서
- * 왼쪽에 나란히 세우면 '점'(799) · '마리'(835) · '초'(802) 처럼
- * 오른쪽 끝이 36px 씩 들쭉날쭉해진다 — 표가 삐뚤어 보이는 진짜 이유다.
- * 숫자 끝(758)과 단위 끝(830), 두 줄을 곧게 세운다.
- */
-const END_UNIT_R  = 830;
+const END_LABEL_X = 452;                     // 이름 (왼쪽 정렬)
+const END_NUM_R   = 828;                     // 숫자가 끝나는 자리 (오른쪽 정렬)
+/* 단위(점·마리·초·개)는 뺐다 — 없어도 무슨 숫자인지 보면 안다 (2026-08-27, 사용자 지정) */
 const END_ASK_Y   = 466;                     // 버튼(519)과 18px 띄운다
-const END_BTN_Y   = 528;                     // 버튼 높이 52 -> 580 에서 끝난다
-const END_HINT_Y  = 616;
+const END_BTN_Y   = 512;                     // 버튼 높이 52 -> 580 에서 끝난다
+const END_HINT_Y  = 630;
 
 class SceneManager {
   constructor(){ this.current = null; this.next = null; this.state = 'idle'; this.t = 0; this.fade = 0; this.dur = 0.26; }
@@ -2824,9 +2856,19 @@ const Popups = {
    *   숫자·영문은 게임 자체 도트 글꼴이 예쁘고, 한글은 오락실 글꼴에만 있다.
    *   섞어 쓰는 대신 부르는 쪽이 어느 쪽인지 알려 준다.
    */
+  /**
+   * ★ **전부 한 단계씩 줄인다.** (2026-08-27, 사용자 지정)
+   *
+   * *"게임도중에 튀어나오는 문자들 (...) 글씨가 너무커, 적당히 커야지.
+   *   왼쪽 맨 위에 점수, 금화 한글로 써 있는데 그정도 크기가 딱 좋아"*
+   *
+   * 좌상단 패널이 라벨 2 · 숫자 3 이다. 부르는 곳이 열두 군데라 하나씩 고치면
+   * 또 어긋나므로 **들어오는 자리 한 곳에서** 줄인다 — 3->2 / 4->2 / 5->3 / 7->4.
+   */
   add(x, y, text, color, size, hangul){
     if(this.list.length > 24) this.list.shift();
-    this.list.push({ x, y, text:String(text), color: color || PAL.gold, size: size || 3,
+    size = clamp(Math.round((size || 3) * 0.6), 2, 4);
+    this.list.push({ x, y, text:String(text), color: color || PAL.gold, size,
                      t: 0, max: 0.85, ko: !!hangul });
   },
   update(dt){
@@ -3443,13 +3485,15 @@ class WingZombie {
   }
   die(scene){
     this.dead = true; this.killed = true;
-    scene.addScore(this.score, this.killPid);
+    /* ★ 화면에 뜨는 숫자는 **실제로 오른 점수**다 (2026-08-27, 점수 눈금 1/100).
+       원래 값을 띄우면 표의 합계와 백 배 어긋난다. */
+    this.gotScore = scene.addScore(this.score, this.killPid);
     scene.booms.push(new Boom(this.x, this.y, 62, 0.36));
     scene.waves.push(new Shockwave(this.x, this.y, 150, 0.26));
     Particles.spawn(this.x, this.y, 26, { spd:460, life:0.55 });
     Particles.spawn(this.x, this.y, 8, { spd:340, life:0.8, grav:760, size:PX*2,
       pal:['#e8e0c8','#cfc6a8','#9a9078'] });                       // 뼈다귀 파편
-    Popups.add(this.x, this.y - 30, this.score, PAL.fire[1], 3);
+    if(this.gotScore > 0) Popups.add(this.x, this.y - 30, this.gotScore, PAL.fire[1], 3);
     Shake.add(7, 0.11);
     Freeze.add(0.028);
     SND.sfx('boomS');
@@ -3737,7 +3781,13 @@ class EnemyBase {
   }
   die(scene){
     this.dead = true; this.killed = true;
-    scene.score += this.score;
+    /**
+     * ★ **점수는 반드시 `addScore` 를 지난다.** (2026-08-27)
+     * 여기서 `scene.score += this.score` 로 **직접** 더하고 있었다.
+     * 그래서 점수 눈금(1/100)도 연쇄 배수도 안 먹었고, 잡은 사람에게 점수가
+     * 안 갔다(2인 플레이에서 남의 점수가 됐다). 잡몹 대부분이 이 경로였다.
+     */
+    this.gotScore = scene.addScore(this.score, this.killPid);
   }
 }
 
@@ -3808,7 +3858,7 @@ class DragonRider extends EnemyBase {
     Particles.spawn(this.x, this.y, 40, { spd:560, life:0.65 });
     Particles.spawn(this.x, this.y, 12, { spd:420, life:0.9, grav:760, size:PX*2,
       pal:['#ffd0c8','#c4343a','#6b1420','#2a1014'] });
-    Popups.add(this.x, this.y - 40, this.score, PAL.fire[1], 4);
+    if(this.gotScore > 0) Popups.add(this.x, this.y - 40, this.gotScore, PAL.fire[1], 4);
     Shake.add(11, 0.18);
     Flash.add('#ffb070', 0.08, 0.20);
     Freeze.add(0.05);
@@ -3902,7 +3952,7 @@ class CoinThief extends EnemyBase {
       scene.items.push(new Item(this.x + (i-1)*26, this.y, ITEM_KIND.COIN));
     scene.booms.push(new Boom(this.x, this.y, 70, 0.36));
     Particles.spawn(this.x, this.y, 22, { spd:420, life:0.5, pal:['#fff6c2','#ffd24a','#c98a10'] });
-    Popups.add(this.x, this.y - 34, this.carry > 0 ? '금화 회수' : this.score, PAL.gold, 4, this.carry > 0);
+    Popups.add(this.x, this.y - 34, this.carry > 0 ? '금화 회수' : this.gotScore, PAL.gold, 4, this.carry > 0);
     Shake.add(7, 0.12);
     SND.sfx('boomS');
   }
@@ -3988,7 +4038,7 @@ class Charger extends EnemyBase {
     super.die(scene);
     scene.booms.push(new Boom(this.x, this.y, 96, 0.42));
     Particles.spawn(this.x, this.y, 30, { spd:520, life:0.6 });
-    Popups.add(this.x, this.y - 40, this.score, PAL.fire[1], 4);
+    if(this.gotScore > 0) Popups.add(this.x, this.y - 40, this.gotScore, PAL.fire[1], 4);
     Shake.add(9, 0.16);
     SND.sfx('boomM');
   }
@@ -4046,7 +4096,7 @@ class HeavyRider extends EnemyBase {
     for(let i=0;i<8;i++)
       Particles.spawn(this.x, this.y, 4, { ang:i*Math.PI/4, spread:0.35, spd:560, life:1.0,
         grav:620, size:PX*3, pal:['#efe6ff','#b48ce0','#573083','#20102e'] });
-    Popups.add(this.x, this.y - 56, this.score, PAL.fire[0], 5);
+    if(this.gotScore > 0) Popups.add(this.x, this.y - 56, this.gotScore, PAL.fire[0], 5);
     Shake.add(16, 0.3);
     Flash.add('#e0c0ff', 0.12, 0.34);
     Freeze.add(0.075);
@@ -5291,6 +5341,13 @@ class DragonRoar {
    ================================================================== */
 const ITEM_KIND = { APPLE:'apple', HEART:'heart', MISSILE:'missile', BOMB:'bomb',
                     POWER:'power', COIN:'coin' };
+/**
+ * ★ **점수 눈금.** (2026-08-27, 사용자 지정)
+ * 완벽하게 스무 판을 깨도 20만 점 언저리가 되도록 100 으로 나눈다.
+ * 한 스테이지는 1만 점 안팎 — 최고점(999,999)이 멀어져야 노릴 값어치가 생긴다.
+ */
+const SCORE_DIV = 100;
+
 const COIN_BASE = 100;              // 연속으로 먹을수록 배수가 붙는다
 const COIN_CHAIN_MAX = 10;
 const COIN_WINDOW = 2.2;            // 이 안에 다음 동전을 먹으면 연쇄 유지
@@ -5870,7 +5927,7 @@ const DUEL = {
   /** 죽으면 점수를 이만큼 잃는다 — 뺏기는 게 아니라 사라진다 */
   DEATH_PENALTY: 0.20,
   /** 보스 하나를 무너뜨릴 때마다 받는 몫 */
-  BOSS_SCORE: 3000,
+  BOSS_SCORE: 30,          // 점수 눈금(1/100)에 맞춘 값
 };
 
 /**
@@ -6026,6 +6083,7 @@ class GameScene extends Scene {
     this.eshots = []; this.missiles = []; this.bombs = []; this.waves = [];
     this.pmissiles = []; this.items = []; this.roars = [];
     this.score = this.carry ? this.carry.score : 0;
+    this.scoreFrac = 0;               // 점수의 소수 자리 (100 으로 나누며 생긴다)
     this.kills = 0;
     /* 새 판이 아니라 **이어지는 스테이지**면 동전을 이어서 센다 */
     if(!this.carry){ RUN.coins = 0; RUN.coinFrac = 0; RUN.banked = 0; RUN.noHitRun = 0; }
@@ -6173,7 +6231,7 @@ class GameScene extends Scene {
     Flash.add('#ffffff', big ? 0.3 : 0.18, big ? 0.75 : 0.5);
     Freeze.add(big ? 0.16 : 0.11);
     this.waves.push(new Shockwave(b.x, b.y, big ? 1400 : 900, big ? 0.7 : 0.5));
-    Popups.add(b.x, b.y - 80, b.score, PAL.fire[0], 7);
+    Popups.add(b.x, b.y - 80, b.gotScore || 0, PAL.fire[0], 7);
     SND.sfx('boomL');
     Input.rumble(1.0, 0.9, 700);
   }
@@ -6236,7 +6294,7 @@ class GameScene extends Scene {
          */
         RUN.coinFrac = (RUN.coinFrac || 0) + diffCoin();
         while(RUN.coinFrac >= 1){ RUN.coins++; RUN.coinFrac -= 1; }
-        this.addScore(gain, p.pid);
+        const got = this.addScore(gain, p.pid);
         /**
          * ★ **"+1000 x10" 이 무슨 뜻인지 아무도 몰랐다.** (2026-08-26, 사용자 지적)
          *
@@ -6248,8 +6306,10 @@ class GameScene extends Scene {
          * 그래서 갈라 놓는다 — 위에 `금화 +1`, 아래에 `점수 +1000 (10연속)`.
          */
         Popups.add(it.x, it.y - 34, '금화 +1', '#ffd24a', 4, true);
-        Popups.add(it.x, it.y - 6, '+' + gain + (p.coinChain > 1 ? ' (' + p.coinChain + '연속)' : ''),
-                   '#cfe6ff', 3, p.coinChain > 1);
+        /* 화면에 뜨는 숫자는 **실제로 오른 점수**여야 한다 — 표와 어긋나면 안 된다 */
+        if(got > 0)
+          Popups.add(it.x, it.y - 6, '+' + got + (p.coinChain > 1 ? ' (' + p.coinChain + '연속)' : ''),
+                     '#cfe6ff', 3, p.coinChain > 1);
         SND.sfx('coin');
         return;                                  // 동전은 안내 문구를 띄우지 않는다
       }
@@ -6265,7 +6325,7 @@ class GameScene extends Scene {
       case ITEM_KIND.POWER:
         msg = p.setLevel(p.level + 1) ? 'FIRE LV UP!' : 'MAX LEVEL'; break;
     }
-    this.score += 50;
+    this.addScore(50, p.pid, true);            // 아이템 줍기 (점수 눈금을 함께 탄다)
     SND.sfx(it.kind === ITEM_KIND.POWER ? 'levelup' : 'item');
     this.pickupMsg = (this.p2 ? (p.pid + 'P ') : '') + msg; this.pickupT = 1.2;
     Particles.spawn(it.x, it.y, 14, { spd:260, life:0.45, grav:-60,
@@ -6360,20 +6420,21 @@ class GameScene extends Scene {
       if(this.noHit){
         RUN.noHitRun = (RUN.noHitRun || 0) + 1;
         const step = Math.min(5, RUN.noHitRun);
-        this.noHitBonus = 1500 * step;
+        this.noHitBonus = 15 * step;               // 점수 눈금(1/100)에 맞춘 값
         this.noHitCoin = 10 * step;
         RUN.coins += this.noHitCoin;
       }else{
         RUN.noHitRun = 0; this.noHitBonus = 0; this.noHitCoin = 0;
       }
+      /* 시간 100/초 · 목숨 500 이던 것을 눈금에 맞춰 1/5 로 (2026-08-27) */
       this.bonus = this.duel ? 0
-        : Math.round(this.timeLeft) * 100 + this.totalLives() * 500 + this.noHitBonus;
+        : Math.round(this.timeLeft) * 1 + this.totalLives() * 5 + this.noHitBonus;
       const alive = this.players();
       if(alive.length){
         const each = Math.round(this.bonus / alive.length);
         for(const p of alive) p.score += each;
       }
-      this.score += this.bonus;
+      this.score += this.bonus;   // 보너스는 이미 눈금에 맞춘 값이다
       for(const p of this.allPlayers()) if(!p.out) p.lives = Math.min(MAX_LIVES, p.lives + 1);
       SND.sfx('fanfare');
       Save.data.unlocked = Math.max(Save.data.unlocked, Math.min(20, this.stage + 1));
@@ -6395,9 +6456,14 @@ class GameScene extends Scene {
       : [{ k:'resume', t:'계속하기' }, { k:'quit', t:'게임 포기' }];
   }
   /** 메뉴 한 줄이 차지하는 사각형 — 그리기와 터치 판정이 **같은 값**을 쓴다 */
+  /**
+   * ★ 박스를 키우고 사이를 벌렸다. (2026-08-27, 사용자 지적)
+   * 예전에는 높이 56 인데 글자를 배율 5 로 그려 **위아래로 박스를 뚫고 나왔고**,
+   * 간격 74 라 두 박스가 거의 붙어 있었다.
+   */
   pauseRect(i){
-    const w = 460, h = 56;
-    return { x: (GAME_W - w)/2, y: 344 + i*74, w, h };
+    const w = 440, h = 74;
+    return { x: (GAME_W - w)/2, y: 330 + i*92, w, h };
   }
   /** 화면 좌표로 눌린 메뉴를 찾는다 (없으면 -1) */
   pauseHit(x, y){
@@ -6508,11 +6574,30 @@ class GameScene extends Scene {
    * ★ 연쇄 배수는 **적을 잡아 버는 점수에만** 곱한다 (기획 7).
    * 스침 점수에까지 곱하면 탄 많은 판에서 숫자가 통제 불능으로 커진다.
    */
+  /**
+   * ★★ **점수를 100분의 1로.** (2026-08-27, 사용자 지정)
+   *
+   * *"점수가 너무 말도 안됨 (...) 1게임에 1만점, 20게임 20만점, 이정도가
+   *   현실적이지 않아? (...) 랩 10정도만 가도 999,999 채워지는데 그게 뭐야"*
+   *
+   * 상한이 999,999 인데 열 판이면 찼다. 그러면 **최고점을 노리는 재미가 통째로
+   * 사라진다** — 이미 만점이니 더 잘할 이유가 없다.
+   *
+   * 값을 하나하나 고치는 대신 **점수가 지나가는 이 한 곳**에서 나눈다.
+   * 다만 그냥 나누면 좀비 한 마리(100점)가 1점이 되고 반올림에서 자꾸 깎인다 —
+   * 소수를 쌓아 두고 정수가 될 때만 더한다(금화와 같은 방법).
+   *
+   * @returns 이번에 실제로 오른 점수 (팝업이 이 값을 띄운다 — 화면과 표가 어긋나면 안 된다)
+   */
   addScore(v, pid, raw){
-    const gain = raw ? v : Math.round(v * this.chainMul());
-    this.score += gain;
+    const before = this.score;
+    this.scoreFrac = (this.scoreFrac || 0) + (raw ? v : v * this.chainMul()) / SCORE_DIV;
+    const whole = Math.floor(this.scoreFrac);
+    this.scoreFrac -= whole;
+    this.score += whole;
     const p = pid === 2 ? this.p2 : (pid === 1 ? this.p1 : null);
-    if(p) p.score += gain;
+    if(p) p.score += whole;
+    return this.score - before;
   }
   makeCarry(){
     return {
@@ -6528,18 +6613,25 @@ class GameScene extends Scene {
   endItems(){
     /* 결투는 한 판으로 끝난다 — 이어서 갈 스테이지도, 다시 할 것도 없다 */
     if(this.duel) return [{ k:'quit', t:'결과 보기' }];
+    /**
+     * ★ **언제나 버튼 셋.** (2026-08-27, 사용자 지정)
+     *
+     * 예전에는 이어하기를 살 수 있을 때만 보여 줘서 버튼 개수가 둘이었다 셋이었다
+     * 했다. 자리가 흔들리면 **누르려던 것이 다른 것으로 바뀐다.**
+     * 못 사면 흐리게 두고 눌러도 안 되게 한다 — "금화가 있으면 이어할 수 있다" 는
+     * 것 자체가 알려 줄 값어치가 있다.
+     */
     if(this.state !== 'clear'){
-      /* 컨티뉴는 살 수 있을 때만 보인다 — 못 사는 버튼이 떠 있으면 눌러 보고 실망한다 */
       const canCont = this.continuesUsed < CONTINUE_MAX && DG.coins() >= CONTINUE_COST;
       return [
-        ...(canCont ? [{ k:'continue2', t:'이어하기 (금화 ' + CONTINUE_COST + ')' }] : []),
+        { k:'continue2', t:'이어하기 (금화 ' + CONTINUE_COST + ')', off: !canCont },
         { k:'retry', t:'처음부터 다시' },
-        { k:'quit', t:'오락실로' },
+        { k:'quit', t:'게임 종료' },
       ];
     }
     return this.stage < 20
-      ? [{ k:'continue', t:'다음 스테이지' }, { k:'quit', t:'오락실로' }]
-      : [{ k:'quit', t:'오락실로' }];
+      ? [{ k:'continue', t:'다음 스테이지' }, { k:'retry', t:'처음부터 다시' }, { k:'quit', t:'게임 종료' }]
+      : [{ k:'retry', t:'처음부터 다시' }, { k:'quit', t:'게임 종료' }];
   }
   /**
    * 결과 화면 버튼 자리 — 그리기와 터치가 같은 값을 쓴다.
@@ -6549,9 +6641,14 @@ class GameScene extends Scene {
    * 이어하기가 생겨 세 개가 되자 2번과 3번이 **같은 자리에 겹쳐** 그려졌다 —
    * 글자 위에 글자가 찍히니 덕지덕지로 보일 수밖에 없다.
    */
+  /**
+   * ★ **박스를 키웠다.** (2026-08-27, 사용자 지적)
+   * 296x52 는 `이어하기 (금화 500)` 이 좌우로 뚫고 나오는 크기였다.
+   * 글자는 `koFitBox` 가 알아서 맞추지만, 박스 자체가 작으면 글자가 너무 작아진다.
+   */
   endRect(i){
     const n = this.endItems().length;
-    const w = n >= 3 ? 296 : 300, h = 52, gap = 22;
+    const gap = 20, w = n >= 3 ? 384 : 340, h = 74;
     const total = n*w + (n - 1)*gap;
     return { x: Math.round(640 - total/2 + i*(w + gap)), y: END_BTN_Y, w, h };
   }
@@ -6574,6 +6671,7 @@ class GameScene extends Scene {
        * `change` 는 전환 중이면 씬을 버린다. 금화를 먼저 빼면 그때 **증발**한다.
        */
       if(this.mgr.busy) return;
+      if(this.continuesUsed >= CONTINUE_MAX || DG.coins() < CONTINUE_COST){ SND.sfx('deny'); return; }
       if(!DG.spendCoins(CONTINUE_COST)){ SND.sfx('deny'); return; }
       /**
        * carry 는 이미 있는 모양을 그대로 쓴다(`makeCarry`) — 형식을 새로 만들면
@@ -7549,21 +7647,24 @@ class GameScene extends Scene {
   renderPause(ctx){
     ctx.globalAlpha = 0.78; ctx.fillStyle = '#0a0616'; ctx.fillRect(0,0,GAME_W,GAME_H);
     ctx.globalAlpha = 1;
-    ko(ctx, '일시정지', 640, 208, 8, { align:'center', color:PAL.gold, outline:PAL.outline });
+    ko(ctx, '일시정지', 640, 208, 6, { align:'center', color:PAL.gold, outline:PAL.outline });
 
     const items = this.pauseItems();
+    const pRects = items.map((_, i) => this.pauseRect(i));
+    const pScale = koFitAll(items.map(it => it.t), pRects, 4);
     for(let i=0;i<items.length;i++){
       const on = i === this.menuIdx;
-      const r = this.pauseRect(i);
+      const r = pRects[i];
       /* 버튼처럼 보이게 그린다 — 눌러도 되는 자리라는 걸 알아야 누른다 */
       ctx.fillStyle = on ? PAL.gold : '#2a2140';
       ctx.fillRect(r.x - PX, r.y - PX, r.w + PX*2, r.h + PX*2);
       ctx.fillStyle = on ? '#3a2a05' : '#150f26';
       ctx.fillRect(r.x, r.y, r.w, r.h);
-      ko(ctx, items[i].t, 640, r.y + 14, 5,
-        { align:'center', color: on ? PAL.gold : '#8a93b8', outline:PAL.outline });
+      koFitBox(ctx, items[i].t, r, pScale,
+        { color: on ? PAL.gold : '#8a93b8', outline:PAL.outline });
     }
-    ko(ctx, '화면을 눌러도 됩니다', 640, 344 + items.length*74 + 18, 3,
+    const last = this.pauseRect(items.length - 1);
+    ko(ctx, '화면을 눌러도 됩니다', 640, last.y + last.h + 28, 2,
       { align:'center', color:'#8a7bb8' });
   }
 
@@ -7594,59 +7695,71 @@ class GameScene extends Scene {
        * 셋으로 가르면 숫자는 같은 오른쪽 끝에 딱 맞고, 단위는 그 뒤에서 왼쪽으로
        * 나란히 선다 — 표가 표처럼 보인다.
        */
+      /**
+       * ★ **단위를 뺐다.** (2026-08-27, 사용자 지정)
+       * *"점/마리/초/개 이런건 빼, 없어도 딱 보면 알지"*
+       * 그리고 단위가 빠지면서 오른쪽 끝이 저절로 한 줄로 곧게 선다.
+       */
       const rows = clear
-        ? [['점수', String(this.score), '점'],
-           ['시간 보너스', '+' + this.bonus, '점'],
-           ...(this.noHit ? [['무피격 보너스', '+' + this.noHitCoin, '금화']] : []),
-           ['킬수', String(this.kills), '마리'],
-           ['파이어 레벨', String(this.p1.level), this.p1.level >= MAX_LEVEL ? '최대' : ''],
-           ['획득 금화', String(RUN.coins), '개']]
-        : [['점수', String(this.score), '점'],
-           ['킬수', String(this.kills), '마리'],
-           ['파이어 레벨', String(this.p1.level), ''],
-           ['남은 시간', String(Math.ceil(this.timeLeft)), '초'],
-           ['획득 금화', String(RUN.coins), '개']];
+        ? [['점수', num(this.score)],
+           ['시간 보너스', '+' + num(this.bonus)],
+           ...(this.noHit ? [['무피격 금화', '+' + this.noHitCoin]] : []),
+           ['킬수', num(this.kills)],
+           ['파이어 레벨', String(this.p1.level)],
+           ['획득 금화', num(RUN.coins)]]
+        : [['점수', num(this.score)],
+           ['킬수', num(this.kills)],
+           ['파이어 레벨', String(this.p1.level)],
+           ['남은 시간', String(Math.ceil(this.timeLeft))],
+           ['획득 금화', num(RUN.coins)]];
 
       /* 표의 위아래에 얇은 줄 — 어디서 시작하고 끝나는지 눈이 먼저 안다 */
-      const ruleW = END_UNIT_R + 4 - END_LABEL_X;
+      const ruleW = END_NUM_R + 4 - END_LABEL_X;
       ctx.fillStyle = '#3a3358';
       ctx.fillRect(END_LABEL_X, END_ROW_Y - 22, ruleW, PX);
       ctx.fillRect(END_LABEL_X, END_ROW_Y + (rows.length - 1)*END_ROW_GAP + 34, ruleW, PX);
 
+      /**
+       * ★★ **숫자도 이름과 같은 글꼴·같은 크기로.** (2026-08-27, 사용자 지적)
+       *
+       * *"점수 숫자의 숫자 폰트와 글씨 크기를 그 왼쪽 한글과 비슷한 크기로 맞춰,
+       *   글씨 두께도 비슷하게 (...) 그 옆에 숫자는 너무 비현실적으로 작다"*
+       *
+       * 예전에는 이름은 오락실 글꼴(`ko`), 숫자는 게임 글꼴(`drawText`)이었다.
+       * 두 글꼴은 같은 배율이어도 **글자 높이도 획 두께도 다르다.**
+       * 오락실 글꼴에도 숫자가 있으므로 둘 다 그걸로 그린다 — 한 줄로 읽힌다.
+       */
       for(let i=0;i<rows.length;i++){
         const y = END_ROW_Y + i*END_ROW_GAP;
         if(this.stateT < 0.6 + i*0.10) break;
-        const gold = rows[i][0] === '획득 금화';
-        const c = gold ? '#ffd24a' : PAL.white;
+        const gold = rows[i][0] === '획득 금화' || rows[i][0] === '무피격 금화';
         ko(ctx, rows[i][0], END_LABEL_X, y, 3,
           { color: gold ? '#ffd24a' : '#8a9bbf', outline:PAL.outline });
-        /* ★ 오른쪽 정렬 열에서는 **고정폭**이 맞다. 글자마다 폭이 다르면
-           숫자 끝이 줄마다 몇 px 씩 흔들려서 표가 삐뚤어 보인다.
-           (로비 상태창은 문장 속이라 반대로 고정폭을 껐다 — 자리가 다르면 답도 다르다.) */
-        drawText(ctx, rows[i][1], END_NUM_R, y, 3,
-          { align:'right', color:c, outline:PAL.outline, mono:true });
-        if(rows[i][2]) ko(ctx, rows[i][2], END_UNIT_R, y, 3,
-          { align:'right', color: gold ? '#c8880f' : '#8a9bbf' });
+        ko(ctx, rows[i][1], END_NUM_R, y, 3,
+          { align:'right', color: gold ? '#ffd24a' : PAL.white, outline:PAL.outline });
       }
     }
     if(this.stateT <= 1.1) return;
     // ---- 다음 행동 선택 ----
     const items = this.endItems();
     if(clear && this.stage < 20)
-      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', 640, END_ASK_Y, 3,
+      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', 640, END_ASK_Y, 2,
         { align:'center', color:'#cfe6ff', outline:PAL.outline });
+    /* 셋이 같은 글자 크기로 — 가장 빡빡한 문구에 맞춘다 */
+    const rects = items.map((_, i) => this.endRect(i));
+    const bScale = koFitAll(items.map(it => it.t), rects, 4);
     for(let i=0;i<items.length;i++){
       const on = i === this.endIdx;
-      const r = this.endRect(i);
-      ctx.fillStyle = on ? PAL.gold : '#241c3e';
+      const r = rects[i];
+      const off = !!items[i].off;                 // 못 누르는 버튼 (금화 부족 등)
+      ctx.fillStyle = off ? '#2a2438' : (on ? PAL.gold : '#241c3e');
       ctx.fillRect(r.x - PX, r.y - PX, r.w + PX*2, r.h + PX*2);
-      ctx.fillStyle = on ? '#3a2a05' : '#120d24';
+      ctx.fillStyle = off ? '#15121f' : (on ? '#3a2a05' : '#120d24');
       ctx.fillRect(r.x, r.y, r.w, r.h);
-      /* 세 개가 나란히 서면 한 칸이 좁아진다 — 글자도 같이 줄인다 */
-      const bs = items.length >= 3 ? 3 : 4;
-      ko(ctx, items[i].t, r.x + r.w/2, r.y + (bs === 3 ? 15 : 11), bs,
-        { align:'center', color: on ? PAL.gold : '#7f8bb0', outline:PAL.outline });
-      if(on){
+      /* 글자는 박스가 정한다 — 문구가 길어져도 뚫고 나오지 않는다 */
+      koFitBox(ctx, items[i].t, r, bScale,
+        { color: off ? '#4f4a60' : (on ? PAL.gold : '#7f8bb0'), outline:PAL.outline });
+      if(on && !off){
         const g = Math.round(Math.sin(this.stateT*7))*PX;
         ctx.strokeStyle = PAL.gold; ctx.lineWidth = 2;
         ctx.strokeRect(r.x - PX*2 - g, r.y - PX*2 - g, r.w + (PX*2+g)*2, r.h + (PX*2+g)*2);
