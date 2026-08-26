@@ -851,7 +851,13 @@ export async function quickJoin({ difficulty, game = GAME_SHOES } = {}) {
   // 스캔으로 이미 받아 둔 방 객체를 그대로 넘긴다 — 후보마다 서버를 다시 읽지 않는다
   const pickAndJoin = async (rooms) => {
     for (const r of rooms) {
-      const v = await joinRoom(r.code, r);
+      /**
+       * ★ **게임을 넘긴다.** (2026-08-26, 사용자 신고)
+       * 안 넘기면 기본값 'shoes' 로 판정되어 **드래곤 방은 전부 'wronggame' 으로 거부**됐다.
+       * 그러면 자동 매칭이 남의 방에 영영 못 들어가고 각자 새 방만 파서,
+       * 둘이 눌러도 서로 안 만난다.
+       */
+      const v = await joinRoom(r.code, r, game);
       if (v === 'ok' || v === 'waiting') return r.code;
     }
     return null;
@@ -893,7 +899,7 @@ export async function quickJoin({ difficulty, game = GAME_SHOES } = {}) {
       .sort(byPreference)[0];
     if (!older) return mine;
 
-    const v = await joinRoom(older.code);
+    const v = await joinRoom(older.code, null, game);
     if (v === 'ok' || v === 'waiting') {
       await leaveRoom(mine).catch(() => {});
       return older.code;

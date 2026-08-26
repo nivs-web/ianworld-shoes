@@ -179,6 +179,49 @@ export async function pullRemote() {
      */
     ownedItems: { ...(local.ownedItems ?? {}), ...(remote.ownedItems ?? {}) },
     equippedItems: remote.equippedItems ?? local.equippedItems ?? {},
+
+    /**
+     * ★★ **드래곤 값에 병합 규칙이 하나도 없었다.** (2026-08-26, 사용자 신고)
+     *
+     * *"두 번이나 올클리어를 했는데 금화가 전부 다 사라졌어요"*
+     *
+     * 위의 `...remote` 가 `...local` 을 덮는다. 신발 쪽 값들은 바로 아래에서
+     * `Math.max` 나 합집합으로 하나씩 되살려 놨는데, **드래곤 값은 한 줄도 없었다** —
+     * 그래서 로그인할 때마다 원격 문서의 값이 **무조건** 이겼다.
+     *
+     * 한 판을 끝내면 `patch()` 가 로컬에 쓰고 원격으로 밀지만, 그 밀기는
+     * 실패해도 조용하다(`pushRemote` 는 catch 로 삼킨다 — 12초 시한도 있다).
+     * 회선이 잠깐 나빴거나 앱이 먼저 닫히면 **원격은 옛날 값 그대로**고,
+     * 다음 로그인의 `pullRemote` 가 그 옛날 값으로 지갑을 덮어썼다.
+     * 올클리어 두 판이 통째로 사라지는 그림이 정확히 이것이다.
+     *
+     * ## 어느 쪽을 남기나
+     *
+     * **줄어들지 않는 값은 큰 쪽**이다. 기록·누적·판수는 원래 줄지 않으므로
+     * 작은 쪽이 이기는 것은 언제나 사고다.
+     *
+     * 지갑(`dragonCoins`)은 쓰면 줄어드니 `Math.max` 가 이론적으로는 틀릴 수 있다 —
+     * A기기에서 쓰고 B기기(옛 값)로 로그인하면 쓴 만큼이 되살아난다.
+     * 그래도 **잃는 것보다 낫다**: 잃으면 사용자가 스무 판을 다시 해야 하고,
+     * 되살아나면 아이템 하나를 덜 산 셈이 된다. 무게가 비교가 안 된다.
+     *
+     * 산 것(`dragonOwned`·`dragonItems`)은 **합집합**이다 — 신발 아이템과 같은 이유로,
+     * 한쪽이 통째로 이기면 다른 기기에서 산 것이 사라진다.
+     */
+    dragonCoins: Math.max(local.dragonCoins ?? 0, remote.dragonCoins ?? 0),
+    dragonCoinsTotal: Math.max(local.dragonCoinsTotal ?? 0, remote.dragonCoinsTotal ?? 0),
+    dragonBest: Math.max(local.dragonBest ?? 0, remote.dragonBest ?? 0),
+    dragonBestStage: Math.max(local.dragonBestStage ?? 0, remote.dragonBestStage ?? 0),
+    dragonBestLevel: Math.max(local.dragonBestLevel ?? 0, remote.dragonBestLevel ?? 0),
+    dragonPlays: Math.max(local.dragonPlays ?? 0, remote.dragonPlays ?? 0),
+    dragonMultiWins: Math.max(local.dragonMultiWins ?? 0, remote.dragonMultiWins ?? 0),
+    dragonMultiLosses: Math.max(local.dragonMultiLosses ?? 0, remote.dragonMultiLosses ?? 0),
+    dragonOwned: { ...(local.dragonOwned ?? {}), ...(remote.dragonOwned ?? {}) },
+    dragonItems: { ...(local.dragonItems ?? {}), ...(remote.dragonItems ?? {}) },
+    /* 취향은 합칠 수 없다 — 마지막에 고른 쪽(원격)을 따른다 */
+    dragonEquip: remote.dragonEquip ?? local.dragonEquip ?? {},
+    dragonCharacter: remote.dragonCharacter ?? local.dragonCharacter ?? 0,
+    dragonDifficulty: remote.dragonDifficulty ?? local.dragonDifficulty ?? 'normal',
   };
   L.reconcile(merged);
   L.saveProfile(merged);

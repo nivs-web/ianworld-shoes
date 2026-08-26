@@ -1,0 +1,82 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>계정 병합 검사 — 금화가 사라지지 않는가</title>
+<style>body{background:#111;color:#ddd;font:13px/1.6 monospace;padding:16px;white-space:pre}</style>
+</head>
+<body><div id="out">검사 중…</div>
+<script type="module">
+/**
+ * ★ **로그인할 때 금화가 사라지지 않는지** 검사한다.
+ *
+ * 사용자 신고: "두 번이나 올클리어를 했는데 금화가 전부 다 사라졌어요"
+ *
+ * 원인은 `pullRemote` 의 병합이었다 — `{...local, ...remote}` 라 원격이 무조건 이기는데
+ * 드래곤 값에는 되살리는 규칙이 하나도 없었다. 한 판 끝나고 원격으로 미는 것이
+ * 실패하면(조용히 삼킨다) 다음 로그인에 옛 값이 지갑을 덮었다.
+ *
+ * 여기서는 병합 규칙만 떼어내 검사한다 — Firestore 없이 돌려야 하기 때문이다.
+ * **규칙이 바뀌면 이 검사도 같이 깨져야** 하므로 실제 소스에서 읽어 온다.
+ */
+const lines = [];
+const say = (s) => lines.push(s);
+let fail = 0;
+const check = (name, got, want) => {
+  const ok = JSON.stringify(got) === JSON.stringify(want);
+  if (!ok) fail++;
+  say(`${ok ? '  OK  ' : '  ★틀림 '}${name}\n        받음 ${JSON.stringify(got)}  기대 ${JSON.stringify(want)}`);
+};
+
+/* profile.js 의 병합 규칙을 소스에서 그대로 읽어 쓴다 */
+const src = await fetch('/src/services/profile.js').then((r) => r.text());
+
+const RULES = [
+  ['dragonCoins', 'max'], ['dragonCoinsTotal', 'max'], ['dragonBest', 'max'],
+  ['dragonBestStage', 'max'], ['dragonBestLevel', 'max'], ['dragonPlays', 'max'],
+  ['dragonMultiWins', 'max'], ['dragonMultiLosses', 'max'],
+  ['dragonOwned', 'union'], ['dragonItems', 'union'],
+];
+
+say('■ 병합 규칙이 소스에 실제로 있는가');
+for (const [field, kind] of RULES) {
+  const want = kind === 'max'
+    ? new RegExp(`${field}:\\s*Math\\.max\\(`)
+    : new RegExp(`${field}:\\s*\\{\\s*\\.\\.\\.\\(local`);
+  check(`${field} (${kind})`, want.test(src), true);
+}
+
+say('');
+say('■ 사용자가 겪은 상황 그대로');
+/* 규칙을 그대로 흉내낸다 */
+const merge = (local, remote) => ({
+  ...local, ...remote,
+  dragonCoins: Math.max(local.dragonCoins ?? 0, remote.dragonCoins ?? 0),
+  dragonCoinsTotal: Math.max(local.dragonCoinsTotal ?? 0, remote.dragonCoinsTotal ?? 0),
+  dragonItems: { ...(local.dragonItems ?? {}), ...(remote.dragonItems ?? {}) },
+  dragonOwned: { ...(local.dragonOwned ?? {}), ...(remote.dragonOwned ?? {}) },
+});
+
+/* 올클리어 두 번 하고 지갑이 2,600 인데, 원격은 밀기 실패로 아직 0 이다 */
+const local = { dragonCoins: 2600, dragonCoinsTotal: 2600, dragonItems: { msl10: true }, dragonOwned: { 5: true } };
+const remote = { dragonCoins: 0, dragonCoinsTotal: 0 };
+const m = merge(local, remote);
+check('금화가 살아남는가', m.dragonCoins, 2600);
+check('누적도', m.dragonCoinsTotal, 2600);
+check('산 아이템도', m.dragonItems, { msl10: true });
+check('산 드래곤도', m.dragonOwned, { 5: true });
+
+say('');
+say('■ 반대로 다른 기기가 더 많이 벌어 왔을 때');
+const m2 = merge({ dragonCoins: 100 }, { dragonCoins: 9000, dragonItems: { nuke4: true } });
+check('큰 쪽이 남는가', m2.dragonCoins, 9000);
+check('원격에서 산 것도 오는가', m2.dragonItems, { nuke4: true });
+
+say('');
+say('■ 고친 규칙이 없었다면 (옛 동작)');
+const old = { ...local, ...remote };
+say(`        옛 병합 결과의 금화: ${old.dragonCoins}  ← 이게 사라진 이유다`);
+
+say('');
+say(fail ? `★ ${fail} 건 틀림` : '전부 통과');
+document.getElementById('out').textContent = lines.join('\n');
+window.__done = true; window.__fail = fail;
+</script>
+</body></html>

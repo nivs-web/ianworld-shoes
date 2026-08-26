@@ -195,7 +195,7 @@ function showChallenge(item, done) {
     settled = true;
     clearInterval(timer);
     done(reason);
-    if (picked) return join(item.code);
+    if (picked) return join(item.code, item.game || 'shoes');
     /**
      * ★ **화면이 바뀌어 강제로 닫힌 것은 거절이 아니다.** (2026-08-19 15차)
      * 예전에는 그때도 거절 통보가 나갔다 — 신청을 **보지도 못한 사람이 거절한 것**이 됐고,
@@ -235,10 +235,22 @@ function showChallenge(item, done) {
   }, 1000);
 }
 
-async function join(code) {
+/**
+ * ★ **어느 게임의 대결인지 끝까지 들고 간다.** (2026-08-26, 사용자 신고)
+ *
+ * *"멀티게임이 안되고 신발을 찾아서 게임으로 진행이 되네"*
+ *
+ * 대결 신청 쪽지에는 `game` 이 실려 있는데 **수락하는 이 함수가 그걸 안 봤다.**
+ *   · `joinRoom(code)` 가 게임 없이 불려 기본값 'shoes' 로 판정 → 드래곤 방은 거부
+ *   · 대기방에 `{ code }` 만 넘겨 `params.game` 이 없으니 또 'shoes'
+ *     → 판이 시작될 때 **신발게임 다리**로 갔다
+ *
+ * 게임을 하나만 만들 때 쓰던 기본값이 게임이 둘이 되면서 함정이 됐다.
+ */
+async function join(code, game = 'shoes') {
   if (!code) return toast(S.challengeGone, 2000);
-  const r = await Room.joinRoom(code).catch(() => 'error');
+  const r = await Room.joinRoom(code, null, game).catch(() => 'error');
   if (r !== 'ok' && r !== 'waiting') return toast(S.challengeGone, 2000);
   const m = await import('./multi/WaitingRoom.js');
-  navRef?.push(m.default, { code });
+  navRef?.push(m.default, { code, game });
 }
