@@ -2586,7 +2586,25 @@ class Boom {
 }
 
 /* ---------------- 파이어 블레스 (자동 연사) ---------------- */
-const FIRE_INTERVAL = 0.10;                  // 초당 10발.
+/**
+ * ★ **연발이 두 배로 빨라진다.** (2026-08-26, 사용자 지정)
+ *
+ * 적을 계속 늘려 왔는데 화력은 그대로라 "피하는 것 말고는 방법이 없다" 는 말이 나왔다.
+ * 맞는 말이다 — 화면을 메운 적을 초당 10발로는 못 뚫는다.
+ *
+ * 그리고 **레벨이 오르면 연사도 같이 빨라진다.** 예전에는 레벨이 줄기의 굵기만
+ * 바꿨는데, 그러면 레벨을 올린 보람이 "조금 두꺼워졌다" 뿐이었다.
+ * 굵기와 속도가 같이 오르면 한 칸이 확실히 체감된다.
+ *
+ *   Lv1  0.050초 (초당 20발)  ← 예전 10발의 **두 배**
+ *   Lv5  0.043초 (초당 23발)
+ *   Lv10 0.033초 (초당 30발)
+ *
+ * 보스 체력은 `지금 내 화력`에 연동되어 있어(`missileDamageOf`) 자동으로 따라 오른다 —
+ * 보스가 녹아버리지는 않는다. 반면 **잡몸은 체력이 고정**이라 두 배로 빨리 녹는다 —
+ * 적이 화면을 메울 때 뚫고 나가라고 올린 것이다.
+ */
+const FIRE_INTERVAL = 0.05;                  // Lv1 기준
 /* 예전엔 0.06(초당 16.7발)이라 Lv10 에서 화면에 불줄기가 26개나 깔렸다.
    한 발은 260x270 스프라이트라 그것만으로 프레임당 2화면분을 칠하고 있었다.
    간격을 늘리고 한 방 데미지를 그만큼 올려 DPS 는 1도 달라지지 않게 했다.
@@ -3804,7 +3822,8 @@ class Director {
    완전 비례가 아니라 0.8 제곱으로 눌러서, 강해진 만큼은 더 빨리 잡히게 한다. */
 function fireDpsOf(level){
   // 줄이 여러 개라도 한 발은 오브젝트 1개 = 타격 1회다
-  return FIRE[clamp(level|0, 1, MAX_LEVEL)].dmg / FIRE_INTERVAL;
+  const lv = clamp(level|0, 1, MAX_LEVEL);
+  return FIRE[lv].dmg / fireGap(lv);
 }
 function bossPowerScale(level){ return Math.pow(fireDpsOf(level) / fireDpsOf(1), 0.8); }
 
@@ -3840,7 +3859,21 @@ const MAX_MISSILE = 50, MAX_BOMB = 12;     // 보유 상한
 /* 아무것도 안 산 사람의 손 안. 아이템 쇼핑의 계단으로 미사일 50 · 핵무기 12 까지 올린다.
    (`games/dragon/items.js` 의 BASE_MISSILES / BASE_BOMBS 와 같은 값이어야 한다) */
 const START_MISSILES = 5, START_BOMBS = 2;
-const START_FIRE_LV = 2;                   // 첫 판의 파이어 레벨
+/**
+ * ★ **1부터 시작한다.** (2026-08-26, 사용자 지정)
+ * 2로 시작하던 것은 "첫 판이 심심하다" 는 지적에 대한 임시방편이었다.
+ * 이제 시작 5초에 레벨업이 하나 떠서 곧바로 2가 되므로,
+ * **레벨이 오르는 장면을 보여 주면서** 같은 결과에 이른다.
+ */
+const START_FIRE_LV = 1;                   // 첫 판의 파이어 레벨
+/** 첫 판 시작 몇 초에 레벨업 하나를 떨궈 주는가 (1스테이지에서 딱 한 번) */
+const FIRST_POWER_AT = 5;
+/**
+ * 그 레벨의 발사 간격(초). 레벨이 오르면 짧아진다 — Lv10 은 Lv1 의 두 배 속도다.
+ * `MAX_LEVEL` 은 아래에서 선언되지만 이 함수는 부를 때 읽으므로 문제없다.
+ */
+const fireGap = (lv) =>
+  FIRE_INTERVAL * (1 - 0.34 * (clamp(lv | 0, 1, MAX_LEVEL) - 1) / (MAX_LEVEL - 1));
 function missileDamageOf(stage, level){
   // 1회 발사가 3발(연속 시 6/9발)이라 한 방이 너무 강했다. 기존의 1/3 로 낮춤
   return midBossHpOf(stage, level) / 54;
@@ -4873,6 +4906,17 @@ class GameScene extends Scene {
     this.dropQ = DROP_PLAN.map(d => ({ kind:d.kind, left:d.rounds, t:d.first, every:d.every }));
     /* ★ **첫 뭉치를 곧바로 뿌린다.** 뭔가 먹을 게 있어야 움직인다 (사용자 지정) */
     this.coinT = 0.8; this.heartDropped = false;
+    /**
+     * ★ **1스테이지 5초에 파이어 레벨업 하나.** (2026-08-26, 사용자 지정)
+     *
+     * 이것 하나로 레벨 눈금이 딱 떨어진다 —
+     *   1스테이지 : 시작 1 → 5초에 2 → 중간보스 잡고 3
+     *   2스테이지 : 중간보스 잡고 4
+     *   그 뒤로 한 스테이지에 한 칸씩
+     *
+     * 이어지는 스테이지(`carry`)에서는 안 준다 — 주면 스테이지마다 두 칸씩 오른다.
+     */
+    this.firstPowerT = (!this.carry && this.stage === 1 && !this.duel) ? FIRST_POWER_AT : -1;
     this.pickupMsg = null; this.pickupT = 0;
     Freeze.reset(); Flash.reset(); Popups.clear();
 
@@ -4999,22 +5043,23 @@ class GameScene extends Scene {
     if(e instanceof MidBoss){
       // 파이어 레벨을 올릴 수 있는 유일한 기회.
       // 하트는 한 스테이지에 1명당 딱 1개. 중간보스가 2마리여도 처음 한 번만.
-      const n = this.players().length;
+      /**
+       * ★ **2P 를 켜도 레벨업은 하나다.** (2026-08-26, 사용자 지정 — 앞의 지정을 취소)
+       *
+       * 잠깐 "2P 특전" 으로 두 개를 주기로 했다가 취소됐다. 사람 수에 따라 레벨이
+       * 달라지면 **한 스테이지에 한 칸** 이라는 눈금이 깨진다 —
+       * 죽어도 레벨이 안 내려가게 바뀐 뒤로 그 눈금이 더 중요해졌다.
+       */
       const giveHeart = !this.heartDropped;
       this.heartDropped = true;
-      for(let i=0;i<n;i++){
-        const dy = (i - (n-1)/2)*300;
-        this.items.push(new Item(e.x - 80, e.y + dy, ITEM_KIND.POWER));
-        /* 결투에서는 하트가 안 나온다 — 목숨이 늘면 300초 제한이 무의미해진다 */
-        if(giveHeart && !this.duel) this.items.push(new Item(e.x + 80, e.y + dy, ITEM_KIND.HEART));
-      }
+      this.items.push(new Item(e.x - 80, e.y, ITEM_KIND.POWER));
+      /* 결투에서는 하트가 안 나온다 — 목숨이 늘면 300초 제한이 무의미해진다 */
+      if(giveHeart && !this.duel) this.items.push(new Item(e.x + 80, e.y, ITEM_KIND.HEART));
       return;
     }
     if(e instanceof Boss){
-      // 정기 투하 3회 + 최종보스 1개 = 1인당 필살기 4개
-      const n = this.players().length;
-      for(let i=0;i<n;i++)
-        this.items.push(new Item(e.x, e.y + (i - (n-1)/2)*300, ITEM_KIND.BOMB));
+      /* 사람 수와 무관하게 하나 — 나눠 먹으라고 두는 것이다 */
+      this.items.push(new Item(e.x, e.y, ITEM_KIND.BOMB));
       return;
     }
     // 잡몹은 아이템을 떨구지 않는다. 적이 늘어난다고 아이템까지 늘면
@@ -5303,7 +5348,7 @@ class GameScene extends Scene {
     const c = FIRE[p.level];
     p.fireT -= dt;
     if(p.fireT <= 0){
-      p.fireT += FIRE_INTERVAL;
+      p.fireT += fireGap(p.level);
       const m = p.muzzle;
       this.bolts.push(new FireBolt(m.x, m.y, 0, p.level, p.pid));
       Particles.spawn(m.x, m.y, 2, { ang:0, spread:0.9, spd:210, life:0.16, grav:0, drag:5 });
@@ -5418,11 +5463,25 @@ class GameScene extends Scene {
       d.t -= dt;
       if(d.t > 0) continue;
       d.t = d.every; d.left--;
-      const n = this.players().length;
+      /**
+       * ★ **혼자 하든 둘이 하든 똑같이 뜬다.** (2026-08-26, 사용자 지적)
+       *
+       * 사람 수만큼 뿌리고 있었다 — 2인이면 미사일·핵무기·사과가 **정확히 두 배**였다.
+       * 그러면 혼자 놀 때도 2P 를 켜 두는 게 무조건 이득이라 "안 켜면 손해" 인
+       * 게임이 되고, 화면도 정신없어진다.
+       */
       const y0 = 220 + Math.random()*180;
-      for(let i=0;i<n;i++)
-        this.items.push(new Item(GAME_W + 50, y0 + (i - (n-1)/2)*260, KIND[d.kind]));
+      this.items.push(new Item(GAME_W + 50, y0, KIND[d.kind]));
     }
+    /* 첫 판의 레벨업 한 개 — 한 번 떨어지면 다시 안 온다 */
+    if(this.firstPowerT > 0){
+      this.firstPowerT -= dt;
+      if(this.firstPowerT <= 0){
+        this.firstPowerT = -1;
+        this.items.push(new Item(GAME_W + 50, GAME_H/2, ITEM_KIND.POWER));
+      }
+    }
+
     // ---- 황금동전 : 점수용. 움직여서 훑어 먹으라고 곡선으로 뿌린다 ----
     this.coinT -= dt;
     if(this.coinT <= 0){
