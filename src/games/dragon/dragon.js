@@ -4141,24 +4141,6 @@ class MidBoss extends EnemyBase {
     super.die(scene);
     scene.onBossKilled(this);
   }
-  /**
-   * 부위 체력 막대. 보스 왼쪽에 **부위가 있는 높이에 맞춰** 세로로 세운다 —
-   * 어디를 쏘면 무엇이 깎이는지 화면이 스스로 말해야 한다.
-   */
-  renderParts(ctx){
-    const b = this.box, x = snap(b.x - PX*7);
-    for(const p of this.parts){
-      if(p.flash > 0) p.flash -= 1/60;
-      if(p.broken) continue;
-      const y0 = snap(b.y + b.h*p.def.lo + PX*2);
-      const h = snap(b.h*(p.def.hi - p.def.lo) - PX*4);
-      const k = clamp(p.hp / p.max, 0, 1);
-      ctx.fillStyle = '#0a0a14'; ctx.fillRect(x - PX, y0 - PX, PX*5, h + PX*2);
-      ctx.fillStyle = '#2a2030'; ctx.fillRect(x, y0, PX*3, h);
-      ctx.fillStyle = p.flash > 0 ? '#ffffff' : '#7fd0e0';
-      ctx.fillRect(x, snap(y0 + h*(1-k)), PX*3, snap(h*k));
-    }
-  }
   render(ctx){
     const tint = this.flash > 0 ? '#ffffff' : (this.enraged && Math.floor(this.t*5)%2 === 0 ? '#8f4a3a' : null);
     drawFormDragon(ctx, MIDBOSS_PAL, 'B', MB_CELL, this.x, this.y, this.pose, true, tint, [B_RIDER_KNIGHT]);
@@ -4362,6 +4344,24 @@ class Boss extends EnemyBase {
   die(scene){
     super.die(scene);
     scene.onBossKilled(this);
+  }
+  /**
+   * 부위 체력 막대. 보스 왼쪽에 **부위가 있는 높이에 맞춰** 세로로 세운다 —
+   * 어디를 쏘면 무엇이 깎이는지 화면이 스스로 말해야 한다.
+   */
+  renderParts(ctx){
+    const b = this.box, x = snap(b.x - PX*7);
+    for(const p of this.parts){
+      if(p.flash > 0) p.flash -= 1/60;
+      if(p.broken) continue;
+      const y0 = snap(b.y + b.h*p.def.lo + PX*2);
+      const h = snap(b.h*(p.def.hi - p.def.lo) - PX*4);
+      const k = clamp(p.hp / p.max, 0, 1);
+      ctx.fillStyle = '#0a0a14'; ctx.fillRect(x - PX, y0 - PX, PX*5, h + PX*2);
+      ctx.fillStyle = '#2a2030'; ctx.fillRect(x, y0, PX*3, h);
+      ctx.fillStyle = p.flash > 0 ? '#ffffff' : '#7fd0e0';
+      ctx.fillRect(x, snap(y0 + h*(1-k)), PX*3, snap(h*k));
+    }
   }
   render(ctx){
     const pal = this.enraged ? BOSS_PAL_RAGE : this.pal;
