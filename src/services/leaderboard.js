@@ -363,6 +363,20 @@ export async function fetchUserCard(uid) {
       multiLosses: v.multiLosses ?? 0,
       // 유저상태창 맨 아래 줄 (2026-08-19 12차)
       lastLoginAt: v.lastLoginAt ?? 0,
+      /**
+       * ★ **드래곤 쪽 값도 같이 준다.** (2026-08-27, 사용자 지적)
+       * *"제발 이건 신발을 찾아서가 아니야"*
+       *
+       * 계정 문서는 어차피 통째로 읽어 오므로 칸을 더 꺼내는 데 드는 값은 0이다.
+       * 드래곤 화면에서 연 카드가 신발 전적을 보여주던 것은 여기서 안 꺼내
+       * 줬기 때문이지 다른 이유가 아니었다.
+       */
+      dragonCharacter: v.dragonCharacter ?? 0,
+      dragonCoins: v.dragonCoins ?? 0,
+      dragonBestStage: v.dragonBestStage ?? 0,
+      dragonBest: v.dragonBest ?? 0,
+      dragonMultiWins: v.dragonMultiWins ?? 0,
+      dragonMultiLosses: v.dragonMultiLosses ?? 0,
     };
   } catch { return null; }
 }

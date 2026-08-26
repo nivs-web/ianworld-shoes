@@ -11,6 +11,7 @@
 import S from '../../config/strings.ko.js';
 import { el, button, backButton, segmented, screen, title, toast } from '../ui.js';
 import { openUserCard } from '../UserCard.js';
+import { fetchUserCard } from '../../services/leaderboard.js';
 import * as Presence from '../../services/presence.js';
 import { characterById, characterSprite } from '../../data/characters.js';
 import { MULTI } from '../../config/balance.js';
@@ -38,7 +39,7 @@ const RESET_RETRY_MS = 2500;
  * `p` 는 `players/$uid` 스냅샷 — nickname·characterId·shoesOwned·multiWins·multiLosses.
  * 자리 색 테두리를 그대로 둘러 인게임 레이스 게이지와 같은 신호를 쓴다.
  */
-function playerStatPopup(p, slot) {
+function playerStatPopup(p, slot, game) {
   /**
    * ★ **대기방에서도 쪽지는 보낸다.** (2026-08-19 12차, 사용자 지정)
    *
@@ -49,7 +50,17 @@ function playerStatPopup(p, slot) {
    * **대결신청만 뺀다**(`challenge: false`): 이미 같은 방에 앉아 있는 사람에게
    * 신청하면 방이 하나 더 생기고, 수락한 사람은 앞 방에 유령으로 남는다.
    */
-  openUserCard(p, { slot, challenge: false });
+  if (game !== 'dragon') return openUserCard(p, { slot, challenge: false });
+  /**
+   * 드래곤 방에서는 드래곤 카드를 연다.
+   * 방 기록의 이름이 카드의 이름과 다르므로 여기서 옮겨 준다 —
+   * `wallet`(지갑) -> `dragonCoins`, `dragon`(번호) -> `dragonCharacter`.
+   * 최고 스테이지와 결투 전적은 방 기록에 없으니 계정 문서에서 받아 채운다.
+   */
+  openUserCard(
+    { ...p, dragonCoins: p.wallet ?? 0, dragonCharacter: p.dragon | 0 },
+    { slot, challenge: false, game: 'dragon',
+      load: p.uid ? fetchUserCard(p.uid).catch(() => null) : null });
 }
 
 const DIFFS = [
@@ -358,14 +369,15 @@ export default function WaitingRoom(nav, params = {}) {
               : (ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko })
                     : el('div.rank-face')),
             // 이름을 누르면 캐릭터 그림 + 승률/보유신발 카드 (§9·§11)
-            el('div.player-name', { text: p.nickname || '???', onclick: () => playerStatPopup(p, slot) }),
-            /* 배지도 게임에 맞게 — 드래곤 방에서 "보유신발" 은 아무 뜻이 없다.
-               방 기록에 이미 있는 드래곤 번호만 쓴다 (새 칸을 더하지 않는다) */
+            el('div.player-name', { text: p.nickname || '???', onclick: () => playerStatPopup(p, slot, game) }),
+            /**
+              * 배지도 게임에 맞게 — 드래곤 방에서 "보유신발" 은 아무 뜻이 없다.
+              * ★ 결투는 금화를 걸고 하므로 **상대가 얼마를 들고 있는지**를 띄운다
+              *   (2026-08-27, 사용자 지정). `wallet` 은 방 기록에 실려 온다.
+              */
             game === 'dragon'
-              ? el('div.player-shoes', null, [
-                  el('span', dragonMod
-                    ? (dragonMod.dragonList()[p.dragon | 0]?.ko ?? '')
-                    : ''),
+              ? el('div.player-shoes.wallet-badge', null, [
+                  el('span', S.walletCoins(p.wallet ?? 0)),
                 ])
               : el('div.player-shoes', null, [
                   el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),

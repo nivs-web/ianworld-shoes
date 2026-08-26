@@ -60,8 +60,27 @@ export function openUserCard(p, opt = {}) {
   const close = () => dismiss();
   const me = currentUser()?.uid;
   const isMe = !!p.uid && p.uid === me;
-  const games = (p.multiWins ?? 0) + (p.multiLosses ?? 0);
+  /**
+   * ★★ **드래곤 화면에서 연 카드는 드래곤 것을 보여준다.** (2026-08-27, 사용자 지적)
+   *
+   * *"제발 이건 신발을 찾아서가 아니야, 착각하지마, 신발을 찾아서를 참고만 하라고 했지
+   *   링크를 그걸로 걸어버리면 진짜 난해하다"*
+   *
+   * `game:'dragon'` 은 부르는 쪽에서 이미 넘기고 있었는데 **이 함수가 안 봤다.**
+   * 그래서 드래곤 순위표에서 아이디를 눌러도 신발 캐릭터 얼굴과
+   * `보유신발 0켤레` 가 떴다. 같은 부품을 쓰는 것은 맞지만
+   * **입는 옷은 게임마다 달라야 한다.**
+   *
+   * 드래곤 카드에 뜨는 것: 드래곤 얼굴 / 드래곤 이름 / **보유중인 금화** /
+   * 최고 스테이지 / 결투 전적.
+   */
+  const isDragon = opt.game === 'dragon';
+  const games = isDragon
+    ? (p.dragonMultiWins ?? 0) + (p.dragonMultiLosses ?? 0)
+    : (p.multiWins ?? 0) + (p.multiLosses ?? 0);
   const ch = characterById(p.characterId);
+  /** 드래곤 그림은 게임 모듈에 있다 — 신발 화면에서는 안 받는다 */
+  let dragonMod = null;
 
   /**
    * 상태 줄은 **자리를 먼저 잡아 두고** 값이 오면 글자만 바꾼다.
@@ -78,9 +97,29 @@ export function openUserCard(p, opt = {}) {
   const row = el('div.row.user-card-actions');
   const face = el('div.player-card-face',
     { style: { '--slot': SLOT_COLORS[opt.slot ?? 0] ?? SLOT_COLORS[0] } },
-    ch ? [el('img', { src: characterSprite(ch.id, 'front'), alt: ch.ko })] : []);
-  const charLine = el('div.player-card-char', ch ? ch.ko : '');
-  const statLine = el('div.dialog-detail', S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0));
+    (!isDragon && ch) ? [el('img', { src: characterSprite(ch.id, 'front'), alt: ch.ko })] : []);
+  const charLine = el('div.player-card-char', (!isDragon && ch) ? ch.ko : '');
+  /* 금화는 한 줄을 통째로 준다 — 결투에서 제일 먼저 보는 숫자다 */
+  const coinLine = isDragon ? el('div.dialog-detail.wallet-line', S.walletCoins(p.dragonCoins ?? 0)) : null;
+  const statLine = el('div.dialog-detail', isDragon
+    ? S.dragonCardStat(p.dragonBestStage ?? 0, p.dragonMultiWins ?? 0, p.dragonMultiLosses ?? 0)
+    : S.playerStatPopup(p.multiWins ?? 0, games, p.shoesOwned ?? 0));
+
+  /** 드래곤 얼굴과 이름을 지금 아는 값으로 다시 칠한다 */
+  function paintDragon(v) {
+    if (!isDragon || !dragonMod) return;
+    const idx = v.dragonCharacter | 0;
+    face.textContent = '';
+    const art = dragonMod.dragonPortrait(idx, 3);
+    if (art) face.append(art);
+    charLine.textContent = dragonMod.dragonList()[idx]?.ko ?? '';
+  }
+  if (isDragon) {
+    import('./DragonGame.js')
+      .then((m) => m.loadDragon())
+      .then((m) => { dragonMod = m; paintDragon(p); })
+      .catch(() => {});   // 못 받아도 이름·금화·전적은 나온다
+  }
 
   /**
    * ★ **아이디를 눌렀다는 건 대개 말을 걸려는 것이다.** (2026-08-19 19차, 사용자 지정)
@@ -101,6 +140,7 @@ export function openUserCard(p, opt = {}) {
       face,
       el('div.dialog-msg', p.nickname || '???'),
       charLine,
+      coinLine,
       statLine,
       statusLine,
       loginLine,
@@ -121,10 +161,17 @@ export function openUserCard(p, opt = {}) {
   if (opt.load) {
     opt.load.then((full) => {
       if (!full) return;
-      const g = (full.multiWins ?? 0) + (full.multiLosses ?? 0);
-      statLine.textContent = S.playerStatPopup(full.multiWins ?? 0, g, full.shoesOwned ?? 0);
       if (full.lastLoginAt) lastLoginAt = full.lastLoginAt;
       paintLogin();
+      if (isDragon) {
+        if (coinLine) coinLine.textContent = S.walletCoins(full.dragonCoins ?? 0);
+        statLine.textContent = S.dragonCardStat(
+          full.dragonBestStage ?? 0, full.dragonMultiWins ?? 0, full.dragonMultiLosses ?? 0);
+        paintDragon(full);
+        return;
+      }
+      const g = (full.multiWins ?? 0) + (full.multiLosses ?? 0);
+      statLine.textContent = S.playerStatPopup(full.multiWins ?? 0, g, full.shoesOwned ?? 0);
       const c = characterById(full.characterId);
       if (c) {
         charLine.textContent = c.ko;
