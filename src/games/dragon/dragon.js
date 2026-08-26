@@ -3365,6 +3365,138 @@ const BOSS_AFTER_MID = 4;       // 중간보스 전멸 후 최종보스까지의
 const BOSS_ADD_INTERVAL = 5.5;  // 보스전 중 잡몹 보충 주기
 const TWIN_MID_STAGE = 10;      // 이 스테이지를 넘으면 중간보스가 2마리
 
+/**
+ * 적 대형. (2026-08-26, 사용자 지정)
+ *
+ * 예전에는 늘 격자였다 — 열을 세워 놓고 세로로 흩뿌리는 것 하나뿐이라,
+ * 몇 마리가 오든 "또 그 줄" 이었다. 대형이 보이면 등장 자체가 볼거리가 된다.
+ *
+ * 각 대형은 **마리 수 n 을 받아 (dx, dy) 목록**을 돌려준다.
+ *   dx : 오른쪽으로 얼마나 뒤에서 오는가 (0 이 맨 앞)
+ *   dy : 대형 중심에서 위아래로 얼마나
+ * 자리만 정하고 그리기·움직임은 건드리지 않는다 — 대형을 더 넣는 일이
+ * 함수 하나 적는 일이 되게 하려는 것이다.
+ */
+const FORM_GAP = 92;          // 앞뒤 간격
+const FORM_ROW = 62;          // 위아래 간격
+
+/**
+ * 다각형 둘레를 따라 n 마리를 **고르게** 세운다.
+ *
+ * 각도를 균등하게 나누면 뾰족한 대형(마름모·별)이 뭉개진다 — 꼭짓점 근처가 촘촘하고
+ * 변 가운데가 비기 때문이다. 둘레 길이를 재서 나누면 어떤 모양이든 형태가 살아난다.
+ */
+function polyRing(pts, n) {
+  const m = pts.length;
+  const seg = [], len = [];
+  let total = 0;
+  for (let i = 0; i < m; i++) {
+    const a = pts[i], b = pts[(i + 1) % m];
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    seg.push([a, b]); len.push(d); total += d;
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    let want = (i / n) * total;
+    for (let k = 0; k < m; k++) {
+      if (want > len[k] && k < m - 1) { want -= len[k]; continue; }
+      const [a, b] = seg[k];
+      const t = len[k] > 0 ? want / len[k] : 0;
+      out.push({ dx: a.x + (b.x - a.x) * t, dy: a.y + (b.y - a.y) * t });
+      break;
+    }
+  }
+  return out;
+}
+
+const FORMATIONS = [
+  {
+    /** 학익진 — 가운데가 앞서고 양 날개가 뒤로 감싼다 */
+    ko: '학익진',
+    at(n) {
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const k = i - (n - 1) / 2;                 // 가운데가 0
+        out.push({ dx: Math.abs(k) * FORM_GAP * 0.72, dy: k * FORM_ROW });
+      }
+      return out;
+    },
+  },
+  {
+    /** 쐐기 — 하나가 앞장서고 뒤로 넓어진다 (독수리) */
+    ko: '독수리',
+    at(n) {
+      const out = [{ dx: 0, dy: 0 }];
+      for (let i = 1; i < n; i++) {
+        const rank = Math.ceil(i / 2), side = (i % 2 === 1) ? -1 : 1;
+        out.push({ dx: rank * FORM_GAP * 0.8, dy: side * rank * FORM_ROW * 0.9 });
+      }
+      return out;
+    },
+  },
+  {
+    /** 마름모 — 앞뒤로 뾰족하고 가운데가 넓다 */
+    ko: '다이아몬드',
+    at(n) {
+      const w = Math.max(2, n / 4) * FORM_ROW;        // 위아래 반지름
+      const d = Math.max(2.2, n / 4) * FORM_GAP;      // 앞뒤 반지름
+      return polyRing([{ x: 0, y: 0 }, { x: d, y: -w }, { x: d * 2, y: 0 }, { x: d, y: w }], n);
+    },
+  },
+  {
+    /** 원형 — 둥글게 뭉쳐서 굴러 들어온다 */
+    ko: '원형',
+    at(n) {
+      const out = [];
+      const r = Math.max(1.2, n / 5) * FORM_ROW;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        out.push({ dx: FORM_GAP + Math.cos(a) * r * 1.5, dy: Math.sin(a) * r });
+      }
+      return out;
+    },
+  },
+  {
+    /** 별 — 뾰족한 다섯 갈래. 꼭짓점 열 개(바깥 5, 안쪽 5)를 이은 선 위에 세운다 */
+    ko: '별',
+    at(n) {
+      const R = Math.max(2, n / 4) * FORM_ROW;        // 바깥 반지름
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i / 10) * Math.PI * 2;
+        const rr = (i % 2 === 0) ? R : R * 0.42;      // 번갈아 길게/짧게 = 별
+        pts.push({ x: Math.cos(a) * rr * 1.5, y: Math.sin(a) * rr });
+      }
+      return polyRing(pts, n);
+    },
+  },
+  {
+    /** 세로 벽 — 한 줄로 길게 서서 밀고 들어온다 */
+    ko: '장벽',
+    at(n) {
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const k = i - (n - 1) / 2;
+        out.push({ dx: (i % 2) * FORM_GAP * 0.35, dy: k * FORM_ROW * 0.95 });
+      }
+      return out;
+    },
+  },
+  {
+    /** 예전의 그 격자 — 없애지 않는다. 늘 특별한 대형만 오면 특별하지 않다 */
+    ko: '무리',
+    at(n) {
+      const out = [];
+      const perCol = Math.max(1, Math.ceil(n / Math.ceil(n / 6)));
+      for (let i = 0; i < n; i++) {
+        const col = (i / perCol) | 0, row = i % perCol;
+        out.push({ dx: col * 96 + (row % 2) * 34, dy: (row - perCol / 2) * 58 + (col % 2) * 29 });
+      }
+      return out;
+    },
+  },
+];
+
 class Director {
   constructor(scene, stage, duel){
     this.s = scene; this.stage = stage || 1;
@@ -3450,24 +3582,34 @@ class Director {
     const from = diagonal ? (Math.random() < 0.5 ? -1 : 1) : 0;
     const y0 = from === 0 ? 150 + Math.random()*380
              : (from < 0 ? -70 - Math.random()*90 : GAME_H + 70 + Math.random()*90);
-    const perCol = Math.max(1, Math.ceil(n / Math.ceil(n/6)));
-    for(let i=0;i<n;i++){
-      const col = (i / perCol) | 0, row = i % perCol;
-      const x = GAME_W + 80 + col*96 + (row%2)*34;
+    /**
+     * ★ **대형을 짜서 들어온다.** (2026-08-26, 사용자 지정)
+     * 세 마리 이하는 대형이라고 할 게 없으므로 그냥 무리로 온다 —
+     * 두 마리로 학익진을 짜 봐야 그냥 두 마리다.
+     */
+    const F = n >= 4
+      ? FORMATIONS[(Math.random() * FORMATIONS.length) | 0]
+      : FORMATIONS[FORMATIONS.length - 1];
+    const spots = F.at(n);
+
+    /* 이름이 뜨는 건 정면으로 밀고 들어오는 큰 대형일 때만 —
+       위아래에서 파고드는 건 대형이 눈에 안 보이고, 매번 뜨면 시끄럽다 */
+    if(from === 0 && n >= 6 && F.ko !== '무리') s.noteFormation(F.ko);
+
+    const make = (x, y) => kind === 'zombie' ? new WingZombie(x, y, 160 + Math.random()*70)
+                         : kind === 'rider'  ? new DragonRider(x, y)
+                         :                     new HeavyRider(x, y);
+
+    for(let i=0;i<spots.length;i++){
+      const sp = spots[i];
+      const x = GAME_W + 80 + sp.dx;
       let e;
       if(from === 0){
-        const y = clamp(y0 + (row - perCol/2)*58 + (col%2)*29, 110, 610);
-        if(kind === 'zombie')     e = new WingZombie(x, y, 160 + Math.random()*70);
-        else if(kind === 'rider') e = new DragonRider(x, y);
-        else                      e = new HeavyRider(x, y);
+        e = make(x, clamp(y0 + sp.dy, 110, 610));
       }else{
         // 화면 밖 위/아래에서 비스듬히 들어와 플레이 구역으로 자리잡는다
-        const y  = y0 + (row - perCol/2)*46 + col*30*from;
-        const ty = clamp(140 + Math.random()*440, 120, 600);
-        if(kind === 'zombie')     e = new WingZombie(x, y, 160 + Math.random()*70);
-        else if(kind === 'rider') e = new DragonRider(x, y);
-        else                      e = new HeavyRider(x, y);
-        e.diveTo = ty;                    // 목표 높이까지 대각선으로 파고든다
+        e = make(x, y0 + sp.dy*0.8 + sp.dx*0.3*from);
+        e.diveTo = clamp(140 + Math.random()*440, 120, 600);
         e.diveV  = (from < 0 ? 1 : -1) * (110 + Math.random()*70);
       }
       s.enemies.push(e);
@@ -4614,6 +4756,7 @@ class GameScene extends Scene {
      *   손가락 밑으로 순간이동하지 않고 **잡은 그 자세 그대로** 따라온다.
      */
     this.dragId = null; this.dragOff = { x:0, y:0 }; this.dragT = 0;
+    this.formName = ''; this.formT = 0;   // 방금 나온 적 대형 이름
 
     this.director = new Director(this, this.stage, this.duel);
     if(this.duel) for(const p of this.allPlayers()) p.lives = DUEL.LIVES;
@@ -5125,6 +5268,7 @@ class GameScene extends Scene {
     // ---- 웨이브 / 아이템 ----
     this.director.update(dt);
     if(this.bossBannerT > 0) this.bossBannerT -= dt;
+    if(this.formT > 0) this.formT -= dt;
     if(this.pickupT > 0) this.pickupT -= dt;
     // ---- 정해진 개수만큼만 투하한다 ----
     const KIND = { missile:ITEM_KIND.MISSILE, apple:ITEM_KIND.APPLE, bomb:ITEM_KIND.BOMB };
@@ -5512,6 +5656,16 @@ class GameScene extends Scene {
     return true;
   }
 
+  /**
+   * 대형 이름을 잠깐 띄운다. (2026-08-26, 사용자 지정)
+   * "우와 좀비들의 등장하는 대형 봐봐" 가 나오려면 **그게 대형이라는 걸 알아야** 한다.
+   * 같은 이름이 연달아 뜨면 잔소리가 되므로 직전과 같으면 안 띄운다.
+   */
+  noteFormation(name){
+    if(this.formName === name && this.formT > 0) return;
+    this.formName = name; this.formT = 1.8;
+  }
+
   /** 모은 금화 — 동전 그림 + 개수 */
   drawCoinCounter(ctx){
     /* 2P 가 붙으면 1P 정보창이 오른쪽으로 가므로 금화도 같이 간다 */
@@ -5622,6 +5776,15 @@ class GameScene extends Scene {
       ctx.globalAlpha = 0.42 * k;
       drawPixelRing(ctx, p.x, p.y, r, PX*2, '#9fd8ff');
       ctx.globalAlpha = 1;
+    }
+
+    /* 방금 짜고 들어온 대형 이름 — 화면 오른쪽 위, 조용히 떴다 사라진다 */
+    if(this.formT > 0 && this.formName){
+      const pa = ctx.globalAlpha;
+      ctx.globalAlpha = pa * Math.min(1, this.formT / 0.5) * 0.85;
+      ko(ctx, this.formName + ' 대형', GAME_W - 30, 110, 3,
+        { align:'right', color:'#9fe8ff', outline:PAL.outline });
+      ctx.globalAlpha = pa;
     }
 
     /**
