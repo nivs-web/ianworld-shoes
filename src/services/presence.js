@@ -133,6 +133,8 @@ function waitConnected(fb, ms = 6000) {
 
 /** 지금 내 상태 — 'lobby'(대기중) 또는 'playing'(게임중) */
 let myState = 'lobby';
+/** 인게임이면 어느 게임인지 ('shoes' | 'dragon'), 로비면 빈 값 */
+let myGame = '';
 let started = false;
 let stopConn = null;
 let startTimer = null;
@@ -152,6 +154,14 @@ function myCard() {
     multiWins: p.multiWins ?? 0,
     multiLosses: p.multiLosses ?? 0,
     state: myState,
+    /**
+     * ★ **지금 어느 게임을 하고 있는가.** (2026-08-26 F단계, 사용자 지정)
+     *
+     * 오락실에 게임이 둘이 되면서 "접속 중" 만으로는 부족해졌다 —
+     * 드래곤 대결을 신청하려는데 상대가 신발게임 중이면 그걸 알고 눌러야 한다.
+     * 로비에 있으면 빈 값이다 (아무 게임도 안 하는 중).
+     */
+    game: myGame,
     at: Date.now(),
   };
 }
@@ -319,10 +329,16 @@ export function startLater(after, delay = START_DELAY_MS) {
  * 보낼 수 없다(팝업을 띄울 화면이 없다). 대기방도 'playing' 으로 둔다 — 이미 한 방에
  * 앉아 있는 사람이 다른 방 초대를 수락하면 앞 방에 유령으로 남는다.
  */
-export function setState(state) {
+/**
+ * @param {'playing'|'lobby'} state
+ * @param {'shoes'|'dragon'} [game] 인게임일 때 어느 게임인지
+ */
+export function setState(state, game) {
   const next = state === 'playing' ? 'playing' : 'lobby';
-  if (next === myState) return;
+  const nextGame = next === 'playing' ? (game || myGame || 'shoes') : '';
+  if (next === myState && nextGame === myGame) return;
   myState = next;
+  myGame = nextGame;
   if (!started) return;
   rt().then((fb) => {
     if (!fb) return;
@@ -330,7 +346,7 @@ export function setState(state) {
     markActive();
     lastWriteAt = Date.now();
     return withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(PRESENCE, fb.uid)),
-      { state: myState, at: Date.now(), lastActive: fb.dbMod.serverTimestamp() }),
+      { state: myState, game: myGame, at: Date.now(), lastActive: fb.dbMod.serverTimestamp() }),
       undefined, '상태 갱신');
   }).catch(() => {});
 }
@@ -594,7 +610,14 @@ export async function push(toUid, body, toName = '') {
 }
 
 export const sendMessage = (toUid, text, toName) => push(toUid, { kind: 'msg', text }, toName);
-export const sendChallenge = (toUid, code) => push(toUid, { kind: 'challenge', code });
+/**
+ * 대결 신청.
+ * ★ `game` 을 같이 보낸다 — 받는 쪽이 **어느 게임의 대결인지** 알아야
+ * "드래곤 스트라이커에서 대결 신청이 왔습니다" 라고 말할 수 있다.
+ * 없으면 신발게임이다 (이 표식 전에 보낸 신청들이 그렇다).
+ */
+export const sendChallenge = (toUid, code, game = 'shoes') =>
+  push(toUid, { kind: 'challenge', code, game });
 export const sendSystem = (toUid, text) => push(toUid, { kind: 'system', text });
 
 /**

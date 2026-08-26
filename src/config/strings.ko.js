@@ -271,6 +271,20 @@ export const S = {
   /** 명예의 전당을 둘로 나눴다 — 겨루는 것이 서로 다르다 */
   dragonRankScore: '점수순위',
   dragonRankCoin: '금화순위',
+  /* ── 드래곤 결투 (F단계) ── */
+  duelTitle: '드래곤 결투',
+  duelStakeHint: (n) => `금화 ${n.toLocaleString('en-US')}개를 걸고, 이긴 사람이 전부 가져갑니다`,
+  duelNeedCoins: (n) => `결투에는 금화 ${n.toLocaleString('en-US')}개가 필요합니다`,
+  duelNeedCoinsHow: '싱글게임으로 금화를 모은 뒤에 다시 오세요',
+  duelWaiting: '상대가 끝나기를 기다리는 중…',
+  duelWon: '이겼습니다',
+  duelLost: '졌습니다',
+  duelPrize: (n) => `금화 +${n.toLocaleString('en-US')}`,
+  duelPenalty: (n) => `금화 -${n.toLocaleString('en-US')}`,
+  duelPrizeHow: '판돈과 두 사람이 판에서 주운 금화를 모두 가져갔습니다',
+  duelPenaltyHow: '건 금화와 이번 판에서 주운 금화가 상대에게 갔습니다',
+  duelBossCount: (n) => `보스 ${n}`,
+  duelAgain: '한 판 더',
   dragonRankAllScore: '계정에 남은 최고점수 — 난이도 구분 없이 한 줄씩',
   dragonRankAllCoin: '지금까지 주운 금화를 모두 더한 값 — 절대로 줄지 않습니다',
   dragonMultiRecord: (w, g) => `멀티게임 ${w}승 ${g}게임`,
@@ -613,6 +627,11 @@ export const S = {
    */
   cantChallengeNow: '게임중 상태에선 메세지를 보낼 수 없습니다',
   challengeSent: '대결 신청을 보냈습니다',
+  /* ★ 오락실에 게임이 둘이라 대결 신청에 **어느 게임인지**를 밝힌다 (2026-08-26) */
+  challengeGameTag: (g) => `${g} 대결`,
+  challengeBusyOther: (name, g) => `상대방은 ${g} 게임을 하고 있습니다.
+그래도 대결신청 하시겠습니까?`,
+  challengeFromGame: (g) => `${g} 게임에서 대결 신청이 왜습니다`,
   challengeWaiting: '상대의 응답을 기다리는 중입니다',
   challengeAsk: '대결 신청이 들어왔습니다. 참여하시겠습니까?',
   challengeAccept: (sec) => `수락(${sec})`,

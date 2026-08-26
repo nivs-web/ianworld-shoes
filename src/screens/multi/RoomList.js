@@ -22,13 +22,14 @@ import * as Room from '../../services/multiplayer.js';
 import WaitingRoom from './WaitingRoom.js';
 import Lobby from '../Lobby.js';
 
-export default function RoomList(nav) {
+export default function RoomList(nav, params = {}) {
+  const game = params.game === 'dragon' ? 'dragon' : 'shoes';
   let rooms = null;      // null = 아직 못 받음
   let busy = false;
   let gone = false;
 
   async function load() {
-    const list = await Room.listRooms().catch(() => []);
+    const list = await Room.listRooms(game).catch(() => []);
     if (gone) return;
     rooms = list;
     nav.refresh();
@@ -39,14 +40,14 @@ export default function RoomList(nav) {
     if (busy) return;
     busy = true;
     nav.refresh();
-    const r = await Room.joinRoom(code).catch(() => 'error');
+    const r = await Room.joinRoom(code, null, game).catch(() => 'error');
     busy = false;
     if (gone) return;
-    if (r === 'ok') return nav.replace(WaitingRoom, { code });
+    if (r === 'ok') return nav.replace(WaitingRoom, { code, game });
     if (r === 'waiting') {
       // 게임 중인 방 — 들어가긴 했고 다음 판부터 함께한다
       toast(S.roomJoinedAsWaiter, 2600);
-      return nav.replace(WaitingRoom, { code });
+      return nav.replace(WaitingRoom, { code, game });
     }
     toast({ full: S.roomFull, notfound: S.roomNotFound, started: S.roomAlreadyStarted , wronggame: S.roomWrongGame }[r] ?? S.networkError);
     load();   // 목록이 낡았을 것이다 — 다시 받는다

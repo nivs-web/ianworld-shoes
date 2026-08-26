@@ -2498,3 +2498,21 @@
  * 신발 쪽은 그대로 두고 드래곤 칸만 78 → 94px (=20%) 로 넓힌다.
  */
 .char-cell.dg { width: 94px; }
+
+/* 결투 결과 — 이겼는지 졌는지가 한눈에 보여야 한다 */
+.duel-prize {
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  padding: 8px 0;
+}
+.duel-prize.win  { color: var(--c-accent); }
+.duel-prize.lose { color: #7a6a80; }
+/* 순위 줄의 보스 수 칸 — 고정폭이라 이름 길이와 무관하게 세로로 줄이 맞는다 */
+.duel-cell {
+  flex: 0 0 auto;
+  width: 56px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--c-panel-dark);
+}

@@ -22,6 +22,7 @@ const DragonShop = lazyScreen(() => import('./DragonShop.js'), S.dragonShopTitle
 const DragonItems = lazyScreen(() => import('./DragonItems.js'), S.dragonItemTitle);
 const DragonSettings = lazyScreen(() => import('./DragonSettings.js'), S.dragonMenuSettings);
 const DragonRanking = lazyScreen(() => import('./DragonRanking.js'), S.dragonRankScore);
+const DragonMultiMenu = lazyScreen(() => import('./multi/DragonMultiMenu.js'), S.duelTitle);
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -179,7 +180,7 @@ export default function DragonLobby(nav) {
         /* 시작 버튼은 맨 아래 — 오락실 기계의 큰 버튼 자리다 */
         el('div.row', null, [
           button(S.playSingle, () => nav.push(DragonGame, { mode: 'play' }), { primary: true }),
-          soon(S.playMulti),
+          button(S.playMulti, () => nav.push(DragonMultiMenu)),
         ]),
 
         el('div.spacer'),

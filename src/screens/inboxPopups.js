@@ -180,6 +180,9 @@ function showMessage(item, done) {
  * 화면이 바뀌어 팝업이 강제로 닫히면 **거절로 본다** — 신청자를 무한정 기다리게 두느니
  * 거절 통보라도 가는 편이 낫다.
  */
+/** 저장되는 값은 영문 열쇠고, 화면에 나가는 것은 게임 제목이다 */
+const GAME_KO = { shoes: '신발을 찾아서', dragon: '드래곤 스트라이커' };
+
 function showChallenge(item, done) {
   let settled = false;
   let picked = false;
@@ -210,6 +213,12 @@ function showChallenge(item, done) {
     el('div.dialog', null, [
       el('div.dialog-msg', S.messageFrom(item.fromName || '???')),
       el('div.inbox-when', stamp(item.at)),
+      /**
+       * ★ **어느 게임의 대결인지 먼저 말한다.** (2026-08-26, 사용자 지정)
+       * 오락실에 게임이 둘이라 "대결 신청" 만으로는 무엇을 수락하는지 모른다 —
+       * 신발게임 중인 사람에게 드래곤 대결이 올 수도 있다.
+       */
+      el('div.dialog-game', S.challengeFromGame(GAME_KO[item.game] ?? GAME_KO.shoes)),
       el('div.dialog-detail', S.challengeAsk),
       el('div.row', null, [
         button(S.challengeDecline, () => choose(false), { sfx: 'sfx_menu_back' }),

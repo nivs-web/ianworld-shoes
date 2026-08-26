@@ -25,6 +25,7 @@ import { setGameGuard } from './router.js';
 import { stopLoop, startLoop, isRunning } from '../core/loop.js';
 import * as Scene from '../core/scene.js';
 import * as Presence from '../services/presence.js';
+import * as Room from '../services/multiplayer.js';
 
 /**
  * ★ **게임 코드는 누를 때 받는다.** 신발게임만 하는 사람에게 드래곤 본체를
@@ -68,6 +69,12 @@ export function dragonFigure(idx) {
  */
 export default function DragonGame(nav, opt = {}) {
   const mode = opt.mode || 'play';
+  /**
+   * ★ **결투면 방 코드가 온다.** (2026-08-26 F단계)
+   * 코드가 있으면 1초마다 진행도를 방에 올리고, 끝나면 결과 화면으로 간다.
+   * 없으면 지금까지처럼 혼자 하는 판이라 오락실 기록에만 남는다.
+   */
+  const duelCode = mode === 'duel' ? (opt.code || null) : null;
   let live = true;
   /** 오락실 루프를 우리가 멈췄는가 — 나갈 때 그대로 되돌려야 한다 */
   let stoppedArcadeLoop = false;
@@ -105,7 +112,7 @@ export default function DragonGame(nav, opt = {}) {
          */
         if (isRunning()) { stopLoop(); stoppedArcadeLoop = true; }
         /* 접속자 목록에 '게임 중' 으로 뜨게 한다 (신발게임의 toCanvas 와 같은 자리) */
-        Presence.setState('playing');
+        Presence.setState('playing', 'dragon');
         /* ESC · 안드로이드 뒤로가기를 게임이 먼저 받는다 — 곧바로 나가지 않고 일시정지 */
         setGameGuard(() => m.requestPause());
         m.mount(host, {
@@ -121,10 +128,30 @@ export default function DragonGame(nav, opt = {}) {
             owned: Array.from({ length: 10 }, (_, i) => i).filter(hasDragon),
           }),
 
+          /**
+           * 결투 중 1초마다 — 상대 화면의 숫자가 이걸로 움직인다.
+           * 혼자 하는 판에서는 아무 데도 안 간다.
+           */
+          onProgress(r) {
+            if (!live || !duelCode) return;
+            Room.publishDuelProgress(duelCode, r).catch(() => {});
+          },
+
           /** 한 판 끝 */
           onFinish(r) {
             if (settled) return;
             settled = true;
+            if (duelCode) {
+              /**
+               * ★ **결투 기록은 싱글 기록에 안 섞는다.**
+               * 어려움 고정에 300초짜리라 최고점수·최고 스테이지 눈금이 다르다 —
+               * 섞으면 싱글 순위표가 결투 점수로 오염된다.
+               * 금화도 여기서 안 넣는다: 결투의 금화는 **이긴 사람이 다 가져가므로**
+               * 정산(`dragonSettle`)이 끝나고 나서야 주인이 정해진다.
+               */
+              Room.publishDuelProgress(duelCode, r, true).catch(() => {});
+              return;
+            }
             const { isBest } = finishDragonRun(r);
             if (isBest) toast(S.dragonNewBest(Math.round(Number(r.score) || 0)), 2600);
           },
@@ -132,8 +159,17 @@ export default function DragonGame(nav, opt = {}) {
           /** 게임 안에서 드래곤을 바꿨다 — 로비 카드에도 같은 것이 보여야 한다 */
           onCharacter(i) { setDragonCharacter(i); },
 
-          /** 로비로 */
-          onExit() { if (live) nav.back(); },
+          /** 로비로 (결투면 결과 화면으로) */
+          onExit() {
+            if (!live) return;
+            if (duelCode) {
+              import('./multi/DuelResult.js')
+                .then((r) => nav.replace(r.default, { code: duelCode }))
+                .catch(() => nav.back());
+              return;
+            }
+            nav.back();
+          },
         });
       }).catch((e) => {
         console.warn('[dragon] 게임을 받지 못했다', e);

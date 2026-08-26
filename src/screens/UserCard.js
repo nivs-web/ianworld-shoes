@@ -17,7 +17,7 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, presentOverlay, toast } from './ui.js';
+import { el, button, presentOverlay, toast, confirmDialog } from './ui.js';
 import { characterById, characterSprite } from '../data/characters.js';
 import { SLOT_COLORS } from '../game/palette.js';
 import { currentUser } from '../services/auth.js';
@@ -242,9 +242,31 @@ export function openUserCard(p, opt = {}) {
  * 방을 먼저 파면 **신청자는 곧장 그 방 대기실로 들어가** 기다린다 — 상대가 거절해도
  * 그냥 평범한 비밀방 하나가 남을 뿐이다.
  */
-export async function startChallenge(p, nav) {
+/**
+ * @param {object} p 상대 카드
+ * @param {object} nav
+ * @param {'shoes'|'dragon'} [game] 어느 게임의 대결인가
+ */
+const GAME_KO = { shoes: '신발을 찾아서', dragon: '드래곤 스트라이커' };
+
+export async function startChallenge(p, nav, game = 'shoes') {
   const prof = getProfile();
-  const code = await Room.createRoom({ isPrivate: true, difficulty: prof.difficulty }).catch(() => null);
+
+  /**
+   * ★ **상대가 다른 게임 중이면 한 번 되묻는다.** (2026-08-26, 사용자 지정)
+   * 신발게임을 하고 있는 사람에게 드래곤 대결을 걸면 그 사람은 하던 판을
+   * 접고 와야 한다 — 걸기 전에 알고 걸어야 한다.
+   */
+  const theirGame = p.game || '';
+  if (theirGame && theirGame !== game) {
+    const go = await confirmDialog({
+      message: S.challengeBusyOther(p.nickname || '???', GAME_KO[theirGame] ?? theirGame),
+      yes: S.yes, no: S.no,
+    });
+    if (!go) return;
+  }
+
+  const code = await Room.createRoom({ isPrivate: true, difficulty: prof.difficulty, game }).catch(() => null);
   if (!code) return toast(S.networkError, 2000);
 
   /**
@@ -256,7 +278,7 @@ export async function startChallenge(p, nav) {
    * **"대결 신청을 보냈습니다"** 가 뜨고 신청자는 아무도 안 오는 빈 방에서 기다렸다 —
    * 사용자가 말한 "대결신청이 안된다"가 정확히 이 그림이다.
    */
-  const r = await Presence.sendChallenge(p.uid, code);
+  const r = await Presence.sendChallenge(p.uid, code, game);
   if (r !== 'ok') {
     /**
      * 신청이 못 갔으면 **방을 남기지 않는다.** 빈 방은 자동 매칭이 훑는 12칸을

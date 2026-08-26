@@ -57,6 +57,12 @@ const DIFFS = [
 ];
 
 export default function WaitingRoom(nav, params = {}) {
+  /**
+   * ★ **어느 게임의 방인가.** (2026-08-26 F단계)
+   * 대기방 화면은 두 게임이 그대로 나눠 쓴다 — 사람이 모이고 레디를 누르는 일은
+   * 게임이 달라도 똑같기 때문이다. 갈리는 것은 **시작할 때 어느 다리로 가느냐** 뿐이다.
+   */
+  const game = params.game === 'dragon' ? 'dragon' : 'shoes';
   const code = params.code;
   /**
    * ★ 대기방은 **'게임중'** 으로 표시한다. (2026-08-19 11차)
@@ -202,7 +208,10 @@ export default function WaitingRoom(nav, params = {}) {
        * **대기방이 그대로 얼어붙었다.** 게다가 `launched` 가 참이라 나갈 때
        * 방에서 빠지지도 않아 남들의 판까지 30초 붙잡는다.
        */
-      startMultiGame(nav, { code, room: r }).catch((e) => {
+      const bridge = game === 'dragon'
+        ? import('../startDuel.js').then((m) => m.startDuel(nav, { code, room: r }))
+        : startMultiGame(nav, { code, room: r });
+      bridge.catch((e) => {
         console.warn('[multi] 판 시작 실패', e);
         launched = false;
         toast(S.networkError, 2400);

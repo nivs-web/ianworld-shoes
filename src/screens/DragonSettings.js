@@ -22,6 +22,14 @@ import { lazyScreen } from './lazyScreen.js';
 const DragonKeys = lazyScreen(() => import('./DragonKeys.js'), S.dragonMenuControls);
 const DragonSound = lazyScreen(() => import('./DragonSound.js'), S.dragonMenuSound);
 const DragonNickname = lazyScreen(() => import('./DragonNickname.js'), S.dragonRename);
+/**
+ * ★ **쪽지 기능은 오락실 공용이다.** (2026-08-26, 사용자 지정)
+ * 신발게임에 이미 다 만들어 둔 것을 그대로 쓴다 — 계정이 하나니 쪽지함도 하나다.
+ * 두 게임이 각자 쪽지함을 가지면 어디로 온 쪽지인지 사람이 외워야 한다.
+ */
+const Inbox = lazyScreen(() => import('./Inbox.js'), S.menuInbox);
+const MessageSettings = lazyScreen(() => import('./MessageSettings.js'), S.menuMsgAccept);
+const OnlineUsers = lazyScreen(() => import('./multi/OnlineUsers.js'), S.onlineUsers);
 
 export default function DragonSettings(nav) {
   return {
@@ -34,6 +42,11 @@ export default function DragonSettings(nav) {
         button(S.dragonMenuControls, () => nav.push(DragonKeys)),
         button(S.dragonMenuSound, () => nav.push(DragonSound)),
         button(S.dragonRename, () => nav.push(DragonNickname)),
+
+        /* 오락실 공용 — 신발게임 설정과 같은 것을 부른다 */
+        button(S.menuInbox, () => nav.push(Inbox)),
+        button(S.menuMsgAccept, () => nav.push(MessageSettings)),
+        button(S.onlineUsers, () => nav.push(OnlineUsers, { game: 'dragon' })),
 
         el('div.spacer'),
         backButton(S.backToGameLobby, () => nav.back())

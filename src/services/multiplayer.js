@@ -993,6 +993,33 @@ export async function publishProgress(code, { stairs, shoesFound, alive = true }
 }
 
 /**
+ * 결투 진행도. 신발의 `publishProgress` 와 **다른 필드**를 쓴다 —
+ * 계단·신발이 아니라 보스 수·점수·금화가 승부를 가른다.
+ *
+ * 1초에 한 번을 넘지 않게 눌러 둔다. 300초 한 판에 두 사람이면 600쓰기 —
+ * 무료 한도(RTDB) 안에서 넉넉하다.
+ */
+let lastDuelAt = 0;
+export async function publishDuelProgress(code, { score, coins, bosses, alive = true }, done = false) {
+  const t = Date.now();
+  if (!done && t - lastDuelAt < 900) return;
+  lastDuelAt = t;
+  const fb = await rt();
+  if (!fb) return;
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
+    score: score | 0, coins: coins | 0, bosses: bosses | 0, alive: !!alive,
+    /**
+     * ★ **끝났다는 것은 따로 못박는다.** (2026-08-26)
+     * 처음엔 결과 화면이 `timeLeft <= 0` 으로 판단했는데, 그 값을 **여기서 안 올려서**
+     * 언제나 `undefined|0 === 0` 이 되어 **판이 시작하자마자 정산됐다.**
+     * 없는 필드로 판단하면 늘 이런 식으로 조용히 틀린다 — 있는 것만 본다.
+     */
+    done: !!done,
+    seenAt: fb.dbMod.serverTimestamp(),
+  }), undefined, '결투 진행도').catch(() => {});
+}
+
+/**
  * ★ **살아 있다는 신호.** (2026-08-19)
  *
  * 진행도만으로는 부족하다 — 일시정지 중이거나 죽어서 부활을 고르는 동안에는

@@ -33,7 +33,7 @@ export function toCanvas() {
    * 캔버스로 넘어가면 DOM 팝업을 띄울 수 없으므로(§6-3) 대결 신청을 받을 수 없다.
    * 화면 하나하나가 각자 알리게 두면 언젠가 한 곳을 빠뜨린다 — 전환 지점은 여기 둘뿐이다.
    */
-  Presence.setState('playing');
+  Presence.setState('playing', 'shoes');
 }
 
 /**
