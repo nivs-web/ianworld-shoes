@@ -106,7 +106,24 @@ export default function DragonLobby(nav) {
        * 드래곤과 아이템은 게임 들어가기 전에 매번 들른다.
        */
       return screen(
-        el('div.dragon-title', S.dragonTitle),
+        /**
+         * ★ **제목 글씨 대신 로고 그림.** (2026-08-26, 사용자 제작)
+         *
+         * 원본이 1916x821 · 2MB 였다. 로비 폭이 400px 안팎이라 **정확히 1/4** 로
+         * 줄였다(479x205, 188KB). 정수배 + NEAREST 라 도트 격자가 4칸이 1칸으로
+         * 그대로 접힌다 — 어중간한 배율로 줄이면 도트가 번져서 픽셀아트가 아니게 된다.
+         * 팔레트로 더 줄여도 봤지만 은하수·무지개 테두리의 그라데이션이 뭉개져서
+         * (픽셀의 44%가 8단계 넘게 틀어졌다) 무손실로 남겼다.
+         *
+         * `alt` 에 제목을 남긴다 — 그림이 안 뜨는 상황에서도 무슨 게임인지는 보여야 한다.
+         */
+        el('img.dragon-logo', {
+          src: '/assets/dragon-logo.png',
+          alt: S.dragonTitle,
+          width: 479,
+          height: 205,
+          decoding: 'async',
+        }),
 
         /* ── 로비유저상태창 : 고른 드래곤 + 내 기록 + 딱지 ── */
         el('div.panel', null, [

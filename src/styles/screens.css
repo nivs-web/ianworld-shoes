@@ -2426,3 +2426,16 @@
   max-width: 100%;
   height: auto;
 }
+
+/* 드래곤 스트라이커 로고 — 제목 글씨를 대신한다.
+   도트 그림이라 늘릴 때도 보간을 끈다(`pixelated`). 흐릿해지면 픽셀아트가 아니게 된다. */
+.dragon-logo {
+  display: block;
+  width: 100%;
+  max-width: 479px;
+  height: auto;
+  margin: 0 auto 6px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 2px solid var(--c-line);
+}
