@@ -21,6 +21,9 @@ import { el, toast } from './ui.js';
 import { get as getProfile, finishDragonRun, setDragonCharacter } from '../services/profile.js';
 import { lockLandscape, unlockOrientation } from '../core/fullscreen.js';
 import { setGameGuard } from './router.js';
+import { stopLoop, startLoop, isRunning } from '../core/loop.js';
+import * as Scene from '../core/scene.js';
+import * as Presence from '../services/presence.js';
 
 /**
  * ★ **게임 코드는 누를 때 받는다.** 신발게임만 하는 사람에게 드래곤 본체를
@@ -45,6 +48,8 @@ export function prefetchDragon() {
 export default function DragonGame(nav, opt = {}) {
   const mode = opt.mode || 'play';
   let live = true;
+  /** 오락실 루프를 우리가 멈췄는가 — 나갈 때 그대로 되돌려야 한다 */
+  let stoppedArcadeLoop = false;
   /** 한 판은 한 번만 센다 — 결과가 두 번 와도 기록은 하나다 */
   let settled = false;
 
@@ -54,6 +59,12 @@ export default function DragonGame(nav, opt = {}) {
       setGameGuard(null);
       unlockOrientation();
       if (mod) mod.unmount();
+      Presence.setState('lobby');
+      /**
+       * 멈춰 뒀던 오락실 루프를 되살린다. 이게 없으면 로비로 돌아온 뒤
+       * 신발게임이 영영 안 돈다 — 화면은 DOM 이라 멀쩡해 보여서 늦게 발견된다.
+       */
+      if (stoppedArcadeLoop) { startLoop(Scene.updateCurrent, Scene.renderAll); stoppedArcadeLoop = false; }
     },
 
     render() {
@@ -63,6 +74,17 @@ export default function DragonGame(nav, opt = {}) {
       loadDragon().then((m) => {
         if (!live) return;                    // 받는 동안 화면을 떠났다
         lockLandscape();                      // 가로 게임 (전체화면은 오락실에서 이미 켰다)
+        /**
+         * ★ **오락실 루프를 멈춘다.** (2026-08-26)
+         *
+         * 드래곤은 제 rAF 루프를 돌린다. 그런데 오락실 루프도 계속 돌고 있어서
+         * **한 프레임에 rAF 체인이 둘** 이었다. 신발게임 씬 스택은 비어 있으니
+         * 그리는 건 없지만, 매 프레임 콜백·게임패드 폴링·고정 스텝 계산이
+         * 공짜로 도는 것은 아니다. 게임이 도는 동안에는 하나만 돌린다.
+         */
+        if (isRunning()) { stopLoop(); stoppedArcadeLoop = true; }
+        /* 접속자 목록에 '게임 중' 으로 뜨게 한다 (신발게임의 toCanvas 와 같은 자리) */
+        Presence.setState('playing');
         /* ESC · 안드로이드 뒤로가기를 게임이 먼저 받는다 — 곧바로 나가지 않고 일시정지 */
         setGameGuard(() => m.requestPause());
         m.mount(host, {
