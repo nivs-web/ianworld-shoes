@@ -960,6 +960,28 @@ function buildRidge(seed, baseY, amp, rough, color, shape){
   return cv;
 }
 
+/**
+ * ★★ **판마다 규칙이 하나씩 다르다.** (기획 4, 2026-08-27)
+ *
+ * 스무 판이 **배경만 다르고 규칙은 전부 같았다.** 랜드마크를 세워 눈은 즐거워졌지만
+ * 하는 일은 1판과 20판이 똑같다 — 그게 뒤로 갈수록 늘어지는 이유 하나였다.
+ *
+ * 판마다 **딱 하나씩만** 바꾼다. 둘이 겹치면 무엇 때문에 죽었는지 알 수 없고,
+ * 알 수 없으면 배울 수도 없다. 그리고 **판 시작에 한 줄로 예고한다** —
+ * 모르고 당하는 것은 난이도가 아니라 사고다.
+ *
+ * 규칙이 없는 판도 그대로 둔다. 매 판 새로운 것이 나오면 새로운 것이
+ * 새롭지 않게 된다 — 쉬는 판이 있어야 다음 규칙이 눈에 띈다.
+ */
+const STAGE_RULES = {
+  gale:   { ko:'맞바람',   hint:'맞바람이 계속 왼쪽으로 민다' },
+  rocks:  { ko:'낙석',     hint:'떠다니는 바위가 부딪힌다' },
+  bolt:   { ko:'번개',     hint:'번개가 화면을 가로지른다' },
+  fog:    { ko:'눈보라',   hint:'눈보라에 시야가 좁아진다' },
+  swarm:  { ko:'벌떼',     hint:'적이 더 많이, 더 자주 온다' },
+  dark:   { ko:'어둠',     hint:'빛이 닿는 곳만 보인다' },
+};
+
 /* ==================================================================
    ★ 스테이지 랜드마크 (2026-08-26)
 
@@ -2496,7 +2518,7 @@ const STAGES = [null,
     sky:[{p:0,c:'#1c3a4a'},{p:.32,c:'#2f6b6a'},{p:.6,c:'#5d9a6a'},{p:.84,c:'#a8c47a'},{p:1,c:'#e0d89a'}],
     layers:[{s:'temple',b:596,a:146,r:16,c:'#6d6a4a'},{s:'tree', b:672,a:104,r:20,c:'#2f5a38'},
             {s:'leaf',  b:738,a: 70,r:24,c:'#1e3f26'},{s:'flat',b:792,a:46,r:34,c:'#14291a'}] },
-  { n:'북녘 침엽수림', mark:{ s:'bigtree', x:0.44, y:720, w:300, h:400, c:'#16413f', l:'mid' },  acc:'#6fd0c0', line:'#dffaff', cloud:'#cfe4f0', cloudA:0.26, fx:'snow',
+  { n:'북녘 침엽수림', rule:'swarm', mark:{ s:'bigtree', x:0.44, y:720, w:300, h:400, c:'#16413f', l:'mid' },  acc:'#6fd0c0', line:'#dffaff', cloud:'#cfe4f0', cloudA:0.26, fx:'snow',
     sky:[{p:0,c:'#122a4a'},{p:.34,c:'#28527e'},{p:.62,c:'#4f86a8'},{p:.85,c:'#9cc4cc'},{p:1,c:'#dcecec'}],
     layers:[{s:'peak',b:580,a:158,r:26,c:'#5e7a96'},{s:'tree',b:664,a:118,r:18,c:'#1f4442'},
             {s:'tree',b:740,a: 84,r:22,c:'#12302f'},{s:'tree',b:806,a:60,r:26,c:'#0a1e1e'}] },
@@ -2504,7 +2526,7 @@ const STAGES = [null,
     sky:[{p:0,c:'#4a2038'},{p:.32,c:'#8a3a44'},{p:.6,c:'#c96a44'},{p:.84,c:'#e8a45c'},{p:1,c:'#f6d89a'}],
     layers:[{s:'hill',b:594,a:132,r:22,c:'#7a4a55'},{s:'leaf',b:668,a:112,r:20,c:'#b84a2a'},
             {s:'leaf',b:742,a: 82,r:24,c:'#8a2f1e'},{s:'leaf',b:806,a:58,r:28,c:'#5a1d14'}] },
-  { n:'안개 낀 대나무 숲', mark:{ s:'pagoda', x:0.48, y:716, w:260, h:380, c:'#35704a', l:'mid' },     acc:'#8fe36b', line:'#eaffd0', cloud:'#e0f4d0', cloudA:0.22, fx:null,
+  { n:'안개 낀 대나무 숲', rule:'fog', mark:{ s:'pagoda', x:0.48, y:716, w:260, h:380, c:'#35704a', l:'mid' },     acc:'#8fe36b', line:'#eaffd0', cloud:'#e0f4d0', cloudA:0.22, fx:null,
     sky:[{p:0,c:'#1e4230'},{p:.34,c:'#3a7a4a'},{p:.62,c:'#6fae62'},{p:.85,c:'#b4d894'},{p:1,c:'#e6f2c4'}],
     layers:[{s:'hill',b:596,a:124,r:20,c:'#3f7a52'},{s:'tree',b:670,a:120,r:14,c:'#2b6238'},
             {s:'tree',b:744,a: 92,r:16,c:'#1a4526'},{s:'tree',b:808,a:64,r:20,c:'#0f2c18'}] },
@@ -2512,7 +2534,7 @@ const STAGES = [null,
     sky:[{p:0,c:'#0e2440'},{p:.32,c:'#1f4a76'},{p:.6,c:'#3f7fa8'},{p:.84,c:'#8fbcc8'},{p:1,c:'#d0e4e4'}],
     layers:[{s:'peak',b:566,a:186,r:30,c:'#4a6684'},{s:'peak',b:660,a:140,r:28,c:'#2c4560'},
             {s:'flat',b:742,a: 38,r:12,c:'#1b3d5c'},{s:'flat',b:796,a:34,r:16,c:'#10283f'}] },
-  { n:'얼어붙은 설원', mark:{ s:'iceberg', x:0.52, y:744, w:420, h:330, c:'#8ba3bb', l:'mid' },   acc:'#cfe8ff', line:'#ffffff', cloud:'#e8f2ff', cloudA:0.32, fx:'snow',
+  { n:'얼어붙은 설원', rule:'rocks', mark:{ s:'iceberg', x:0.52, y:744, w:420, h:330, c:'#8ba3bb', l:'mid' },   acc:'#cfe8ff', line:'#ffffff', cloud:'#e8f2ff', cloudA:0.32, fx:'snow',
     sky:[{p:0,c:'#1b2a44'},{p:.34,c:'#3a5a80'},{p:.62,c:'#6f8fae'},{p:.85,c:'#b8cdd8'},{p:1,c:'#eef4f6'}],
     layers:[{s:'peak',b:578,a:162,r:26,c:'#7b90a8'},{s:'tree',b:668,a:112,r:18,c:'#2a4450'},
             {s:'tree',b:744,a: 80,r:22,c:'#1a2e36'},{s:'flat',b:800,a:48,r:30,c:'#dfe9f0'} ] },
@@ -2520,7 +2542,7 @@ const STAGES = [null,
     sky:[{p:0,c:'#1a5a8e'},{p:.32,c:'#2f8fb4'},{p:.6,c:'#5fc4c4'},{p:.84,c:'#a8e4cc'},{p:1,c:'#f0e8c0'}],
     layers:[{s:'hill',b:592,a:118,r:20,c:'#3a7f86'},{s:'leaf',b:668,a: 96,r:20,c:'#237a5e'},
             {s:'flat',b:742,a: 40,r:10,c:'#2fb0a8'},{s:'flat',b:796,a:40,r:26,c:'#e8d69a'}] },
-  { n:'검은 늪지대', mark:{ s:'deadtree', x:0.50, y:740, w:300, h:360, c:'#2c3324', l:'mid' },      acc:'#9fc04a', line:'#d8e8b0', cloud:'#b8c49a', cloudA:0.26, fx:null,
+  { n:'검은 늪지대', rule:'dark', mark:{ s:'deadtree', x:0.50, y:740, w:300, h:360, c:'#2c3324', l:'mid' },      acc:'#9fc04a', line:'#d8e8b0', cloud:'#b8c49a', cloudA:0.26, fx:null,
     sky:[{p:0,c:'#20281c'},{p:.34,c:'#3d4a2c'},{p:.62,c:'#5f6f3a'},{p:.85,c:'#8a9450'},{p:1,c:'#b6b878'}],
     layers:[{s:'leaf',b:600,a:112,r:24,c:'#4a5730'},{s:'leaf',b:672,a: 96,r:26,c:'#333d20'},
             {s:'flat',b:744,a: 34,r:12,c:'#3f4a28'},{s:'flat',b:798,a:42,r:30,c:'#232a15'}] },
@@ -2528,29 +2550,29 @@ const STAGES = [null,
     sky:[{p:0,c:'#4a3a6b'},{p:.32,c:'#8a5f96'},{p:.6,c:'#d08fae'},{p:.84,c:'#f4c0cc'},{p:1,c:'#ffe8dc'}],
     layers:[{s:'hill',b:592,a:126,r:20,c:'#8f7aa8'},{s:'leaf',b:668,a: 98,r:20,c:'#d47f9e'},
             {s:'flat',b:742,a: 38,r:10,c:'#7fa8c4'},{s:'flat',b:796,a:40,r:28,c:'#5a6f96'}] },
-  { n:'황금빛 해안', mark:{ s:'windmill', x:0.46, y:736, w:260, h:360, c:'#b98a4e', l:'mid' },     acc:'#ffc44a', line:'#fff0c8', cloud:'#ffe2b0', cloudA:0.26, fx:'leaf',
+  { n:'황금빛 해안', rule:'gale', mark:{ s:'windmill', x:0.46, y:736, w:260, h:360, c:'#b98a4e', l:'mid' },     acc:'#ffc44a', line:'#fff0c8', cloud:'#ffe2b0', cloudA:0.26, fx:'leaf',
     sky:[{p:0,c:'#40285a'},{p:.32,c:'#8a4a5e'},{p:.6,c:'#d08a4a'},{p:.84,c:'#f0bc6a'},{p:1,c:'#ffe8b8'}],
     layers:[{s:'hill',b:592,a:130,r:22,c:'#8a6a58'},{s:'leaf',b:668,a: 98,r:22,c:'#c98a3a'},
             {s:'flat',b:742,a: 38,r:10,c:'#7a86a8'},{s:'flat',b:796,a:40,r:28,c:'#4f5f80'}] },
   { n:'구름 한 점 없는 하늘', mark:{ s:'airship', x:0.50, y:470, w:520, h:300, c:'#d8dee8', l:'far' },        acc:'#6fc8ff', line:'#ffffff', cloud:'#ffffff', cloudA:0.42, fx:null,
     sky:[{p:0,c:'#1f5fae'},{p:.34,c:'#4a94d4'},{p:.64,c:'#8fc4ea'},{p:.86,c:'#c4e2f4'},{p:1,c:'#eaf6ff'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'잿빛 구름바다', mark:{ s:'skyfort', x:0.48, y:500, w:460, h:380, c:'#6d7688', l:'far' },         acc:'#b8c4d4', line:'#e8eef4', cloud:'#c8d2de', cloudA:0.5, fx:null,
+  { n:'잿빛 구름바다', rule:'bolt', mark:{ s:'skyfort', x:0.48, y:500, w:460, h:380, c:'#6d7688', l:'far' },         acc:'#b8c4d4', line:'#e8eef4', cloud:'#c8d2de', cloudA:0.5, fx:null,
     sky:[{p:0,c:'#3a4356'},{p:.34,c:'#5c6779'},{p:.64,c:'#848e9e'},{p:.86,c:'#aeb6c2'},{p:1,c:'#d2d8e0'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
   { n:'노을이 타는 하늘', mark:{ s:'sun', x:0.52, y:640, w:460, h:460, c:'#ff9440', l:'far' },      acc:'#ff8a3a', line:'#ffd8b0', cloud:'#ffb884', cloudA:0.40, fx:null,
     sky:[{p:0,c:'#2a1a52'},{p:.28,c:'#6b2a6b'},{p:.55,c:'#c0455a'},{p:.78,c:'#f08040'},{p:1,c:'#ffd07a'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'쏟아지는 빗줄기', mark:{ s:'raincloud', x:0.50, y:430, w:700, h:280, c:'#4a5768', l:'far' },         acc:'#7fd0e0', line:'#cfe8f0', cloud:'#8fa0b0', cloudA:0.46, fx:'rain',
+  { n:'쏟아지는 빗줄기', rule:'swarm', mark:{ s:'raincloud', x:0.50, y:430, w:700, h:280, c:'#4a5768', l:'far' },         acc:'#7fd0e0', line:'#cfe8f0', cloud:'#8fa0b0', cloudA:0.46, fx:'rain',
     sky:[{p:0,c:'#1e2836'},{p:.34,c:'#334154'},{p:.64,c:'#4f6072'},{p:.86,c:'#6f8090'},{p:1,c:'#8fa0ae'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'천둥이 치는 폭풍', mark:{ s:'spire', x:0.50, y:800, w:300, h:520, c:'#3b3155', l:'mid' },     acc:'#c8a0ff', line:'#e0d0ff', cloud:'#6a5f86', cloudA:0.5, fx:'storm',
+  { n:'천둥이 치는 폭풍', rule:'bolt', mark:{ s:'spire', x:0.50, y:800, w:300, h:520, c:'#3b3155', l:'mid' },     acc:'#c8a0ff', line:'#e0d0ff', cloud:'#6a5f86', cloudA:0.5, fx:'storm',
     sky:[{p:0,c:'#14102a'},{p:.34,c:'#241e46'},{p:.64,c:'#3a2f62'},{p:.86,c:'#54467e'},{p:1,c:'#6f5f96'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'지구 궤도', mark:{ s:'planet', x:0.50, y:860, w:900, h:300, c:'#2a5a96', l:'far' },      acc:'#5fd0ff', line:'#bfe8ff', cloud:'#3a6fae', cloudA:0.16, fx:'stars',
+  { n:'지구 궤도', rule:'rocks', mark:{ s:'planet', x:0.50, y:860, w:900, h:300, c:'#2a5a96', l:'far' },      acc:'#5fd0ff', line:'#bfe8ff', cloud:'#3a6fae', cloudA:0.16, fx:'stars',
     sky:[{p:0,c:'#05060f'},{p:.4,c:'#0a0f24'},{p:.7,c:'#101a3a'},{p:.9,c:'#1c2f5c'},{p:1,c:'#2a4a86'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'소행성 지대', mark:{ s:'asteroid', x:0.46, y:480, w:420, h:320, c:'#6b6050', l:'far' },    acc:'#c8b89a', line:'#e0d8c8', cloud:'#4a4238', cloudA:0.18, fx:'stars',
+  { n:'소행성 지대', rule:'gale', mark:{ s:'asteroid', x:0.46, y:480, w:420, h:320, c:'#6b6050', l:'far' },    acc:'#c8b89a', line:'#e0d8c8', cloud:'#4a4238', cloudA:0.18, fx:'stars',
     sky:[{p:0,c:'#07060c'},{p:.4,c:'#0d0b18'},{p:.72,c:'#171326'},{p:.92,c:'#241c38'},{p:1,c:'#33284a'}],
     layers:[{s:'peak',b:640,a:96,r:44,c:'#4a4238'},{s:'none'},{s:'peak',b:790,a:70,r:52,c:'#2b261f'},{s:'none'}] },
   { n:'은하의 끝', mark:{ s:'galaxy', x:0.52, y:430, w:620, h:260, c:'#7a45a8', l:'far' },       acc:'#c08fff', line:'#e8d0ff', cloud:'#6a3f9e', cloudA:0.22, fx:'stars',
@@ -2565,6 +2587,34 @@ function bossTierOf(stage){
   const s = clamp(stage|0, 1, 20);
   return s <= 4 ? 0 : s <= 8 ? 1 : s <= 12 ? 2 : s <= 16 ? 3 : 4;
 }
+/**
+ * ★★ **보스의 부위.** (기획 5, 2026-08-27)
+ *
+ * 보스는 **통짜 체력 하나**였다. 어디를 쏘든 똑같으니 조준할 이유가 없고,
+ * 보스전이 그냥 "오래 깎기" 였다.
+ *
+ * 뿔·등가시·꼬리칼날을 각각 부술 수 있게 하고, 부수면 **그 부위가 쓰던 패턴이
+ * 봉인**된다. 그러면 보스전이 "깎기" 에서 **"고르기"** 가 된다 —
+ * 꼬리를 먼저 부술까 뿔을 먼저 부술까. 같은 보스를 두 번째로 만나도
+ * 다른 순서로 싸울 수 있다.
+ *
+ * 부위는 보스 본체 체력의 일부를 나눠 갖지 않는다. **따로 센다** —
+ * 그래야 "부위를 부수느라 시간을 버렸다" 가 아니라 "부수면 편해진다" 가 된다.
+ * 부순 만큼 본체도 조금 깎이므로 부수는 것이 손해는 아니다.
+ *
+ * 어디를 맞혔는지는 **높이로** 가른다. 가로로 나가는 불줄기에 대고
+ * 세로 위치를 고르는 것이 이 게임에서 할 수 있는 유일한 조준이기 때문이다.
+ *   위쪽 28%  -> 뿔    (소용돌이 브레스가 봉인된다)
+ *   가운데     -> 몸통 (봉인 없음)
+ *   아래 26%  -> 꼬리  (돌진이 봉인된다)
+ *   등        -> 등가시 (화염벽이 봉인된다) — 뿔 바로 아래 띠
+ */
+const BOSS_PART_DEFS = [
+  { key:'horn',  ko:'뿔',     lo:0.00, hi:0.20, seal:'swirl',  hp:0.10 },
+  { key:'ridge', ko:'등가시', lo:0.20, hi:0.36, seal:'wall',   hp:0.10 },
+  { key:'tail',  ko:'꼬리',   lo:0.76, hi:1.00, seal:'charge', hp:0.10 },
+];
+
 /**
  * ★ **보스 10종.** (2026-08-26)
  *
@@ -4091,6 +4141,24 @@ class MidBoss extends EnemyBase {
     super.die(scene);
     scene.onBossKilled(this);
   }
+  /**
+   * 부위 체력 막대. 보스 왼쪽에 **부위가 있는 높이에 맞춰** 세로로 세운다 —
+   * 어디를 쏘면 무엇이 깎이는지 화면이 스스로 말해야 한다.
+   */
+  renderParts(ctx){
+    const b = this.box, x = snap(b.x - PX*7);
+    for(const p of this.parts){
+      if(p.flash > 0) p.flash -= 1/60;
+      if(p.broken) continue;
+      const y0 = snap(b.y + b.h*p.def.lo + PX*2);
+      const h = snap(b.h*(p.def.hi - p.def.lo) - PX*4);
+      const k = clamp(p.hp / p.max, 0, 1);
+      ctx.fillStyle = '#0a0a14'; ctx.fillRect(x - PX, y0 - PX, PX*5, h + PX*2);
+      ctx.fillStyle = '#2a2030'; ctx.fillRect(x, y0, PX*3, h);
+      ctx.fillStyle = p.flash > 0 ? '#ffffff' : '#7fd0e0';
+      ctx.fillRect(x, snap(y0 + h*(1-k)), PX*3, snap(h*k));
+    }
+  }
   render(ctx){
     const tint = this.flash > 0 ? '#ffffff' : (this.enraged && Math.floor(this.t*5)%2 === 0 ? '#8f4a3a' : null);
     drawFormDragon(ctx, MIDBOSS_PAL, 'B', MB_CELL, this.x, this.y, this.pose, true, tint, [B_RIDER_KNIGHT]);
@@ -4119,6 +4187,15 @@ class Boss extends EnemyBase {
     this.absorb = stage > 10 ? Math.min(0.5, 0.3 + (stage-11)*0.022) : 0;  // 미사일 흡수 확률
     this.absorbT = 0;
     this.pal = bossPalOf(stage);                 // 스테이지 테마색 + 종류 고유색
+    /**
+     * 부위. 그 보스가 **실제로 달고 있는 것만** 부술 수 있다 —
+     * 꼬리칼날이 없는 보스의 꼬리를 부수라고 하면 말이 안 된다.
+     */
+    this.parts = BOSS_PART_DEFS
+      .filter(d => d.key === 'horn' || this.kind[d.key])
+      .map(d => ({ def:d, hp: Math.round(this.maxHp * d.hp), max: Math.round(this.maxHp * d.hp),
+                   broken:false, flash:0 }));
+    this.sealed = {};                            // 봉인된 패턴
   }
   /* 판정 상자는 **덩치에서 뽑는다** — 보이는 것과 맞는 것이 어긋나면 억울하다.
      144/125 는 BOSS_CELL(10.8) 일 때의 값이었다. */
@@ -4127,6 +4204,36 @@ class Boss extends EnemyBase {
     return { x:this.x - hw, y:this.y - hh, w:hw*2, h:hh*2 };
   }
   get rate(){ return this.enraged ? 1.35 : 1; }
+  /**
+   * 이 높이에 맞았다면 어느 부위인가. 없으면 null (본체만 깎인다).
+   * 이미 부서진 부위는 더 이상 판정하지 않는다 — 헛수고를 시키면 안 된다.
+   */
+  partAt(y){
+    const b = this.box, u = (y - b.y) / b.h;
+    for(const p of this.parts){
+      if(p.broken) continue;
+      if(u >= p.def.lo && u < p.def.hi) return p;
+    }
+    return null;
+  }
+  hit(dmg, bolt, scene){
+    const p = bolt ? this.partAt(bolt.y) : null;
+    if(p){
+      p.hp -= dmg; p.flash = 0.1;
+      if(p.hp <= 0){
+        p.broken = true;
+        this.sealed[p.def.seal] = true;
+        /* 부순 값 — 본체도 함께 깎인다. 부수는 것이 손해면 아무도 안 한다 */
+        this.hp -= this.maxHp * 0.06;
+        scene.booms.push(new Boom(this.x, bolt.y, 120, 0.5));
+        Particles.spawn(this.x, bolt.y, 34, { spd:520, life:0.7 });
+        Popups.add(this.x, bolt.y - 40, p.def.ko + ' 파괴', PAL.gold, 5, true);
+        Shake.add(14, 0.3); Freeze.add(0.06);
+        SND.sfx('boomM');
+      }
+    }
+    super.hit(dmg, bolt, scene);
+  }
   update(dt, scene){
     this.t += dt;
     if(this.flash > 0) this.flash -= dt;
@@ -4240,7 +4347,14 @@ class Boss extends EnemyBase {
   }
   nextPattern(scene){
     const seq = ['swirl','missile','wall','charge','summon','swirl','wall','charge'];
-    this.phase = seq[this.pi % seq.length]; this.pi++;
+    /**
+     * ★ 부서진 부위의 패턴은 건너뛴다 (기획 5). 전부 봉인되면
+     * 남은 것(미사일·소환)만 돌린다 — 아무것도 안 하는 보스가 되면 안 된다.
+     */
+    let guard = 0;
+    do { this.phase = seq[this.pi % seq.length]; this.pi++; guard++; }
+    while(this.sealed[this.phase] && guard < seq.length * 2);
+    if(this.sealed[this.phase]) this.phase = 'missile';
     this.pt = 0; this.fired = false;
     if(this.phase === 'swirl'){ this.swirlN = this.enraged ? 40 : 32; this.swirlT = 0.15; this.swirlA = 0; }
     if(this.phase === 'wall'){  this.wallN  = this.enraged ? 4 : 3;  this.wallT = 0.25; }
@@ -4252,8 +4366,19 @@ class Boss extends EnemyBase {
   render(ctx){
     const pal = this.enraged ? BOSS_PAL_RAGE : this.pal;
     const P = bossPartsOf(this.kind);
+    /* 부서진 파츠는 그림에서도 빠진다 — 부순 것이 눈에 보여야 한 일이 된다 */
+    const gone = {};
+    for(const p of this.parts) if(p.broken) gone[p.def.key] = 1;
+    const under = gone.horn ? [] : P.under;
+    const over = P.over.filter((L) => {
+      const f = FORMS.B;
+      if(gone.ridge && L === f.parts.ridge) return false;
+      if(gone.tail  && L === f.parts.tail)  return false;
+      return true;
+    });
     drawFormDragon(ctx, pal, 'B', this.cell, this.x, this.y, this.pose, true,
-      this.flash > 0 ? '#ffffff' : null, P.over, P.under);
+      this.flash > 0 ? '#ffffff' : null, over, under);
+    this.renderParts(ctx);
     // 미사일을 튕겨내는 보호막 (10스테이지 초과)
     if(this.absorbT > 0){
       const k = this.absorbT / 0.35;
@@ -4310,7 +4435,9 @@ const TIMELINE = [
  * 첫판부터 손이 바쁘고, 뒤로 갈수록 "조금씩 더 빡세지는" 결이 된다.
  */
 function enemyScale(stage){
-  return Math.min(6, 2.2 * Math.pow(1.055, (stage|0) - 1)) * diffScale();
+  /* ★ '벌떼' 판은 물량이 한 단계 더 는다 (기획 4) */
+  const rule = STAGES[clamp(stage|0, 1, 20)].rule === 'swarm' ? 1.35 : 1;
+  return Math.min(7, 2.2 * Math.pow(1.055, (stage|0) - 1) * rule) * diffScale();
 }
 /* 화면 밖 위/아래에서 비스듬히 들어온 적을 목표 높이까지 내려/올려 보낸다.
    WingZombie 는 EnemyBase 를 상속하지 않으므로 공용 함수로 둔다. */
@@ -5787,6 +5914,11 @@ class GameScene extends Scene {
        (검사·재시작) 생성자를 안 타므로 적 레벨이 옛 스테이지에 묶인다 */
     CUR_STAGE = this.stageNo;
     this.t = 0; this.stage = this.stageNo;
+    /* ★ 이 판의 규칙 (기획 4). 없는 판이 더 많다 — 쉬는 판이 있어야 눈에 띈다 */
+    this.rule = STAGES[this.stageNo].rule || null;
+    this.ruleT = this.rule ? 3.4 : 0;      // 예고 배너가 떠 있는 시간
+    this.rocks = [];                       // '낙석' 이 쓰는 바위들
+    this.boltT = 2.2;                      // '번개' 까지 남은 시간
     const st = STAGES[this.stage];
     this.theme = st;
     this.sky = buildSky(st.sky);
@@ -6330,6 +6462,41 @@ class GameScene extends Scene {
   }
   /* 다음 스테이지로 그대로 넘길 상태 */
   /* 점수는 씬 합계와 플레이어별로 같이 쌓는다 */
+  /**
+   * 이 판의 규칙을 굴린다. 규칙마다 **한 가지만** 한다 —
+   * 하나가 두 가지 일을 하면 무엇 때문에 죽었는지 알 수가 없다.
+   */
+  updateRule(dt){
+    const r = this.rule;
+    if(!r) return;
+    if(r === 'gale'){
+      /* 맞바람 — 가만히 있으면 뒤로 밀린다. 계속 앞으로 눌러야 한다 */
+      for(const p of this.livePlayers()) p.x = Math.max(40, p.x - 86*dt);
+    }else if(r === 'rocks'){
+      /* 낙석 — 오른쪽에서 굴러온다. 부술 수 없고 피하기만 한다 */
+      this.boltT -= dt;
+      if(this.boltT <= 0){
+        this.boltT = 1.5 + Math.random()*1.2;
+        this.rocks.push({ x: GAME_W + 60, y: 120 + Math.random()*(GAME_H - 260),
+                          r: 26 + Math.random()*22, v: 300 + Math.random()*180, t: 0 });
+      }
+      for(const k of this.rocks){ k.x -= k.v*dt; k.t += dt; }
+      this.rocks = this.rocks.filter(k => k.x > -80);
+    }else if(r === 'bolt'){
+      /* 번개 — 세로 줄기가 떨어진다. 떨어지기 전에 자리가 번쩍여 예고한다 */
+      this.boltT -= dt;
+      if(this.boltT <= 0){
+        this.boltT = 2.6 + Math.random()*1.6;
+        const p = this.livePlayers()[0];
+        this.rocks.push({ bolt:true, x: (p ? p.x : 400) + (Math.random()-0.5)*160,
+                          y:0, r:0, v:0, t:-0.65 });   // 음수 = 예고 시간
+      }
+      for(const k of this.rocks) k.t += dt;
+      this.rocks = this.rocks.filter(k => k.t < 0.5);
+    }else if(r === 'swarm'){
+      /* 벌떼는 물량으로 간다 — 디렉터가 알아서 본다 (enemyScale) */
+    }
+  }
   /** 지금 연쇄 배수 (1.0 ~ CHAIN_MAX). 세 마리째부터 붙는다 */
   chainMul(){
     if(this.chainT <= 0 || this.killStreak < 3) return 1;
@@ -6683,6 +6850,8 @@ class GameScene extends Scene {
     for(const r of this.roars)     r.update(dt, this);
     Particles.update(dt); Popups.update(dt); Flash.update(dt); Shake.update(dt);
     if(this.grazeFlash > 0) this.grazeFlash -= dt;
+    if(this.ruleT > 0) this.ruleT -= dt;
+    this.updateRule(dt);
     /* 연쇄는 가만히 있으면 끊긴다 — 이것이 이 장치의 전부다 */
     if(this.chainT > 0){
       this.chainT -= dt;
@@ -6774,6 +6943,13 @@ class GameScene extends Scene {
         }
       }
       if(!struck) for(const e of this.enemies){ if(!e.dead && overlap(e.box, hb)){ struck = true; break; } }
+      /* ★ 판 규칙이 만든 것들도 때린다 (기획 4) */
+      if(!struck) for(const k of this.rocks){
+        if(k.bolt){
+          if(k.t < 0) continue;                         // 아직 예고 중
+          if(Math.abs(p.x - k.x) < 26){ struck = true; dmg = 30; break; }
+        }else if(Math.hypot(p.x - k.x, p.y - k.y) < k.r + 20){ struck = true; dmg = 30; break; }
+      }
       if(!struck) for(const w of this.waves){
         if(w.hitDone) continue;
         const d = Math.hypot(p.x - w.x, p.y - w.y);
@@ -6936,6 +7112,7 @@ class GameScene extends Scene {
     ctx.translate(Shake.x, Shake.y);
     for(const e of this.enemies)   e.render(ctx);
     for(const a of this.arrows)    a.render(ctx);
+    this.renderRule(ctx);
     for(const e of this.eshots)    e.render(ctx);
     for(const m of this.missiles)  m.render(ctx);
     for(const b of this.bombs)     b.render(ctx);
@@ -7147,6 +7324,59 @@ class GameScene extends Scene {
     }
   }
 
+  /** 규칙이 만든 것들. 눈으로 읽혀야 피할 수 있으므로 크고 분명하게 */
+  renderRule(ctx){
+    for(const k of this.rocks){
+      if(k.bolt){
+        const x = snap(k.x);
+        if(k.t < 0){
+          /* 예고 — 떨어질 자리가 깜빡인다 */
+          ctx.globalAlpha = 0.30 + 0.4*Math.abs(Math.sin(k.t*26));
+          ctx.fillStyle = '#fff6a0';
+          ctx.fillRect(x - PX, 0, PX*2, GAME_H);
+          ctx.globalAlpha = 1;
+        }else{
+          const a = 1 - k.t/0.5;
+          ctx.globalAlpha = a;
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(x - PX*3, 0, PX*6, GAME_H);
+          ctx.fillStyle = '#fff6a0'; ctx.fillRect(x - PX*6, 0, PX*3, GAME_H);
+          ctx.fillRect(x + PX*3, 0, PX*3, GAME_H);
+          ctx.globalAlpha = 1;
+        }
+      }else{
+        /* 바위 — 도트 원에 그늘 */
+        fillPixelCircle(ctx, k.x, k.y, k.r, '#6b5a48');
+        fillPixelCircle(ctx, k.x - k.r*0.22, k.y - k.r*0.22, k.r*0.58, '#8a7a64');
+        fillPixelCircle(ctx, k.x + k.r*0.3, k.y + k.r*0.28, k.r*0.3, '#4a3d30');
+      }
+    }
+    /* 맞바람 — 왼쪽으로 흐르는 선 */
+    if(this.rule === 'gale'){
+      ctx.globalAlpha = 0.34; ctx.fillStyle = '#cfe6ff';
+      for(let i=0;i<18;i++){
+        const y = 90 + ((i*53) % (GAME_H - 180));
+        const x = ((this.t*900 + i*211) % (GAME_W + 300)) - 150;
+        ctx.fillRect(snap(GAME_W - x), snap(y), 90, PX);
+      }
+      ctx.globalAlpha = 1;
+    }
+    /* 눈보라·어둠 — 화면을 가린다. 셋 중 가장 답답하므로 옅게 */
+    if(this.rule === 'fog' || this.rule === 'dark'){
+      const p = this.livePlayers()[0];
+      const R = this.rule === 'dark' ? 300 : 420;
+      ctx.save();
+      ctx.globalAlpha = this.rule === 'dark' ? 0.80 : 0.46;
+      ctx.fillStyle = this.rule === 'dark' ? '#05040a' : '#dfe9f0';
+      if(p){
+        const g = ctx.createRadialGradient(p.x, p.y, R*0.45, p.x, p.y, R);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(1, this.rule === 'dark' ? '#05040a' : '#dfe9f0');
+        ctx.fillStyle = g;
+      }
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
+      ctx.restore();
+    }
+  }
   renderHUD(ctx){
     // 1인 : 왼쪽 위 고정 / 2인 : 2P 왼쪽 위, 1P 오른쪽 위
     const LX = 24, RX = GAME_W - 240, TY = 20;
@@ -7285,6 +7515,20 @@ class GameScene extends Scene {
       ctx.fillRect(x, y, snap(w*k), 20);
       ctx.fillStyle = PAL.fire[1]; ctx.fillRect(x, y, snap(w*k), 6);
       drawText(ctx, b.name, 640, y - 24, 3, { align:'center', color:PAL.white, outline:PAL.outline, shadow:'#000' });
+    }
+    /**
+     * ★ **판 시작에 규칙을 한 줄 예고한다.** (기획 4)
+     * 모르고 당하는 것은 난이도가 아니라 사고다.
+     */
+    if(this.ruleT > 0 && this.rule && STAGE_RULES[this.rule]){
+      const R = STAGE_RULES[this.rule];
+      const a = Math.min(1, this.ruleT / 0.6);
+      ctx.globalAlpha = a;
+      ko(ctx, R.ko, 640, 210, 8,
+        { align:'center', color:PAL.gold, outline:PAL.outline, shadow:'#000' });
+      ko(ctx, R.hint, 640, 280, 3,
+        { align:'center', color:'#ffe6b0', outline:PAL.outline });
+      ctx.globalAlpha = 1;
     }
     if(this.bossBannerT > 0 && Math.floor(this.bossBannerT*6) % 2 === 0){
       drawText(ctx, 'WARNING', 640, 300, 10,
