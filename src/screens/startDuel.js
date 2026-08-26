@@ -25,13 +25,13 @@ export async function startDuel(nav, { code }) {
    * ★ **판돈은 시작 직전에 뺀다.** 대기방에 앉을 때 빼면 그냥 나가는 사람마다
    * 되돌려주는 길이 하나 더 생기고, 되돌리는 길에서 사고가 난다.
    */
-  if (!stakeDuel()) { toast(S.duelNeedCoins(DUEL_STAKE), 2600); return false; }
+  if (!stakeDuel(code)) { toast(S.duelNeedCoins(DUEL_STAKE), 2600); return false; }
 
   starting = true;
   try {
     await loadDragon();               // 미리 받아 둔다 — 못 받으면 판돈을 물린다
   } catch (e) {
-    refundDuel();
+    refundDuel(code);
     starting = false;
     toast(S.dragonLoadFailed, 3200);
     throw e;

@@ -166,7 +166,26 @@ async function boot() {
      */
     pullAll()
       .catch((e) => console.warn('[sync] 서버 동기화 실패 — 로컬로 계속합니다', e))
-      .then(() => sweepUnsettled().catch(() => {}));
+      .then(() => sweepUnsettled().catch(() => {}))
+      /**
+       * ★ **주인이 안 정해진 결투 판돈을 되돌려받는다.** (2026-08-26, 사용자 지정)
+       *
+       * 결투는 시작 직전에 금화 1,000을 뺀다. 그 사이에 앱이 죽거나 상대가 안 오면
+       * 그 돈은 아무 데도 안 간다 — 신발게임에서 한 번 겪은 것과 같은 종류의 사고다.
+       * 접속할 때 한 번 훑어서, 끝났거나 사라진 방에 걸린 판돈을 돌려준다.
+       */
+      .then(() => import('./services/dragonSettle.js')
+        .then((D) => D.sweepDuelStakes())
+        .then(async (back) => {
+          if (back <= 0) return;
+          /* 문구와 토스트는 여기서만 쓰므로 그때 받아 온다 — main.js 를 무겁게 하지 않는다 */
+          const [{ toast }, S] = await Promise.all([
+            import('./screens/ui.js'),
+            import('./config/strings.ko.js').then((m) => m.default),
+          ]);
+          toast(S.duelStakeBack(back), 3400);
+        })
+        .catch(() => {}));
     /**
      * ★ **접속 표시와 쪽지함을 켠다.** (2026-08-19 11차)
      *

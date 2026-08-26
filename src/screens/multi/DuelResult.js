@@ -13,7 +13,7 @@ import S from '../../config/strings.ko.js';
 import { el, button, backButton, screen, title } from '../ui.js';
 import { currentUser } from '../../services/auth.js';
 import * as Room from '../../services/multiplayer.js';
-import { duelRanking, settleDuel, DUEL_STAKE } from '../../services/dragonSettle.js';
+import { duelRanking, settleDuel, refundDuel, DUEL_STAKE } from '../../services/dragonSettle.js';
 import { loadDragon } from '../DragonGame.js';
 
 /** 상대를 이만큼까지 기다린다 — 넘으면 튕긴 것으로 보고 센다 */
@@ -28,6 +28,8 @@ export default function DuelResult(nav, params = {}) {
   let outcome = null;        // 정산 결과 (한 번만)
   let mod = null;
   let waitedFrom = Date.now();
+  /** 상대가 안 와서 되돌려받은 금화 (0이면 정상적으로 겨뤘다) */
+  let refunded = 0;
 
   loadDragon().then((m) => { mod = m; if (live) nav.refresh(); }).catch(() => {});
 
@@ -42,6 +44,16 @@ export default function DuelResult(nav, params = {}) {
       if (players.length >= 2 && (모두끝 || 오래기다림)) {
         outcome = settleDuel(r);
         /* 자리를 놓아 준다 — 안 그러면 방이 다음 판으로 못 넘어간다 */
+        Room.rearmRoomSeat(code).catch(() => {});
+      } else if (오래기다림 && players.length < 2) {
+        /**
+         * ★ **상대가 안 왔다 — 판돈을 돌려준다.** (2026-08-26, 사용자 지정)
+         *
+         * 예전에는 여기서 아무것도 안 했다. `settleDuel` 은 둘이 안 모이면 `null` 을
+         * 돌려주는데 그 뒤가 없어서, 건 1,000 금화가 **아무에게도 안 가고 사라졌다.**
+         * 겨룰 상대가 없었으면 진 것도 이긴 것도 아니다 — 건 것을 그대로 되돌린다.
+         */
+        refunded = refundDuel(code);
         Room.rearmRoomSeat(code).catch(() => {});
       }
     }
@@ -76,7 +88,19 @@ export default function DuelResult(nav, params = {}) {
 
     render() {
       if (!room) return screen(title(S.duelTitle), el('div.hint', S.loading));
-      if (!outcome) return screen(title(S.duelTitle), el('div.hint', S.duelWaiting), ...rows());
+      if (!outcome) {
+        /* 상대가 안 와서 돌려받았으면 기다리는 화면이 아니라 그 사실을 말한다 */
+        if (refunded) {
+          return screen(
+            title(S.duelTitle),
+            el('div.duel-prize', S.duelRefunded(refunded)),
+            el('div.hint', S.duelRefundedWhy),
+            el('div.spacer'),
+            backButton(S.backToGameLobby, () => nav.back())
+          );
+        }
+        return screen(title(S.duelTitle), el('div.hint', S.duelWaiting), ...rows());
+      }
 
       const won = outcome.won;
       return screen(

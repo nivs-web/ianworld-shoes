@@ -71,6 +71,9 @@ export function settleDuel(room) {
   const rank = order.indexOf(u.uid);
   if (rank < 0) return null;                      // 이 판에 안 뛰었다
 
+  /* 승패가 갈렸다 — 이 판의 판돈은 주인이 정해졌으므로 장부에서 지운다 */
+  L.clearDuelStake(room.code);
+
   const won = rank === 0;
   const pot = DUEL_STAKE * order.length;
   /* 둘이 판에서 주운 금화를 모두 더한다 — 승자가 그것까지 가져간다 */
@@ -106,17 +109,87 @@ export function settleDuel(room) {
  *
  * @returns {boolean} 걸 수 있었나
  */
-export function stakeDuel() {
+export function stakeDuel(code) {
+  /**
+   * ★ **같은 방에는 두 번 걸지 않는다.** (2026-08-26, 검사에서 잡음)
+   *
+   * 장부는 방 코드로 한 줄만 쥔다. 그런데 지갑에서는 부를 때마다 뺐다 —
+   * 같은 방에 두 번 걸면 **2,000이 나가고 장부에는 1,000만 남아**
+   * 환불받아도 1,000이 사라졌다. 재시도 한 번이면 일어나는 일이다.
+   * 이미 건 방이면 그냥 성공으로 친다.
+   */
+  if (code && L.pendingDuelStakes().some((x) => x.code === code)) return true;
+
   const p = getProfile();
   if ((p.dragonCoins || 0) < DUEL_STAKE) return false;
   patch({ dragonCoins: (p.dragonCoins || 0) - DUEL_STAKE });
+  /**
+   * ★ **뺀 흔적을 남긴다.** (2026-08-26, 사용자 지정 — "증발하면 절대 안됨")
+   * 여기서 앱이 죽어도, 상대가 안 와도, 방이 사라져도 이 흔적이 남는다.
+   * 흔적이 남아 있다는 것은 곧 **주인이 안 정해진 내 돈**이라는 뜻이고,
+   * `sweepDuelStakes()` 가 다음 접속에 되돌려준다.
+   */
+  if (code) L.noteDuelStake(code, DUEL_STAKE);
   return true;
 }
 
-/** 판돈을 되돌려준다 — 시작하자마자 방이 깨졌을 때 */
-export function refundDuel() {
+/**
+ * 판돈을 되돌려준다 — 판이 성립하지 않았을 때.
+ * 장부에서도 지운다. 안 지우면 다음 접속에 **또** 돌려줘서 금화가 불어난다.
+ */
+export function refundDuel(code) {
+  /**
+   * ★ **장부에 있는 것만 돌려준다.** (2026-08-26, 검사에서 잡음)
+   *
+   * 예전에는 부르기만 하면 1,000을 줬다 — 안 건 판을 환불하면 **없던 금화가 생긴다.**
+   * 두 번 부르면 두 번 생긴다. 돌려줄 근거는 오직 장부뿐이다.
+   */
+  const row = L.pendingDuelStakes().find((x) => x.code === code);
+  if (!row) return 0;
+  const amount = row.amount | 0;
   const p = getProfile();
-  patch({ dragonCoins: (p.dragonCoins || 0) + DUEL_STAKE });
+  patch({ dragonCoins: (p.dragonCoins || 0) + amount });
+  L.clearDuelStake(code);
+  return amount;
+}
+
+/**
+ * ★ **주인이 안 정해진 판돈을 되돌려받는다.** (2026-08-26, 사용자 지정)
+ *
+ * 접속할 때마다 한 번 훑는다. 장부에 남아 있는데 **그 방이 이미 끝났거나 사라졌으면**
+ * 그 돈은 아무에게도 안 갔다는 뜻이므로 내게 돌려준다.
+ *
+ * 아직 도는 판은 건드리지 않는다 — 방이 살아 있고 내가 그 안에 있으면 그대로 둔다.
+ * 대신 **아주 오래된 것은 무조건 돌려준다**(방 기록 자체가 지워졌을 수 있다).
+ *
+ * @returns {number} 되돌려받은 금화
+ */
+const STALE_MS = 30 * 60 * 1000;      // 30분이 지났으면 그 판은 끝난 것으로 본다
+
+export async function sweepDuelStakes() {
+  const u = currentUser();
+  if (!u || u.guest) return 0;
+  const rows = L.pendingDuelStakes();
+  if (!rows.length) return 0;
+
+  let back = 0;
+  for (const row of rows) {
+    const old = Date.now() - (row.at || 0) > STALE_MS;
+    let room = null;
+    if (!old) {
+      try { room = await Room.readRoom(row.code); } catch { room = null; }
+    }
+    /**
+     * 되돌려줄 때 :
+     *   · 아주 오래됐다 (방을 볼 것도 없다)
+     *   · 방이 사라졌다
+     *   · 방은 있는데 **나 말고 아무도 안 뛰었다** — 겨룰 상대가 없었다는 뜻이다
+     */
+    const alone = room
+      && Object.values(room.players ?? {}).filter((p) => p && !p.waiting).length < 2;
+    if (old || !room || alone) back += refundDuel(row.code);
+  }
+  return back;
 }
 
 /** 결투에 낄 수 있나 */

@@ -26,6 +26,17 @@ const KEY = {
    * 남의 왕관을 물려받은 채로 로비가 뜬다(§9-0-14 의 계정 전환 오염과 같은 함정).
    */
   crowns: 'sf_crowns',
+  /**
+   * ★ **건 판돈 장부.** (2026-08-26, 사용자 지정 — "증발하면 절대 안됨")
+   *
+   * 결투는 시작 직전에 금화 1,000을 지갑에서 뺀다. 그런데 그 사이에 앱이 죽거나
+   * 상대가 안 오면 **뺀 금화가 아무 데도 안 가고 사라진다.**
+   * 뺄 때 여기에 흔적을 남기고, 정산될 때 지운다. 남아 있는 흔적은 곧
+   * **아직 주인이 정해지지 않은 내 돈**이므로 다음 접속에 되돌려받는다.
+   *
+   *   [{ code:'ABCD', amount:1000, at:1787... }]
+   */
+  duelStakes: 'sf_duelStakes',
 };
 
 /**
@@ -658,6 +669,28 @@ export function periodWins(field, key) {
  */
 export function loadPeriodBest() {
   return read(KEY.periodBest, {});
+}
+
+/**
+ * 건 판돈 장부. 결투를 시작할 때 적고, 정산되면 지운다.
+ * 남아 있는 것은 **아직 주인이 안 정해진 내 돈**이다.
+ */
+export function noteDuelStake(code, amount) {
+  const q = read(KEY.duelStakes, []).filter((x) => x && x.code !== code);
+  q.push({ code, amount: amount | 0, at: Date.now() });
+  /* 스무 개면 넘친다 — 그보다 오래 밀렸으면 앞엣것부터 버린다 */
+  write(KEY.duelStakes, q.slice(-20));
+  return q;
+}
+
+/** 정산됐다 — 흔적을 지운다 */
+export function clearDuelStake(code) {
+  write(KEY.duelStakes, read(KEY.duelStakes, []).filter((x) => x && x.code !== code));
+}
+
+/** 아직 주인이 안 정해진 판돈들 */
+export function pendingDuelStakes() {
+  return read(KEY.duelStakes, []).filter((x) => x && x.code && (x.amount | 0) > 0);
 }
 
 export function periodBest(docId) {

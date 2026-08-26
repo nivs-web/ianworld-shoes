@@ -1,0 +1,86 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>결투 판돈 장부 검사</title>
+<style>body{background:#111;color:#ddd;font:13px/1.6 monospace;padding:16px;white-space:pre}</style>
+</head>
+<body>
+<div id="out">검사 중…</div>
+<script type="module">
+/**
+ * 결투 판돈이 **증발하지 않는지** 검사한다.
+ *
+ * ★ importmap 을 쓰지 않는다. 다른 미리보기들은 `profile.js` 를 스텁으로 바꿔치기하는데,
+ *   Vite 가 편집한 파일에 `?t=` 를 붙이는 바람에 **같은 모듈이 두 번 로드**되어
+ *   한쪽에서 뺀 금화가 다른 쪽에서 안 보인다. 돈을 세는 검사에서 그건 치명적이다.
+ *
+ * 인증(`currentUser`)이 없는 환경이라 `sweepDuelStakes` 는 여기서 못 돈다 —
+ * 대신 그 함수가 쓰는 **장부 자체**와 지갑 셈을 직접 확인한다.
+ */
+import * as L from '/src/services/storageLocal.js';
+import * as P from '/src/services/profile.js';
+import * as D from '/src/services/dragonSettle.js';
+
+const lines = [];
+const say = (s) => lines.push(s);
+const coins = () => P.get().dragonCoins || 0;
+const setCoins = (n) => P.patch({ dragonCoins: n });
+const ledger = () => L.pendingDuelStakes().map((x) => `${x.code}:${x.amount}`);
+
+let fail = 0;
+const check = (name, got, want) => {
+  const ok = JSON.stringify(got) === JSON.stringify(want);
+  if (!ok) fail++;
+  say(`${ok ? '  OK  ' : '  ★틀림 '}${name}\n        받음 ${JSON.stringify(got)}  기대 ${JSON.stringify(want)}`);
+};
+
+/* 깨끗한 상태에서 시작한다 */
+localStorage.setItem('sf_duelStakes', '[]');
+setCoins(5000);
+
+say('■ 걸기');
+const ok1 = D.stakeDuel('T1');
+check('걸 수 있었나', ok1, true);
+check('지갑에서 1,000 빠졌나', coins(), 4000);
+check('장부에 남았나', ledger(), ['T1:1000']);
+
+say('■ 환불 (상대가 안 왔을 때)');
+D.refundDuel('T1');
+check('지갑으로 돌아왔나', coins(), 5000);
+check('장부에서 지워졌나', ledger(), []);
+
+say('■ 없는 판돈은 돌려주지 않는다 (돈이 생기면 안 된다)');
+const c0 = coins();
+check('장부에 없는 코드로 환불', D.refundDuel('T1'), 0);
+check('지갑 그대로', coins(), c0);
+check('두 번 불러도 그대로', (D.refundDuel('T1'), coins()), c0);
+
+say('■ 돈이 모자라면 못 건다');
+setCoins(999);
+check('999 금화로 걸기', D.stakeDuel('T2'), false);
+check('지갑 그대로', coins(), 999);
+check('장부 비어 있음', ledger(), []);
+
+say('■ 여러 판이 밀려도 각각 남는다');
+setCoins(5000);
+D.stakeDuel('A'); D.stakeDuel('B');
+check('둘 다 장부에', ledger(), ['A:1000', 'B:1000']);
+check('지갑에서 2,000 빠짐', coins(), 3000);
+D.refundDuel('A');
+check('A 만 지워짐', ledger(), ['B:1000']);
+check('A 만 돌아옴', coins(), 4000);
+
+say('■ 같은 방에 두 번 걸어도 한 번만 빠진다 (돈이 사라지면 안 된다)');
+localStorage.setItem('sf_duelStakes', '[]');
+setCoins(5000);
+D.stakeDuel('C'); D.stakeDuel('C');
+check('장부에 하나만', ledger(), ['C:1000']);
+check('지갑에서 1,000 만 빠짐', coins(), 4000);
+check('환불하면 정확히 1,000', D.refundDuel('C'), 1000);
+check('본전으로 돌아옴', coins(), 5000);
+
+say('');
+say(fail ? `★ ${fail} 건 틀림` : '전부 통과');
+document.getElementById('out').textContent = lines.join('\n');
+window.__done = true;
+window.__fail = fail;
+</script>
+</body></html>
