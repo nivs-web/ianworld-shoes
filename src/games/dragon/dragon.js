@@ -3354,7 +3354,34 @@ class WingZombie {
     }
     if(this.x < -Z_W) this.dead = true;
   }
+  /**
+   * ★ **정면 방패.** (기획 1, 2026-08-27)
+   *
+   * 플레이어는 늘 화면 왼쪽에 있고 불줄기는 **가로로만** 나간다. 그래서 자리를
+   * 옮길 이유가 없었다 — 어디에 있든 앞의 것을 지진다.
+   *
+   * 방패는 적의 **가운데 띠**를 막는다. 위아래 끝은 열려 있으므로,
+   * 잡으려면 **적의 위쪽 끝이나 아래쪽 끝에 줄을 맞춰야** 한다.
+   * 완전히 못 잡게 만드는 것이 아니라 **겨냥하게** 만드는 것이 목적이다.
+   *
+   * 미사일과 핵무기는 방패를 무시한다 — 그게 이 적에 대한 답이고,
+   * 손에 쥔 무기를 쓸 이유가 하나 생긴다.
+   */
+  shieldBlocks(bolt){
+    if(!this.shield || !bolt || bolt.ignoreShield) return false;
+    const box = this.box;
+    const mid = box.y + box.h/2, half = box.h * this.shield * 0.5;
+    return Math.abs(bolt.y - mid) < half;
+  }
   hit(dmg, bolt, scene){
+    if(this.shieldBlocks(bolt)){
+      this.shieldT = 0.12;
+      SND.sfx('deny');
+      Particles.spawn(this.x - this.box.w*0.5, bolt.y, 5,
+        { ang:Math.PI, spread:1.5, spd:300, life:0.22, pal:['#dff0ff','#9ad8ff','#4a86c8'] });
+      if(bolt) bolt.dead = true;
+      return;
+    }
     if(bolt && bolt.pid) this.killPid = bolt.pid;      // 마지막으로 때린 사람에게 점수
     this.hp -= dmg;
     this.flash = 0.09;
@@ -3453,6 +3480,16 @@ const PURPLE_DRAGON_PAL = mkPal({       // 적3 : 통통한 보라 드래곤
   K:'#140820', D:'#3e2263', M:'#573083', L:'#7b46b0', T:'#452770',
   E:'#ffe14a', H:'#fffbe0', N:'#0d0518', G:'#d8c6f0', S:'#b48ce0',
   C:'#efe6ff', W:'#fff4f4', P:'#6a3b9e', w:'#2e1747', f:'#4a2a70', k:'#1c0d2c'
+});
+/**
+ * 돌진병. 다른 잡몹과 **색이 확실히 달라야** 한다 —
+ * 조준선이 뜨기 전에도 "저건 돌진하는 놈" 인 것을 알아봐야 비킬 준비를 한다.
+ * 잿빛 몸에 형광 주황 — 화면의 어느 배경 위에서도 튄다.
+ */
+const CHARGER_PAL = mkPal({
+  K:'#120c08', D:'#3a2a1c', M:'#5c422a', L:'#8a6038', T:'#46301e',
+  E:'#ff5a1a', H:'#ffd8a0', N:'#0c0805', G:'#ffb070', S:'#ff7a2e',
+  C:'#ffe8d0', W:'#fff4f4', P:'#a05028', w:'#2a1c10', f:'#46301e', k:'#180f08'
 });
 const MIDBOSS_PAL = mkPal({             // 중간보스 : 채도 낮은 회갈색
   K:'#14110d', D:'#413a30', M:'#5a5145', L:'#776c5c', T:'#4a4238',
@@ -3655,6 +3692,13 @@ class DragonRider extends EnemyBase {
     super(x, y, enemyHp(84), 300);
     this.vx = -(150 + Math.random()*50) * (1 + 0.30*enemyLv());   // 뒤로 갈수록 빨리 들어온다
     this.shootT = 1.0 + Math.random()*1.4;
+    /**
+     * ★ 중반부터 **넷에 하나는 방패**를 들고 온다 (기획 1).
+     * 전부 들려 보내면 화면이 벽이 된다 — 한 무리에 하나둘이라야
+     * "저건 위아래로 돌아가야겠다" 는 판단이 생긴다.
+     */
+    this.shield = (enemyLv() >= 0.30 && Math.random() < 0.28) ? 0.62 : 0;
+    this.shieldT = 0;
   }
   get box(){ return { x:this.x - 38, y:this.y - 34, w:77, h:67 }; }
   update(dt, scene){
@@ -3665,19 +3709,37 @@ class DragonRider extends EnemyBase {
     applyDive(this, dt);
     this.y = this.baseY + Math.sin(this.t*1.7)*30;
     this.flapUpdate(dt, 0.10);
+    if(this.shieldT > 0) this.shieldT -= dt;
     if(this.x < GAME_W - 80){
       this.shootT -= dt;
       if(this.shootT <= 0){
         const el = enemyLv();
         /* 연사 2.2~3.1초 -> 1.2~1.7초 */
         this.shootT = (2.2 - 1.0*el) + Math.random()*(0.9 - 0.4*el);
-        /* 중반부터 3방향이 5방향이 된다 — 위아래로 빠져나갈 틈이 좁아진다 */
-        const spread = el >= 0.45
-          ? [-Math.PI/5, -Math.PI/12, 0, Math.PI/12, Math.PI/5]
-          : [-Math.PI/6, 0, Math.PI/6];
-        const base = enemyAim(scene, this.x - 34, this.y + 6);
-        for(const a of spread)                       // 탄속 330 -> 520
-          scene.eshots.push(new EnemyFire(this.x - 34, this.y + 6, base + a, 330 + 190*el, 11));
+        const mx = this.x - 34, my = this.y + 6;
+        const base = enemyAim(scene, mx, my), spd = 330 + 190*el;
+        /**
+         * ★ **잡몹도 모양이 있는 탄을 쏜다.** (기획 2, 2026-08-27)
+         *
+         * 예전에는 무엇이 나오든 **직선 세 갈래**뿐이었다. 탄을 늘리는 것보다
+         * **탄이 그리는 모양**을 바꾸는 쪽이 훨씬 크게 다르다 —
+         * 직선 열 발보다 원형 다섯 발이 어렵고 무엇보다 **기억에 남는다.**
+         *
+         * 스테이지가 오르면서 하나씩 열린다:
+         *   부채(처음부터) -> 넓은 부채(중반) -> 원형 확산(후반)
+         * 한 번에 다 열지 않는 이유: 새 모양이 처음 나오는 판에서 배울 틈이 있어야 한다.
+         */
+        if(el >= 0.62 && Math.random() < 0.45){
+          /* 원형 확산 — 위아래 어디로 피해도 한 줄은 온다. 대신 사이가 넓다 */
+          const n = 8, off = Math.random()*0.4;
+          for(let i=0;i<n;i++)
+            scene.eshots.push(new EnemyFire(mx, my, off + i*(Math.PI*2/n), spd*0.72, 11));
+        }else{
+          const spread = el >= 0.45
+            ? [-Math.PI/5, -Math.PI/12, 0, Math.PI/12, Math.PI/5]
+            : [-Math.PI/6, 0, Math.PI/6];
+          for(const a of spread) scene.eshots.push(new EnemyFire(mx, my, base + a, spd, 11));
+        }
       }
     }
     if(this.x < -120) this.dead = true;
@@ -3699,8 +3761,110 @@ class DragonRider extends EnemyBase {
   render(ctx){
     drawFormDragon(ctx, RED_DRAGON_PAL, 'A', DR_CELL, this.x, this.y, this.pose, true,
       this.flash > 0 ? '#ffffff' : null, [A_RIDER]);
+    if(this.shield) drawFrontShield(ctx, this, this.shieldT);
   }
 }
+
+/**
+ * 정면 방패. 적의 **앞면 가운데**에 세로로 선 널빤지처럼 그린다 —
+ * 어디가 막혔고 어디가 열렸는지 한눈에 읽혀야 한다.
+ * 튕겨낸 직후에는 잠깐 하얗게 빛난다.
+ */
+function drawFrontShield(ctx, e, flashT){
+  const box = e.box;
+  const mid = box.y + box.h/2, half = box.h * e.shield * 0.5;
+  const x = snap(box.x - PX*4);
+  const lit = flashT > 0;
+  ctx.fillStyle = lit ? '#ffffff' : '#7fa8d8';
+  ctx.fillRect(x, snap(mid - half), PX*3, snap(half*2));
+  ctx.fillStyle = lit ? '#dff0ff' : '#c8e0f8';
+  ctx.fillRect(x, snap(mid - half), PX*3, PX*2);
+  ctx.fillRect(x, snap(mid + half - PX*2), PX*3, PX*2);
+  ctx.fillStyle = lit ? '#ffffff' : '#3f5f8a';
+  ctx.fillRect(x + PX*3, snap(mid - half + PX*3), PX, snap(half*2 - PX*6));
+}
+
+/* ---------------- 적4 : 돌진병 ----------------
+   ★ **읽고 피하는 첫 번째 적.** (기획 3, 2026-08-27)
+
+   지금까지의 적은 전부 왼쪽으로 등속으로 흐른다 — 어디에 있든 결과가 같아서
+   **자리를 고를 이유가 없었다.** 돌진병은 다르다:
+
+     ① 화면 오른쪽에 멈춘다
+     ② **조준선을 0.7초 보여준다**  ← 여기서 읽는다
+     ③ 그 선을 따라 돌진한다
+
+   반사신경이 아니라 **예고를 읽는 것**을 요구한다. 0.7초는 짧지 않다 —
+   보고 비킬 수 있는 시간이어야 억울하지 않고, 억울하지 않아야 다시 한다.
+   조준은 **멈춘 그 순간의 내 자리**로 고정된다. 계속 따라오면 피할 방법이 없다. */
+const CHG_CELL = 4.2;
+class Charger extends EnemyBase {
+  constructor(x, y){
+    super(x, y, enemyHp(120), 500);
+    this.phase = 'come'; this.pt = 0;
+    this.vx = -(320 + Math.random()*90);
+    this.stopX = GAME_W - 180 - Math.random()*160;
+    this.aimA = Math.PI; this.dashSpd = 0;
+  }
+  get box(){ return { x:this.x - 34, y:this.y - 30, w:69, h:60 }; }
+  update(dt, scene){
+    this.t += dt; this.pt += dt;
+    if(this.flash > 0) this.flash -= dt;
+    if(this.phase === 'come'){
+      this.x += this.vx*dt;
+      this.y = this.baseY + Math.sin(this.t*2.2)*22;
+      if(this.x <= this.stopX){ this.phase = 'aim'; this.pt = 0; SND.sfx('deny'); }
+    }else if(this.phase === 'aim'){
+      /* 멈춰 서서 겨눈다. 여기서 조준선이 뜬다 */
+      this.y = this.baseY + Math.sin(this.t*5.0)*7;      // 부르르 떤다 — 곧 온다는 신호
+      if(this.pt >= CHARGE_TELL){
+        const p = scene.nearestPlayer ? scene.nearestPlayer(this.x, this.y) : null;
+        this.aimA = p ? Math.atan2(p.y - this.y, p.x - this.x) : Math.PI;
+        this.dashSpd = 900 + 260*enemyLv();
+        this.phase = 'dash'; this.pt = 0;
+        Shake.add(4, 0.1);
+      }
+    }else{
+      this.x += Math.cos(this.aimA)*this.dashSpd*dt;
+      this.y += Math.sin(this.aimA)*this.dashSpd*dt;
+      this.baseY = this.y;
+      if(Math.random() < 0.7)
+        Particles.spawn(this.x + 20, this.y, 1,
+          { ang:this.aimA + Math.PI, spread:0.5, spd:220, life:0.3, pal:['#ffd8a0','#ff9a4a','#c4462a'] });
+    }
+    this.flapUpdate(dt, 0.08);
+    if(this.x < -140 || this.y < -140 || this.y > GAME_H + 140) this.dead = true;
+  }
+  render(ctx){
+    /* 겨누는 동안 **조준선**이 뜬다 — 이 선이 이 적의 전부다 */
+    if(this.phase === 'aim'){
+      const p = _aimPeek;
+      const a = p ? Math.atan2(p.y - this.y, p.x - this.x) : Math.PI;
+      const k = clamp(this.pt / CHARGE_TELL, 0, 1);
+      ctx.globalAlpha = 0.30 + 0.55*k;
+      ctx.fillStyle = k > 0.75 && Math.floor(this.pt*24) % 2 === 0 ? '#ffffff' : '#ff5a4a';
+      for(let d = 46; d < 1500; d += PX*7){
+        const x = this.x + Math.cos(a)*d, y = this.y + Math.sin(a)*d;
+        if(x < -20 || x > GAME_W + 20 || y < -20 || y > GAME_H + 20) break;
+        ctx.fillRect(snap(x), snap(y), PX*3, PX*3);
+      }
+      ctx.globalAlpha = 1;
+    }
+    drawFormDragon(ctx, CHARGER_PAL, 'A', CHG_CELL, this.x, this.y, this.pose, true,
+      this.flash > 0 ? '#ffffff' : null, [A_RIDER]);
+  }
+  die(scene){
+    super.die(scene);
+    scene.booms.push(new Boom(this.x, this.y, 96, 0.42));
+    Particles.spawn(this.x, this.y, 30, { spd:520, life:0.6 });
+    Popups.add(this.x, this.y - 40, this.score, PAL.fire[1], 4);
+    Shake.add(9, 0.16);
+    SND.sfx('boomM');
+  }
+}
+/** 조준선을 그릴 때 참고할 플레이어 — 그리기는 scene 을 못 받는다 */
+let _aimPeek = null;
+const CHARGE_TELL = 0.70;          // 예고 시간. 짧으면 반사신경 시험이 된다
 
 /* ---------------- 적3 : 헤비 드래곤 라이더 ---------------- */
 const HV_CELL = 4.8;                                 // FORM A x4.8 = 144 x 134 (+20%)
@@ -4040,11 +4204,11 @@ const TIMELINE = [
   { t:14.0, k:'zombie', n:5 }, { t:16.0, k:'heavy',  n:1 }, { t:18.0, k:'rider',  n:2 },
   /* ★ **20초에 리듬을 한 번 끊는다.** 중간보스까지 44초 동안 좀비만 오면 늘어진다.
      헤비 라이더 셋이 한꺼번에 오는 것으로 "작은 고비" 를 만든다. */
-  { t:19.0, k:'heavy',  n:3 },
+  { t:19.0, k:'heavy',  n:3 }, { t:21.0, k:'charger' },
   { t:22.0, k:'zombie', n:5 },
   { t:24.0, k:'rider',  n:2 }, { t:26.0, k:'zombie', n:5 },
   { t:28.0, k:'heavy',  n:1 }, { t:30.0, k:'rider',  n:2 },
-  { t:32.0, k:'zombie', n:6 }, { t:34.0, k:'heavy',  n:1 },
+  { t:32.0, k:'zombie', n:6 }, { t:33.0, k:'charger' }, { t:34.0, k:'heavy',  n:1 },
   { t:36.0, k:'rider',  n:2 }, { t:38.0, k:'zombie', n:6 },
   { t:40.0, k:'heavy',  n:1 }, { t:42.0, k:'rider',  n:2 },
   { t:44.0, k:'midboss' }
@@ -4240,6 +4404,11 @@ class Director {
     while(this.idx < TIMELINE.length && this.t >= TIMELINE[this.idx].t){
       const e = TIMELINE[this.idx++];
       if(e.k === 'midboss'){ this.spawnMid(); }
+      else if(e.k === 'charger'){
+        /* ★ 돌진병은 **4스테이지부터** 나온다 (기획 3).
+           첫 세 판은 조작을 익히는 자리라 읽고 비키는 것까지 요구하지 않는다. */
+        if(CUR_STAGE >= 4) this.spawnGroup('charger', CUR_STAGE >= 12 ? 2 : 1);
+      }
       else this.spawnGroup(e.k, e.n);
     }
     // 최종보스는 중간보스를 전부 잡은 뒤에만. 둘이 동시에 나오지 않는다.
@@ -4318,6 +4487,7 @@ class Director {
 
     const make = (x, y) => kind === 'zombie' ? new WingZombie(x, y, 160 + Math.random()*70)
                          : kind === 'rider'  ? new DragonRider(x, y)
+                         : kind === 'charger'? new Charger(x, y)
                          :                     new HeavyRider(x, y);
 
     for(let i=0;i<spots.length;i++){
@@ -4609,6 +4779,7 @@ class PlayerMissile {
       if(e.dead) continue;
       const b = e.box, cx = b.x + b.w/2, cy = b.y + b.h/2;
       if(Math.hypot(cx - this.x, cy - this.y) <= MISSILE.BLAST + Math.max(b.w, b.h)*0.35){
+        this.ignoreShield = true;            // 유도 미사일도 방패를 무시한다
         e.hit(this.dmg, this, scene);
         if(e.dead) scene.kills++;
       }
@@ -4759,8 +4930,10 @@ class DragonRoar {
       for(const e of scene.enemies){
         if(e.dead) continue;
         if(e.isBoss){
-          e.hit(e.maxHp * 0.42, this, scene);   // 연출은 줄이고 위력은 올린다
+          this.ignoreShield = true;            // 미사일은 방패를 무시한다 (기획 1)
+        e.hit(e.maxHp * 0.42, this, scene);   // 연출은 줄이고 위력은 올린다
         }else{
+          this.ignoreShield = true;          // 핵무기도 방패를 무시한다
           e.hit(99999, this, scene);
           if(e.dead) scene.kills++;
         }
@@ -5458,6 +5631,9 @@ class GameScene extends Scene {
     this.carry = carry || null;
   }
   enter(){
+    /* ★ 생성자에서도 넣지만 여기서 다시 넣는다 — 씬을 다시 `enter` 하면
+       (검사·재시작) 생성자를 안 타므로 적 레벨이 옛 스테이지에 묶인다 */
+    CUR_STAGE = this.stageNo;
     this.t = 0; this.stage = this.stageNo;
     const st = STAGES[this.stage];
     this.theme = st;
@@ -6290,6 +6466,8 @@ class GameScene extends Scene {
     }
 
     // ---- 갱신 ----
+    /* 돌진병의 조준선이 참고할 사람. 그리기는 scene 을 못 받으므로 여기서 건넨다 */
+    _aimPeek = this.livePlayers()[0] || null;
     for(const b of this.bolts)     b.update(dt);
     for(const e of this.enemies)   e.update(dt, this);
     for(const a of this.arrows)    a.update(dt);
@@ -6316,6 +6494,8 @@ class GameScene extends Scene {
         if(e.dead) continue;
         if(!overlap(bb, e.box)) continue;
         if(b.hitSet && b.hitSet.has(e)) continue;
+        /* 방패에 막히면 관통이고 뭐고 거기서 끝난다 — 뚫으라고 둔 것이 아니다 */
+        if(e.shieldBlocks && e.shieldBlocks(b)){ e.hit(0, b, this); break; }
         e.hit(b.dmg, b, this);
         if(e.dead) this.kills++;
         if(b.pierce > 0){ b.pierce--; (b.hitSet || (b.hitSet = new Set())).add(e); }
