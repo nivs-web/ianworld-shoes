@@ -6403,7 +6403,12 @@ export function mount(host, opts = {}) {
  * 가만히 있는 드래곤 그림.
  * @param {boolean} [padFlame] 움직이는 그림과 폭을 맞춘다 (상점이 나란히 놓을 때)
  */
-export function dragonPortrait(idx, cell = 3, padFlame) {
+/**
+ * @param {{head?:string, leg?:string}} [gear] 무장 색을 **직접** 지정한다.
+ *   상점의 "입어 본 모습" 은 아직 안 산 것을 걸쳐 봐야 하므로 지금 낀 것(EQ)이 아니라
+ *   부르는 쪽이 정해 준 것을 그려야 한다.
+ */
+export function dragonPortrait(idx, cell = 3, padFlame, gear) {
   const i = clamp(idx | 0, 0, DRAGONS.length - 1);
   const d = DRAGONS[i];
   const f = FORMS.B;
@@ -6419,10 +6424,9 @@ export function dragonPortrait(idx, cell = 3, padFlame) {
    * 머리무장과 다리무장은 세지 않은 대신 비싸고 화려한 물건이라,
    * 게임 안에서만 보이면 산 보람이 절반으로 줄어든다.
    */
-  if(EQ.head || EQ.leg){
-    const mm = { w, h, cell };
-    drawGear(c, w/2, h/2, mm, 0.4, EQ.head, EQ.leg);
-  }
+  const gh = gear ? gear.head : EQ.head;
+  const gl = gear ? gear.leg  : EQ.leg;
+  if(gh || gl) drawGear(c, w/2, h/2, { w, h, cell }, 0.4, gh, gl);
   return cv;
 }
 
@@ -6443,6 +6447,50 @@ export function dragonPortrait(idx, cell = 3, padFlame) {
 /** 불이 뿜어 나갈 오른쪽 여백 — 움직이는 그림과 가만히 있는 그림이 **같은 폭**이어야
     한 줄에 늘어놨을 때 고른 놈만 작아 보이지 않는다 */
 export const flamePad = (cell = 3) => Math.round(Math.ceil(FORMS.B.cols * cell) * 0.52);
+
+/**
+ * 게임 설정을 오락실 화면(DOM)에서 읽고 쓴다. (2026-08-26 설정 분리)
+ *
+ * 설정이 게임 안 캔버스 화면에만 있으면 **가로로 돌려야** 소리를 끌 수 있다.
+ * 값은 여전히 게임이 들고 있고(같은 저장소를 써야 게임 안 화면과 어긋나지 않는다),
+ * 바깥에서는 이 창구로만 만진다.
+ */
+export function gameOptions() {
+  const o = optGet();
+  return {
+    stickSize: o.stickSize | 0,
+    stickFloat: o.stickFloat ? 1 : 0,
+    btnSize: o.btnSize | 0,
+    btnAlpha: o.btnAlpha,
+    splitPad: o.splitPad ? 1 : 0,
+    bgmOn: o.bgmOn ? 1 : 0,
+    sfxOn: o.sfxOn ? 1 : 0,
+    bgm: Save.data.bgm | 0,
+    tracks: BGM_TRACKS.map((t) => t.name),
+  };
+}
+
+/** 위에서 받은 값을 되돌려 준다. 준 것만 바꾼다 */
+export function setGameOption(key, value) {
+  const o = optGet();
+  switch (key) {
+    case 'stickSize':  o.stickSize = clamp(value | 0, 0, 2); break;
+    case 'stickFloat': o.stickFloat = value ? 1 : 0; break;
+    case 'btnSize':    o.btnSize = clamp(value | 0, 0, 2); break;
+    case 'btnAlpha':   o.btnAlpha = clamp(+value || 0.5, 0.2, 0.8); o.stickAlpha = o.btnAlpha; break;
+    case 'splitPad':   o.splitPad = value ? 1 : 0; Input.splitPad = !!value; break;
+    case 'bgmOn':      o.bgmOn = value ? 1 : 0; applyAudioOpt(); break;
+    case 'sfxOn':      o.sfxOn = value ? 1 : 0; applyAudioOpt(); break;
+    case 'bgm':
+      Save.data.bgm = clamp(value | 0, 0, BGM_TRACKS.length - 1);
+      /* 로비에서는 곡이 돌고 있지 않을 수 있다 — 그때는 조용히 저장만 한다 */
+      try { SND.switchBgm(Save.data.bgm); } catch (e) {}
+      break;
+    default: return false;
+  }
+  Save.save();
+  return true;
+}
 
 export function dragonAnim(idx, cell = 3) {
   const i = clamp(idx | 0, 0, DRAGONS.length - 1);

@@ -1,5 +1,5 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8">
-<title>설정 미리보기</title>
+<title>사운드 미리보기</title>
 <link rel="stylesheet" href="/src/styles/reset.css">
 <link rel="stylesheet" href="/src/styles/pixel-ui.css">
 <link rel="stylesheet" href="/src/styles/screens.css">
@@ -11,7 +11,7 @@
 <body class="ui-mode">
 <div class="frame"><div id="ui" class="active"></div></div>
 <script type="module">
-import DragonShop from '/src/screens/DragonSettings.js';
+import DragonShop from '/src/screens/DragonSound.js';
 const root=document.getElementById('ui');
 let live=null;
 const nav={ refresh(){ if(!live) return; root.innerHTML=''; root.append(live.render(nav)); },

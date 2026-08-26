@@ -1,24 +1,29 @@
 /**
- * S24 드래곤 순위 — 점수 순위 / 금화왕 순위.
+ * S24 드래곤 순위 — 점수순위 / 금화순위.
  *
- * ★ **화면 하나로 둘을 그린다.** (2026-08-26 E단계)
- * 두 순위표는 줄에 적히는 숫자만 다르고 나머지가 전부 같다. 파일을 둘로 나누면
- * 탭 하나 고칠 때 두 곳을 고쳐야 하고, 한쪽만 고치는 사고가 난다.
+ * ★ **둘의 성격이 아예 다르다.** (2026-08-26, 사용자 지정)
  *
- * 탭은 넷 — 오늘 · 금주 · 금월 · 역대.
- * 기간 탭은 **그 기간에 친 한 판의 최고**고, 역대는 계정에 쌓인 값이다.
- * 그래서 금화왕의 역대만 '누적'이다 — 화면에 그렇게 적어 둔다.
+ *   점수순위 : 오늘 · 금주 · 금월 · 역대  x  쉬움 · 보통 · 어려움
+ *              한 판의 점수라 기간과 난이도로 갈린다.
+ *
+ *   금화순위 : 금화왕 · 싱글왕 · 멀티왕 · 승률왕
+ *              **넷 다 계정에 쌓인 값이다.** 기간도 난이도도 없다 —
+ *              "역대" 라는 탭조차 필요 없어서 아예 안 만든다.
+ *
+ * 화면 하나로 둘을 그리는 이유는 줄 모양이 같기 때문이다. 파일을 나누면 줄
+ * 하나 고칠 때 두 곳을 고쳐야 하고, 한쪽만 고치는 사고가 난다.
  *
  * 마크업은 명예의 전당(`HallOfFame`)과 같은 이름을 쓴다 — 같은 CSS 를 그대로 탄다.
  */
 
 import S from '../config/strings.ko.js';
-import { el, backButton, screen, segmented } from './ui.js';
+import { el, backButton, screen, title, segmented } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
-import { fetchDragonBoard } from '../services/leaderboard.js';
+import { fetchDragonBoard, fetchDragonCrownBoard } from '../services/leaderboard.js';
 import { loadDragon } from './DragonGame.js';
 
-const TABS = [
+/** 점수순위 — 기간 x 난이도 */
+const SCORE_TABS = [
   { value: 'daily', label: '오늘' },
   { value: 'weekly', label: '금주' },
   { value: 'monthly', label: '금월' },
@@ -30,17 +35,31 @@ const DIFFS = [
   { value: 'hard', label: '어려움' },
 ];
 
+/** 금화순위 — 왕 넷 */
+const CROWN_TABS = [
+  { value: 'coin', label: '금화왕' },
+  { value: 'single', label: '싱글왕' },
+  { value: 'multi', label: '멀티왕' },
+  { value: 'rate', label: '승률왕' },
+];
+const CROWN_NOTE = {
+  coin: '지금까지 주운 금화를 모두 더한 값입니다',
+  single: '싱글게임을 많이 한 사람이 위입니다',
+  multi: '멀티게임을 많이 이긴 사람이 위입니다',
+  rate: '이긴 비율입니다 — 10게임 이상 한 사람만 오릅니다',
+};
+
 /**
  * @param {object} nav
  * @param {{kind?:'score'|'coin'}} opt
  */
 export default function DragonRanking(nav, opt = {}) {
-  const kind = opt.kind === 'coin' ? 'coin' : 'score';
+  const crown = opt.kind === 'coin';
   const me = getProfile();
 
-  let tab = 'daily';
+  let tab = crown ? 'coin' : 'daily';
   let difficulty = me.dragonDifficulty || 'normal';
-  let state = { loading: true, rows: [], err: null };
+  let state = { loading: true, rows: [], err: null, unit: '' };
   let mod = null;
   let live = true;
   /** 늦게 온 응답이 **옛 탭의 줄**을 덮어쓰는 것을 막는다 */
@@ -50,21 +69,24 @@ export default function DragonRanking(nav, opt = {}) {
 
   function load() {
     const my = ++reqId;
-    state = { loading: true, rows: [], err: null };
-    fetchDragonBoard(kind, tab, difficulty).then((r) => {
+    state = { loading: true, rows: [], err: null, unit: '' };
+    const req = crown ? fetchDragonCrownBoard(tab) : fetchDragonBoard('score', tab, difficulty);
+    req.then((r) => {
       if (!live || my !== reqId) return;
       state = r.ok
-        ? { loading: false, rows: r.rows, err: null }
-        : { loading: false, rows: [], err: r.reason || 'error' };
+        ? { loading: false, rows: r.rows, err: null, unit: r.unit ?? '점' }
+        : { loading: false, rows: [], err: r.reason || 'error', unit: '' };
       nav.refresh();
     });
   }
   load();
 
-  const unit = kind === 'coin' ? '금화' : '점';
-
   function row(r, i) {
     const rank = i + 1;
+    /* 승률은 소수 한 자리, 나머지는 자릿수 구분 */
+    const val = tab === 'rate'
+      ? `${r.value}%`
+      : `${Number(r.value || 0).toLocaleString('en-US')}${state.unit}`;
     return el('div.rank-row', {
       class: [r.uid === me.uid ? 'me' : '', rank <= 3 ? `crowned c${rank}` : ''].filter(Boolean).join(' '),
     }, [
@@ -72,8 +94,10 @@ export default function DragonRanking(nav, opt = {}) {
       /* 그 사람이 쓰는 드래곤 얼굴 — 순위표는 남이 내 드래곤을 보는 거의 유일한 화면이다 */
       el('div.rank-face', null, [mod ? mod.dragonPortrait(r.dragon, 2) : null].filter(Boolean)),
       el('div.rank-name', r.nickname || '???'),
-      el('div.rank-value', `${Number(r.value || 0).toLocaleString('en-US')}${unit}`),
-    ]);
+      /* 승률왕에는 몇 승 몇 게임인지도 같이 — 비율만으로는 크기를 모른다 */
+      tab === 'rate' ? el('div.rank-rate', `${r.wins}승 ${r.games}게임`) : null,
+      el('div.rank-value', val),
+    ].filter(Boolean));
   }
 
   function body() {
@@ -89,14 +113,20 @@ export default function DragonRanking(nav, opt = {}) {
 
     render() {
       return screen(
-        el('div.dragon-title', kind === 'coin' ? S.dragonRankCoin : S.dragonRankScore),
+        title(crown ? S.dragonRankCoin : S.dragonRankScore),
 
-        segmented(TABS, tab, (v) => { tab = v; load(); nav.refresh(); }),
+        segmented(crown ? CROWN_TABS : SCORE_TABS, tab, (v) => { tab = v; load(); nav.refresh(); }),
 
-        /* 역대는 계정에 쌓인 값이라 난이도로 나뉘지 않는다 — 고를 것이 없으니 감춘다 */
-        tab === 'alltime'
-          ? el('div.hint', kind === 'coin' ? S.dragonRankAllCoin : S.dragonRankAllScore)
-          : segmented(DIFFS, difficulty, (v) => { difficulty = v; load(); nav.refresh(); }),
+        /**
+         * 난이도 줄은 **점수순위의 기간 탭에서만** 뜬다.
+         * 금화순위 넷과 점수순위의 역대는 계정에 쌓인 값이라 난이도로 나뉘지 않는다 —
+         * 고를 것이 없는 줄을 띄워 두면 눌러 보고 아무 일도 안 일어나서 고장으로 읽힌다.
+         */
+        crown
+          ? el('div.hint', CROWN_NOTE[tab])
+          : tab === 'alltime'
+            ? el('div.hint', S.dragonRankAllScore)
+            : segmented(DIFFS, difficulty, (v) => { difficulty = v; load(); nav.refresh(); }),
 
         body(),
 

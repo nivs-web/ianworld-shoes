@@ -717,6 +717,79 @@ export async function fetchDragonBoard(kind, tab, difficulty) {
   }
 }
 
+/**
+ * 드래곤 왕 순위 넷. (2026-08-26, 사용자 지정)
+ *
+ *   금화왕  `dragonCoinsTotal`  지금까지 주운 금화를 모두 더한 값
+ *   싱글왕  `dragonPlays`       싱글게임을 많이 한 사람
+ *   멀티왕  `dragonMultiWins`   멀티게임을 많이 이긴 사람
+ *   승률왕  승률                 이긴 비율
+ *
+ * ★ **넷 다 난이도도 기간도 없다.** 계정에 쌓인 값이라 나눌 것이 없다 —
+ * "역대" 라는 탭조차 필요 없어서 아예 안 만든다.
+ *
+ * 넷 모두 `users` 문서를 **한 필드로만** 정렬한다. 단일 필드 색인은 Firestore 가
+ * 저절로 만들어 주므로 콘솔에서 할 일이 없다.
+ *
+ * 승률왕만 예외적으로 넉넉히 받아 **읽는 쪽에서 계산하고 거른다** —
+ * 승률은 저장된 필드가 아니라 승/패로 그때 계산하는 값이라 서버가 정렬해 줄 수 없다.
+ * (신발게임 승률왕과 같은 방식이다.)
+ *
+ * @param {'coin'|'single'|'multi'|'rate'} tab
+ */
+const DG_CROWN = {
+  coin:   { field: 'dragonCoinsTotal', unit: '금화' },
+  single: { field: 'dragonPlays',      unit: '게임' },
+  multi:  { field: 'dragonMultiWins',  unit: '승' },
+  rate:   { field: 'dragonMultiWins',  unit: '%' },   // 넉넉히 받아 승률로 다시 세운다
+};
+
+/** 승률왕 자격 — 최소 판수를 넘겨야 한 판 이겨서 100% 가 되는 일이 없다 */
+const DG_RATE_MIN_GAMES = 10;
+const DG_RATE_FETCH = 300;
+
+export async function fetchDragonCrownBoard(tab) {
+  const C = DG_CROWN[tab];
+  if (!C) return fail('offline');
+  if (!configured()) return fail('offline');
+  if (!currentUser()) return fail('auth');
+  const fb = await getStore();
+  if (!fb) return fail('offline');
+  const { collection, query, orderBy, limit, getDocs } = fb.storeMod;
+  const top = LEADERBOARD.topN;
+  const want = tab === 'rate' ? DG_RATE_FETCH : top;
+
+  try {
+    const snap = await withTimeout(getDocs(
+      query(collection(fb.db, 'users'), orderBy(C.field, 'desc'), limit(want))
+    ), undefined, '드래곤 왕 순위 조회');
+    if (offline(snap)) return fail('offline');
+
+    let rows = snap.docs.map((d) => {
+      const v = d.data();
+      const wins = v.dragonMultiWins ?? 0;
+      const games = wins + (v.dragonMultiLosses ?? 0);
+      return {
+        uid: d.id,
+        nickname: v.nickname ?? '',
+        dragon: v.dragonCharacter | 0,
+        wins,
+        games,
+        value: tab === 'rate'
+          ? (games >= DG_RATE_MIN_GAMES ? Math.round((wins / games) * 1000) / 10 : null)
+          : (v[C.field] ?? 0),
+      };
+    });
+
+    if (tab === 'rate') rows = rows.filter((r) => r.value !== null);
+    rows.sort((a, b) => b.value - a.value);
+    return { ok: true, rows: rows.slice(0, top), unit: C.unit };
+  } catch (e) {
+    console.warn('[드래곤 왕 순위] 조회 실패', e);
+    return fail('error');
+  }
+}
+
 export async function fetchDragonCrowns() {
   const u = currentUser();
   if (!configured() || !u || u.guest) return null;

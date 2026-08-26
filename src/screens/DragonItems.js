@@ -1,29 +1,55 @@
 /**
- * S22 아이템 쇼핑 — 자리 여섯, 각 다섯 개.
+ * S22 아이템쇼핑.
  *
- * ★ **드래곤은 여기에 없다.** (2026-08-26, 사용자 지정)
- * 드래곤은 아이템이 아니라 내가 조종하는 몸이라 [드래곤 변경] 에서 산다.
- * 여기서 파는 것은 그 몸에 걸치는 것과 손에 쥐고 시작하는 것뿐이다.
+ * ★ **신발을 찾아서의 아이템쇼핑과 같은 모양이다.** (2026-08-26, 사용자 지정)
  *
- * 자리는 두 종류다:
- *   · **끼는 자리** (마스크·불꽃·머리무장·다리무장)
- *     사면 곧바로 낀다. 이미 산 것은 눌러서 끼고, 낀 것을 다시 누르면 벗는다 —
- *     벗는 데는 돈이 안 든다.
- *   · **계단 자리** (초기 미사일·초기 핵무기)
- *     끼고 벗을 것이 없다. 앞 칸을 사야 다음 칸이 열리고, 값은 칸마다 세 배씩 뛴다.
+ * 앞서 만든 카드 격자는 스무 장이 한꺼번에 쏟아져서 뭘 보고 있는지 흐렸다.
+ * 오락실 안의 두 게임이 서로 다른 방식으로 물건을 팔 이유가 없으므로,
+ * 이미 손에 익은 쪽으로 맞춘다:
+ *
+ *   위에 분류 탭 → 가운데 목록 → 큰 버튼 하나 → 맨 아래 입어 본 모습
+ *
+ * 분류는 여섯이다 — 미사일 / 핵무기 / 마스크 / 불꽃 / 머리 / 다리.
+ *
+ * 앞의 둘은 **계단**이라 끼고 벗을 것이 없다(사면 영영 그만큼 들고 시작한다).
+ * 그래서 그 둘만 버튼이 두 얼굴이고, 나머지 넷은 신발게임과 똑같이 세 얼굴이다.
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, backButton, screen, confirmDialog, toast } from './ui.js';
+import { el, button, backButton, screen, title, segmented, confirmDialog, toast } from './ui.js';
+import * as Sfx from '../audio/sfx.js';
 import {
   get as getProfile, hasDragonItem, buyDragonItem, equipDragonItem, dragonEquipment,
 } from '../services/profile.js';
-import { BY_SLOT, ladderState } from '../games/dragon/items.js';
+import { SLOTS, BY_SLOT, ITEMS, ladderState, startMissiles, startBombs, itemById } from '../games/dragon/items.js';
+import { loadDragon } from './DragonGame.js';
 
-const won = (n) => Number(n || 0).toLocaleString('en-US');
+/** 탭에 적는 짧은 이름 — 여섯 개가 한 줄에 들어가야 해서 자른다 */
+const TAB_LABEL = {
+  startMsl: '미사일', startBomb: '핵무기',
+  mask: '마스크', flame: '불꽃', head: '머리', leg: '다리',
+};
 
 export default function DragonItems(nav) {
-  /** 사기 — 계단이든 끼는 자리든 값을 치르는 방식은 같다 */
+  let cat = SLOTS[0].key;
+  /** 분류마다 마지막으로 보던 줄 — 탭을 오갈 때 처음으로 튕기지 않게 */
+  const looking = {};
+  let mod = null;
+  let live = true;
+
+  loadDragon().then((m) => { mod = m; if (live) nav.refresh(); }).catch(() => {});
+
+  const slotOf = (k) => SLOTS.find((s) => s.key === k);
+  const itemsOfCat = (k) => ITEMS.filter((i) => i.slot === k);
+
+  /** 지금 골라 둔 줄 */
+  function current() {
+    const list = itemsOfCat(cat);
+    return itemById(looking[cat]) && itemById(looking[cat]).slot === cat
+      ? itemById(looking[cat])
+      : list[0];
+  }
+
   async function buy(it) {
     const ok = await confirmDialog({
       message: S.dragonItemConfirm(it.ko, it.price),
@@ -34,85 +60,120 @@ export default function DragonItems(nav) {
     if (!ok) return;
     const r = buyDragonItem(it.id, it.slot, it.price);
     if (!r.ok) { toast(S.dragonNeedCoins(r.short), 2600); return; }
+    Sfx.play('sfx_purchase');
     toast(S.dragonItemBought(it.ko), 2200);
     nav.refresh();
   }
 
-  async function onPickWearable(it) {
-    if (!hasDragonItem(it.id)) return buy(it);
-    const wasOn = dragonEquipment()[it.slot] === it.id;
-    equipDragonItem(it.slot, it.id);
-    toast(wasOn ? S.dragonItemUnequip : `${it.ko} ${S.dragonItemEquipped}`, 1300);
-    nav.refresh();
-  }
-
-  /** 카드 한 장. `state` 는 계단 자리에서만 온다 */
-  function card(it, { on = false, owned = false, locked = false, coins = 0, tag }) {
-    return el('button.it-card', {
-      class: [on ? 'on' : '', owned ? 'owned' : (locked ? 'locked step-locked' : 'locked')]
-        .filter(Boolean).join(' '),
-      type: 'button',
-      disabled: locked,
-      onclick: () => { if (!locked) (it.qty ? buy(it) : onPickWearable(it)); },
-    }, [
-      /* 아이콘은 그 아이템의 색 하나로 그린다 — 도트를 서른 벌 그리는 대신
-         색만으로도 어느 등급인지 한눈에 갈린다 */
-      el('span.it-chip', { style: `--it: ${it.tint}` }),
-      el('div.it-body', null, [
-        el('div.it-name', it.ko),
-        el('div.it-desc', it.desc),
-      ]),
-      el('div.it-foot', null, [tag ?? el('span.it-tag.price', {
-        class: coins >= it.price ? 'ok' : 'no',
-      }, S.dragonItemBuy(it.price))]),
-    ]);
-  }
-
   return {
+    onLeave() { live = false; },
+
     render() {
       const p = getProfile();
       const coins = p.dragonCoins || 0;
-      const eq = dragonEquipment();
+      const worn = dragonEquipment();
+      const slot = slotOf(cat);
+      const ladder = !!slot.ladder;
+      const item = current();
+      const 산것 = !!(item && hasDragonItem(item.id));
+      const 낀것 = !!(item && worn[item.slot] === item.id);
 
-      const slotEl = (slot) => {
-        let cards;
-        if (slot.ladder) {
-          /* 계단 — 산 칸, 지금 살 수 있는 칸, 아직 잠긴 칸 */
-          cards = ladderState(p, slot.key).map(({ item, owned, buyable, locked }) => card(item, {
-            owned, locked, coins, on: owned,
-            tag: owned ? el('span.it-tag.on', S.dragonItemOwned)
-              : locked ? el('span.it-tag.step', S.dragonItemStepLocked)
-              : undefined,
-          }));
+      /* 계단은 앞 칸을 사야 다음 칸이 열린다 — 잠긴 줄은 눌러도 소용없다 */
+      const steps = ladder ? ladderState(p, cat) : null;
+      const stepOf = (id) => steps && steps.find((r) => r.item.id === id);
+
+      const list = el('div.shop-list', null, itemsOfCat(cat).map((it) => {
+        const 샀나 = hasDragonItem(it.id);
+        const st = stepOf(it.id);
+        const 잠김 = !!(st && st.locked);
+        return el('div.shop-row', {
+          class: [it.id === item?.id ? 'on' : '', 샀나 ? 'owned' : '', 잠김 ? 'locked' : '']
+            .filter(Boolean).join(' '),
+          onclick: () => {
+            if (잠김) { toast(S.dragonItemStepLocked, 1600); return; }
+            looking[cat] = it.id; Sfx.play('sfx_menu_move'); nav.refresh();
+          },
+        }, [
+          el('div.shop-name', it.ko),
+          /* 산 줄에는 값 대신 상태를 적는다 — 값은 살 사람에게만 필요한 정보다 */
+          샀나
+            ? el('div.shop-have', { class: worn[it.slot] === it.id ? 'on' : '' },
+                ladder ? S.dragonItemOwned : (worn[it.slot] === it.id ? S.itemWorn : S.itemOwned))
+            : 잠김
+              ? el('div.shop-have', S.dragonItemStepLocked)
+              : el('div.shop-cost', `${it.price.toLocaleString('en-US')} 금화`),
+        ]);
+      }));
+
+      /**
+       * 큰 버튼 하나가 여러 얼굴을 한다 (신발게임과 같은 방침).
+       *   계단   : 구매하기 / 보유 중(누를 것 없음) / 앞 단계부터
+       *   착용류 : 구매하기 / 착용하기 / 착용해제
+       */
+      let action = null;
+      if (item) {
+        const st = stepOf(item.id);
+        if (st && st.locked) action = button(S.dragonItemStepLocked, () => {}, { class: 'dim' });
+        else if (산것 && ladder) action = button(S.dragonItemOwned, () => {}, { class: 'dim' });
+        else if (산것) {
+          action = button(낀것 ? S.itemTakeOff : S.itemWear, () => {
+            equipDragonItem(item.slot, item.id);
+            Sfx.play('sfx_menu_select');
+            nav.refresh();
+          }, { primary: !낀것 });
         } else {
-          cards = slot.items.map((it) => {
-            const owned = hasDragonItem(it.id);
-            const on = owned && eq[it.slot] === it.id;
-            return card(it, {
-              on, owned, coins,
-              tag: on ? el('span.it-tag.on', S.dragonItemEquipped)
-                : owned ? el('span.it-tag.owned', S.dragonItemEquip)
-                : undefined,
-            });
+          action = button(S.dragonItemBuyBtn(item.price), () => buy(item), {
+            primary: true,
+            class: coins >= item.price ? '' : 'dim',
           });
         }
-        return el('section.it-slot', null, [
-          el('div.it-slot-head', null, [
-            el('span.it-slot-name', slot.ko),
-            el('span.it-slot-note', slot.note),
-          ]),
-          el('div.it-grid', null, cards),
+      }
+
+      /* 맨 아래 — 착용류는 입어 본 모습, 계단은 몇 개로 시작하는지 */
+      let footer;
+      if (ladder) {
+        const now = cat === 'startMsl' ? startMissiles(p) : startBombs(p);
+        const after = item ? item.qty : now;
+        footer = el('div.wear-title', null, [
+          S.dragonStartNow(slot.ko, now),
+          산것 || !item ? null : el('span.step-arrow', S.dragonStartAfter(after)),
+        ].filter(Boolean));
+      } else {
+        /* 왼쪽 = 고른 것을 걸쳐 본 모습 · 오른쪽 = 지금 낀 모습 */
+        const gearOf = (eq) => ({
+          head: itemById(eq.head)?.tint || null,
+          leg: itemById(eq.leg)?.tint || null,
+        });
+        const tryOn = { ...worn, [item?.slot ?? 'mask']: item?.id };
+        /**
+         * ★ **안 산 것은 회색으로 눌러 둔다.** (2026-08-26, 사용자 지정)
+         * 어떤 색인지까지 다 보여 주면 살 이유가 줄어든다 — 모양만 비치게 한다.
+         */
+        const cut = (eq, label, dim) => el('div.wear-cut', null, [
+          el('div.wear-pic', { class: dim ? 'locked' : '' },
+            [mod ? mod.dragonPortrait(p.dragonCharacter | 0, 2, false, gearOf(eq)) : null].filter(Boolean)),
+          el('div.wear-cap', label),
         ]);
-      };
+        footer = el('div.wear-box', null, [
+          el('div.wear-title', S.itemWearTitle),
+          el('div.wear-row', null, [cut(tryOn, S.itemCutPreview, !산것), cut(worn, S.itemCutCurrent)]),
+        ]);
+      }
 
       return screen(
-        el('div.dragon-title', S.dragonItemTitle),
-        el('div.dg-wallet', S.dragonWallet(won(coins))),
+        title(S.dragonItemTitle),
 
-        ...BY_SLOT.map(slotEl),
+        segmented(SLOTS.map((c) => ({ value: c.key, label: TAB_LABEL[c.key] })), cat, (v) => {
+          cat = v; nav.refresh();
+        }),
 
-        el('div.hint', S.dragonItemHint),
-        el('div.spacer'),
+        el('div.shop-wallet', S.dragonWallet(coins.toLocaleString('en-US'))),
+        el('div.hint', slot.note),
+
+        list,
+        action,
+        footer,
+
         backButton(S.backToGameLobby, () => nav.back())
       );
     },

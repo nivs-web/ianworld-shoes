@@ -2439,3 +2439,44 @@
   image-rendering: crisp-edges;
   border: 2px solid var(--c-line);
 }
+
+/* 아이템쇼핑 — 계단 자리(미사일·핵무기)에서 아직 못 사는 줄.
+   감추지 않고 흐리게 둔다: 다음에 뭐가 오는지 알아야 모을 마음이 생긴다. */
+.shop-row.locked { opacity: 0.42; }
+
+/* 계단 자리의 맨 아래 요약 — "지금 N개 → 사면 M개" */
+.step-arrow { color: var(--c-accent); font-weight: bold; }
+
+/* 드래곤 착용 미리보기 (신발게임의 .wear-row 와 같은 자리, 같은 크기) */
+.wear-box { margin-top: 4px; }
+.wear-cut { display: grid; place-items: center; gap: 2px; }
+.wear-pic {
+  width: 92px;
+  height: 80px;
+  display: grid;
+  place-items: center;
+  background: rgba(245, 217, 160, 0.08);
+  border: 2px solid var(--c-line);
+}
+.wear-pic canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  max-width: 100%;
+  height: auto;
+}
+.wear-cap { font-size: 10px; color: var(--c-text-light); opacity: 0.75; }
+/* 안 산 아이템의 미리보기 — 모양만 비치고 색은 감춘다 */
+.wear-pic.locked canvas { filter: grayscale(1) brightness(0.5); }
+
+/* 설정 화면의 한 줄 — 이름 + 고르는 칸.
+   로비의 난이도 고르기와 같은 부품(`segmented`)을 써서 손이 헤매지 않는다. */
+.opt-row {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.opt-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--c-panel);
+}
