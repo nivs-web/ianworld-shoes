@@ -5,6 +5,19 @@
  * 맨 끝의 「모듈 경계」 만 오락실에 붙이려고 새로 썼다.
  */
 import { enterFullscreen, exitFullscreen, isFullscreen, lockLandscape } from '../../core/fullscreen.js';
+import { text as koBlit } from '../../core/pixelfont.js';
+
+/**
+ * 한글 도트 글자. 이 게임의 자체 글꼴(FONT)은 5x7 아스키뿐이라 한글이 없다.
+ * 오락실이 이미 갈무리11 을 도트로 구워 두었으므로(`core/pixelfont.js`) 그걸 빌려 쓴다.
+ * `opt.ctx` 로 그릴 대상을 받아 주므로 이 게임 캔버스에도 그대로 찍힌다.
+ *
+ * ⚠ 여기 적는 한글은 `tools/build-font.mjs` 가 src/ 를 훑어 자동으로 굽는다 —
+ *   문구를 고치면 `npm run build` 를 다시 돌려야 그 글자가 나온다. 안 그러면 '?' 로 뜬다.
+ */
+function ko(ctx, str, x, y, scale, opt){
+  koBlit(str, x, y, Object.assign({ ctx, scale }, opt || {}));
+}
 
 
 'use strict';
@@ -1260,7 +1273,10 @@ class Player {
     this.pid = pid || 1;
     this.dragonIdx = clamp(dragonIdx === undefined ? (Save.data.dragon|0) : dragonIdx, 0, 9);
     this.hp = 100; this.hurtT = 0;
-    this.lives = 5; this.out = false;      // 잔기는 플레이어마다 따로
+    /* ★ 하트 3개로 시작한다. (2026-08-26, 사용자 지정)
+       5개일 때는 일부러 맞으러 다녀도 죽기가 어려웠다 — 한 대에 25뿐이라
+       목숨 하나에 4대, 다섯 목숨이면 스무 대를 맞아야 끝났다. */
+    this.lives = 3; this.out = false;      // 잔기는 플레이어마다 따로
     this.shieldT = 0; this.shieldHits = [];   // 필살기 쉴드 남은 시간 / 튕겨낸 자국
     this.missileCount = 0; this.bombCount = 0;
     this.combo = 0; this.comboT = 0; this.fireT = 0;
@@ -3692,6 +3708,16 @@ class GameScene extends Scene {
            y >= TIME_BAR.y - 10 && y <= TIME_BAR.y + TIME_BAR.h + 10){
           this.setPause(true); return;
         }
+        if(this.state === 'pause'){
+          this.tapIdx = this.pauseHit(x, y);
+          if(this.tapIdx >= 0){ this.menuIdx = this.tapIdx; this.uiTap = true; SND.sfx('blip'); }
+          return;
+        }
+        if(this.state === 'clear' || this.state === 'over'){
+          this.tapIdx = this.endHit(x, y);
+          if(this.tapIdx >= 0){ this.endIdx = this.tapIdx; SND.sfx('blip'); }
+          this.uiTap = true; return;
+        }
         if(this.state !== 'play'){ this.uiTap = true; return; }
         if(this.btnMsl.down(id,x,y)) return;
         if(this.btnBomb.down(id,x,y)) return;
@@ -3727,6 +3753,7 @@ class GameScene extends Scene {
     this.state = 'play'; this.stateT = 0;
     this.timeLeft = STAGE_TIME; this.endReason = ''; this.bonus = 0;
     this.finalBossKilled = false; this.menuIdx = 0; this.endIdx = 0;
+    this.tapIdx = -1;                 // 터치로 고른 메뉴 번호
 
     this.director = new Director(this, this.stage);
     this.best = Save.data.best[this.stage] || 0;
@@ -3931,8 +3958,43 @@ class GameScene extends Scene {
     if(this.score > (Save.data.best[this.stage] || 0)) Save.data.best[this.stage] = this.score;
     Save.save();
   }
+  /** 일시정지 메뉴. 라벨은 화면에 그대로 나가는 한글이다 */
   pauseItems(){
-    return this.p2 ? ['RESUME', '2P LEAVE', 'QUIT TO TITLE'] : ['RESUME', 'QUIT TO TITLE'];
+    return this.p2
+      ? [{ k:'resume', t:'계속하기' }, { k:'leave2p', t:'2인 플레이 종료' }, { k:'quit', t:'게임 포기' }]
+      : [{ k:'resume', t:'계속하기' }, { k:'quit', t:'게임 포기' }];
+  }
+  /** 메뉴 한 줄이 차지하는 사각형 — 그리기와 터치 판정이 **같은 값**을 쓴다 */
+  pauseRect(i){
+    const w = 460, h = 56;
+    return { x: (GAME_W - w)/2, y: 344 + i*74, w, h };
+  }
+  /** 화면 좌표로 눌린 메뉴를 찾는다 (없으면 -1) */
+  pauseHit(x, y){
+    const n = this.pauseItems().length;
+    for(let i=0;i<n;i++){
+      const r = this.pauseRect(i);
+      if(x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i;
+    }
+    return -1;
+  }
+  doPausePick(){
+    const pick = this.pauseItems()[this.menuIdx];
+    if(!pick) return;
+    if(pick.k === 'resume'){ SND.sfx('confirm'); this.setPause(false); }
+    else if(pick.k === 'leave2p'){ this.leave2P(); this.menuIdx = 0; this.setPause(false); }
+    else { SND.sfx('deny'); this.giveUp(); }
+  }
+  /**
+   * ★ **게임 포기도 한 판이다.** (2026-08-26, 사용자 지정)
+   *
+   * 예전에는 그냥 로비로 나가서 **그때까지 먹은 금화도 점수도 전부 사라졌다.**
+   * 잠깐 하다 나가면 아무것도 안 남으니 짧게 할 이유가 없어진다.
+   * 죽은 것과 똑같이 기록하고 나간다.
+   */
+  giveUp(){
+    this.finish('over', '게임 포기');
+    DG.onExit();
   }
   updatePaused(dt){
     this.stateT += dt;
@@ -3940,13 +4002,11 @@ class GameScene extends Scene {
     const n = this.pauseItems().length;
     if(Input.pressed('up'))   this.menuIdx = (this.menuIdx + n - 1) % n;
     if(Input.pressed('down')) this.menuIdx = (this.menuIdx + 1) % n;
-    if(Input.pressed('pause')){ this.setPause(false); return; }
-    if(Input.pressed('confirm') || tap){
-      const pick = this.pauseItems()[this.menuIdx];
-      if(pick === 'RESUME') this.setPause(false);
-      else if(pick === '2P LEAVE'){ this.leave2P(); this.menuIdx = 0; this.setPause(false); }
-      else DG.onExit();
-    }
+    if(Input.pressed('pause')){ SND.sfx('confirm'); this.setPause(false); return; }
+    /* 터치는 **누른 자리**의 항목을 고른다. 예전에는 아무 데나 눌러도
+       그때 선택돼 있던 항목이 실행돼서, 키보드 없는 사람은 나갈 수가 없었다. */
+    if(tap && this.tapIdx >= 0){ this.menuIdx = this.tapIdx; this.tapIdx = -1; this.doPausePick(); return; }
+    if(Input.pressed('confirm')) this.doPausePick();
   }
   /* 다음 스테이지로 그대로 넘길 상태 */
   /* 점수는 씬 합계와 플레이어별로 같이 쌓는다 */
@@ -3967,15 +4027,30 @@ class GameScene extends Scene {
     };
   }
   endItems(){
-    if(this.state !== 'clear') return ['RETRY FROM 1', 'QUIT TO MENU'];
-    return this.stage < 20 ? ['CONTINUE', 'QUIT TO MENU'] : ['QUIT TO MENU'];
+    if(this.state !== 'clear') return [{ k:'retry', t:'처음부터 다시' }, { k:'quit', t:'오락실로' }];
+    return this.stage < 20
+      ? [{ k:'continue', t:'다음 스테이지' }, { k:'quit', t:'오락실로' }]
+      : [{ k:'quit', t:'오락실로' }];
+  }
+  /** 결과 화면 버튼 자리 — 그리기와 터치가 같은 값을 쓴다 */
+  endRect(i){
+    const items = this.endItems(), w = 300, h = 56, y = 610;
+    const x = items.length === 1 ? 640 : (i === 0 ? 420 : 860);
+    return { x: x - w/2, y, w, h };
+  }
+  endHit(px, py){
+    for(let i=0;i<this.endItems().length;i++){
+      const r = this.endRect(i);
+      if(px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return i;
+    }
+    return -1;
   }
   doEndPick(){
-    const pick = this.endItems()[this.endIdx];
-    if(pick === 'CONTINUE'){
+    const pick = (this.endItems()[this.endIdx] || {}).k;
+    if(pick === 'continue'){
       SND.sfx('confirm');
       this.mgr.change(new GameScene(this.stage + 1, this.makeCarry()));
-    }else if(pick === 'RETRY FROM 1'){
+    }else if(pick === 'retry'){
       /* 스테이지 선택을 없앴으므로 다시하기는 언제나 1스테이지부터다.
          죽으면 처음부터 — 그게 이 게임의 한 판이다. */
       SND.sfx('confirm');
@@ -4000,6 +4075,7 @@ class GameScene extends Scene {
     const tap = this.uiTap; this.uiTap = false;
     if(this.stateT < 1.0) return;
     const n = this.endItems().length;
+    if(tap && this.tapIdx >= 0){ this.endIdx = this.tapIdx; this.tapIdx = -1; this.doEndPick(); return; }
     if(Input.pressed('up') || Input.pressed('left') || Input.pressed('p2left'))
       { this.endIdx = (this.endIdx + n - 1) % n; SND.sfx('blip'); }
     if(Input.pressed('down') || Input.pressed('right') || Input.pressed('p2right'))
@@ -4294,10 +4370,12 @@ class GameScene extends Scene {
   }
   hurtPlayer(p, dmg){
     if(p.out || p.shieldT > 0) return;
-    p.hurtT = 1.1;
+    /* 맞고 나서의 무적 시간. 1.1초는 너무 길어 연달아 맞는 일이 거의 없었다 */
+    p.hurtT = 0.85;
     Shake.add(10, 0.25);
     SND.sfx('hurt'); Input.rumble(0.9, 0.7, 260);
-    p.hp -= (dmg || 25);
+    /* 기본 피해 25 -> 34. 목숨 하나가 네 대에서 세 대로 줄어든다 */
+    p.hp -= (dmg || 34);
     if(p.hp <= 0){
       p.lives = Math.max(0, p.lives - 1);
       p.setLevel(p.level - 1);
@@ -4463,8 +4541,8 @@ class GameScene extends Scene {
     drawText(ctx, 'STAGE ' + this.stage + ' - ' + this.theme.n, 640, 52, 2,
       { align:'center', color:'#dff0ff', shadow:'#0a1830' });
     if(!this.p2 && !this.joining)
-      drawText(ctx, 'PRESS W A S D TO JOIN 2P', 640, 74, 2,
-        { align:'center', color:P2_COLOR, alpha: 0.5 + Math.sin(this.t*3)*0.3 });
+      ko(ctx, 'W A S D 를 누르면 2인 플레이', 640, 68, 2,
+        { align:'center', color:P2_COLOR });
 
     for(const p of this.players()){
       if(p.comboT <= 0 || p.combo <= 0) continue;
@@ -4519,21 +4597,23 @@ class GameScene extends Scene {
   }
 
   renderPause(ctx){
-    ctx.globalAlpha = 0.72; ctx.fillStyle = '#0a0616'; ctx.fillRect(0,0,GAME_W,GAME_H);
+    ctx.globalAlpha = 0.78; ctx.fillStyle = '#0a0616'; ctx.fillRect(0,0,GAME_W,GAME_H);
     ctx.globalAlpha = 1;
-    drawText(ctx, 'PAUSED', 640, 208, 11,
-      { align:'center', color:(r)=>PAL.fire[r], outline:PAL.outline, shadow:'#000', shadowOff:10 });
+    ko(ctx, '일시정지', 640, 208, 8, { align:'center', color:PAL.gold, outline:PAL.outline });
+
     const items = this.pauseItems();
     for(let i=0;i<items.length;i++){
-      const on = i === this.menuIdx, y = 360 + i*62;
-      if(on){
-        drawText(ctx, '>', 400, y, 5, { color:PAL.gold, outline:PAL.outline });
-        drawText(ctx, '<', 880, y, 5, { align:'right', color:PAL.gold, outline:PAL.outline });
-      }
-      drawText(ctx, items[i], 640, y, 5,
-        { align:'center', color: on ? PAL.gold : '#6b7a99', outline:PAL.outline, shadow:'#000' });
+      const on = i === this.menuIdx;
+      const r = this.pauseRect(i);
+      /* 버튼처럼 보이게 그린다 — 눌러도 되는 자리라는 걸 알아야 누른다 */
+      ctx.fillStyle = on ? PAL.gold : '#2a2140';
+      ctx.fillRect(r.x - PX, r.y - PX, r.w + PX*2, r.h + PX*2);
+      ctx.fillStyle = on ? '#3a2a05' : '#150f26';
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      ko(ctx, items[i].t, 640, r.y + 14, 5,
+        { align:'center', color: on ? PAL.gold : '#8a93b8', outline:PAL.outline });
     }
-    drawText(ctx, 'UP-DOWN: SELECT    ENTER: OK    ESC: RESUME', 640, 540, 2,
+    ko(ctx, '화면을 눌러도 됩니다', 640, 344 + items.length*74 + 18, 3,
       { align:'center', color:'#8a7bb8' });
   }
 
@@ -4566,27 +4646,24 @@ class GameScene extends Scene {
     // ---- 다음 행동 선택 ----
     const items = this.endItems();
     if(clear && this.stage < 20)
-      drawText(ctx, 'GO TO STAGE ' + (this.stage + 1) + ' ?', 640, 556, 4,
+      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', 640, 556, 4,
         { align:'center', color:'#cfe6ff', outline:PAL.outline });
     for(let i=0;i<items.length;i++){
       const on = i === this.endIdx;
-      const x = items.length === 1 ? 640 : (i === 0 ? 420 : 860);
-      const y = 610;
-      const w = 300, h = 56;
+      const r = this.endRect(i);
       ctx.fillStyle = on ? PAL.gold : '#241c3e';
-      ctx.fillRect(x - w/2 - PX, y - PX, w + PX*2, h + PX*2);
+      ctx.fillRect(r.x - PX, r.y - PX, r.w + PX*2, r.h + PX*2);
       ctx.fillStyle = on ? '#3a2a05' : '#120d24';
-      ctx.fillRect(x - w/2, y, w, h);
-      drawText(ctx, items[i], x, y + 18, 4,
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      ko(ctx, items[i].t, r.x + r.w/2, r.y + 14, 4,
         { align:'center', color: on ? PAL.gold : '#7f8bb0', outline:PAL.outline });
       if(on){
         const g = Math.round(Math.sin(this.stateT*7))*PX;
         ctx.strokeStyle = PAL.gold; ctx.lineWidth = 2;
-        ctx.strokeRect(x - w/2 - PX*2 - g, y - PX*2 - g, w + (PX*2+g)*2, h + (PX*2+g)*2);
+        ctx.strokeRect(r.x - PX*2 - g, r.y - PX*2 - g, r.w + (PX*2+g)*2, r.h + (PX*2+g)*2);
       }
     }
-    drawText(ctx, 'UP-DOWN / LEFT-RIGHT : SELECT      ENTER OR MISSILE : OK', 640, 686, 2,
-      { align:'center', color:'#8a7bb8' });
+    ko(ctx, '화면을 눌러도 됩니다', 640, 686, 3, { align:'center', color:'#8a7bb8' });
   }
 
   renderDebug(ctx){
@@ -4813,7 +4890,9 @@ class OptionsScene extends Scene {
 
   render(ctx){
     ctx.drawImage(this.bg, 0, 0);
-    drawText(ctx, 'OPTIONS', 640, 40, 7,
+    ko(ctx, '설정', 640, 34, 6,
+      { align:'center', color:PAL.gold, outline:PAL.outline });
+    if(false) drawText(ctx, 'OPTIONS', 640, 40, 7,
       { align:'center', color:(r)=>PAL.fire[r], outline:PAL.outline, shadow:'#000', shadowOff:8 });
 
     const rows = this.rows;
@@ -4851,7 +4930,9 @@ class OptionsScene extends Scene {
     this.pMsl.render(ctx, 3);
     this.pBomb.render(ctx, 2);
 
-    drawText(ctx, 'UP-DOWN: SELECT    LEFT-RIGHT: CHANGE    ENTER: OK    ESC: BACK',
+    ko(ctx, '위아래 : 고르기      좌우 : 바꾸기      엔터 : 확인', 640, 676, 3,
+      { align:'center', color:'#8a7bb8' });
+    if(false) drawText(ctx, 'UP-DOWN: SELECT    LEFT-RIGHT: CHANGE    ENTER: OK    ESC: BACK',
       640, 668, 2, { align:'center', color:'#8a7bb8' });
     if(DEBUG) drawHUDDebug(ctx);
   }
@@ -4928,7 +5009,9 @@ class CharacterSelectScene extends Scene {
     ctx.globalAlpha = 1;
 
     const d = DRAGONS[this.sel];
-    drawText(ctx, 'SELECT DRAGON', 640, 34, 6,
+    ko(ctx, '드래곤 고르기', 640, 30, 6,
+      { align:'center', color:PAL.gold, outline:PAL.outline });
+    if(false) drawText(ctx, 'SELECT DRAGON', 640, 34, 6,
       { align:'center', color:(r)=>PAL.fire[r], outline:PAL.outline, shadow:'#000', shadowOff:7 });
 
     // ---- 가운데 큰 드래곤 (전환 시 확대 -> 원래대로) ----
@@ -4976,7 +5059,9 @@ class CharacterSelectScene extends Scene {
       }
     }
 
-    drawText(ctx, 'ARROWS: SELECT    ENTER: OK    ESC: TITLE', 640, 676, 2,
+    ko(ctx, '방향키 : 고르기      엔터 : 확인', 640, 674, 3,
+      { align:'center', color:'#8a7bb8' });
+    if(false) drawText(ctx, 'ARROWS: SELECT    ENTER: OK    ESC: TITLE', 640, 676, 2,
       { align:'center', color:'#8a7bb8' });
     if(DEBUG) drawHUDDebug(ctx);
   }
@@ -5255,6 +5340,17 @@ export function mount(host, opts = {}) {
     '<div class="dg-rot-icon"></div>' +
     '<p>가로 모드로 돌려주세요</p>' +
     '<p class="dg-sub">PLEASE ROTATE YOUR DEVICE</p>';
+  /**
+   * ★ **여기에도 나갈 길을 둔다.** (2026-08-26, 사용자 지정)
+   * 가로로 못 돌리는 상황이 있는데 안내만 띄우면 갇힌다 —
+   * "선택의 여지가 없는 느낌" 이라는 게 정확히 그것이다.
+   */
+  const quit = document.createElement('button');
+  quit.type = 'button';
+  quit.className = 'dg-quit';
+  quit.textContent = '게임 포기하고 나가기';
+  quit.addEventListener('click', () => DG.onExit());
+  rotateEl.appendChild(quit);
   stage.appendChild(rotateEl);
   host.appendChild(stage);
 
@@ -5303,6 +5399,18 @@ export const __test = {
   press(action) { Input.just.add(action); },
   scene0() { return scenes ? scenes.current : null; },
 };
+
+/**
+ * 바깥(ESC · 안드로이드 뒤로가기 · 게임패드 메뉴)에서 "나가고 싶다" 고 알려 올 때.
+ * 곧바로 나가지 않고 **일시정지 메뉴를 띄운다** — 한 번의 실수로 판이 날아가면 안 된다.
+ */
+export function requestPause() {
+  const sc = scenes && scenes.current;
+  if (!sc || typeof sc.setPause !== 'function') { DG.onExit(); return; }
+  if (sc.state === 'play') sc.setPause(true);
+  else if (sc.state === 'pause') sc.setPause(false);
+  else DG.onExit();                      // 결과 화면 등에서는 그냥 나간다
+}
 
 /** 게임을 뗀다. 붙인 것을 하나도 남기지 않는다 */
 export function unmount() {

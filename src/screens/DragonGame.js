@@ -20,6 +20,7 @@ import S from '../config/strings.ko.js';
 import { el, toast } from './ui.js';
 import { get as getProfile, finishDragonRun, setDragonCharacter } from '../services/profile.js';
 import { lockLandscape, unlockOrientation } from '../core/fullscreen.js';
+import { setGameGuard } from './router.js';
 
 /**
  * ★ **게임 코드는 누를 때 받는다.** 신발게임만 하는 사람에게 드래곤 본체를
@@ -50,6 +51,7 @@ export default function DragonGame(nav, opt = {}) {
   return {
     onLeave() {
       live = false;
+      setGameGuard(null);
       unlockOrientation();
       if (mod) mod.unmount();
     },
@@ -61,6 +63,8 @@ export default function DragonGame(nav, opt = {}) {
       loadDragon().then((m) => {
         if (!live) return;                    // 받는 동안 화면을 떠났다
         lockLandscape();                      // 가로 게임 (전체화면은 오락실에서 이미 켰다)
+        /* ESC · 안드로이드 뒤로가기를 게임이 먼저 받는다 — 곧바로 나가지 않고 일시정지 */
+        setGameGuard(() => m.requestPause());
         m.mount(host, {
           mode,
           difficulty: p.dragonDifficulty || 'normal',

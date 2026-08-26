@@ -138,9 +138,24 @@ export const nav = {
   depth: () => stack.length,
 };
 
-/** 팝업이 있으면 그것부터, 없으면 뒤로가기. 안드로이드 뒤로가기 · ESC · 게임패드 메뉴가 전부 이걸 쓴다. */
+/**
+ * ★ **게임이 떠 있는 동안은 게임이 먼저 받는다.** (2026-08-26)
+ *
+ * 신발게임은 캔버스로 넘어가면서 `body.ui-mode` 가 빠지므로 여기 오지 않는다.
+ * 그런데 드래곤 스트라이커는 **DOM 화면 위에 제 캔버스를 얹는 방식**이라
+ * `ui-mode` 가 그대로 붙어 있다 — 그래서 게임 도중 ESC 를 누르면
+ * **일시정지가 아니라 곧바로 로비로 튕겨 나갔다.** 안드로이드 뒤로가기도 같았다.
+ *
+ * 화면이 이걸 등록하면 뒤로가기·ESC·게임패드 메뉴가 전부 그 함수로 간다.
+ */
+let gameGuard = null;
+export function setGameGuard(fn) { gameGuard = fn || null; }
+
+/** 팝업이 있으면 그것부터, 게임 중이면 게임에게, 아니면 뒤로가기. */
 function backOrCloseOverlay() {
-  if (!closeTopOverlay() && stack.length > 1) nav.back();
+  if (closeTopOverlay()) return;
+  if (gameGuard) { gameGuard(); return; }
+  if (stack.length > 1) nav.back();
 }
 
 /** 안드로이드 뒤로가기 / 브라우저 뒤로가기 */
