@@ -21,6 +21,7 @@ import { el, backButton, screen, title, segmented } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
 import { fetchDragonBoard, fetchDragonCrownBoard, fetchUserCard } from '../services/leaderboard.js';
 import { openUserCard } from './UserCard.js';
+import { crownSlot } from './crown.js';
 import { loadDragon } from './DragonGame.js';
 
 /** 점수순위 — 기간 x 난이도 */
@@ -111,7 +112,12 @@ export default function DragonRanking(nav, opt = {}) {
        */
       onclick: () => openCard(r),
     }, [
-      el('div.rank-place', null, [el('span.rank-no', S.rankPlace(rank))]),
+      /**
+       * ★ **1·2·3위에 금·은·동 왕관.** (2026-08-26, 사용자 지정 — 명예의 전당 참고)
+       * 왕관이 없으면 1위와 47위가 똑같이 생겨서 순위표가 그냥 목록이 된다.
+       * 명예의 전당과 **같은 부품**이라 두 게임의 순위표가 같은 신호를 쓴다.
+       */
+      el('div.rank-place', null, [crownSlot(rank), el('span.rank-no', S.rankPlace(rank))]),
       /* 그 사람이 쓰는 드래곤 얼굴 — 순위표는 남이 내 드래곤을 보는 거의 유일한 화면이다 */
       el('div.rank-face', null, [mod ? mod.dragonPortrait(r.dragon, 2) : null].filter(Boolean)),
       el('div.rank-name', r.nickname || '???'),
@@ -127,6 +133,21 @@ export default function DragonRanking(nav, opt = {}) {
     if (state.err) return el('div.hint.bad', S.rankLoadFailed);
     if (!state.rows.length) return el('div.hint', S.noRankYet);
     return el('div.rank-list', null, state.rows.map(row));
+  }
+
+  /**
+   * ★ **내 기록은 100위 밖이어도 보인다.** (2026-08-26, 명예의 전당과 같은 방침)
+   * 순위표를 여는 이유의 절반은 "내가 몇 등인가" 인데, 목록에만 의지하면
+   * 상위 100명이 아닌 사람은 자기 줄을 영영 못 본다.
+   */
+  function mineRow() {
+    if (state.loading || state.err || !state.rows.length) return null;
+    const i = state.rows.findIndex((r) => r.uid === me.uid);
+    if (i >= 0) return null;                 // 목록 안에 이미 있다
+    return el('div.rank-mine', null, [
+      el('div.rank-mine-label', S.myRank),
+      el('div.hint', S.rankNotInTop),
+    ]);
   }
 
   return {
@@ -150,6 +171,7 @@ export default function DragonRanking(nav, opt = {}) {
             : segmented(DIFFS, difficulty, (v) => { difficulty = v; load(); nav.refresh(); }),
 
         body(),
+        mineRow(),
 
         el('div.spacer'),
         backButton(S.backToGameLobby, () => nav.back())
