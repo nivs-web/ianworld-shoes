@@ -127,7 +127,10 @@ export default function DragonLobby(nav) {
 
         /* ── 로비유저상태창 : 고른 드래곤 + 내 기록 + 딱지 ── */
         el('div.panel', null, [
-          el('div.char-cell', null, [
+          /* ★ **드래곤 칸은 신발 칸보다 넓다.** (2026-08-26, 사용자 지정)
+             그림틀(`.dg-figure`)은 108px 인데 공용 `.char-cell` 이 78px 이라
+             드래곤이 날개를 펜 채로 가로로 찌그러져 있었다. */
+          el('div.char-cell.dg', null, [
             dragonFigure(p.dragonCharacter | 0),
             el('div.char-name', p.nickname || '???'),
           ]),
