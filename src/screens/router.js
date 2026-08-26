@@ -181,7 +181,16 @@ export function bindHardwareBack() {
 export function bindEscBack() {
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'Escape') return;
-    if (!document.body.classList.contains('ui-mode')) return; // 게임 중 — pauseHandler 몫
+    if (!document.body.classList.contains('ui-mode')) return; // 신발 인게임 — pauseHandler 몫
+    /**
+     * ★ **드래곤이 떠 있으면 ESC 는 게임이 받는다.** (2026-08-26, 버그 수정)
+     *
+     * 드래곤은 DOM 화면 위에 캔버스를 얹으므로 `ui-mode` 가 붙어 있다. 그래서 여기와
+     * 게임의 키 처리가 **둘 다** ESC 를 잡았다 — 하나가 일시정지를 켜면 다른 하나가
+     * 곧바로 껐다. 화면에는 아무 일도 안 일어나는 것처럼 보였다.
+     * 뒤로가기(popstate)·게임패드는 키 이벤트가 아니라 여전히 가드로 간다.
+     */
+    if (gameGuard) return;
     e.preventDefault();
     backOrCloseOverlay();
   });

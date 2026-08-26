@@ -195,6 +195,29 @@ export const setDifficulty = (d) => patch({ difficulty: d });
 export const setDragonDifficulty = (d) => patch({ dragonDifficulty: d });
 export const setDragonCharacter = (i) => patch({ dragonCharacter: i | 0 });
 
+/** 드래곤을 갖고 있나 — 앞의 다섯은 처음부터 갖고 있다 */
+export function hasDragon(idx) {
+  const i = idx | 0;
+  if (i < 5) return true;
+  return !!(L.loadProfile().dragonOwned || {})[i];
+}
+
+/**
+ * 드래곤을 산다.
+ * @returns {{ok:boolean, profile:object, short:number}} short = 모자란 금화
+ */
+export function buyDragon(idx, price) {
+  const p = L.loadProfile();
+  const i = idx | 0;
+  const cost = Math.max(0, Math.round(price) || 0);
+  if (hasDragon(i)) return { ok: true, profile: p, short: 0 };
+  const have = p.dragonCoins || 0;
+  if (have < cost) return { ok: false, profile: p, short: cost - have };
+  const owned = { ...(p.dragonOwned || {}), [i]: true };
+  /* 지갑에서만 뺀다 — 누적(dragonCoinsTotal)은 그대로라 금화왕 순위가 안 떨어진다 */
+  return { ok: true, profile: patch({ dragonCoins: have - cost, dragonOwned: owned }), short: 0 };
+}
+
 /** 아이템을 산다 — 지갑에서만 빠지고 누적은 그대로다 (금화왕 순위가 안 떨어진다) */
 export function spendDragonCoins(n) {
   const p = L.loadProfile();

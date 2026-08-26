@@ -27,8 +27,25 @@ import MINI from '../data/font9.generated.json';
 
 /** 글리프 상자 높이 (베이스라인 포함) */
 export const GLYPH_H = FONT.h;
-/** 숫자 고정폭 — mono 모드에서 쓰는 셀 폭 */
-export const DIGIT_W = FONT.glyphs['0'].w;
+/**
+ * 숫자 고정폭 — mono 모드에서 쓰는 셀 폭.
+ *
+ * ★ **'0' 의 폭이 아니라 "가장 넓은 숫자" 의 폭이다.** (2026-08-26, 버그 수정)
+ *
+ * 예전에는 `glyphs['0'].w` 를 그대로 썼다. 11px·7px 글꼴은 숫자 폭이 전부 같아서
+ * 아무 문제가 없었는데, **9px 글꼴은 '4' 만 7px 이고 나머지는 6px 이었다.**
+ * 그러면 `pad = (6 - 7) >> 1 = -1` 이 되어 글자가 셀 왼쪽 밖에서 시작하고,
+ * 캔버스가 6px 폭이라 **'4' 의 왼쪽 세로줄이 통째로 잘렸다** — 화면에는 십자가(✛)로 나왔다.
+ * 두 게임 모두 로비 숫자에 이 글꼴을 쓰므로 양쪽에서 같은 증상이 났다.
+ *
+ * 가장 넓은 숫자를 기준으로 잡으면 어떤 글꼴을 굽더라도 넘칠 일이 없다.
+ */
+const widestDigit = (F) => {
+  let w = 0;
+  for (const d of '0123456789') { const g = F.glyphs[d]; if (g && g.w > w) w = g.w; }
+  return w || 1;
+};
+export const DIGIT_W = widestDigit(FONT);
 
 /**
  * ★ **두 번째 폰트 — 갈무리7 + 상용 한글 2,350자.** (2026-08-18)
@@ -88,7 +105,7 @@ export function measure(str, scale = 1, mono = false, small = false, mini = fals
   const F = fontOf(small, mini);
   const s = String(str).toUpperCase();
   if (!s.length) return 0;
-  const digitW = F.glyphs['0'].w;
+  const digitW = widestDigit(F);
   let w = 0;
   for (const ch of s) w += mono ? digitW : glyph(ch, F).w;
   return (w + F.tracking * (s.length - 1)) * scale;
@@ -138,7 +155,7 @@ export function text(str, x, y, opt = {}) {
 
 function blit(ctx, str, x, y, s, color, mono, F = FONT) {
   ctx.fillStyle = color;
-  const digitW = F.glyphs['0'].w;
+  const digitW = widestDigit(F);
   let cx = x;
   for (const ch of str) {
     const g = glyph(ch, F);
@@ -203,7 +220,7 @@ function cachedGlyph(ch, s, color, outline, shadow, mono, small, mini) {
   const hit = glyphCache.get(key);
   if (hit) return hit;
 
-  const cell = mono ? F.glyphs['0'].w : glyph(ch, F).w;
+  const cell = mono ? widestDigit(F) : glyph(ch, F).w;
   // 외곽선은 사방으로 1도트(=s픽셀) 삐져나온다 — 그만큼 여백을 준다
   const pad = outline || shadow ? s : 0;
   const buf = createBuffer(cell * s + pad * 2, F.h * s + pad * 2);

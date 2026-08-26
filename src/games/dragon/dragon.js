@@ -1461,76 +1461,76 @@ const Save = {
    layers : [원경, 중경, 근경, 전경] 각각 {s:형태, b:기준선, a:진폭, r:거칠기, c:색}
    형태 : hill(구릉) peak(험준) tree(침엽수) leaf(활엽수) temple(유적) flat(평지) none(없음)  */
 const STAGES = [null,
-  { n:'PYRAMID OF SANDS', acc:'#e0a83a', line:'#fff0c0', cloud:'#ffe6b0', cloudA:0.22, fx:null,
+  { n:'모래의 피라미드', acc:'#e0a83a', line:'#fff0c0', cloud:'#ffe6b0', cloudA:0.22, fx:null,
     sky:[{p:0,c:'#3a2a6b'},{p:.3,c:'#7a4a86'},{p:.58,c:'#d8874f'},{p:.8,c:'#f0b96a'},{p:1,c:'#f7dca0'}],
     layers:[{s:'temple',b:600,a:150,r:14,c:'#8a6a45'},{s:'temple',b:668,a:110,r:16,c:'#6b4f34'},
             {s:'flat',  b:736,a: 46,r:26,c:'#c79a5c'},{s:'flat',b:794,a:44,r:34,c:'#8a6535'}] },
-  { n:'TEMPLE OF MARBLE', acc:'#e8eef7', line:'#ffffff', cloud:'#ffffff', cloudA:0.30, fx:null,
+  { n:'대리석 신전', acc:'#e8eef7', line:'#ffffff', cloud:'#ffffff', cloudA:0.30, fx:null,
     sky:[{p:0,c:'#2a5a9e'},{p:.35,c:'#5a9ccc'},{p:.65,c:'#a8d4e0'},{p:.85,c:'#dcecd8'},{p:1,c:'#f4f0dc'}],
     layers:[{s:'peak',  b:588,a:130,r:22,c:'#7e93b4'},{s:'temple',b:664,a:118,r:12,c:'#c9cfd8'},
             {s:'temple',b:736,a: 66,r:14,c:'#9aa3b0'},{s:'flat',b:792,a:44,r:30,c:'#6b7280'}] },
-  { n:'MAYAN RUINS',      acc:'#c9a227', line:'#e8ffd0', cloud:'#dff0d0', cloudA:0.24, fx:null,
+  { n:'잊혀진 정글 유적',      acc:'#c9a227', line:'#e8ffd0', cloud:'#dff0d0', cloudA:0.24, fx:null,
     sky:[{p:0,c:'#1c3a4a'},{p:.32,c:'#2f6b6a'},{p:.6,c:'#5d9a6a'},{p:.84,c:'#a8c47a'},{p:1,c:'#e0d89a'}],
     layers:[{s:'temple',b:596,a:146,r:16,c:'#6d6a4a'},{s:'tree', b:672,a:104,r:20,c:'#2f5a38'},
             {s:'leaf',  b:738,a: 70,r:24,c:'#1e3f26'},{s:'flat',b:792,a:46,r:34,c:'#14291a'}] },
-  { n:'NORDIC PINEWOOD',  acc:'#6fd0c0', line:'#dffaff', cloud:'#cfe4f0', cloudA:0.26, fx:'snow',
+  { n:'북녘 침엽수림',  acc:'#6fd0c0', line:'#dffaff', cloud:'#cfe4f0', cloudA:0.26, fx:'snow',
     sky:[{p:0,c:'#122a4a'},{p:.34,c:'#28527e'},{p:.62,c:'#4f86a8'},{p:.85,c:'#9cc4cc'},{p:1,c:'#dcecec'}],
     layers:[{s:'peak',b:580,a:158,r:26,c:'#5e7a96'},{s:'tree',b:664,a:118,r:18,c:'#1f4442'},
             {s:'tree',b:740,a: 84,r:22,c:'#12302f'},{s:'tree',b:806,a:60,r:26,c:'#0a1e1e'}] },
-  { n:'AUTUMN MAPLE',     acc:'#ff7a2e', line:'#ffe0c0', cloud:'#ffd9b8', cloudA:0.26, fx:'leaf',
+  { n:'붉게 물든 단풍 계곡',     acc:'#ff7a2e', line:'#ffe0c0', cloud:'#ffd9b8', cloudA:0.26, fx:'leaf',
     sky:[{p:0,c:'#4a2038'},{p:.32,c:'#8a3a44'},{p:.6,c:'#c96a44'},{p:.84,c:'#e8a45c'},{p:1,c:'#f6d89a'}],
     layers:[{s:'hill',b:594,a:132,r:22,c:'#7a4a55'},{s:'leaf',b:668,a:112,r:20,c:'#b84a2a'},
             {s:'leaf',b:742,a: 82,r:24,c:'#8a2f1e'},{s:'leaf',b:806,a:58,r:28,c:'#5a1d14'}] },
-  { n:'BAMBOO GROVE',     acc:'#8fe36b', line:'#eaffd0', cloud:'#e0f4d0', cloudA:0.22, fx:null,
+  { n:'안개 낀 대나무 숲',     acc:'#8fe36b', line:'#eaffd0', cloud:'#e0f4d0', cloudA:0.22, fx:null,
     sky:[{p:0,c:'#1e4230'},{p:.34,c:'#3a7a4a'},{p:.62,c:'#6fae62'},{p:.85,c:'#b4d894'},{p:1,c:'#e6f2c4'}],
     layers:[{s:'hill',b:596,a:124,r:20,c:'#3f7a52'},{s:'tree',b:670,a:120,r:14,c:'#2b6238'},
             {s:'tree',b:744,a: 92,r:16,c:'#1a4526'},{s:'tree',b:808,a:64,r:20,c:'#0f2c18'}] },
-  { n:'FJORD CLIFFS',     acc:'#6fb8ff', line:'#dff0ff', cloud:'#cfe0f0', cloudA:0.28, fx:null,
+  { n:'피오르드 절벽',     acc:'#6fb8ff', line:'#dff0ff', cloud:'#cfe0f0', cloudA:0.28, fx:null,
     sky:[{p:0,c:'#0e2440'},{p:.32,c:'#1f4a76'},{p:.6,c:'#3f7fa8'},{p:.84,c:'#8fbcc8'},{p:1,c:'#d0e4e4'}],
     layers:[{s:'peak',b:566,a:186,r:30,c:'#4a6684'},{s:'peak',b:660,a:140,r:28,c:'#2c4560'},
             {s:'flat',b:742,a: 38,r:12,c:'#1b3d5c'},{s:'flat',b:796,a:34,r:16,c:'#10283f'}] },
-  { n:'SIBERIAN WILDS',   acc:'#cfe8ff', line:'#ffffff', cloud:'#e8f2ff', cloudA:0.32, fx:'snow',
+  { n:'얼어붙은 설원',   acc:'#cfe8ff', line:'#ffffff', cloud:'#e8f2ff', cloudA:0.32, fx:'snow',
     sky:[{p:0,c:'#1b2a44'},{p:.34,c:'#3a5a80'},{p:.62,c:'#6f8fae'},{p:.85,c:'#b8cdd8'},{p:1,c:'#eef4f6'}],
     layers:[{s:'peak',b:578,a:162,r:26,c:'#7b90a8'},{s:'tree',b:668,a:112,r:18,c:'#2a4450'},
             {s:'tree',b:744,a: 80,r:22,c:'#1a2e36'},{s:'flat',b:800,a:48,r:30,c:'#dfe9f0'} ] },
-  { n:'TROPIC SHORE',     acc:'#3fe0c8', line:'#dffff8', cloud:'#ffffff', cloudA:0.30, fx:null,
+  { n:'남쪽 바다의 해안',     acc:'#3fe0c8', line:'#dffff8', cloud:'#ffffff', cloudA:0.30, fx:null,
     sky:[{p:0,c:'#1a5a8e'},{p:.32,c:'#2f8fb4'},{p:.6,c:'#5fc4c4'},{p:.84,c:'#a8e4cc'},{p:1,c:'#f0e8c0'}],
     layers:[{s:'hill',b:592,a:118,r:20,c:'#3a7f86'},{s:'leaf',b:668,a: 96,r:20,c:'#237a5e'},
             {s:'flat',b:742,a: 40,r:10,c:'#2fb0a8'},{s:'flat',b:796,a:40,r:26,c:'#e8d69a'}] },
-  { n:'MURKY SWAMP',      acc:'#9fc04a', line:'#d8e8b0', cloud:'#b8c49a', cloudA:0.26, fx:null,
+  { n:'검은 늪지대',      acc:'#9fc04a', line:'#d8e8b0', cloud:'#b8c49a', cloudA:0.26, fx:null,
     sky:[{p:0,c:'#20281c'},{p:.34,c:'#3d4a2c'},{p:.62,c:'#5f6f3a'},{p:.85,c:'#8a9450'},{p:1,c:'#b6b878'}],
     layers:[{s:'leaf',b:600,a:112,r:24,c:'#4a5730'},{s:'leaf',b:672,a: 96,r:26,c:'#333d20'},
             {s:'flat',b:744,a: 34,r:12,c:'#3f4a28'},{s:'flat',b:798,a:42,r:30,c:'#232a15'}] },
-  { n:'SPRING COAST',     acc:'#ff9ec4', line:'#ffe8f2', cloud:'#ffd8e8', cloudA:0.28, fx:'leaf',
+  { n:'봄빛 해안선',     acc:'#ff9ec4', line:'#ffe8f2', cloud:'#ffd8e8', cloudA:0.28, fx:'leaf',
     sky:[{p:0,c:'#4a3a6b'},{p:.32,c:'#8a5f96'},{p:.6,c:'#d08fae'},{p:.84,c:'#f4c0cc'},{p:1,c:'#ffe8dc'}],
     layers:[{s:'hill',b:592,a:126,r:20,c:'#8f7aa8'},{s:'leaf',b:668,a: 98,r:20,c:'#d47f9e'},
             {s:'flat',b:742,a: 38,r:10,c:'#7fa8c4'},{s:'flat',b:796,a:40,r:28,c:'#5a6f96'}] },
-  { n:'GOLDEN COAST',     acc:'#ffc44a', line:'#fff0c8', cloud:'#ffe2b0', cloudA:0.26, fx:'leaf',
+  { n:'황금빛 해안',     acc:'#ffc44a', line:'#fff0c8', cloud:'#ffe2b0', cloudA:0.26, fx:'leaf',
     sky:[{p:0,c:'#40285a'},{p:.32,c:'#8a4a5e'},{p:.6,c:'#d08a4a'},{p:.84,c:'#f0bc6a'},{p:1,c:'#ffe8b8'}],
     layers:[{s:'hill',b:592,a:130,r:22,c:'#8a6a58'},{s:'leaf',b:668,a: 98,r:22,c:'#c98a3a'},
             {s:'flat',b:742,a: 38,r:10,c:'#7a86a8'},{s:'flat',b:796,a:40,r:28,c:'#4f5f80'}] },
-  { n:'CLEAR SKY',        acc:'#6fc8ff', line:'#ffffff', cloud:'#ffffff', cloudA:0.42, fx:null,
+  { n:'구름 한 점 없는 하늘',        acc:'#6fc8ff', line:'#ffffff', cloud:'#ffffff', cloudA:0.42, fx:null,
     sky:[{p:0,c:'#1f5fae'},{p:.34,c:'#4a94d4'},{p:.64,c:'#8fc4ea'},{p:.86,c:'#c4e2f4'},{p:1,c:'#eaf6ff'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'OVERCAST',         acc:'#b8c4d4', line:'#e8eef4', cloud:'#c8d2de', cloudA:0.5, fx:null,
+  { n:'잿빛 구름바다',         acc:'#b8c4d4', line:'#e8eef4', cloud:'#c8d2de', cloudA:0.5, fx:null,
     sky:[{p:0,c:'#3a4356'},{p:.34,c:'#5c6779'},{p:.64,c:'#848e9e'},{p:.86,c:'#aeb6c2'},{p:1,c:'#d2d8e0'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'SUNSET GLOW',      acc:'#ff8a3a', line:'#ffd8b0', cloud:'#ffb884', cloudA:0.40, fx:null,
+  { n:'노을이 타는 하늘',      acc:'#ff8a3a', line:'#ffd8b0', cloud:'#ffb884', cloudA:0.40, fx:null,
     sky:[{p:0,c:'#2a1a52'},{p:.28,c:'#6b2a6b'},{p:.55,c:'#c0455a'},{p:.78,c:'#f08040'},{p:1,c:'#ffd07a'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'RAINFALL',         acc:'#7fd0e0', line:'#cfe8f0', cloud:'#8fa0b0', cloudA:0.46, fx:'rain',
+  { n:'쏟아지는 빗줄기',         acc:'#7fd0e0', line:'#cfe8f0', cloud:'#8fa0b0', cloudA:0.46, fx:'rain',
     sky:[{p:0,c:'#1e2836'},{p:.34,c:'#334154'},{p:.64,c:'#4f6072'},{p:.86,c:'#6f8090'},{p:1,c:'#8fa0ae'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'THUNDERSTORM',     acc:'#c8a0ff', line:'#e0d0ff', cloud:'#6a5f86', cloudA:0.5, fx:'storm',
+  { n:'천둥이 치는 폭풍',     acc:'#c8a0ff', line:'#e0d0ff', cloud:'#6a5f86', cloudA:0.5, fx:'storm',
     sky:[{p:0,c:'#14102a'},{p:.34,c:'#241e46'},{p:.64,c:'#3a2f62'},{p:.86,c:'#54467e'},{p:1,c:'#6f5f96'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'EARTH ORBIT',      acc:'#5fd0ff', line:'#bfe8ff', cloud:'#3a6fae', cloudA:0.16, fx:'stars',
+  { n:'지구 궤도',      acc:'#5fd0ff', line:'#bfe8ff', cloud:'#3a6fae', cloudA:0.16, fx:'stars',
     sky:[{p:0,c:'#05060f'},{p:.4,c:'#0a0f24'},{p:.7,c:'#101a3a'},{p:.9,c:'#1c2f5c'},{p:1,c:'#2a4a86'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] },
-  { n:'ASTEROID BELT',    acc:'#c8b89a', line:'#e0d8c8', cloud:'#4a4238', cloudA:0.18, fx:'stars',
+  { n:'소행성 지대',    acc:'#c8b89a', line:'#e0d8c8', cloud:'#4a4238', cloudA:0.18, fx:'stars',
     sky:[{p:0,c:'#07060c'},{p:.4,c:'#0d0b18'},{p:.72,c:'#171326'},{p:.92,c:'#241c38'},{p:1,c:'#33284a'}],
     layers:[{s:'peak',b:640,a:96,r:44,c:'#4a4238'},{s:'none'},{s:'peak',b:790,a:70,r:52,c:'#2b261f'},{s:'none'}] },
-  { n:'THE GALAXY',       acc:'#c08fff', line:'#e8d0ff', cloud:'#6a3f9e', cloudA:0.22, fx:'stars',
+  { n:'은하의 끝',       acc:'#c08fff', line:'#e8d0ff', cloud:'#6a3f9e', cloudA:0.22, fx:'stars',
     sky:[{p:0,c:'#06040f'},{p:.32,c:'#140b2a'},{p:.58,c:'#2a1250'},{p:.8,c:'#4a1f72'},{p:1,c:'#7a3f9e'}],
     layers:[{s:'none'},{s:'none'},{s:'none'},{s:'none'}] }
 ];
@@ -4402,7 +4402,9 @@ class GameScene extends Scene {
       if(Input.pressed('lvdown')) for(const p of this.players()) p.setLevel(p.level - 1);
     }
     if(!this.mgr.busy && Input.pressed('pause')) this.setPause(true);
-    if(!this.mgr.busy && Input.pressed('back'))  backOut(this.mgr);
+    /* 'back'(백스페이스/X) 도 곧바로 나가지 않고 일시정지를 띄운다 —
+       한 번의 실수로 판이 날아가면 안 된다 */
+    if(!this.mgr.busy && Input.pressed('back'))  this.setPause(true);
   }
 
   /* 쉴드에 닿은 적 공격을 빗물처럼 튕겨낸다 */
@@ -4554,7 +4556,7 @@ class GameScene extends Scene {
     const W = 216;
     let y = y0;
     // 점수 (하트 위)
-    drawText(ctx, 'SCORE', x, y, 2, { color:'#8a93b8', shadow:'#0a1830' });
+    ko(ctx, '점수', x, y - 2, 2, { color:'#8a93b8' });
     drawDigits(ctx, String(Math.min(999999, p.score|0)).padStart(6, '0'), x + 52, y - 2, 3,
       { color: col, outline:PAL.outline });
     y += 24;
@@ -4595,7 +4597,9 @@ class GameScene extends Scene {
       this.drawPlayerPanel(ctx, this.p1, LX, TY, P1_COLOR);
     }
 
-    drawText(ctx, 'STAGE ' + this.stage + ' - ' + this.theme.n, 640, 52, 2,
+    ko(ctx, this.stage + '스테이지 · ' + this.theme.n, 640, 46, 3,
+      { align:'center', color:'#cfe6ff' });
+    if(false) drawText(ctx, 'STAGE ' + this.stage, 640, 52, 2,
       { align:'center', color:'#dff0ff', shadow:'#0a1830' });
     if(!this.p2 && !this.joining)
       ko(ctx, 'W A S D 를 누르면 2인 플레이', 640, 68, 2,
@@ -4680,10 +4684,9 @@ class GameScene extends Scene {
     ctx.fillStyle = clear ? '#0d1a10' : '#160a0e'; ctx.fillRect(0,0,GAME_W,GAME_H);
     ctx.globalAlpha = 1;
     if(this.stateT < 0.35) return;
-    const title = clear ? 'STAGE CLEAR' : (this.endReason || 'GAME OVER');
-    drawText(ctx, title, 640, 170, 11,
-      { align:'center', color: clear ? ((r)=>PAL.fire[r]) : '#c81f2e',
-        outline:PAL.outline, shadow:'#000', shadowOff:10 });
+    const title = clear ? '스테이지 클리어' : (this.endReason || '게임 오버');
+    ko(ctx, title, 640, 164, 9,
+      { align:'center', color: clear ? PAL.gold : '#c81f2e', outline:PAL.outline });
     if(this.stateT > 0.6){
       const rows = clear
         ? [['SCORE', String(this.score)], ['TIME BONUS', '+' + this.bonus],
@@ -5484,6 +5487,26 @@ export function dragonPortrait(idx, cell = 3) {
   drawGrid(c, f.body,     0, 0, f.cols, cell, d.pal, false, null);
   for(const nm of (d.always || [])) if(f.parts[nm]) drawGrid(c, f.parts[nm], 0, 0, f.cols, cell, d.pal, false, null);
   return cv;
+}
+
+/**
+ * 드래곤 열 마리의 명단. 상점 화면이 쓴다.
+ *
+ * ★ **앞의 다섯은 처음부터 갖고 있고, 뒤의 다섯은 금화로 산다.** (2026-08-26, 사용자 지정)
+ *   1,000 → 2,000 → 3,000 → 4,000 → 5,000
+ *   전부 모으려면 15,000 금화 — 올클리어 네 판 남짓이라 손에 잡히는 목표다.
+ */
+export const DRAGON_PRICES = [0, 0, 0, 0, 0, 1000, 2000, 3000, 4000, 5000];
+
+export function dragonList() {
+  return DRAGONS.map((d, i) => ({
+    idx: i,
+    id: d.id,
+    ko: d.ko,
+    theme: d.koTheme,
+    trait: d.koTrait,
+    price: DRAGON_PRICES[i] || 0,
+  }));
 }
 
 /** 드래곤 이름 (로비에서 "지금 고른 드래곤" 을 보여줄 때) */

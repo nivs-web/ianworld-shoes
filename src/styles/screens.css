@@ -2244,3 +2244,79 @@
   max-width: 100%;
   height: auto;
 }
+
+/* ── S21 드래곤 변경 (상점) ─────────────────────────────────
+   세로로 들고 스크롤하며 구경하는 화면. 카드가 곧 버튼이다. */
+.dg-wallet {
+  text-align: center;
+  font-size: 13px;
+  color: var(--c-accent);
+  font-weight: bold;
+  padding: 2px 0 6px;
+}
+
+.dg-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.dg-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px 8px;
+  background: rgba(245, 217, 160, 0.10);
+  border: 3px solid var(--c-line);
+  font-family: inherit;
+  color: var(--c-text-light);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.dg-card:active { transform: translateY(2px); }
+.dg-card:focus-visible { outline: 3px solid var(--c-accent); outline-offset: 2px; }
+
+/* 지금 쓰는 드래곤 — 한눈에 보이게 */
+.dg-card.using {
+  border-color: var(--c-accent);
+  background: rgba(217, 79, 43, 0.18);
+}
+/* 아직 안 산 드래곤 — 그림을 어둡게 눌러 둔다 */
+.dg-card.locked .dg-card-pic { filter: brightness(0.35) grayscale(0.7); }
+
+.dg-card-pic {
+  width: 76px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+}
+.dg-card-pic canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  max-width: 100%;
+  height: auto;
+}
+
+.dg-card-name { font-size: 14px; font-weight: bold; color: var(--c-panel); }
+.dg-card.using .dg-card-name { color: var(--c-accent); }
+.dg-card-sub   { font-size: 10px; color: var(--c-text-light); opacity: 0.72; }
+.dg-card-trait { font-size: 10px; color: var(--c-panel-dark); }
+.dg-card-foot  { margin-top: 5px; }
+
+.dg-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 3px 9px;
+  border: 2px solid currentColor;
+}
+.dg-tag.using { color: var(--c-accent); }
+.dg-tag.owned { color: var(--c-good); }
+.dg-tag.price.ok { color: var(--c-panel-dark); }
+.dg-tag.price.no { color: #7a6a80; }
+
+@media (min-width: 420px) {
+  .dg-grid { grid-template-columns: repeat(3, 1fr); }
+}

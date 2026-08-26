@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>글리프 검사</title>
+<body style="background:#111"><div id="out"></div>
+<script type="module">
+import { pixelText } from '/src/screens/pixelText.js';
+import { text, measure, GLYPH_H } from '/src/core/pixelfont.js';
+window.__probe = (str, opt) => {
+  const cv = pixelText(str, opt);
+  document.getElementById('out').append(cv);
+  const c = cv.getContext('2d');
+  const d = c.getImageData(0,0,cv.width,cv.height).data;
+  const rows=[];
+  for(let y=0;y<cv.height;y++){
+    let s='';
+    for(let x=0;x<cv.width;x++){ const i=(y*cv.width+x)*4; s += d[i+3]>40 ? '#' : '.'; }
+    rows.push(s);
+  }
+  return { w:cv.width, h:cv.height, pad:cv.dataset.pad, rows };
+};
+window.__ready = true;
+</script>

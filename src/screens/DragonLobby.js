@@ -13,6 +13,10 @@ import { PAL } from '../game/palette.js';
 import { pixelText } from './pixelText.js';
 import Portal from './Portal.js';
 import DragonGame, { prefetchDragon, dragonFigure } from './DragonGame.js';
+import { lazyScreen } from './lazyScreen.js';
+
+/** 드래곤 변경은 이제 DOM 상점 화면이다 — 가로로 돌릴 필요가 없다 */
+const DragonShop = lazyScreen(() => import('./DragonShop.js'), S.dragonShopTitle);
 
 const DIFFS = [
   { value: 'easy', label: S.difficultyEasy },
@@ -98,7 +102,7 @@ export default function DragonLobby(nav) {
          * 도트 10종을 그리는 코드가 게임 쪽에만 있어서, 여기에 또 만들면
          * 드래곤을 하나 추가할 때마다 두 곳을 고쳐야 한다.
          */
-        button(S.dragonMenuCharacter, () => nav.push(DragonGame, { mode: 'chars' })),
+        button(S.dragonMenuCharacter, () => nav.push(DragonShop)),
         soon(S.dragonMenuShop),
         el('div.row', null, [
           soon(S.dragonRankScore),

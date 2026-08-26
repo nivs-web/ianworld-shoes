@@ -123,6 +123,11 @@ export function defaultProfile() {
      */
     dragonCoins: 0,
     dragonCoinsTotal: 0,
+    /**
+     * 산 드래곤. `{ 5:true, 7:true }` — 앞의 다섯(0~4)은 처음부터 가진 것이라 적지 않는다.
+     * 한 번 사면 사라지지 않는다.
+     */
+    dragonOwned: {},
     dragonMultiWins: 0,
     dragonMultiLosses: 0,
     dragonDifficulty: 'normal',

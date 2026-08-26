@@ -30,7 +30,7 @@ import * as Presence from '../services/presence.js';
  * 부팅 번들로 내려보낼 이유가 없다 (`game/loadGame.js` 와 같은 이유).
  */
 let mod = null;
-async function loadDragon() {
+export async function loadDragon() {
   if (!mod) mod = await import('../games/dragon/dragon.js');
   return mod;
 }

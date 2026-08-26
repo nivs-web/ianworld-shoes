@@ -206,11 +206,21 @@ export const S = {
   // ── 드래곤 스트라이커 (오락실 2번째 게임) ────
   dragonTitle: '드래곤 스트라이커',
   /** 포털 카드 밑줄 · 로비 통계 — 둘이 같은 문구를 쓴다 */
-  dragonBestScore: (n) => `나의 최고 스코어 ${n.toLocaleString('en-US')}점`,
+  dragonBestScore: (n) => `최고점수 ${n.toLocaleString('en-US')}점`,
   dragonBestStage: (n) => `최고 스테이지 ${n}단계`,
   dragonPlays: (n) => `싱글 플레이 ${n.toLocaleString('en-US')}판`,
   dragonFireLv: (n) => `최고 파이어 LV${n}`,
   dragonMenuCharacter: '드래곤 변경',
+  /** 드래곤 상점 — 다섯은 처음부터, 나머지는 금화로 산다 */
+  dragonShopTitle: '드래곤 변경',
+  dragonOwned: '보유 중',
+  dragonInUse: '사용 중',
+  dragonSelect: '이 드래곤으로',
+  dragonBuy: (n) => `${n.toLocaleString('en-US')} 금화로 사기`,
+  dragonNeedCoins: (n) => `금화가 ${n.toLocaleString('en-US')}개 더 필요합니다`,
+  dragonBought: (name) => `${name} 획득!`,
+  dragonWallet: (n) => `보유 금화 ${n}`,
+  backToGameLobby: '게임로비로 돌아가기',
   dragonMenuShop: '아이템 쇼핑',
   /**
    * ★ **'동전' 을 '금화' 로 통일한다.** (2026-08-26, 사용자 지정)
@@ -219,7 +229,7 @@ export const S = {
    */
   dragonCoinsOwned: (n) => `보유 금화 ${n.toLocaleString('en-US')}개`,
   /** 명예의 전당을 둘로 나눴다 — 겨루는 것이 서로 다르다 */
-  dragonRankScore: '스코어 순위',
+  dragonRankScore: '점수 순위',
   dragonRankCoin: '금화왕 순위',
   dragonMultiRecord: (w, g) => `멀티게임 ${w}승 ${g}게임`,
   dragonMenuSettings: '설정',

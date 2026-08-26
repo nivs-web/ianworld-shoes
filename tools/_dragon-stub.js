@@ -25,6 +25,9 @@ let P = {
   dragonPlays: n('plays', 37),
   dragonDifficulty: q.get('diff') ?? 'normal',
   dragonCharacter: n('char', 0),
+  dragonCoins: n('coins', 6400),
+  dragonCoinsTotal: n('coins', 6400),
+  dragonOwned: {},
 };
 
 export function get() { return P; }
@@ -55,3 +58,14 @@ export const pullRemote = async () => P;
 export const validateNickname = () => ({ ok: true });
 export const isNicknameTaken = async () => false;
 export const saveNickname = (v) => patch({ nickname: v });
+
+/* 드래곤 상점 미리보기용 */
+export const hasDragon = (i) => (i|0) < 5 || !!(P.dragonOwned||{})[i|0];
+export function buyDragon(idx, price){
+  if(hasDragon(idx)) return { ok:true, profile:P, short:0 };
+  const have = P.dragonCoins || 0;
+  if(have < price) return { ok:false, profile:P, short: price - have };
+  P = { ...P, dragonCoins: have - price, dragonOwned: { ...(P.dragonOwned||{}), [idx]: true } };
+  return { ok:true, profile:P, short:0 };
+}
+export const spendDragonCoins = () => ({ ok:false, profile:P });
