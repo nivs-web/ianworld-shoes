@@ -264,16 +264,24 @@ export default function Lobby(nav) {
           nav.refresh();
         }),
 
-        button(S.menuCollection, () => nav.push(Collection)),
-        button(S.menuCharacter, () => nav.push(CharacterSelect)),
-        button(S.menuItemShop, () => nav.push(ItemShop)),
-        button(S.menuHallOfFame, () => nav.push(HallOfFame)),
-        button(S.menuSettings, () => nav.push(Settings)),
-
+        /**
+         * ★ **[싱글게임] 을 난이도 바로 아래로 올렸다.** (2026-08-26, 사용자 지정)
+         * 가장 자주 누르는 버튼이 메뉴 다섯 개 아래에 있어서 매번 스크롤해야 했다.
+         * 드래곤 스트라이커 로비도 같은 순서로 맞췄다 — 두 게임이 같은 자리에 있어야
+         * 오락실 안에서 손이 헤매지 않는다.
+         */
         el('div.row', null, [
           button(S.playSingle, () => startGame(nav, {}), { primary: true }),
           button(S.playMulti, () => nav.push(MultiMenu)),
         ]),
+
+        button(S.menuHallOfFame, () => nav.push(HallOfFame)),
+        button(S.menuCollection, () => nav.push(Collection)),
+        el('div.row', null, [
+          button(S.menuCharacter, () => nav.push(CharacterSelect)),
+          button(S.menuItemShop, () => nav.push(ItemShop)),
+        ]),
+        button(S.menuSettings, () => nav.push(Settings)),
 
         elevatorUnlocked
           ? button(S.elevatorButton, onElevator, { disabled: false, class: canAffordElevator ? '' : 'dim' })

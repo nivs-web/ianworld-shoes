@@ -309,6 +309,10 @@ export const S = {
    */
   crownShoes: (r) => (r === 1 ? '신발왕' : `신발${r}위`),
   crownWins: (r) => (r === 1 ? '승리왕' : `승리${r}위`),
+  /** 드래곤 스트라이커 딱지 — 1위는 '왕', 2·3위는 '2위/3위' */
+  crownDragonScore: (r) => (r === 1 ? '점수왕' : `점수${r}위`),
+  crownDragonCoin: (r) => (r === 1 ? '금화왕' : `금화${r}위`),
+  crownDragonWins: (r) => (r === 1 ? '승리왕' : `승리${r}위`),
 
   // ── S08 조작법 ─────────────────────────────
   controlsTitle: '조작법 변경',

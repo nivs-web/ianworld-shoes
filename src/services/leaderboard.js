@@ -539,3 +539,34 @@ export async function fetchMyCrowns() {
     return { shoes, wins };
   } catch { return null; }
 }
+
+/**
+ * 드래곤 스트라이커의 딱지 — 점수왕 · 금화왕 · 승리왕.
+ *
+ * 신발게임의 `fetchMyCrowns` 와 **같은 방식**이다: `users` 를 단일 필드로 정렬하므로
+ * Firestore 가 색인을 자동으로 만들어 준다 — **콘솔에서 할 일이 없다.**
+ * (기간별 순위는 복합 색인이 필요해서 별도 단계로 미뤄 뒀다)
+ */
+export async function fetchDragonCrowns() {
+  const u = currentUser();
+  if (!configured() || !u || u.guest) return null;
+  const fb = await getStore();
+  if (!fb) return null;
+  const { collection, query, orderBy, limit, getDocs } = fb.storeMod;
+
+  const rankIn = async (field) => {
+    const snap = await withTimeout(getDocs(
+      query(collection(fb.db, 'users'), orderBy(field, 'desc'), limit(3))
+    ), undefined, '드래곤 딱지 확인');
+    const i = snap.docs.findIndex((d) => d.id === u.uid);
+    // 값이 0이면 딱지를 주지 않는다 — 아무도 안 한 항목의 1위는 1위가 아니다
+    return i < 0 || !(snap.docs[i].data()?.[field] > 0) ? 0 : i + 1;
+  };
+
+  try {
+    const [score, coins, wins] = await Promise.all([
+      rankIn('dragonBest'), rankIn('dragonCoinsTotal'), rankIn('dragonMultiWins'),
+    ]);
+    return { score, coins, wins };
+  } catch { return null; }
+}

@@ -1324,7 +1324,12 @@ class Player {
        목숨 하나에 4대, 다섯 목숨이면 스무 대를 맞아야 끝났다. */
     this.lives = 3; this.out = false;      // 잔기는 플레이어마다 따로
     this.shieldT = 0; this.shieldHits = [];   // 필살기 쉴드 남은 시간 / 튕겨낸 자국
-    this.missileCount = 0; this.bombCount = 0;
+    /**
+     * ★ **빈손으로 시작하지 않는다.** (2026-08-26, 사용자 지정)
+     * 미사일 아이템 첫 투하가 4초, 필살기가 16초였다 — 그때까지 쏠 게 기본 불뿐이라
+     * 시작이 심심했다. 손에 뭔가 쥐고 시작해야 첫 화면부터 놀 거리가 있다.
+     */
+    this.missileCount = START_MISSILES; this.bombCount = START_BOMBS;
     this.combo = 0; this.comboT = 0; this.fireT = 0;
     this.score = 0;                        // 플레이어별 점수
     this.coinChain = 0; this.coinT = 0;    // 황금동전 연쇄
@@ -2669,10 +2674,16 @@ class Boss extends EnemyBase {
  * 잡몹 물결을 앞당기고 중간보스를 절반 시점에 내보낸다.
  */
 const TIMELINE = [
-  { t: 1.0, k:'zombie', n:3 }, { t: 3.5, k:'zombie', n:4 }, { t: 6.0, k:'zombie', n:5 },
+  /* ★ **첫 3초에 환영 인사.** 시작하자마자 잡을 게 많아야 손이 바쁘다.
+     예전에는 1초에 세 마리가 전부라 화면이 텅 빈 채로 시작했다. */
+  { t: 0.6, k:'zombie', n:6 }, { t: 2.0, k:'zombie', n:6 }, { t: 3.2, k:'rider', n:2 },
+  { t: 4.5, k:'zombie', n:5 }, { t: 6.0, k:'zombie', n:5 },
   { t: 8.0, k:'rider',  n:1 }, { t:10.0, k:'zombie', n:4 }, { t:12.0, k:'rider',  n:2 },
   { t:14.0, k:'zombie', n:5 }, { t:16.0, k:'heavy',  n:1 }, { t:18.0, k:'rider',  n:2 },
-  { t:20.0, k:'zombie', n:5 }, { t:22.0, k:'heavy',  n:1 },
+  /* ★ **20초에 리듬을 한 번 끊는다.** 중간보스까지 44초 동안 좀비만 오면 늘어진다.
+     헤비 라이더 셋이 한꺼번에 오는 것으로 "작은 고비" 를 만든다. */
+  { t:19.0, k:'heavy',  n:3 },
+  { t:22.0, k:'zombie', n:5 },
   { t:24.0, k:'rider',  n:2 }, { t:26.0, k:'zombie', n:5 },
   { t:28.0, k:'heavy',  n:1 }, { t:30.0, k:'rider',  n:2 },
   { t:32.0, k:'zombie', n:6 }, { t:34.0, k:'heavy',  n:1 },
@@ -2682,8 +2693,21 @@ const TIMELINE = [
 ];
 /* 스테이지가 오를수록 적이 20% 씩 늘어난다 (화면이 꽉 차도록).
    다만 무한정 늘리면 프레임이 무너지므로 배율과 동시 등장 수에 상한을 둔다. */
+/**
+ * 스테이지별 적 물량.
+ *
+ * ★ **첫판부터 많이 나오고, 그 뒤로 조금씩만 는다.** (2026-08-26, 사용자 지정)
+ *
+ * 예전에는 1스테이지가 기준값 1.0 이라 좀비가 진짜 세 마리씩 나왔다.
+ * 1280px 화면에 셋이면 텅 빈다 — **첫판이 심심했던 가장 큰 이유**다.
+ * 그리고 1.2^(n-1) 로 늘어 6스테이지쯤에 이미 상한에 닿았다.
+ *
+ * 시작을 2.2배로 올리고 증가율을 1.2 -> 1.055 로 낮춘다.
+ *   S1 2.2 · S5 2.7 · S10 3.6 · S15 4.6 · S20 6.0(상한)
+ * 첫판부터 손이 바쁘고, 뒤로 갈수록 "조금씩 더 빡세지는" 결이 된다.
+ */
 function enemyScale(stage){
-  return Math.min(6, Math.pow(1.2, (stage|0) - 1)) * diffScale();
+  return Math.min(6, 2.2 * Math.pow(1.055, (stage|0) - 1)) * diffScale();
 }
 /* 화면 밖 위/아래에서 비스듬히 들어온 적을 목표 높이까지 내려/올려 보낸다.
    WingZombie 는 EnemyBase 를 상속하지 않으므로 공용 함수로 둔다. */
@@ -2844,6 +2868,8 @@ function bossHpOf(stage, level){ return Math.round(midBossHpOf(stage, level) * B
    같은 데미지로 최종보스는 6회 발사(누적 45발) 분량이 된다. */
 const MISSILE_VOLLEYS_TO_KILL_MID = 3;
 const MAX_MISSILE = 40, MAX_BOMB = 5;      // 보유 상한
+const START_MISSILES = 5, START_BOMBS = 1; // 시작할 때 손에 쥐고 있는 것
+const START_FIRE_LV = 2;                   // 첫 판의 파이어 레벨
 function missileDamageOf(stage, level){
   // 1회 발사가 3발(연속 시 6/9발)이라 한 방이 너무 강했다. 기존의 1/3 로 낮춤
   return midBossHpOf(stage, level) / 54;
@@ -3738,7 +3764,13 @@ class GameScene extends Scene {
     // --- 플레이어 ---
     // 파이어 레벨은 절대 저장하지 않는다. 컨티뉴로 이어받을 때만 유지된다.
     // 게임을 나가거나 게임오버가 나면 무조건 Lv1 부터 다시 시작.
-    this.p1 = new Player(320, GAME_H/2 - 60, 1, Save.data.dragon|0, 1);
+    /**
+     * ★ **1스테이지는 파이어 레벨 2로 시작한다.** (2026-08-26, 사용자 지정)
+     * Lv1 은 26px 한 줄에 관통 0 이라 적 하나 잡으면 사라진다 — 첫인상이 초라했다.
+     * Lv2 는 두 줄 52px 이라 화면이 확 달라진다. 죽으면 어차피 1스테이지부터라
+     * "처음부터 조금 세게" 가 맞다. (이어지는 스테이지는 carry 가 이긴다)
+     */
+    this.p1 = new Player(320, GAME_H/2 - 60, START_FIRE_LV, Save.data.dragon|0, 1);
     this.p2 = null;                 // 2P 는 게임 도중 WASD 로 난입
     // 컨티뉴로 넘어왔으면 하트/HP/불레벨/무기/드래곤을 그대로 이어받는다
     if(this.carry){
@@ -3803,7 +3835,8 @@ class GameScene extends Scene {
     this.killStreak = 0;
     // 아이템 투하 예약표 (인원수만큼 위아래로 나눠 떨어진다)
     this.dropQ = DROP_PLAN.map(d => ({ kind:d.kind, left:d.rounds, t:d.first, every:d.every }));
-    this.coinT = 3.0; this.heartDropped = false;
+    /* ★ **첫 뭉치를 곧바로 뿌린다.** 뭔가 먹을 게 있어야 움직인다 (사용자 지정) */
+    this.coinT = 0.8; this.heartDropped = false;
     this.pickupMsg = null; this.pickupT = 0;
     Freeze.reset(); Flash.reset(); Popups.clear();
 
@@ -3964,7 +3997,7 @@ class GameScene extends Scene {
   }
   confirmJoin(){
     this.joining = false;
-    this.p2 = new Player(320, GAME_H/2 + 90, 1, this.joinSel, 2);
+    this.p2 = new Player(320, GAME_H/2 + 90, START_FIRE_LV, this.joinSel, 2);
     this.p2.lives = Math.max(1, this.p1.lives);      // 난입 시 1P 와 비슷한 잔기로 시작
     this.p2.missileCount = this.p1.missileCount;      // 난입 시 같은 수량으로 시작
     this.p2.bombCount = this.p1.bombCount;
