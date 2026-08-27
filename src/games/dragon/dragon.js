@@ -850,9 +850,7 @@ const END_ROW_Y   = 232, END_ROW_GAP = 44;   // 다섯 줄 -> 232 ~ 408
 const END_LABEL_X = 452;                     // 이름 (왼쪽 정렬)
 const END_NUM_R   = 828;                     // 숫자가 끝나는 자리 (오른쪽 정렬)
 /* 단위(점·마리·초·개)는 뺐다 — 없어도 무슨 숫자인지 보면 안다 (2026-08-27, 사용자 지정) */
-const END_ASK_Y   = 466;                     // 버튼(519)과 18px 띄운다
-const END_BTN_Y   = 512;                     // 버튼 높이 52 -> 580 에서 끝난다
-const END_HINT_Y  = 630;
+/* 아래쪽 자리(묻는 말·버튼·안내)는 표 길이에서 계산한다 — endAskY/endBtnY/endHintY */
 
 class SceneManager {
   constructor(){ this.current = null; this.next = null; this.state = 'idle'; this.t = 0; this.fade = 0; this.dur = 0.26; }
@@ -2364,6 +2362,20 @@ class Player {
     this.pid = pid || 1;
     this.dragonIdx = clamp(dragonIdx === undefined ? (Save.data.dragon|0) : dragonIdx, 0, 9);
     this.hp = 100; this.hurtT = 0;
+    /**
+     * ★★ **하트를 잃으면 실제로 죽는다.** (2026-08-27, 사용자 지정)
+     *
+     * *"하트는 생명이야. 생명이 죽을때 아무런 액션이 없다는건 말이 안됨
+     *   (...) 하트가 1개 잃을 때마다 실제 폭발해서 죽어야해"*
+     *
+     * 예전에는 하트만 하나 줄고 그 자리에서 그대로 계속 날았다. 폭발도 잠깐,
+     * 무적도 1.8초뿐이라 **죽었다는 느낌이 아예 없었고**, 부활하자마자 같은
+     * 탄에 또 맞는 일도 흔했다.
+     *
+     * `deadT` 가 0보다 크면 **화면에서 사라진 상태**다 — 안 그려지고, 안 쏘고,
+     * 안 맞는다. 0이 되면 안전한 자리에서 되살아나 3초 동안 반짝인다.
+     */
+    this.deadT = 0;
     /* ★ 하트 3개로 시작한다. (2026-08-26, 사용자 지정)
        5개일 때는 일부러 맞으러 다녀도 죽기가 어려웠다 — 한 대에 25뿐이라
        목숨 하나에 4대, 다섯 목숨이면 스무 대를 맞아야 끝났다. */
@@ -4912,6 +4924,17 @@ const MAX_MISSILE = 50, MAX_BOMB = 12;     // 보유 상한
    (`games/dragon/items.js` 의 BASE_MISSILES / BASE_BOMBS 와 같은 값이어야 한다) */
 const START_MISSILES = 5, START_BOMBS = 2;
 /**
+ * 죽고 나서 되살아나기까지 (초). 짧으면 죽은 줄도 모르고,
+ * 길면 손이 심심하다 — 폭발이 다 퍼질 만큼이면 된다.
+ */
+const RESPAWN_DELAY = 1.0;
+/**
+ * 되살아난 뒤 무적으로 반짝이는 시간 (초).
+ * *"새로 태어나자마자 바로 또 죽으면 말이 안되잖아"* — 화면에 깔린 탄이
+ * 지나갈 만큼은 되어야 한다.
+ */
+const RESPAWN_GRACE = 3.0;
+/**
  * ★ **1부터 시작한다.** (2026-08-26, 사용자 지정)
  * 2로 시작하던 것은 "첫 판이 심심하다" 는 지적에 대한 임시방편이었다.
  * 이제 시작 5초에 레벨업이 하나 떠서 곧바로 2가 되므로,
@@ -6121,6 +6144,7 @@ class GameScene extends Scene {
     /* 이어하기로 들어왔으면 몇 번 썼는지 이어받는다 (한 판에 두 번까지) */
     this.continuesUsed = (this.carry && this.carry.continues) | 0;
     this.runEnded = false;      // 이 판의 끝을 이미 알렸는가
+    this.endRows = 5;                 // 결과 표의 줄 수 (자리 계산에 쓴다)
     this.finalBossKilled = false; this.menuIdx = 0; this.endIdx = 0;
     this.tapIdx = -1;                 // 터치로 고른 메뉴 번호
     /**
@@ -6205,7 +6229,12 @@ class GameScene extends Scene {
   /* out = 잔기를 모두 잃어 탈락한 플레이어. 남은 사람은 계속 진행한다 */
   allPlayers(){ return this.p2 ? [this.p1, this.p2] : [this.p1]; }
   players(){ return this.allPlayers().filter(p => !p.out); }
-  livePlayers(){ return this.players(); }
+  /**
+   * ★ **지금 화면에 있는 사람.** (2026-08-27)
+   * 죽어서 사라진 동안(`deadT`)은 여기에 안 들어간다 — 안 그려지고, 안 맞고,
+   * 적의 조준선도 이 목록을 보므로 **없는 사람을 겨누지 않는다.**
+   */
+  livePlayers(){ return this.allPlayers().filter(p => !p.out && p.deadT <= 0); }
   totalLives(){ let n = 0; for(const p of this.allPlayers()) n += p.lives; return n; }
   nearestPlayer(x, y){
     const ps = this.players();
@@ -6646,11 +6675,27 @@ class GameScene extends Scene {
    * 296x52 는 `이어하기 (금화 500)` 이 좌우로 뚫고 나오는 크기였다.
    * 글자는 `koFitBox` 가 알아서 맞추지만, 박스 자체가 작으면 글자가 너무 작아진다.
    */
+  /**
+   * ★★ **아래쪽 자리를 표 길이에서 뽑는다.** (2026-08-27)
+   *
+   * 예전에는 버튼 y 가 상수(512)였다. 그런데 표는 줄 수가 다섯일 때도 여섯일 때도
+   * 있고(무피격 보너스가 붙으면 한 줄 는다), "갈까요?" 문구가 버튼 크기로 커지면서
+   * **여섯 줄일 때 문구와 표가 겹쳤다.** 자리를 손으로 박아 두면 이런 것이 계속 난다.
+   *
+   * 표가 끝나는 곳 → 묻는 말 → 버튼 → 안내 순서로 **밀어서** 잡는다.
+   */
+  endTableBottom(){ return END_ROW_Y + ((this.endRows || 5) - 1)*END_ROW_GAP + 34; }
+  endAskY(){ return this.endTableBottom() + 26; }
+  endBtnY(){
+    const ask = this.state === 'clear' && this.stage < 20;
+    return Math.round(this.endTableBottom() + (ask ? 84 : 44));
+  }
+  endHintY(){ return this.endBtnY() + 74 + 30; }
   endRect(i){
     const n = this.endItems().length;
     const gap = 20, w = n >= 3 ? 384 : 340, h = 74;
     const total = n*w + (n - 1)*gap;
-    return { x: Math.round(640 - total/2 + i*(w + gap)), y: END_BTN_Y, w, h };
+    return { x: Math.round(640 - total/2 + i*(w + gap)), y: this.endBtnY(), w, h };
   }
   endHit(px, py){
     for(let i=0;i<this.endItems().length;i++){
@@ -6754,6 +6799,25 @@ class GameScene extends Scene {
       if(this.dragId !== null){ this.dragT += dt; mv = { x:0, y:0, grabbed:true }; }
     }else{
       mv = Input.moveVectorFor(2);
+    }
+    /**
+     * ★ **죽어 있는 동안.** (2026-08-27)
+     * 움직이지도 쏘지도 않는다. 시간이 다 되면 **가운데 왼쪽**에서 되살아난다 —
+     * 죽은 그 자리는 대개 위험한 자리라 거기서 살아나면 또 죽는다.
+     */
+    if(p.deadT > 0){
+      p.deadT -= dt;
+      if(p.deadT <= 0){
+        p.deadT = 0;
+        p.x = 320; p.y = GAME_H/2; p.vx = 0; p.vy = 0;
+        p.hp = 100;
+        p.hurtT = RESPAWN_GRACE;            // 이 동안은 맞아도 안 깎인다
+        p.fireT = 0;
+        Particles.spawn(p.x, p.y, 26, { spd:300, life:0.5,
+          pal:['#ffffff','#cfe8ff','#7fb8ff','#3f6fae'] });
+        SND.sfx('levelup');
+      }
+      return;
     }
     p.update(dt, mv);
     if(p.hurtT > 0) p.hurtT -= dt;
@@ -6942,7 +7006,7 @@ class GameScene extends Scene {
     /* 머리무장을 낀 1P 만 금화를 끌어당긴다. 죽어 있는 동안에는 안 끌린다 —
        화면에 없는 드래곤한테 동전이 빨려가면 보기에 이상하다. */
     const pull = (EQ.magnet > 0 && this.p1 && !this.p1.out && this.p1.hp > 0)
-      ? { x: this.p1.x, y: this.p1.y, r: EQ.magnet }
+      ? (this.p1.deadT > 0 ? null : { x: this.p1.x, y: this.p1.y, r: EQ.magnet })
       : null;
     for(const it of this.items)    it.update(dt, pull);
     for(const r of this.roars)     r.update(dt, this);
@@ -7002,7 +7066,7 @@ class GameScene extends Scene {
       if(e.killed && !e.dropped){ e.dropped = true; this.onEnemyKilled(e); }
     }
     // ---- 충돌: 적 공격 vs 각 플레이어 ----
-    for(const p of this.players()){
+    for(const p of this.livePlayers()){
       if(p.shieldT > 0){ this.shieldDeflect(p); continue; }   // 쉴드 중엔 전부 튕겨낸다
       if(p.hurtT > 0) continue;
       const hb = p.hitbox;
@@ -7125,8 +7189,15 @@ class GameScene extends Scene {
       }
     }
   }
+  /**
+   * 맞았다. **아플지 말지는 여기서만 정한다.**
+   *
+   * ★ 무적(`hurtT`) 검사가 예전에는 **충돌 루프 안에만** 있었다 (2026-08-27).
+   * 그러면 다른 경로로 부르는 순간(판 규칙의 낙석·번개, 밀어내기 등) 무적이
+   * 통째로 뚫린다. 부활 직후 3초를 지켜야 하는 마당에 그런 구멍이 있으면 안 된다.
+   */
   hurtPlayer(p, dmg){
-    if(p.out || p.shieldT > 0) return;
+    if(p.out || p.deadT > 0 || p.shieldT > 0 || p.hurtT > 0) return;
     /* 맞고 나서의 무적 시간. 1.1초는 너무 길어 연달아 맞는 일이 거의 없었다 */
     p.hurtT = 0.85;
     Shake.add(10, 0.25);
@@ -7152,11 +7223,24 @@ class GameScene extends Scene {
        * 몸으로 밀고 들어가는 편이 이득이라 피할 이유가 없었다.
        */
       p.setLevel(1);
-      Popups.add(p.x, p.y - 130, '파이어 LV1', '#ff9a5a', 4, true);
-      p.hurtT = 1.8;
-      Shake.add(14, 0.5);
-      this.booms.push(new Boom(p.x, p.y, 120, 0.6));
-      Particles.spawn(p.x, p.y, 34, { spd:460, life:0.8 });
+      /**
+       * ★ **터져서 죽는다.** (2026-08-27, 사용자 지정)
+       * 큰 폭발 하나로는 "맞았다" 로 읽힌다 — 여러 겹으로 터뜨리고 화면을 흔들어야
+       * **죽었다**로 읽힌다. 죽은 동안에는 그리지도 않는다(`deadT`).
+       */
+      p.deadT = RESPAWN_DELAY;
+      p.hurtT = 0;
+      Shake.add(20, 0.7);
+      Freeze.add(0.08);
+      Flash.add('#ff6a4a', 0.10, 0.26);
+      this.booms.push(new Boom(p.x, p.y, 150, 0.72));
+      this.booms.push(new Boom(p.x - 40, p.y + 26, 96, 0.58));
+      this.booms.push(new Boom(p.x + 44, p.y - 20, 84, 0.52));
+      this.waves.push(new Shockwave(p.x, p.y, 300, 0.4));
+      Particles.spawn(p.x, p.y, 56, { spd:620, life:1.0 });
+      Particles.spawn(p.x, p.y, 18, { spd:380, life:1.2, grav:820, size:PX*2,
+        pal:['#ffe6c0','#ff9a5a','#c4343a','#5c1520'] });
+      SND.sfx('boomL');
       /**
        * ★ **결투에서 죽으면 점수를 20% 잃는다.** (2026-08-26, 사용자 지정)
        * 목숨이 다섯이라 그냥 몸으로 밀고 들어가는 게 이득이 되면 안 된다 —
@@ -7217,9 +7301,11 @@ class GameScene extends Scene {
     for(const it of this.items)    it.render(ctx);
     for(const b of this.bolts)     b.render(ctx);
     for(const m of this.pmissiles) m.render(ctx);
-    for(const p of this.players()){
-      if(p.hurtT > 0 && Math.floor(p.hurtT*18) % 2 === 0){
-        ctx.globalAlpha = 0.55; p.render(ctx); ctx.globalAlpha = 1;
+    for(const p of this.livePlayers()){
+      /* 무적 동안 **반투명하게 깜빡인다** — 지금 안 맞는다는 것이 보여야 한다 */
+      if(p.hurtT > 0){
+        ctx.globalAlpha = Math.floor(p.hurtT*12) % 2 === 0 ? 0.32 : 0.78;
+        p.render(ctx); ctx.globalAlpha = 1;
       }else p.render(ctx);
       if(p.shieldT > 0) drawShield(ctx, p);
       if(this.p2){                      // 2인일 때 누가 누군지 표시
@@ -7491,7 +7577,8 @@ class GameScene extends Scene {
      * 소스에서 한글만 훑는다) '·' 는 한글이 아니라서 빠졌고, 없는 글자는 '?' 로 나온다.
      * 하이픈으로 바꿨다 — 굳이 글꼴을 늘릴 이유가 없다.
      */
-    ko(ctx, this.stage + '스테이지 - ' + this.theme.n, 640, 46, 3,
+    /* ★ 한 단계 작게 (2026-08-27, 사용자 지정) */
+    ko(ctx, this.stage + '스테이지 - ' + this.theme.n, 640, 46, 2,
       { align:'center', color:'#cfe6ff' });
 
     /**
@@ -7676,7 +7763,8 @@ class GameScene extends Scene {
     if(this.stateT < 0.35) return;
     const title = clear ? (this.duel ? '결투 종료' : '스테이지 클리어')
                         : (this.endReason || '게임오버');
-    ko(ctx, title, 640, END_TITLE_Y, 7,
+    /* ★ 세 단계 작게 (2026-08-27, 사용자 지정) */
+    ko(ctx, title, 640, END_TITLE_Y, 4,
       { align:'center', color: clear ? PAL.gold : '#c81f2e', outline:PAL.outline });
     if(this.stateT > 0.6){
       /**
@@ -7713,6 +7801,7 @@ class GameScene extends Scene {
            ['남은 시간', String(Math.ceil(this.timeLeft))],
            ['획득 금화', num(RUN.coins)]];
 
+      this.endRows = rows.length;      // 아래 문구·버튼 자리가 이 값에서 나온다
       /* 표의 위아래에 얇은 줄 — 어디서 시작하고 끝나는지 눈이 먼저 안다 */
       const ruleW = END_NUM_R + 4 - END_LABEL_X;
       ctx.fillStyle = '#3a3358';
@@ -7742,12 +7831,17 @@ class GameScene extends Scene {
     if(this.stateT <= 1.1) return;
     // ---- 다음 행동 선택 ----
     const items = this.endItems();
-    if(clear && this.stage < 20)
-      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', 640, END_ASK_Y, 2,
-        { align:'center', color:'#cfe6ff', outline:PAL.outline });
     /* 셋이 같은 글자 크기로 — 가장 빡빡한 문구에 맞춘다 */
     const rects = items.map((_, i) => this.endRect(i));
     const bScale = koFitAll(items.map(it => it.t), rects, 4);
+    /**
+     * ★ **묻는 말은 버튼 글씨만 하게.** (2026-08-27, 사용자 지정)
+     * *"'2스테이지로 갈까요?' 라는 메세지 크기를 '다음 스테이지'라는 글씨 크기 만큼 키워"*
+     * 버튼이 정한 배율을 그대로 쓴다 — 버튼이 커지든 작아지든 늘 같이 간다.
+     */
+    if(clear && this.stage < 20)
+      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', 640, this.endAskY(), bScale,
+        { align:'center', color:'#cfe6ff', outline:PAL.outline });
     for(let i=0;i<items.length;i++){
       const on = i === this.endIdx;
       const r = rects[i];
@@ -7765,7 +7859,7 @@ class GameScene extends Scene {
         ctx.strokeRect(r.x - PX*2 - g, r.y - PX*2 - g, r.w + (PX*2+g)*2, r.h + (PX*2+g)*2);
       }
     }
-    ko(ctx, '화면을 눌러도 됩니다', 640, END_HINT_Y, 2, { align:'center', color:'#8a7bb8' });
+    ko(ctx, '화면을 눌러도 됩니다', 640, this.endHintY(), 2, { align:'center', color:'#8a7bb8' });
   }
 
   renderDebug(ctx){
