@@ -799,24 +799,45 @@ const Input = {
     on(window, 'blur', () => { this.down.clear(); this.just.clear(); });
 
     /* --- 포인터(터치/마우스): 캔버스 CSS 좌표 -> 게임 좌표로 변환 --- */
+    /**
+     * 손가락/마우스 자리를 **게임 판 좌표**로 되돌린다.
+     * 세로면 화면이 돌아 있으므로 거꾸로 풀어야 한다:
+     *   논리x = GAME_W - 화면y      논리y = 화면x
+     */
+    /** 캔버스 픽셀 좌표 (UI 는 이 좌표로 그리고 이 좌표로 누른다) */
+    const toScreen = e => {
+      const r = canvas.getBoundingClientRect();
+      return { x: (e.clientX - r.left) / r.width * UIW,
+               y: (e.clientY - r.top) / r.height * UIH };
+    };
     const toGame = e => {
       const r = canvas.getBoundingClientRect();
-      return { x: (e.clientX - r.left) / r.width * GAME_W, y: (e.clientY - r.top) / r.height * GAME_H };
+      const cw = portrait ? PORT_W : GAME_W, ch = portrait ? PORT_H : GAME_H;
+      const sx = (e.clientX - r.left) / r.width * cw;
+      const sy = (e.clientY - r.top) / r.height * ch;
+      if (!portrait) return { x: sx, y: sy };
+      if (sceneRotates()) return { x: GAME_W - sy, y: sx };
+      const f = MENU_FIT();
+      return { x: (sx - f.ox) / f.s, y: (sy - f.oy) / f.s };
     };
     canvas.addEventListener('pointerdown', e => {
       e.preventDefault();
       SND.resume();
       canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
-      const p = toGame(e);
+      const p = toGame(e), s = toScreen(e);
       this.taps++;
-      /* ★ 마우스인지 손가락인지 알려 준다 — 더블클릭 따라가기는 마우스만이다 */
+      /**
+       * ★ 마우스인지 손가락인지, 그리고 **화면 좌표**도 같이 넘긴다.
+       * 판(월드)은 세로에서 돌아 있지만 UI 는 안 돌아 있으므로,
+       * 단추를 누르는 판정은 화면 좌표로 해야 그림과 맞는다.
+       */
       if(this.pointerHandler && this.pointerHandler.down)
-        this.pointerHandler.down(e.pointerId, p.x, p.y, e.pointerType || 'mouse');
+        this.pointerHandler.down(e.pointerId, p.x, p.y, e.pointerType || 'mouse', s.x, s.y);
     });
     canvas.addEventListener('pointermove', e => {
       if(!this.pointerHandler || !this.pointerHandler.move) return;
-      const p = toGame(e);
-      this.pointerHandler.move(e.pointerId, p.x, p.y);
+      const p = toGame(e), s = toScreen(e);
+      this.pointerHandler.move(e.pointerId, p.x, p.y, s.x, s.y);
     });
     const up = e => { if(this.pointerHandler && this.pointerHandler.up) this.pointerHandler.up(e.pointerId); };
     canvas.addEventListener('pointerup', up);
@@ -6150,9 +6171,9 @@ class VirtualStick {
     if(this.active) return false;
     if(this.cfg.float){
       // 화면 좌측 절반 어디를 눌러도 그 자리에 스틱이 생긴다
-      if(x > GAME_W*0.55) return false;
-      this.cfg.x = snap(clamp(x, 130, GAME_W*0.5));
-      this.cfg.y = snap(clamp(y, 200, GAME_H - 120));
+      if(x > UIW*0.55) return false;
+      this.cfg.x = snap(clamp(x, 130, UIW*0.5));
+      this.cfg.y = snap(clamp(y, 200, UIH - 120));
     }else{
       // 스틱 주변 넓은 영역을 터치하면 잡히도록 (모바일 조작 편의)
       if(Math.hypot(x - this.cfg.x, y - this.cfg.y) > this.cfg.radius * 2.0) return false;
@@ -6172,11 +6193,28 @@ class VirtualStick {
     if(this.pid !== id) return;
     this.active = false; this.pid = null; this.dx = this.dy = 0;
   }
+  /**
+   * 스틱이 가리키는 방향을 **판(월드) 좌표**로 돌려준다.
+   *
+   * ★ 세로에서는 화면이 90도 돌아 있다 (2026-08-27).
+   * 손가락은 화면을 보고 미는데 캐릭터는 판 위에서 움직이므로 한 번 돌려 줘야
+   * "위로 밀면 위로 간다" 가 맞는다:
+   *     화면 위(-sy)  ->  판 +x (앞)
+   *     화면 오른쪽(+sx) -> 판 +y (아래)
+   */
   vector(){
     const d = Math.hypot(this.dx, this.dy);
     if(d < this.cfg.radius * this.cfg.dead) return { x:0, y:0 };
     const n = Math.min(1, d / this.cfg.radius);
-    return { x: this.dx/d * n, y: this.dy/d * n };
+    const vx = this.dx/d * n, vy = this.dy/d * n;
+    return portrait ? { x: -vy, y: vx } : { x: vx, y: vy };
+  }
+  /** 화면이 돌면 스틱 자리도 화면 안으로 다시 넣는다 */
+  relayout(){
+    const c = this.cfg;
+    c.x = snap(clamp(c.x, c.radius + 20, UIW - c.radius - 20));
+    c.y = snap(clamp(c.y, c.radius + 20, UIH - c.radius - 20));
+    this.active = false; this.pid = null; this.dx = this.dy = 0;
   }
   render(ctx){
     const { x, y, radius, knob, alpha } = this.cfg;
@@ -6567,7 +6605,15 @@ const CONTINUE_MAX = 2;
 
 const STAGE_TIME = 80;              // 중간보스가 나올 때까지의 제한 시간 (초).
                                     // 보스가 등장하면 타이머는 멈춘다. 보스전은 시간제한 없이.
-const TIME_BAR = { x: 400, y: 16, w: 480, h: 26 };   // 상단 중앙 시간 게이지 (터치 시 일시정지)
+/**
+ * 상단 가운데 시간 게이지 (누르면 일시정지).
+ * ★ 화면 폭에서 뽑는다 (2026-08-27) — 세로에서는 화면이 720 밖에 안 되므로
+ * 1280 기준으로 박아 두면 화면 밖으로 나간다.
+ */
+function timeBar(){
+  const w = Math.min(480, UIW - 300);
+  return { x: Math.round(UIW/2 - w/2), y: 16, w, h: 26 };
+}
 /**
  * ★★ **전체화면 단추를 화면에 박아 둔다.** (2026-08-27, 사용자 지정)
  *
@@ -6640,6 +6686,9 @@ function popEase(k){
 }
 
 class GameScene extends Scene {
+  /** ★ 이 씬만 세로에서 판을 90도 돌려 그린다 (2026-08-27) */
+  rotates = true;
+
   /* carry : 이전 스테이지에서 이어받는 플레이어 상태 (컨티뉴) */
   /**
    * @param {number} stage
@@ -6725,7 +6774,12 @@ class GameScene extends Scene {
     this.stick = new VirtualStick(makeStickCfg());
     this.buildButtons();
     Input.pointerHandler = {
-      down:(id,x,y,type) => {
+      /**
+       * `x,y` 는 **판(월드)** 좌표 — 캐릭터 잡기가 쓴다.
+       * `sx,sy` 는 **화면** 좌표 — 단추·메뉴가 쓴다 (세로에서는 판이 돌아 있다).
+       */
+      down:(id,x,y,type,sx,sy) => {
+        if(sx === undefined){ sx = x; sy = y; }
         /**
          * ★ **마우스 더블클릭 = 따라가기 켜기/끄기.** (2026-08-27)
          * 320ms 안에 40px 안쪽을 두 번 누르면 더블클릭이다.
@@ -6748,39 +6802,44 @@ class GameScene extends Scene {
          */
         {
           const r = this.fsRect();
-          if(x >= r.x - 8 && x <= r.x + r.w + 8 && y >= r.y - 8 && y <= r.y + r.h + 8){
+          if(sx >= r.x - 8 && sx <= r.x + r.w + 8 && sy >= r.y - 8 && sy <= r.y + r.h + 8){
             toggleFullscreen(); SND.sfx('blip'); this.uiTap = true; return;
           }
         }
-        if(this.state === 'play' &&
-           x >= TIME_BAR.x - 10 && x <= TIME_BAR.x + TIME_BAR.w + 10 &&
-           y >= TIME_BAR.y - 10 && y <= TIME_BAR.y + TIME_BAR.h + 10){
-          this.setPause(true); return;
+        {
+          const tb = timeBar();
+          if(this.state === 'play' &&
+             sx >= tb.x - 10 && sx <= tb.x + tb.w + 10 &&
+             sy >= tb.y - 10 && sy <= tb.y + tb.h + 10){
+            this.setPause(true); return;
+          }
         }
         if(this.state === 'pause'){
-          this.tapIdx = this.pauseHit(x, y);
+          this.tapIdx = this.pauseHit(sx, sy);
           if(this.tapIdx >= 0){ this.menuIdx = this.tapIdx; this.uiTap = true; SND.sfx('blip'); }
           return;
         }
         if(this.state === 'clear' || this.state === 'over'){
-          this.tapIdx = this.endHit(x, y);
+          this.tapIdx = this.endHit(sx, sy);
           if(this.tapIdx >= 0){ this.endIdx = this.tapIdx; SND.sfx('blip'); }
           this.uiTap = true; return;
         }
         if(this.state !== 'play'){ this.uiTap = true; return; }
         /* 무기 버튼이 먼저다 — 버튼 위에서 시작한 터치는 이동이 아니다 */
-        if(this.btnMsl.down(id,x,y)) return;
-        if(this.btnBomb.down(id,x,y)) return;
-        if(this.btnMsl2 && this.btnMsl2.down(id,x,y)) return;
-        if(this.btnBomb2 && this.btnBomb2.down(id,x,y)) return;
+        /* 무기 단추도 화면 좌표다 — 그림과 판정이 같은 자리를 봐야 한다 */
+        if(this.btnMsl.down(id,sx,sy)) return;
+        if(this.btnBomb.down(id,sx,sy)) return;
+        if(this.btnMsl2 && this.btnMsl2.down(id,sx,sy)) return;
+        if(this.btnBomb2 && this.btnBomb2.down(id,sx,sy)) return;
         /* 그다음이 **캐릭터 잡기**. 스틱보다 먼저 봐야 한다 —
            스틱이 화면 아무 데나 뜨는 설정이면 캐릭터 위에서도 스틱이 잡힌다 */
         if(this.grabDown(id,x,y)) return;
-        if(this.stickVisible()) this.stick.down(id,x,y);
+        if(this.stickVisible()) this.stick.down(id,sx,sy);
       },
-      move:(id,x,y) => {
-        if(this.grabMove(id,x,y)) return;
-        if(this.stickVisible()) this.stick.move(id,x,y);
+      move:(id,x,y,sx,sy) => {
+        if(sx === undefined){ sx = x; sy = y; }
+        if(this.grabMove(id,x,y)) return;          // 캐릭터 잡기는 판 좌표
+        if(this.stickVisible()) this.stick.move(id,sx,sy);
       },
       up:  (id)     => {
         this.btnMsl.up(id); this.btnBomb.up(id);
@@ -6901,19 +6960,29 @@ class GameScene extends Scene {
     // 2인이면 화면이 복잡해지므로 버튼을 30% 줄인다
     const shrink = this.p2 ? 0.7 : 1;
     const br = Math.round(BTN_R[clamp(o.btnSize,0,2)] * shrink), br2 = Math.round(br*0.92);
-    const my = GAME_H - br - 52;
-    this.btnMsl  = new TouchButton(GAME_W - br - 140, my, br, ICON_MISSILE, 4, P1_COLOR, this.p2 ? '1P' : '');
-    this.btnBomb = new TouchButton(GAME_W - br2 - 24, my - br - 40, br2, ICON_BOMB, 4, PAL.gold, this.p2 ? '1P' : '');
+    /* ★ 화면 크기에서 뽑는다 — 세로면 720x1280 이다 (2026-08-27) */
+    const my = UIH - br - 52;
+    const rx = UIW < 900 ? UIW - br - 24 : UIW - br - 140;   // 세로는 폭이 좁아 더 붙인다
+    this.btnMsl  = new TouchButton(rx, my, br, ICON_MISSILE, 4, P1_COLOR, this.p2 ? '1P' : '');
+    this.btnBomb = new TouchButton(UIW - br2 - 24, my - br - 40, br2, ICON_BOMB, 4, PAL.gold, this.p2 ? '1P' : '');
     this.btnMsl.alpha = this.btnBomb.alpha = o.btnAlpha;
     if(this.p2){
       // 스틱이 남아 있으면 겹치지 않도록 2P 버튼을 위로 올린다
-      const y2 = this.stickVisible() ? 300 : my;
+      const y2 = this.stickVisible() ? Math.round(UIH*0.42) : my;
       this.btnMsl2  = new TouchButton(br + 140, y2, br, ICON_MISSILE, 4, P2_COLOR, '2P');
       this.btnBomb2 = new TouchButton(br2 + 24, y2 - br - 40, br2, ICON_BOMB, 4, PAL.gold, '2P');
       this.btnMsl2.alpha = this.btnBomb2.alpha = o.btnAlpha;
     }else{
       this.btnMsl2 = this.btnBomb2 = null;
     }
+  }
+  /**
+   * ★ 화면이 가로↔세로로 돌았다 (2026-08-27).
+   * 판(게임 로직)은 그대로다 — **화면에 붙어 있는 것**만 자리를 다시 잡는다.
+   */
+  onOrient(){
+    this.buildButtons();
+    if(this.stick && this.stick.relayout) this.stick.relayout();
   }
   /* 2P 퇴장 (실수로 참가했을 때 되돌리기) */
   leave2P(){
@@ -7213,8 +7282,8 @@ class GameScene extends Scene {
    * 간격 74 라 두 박스가 거의 붙어 있었다.
    */
   pauseRect(i){
-    const w = 440, h = 74;
-    return { x: (GAME_W - w)/2, y: 330 + i*92, w, h };
+    const w = Math.min(440, UIW - 60), h = 74;
+    return { x: (UIW - w)/2, y: Math.round(UIH*0.46) + i*92, w, h };
   }
   /** 화면 좌표로 눌린 메뉴를 찾는다 (없으면 -1) */
   pauseHit(x, y){
@@ -7494,7 +7563,7 @@ class GameScene extends Scene {
    */
   fsRect(){
     const s = FS_BTN.size, p = FS_BTN.pad;
-    return { x: this.p2 ? (GAME_W - 240 - s - 12) : (GAME_W - s - p), y: p, w: s, h: s };
+    return { x: this.p2 ? (UIW - 240 - s - 12) : (UIW - s - p), y: p, w: s, h: s };
   }
   endRowGap(){ return (this.endRows || 5) >= 7 ? END_ROW_GAP_TIGHT : END_ROW_GAP; }
   endTableBottom(){ return END_ROW_Y + ((this.endRows || 5) - 1)*this.endRowGap() + 34 + 30; }
@@ -7506,9 +7575,15 @@ class GameScene extends Scene {
   endHintY(){ return this.endBtnY() + 74 + 30; }
   endRect(i){
     const n = this.endItems().length;
-    const gap = 20, w = n >= 3 ? 384 : 340, h = 74;
+    /* 세로에서는 폭이 720 뿐이라 셋을 나란히 못 세운다 — 세로로 쌓는다 */
+    const h = 74;
+    if(UIW < 900){
+      const w = Math.min(440, UIW - 60), gap = 12;
+      return { x: Math.round(UIW/2 - w/2), y: this.endBtnY() + i*(h + gap), w, h };
+    }
+    const gap = 20, w = n >= 3 ? 384 : 340;
     const total = n*w + (n - 1)*gap;
-    return { x: Math.round(640 - total/2 + i*(w + gap)), y: this.endBtnY(), w, h };
+    return { x: Math.round(UIW/2 - total/2 + i*(w + gap)), y: this.endBtnY(), w, h };
   }
   endHit(px, py){
     for(let i=0;i<this.endItems().length;i++){
@@ -8279,6 +8354,14 @@ class GameScene extends Scene {
     if(this.weather) this.weather.renderFront(ctx);
     for(const r of this.roars) r.render(ctx);
 
+    /**
+     * ★★ **여기부터는 화면 좌표다.** (2026-08-27)
+     * 판은 세로에서 90도 돌아 있지만 **글자와 단추는 돌면 안 된다** —
+     * 돌아 있는 글씨는 읽을 수가 없다. 변환을 풀고 화면 좌표로 그린다.
+     * 누르는 판정도 같은 좌표(`sx,sy`)를 쓰므로 그림과 어긋나지 않는다.
+     */
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     if(this.stickVisible()) this.stick.render(ctx);
     this.btnMsl.render(ctx, this.p1.missileCount);
     this.btnBomb.render(ctx, this.p1.bombCount);
@@ -8288,6 +8371,7 @@ class GameScene extends Scene {
     }
     this.renderHUD(ctx);
     if(this.joining) this.renderJoin(ctx);
+    ctx.restore();
     if(DEBUG) this.renderDebug(ctx);
   }
 
@@ -8295,9 +8379,9 @@ class GameScene extends Scene {
   renderJoin(ctx){
     const H = 172, y0 = 140;
     ctx.globalAlpha = 0.88; ctx.fillStyle = '#0a0618';
-    ctx.fillRect(0, y0, GAME_W, H); ctx.globalAlpha = 1;
-    ctx.fillStyle = P2_COLOR; ctx.fillRect(0, y0, GAME_W, PX); ctx.fillRect(0, y0+H-PX, GAME_W, PX);
-    ko(ctx, '2P 드래곤 고르기', 640, y0 + 8, 4,
+    ctx.fillRect(0, y0, UIW, H); ctx.globalAlpha = 1;
+    ctx.fillStyle = P2_COLOR; ctx.fillRect(0, y0, UIW, PX); ctx.fillRect(0, y0+H-PX, UIW, PX);
+    ko(ctx, '2P 드래곤 고르기', uiCx(), y0 + 8, 4,
       { align:'center', color:P2_COLOR, outline:PAL.outline });
 
     for(let i=0;i<10;i++){
@@ -8324,7 +8408,7 @@ class GameScene extends Scene {
     }
 
     ko(ctx, DRAGONS[this.joinSel].ko + (ownsDragon(this.joinSel) ? '' : '  (아직 안 샀습니다)'),
-      640, y0 + H - 58, 3,
+      uiCx(), y0 + H - 58, 3,
       { align:'center', color: ownsDragon(this.joinSel) ? PAL.white : '#8a7bb8', outline:PAL.outline });
 
     /**
@@ -8334,11 +8418,11 @@ class GameScene extends Scene {
      * 2P 는 보조로 쓰고 1P 로 금화를 쓸어 담으면 된다는 걸 알아야 그렇게 논다.
      * 중간보스를 잡으면 파이어 레벨업이 **두 개** 떨어지는 것도 그래서 켜 둘 만하다.
      */
-    ko(ctx, '금화 및 스코어의 점수 기록은 1P 기준으로 기록됩니다.', 640, y0 + H - 36, 2,
+    ko(ctx, '금화 및 스코어의 점수 기록은 1P 기준으로 기록됩니다.', uiCx(), y0 + H - 36, 2,
       { align:'center', color:PAL.gold });
 
     if(Math.floor(this.joinT*2.4) % 2 === 0)
-      ko(ctx, 'A D : 고르기      ` 또는 1 : 참가      ESC : 취소', 640, y0 + H - 16, 2,
+      ko(ctx, 'A D : 고르기      ` 또는 1 : 참가      ESC : 취소', uiCx(), y0 + H - 16, 2,
         { align:'center', color:'#8a93b8' });
   }
 
@@ -8577,7 +8661,7 @@ class GameScene extends Scene {
   }
   renderHUD(ctx){
     // 1인 : 왼쪽 위 고정 / 2인 : 2P 왼쪽 위, 1P 오른쪽 위
-    const LX = 24, RX = GAME_W - 240, TY = 20;
+    const LX = 24, RX = UIW - 240, TY = 20;
     if(this.p2){
       this.drawPlayerPanel(ctx, this.p2, LX, TY, P2_COLOR);
       this.drawPlayerPanel(ctx, this.p1, RX, TY, P1_COLOR);
@@ -8592,7 +8676,7 @@ class GameScene extends Scene {
      * 하이픈으로 바꿨다 — 굳이 글꼴을 늘릴 이유가 없다.
      */
     /* ★ 한 단계 작게 (2026-08-27, 사용자 지정) */
-    ko(ctx, this.stage + '스테이지 - ' + this.theme.n, 640, 46, 2,
+    ko(ctx, this.stage + '스테이지 - ' + this.theme.n, uiCx(), 46, 2,
       { align:'center', color:'#cfe6ff' });
 
     /* 전체화면 단추 — 늘 같은 자리에 있어야 찾는다 */
@@ -8613,7 +8697,7 @@ class GameScene extends Scene {
      * 이 장치의 전부다.
      */
     if(!this.p2){
-      const CX = GAME_W - 150;
+      const CX = UIW - 150;
       if(this.chainT > 0 && this.killStreak >= 3){
         const mul = this.chainMul();
         const k = clamp(this.chainT / CHAIN_HOLD, 0, 1);
@@ -8633,7 +8717,7 @@ class GameScene extends Scene {
         ctx.globalAlpha = 1;
       }
     }
-    if(false) drawText(ctx, 'STAGE ' + this.stage, 640, 52, 2,
+    if(false) drawText(ctx, 'STAGE ' + this.stage, uiCx(), 52, 2,
       { align:'center', color:'#dff0ff', shadow:'#0a1830' });
     /**
      * ★ **스테이지 제목과 겹치던 것을 내렸다.** (2026-08-26, 사용자 지정)
@@ -8646,7 +8730,7 @@ class GameScene extends Scene {
       /* ★ 맨 아래로 내렸다 — 위쪽은 보스 이름·체력바와 겹쳐서 글자가 서로 파먹었다 */
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * 0.28;
-      ko(ctx, 'W A S D 를 누르면 2인 플레이', 640, GAME_H - 20, 2,
+      ko(ctx, 'W A S D 를 누르면 2인 플레이', uiCx(), UIH - 20, 2,
         { align:'center', color:P2_COLOR });
       ctx.globalAlpha = pa;
     }
@@ -8669,7 +8753,7 @@ class GameScene extends Scene {
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * Math.min(1, this.followT / 0.4);
       ko(ctx, this.followMouse ? '마우스 따라가기 켜짐 (더블클릭으로 끄기)' : '마우스 따라가기 꺼짐',
-        640, 636, 2, { align:'center', color:'#9fe8ff', outline:PAL.outline });
+        uiCx(), 636, 2, { align:'center', color:'#9fe8ff', outline:PAL.outline });
       ctx.globalAlpha = pa;
     }
 
@@ -8687,7 +8771,7 @@ class GameScene extends Scene {
     if(this.formT > 0 && this.formName){
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * Math.min(1, this.formT / 0.5) * 0.85;
-      ko(ctx, this.formName + ' 대형', GAME_W - 30, GAME_H/2 - 12, 3,
+      ko(ctx, this.formName + ' 대형', UIW - 30, UIH/2 - 12, 3,
         { align:'right', color:'#9fe8ff', outline:PAL.outline });
       ctx.globalAlpha = pa;
     }
@@ -8714,7 +8798,7 @@ class GameScene extends Scene {
     if(this.p2){
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * 0.42;
-      ko(ctx, '점수와 금화는 1P 에게만 쌓입니다', 640, GAME_H - 20, 2,
+      ko(ctx, '점수와 금화는 1P 에게만 쌓입니다', uiCx(), UIH - 20, 2,
         { align:'center', color:P2_COLOR });
       ctx.globalAlpha = pa;
     }
@@ -8722,28 +8806,28 @@ class GameScene extends Scene {
     for(const p of this.players()){
       if(p.comboT <= 0 || p.combo <= 0) continue;
       const bx = p.pid === 1 ? this.btnMsl.x : (this.btnMsl2 ? this.btnMsl2.x : 0);
-      drawText(ctx, 'x' + (p.combo*3), bx, GAME_H - 42, 3,
+      drawText(ctx, 'x' + (p.combo*3), bx, UIH - 42, 3,
         { align:'center', color:PAL.fire[1], outline:PAL.outline });
     }
     if(this.pickupT > 0 && this.pickupMsg){
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * Math.min(1, this.pickupT/0.4);
       /* ★ 5 → 3 (2026-08-27, 사용자 지정). `Popups` 와 다른 경로라 따로 남아 있었다 */
-      ko(ctx, this.pickupMsg, 640, 200, 3,
+      ko(ctx, this.pickupMsg, uiCx(), 200, 3,
         { align:'center', color:PAL.gold, outline:PAL.outline });
       ctx.globalAlpha = pa;
     }
 
     const b = this.boss;
     if(b && !b.dead){
-      const w = 720, x = 640 - w/2, y = 110;
+      const w = 720, x = uiCx() - w/2, y = 110;
       ctx.fillStyle = '#0a0a14'; ctx.fillRect(x - PX, y - PX, w + PX*2, 20 + PX*2);
       ctx.fillStyle = '#2a2030'; ctx.fillRect(x, y, w, 20);
       const k = clamp(b.hp / b.maxHp, 0, 1);
       ctx.fillStyle = b.enraged ? PAL.fire[5] : PAL.fire[3];
       ctx.fillRect(x, y, snap(w*k), 20);
       ctx.fillStyle = PAL.fire[1]; ctx.fillRect(x, y, snap(w*k), 6);
-      drawText(ctx, b.name, 640, y - 24, 3, { align:'center', color:PAL.white, outline:PAL.outline, shadow:'#000' });
+      drawText(ctx, b.name, uiCx(), y - 24, 3, { align:'center', color:PAL.white, outline:PAL.outline, shadow:'#000' });
     }
     /**
      * ★ **판 시작에 규칙을 한 줄 예고한다.** (기획 4)
@@ -8753,22 +8837,22 @@ class GameScene extends Scene {
       const R = STAGE_RULES[this.rule];
       const a = Math.min(1, this.ruleT / 0.6);
       ctx.globalAlpha = a;
-      ko(ctx, R.ko, 640, 210, 8,
+      ko(ctx, R.ko, uiCx(), 210, 8,
         { align:'center', color:PAL.gold, outline:PAL.outline, shadow:'#000' });
-      ko(ctx, R.hint, 640, 280, 3,
+      ko(ctx, R.hint, uiCx(), 280, 3,
         { align:'center', color:'#ffe6b0', outline:PAL.outline });
       ctx.globalAlpha = 1;
     }
     if(this.bossBannerT > 0 && Math.floor(this.bossBannerT*6) % 2 === 0){
-      drawText(ctx, 'WARNING', 640, 300, 10,
+      drawText(ctx, 'WARNING', uiCx(), 300, 10,
         { align:'center', color:(r)=>PAL.fire[r], outline:PAL.outline, shadow:'#000', shadowOff:10 });
     }
 
     /* 남은 시간 — 신발게임 게이지와 같은 짜임새 (아래 drawTimeBar 주석) */
-    drawTimeBar(ctx, TIME_BAR, clamp(this.timeLeft / (this.duel ? DUEL.TIME : STAGE_TIME), 0, 1), this.t);
+    drawTimeBar(ctx, timeBar(), clamp(this.timeLeft / (this.duel ? DUEL.TIME : STAGE_TIME), 0, 1), this.t);
 
     drawText(ctx, this.p2 ? '1P: ARROWS / RSHIFT / RALT     2P: WASD / ` / 1'
-                          : '1P: ARROWS / RSHIFT / RALT     ESC: PAUSE', 640, 700, 2,
+                          : '1P: ARROWS / RSHIFT / RALT     ESC: PAUSE', uiCx(), 700, 2,
       { align:'center', color:'#cfe6ff', shadow:'#0a1830' });
 
     if(this.state === 'pause') this.renderPause(ctx);
@@ -8776,9 +8860,9 @@ class GameScene extends Scene {
   }
 
   renderPause(ctx){
-    ctx.globalAlpha = 0.78; ctx.fillStyle = '#0a0616'; ctx.fillRect(0,0,GAME_W,GAME_H);
+    ctx.globalAlpha = 0.78; ctx.fillStyle = '#0a0616'; ctx.fillRect(0,0,UIW,UIH);
     ctx.globalAlpha = 1;
-    ko(ctx, '일시정지', 640, 208, 6, { align:'center', color:PAL.gold, outline:PAL.outline });
+    ko(ctx, '일시정지', uiCx(), 208, 6, { align:'center', color:PAL.gold, outline:PAL.outline });
 
     const items = this.pauseItems();
     const pRects = items.map((_, i) => this.pauseRect(i));
@@ -8795,7 +8879,7 @@ class GameScene extends Scene {
         { color: on ? PAL.gold : '#8a93b8', outline:PAL.outline });
     }
     const last = this.pauseRect(items.length - 1);
-    ko(ctx, '화면을 눌러도 됩니다', 640, last.y + last.h + 28, 2,
+    ko(ctx, '화면을 눌러도 됩니다', uiCx(), last.y + last.h + 28, 2,
       { align:'center', color:'#8a7bb8' });
   }
 
@@ -8820,7 +8904,7 @@ class GameScene extends Scene {
     else {
       /* 정산 동안에는 배경을 더 어둡게 깐다 — 이 순간만큼은 이것 하나만 보여야 한다 */
       ctx.globalAlpha = 0.72;
-      ctx.fillStyle = '#07040e'; ctx.fillRect(0, 0, GAME_W, GAME_H);
+      ctx.fillStyle = '#07040e'; ctx.fillRect(0, 0, UIW, UIH);
       ctx.globalAlpha = 1;
     }
 
@@ -8862,7 +8946,7 @@ class GameScene extends Scene {
     if(kBoom >= 0 && kBoom <= 1) rs = 6 + Math.sin(bigK*Math.PI)*14 + Math.sin(kBoom*Math.PI*3.2)*1.4;
     else if(kBoom > 1) rs = 19 + Math.sin(t*3.2)*0.7;
     if(done) rs = 11;                               // 물러난 뒤에는 배경 크기로
-    rs = Math.min(rs, (GAME_W - 80) / Math.max(1, koMeasure(tot$, 1)));
+    rs = Math.min(rs, (UIW - 80) / Math.max(1, koMeasure(tot$, 1)));
 
     /* 공식 왼쪽은 터질 때 스며들어 사라진다 — 볼 것이 하나로 좁혀진다 */
     const lhsA = kBoom < 0 ? 1 : Math.max(0, 1 - kBoom*2.2);
@@ -8874,7 +8958,7 @@ class GameScene extends Scene {
                + (kGain >= 0 ? wGain + gapW : 0) + (kEq >= 0 ? wEq + gapW : 0);
     /* 터지면 합계만 남으므로 그때는 합계를 화면 한가운데에 놓는다 */
     const groupW = lhsW*lhsA + (kRoll >= 0 ? wTot + gapW*lhsA : 0);
-    let x = 640 - groupW/2;
+    let x = uiCx() - groupW/2;
 
     if(lhsA > 0){
       ctx.globalAlpha = lhsA;
@@ -8910,7 +8994,7 @@ class GameScene extends Scene {
       ctx.globalAlpha = 1;
     }
     if(kRoll >= 0){
-      const cx = lhsA > 0 ? (x + gapW*lhsA + wTot/2) : 640;
+      const cx = lhsA > 0 ? (x + gapW*lhsA + wTot/2) : uiCx();
       ko(ctx, tot$, cx, CY - KO_H*rs/2, Math.max(4, rs),
         { align:'center', color:PAL.gold, outline:PAL.outline, shadow:'#000' });
       /**
@@ -8927,7 +9011,7 @@ class GameScene extends Scene {
   renderEnd(ctx){
     const clear = this.state === 'clear';
     ctx.globalAlpha = Math.min(0.78, this.stateT * 1.6);
-    ctx.fillStyle = clear ? '#0d1a10' : '#160a0e'; ctx.fillRect(0,0,GAME_W,GAME_H);
+    ctx.fillStyle = clear ? '#0d1a10' : '#160a0e'; ctx.fillRect(0,0,UIW,UIH);
     ctx.globalAlpha = 1;
     if(this.stateT < 0.35) return;
     /* 정산이 도는 동안에는 표도 버튼도 안 낸다 — 한 번에 하나만 봐야 읽힌다 */
@@ -8935,7 +9019,7 @@ class GameScene extends Scene {
     const title = clear ? (this.duel ? '결투 종료' : '스테이지 클리어')
                         : (this.endReason || '게임오버');
     /* ★ 세 단계 작게 (2026-08-27, 사용자 지정) */
-    ko(ctx, title, 640, END_TITLE_Y, 4,
+    ko(ctx, title, uiCx(), END_TITLE_Y, 4,
       { align:'center', color: clear ? PAL.gold : '#c81f2e', outline:PAL.outline });
     if(this.stateT > 0.6){
       /**
@@ -9021,7 +9105,7 @@ class GameScene extends Scene {
      * 버튼이 정한 배율을 그대로 쓴다 — 버튼이 커지든 작아지든 늘 같이 간다.
      */
     if(clear && this.stage < 20)
-      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', 640, this.endAskY(), bScale,
+      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', uiCx(), this.endAskY(), bScale,
         { align:'center', color:'#cfe6ff', outline:PAL.outline });
     for(let i=0;i<items.length;i++){
       const on = i === this.endIdx;
@@ -9040,7 +9124,7 @@ class GameScene extends Scene {
         ctx.strokeRect(r.x - PX*2 - g, r.y - PX*2 - g, r.w + (PX*2+g)*2, r.h + (PX*2+g)*2);
       }
     }
-    ko(ctx, '화면을 눌러도 됩니다', 640, this.endHintY(), 2, { align:'center', color:'#8a7bb8' });
+    ko(ctx, '화면을 눌러도 됩니다', uiCx(), this.endHintY(), 2, { align:'center', color:'#8a7bb8' });
   }
 
   renderDebug(ctx){
@@ -9155,6 +9239,10 @@ function optGet(){
   return Save.data.opt;
 }
 /* 설정을 실제 컨트롤에 반영 */
+/**
+ * ★ 화면이 돌면 단추 자리를 다시 잡는다 (2026-08-27).
+ * 세로에서는 화면이 720 밖에 안 되므로 1280 기준 자리는 화면 밖이다.
+ */
 function makeStickCfg(){
   const o = optGet(), r = STICK_R[clamp(o.stickSize,0,2)];
   return { x:158, y:GAME_H-158, radius:r, knob:Math.round(r*0.38),
@@ -9767,7 +9855,47 @@ let canvas = null;
 let ctx = null;
 let scenes = null;
 let rafId = 0;
+/**
+ * ★★ **세로 모드 — 판을 돌린다.** (2026-08-27, 사용자 지정)
+ *
+ * *"세로로 돌리면 내 캐릭터는 아래쪽에서 위로 올라가는 느낌이고 적들은 위에서
+ *   아래로 떨어지는 느낌이야 (...) 게임은 똑같아 (...) 요즘 폰은 다 세로로
+ *   들고 있으니 세로 모드 게임 형태가 기본형"*
+ *
+ * ## 왜 게임을 다시 안 짜는가
+ *
+ * 이 게임은 **가로로 흐르는 좌표계**(1280x720) 위에 지어져 있다.
+ * 적은 -x 로 오고, 불줄기는 +x 로 나가고, 대형은 dy 로 퍼지고, 보스는 오른쪽
+ * 끝에 자리잡는다. 세로로 만들겠다고 이걸 전부 뒤집으면 **이동·대형·보스 패턴·
+ * 충돌·배경**을 모두 다시 계산해야 하고, 그러면 지금까지 맞춰 놓은 밸런스가
+ * 통째로 흔들린다.
+ *
+ * 대신 **화면을 돌린다.** 게임은 그대로 가로 판 위에서 돌고, 그리는 순간에만
+ * 90도 돌려 세로 캔버스(720x1280)에 얹는다:
+ *
+ *     논리 +x (오른쪽, 적이 오는 쪽)  ->  화면 위쪽
+ *     논리 +y (아래)                 ->  화면 오른쪽
+ *
+ * 그러면 **적은 위에서 내려오고 나는 아래에서 위로 쏜다** — 원하신 그림 그대로다.
+ * 게임 코드는 한 줄도 안 바뀌므로 밸런스도 그대로다.
+ *
+ * ## 뒤집히는 것들
+ *
+ * 손가락 좌표는 **거꾸로** 풀어야 한다(`toGame`). 그리고 글자와 HUD 는
+ * 같이 돌면 안 되므로 **돌리기 전 화면 좌표**로 따로 그린다.
+ */
+const PORT_W = GAME_H, PORT_H = GAME_W;      // 세로 캔버스 720 x 1280
+/** 지금 세로로 도는가 */
 let portrait = false;
+/**
+ * **UI 좌표계** — 화면 그대로다 (가로 1280x720 / 세로 720x1280).
+ *
+ * 글자와 단추는 판과 **같이 돌면 안 된다.** 돌아 있는 글씨는 읽을 수가 없다.
+ * 그래서 UI 는 판을 그린 뒤 변환을 풀고 **화면 좌표**로 그린다.
+ * 그리는 자리와 누르는 자리가 어긋나면 안 되므로, 포인터도 화면 좌표를 같이 넘긴다.
+ */
+let UIW = GAME_W, UIH = GAME_H;
+const uiCx = () => UIW / 2;
 let hostEl = null;
 let rotateEl = null;
 let last = 0, acc = 0;
@@ -9777,11 +9905,62 @@ const FIXED = 1 / 60, MAX_STEPS = 5;
 function resize() {
   if (!canvas) return;
   const vw = window.innerWidth, vh = window.innerHeight;
+  const wasPortrait = portrait;
   portrait = vh > vw;
-  if (rotateEl) rotateEl.classList.toggle('show', portrait);
-  const scale = Math.min(vw / GAME_W, vh / GAME_H);
-  canvas.style.width = Math.floor(GAME_W * scale) + 'px';
-  canvas.style.height = Math.floor(GAME_H * scale) + 'px';
+  /* 세로로도 돌아가므로 "돌려주세요" 안내는 더 이상 안 띄운다 */
+  if (rotateEl) rotateEl.classList.remove('show');
+  /* 화면이 돌면 캔버스의 가로세로도 바꾼다 — 게임 판은 그대로다 */
+  const cw = portrait ? PORT_W : GAME_W;
+  const ch = portrait ? PORT_H : GAME_H;
+  UIW = cw; UIH = ch;
+  if (canvas.width !== cw || canvas.height !== ch) {
+    canvas.width = cw; canvas.height = ch;
+    if (ctx) ctx.imageSmoothingEnabled = false;
+  }
+  const scale = Math.min(vw / cw, vh / ch);
+  canvas.style.width = Math.floor(cw * scale) + 'px';
+  canvas.style.height = Math.floor(ch * scale) + 'px';
+  if (wasPortrait !== portrait) onOrientationChanged();
+}
+/** 화면이 돌았다 — 자리를 다시 잡아야 하는 것들에게 알린다 */
+function onOrientationChanged() {
+  const sc = scenes && scenes.current;
+  if (sc && sc.onOrient) sc.onOrient();
+}
+/**
+ * 게임 판(1280x720)을 화면에 얹는 변환.
+ * 세로면 90도 돌린다 — 논리 +x 가 화면 위로 간다.
+ *   화면x = 논리y          화면y = GAME_W - 논리x
+ */
+/**
+ * 지금 씬이 **판을 돌려서** 그리는 씬인가.
+ *
+ * 돌리는 것은 **싸우는 화면(`GameScene`)뿐**이다. 메뉴·캐릭터 선택·스테이지
+ * 선택은 글자와 그림표가 전부라 돌아가면 읽을 수가 없다.
+ */
+function sceneRotates() {
+  const sc = scenes && scenes.current;
+  return !!(sc && sc.rotates);
+}
+/**
+ * 게임 판(1280x720)을 화면에 얹는 변환.
+ *
+ * - 싸우는 화면 + 세로 : **90도 돌린다.** 논리 +x 가 화면 위로 간다.
+ *       화면x = 논리y          화면y = GAME_W - 논리x
+ * - 메뉴 + 세로 : 돌리지 않고 **줄여서 가운데에** 넣는다.
+ *   메뉴를 세로용으로 다시 짜는 것은 별개의 일이고, 줄여 넣으면 지금 당장
+ *   전부 멀쩡하게 눌린다.
+ * - 가로 : 그대로.
+ */
+const MENU_FIT = () => {
+  const s = PORT_W / GAME_W;                       // 0.5625
+  return { s, ox: 0, oy: (PORT_H - GAME_H * s) / 2 };
+};
+function setWorldTransform(c) {
+  if (!portrait) { c.setTransform(1, 0, 0, 1, 0, 0); return; }
+  if (sceneRotates()) { c.setTransform(0, -1, 1, 0, 0, GAME_W); return; }
+  const f = MENU_FIT();
+  c.setTransform(f.s, 0, 0, f.s, f.ox, f.oy);
 }
 
 function frame(now) {
@@ -9789,7 +9968,6 @@ function frame(now) {
   let dt = (now - last) / 1000;
   last = now;
 
-  if (portrait) { acc = 0; Input.endFrame(); return; }   // 세로 모드: 게임 로직 완전 정지
   if (dt > 0.25) dt = 0.25;
 
   const t0 = performance.now();
@@ -9817,7 +9995,12 @@ function frame(now) {
   }
   if (steps === MAX_STEPS) acc = 0;
 
+  /* 화면을 지우는 것은 **변환 없이** — 세로면 캔버스가 720x1280 이다 */
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  setWorldTransform(ctx);
   scenes.render(ctx);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (steps === 0) Input.endFrame();     // 한 걸음도 안 돌았으면 여기서 비운다
 
   Perf._acc += dt; Perf._n++;
@@ -10187,6 +10370,20 @@ export const __test = {
    * 다음 판이 **0초에 끝난 것처럼** 보인다 (실제로 한 번 속았다).
    */
   pump(dt) { if (scenes) scenes.update(dt); Input.endFrame(); },
+  /**
+   * 검사용 — **한 장을 그린다.**
+   * 숨은 탭에서는 rAF 가 멈추므로 눈으로 확인하려면 직접 불러야 한다.
+   * `frame()` 의 그리는 부분과 **같은 순서**여야 의미가 있다.
+   */
+  draw() {
+    if (!ctx || !canvas) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setWorldTransform(ctx);
+    scenes.render(ctx);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  },
+  get portrait() { return portrait; },
   get splitPad() { return Input.splitPad; },
   set splitPad(v) { optGet().splitPad = v ? 1 : 0; Input.splitPad = !!v; },
   get padAxis() { return { p1: { ...Input.padAxis }, p2: { ...Input.padAxis2 } }; },

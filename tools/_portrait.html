@@ -1,0 +1,14 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>세로 모드 확인</title>
+<style>html,body{margin:0;background:#000;height:100%;overflow:hidden}#host{width:100vw;height:100vh}</style>
+</head><body><div id="host"></div>
+<script type="module">
+/** 세로 모드를 눈으로 확인하는 자리. 게임을 실제로 띄우고 몇 초 돌린다. */
+import * as DR from '/src/games/dragon/dragon.js';
+DR.mount(document.getElementById('host'), { onExit(){}, onEnd(){}, difficulty:'normal' });
+const T = DR.__test;
+window.__T = T; window.__DR = DR;
+window.__toGame = (n) => { for(let i=0;i<400 && T.scene!=='GameScene';i++){ T.press('confirm'); T.pump(1/60); }
+  for(let i=0;i<(n|0);i++) T.pump(1/60); return T.scene; };
+window.__shot = () => document.querySelector('#host canvas').toDataURL('image/png');
+</script></body></html>
