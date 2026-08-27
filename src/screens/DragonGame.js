@@ -123,36 +123,31 @@ export default function DragonGame(nav, opt = {}) {
          */
         if (isRunning()) { stopLoop(); stoppedArcadeLoop = true; }
         /**
-         * ★★ **결투: 상대를 지켜본다.** (2026-08-27, 사용자 지정)
+         * ★★ **결투: 최대 4인, 각자 다른 상대를 지켜본다.** (2026-08-27, 사용자 지정)
          *
-         * *"1명이 죽으면 둘다 게임이 끝나는게 맞는거 같아"*
+         * *"멀티 플레이 최대 4인 가능으로 만들 수 있을까? (...) 각자 맵에서
+         *   각자 알아서 생존하는거고, 상대방의 움직임만 보이는거야"*
          *
          * 게임 모듈은 Firebase 를 모른다 — 알게 하면 혼자 돌려 보는 검사가
          * 불가능해진다. 그래서 **방을 여기서 읽어 게임에 넣어 준다.**
-         * 게임은 `setDuelPeer` 로 받은 값만 보고 판을 끝낼지 정한다.
+         * 예전엔 상대가 하나뿐이라 `.find()` 로 하나만 골랐다 — 이제는 나를
+         * 뺀 모두를 돌며 uid 별로 넣는다. 게임은 `setDuelPeer(uid, ...)` 로
+         * 받은 값만 보고 판을 끝낼지 정한다.
          */
         if (duelCode && m.setDuelPeer) {
           const myUid = currentUser()?.uid;
-          let roomSeed = 0;
           unsubRoom = Room.subscribeRoom(duelCode, (r) => {
             if (!live || !r || !r.players) return;
-            const foe = Object.entries(r.players)
-              .find(([uid, v]) => uid !== myUid && v && !v.waiting);
-            if (!foe) return;
-            const v = foe[1];
-            m.setDuelPeer({
-              alive: v.alive !== false, coins: v.coins | 0,
-              name: v.nickname || '', dragon: v.dragon | 0, lives: v.lives,
-              /* 자리는 안 왔을 수도 있다 — 규칙이 아직 게시되기 전이면 없다.
-                 없으면 넣지 않는다(0,0 으로 두면 고스트가 왼쪽 위 구석에 선다) */
-              ...(v.gx !== undefined && v.gy !== undefined ? { x: v.gx, y: v.gy } : {}),
-              ...(v.glv !== undefined ? { lv: v.glv } : {}),
-              ...(Array.isArray(v.took) ? { took: v.took } : {}),
-            });
-            /* 금화 비의 씨앗 — 둘이 같은 씨앗을 써야 금화가 같은 자리에 뜬다 */
-            if (roomSeed === 0 && r.seed && m.setDuelSeed) {
-              roomSeed = r.seed | 0;
-              m.setDuelSeed(roomSeed);
+            for (const [uid, v] of Object.entries(r.players)) {
+              if (uid === myUid || !v || v.waiting) continue;
+              m.setDuelPeer(uid, {
+                alive: v.alive !== false, coins: v.coins | 0,
+                name: v.nickname || '', dragon: v.dragon | 0, lives: v.lives,
+                /* 자리는 안 왔을 수도 있다 — 규칙이 아직 게시되기 전이면 없다.
+                   없으면 넣지 않는다(0,0 으로 두면 고스트가 왼쪽 위 구석에 선다) */
+                ...(v.gx !== undefined && v.gy !== undefined ? { x: v.gx, y: v.gy } : {}),
+                ...(v.glv !== undefined ? { lv: v.glv } : {}),
+              });
             }
           });
         }

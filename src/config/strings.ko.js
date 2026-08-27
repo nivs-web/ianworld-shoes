@@ -497,7 +497,7 @@ export const S = {
   multiRoomTitle: (n) => `멀티게임 ${n}번 방`,
   duelRoomTitle: (n) => `드래곤 결투 ${n}번 방`,
   duelRoomRule: (n) =>
-    `금화 ${n}개씩 걸고 300초 안에 보스를 더 많이 잡는 쪽이 전부 가져갑니다`,
+    `금화 ${n}개씩 걸고, 각자 제 화면에서 살아남습니다 — 끝까지 살아남거나, 다 같이 살아남으면 금화를 더 많이 모은 쪽이 판돈을 전부 가져갑니다`,
   ready: '레디',
   cancelReady: '레디 취소',
   startGame: '시작하기',

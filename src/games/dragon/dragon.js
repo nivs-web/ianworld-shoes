@@ -8149,6 +8149,13 @@ const DUEL = {
   DEATH_PENALTY: 0.20,
   /** 보스 하나를 무너뜨릴 때마다 받는 몫 */
   BOSS_SCORE: 30,          // 점수 눈금(1/100)에 맞춘 값
+  /**
+   * ★★ **최대 4인.** (2026-08-27, 사용자 지정)
+   * *"이거 멀티 플레이 최대 4인 가능으로 만들 수 있을까?"* 방 자체는
+   * `MULTI.maxPlayers`(4)를 그대로 쓴다 — 여기 값은 순위표가 늘 몇 줄을
+   * 예약해 둘지(빈 자리가 있어도 HUD 가 덜컹거리지 않도록) 정하는 값이다.
+   */
+  MAX_PLAYERS: 4,
 };
 
 /**
@@ -8165,43 +8172,6 @@ const DUEL = {
  * 표가 끝나면 **마지막 줄을 되풀이하되 한 칸씩 세진다.** 160초를 다 버티는
  * 사람이 나오면 그때는 표를 늘리는 것이 아니라 저절로 감당이 안 되어야 한다.
  */
-/**
- * ★★ **결투의 금화는 씨앗이 정한 비다.** (2026-08-27, 사용자 지정)
- *
- * *"서로 금화를 많이 먹겠다고 다투는 게임이 주요 목표"*
- *
- * 싱글에서 금화는 적을 잡으면 나온다. 결투에서 그대로 두면 **적이 조금만
- * 어긋나도 금화 자리가 어긋난다** — 겨루는 대상이 두 화면에서 다른 곳에 있게 된다.
- * (적을 완전히 똑같이 굴리는 것은 이 게임에서 불가능하다. `docs/DRAGON_DUEL_PLAN.md` §1)
- *
- * 그래서 결투에서는 금화를 **번호가 붙은 비**로 내린다. `n` 번째 금화는 두
- * 화면에서 **같은 시각 같은 자리**에 뜬다. 번호가 있으니 "이건 내가 먹었다" 를
- * 한 숫자로 말할 수 있다.
- *
- * 부수 효과가 좋다 — 결투가 "금화 쟁탈" 이라는 제 얼굴을 갖고, 적은 방해물이 된다.
- */
-const DUEL_COIN = {
-  /** 금화 하나 사이의 시간 (초). 짧을수록 정신없다 */
-  EVERY: 0.85,
-  /** 한 번에 우수수 쏟아지는 다발 — 가끔 있어야 몰려가서 다툰다 */
-  BURST_EVERY: 11,
-  BURST_N: 5,
-};
-/**
- * `n` 번째 금화가 **언제 어디서** 나오는가. 씨앗만 같으면 두 화면이 같다.
- * 되돌아보는 계산이 없으므로(누적이 아니라 n 의 함수) 중간에 들어와도 맞는다.
- */
-function duelCoinAt(seed, n){
-  const r1 = hash1(n * 2 + 1, seed);
-  const r2 = hash1(n * 2 + 2, seed ^ 0x5bd1);
-  const burst = (n % DUEL_COIN.BURST_EVERY) < DUEL_COIN.BURST_N;
-  return {
-    /* 다발은 앞 금화에 바짝 붙어 나온다 */
-    t: n * DUEL_COIN.EVERY * (burst ? 0.34 : 1) + r1 * 0.4,
-    y: 120 + r2 * (GAME_H - 240),
-  };
-}
-
 const DUEL_LADDER = [
   { kind: 'mid',  n: 1, tier: 11 },   // 20초 뒤 — 첫 중간보스 하나
   { kind: 'boss', n: 1, tier: 14 },   // 최종보스 하나
@@ -8286,6 +8256,13 @@ function timeBar(){
  */
 const duelHudTop = () => portrait ? PORT_BAR_Y + 48 : 52;
 /**
+ * 순위표 한 줄 높이 / 순위표 전체 높이 — **최대 인원(4명) 몫을 늘 예약해 둔다.**
+ * 클래스 메서드(`GameScene.duelRowH/duelPanelH`)와 아래 자유 함수(`hudTop`,
+ * `duelBossBarY`)가 같은 계산을 써야 다음 HUD 가 겹치지 않으므로 여기 하나로 묶는다.
+ */
+const duelRowH = () => portrait ? 38 : 34;
+const duelPanelH = () => 26 + DUEL.MAX_PLAYERS * duelRowH();
+/**
  * 점수판이 시작하는 높이.
  *
  * ★ 결투의 **세로**에서는 비교판 아래로 내린다 (2026-08-27). 세로는 폭이
@@ -8294,7 +8271,7 @@ const duelHudTop = () => portrait ? PORT_BAR_Y + 48 : 52;
  */
 const hudTop = () => {
   if(!portrait) return 20;
-  return DUEL_ON ? duelHudTop() + 150 : PORT_PANEL_Y;
+  return DUEL_ON ? duelHudTop() + duelPanelH() + 8 : PORT_PANEL_Y;
 };
 /** 지금 결투 중인가 — 자리를 정하는 함수들이 씬을 모르므로 여기에 둔다 */
 let DUEL_ON = false;
@@ -8657,17 +8634,10 @@ class GameScene extends Scene {
     this.timeLeft = this.duel ? DUEL.TIME : STAGE_TIME;
     this.endReason = ''; this.bonus = 0;
     this.duelBossKills = 0;           // 무너뜨린 보스 수 (결투 점수의 뼈대)
-    if(this.duel) resetDuelPeer();    // 지난 판의 "죽었다" 가 남으면 곧바로 끝나 버린다
+    if(this.duel) resetDuelPeers();   // 지난 판의 "죽었다" 가 남으면 곧바로 끝나 버린다
     DUEL_ON = !!this.duel;            // 자리를 정하는 함수들이 이 값을 본다
-    /** 결투: 다음에 뿌릴 금화 번호 / 내가 먹은 번호(비트 묶음) / 고스트 보낸 시각 */
-    this.coinN = 0;
-    this.took = [];
+    /** 결투: 고스트(자리·불레벨·하트) 보낸 시각 */
     this.ghostT = 0;
-    /**
-     * ★ 금화 비의 씨앗. **방에서 온다** — 둘이 같은 씨앗을 써야 같은 자리에 뜬다.
-     * 혼자 열어 볼 때(검사·미리보기)는 아무 값이나 쓴다.
-     */
-    this.seed = (DG.seed | 0) || 20260827;
     /* 이어하기로 들어왔으면 몇 번 썼는지 이어받는다 (한 판에 두 번까지) */
     this.continuesUsed = (this.carry && this.carry.continues) | 0;
     this.runEnded = false;      // 이 판의 끝을 이미 알렸는가
@@ -8871,14 +8841,17 @@ class GameScene extends Scene {
     this.chainT = CHAIN_HOLD;
     if(this.killStreak > this.chainBest) this.chainBest = this.killStreak;
     /**
-     * ★ **결투에서는 적이 금화를 안 떨어뜨린다.** (2026-08-27)
+     * ★ **결투도 각자 제 화면에서 금화를 줍는다.** (2026-08-27, 사용자 지정)
      *
-     * 결투의 금화는 씨앗이 정한 비다(`duelCoinAt`) — 번호가 붙어 있어서 두
-     * 화면에 같은 자리에 뜨고, 먹으면 상대 화면에서 지워진다.
-     * 여기서 떨어뜨리면 **번호 없는 금화**가 섞여서 한쪽 화면에만 존재하게 된다.
-     * 겨루는 대상은 두 사람이 똑같이 보는 것뿐이어야 한다.
+     * *"각자 맵에서 각자 알아서 생존하는거고... 서로 금화를 뺏어 먹을 필요는
+     *   없을거 같아"*
+     *
+     * 예전 1대1 결투는 씨앗으로 정한 금화를 두 화면이 똑같이 보고 먼저 닿는
+     * 사람이 가져가는 방식이었다(`duelCoinAt`). N인으로 늘리면서 그 자리 다툼을
+     * 없앴다 — 이제 결투도 싱글플레이와 똑같이 각자 잡은 만큼 번다. 겨루는 것은
+     * "누가 더 오래 살아남았고 그만큼 더 벌었는가" 뿐이다.
      */
-    if(!this.duel && this.killStreak % 2 === 0)
+    if(this.killStreak % 2 === 0)
       this.items.push(new Item(e.x, e.y, ITEM_KIND.COIN));
   }
 
@@ -8887,16 +8860,6 @@ class GameScene extends Scene {
     let msg = '';
     switch(it.kind){
       case ITEM_KIND.COIN: {
-        /**
-         * ★ **먹은 번호를 새긴다.** (2026-08-27)
-         * 상대 화면에서 이 금화를 지우는 근거다. 비트 하나로 말하므로
-         * 300초에 수백 개가 나와도 정수 열몇 개면 된다.
-         */
-        if(this.duel && it.no !== undefined){
-          const w = it.no >> 5;
-          while(this.took.length <= w) this.took.push(0);
-          this.took[w] |= (1 << (it.no & 31));
-        }
         p.coinChain = (p.coinT > 0) ? Math.min(COIN_CHAIN_MAX, p.coinChain + 1) : 1;
         p.coinT = COIN_WINDOW;
         /* 용왕의 관을 쓴 사람은 금화 점수가 조금 더 붙는다 (지갑 개수는 그대로) */
@@ -9090,98 +9053,91 @@ class GameScene extends Scene {
     if(this.score > (Save.data.best[this.stage] || 0)) Save.data.best[this.stage] = this.score;
     Save.save();
   }
+  /** 참가한 상대 수 (아직 하나도 못 받았으면 0) */
+  peerCount(){ return PEERS.size; }
   /**
-   * ── 결투: 금화 비 ──
-   * 판이 시작한 뒤 흐른 시간이 `duelCoinAt(n).t` 를 넘으면 그 금화를 놓는다.
-   * 번호를 금화에 새겨 두고(`no`) 먹을 때·지울 때 그 번호로 말한다.
+   * ── 결투: 상대들의 고스트 상태를 갱신 ──
+   *
+   * 자리 보간(`sx,sy`)과 **막 죽었다** 를 알아채는 것을 여기서 한다.
+   * 알아채는 일은 프레임마다 한 번만 해야 하므로(그리기는 여러 번 건너뛸 수
+   * 있다) `render` 가 아니라 `update` 에 둔다.
    */
-  rainCoins(dt){
-    const t = this.duelT = (this.duelT || 0) + dt;
-    let guard = 0;
-    while(guard++ < 8){
-      const c = duelCoinAt(this.seed, this.coinN);
-      if(c.t > t) break;
-      const it = new Item(GAME_W + 60, c.y, ITEM_KIND.COIN);
-      it.no = this.coinN;
+  updatePeers(dt){
+    const k = Math.min(1, 12 * dt);
+    for(const s of PEERS.values()){
+      if(s.has){ s.sx += (s.x - s.sx) * k; s.sy += (s.y - s.sy) * k; }
+      if(s.deathFxT > 0) s.deathFxT -= dt;
       /**
-       * ★★ **흔들리는 위상까지 씨앗으로 정한다.** (2026-08-27, 검사에서 잡음)
-       *
-       * `Item` 은 위아래로 흔들리는데 그 위상이 `Math.random()` 이고,
-       * 흔들림이 **`y` 에 누적된다**(`y += sin(t)*38*dt`). 그래서 같은 씨앗으로
-       * 같은 번호를 뿌려도 **두 화면의 금화가 조금씩 다른 곳으로 흘러갔다.**
-       * 여덟 개 중 일곱 개가 어긋났다 — 눈으로는 절대 못 봤을 종류다.
-       *
-       * 자리는 화면 밖에서 시작하게 다시 넣는다. `Item` 의 생성자는 좌표를
-       * 화면 안으로 가두는데(보스가 화면 밖에서 죽어도 주울 수 있게), 결투
-       * 금화는 **밖에서 흘러들어와야** 하므로 그 가둠을 지나서 놓는다.
+       * ★★ **생명력이 다 떨어지면 반투명 고스트 폭발.** (2026-08-27, 사용자 지정)
+       * *"상대방이 생명력이 다 떨어져서 폭발하면, 투명한 고스트 폭발 장면이
+       *   보이고 상단에 하트 하나 줄어든게 보여"*
+       * 하트가 줄어드는 것은 `s.lives` 가 그대로 반영한다(순위표에서 매 프레임
+       * 다시 그린다) — 여기서 새로 할 일은 **최후의 1회성 폭발**뿐이다.
        */
-      it.x = GAME_W + 60;
-      it.t = hash1(this.coinN * 2 + 3, this.seed) * 6;
-      /* 결투 금화는 **오래 남는다** — 짧으면 다투기 전에 사라진다 */
-      it.life = 26;
-      this.items.push(it);
-      this.coinN++;
-    }
-  }
-  /** 상대가 먹은 번호는 내 화면에서 지운다 — 먼저 닿은 사람이 먹는다 */
-  dropTakenCoins(){
-    const bits = PEER.took;
-    if(!bits || !bits.length) return;
-    for(const it of this.items){
-      if(it.dead || it.no === undefined) continue;
-      const w = bits[it.no >> 5] | 0;
-      if(w & (1 << (it.no & 31))){
-        it.dead = true;
-        /* 눈앞에서 채였다는 것은 알려 줘야 한다 — 그냥 사라지면 버그로 보인다 */
-        Particles.spawn(it.x, it.y, 6, { spd:220, life:0.35,
-          pal:['#8fc0ff','#4d9aff','#2a5fae'] });
+      if(!s.alive && s.wasAlive){
+        s.wasAlive = false;
+        s.deathFxT = 0.6;
+        if(s.has) Particles.spawn(s.sx, s.sy, 16,
+          { spd:260, life:0.5, pal:['#ffffff','#cfe8ff','#7fb8ff','#2a5fae'] });
+      }else if(s.alive){
+        s.wasAlive = true;
       }
     }
   }
-  /** 내 자리와 먹은 금화를 10Hz 로 올린다 */
+  /** 내 자리·불레벨·하트를 10Hz 로 올린다 */
   pushGhost(dt){
     this.ghostT -= dt;
     if(this.ghostT > 0) return;
     this.ghostT = 0.1;
     const p = this.p1;
     /**
-     * ★ 하트도 여기에 실는다 (2026-08-27). 진행도(점수·금화·생사)는 **승패를
-     * 가르는 값**이라 반드시 올라가야 하고, 자리·불레벨·하트는 **보여 주기용**이다.
-     * 규칙이 아직 게시되기 전이라도 앞의 것은 멀쩡히 굴러가야 한다.
+     * 진행도(점수·금화·생사)는 **승패를 가르는 값**이라 반드시 올라가야 하고,
+     * 자리·불레벨·하트는 **보여 주기용**이다. 규칙이 아직 게시되기 전이라도
+     * 앞의 것은 멀쩡히 굴러가야 한다.
      */
     DG.onGhost({ x: Math.round(p.x), y: Math.round(p.y), lv: p.level | 0,
-                 lives: p.lives | 0, took: this.took });
+                 lives: p.lives | 0 });
   }
   /**
-   * ── 결투: 상대 고스트 ──
+   * ── 결투: 상대들의 고스트 ──
    *
    * *"반투명한 고스트 위에 닉네임이 뜨면 좋겠어, 상대방이 저렇게 움직이네?
-   *   라는걸 볼 수 있도록"*
+   *   라는걸 볼 수 있도록"* — N인이면 그 반투명 고스트가 여러 마리다.
    *
-   * 자리는 10Hz 로만 온다. 그대로 그리면 뚝뚝 끊기므로 **매 프레임 목표로
-   * 다가가게** 한다(`sx,sy`). 조금 늦게 따라오지만 눈에는 훨씬 부드럽다.
+   * 자리는 10Hz 로만 온다. 그대로 그리면 뚝뚝 끊기므로 `updatePeers` 가 매
+   * 프레임 목표로 다가가게 해 둔 `sx,sy` 를 쓴다. 조금 늦게 따라오지만
+   * 눈에는 훨씬 부드럽다.
    */
   renderGhost(ctx){
-    if(!this.duel || !PEER.has || !PEER.alive) return;
-    const k = Math.min(1, 12 * (1/60));
-    PEER.sx += (PEER.x - PEER.sx) * k;
-    PEER.sy += (PEER.y - PEER.sy) * k;
-    const pal = DRAGONS[clamp(PEER.dragon, 0, DRAGONS.length - 1)].pal;
-    ctx.globalAlpha = 0.45;
-    drawDragon(ctx, pal, PEER.lv, snap(PEER.sx), snap(PEER.sy), 2, false, null);
-    ctx.globalAlpha = 1;
-    /**
-     * 이름표 — **머리 위**에 붙는다.
-     *
-     * ★ 글자가 서는 것은 `ko` 가 알아서 돌려 주지만(`uprightAt`), **어느 쪽이
-     *   위인지**는 알려 줘야 한다 (2026-08-27). 세로에서 화면 위는 판의 +x 다 —
-     *   판 좌표로 `y - 92` 를 쓰면 이름표가 고스트 **왼쪽**에 가서 붙는다.
-     */
-    if(PEER.name){
-      const lx = portrait ? PEER.sx + 96 : PEER.sx;
-      const ly = portrait ? PEER.sy : PEER.sy - 92;
-      ko(ctx, PEER.name, lx, ly, 2,
-        { align:'center', color:'#8fc0ff', outline:PAL.outline });
+    if(!this.duel) return;
+    for(const s of PEERS.values()){
+      if(s.deathFxT > 0){
+        /* 죽는 순간의 잔상 — 몸은 안 그리고 반투명 링만 퍼진다 */
+        const k = 1 - s.deathFxT / 0.6;
+        ctx.globalAlpha = (1 - k) * 0.55;
+        drawPixelRing(ctx, s.sx, s.sy, 30 + k*220, PX*4, '#cfe6ff');
+        drawPixelRing(ctx, s.sx, s.sy, 14 + k*130, PX*2, '#ffffff');
+        ctx.globalAlpha = 1;
+        continue;
+      }
+      if(!s.has || !s.alive) continue;
+      const pal = DRAGONS[clamp(s.dragon, 0, DRAGONS.length - 1)].pal;
+      ctx.globalAlpha = 0.45;
+      drawDragon(ctx, pal, s.lv, snap(s.sx), snap(s.sy), 2, false, null);
+      ctx.globalAlpha = 1;
+      /**
+       * 이름표 — **머리 위**에 붙는다.
+       *
+       * ★ 글자가 서는 것은 `ko` 가 알아서 돌려 주지만(`uprightAt`), **어느 쪽이
+       *   위인지**는 알려 줘야 한다 (2026-08-27). 세로에서 화면 위는 판의 +x 다 —
+       *   판 좌표로 `y - 92` 를 쓰면 이름표가 고스트 **왼쪽**에 가서 붙는다.
+       */
+      if(s.name){
+        const lx = portrait ? s.sx + 96 : s.sx;
+        const ly = portrait ? s.sy : s.sy - 92;
+        ko(ctx, s.name, lx, ly, 2,
+          { align:'center', color:'#8fc0ff', outline:PAL.outline });
+      }
     }
   }
 
@@ -9853,20 +9809,23 @@ class GameScene extends Scene {
                         bosses: Math.min(10, this.duelBossKills), alive: !this.p1.out,
                         timeLeft: Math.max(0, Math.round(this.timeLeft)) });
       }
-      this.rainCoins(dt);
-      this.dropTakenCoins();
+      this.updatePeers(dt);
       this.pushGhost(dt);
       /**
-       * ★★ **한 명이 죽으면 둘 다 끝난다.** (2026-08-27, 사용자 지정)
+       * ★★ **최후의 생존자만 남으면 그 자리에서 끝난다.** (2026-08-27, 사용자 지정)
        *
-       * *"1명이 죽으면 둘다 게임이 끝나는게 맞는거 같아"*
+       * *"각자 맵에서 각자 알아서 생존하는거고... 끝까지 살아남아야 이기는건데"*
        *
-       * 상대가 죽었다는 신호가 오면 내 판도 그 자리에서 멈춘다. 내가 살아 있으니
-       * 순위 규칙(생존 우선)에 따라 내가 이긴다 — 여기서 승패를 정하지는 않고
-       * **판을 끝내기만 한다.** 판정은 양쪽이 방을 보고 각자 센다.
+       * 예전 1대1은 "상대가 죽으면 둘 다 끝"이면 충분했다. N인이면 그렇지 않다 —
+       * 내가 죽지 않았는데 아직 살아 있는 사람이 남아 있으면 판을 계속 봐야 한다
+       * (누가 이겼는지는 아직 정해지지 않았다). **나를 뺀 모두가 죽었을 때만**
+       * 더 볼 것이 없으므로 내 판을 끝낸다 — 여기서 승패를 정하지는 않고
+       * 판을 끝내기만 한다. 판정은 다들 방을 보고 각자 같은 규칙으로 센다.
        */
-      if(PEER.seen && !PEER.alive && !this.p1.out){
-        this.finish('clear', '상대 탈락');
+      const foesAllDead = this.peerCount() > 0 &&
+        [...PEERS.values()].every(s => s.seen && !s.alive);
+      if(foesAllDead && !this.p1.out){
+        this.finish('clear', '최후의 생존');
         return;
       }
     }else{
@@ -10865,185 +10824,132 @@ class GameScene extends Scene {
    * 비교판을 맨 위에 두고 **점수판을 그 아래로 내린다**(`hudTop`).
    * 가로는 폭이 넉넉해 점수판 옆에 나란히 선다.
    */
-  duelBoxSize(win){
-    const base = portrait ? 62 : 66;
-    return Math.round(base * (win ? 1.3 : 1));
-  }
+  /** 세로 순위표에 예약해 두는 줄 수 — 늘 이 만큼 자리를 잡아 둬야 인원이
+      들고 날 때 점수판·보스바가 덜컹거리지 않는다 (최대 인원과 같다) */
+  duelRowH(){ return duelRowH(); }
   /** 비교판이 차지하는 세로 구간 — 점수판이 이 아래에서 시작한다 */
-  duelPanelBottom(){ return duelHudTop() + (portrait ? 172 : 164); }
+  duelPanelH(){ return duelPanelH(); }
+  duelPanelBottom(){ return duelHudTop() + duelPanelH(); }
   /**
    * ★ **결투 화면의 위쪽은 한 줄로 쌓는다.** (2026-08-27)
-   *
-   *     세로                        가로
-   *     ────────────────────        ────────────────────
-   *      14 시간 게이지              16 시간 게이지
-   *      92 비교판                   52 비교판 (가운데)
-   *     242 점수판                   20 점수판 (왼쪽, 비교판과 x 가 다르다)
-   *     392 보스 체력바             212 보스 체력바
-   *
    * 각자 제 자리에 박아 두면 하나를 옮길 때마다 다른 것이 겹친다 —
-   * 실제로 보스 체력바가 비교판을, 점수판이 보스 체력바를 덮었다.
+   * 실제로 보스 체력바가 순위표를, 점수판이 보스 체력바를 덮었다.
    * **앞의 것이 끝나는 자리에서 다음 것이 시작하도록** 이어 붙인다.
    */
   duelBossBarY(){
     if(!this.duel) return 110;
     return portrait ? hudTop() + 150 : 212;
   }
+  /**
+   * ── 결투 순위표에 넣을 한 줄씩(나 + 상대들) ──
+   * 살아있음 우선, 그다음 금화 — 최종 판정(`duelRanking`)과 같은 방향으로
+   * 살짝 미리 보여 주는 것뿐이다. 진짜 승패는 방을 보고 다 같이 다시 센다.
+   */
+  duelRows(){
+    const mine = { isMe:true, name:'나', dragon:this.p1.dragonIdx | 0,
+      coins:RUN.coins | 0, lives:this.p1.lives | 0, alive:!this.p1.out, seen:true };
+    const foes = [...PEERS.values()].map(s => ({
+      isMe:false, name:s.name || '???', dragon:s.dragon | 0, coins:s.coins | 0,
+      lives:s.lives < 0 ? DUEL.LIVES : s.lives, alive:s.alive, seen:s.seen }));
+    const all = [mine, ...foes];
+    all.sort((a, b) => (b.alive - a.alive) || (b.coins - a.coins) || (a.isMe ? -1 : 1));
+    return all;
+  }
+  /** 순위표 한 줄 — 등수·초상·이름·(살아있으면)하트+금화 / (죽었으면)"탈락" */
+  drawDuelRow(ctx, r, rank, x, y, w, h){
+    const dead = !r.alive;
+    const accent = r.isMe ? '#ff4d5a' : (dead ? '#4a465c' : '#4d9aff');
+    ctx.globalAlpha = r.isMe ? 0.30 : (dead ? 0.16 : 0.20);
+    ctx.fillStyle = r.isMe ? '#ff4d5a' : (dead ? '#000000' : '#4d9aff');
+    ctx.fillRect(x, y, w, h);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = accent;
+    ctx.fillRect(x, y, PX, h);                              // 왼쪽 색띠 — 누구 줄인지
+
+    const midY = y + Math.round(h/2);
+    drawText(ctx, String(rank + 1), x + 18, midY - 7, rank === 0 && !dead ? 3 : 2,
+      { align:'center', color: rank === 0 && !dead ? PAL.gold : '#8a93b8', outline:PAL.outline });
+
+    const iconSz = h - 10;
+    const cell = Math.max(0.6, (iconSz - PX*4) / 36);
+    const cv = dragonPortrait(clamp(r.dragon, 0, 9), cell);
+    ctx.globalAlpha = dead ? 0.45 : 1;
+    ctx.drawImage(cv, Math.round(x + 34), Math.round(y + (h - cv.height)/2));
+    ctx.globalAlpha = 1;
+
+    const nameX = x + 34 + iconSz + 10;
+    ko(ctx, r.name.slice(0, 8), nameX, midY - 7, 2,
+      { color: dead ? '#7a7690' : '#e8e2ff', outline:PAL.outline });
+
+    if(!r.seen){
+      ko(ctx, '기다리는 중', x + w - 10, midY - 7, 2,
+        { align:'right', color:'#6f7aa0' });
+      return;
+    }
+    if(dead){
+      ko(ctx, '탈락', x + w - 10, midY - 7, 2,
+        { align:'right', color:'#ff7a86', outline:PAL.outline });
+      return;
+    }
+
+    /* 오른쪽 — 금화, 그 왼쪽에 자그마한 하트 줄 */
+    const coinX = x + w - 12;
+    const coinStr = String(Math.min(9999, r.coins));
+    const coinW = coinStr.length * (FONT_W*2 + 1) - 1;    // drawDigits 와 같은 폭 계산(spacing:1, scale:2)
+    drawDigits(ctx, coinStr, coinX - coinW, midY - 7, 2,
+      { color:'#ffd24a', outline:PAL.outline, spacing:1 });
+
+    /* 미니 하트 — 큰 하트보다 훨씬 작게(칸=2) 찍어 줄 하나에 다 들어가게 한다 */
+    const hCell = 2, hRows = ['.XX.XX.','XXXXXXX','.XXXXX.','..XXX..','...X...'];
+    const hW = 7*hCell, hStep = hW + hCell*2;
+    const heartsX0 = coinX - coinW - 14 - DUEL.LIVES*hStep;
+    for(let i=0;i<DUEL.LIVES;i++){
+      ctx.fillStyle = i < r.lives ? '#ff2b4a' : '#3a2036';
+      const hx = heartsX0 + i*hStep;
+      const hy = midY - (5*hCell)/2;
+      for(let rr=0;rr<hRows.length;rr++) for(let cc=0;cc<7;cc++)
+        if(hRows[rr][cc] === 'X') ctx.fillRect(hx + cc*hCell, hy + rr*hCell, hCell, hCell);
+    }
+  }
 
   renderDuelHud(ctx){
-    const mine = RUN.coins | 0;
-    const foe  = PEER.coins | 0;
-    /**
-     * ★ **동점은 "이기는 쪽" 이 아니다.** (2026-08-27, 10판 스트레스 검사에서 잡음)
-     * `mine >= foe` 로 동률을 승리로 치면, 0 대 0 처럼 흔한 상황에서 **양쪽
-     * 화면 모두 자기 박스가 커지고 왕관이 뜬다** — 둘 다 이기고 있다고 잘못 읽힌다.
-     * 엄격히 앞설 때만 이기는 쪽으로 친다.
-     */
-    const tie  = mine === foe;
-    const iWin = mine > foe;
-    const top  = duelHudTop();
-    const cx   = uiCx();
+    const top = duelHudTop();
+    const cx = uiCx();
+    const rowH = this.duelRowH();
+    const rows = this.duelRows();
 
     /**
      * ── 바탕판 ──
      * ★ 이게 없으면 **글자가 배경에 묻힌다** (2026-08-27). 판 위로는 불줄기와
      *   금화가 지나가고 땅빛도 밝아서, 검은 외곽선만으로는 안 읽힌다.
      *   HUD 는 언제 봐도 읽혀야 하므로 제 바탕을 들고 있어야 한다.
-     */
-    /**
-     * ★ 가로에서는 **가운데로 모은다** (2026-08-27). 화면 폭을 다 쓰면
-     *   왼쪽 위 점수판을 덮는다 — 세로는 점수판이 아래로 내려가 있어 괜찮다.
-     */
-    const half = portrait ? (UIW/2 - 12) : 400;
-    {
-      const h = portrait ? 170 : 162;   // 하트 한 줄이 들어갈 만큼
-      const px = Math.round(cx - half - 14), pw = Math.round((half + 14) * 2);
-      ctx.globalAlpha = 0.52;
-      ctx.fillStyle = '#07060f';
-      ctx.fillRect(px, top - 14, pw, h);
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = '#2a2440';
-      ctx.fillRect(px, top - 14, pw, PX);
-      ctx.fillRect(px, top - 14 + h - PX, pw, PX);
-      ctx.globalAlpha = 1;
-    }
-
-    /* ── 좌우 초상 박스 ──
-       바깥으로 벌려 놓아야 가운데 숫자가 널찍하다. 이긴 쪽이 커지므로
-       **바깥 모서리를 고정**하고 안쪽으로 자란다 — 안 그러면 화면을 넘어간다 */
-    const drawSide = (isMe) => {
-      const win  = !tie && (isMe ? iWin : !iWin);
-      const sz   = this.duelBoxSize(win);
-      const col  = isMe ? '#ff4d5a' : '#4d9aff';        // 나는 빨강, 상대는 파랑
-      /* 바깥 모서리를 고정하고 **안쪽으로** 자란다 — 안 그러면 화면을 넘어간다 */
-      const x    = Math.round(isMe ? cx - half : cx + half - sz);
-      const y    = top + Math.round((this.duelBoxSize(true) - sz) / 2);
-      /* 박스 — 바탕, 테두리, 이긴 쪽은 테두리를 한 겹 더 두른다 */
-      ctx.fillStyle = '#0b0a16';
-      ctx.fillRect(x, y, sz, sz);
-      ctx.fillStyle = col;
-      const t = win ? PX*2 : PX;
-      ctx.fillRect(x, y, sz, t);
-      ctx.fillRect(x, y + sz - t, sz, t);
-      ctx.fillRect(x, y, t, sz);
-      ctx.fillRect(x + sz - t, y, t, sz);
-      /* 용 초상 — 박스 안에 맞춰 넣는다. 초상은 늘 **옆모습**이다 (`topArt` 주석) */
-      const idx = isMe ? (this.p1.dragonIdx | 0) : (PEER.dragon | 0);
-      const cell = (sz - PX*6) / 36;
-      const cv = dragonPortrait(idx, cell);
-      ctx.drawImage(cv, Math.round(x + (sz - cv.width)/2),
-                        Math.round(y + (sz - cv.height)/2));
-      /* 이긴 쪽 박스에는 작은 왕관 — 크기만으로는 1.3배가 긴가민가할 때가 있다 */
-      if(win){
-        ctx.fillStyle = PAL.gold;
-        for(let i=0;i<3;i++)
-          ctx.fillRect(x + Math.round(sz*0.28) + i*Math.round(sz*0.18), y - PX*4, PX*2, PX*4);
-        ctx.fillRect(x + Math.round(sz*0.24), y - PX*2, Math.round(sz*0.54), PX*2);
-      }
-      return { x, y, sz };
-    };
-    const meBox = drawSide(true);
-    const foBox = drawSide(false);
-
-    /* ── 가운데 숫자 ── 이기는 쪽이 한 단계 크다 */
-    const numY = top + 14;
-    const big = portrait ? 5 : 6, small = portrait ? 3 : 4;
-    /* 숫자 사이 — 'vs' 가 들어갈 만큼 벌린다. 붙여 두면 큰 숫자가 'vs' 를 먹는다 */
-    const gap = portrait ? 58 : 68;
-    drawText(ctx, String(mine), cx - gap, numY, iWin ? big : small,
-      { align:'right', color: iWin ? '#ff7a86' : '#9aa3c0', outline:PAL.outline, shadow:'#000' });
-    drawText(ctx, String(foe), cx + gap, numY, iWin ? small : big,
-      { align:'left', color: !iWin ? '#8fc0ff' : '#9aa3c0', outline:PAL.outline, shadow:'#000' });
-    ko(ctx, 'vs', cx, numY + 6, 2, { align:'center', color:'#6f7aa0' });
-    /* 숫자가 무엇인지 한 번은 적어 준다 — 처음 보는 사람은 모른다 */
-    ko(ctx, '내 금화', cx - gap, numY + 38, 2, { align:'right', color:'#8a93b8' });
-    ko(ctx, '상대 금화', cx + gap, numY + 38, 2, { align:'left', color:'#8a93b8' });
-
-    /**
-     * ── 남은 하트 ── (2026-08-27, 사용자 지정)
      *
-     * *"둘이서 게임 중일때 남은 하트가 몇개인지 이미지로 볼 수 있게 막대 그래프
-     *   위에 상대 하트 갯수 와 내 하트 갯수가 나와야함"*
-     *
-     * ★ **금화보다 이게 먼저다.** 결투는 먼저 죽는 사람이 지는 게임이라,
-     *   상대 하트가 하나 남았다는 것은 금화 차이보다 훨씬 큰 소식이다.
-     *   잃은 자리는 **빈 하트로 남겨** 둔다 — 그래야 "셋 중 하나 남았다" 가
-     *   읽힌다. 지워 버리면 원래 하나였는지 셋이었는지 알 수가 없다.
+     * ★ **자리는 늘 최대 인원(4명) 몫을 잡아 둔다** — 2명이 겨루든 4명이
+     *   겨루든 점수판·보스바가 항상 같은 자리에 있어야 한다. 인원이 늘고
+     *   줄 때마다 다른 HUD 가 덜컹거리면 안 되므로, 실제 줄 수와 무관하게
+     *   패널 높이는 고정이다(빈 자리는 그냥 비워 둔다).
      */
-    {
-      const hy = top + (portrait ? 74 : 70);
-      const hw = 7 * PX, hh = 5 * PX, step = hw + PX*3;
-      const rows = ['.XX.XX.','XXXXXXX','.XXXXX.','..XXX..','...X...'];
-      const hearts = (n, x0, dir, on, off) => {
-        for(let i=0;i<DUEL.LIVES;i++){
-          ctx.fillStyle = i < n ? on : off;
-          const hx = x0 + dir*i*step - (dir < 0 ? hw : 0);
-          for(let r=0;r<rows.length;r++) for(let c=0;c<7;c++)
-            if(rows[r][c] === 'X') ctx.fillRect(hx + c*PX, hy + r*PX, PX, PX);
-        }
-      };
-      /* 내 하트는 왼쪽에서 오른쪽으로, 상대는 오른쪽에서 왼쪽으로 —
-         각자 제 초상 쪽에서 자란다 */
-      hearts(this.p1.lives | 0, Math.round(cx - gap - 6), -1, '#ff2b4a', '#3a2036');
-      const pl = PEER.lives < 0 ? DUEL.LIVES : PEER.lives;
-      hearts(pl, Math.round(cx + gap + 6), 1, '#4d9aff', '#1e2a44');
-    }
+    const half = portrait ? (UIW/2 - 12) : 210;
+    const panelH = this.duelPanelH();
+    const px = Math.round(cx - half - 14), pw = Math.round((half + 14) * 2);
+    ctx.globalAlpha = 0.52;
+    ctx.fillStyle = '#07060f';
+    ctx.fillRect(px, top - 14, pw, panelH);
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#2a2440';
+    ctx.fillRect(px, top - 14, pw, PX);
+    ctx.fillRect(px, top - 14 + panelH - PX, pw, PX);
+    ctx.globalAlpha = 1;
 
-    /* ── 막대 ── 두 사람의 몫을 폭으로 나눈다. 둘 다 0 이면 반반 */
-    const barW = Math.max(180, foBox.x - (meBox.x + meBox.sz) - 24);
-    const barX = Math.round(cx - barW/2);
-    const barY = top + (portrait ? 116 : 112);
-    const barH = 16;
-    const tot = mine + foe;
-    const k = tot > 0 ? mine / tot : 0.5;
-    ctx.fillStyle = '#0b0a16'; ctx.fillRect(barX - PX, barY - PX, barW + PX*2, barH + PX*2);
-    ctx.fillStyle = '#3b4a86'; ctx.fillRect(barX, barY, barW, barH);              // 상대 몫
-    ctx.fillStyle = '#c8324a'; ctx.fillRect(barX, barY, Math.round(barW*k), barH); // 내 몫
-    /* 한가운데 눈금 — 어디가 반인지 보여야 "앞서고 있다" 가 읽힌다 */
-    ctx.fillStyle = '#e8e2ff';
-    ctx.fillRect(Math.round(barX + barW/2) - PX, barY - PX*2, PX*2, barH + PX*4);
+    const rowX = px + 8, rowW = pw - 16;
+    for(let i=0;i<rows.length && i<DUEL.MAX_PLAYERS;i++)
+      this.drawDuelRow(ctx, rows[i], i, rowX, top + i*rowH, rowW, rowH - 4);
 
-    /* ── 한 줄 문구 ── */
-    const diff = Math.abs(mine - foe);
-    /**
-     * ★ **동점이면 "1등 유지중" 이 두 화면에 동시에 뜬다.** (2026-08-27,
-     *   10판 스트레스 검사에서 잡음)
-     *
-     * `iWin = mine >= foe` 라 0 대 0(판이 막 시작했을 때)에도 항상 참이다.
-     * 그러면 나도 "1등 유지중", 상대도 "1등 유지중" 을 본다 — 실제로는 아무도
-     * 앞서지 않았는데 둘 다 이기고 있다고 착각한다. 동점은 따로 말한다.
-     */
-    const msg = diff === 0 ? '동점' : (iWin ? '1등 유지중' : ('금화 ' + diff + '개 차이로 패배하고 있음'));
-    ko(ctx, msg, cx, barY + barH + 12, 2,
-      { align:'center', color: iWin ? PAL.gold : '#ff7a86', outline:PAL.outline });
-
-    /* 상대가 아직 안 붙었으면 그렇다고 말한다 — 0 대 0 을 겨루는 중으로 오해한다 */
-    if(!PEER.seen)
-      ko(ctx, '상대를 기다리는 중', cx, barY + barH + 36, 2,
-        { align:'center', color:'#6f7aa0' });
-    else if(!PEER.alive)
-      ko(ctx, PEER.name + ' 탈락!', cx, barY + barH + 36, 2,
-        { align:'center', color:'#ff4d5a', outline:PAL.outline });
+    /* ── 한 줄 문구 — 지금 내가 몇 등인가, 패널 맨 아래 같은 자리에 고정 ── */
+    const myRank = rows.findIndex(r => r.isMe) + 1;
+    const msg = myRank <= 1 ? '1등 유지중' : (myRank + '등 / ' + rows.length + '명 중');
+    ko(ctx, msg, cx, top - 14 + panelH - 20, 2,
+      { align:'center', color: myRank <= 1 ? PAL.gold : '#ff7a86', outline:PAL.outline });
   }
 
   renderHUD(ctx){
@@ -12273,65 +12179,47 @@ function drawHUDDebug(ctx){
 
 /** 오락실이 넘겨준 것들. mount() 가 채운다 */
 /**
- * ★★ **결투 상대의 상태.** (2026-08-27, 사용자 지정)
+ * ★★ **결투 상대들의 상태.** (2026-08-27, 사용자 지정 — 최대 4인으로 확장)
  *
  * 오락실 껍데기가 방을 지켜보다가 여기에 넣어 준다. 게임 쪽은 이 값만 본다 —
  * 게임이 Firebase 를 직접 아는 순간 혼자 돌려 보는 검사가 불가능해진다.
  *
- *   alive : 상대가 살아 있는가. `false` 가 되면 **내 판도 그 자리에서 끝난다**
- *   coins : 상대가 주운 금화 (화면 위 점수판에 쓴다)
- *   name  : 상대 이름
- */
-/**
- * ★★ **결투 상대.** 오락실 껍데기가 방을 읽어 여기에 넣어 준다.
+ * *"이거 멀티 플레이 최대 4인 가능으로 만들 수 있을까? (...) 각자 맵에서
+ *   각자 알아서 생존하는거고, 상대방의 움직임만 보이는거야"*
  *
- * `x,y` 는 **판 좌표**다. 10Hz 로만 오므로 그대로 그리면 뚝뚝 끊긴다 —
- * `sx,sy`(그리는 자리)를 따로 두고 매 프레임 목표로 다가가게 한다.
+ * 예전엔 상대가 딱 하나라 평평한 객체 하나(`PEER`)로 충분했다. 이제는 uid
+ * 로 여는 맵(`PEERS`)이다 — 한 명이든 셋이든 똑같은 모양으로 다룬다.
+ *
+ *   alive : 이 상대가 살아 있는가 (하트가 0이 됐으면 false)
+ *   coins : 이 상대가 주운 금화 — 각자 제 화면에서 번 것(더 이상 다투지 않는다)
+ *   name  : 이 상대 이름
  */
-const PEER = {
-  alive: true, coins: 0, name: '', dragon: 0, lives: -1, seen: false,
-  x: 0, y: 0, lv: 1, sx: 0, sy: 0, has: false,
-  /** 상대가 먹은 금화 번호 (비트 묶음) */
-  took: [],
-};
-/**
- * ★ **금화 비의 씨앗을 나중에 받는다.** (2026-08-27)
- * 방을 읽는 데 한 박자가 걸려서 게임이 먼저 뜬다. 첫 금화는 0.85초 뒤라
- * 그 사이에 들어오면 늦지 않다. 이미 뿌리기 시작했으면 바꾸지 않는다 —
- * 도중에 바꾸면 그 순간부터 두 화면의 금화가 달라진다.
- */
-export function setDuelSeed(n){
-  n = n | 0;
-  if(!n) return;
-  DG.seed = n;
-  const sc = scenes && scenes.current;
-  if(sc && sc.duel && (sc.coinN | 0) === 0) sc.seed = n;
-}
-/** 오락실이 방에서 읽은 상대 상태를 넣는다 */
-export function setDuelPeer(p){
-  if(!p) return;
-  if(p.alive !== undefined) PEER.alive = !!p.alive;
-  if(p.coins !== undefined) PEER.coins = p.coins | 0;
-  if(p.name  !== undefined) PEER.name  = String(p.name || '');
-  if(p.dragon !== undefined) PEER.dragon = clamp(p.dragon | 0, 0, 9);
-  /* -1 은 "아직 모른다" — 0 으로 두면 상대가 하트를 다 잃은 것처럼 그린다 */
-  if(p.lives !== undefined) PEER.lives = clamp(p.lives | 0, 0, DUEL.LIVES);
-  if(p.x !== undefined && p.y !== undefined){
-    PEER.x = p.x; PEER.y = p.y;
-    /* 처음 받은 자리에서는 미끄러지지 않게 곧바로 놓는다 */
-    if(!PEER.has){ PEER.sx = p.x; PEER.sy = p.y; PEER.has = true; }
+const PEERS = new Map();
+/** 오락실이 방에서 읽은 상대 한 명의 상태를 넣는다 (uid 로 구분) */
+export function setDuelPeer(uid, p){
+  if(!uid || !p) return;
+  let s = PEERS.get(uid);
+  if(!s){
+    s = { alive:true, coins:0, name:'', dragon:0, lives:-1, seen:false,
+          x:0, y:0, lv:1, sx:0, sy:0, has:false, wasAlive:true, deathFxT:0 };
+    PEERS.set(uid, s);
   }
-  if(p.lv !== undefined) PEER.lv = clamp(p.lv | 0, 1, MAX_LEVEL);
-  if(p.took) PEER.took = p.took;
-  PEER.seen = true;
+  if(p.alive !== undefined) s.alive = !!p.alive;
+  if(p.coins !== undefined) s.coins = p.coins | 0;
+  if(p.name  !== undefined) s.name  = String(p.name || '');
+  if(p.dragon !== undefined) s.dragon = clamp(p.dragon | 0, 0, 9);
+  /* -1 은 "아직 모른다" — 0 으로 두면 하트를 다 잃은 것처럼 그린다 */
+  if(p.lives !== undefined) s.lives = clamp(p.lives | 0, 0, DUEL.LIVES);
+  if(p.x !== undefined && p.y !== undefined){
+    s.x = p.x; s.y = p.y;
+    /* 처음 받은 자리에서는 미끄러지지 않게 곧바로 놓는다 */
+    if(!s.has){ s.sx = p.x; s.sy = p.y; s.has = true; }
+  }
+  if(p.lv !== undefined) s.lv = clamp(p.lv | 0, 1, MAX_LEVEL);
+  s.seen = true;
 }
 /** 판이 새로 시작할 때 지운다 — 지난 판의 "죽었다" 가 남으면 곧바로 끝나 버린다 */
-function resetDuelPeer(){
-  PEER.alive = true; PEER.coins = 0; PEER.name = ''; PEER.dragon = 0;
-  PEER.lives = -1; PEER.seen = false;
-  PEER.x = PEER.y = PEER.sx = PEER.sy = 0; PEER.lv = 1; PEER.has = false;
-  PEER.took = [];
-}
+function resetDuelPeers(){ PEERS.clear(); }
 
 const DG = {
   difficulty: 'normal',

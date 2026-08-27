@@ -66,13 +66,21 @@ export default function DuelResult(nav, params = {}) {
       const players = Object.values(r.players ?? {}).filter((p) => p && !p.waiting);
       const 모두끝 = players.length >= 2 && players.every((p) => p.done === true);
       /**
-       * ★ **한 명이 죽으면 그 자리에서 센다.** (2026-08-27, 사용자 지정)
-       * 죽은 사람이 있으면 판은 이미 끝난 것이다 — `done` 이 오기를 기다리면
-       * 튕긴 사람 때문에 20초를 멍하니 본다.
+       * ★★ **최후의 생존자 하나만 남으면 그 자리에서 센다.** (2026-08-27,
+       *   사용자 지정 — 최대 4인으로 확장)
+       *
+       * *"각자 맵에서 각자 알아서 생존하는거고... 끝까지 살아남아야 이기는건데"*
+       *
+       * 예전 1대1은 "한 명이 죽으면 그 자리에서 센다"로 충분했다 — 둘 중
+       * 하나가 죽으면 남는 사람이 정확히 하나였기 때문이다. N인이면 다르다.
+       * 넷 중 하나가 죽었다고 그 자리에서 판을 끊으면, 아직 셋이나 겨루고
+       * 있는데 순위가 미리 굳어 버린다. **살아 있는 사람이 하나 이하로
+       * 줄었을 때만** 더 볼 것이 없다.
        */
-      const 누가죽음 = players.length >= 2 && players.some((p) => p.alive === false);
+      const 살아있는수 = players.filter((p) => p.alive !== false).length;
+      const 최후생존 = players.length >= 2 && 살아있는수 <= 1;
       const 오래기다림 = Date.now() - waitedFrom > WAIT_MS;
-      if (players.length >= 2 && (모두끝 || 누가죽음 || 오래기다림)) {
+      if (players.length >= 2 && (모두끝 || 최후생존 || 오래기다림)) {
         outcome = settleDuel(r);
         /* 자리를 놓아 준다 — 안 그러면 방이 다음 판으로 못 넘어간다 */
         Room.rearmRoomSeat(code).catch(() => {});

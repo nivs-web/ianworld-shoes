@@ -16,10 +16,16 @@ window.webkitAudioContext = undefined;
 /**
  * **결투를 10판 완주시키며 버그를 찾는다.**
  *
- * 이 세션에서 새로 만든 것들 — 상단 비교판, 하트 표시, 고스트, 씨앗 금화,
- * 즉시 종료 — 은 전부 **모듈 전역 상태**(`PEER`, `DUEL_ON`, `topArt`, `RUN`)에
+ * 이 세션에서 새로 만든 것들 — 세로 순위표, 하트 표시, 고스트, 최후 생존
+ * 종료 — 은 전부 **모듈 전역 상태**(`PEERS`, `DUEL_ON`, `topArt`, `RUN`)에
  * 얹혀 있다. 한 판만 열어 보면 멀쩡한데, **여러 판을 잇달아 열면** 지난 판의
  * 상태가 새어 들어오는 종류의 버그가 있다 — 그래서 10판을 잇달아 돈다.
+ *
+ * ★ **상대를 셋 흉내낸다.** (2026-08-27, 최대 4인으로 확장)
+ * 예전엔 상대가 하나였다. 이제 `setDuelPeer(uid, ...)` 이 uid 별로 받으므로
+ * `bot1~bot3` 세 명을 넣어 순위표(`PEERS` 맵)가 실제로 여럿을 담고 정렬하는지
+ * 본다. 5번째 판에서는 셋을 한꺼번에 죽여 **"최후의 생존" 종료**(내가 유일한
+ * 생존자가 됐을 때 판이 끝나는 경로)를 직접 밟아 본다.
  *
  * 봇은 죽지 않는다(hp 를 계속 채운다) — 재려는 것은 봇의 실력이 아니라
  * **10판을 잇달아 열어도 게임이 계속 멀쩡한가**다. 대신 진짜 결투처럼
@@ -67,9 +73,11 @@ function playOne(round){
   }
   const sc = T.scene0();
 
-  /* 상대를 흉내낸다 — 죽었다 살아나고, 가끔 금화를 흘린다 */
-  let peerAlive = true, peerCoins = 0, peerLives = 3;
-  DR.setDuelPeer({ alive:true, coins:0, name:'상대'+round, dragon: round % 10, lives:3 });
+  /* 상대 셋을 흉내낸다 — 죽었다 살아나고, 가끔 금화를 흘린다 */
+  const bots = ['bot1', 'bot2', 'bot3'].map((uid, i) => ({
+    uid, alive: true, coins: 0, lives: 3, name: '상대' + round + '-' + i }));
+  for(const b of bots)
+    DR.setDuelPeer(b.uid, { alive:true, coins:0, name:b.name, dragon:(round+bots.indexOf(b)) % 10, lives:3 });
 
   let t = 0, framesDrawn = 0;
   const CAP = 170;   // 결투 최대 160초 + 여유
@@ -94,13 +102,21 @@ function playOne(round){
        단 **가끔은 그대로 둬서 하트 줄어드는 그림을 실제로 본다** */
     if(round % 3 !== 0 && p.hp < 100) p.hp = 100;
 
-    /* 상대도 살아 움직이는 것처럼 — 죽음/부활/금화 변화를 섞는다 */
-    peerCoins += Math.random() < 0.3 ? 1 : 0;
-    if(round % 4 === 1 && t > 15 && peerAlive && Math.random() < 0.004){
-      peerAlive = false; peerLives = 0;
+    /* 상대들도 살아 움직이는 것처럼 — 죽음/부활/금화 변화를 섞는다 */
+    for(let bi=0; bi<bots.length; bi++){
+      const b = bots[bi];
+      b.coins += Math.random() < 0.3 ? 1 : 0;
+      if(round % 4 === 1 && t > 15 && b.alive && Math.random() < 0.003){
+        b.alive = false; b.lives = 0;
+      }
+      /**
+       * ★ 5번째 판, 40초가 지나면 **셋을 한꺼번에 죽인다** — 내가 죽지 않은
+       * 채로 "최후의 생존" 종료 경로(모든 상대의 alive:false)를 실제로 밟는다.
+       */
+      if(round === 5 && t > 40) { b.alive = false; b.lives = 0; }
+      DR.setDuelPeer(b.uid, { alive: b.alive, coins: b.coins, lives: b.lives,
+                       x: p.x + 150 + bi*40, y: p.y - 60 - bi*40, dragon: (round+bi) % 10 });
     }
-    DR.setDuelPeer({ alive: peerAlive, coins: peerCoins, lives: peerLives,
-                     x: p.x + 150, y: p.y - 60, dragon: round % 10 });
 
     /* 판마다 다른 방식으로 흔든다 — 실제로 여러 사람이 여러 방법으로 논다 */
     if(round === 3 && Math.abs(t - 8) < DT) sc.giveUp();               // 조기 포기
@@ -129,7 +145,6 @@ function playOne(round){
 
   /* ── 검사 ── */
   if(errs.length) bug('R'+round+'-throw', '예외 ' + errs.length + '건: ' + errs[0]);
-  if(sc.p1.lives < 0 || sc.p1.lives > DR.__test ? false : false) {} // no-op keep structure
 
   const hearts = sc.p1.lives;
   if(hearts < 0 || hearts > 3) bug('R'+round+'-hearts', '내 하트가 범위 밖 (' + hearts + ')');
