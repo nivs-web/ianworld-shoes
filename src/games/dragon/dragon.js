@@ -4,7 +4,7 @@
  * 아래 5,200여 줄은 단일 HTML 이던 시절 그대로다(렌더·물리·보스·사운드 합성).
  * 맨 끝의 「모듈 경계」 만 오락실에 붙이려고 새로 썼다.
  */
-import { enterFullscreen, exitFullscreen, isFullscreen, lockLandscape } from '../../core/fullscreen.js';
+import { enterFullscreen, exitFullscreen, isFullscreen, unlockOrientation } from '../../core/fullscreen.js';
 import { text as koBlit, measure as koMeasure } from '../../core/pixelfont.js';
 import { FLAME_PALS } from './items.js';
 
@@ -10660,10 +10660,12 @@ function applyAudioOpt(){
    유사 전체화면 폴백)을 들고 있었다. 이제 그 DOM 이 없고, 무엇보다 오락실에
    같은 일을 하는 모듈이 이미 있다 — 두 벌을 두면 한쪽만 고치게 된다.
 
-   방향은 여기서 가로로 건다. 신발을 찾아서는 세로라 각자 자기 것을 건다. */
+   ★ **방향은 안 건다.** (2026-08-27) 세로가 기본이고 가로도 되므로 잠글 이유가
+   없다. 잠그면 폰을 돌려도 화면이 안 따라온다 — 전체화면만 켜고 방향은 폰에
+   맡긴다. 신발을 찾아서는 세로 전용이라 여전히 자기 것을 건다. */
 function toggleFullscreen(){
   if(isFullscreen()){ exitFullscreen(); return; }
-  enterFullscreen().then((ok) => { if(ok) lockLandscape(); });
+  enterFullscreen().then((ok) => { if(ok) unlockOrientation(); });
 }
 
 /* 전체화면 아이콘 (네 모서리 꺾쇠). on=true 면 안쪽을 향하는 축소 아이콘 */

@@ -41,16 +41,17 @@ export async function exitFullscreen() {
  * ★ **방향은 오락실이 아니라 "게임"이 정한다.** (2026-08-26)
  *
  * 예전에는 전체화면에 들어갈 때 무조건 세로로 잠갔다. 게임이 신발을 찾아서 하나뿐일
- * 때는 맞는 처리였지만, 드래곤 스트라이커는 **가로** 게임이다. 오락실 화면에서 세로로
- * 잠가 버리면 드래곤은 시작하자마자 화면이 눕는다.
- *
+ * 때는 맞는 처리였지만, 그러면 다른 게임이 들어올 자리가 없다.
  * 그래서 오락실은 전체화면만 켜고 방향은 건드리지 않는다. 각 게임이 시작할 때
  * 자기 방향을 걸고, 끝나면 푼다.
+ *
+ * ★ **거는 게임은 이제 신발을 찾아서 하나뿐이다.** (2026-08-27)
+ * 드래곤 스트라이커는 세로가 기본이고 가로도 되므로 **잠그지 않고 푼다** —
+ * 잠가 두면 폰을 돌려도 화면이 안 따라온다. 그래서 `lockLandscape` 는 없앴다.
  *
  * 안드로이드 크롬만 지원하고 **전체화면이 아니면 실패한다** — 둘 다 조용히 넘어간다.
  */
 export async function lockPortrait() { return lockOrientation('portrait'); }
-export async function lockLandscape() { return lockOrientation('landscape'); }
 
 async function lockOrientation(dir) {
   try {

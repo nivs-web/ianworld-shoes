@@ -20,7 +20,7 @@ import S from '../config/strings.ko.js';
 import { el, toast } from './ui.js';
 import { get as getProfile, finishDragonRun, setDragonCharacter , dragonEquipment , hasDragon , spendDragonCoins , patch as patchProfile } from '../services/profile.js';
 import { effectsOf, startMissiles, startBombs } from '../games/dragon/items.js';
-import { lockLandscape, unlockOrientation } from '../core/fullscreen.js';
+import { unlockOrientation } from '../core/fullscreen.js';
 import { setGameGuard } from './router.js';
 import { stopLoop, startLoop, isRunning } from '../core/loop.js';
 import * as Scene from '../core/scene.js';
@@ -101,7 +101,17 @@ export default function DragonGame(nav, opt = {}) {
 
       loadDragon().then((m) => {
         if (!live) return;                    // 받는 동안 화면을 떠났다
-        lockLandscape();                      // 가로 게임 (전체화면은 오락실에서 이미 켰다)
+        /**
+         * ★★ **방향을 잠그지 않는다.** (2026-08-27, 사용자 지정)
+         *
+         * 예전에는 여기서 가로로 잠갔다 — 드래곤이 가로 전용이었기 때문이다.
+         * 이제 **세로가 기본이고 가로도 된다.** 잠가 버리면 세로로 들고 있어도
+         * 화면이 눕고, 폰을 돌려도 안 따라온다.
+         *
+         * 잠그는 대신 **푼다.** 오락실(신발을 찾아서)이 세로로 잠가 놓았을 수도
+         * 있는데, 그 상태로 들어오면 폰을 가로로 돌려도 세로 그대로다.
+         */
+        unlockOrientation();
         /**
          * ★ **오락실 루프를 멈춘다.** (2026-08-26)
          *

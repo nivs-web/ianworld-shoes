@@ -69,8 +69,8 @@ export default function Portal(nav) {
    * ⚠ **`await` 를 먼저 하면 안 된다.** 전체화면 요청은 클릭 핸들러 안에서 곧바로
    * 나가야 브라우저가 받아 준다. 기다렸다 부르면 제스처 컨텍스트를 벗어나 거절당한다.
    *
-   * 방향은 잠그지 않는다 — 신발은 세로, 드래곤은 가로라 **게임이 정한다**
-   * (`core/fullscreen.js` 의 `lockPortrait` / `lockLandscape` 주석).
+   * 방향은 잠그지 않는다 — 신발은 세로 전용이고 드래곤은 양쪽 다 되므로
+   * **게임이 정한다** (`core/fullscreen.js` 의 `lockPortrait` 주석).
    */
   function onFullscreen() {
     if (isFullscreen()) { exitFullscreen(); return; }
