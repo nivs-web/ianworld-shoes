@@ -39,6 +39,20 @@ function uprightAt(c, x, y, draw){
   }
   draw();
 }
+/**
+ * ★★ **윗모습 짝이 없는 그림은 화면 기준으로 세운다.** (2026-08-27, 사용자 지적)
+ *
+ * *"좀비가 왼쪽으로 누워있는게 이상해 (...) 일자로 일어서서 아래로 내려오는 식",
+ *  "로케트가 왜 누워있니? (...) 로켓이 일어서 있게 만들어"*
+ *
+ * 용은 윗모습 도트를 따로 그려서 판과 같이 돌아도 맞는다. 그런데 **정면을 보는
+ * 좀비**와 **아이콘류**(로켓 등)는 짝이 없어서, 판이 90도 돌면 그대로 눕는다.
+ *
+ * 이런 것들은 판이 아니라 **화면**에 붙어 있어야 한다. 글씨(`uprightAt`)와
+ * 정확히 같은 셈이다 — 그 자리를 축으로 90도 되돌린다.
+ */
+function upright(ctx, x, y, draw){ uprightAt(ctx, x, y, draw); }
+
 function ko(ctx, str, x, y, scale, opt){
   uprightAt(ctx, x, y, () =>
     koBlit(str, x, y, Object.assign({ ctx, scale }, opt || {})));
@@ -999,6 +1013,23 @@ const Input = {
     this._edge(0, 'ok', held(g,0), 'confirm');
   },
   /* 플레이어별 이동 벡터 (대각선 정규화). pid 1=방향키, 2=WASD */
+  /**
+   * 키보드·패드가 가리키는 방향을 **판(월드) 좌표**로 돌려준다.
+   *
+   * ★★ **세로에서는 한 번 돌려야 한다.** (2026-08-27, 사용자 신고)
+   * *"키보드로 콘트롤 하면 역방향으로 움직이는데"*
+   *
+   * 사람은 **화면**을 보고 위를 누른다. 그런데 세로에서는 판이 90도 돌아 있어서
+   * 화면 위가 판의 +x 다. 안 돌리면 위를 눌렀는데 옆으로 간다.
+   * 가상 스틱(`VirtualStick.vector`)에는 이 변환을 넣어 뒀는데 **키보드 쪽을
+   * 빠뜨렸다** — 손가락으로 놀 때는 멀쩡하고 키보드로만 이상한 이유가 이것이다.
+   *
+   *     화면 위(-sy)     -> 판 +x (앞)
+   *     화면 오른쪽(+sx) -> 판 +y (아래)
+   */
+  toWorldDir(x, y){
+    return portrait ? { x: -y, y: x } : { x, y };
+  },
   moveVectorFor(pid){
     const pre = pid === 2 ? 'p2' : 'p1';
     let x = 0, y = 0;
@@ -1006,9 +1037,9 @@ const Input = {
     if(this.held(pre+'right')) x += 1;
     if(this.held(pre+'up'))    y -= 1;
     if(this.held(pre+'down'))  y += 1;
-    if(x || y){ const d = Math.hypot(x,y); return { x:x/d, y:y/d }; }
+    if(x || y){ const d = Math.hypot(x,y); return this.toWorldDir(x/d, y/d); }
     const pa = pid === 2 ? this.padAxis2 : this.padAxis;
-    if(pa.x || pa.y) return { x:pa.x, y:pa.y };
+    if(pa.x || pa.y) return this.toWorldDir(pa.x, pa.y);
     return { x:0, y:0 };
   },
   moveVector(){ return this.moveVectorFor(1); },
@@ -1609,7 +1640,7 @@ function buildThumb(si, W, H){
  * 침엽수림 판은 검푸른 숲빛으로 **판마다 다른 땅**이 된다 — 색을 따로 스무 벌
  * 정하면 판을 늘릴 때마다 또 정해야 한다.
  */
-const PORT_HZ = Math.round(PORT_H * 0.30);      // 지평선의 화면 높이 (384)
+/* 화면 전부가 지상이다 — 하늘 띠와 지평선은 없앴다 (2026-08-27) */
 const GND_H = PORT_H;                           // 지상 지도 한 장의 높이
 
 /** 위아래로 이어지는 지도라 세로 이음새를 넘어가면 두 번 찍는다 */
@@ -1708,17 +1739,6 @@ function buildGround(seed, st){
     }
   }
   cv._seed = seed;
-  return cv;
-}
-
-/** 하늘 띠 — 판의 하늘색을 지평선 높이(384)에 맞춰 압축해 굽는다 */
-function buildPortSky(stops){
-  const { cv, c } = makeCanvas(PORT_W, PORT_HZ);
-  stops = stops || SKY_TITLE;
-  for(let y=0; y<PORT_HZ; y+=PX){
-    c.fillStyle = rampColor(stops, y/(PORT_HZ-PX));
-    c.fillRect(0, y, PORT_W, PX);
-  }
   return cv;
 }
 
@@ -4986,6 +5006,10 @@ class WingZombie {
     SND.sfx('boomS');
   }
   render(ctx){
+    /* ★ 좀비는 정면을 보는 그림이다 — 세로에서도 똑바로 서서 내려온다 */
+    upright(ctx, this.x, this.y, () => this.paint(ctx));
+  }
+  paint(ctx){
     const ox = snap(this.x - Z_W/2), oy = snap(this.y - Z_H/2);
     const tint = this.flash > 0 ? '#ffffff' : null;
     blitCached(ctx, 'Z|'+this.wing+'|'+(tint||'-'), Z_W, Z_H, ox, oy, (c, x, y) => {
@@ -7247,6 +7271,10 @@ class Item {
     if(this.x < -60 || this.life <= 0) this.dead = true;
   }
   render(ctx){
+    /* ★ 아이콘은 화면에 붙는다 — 세로에서 로켓이 눕지 않게 (2026-08-27) */
+    upright(ctx, this.x, this.y, () => this.paint(ctx));
+  }
+  paint(ctx){
     const x = snap(this.x), y = snap(this.y + Math.sin(this.t*3)*3);
     // 후광 (동전은 스스로 번쩍이므로 생략 -> 동전이 많이 깔려도 부담이 없다)
     if(this.kind !== ITEM_KIND.COIN){
@@ -7441,10 +7469,20 @@ class VirtualStick {
     return portrait ? { x: -vy, y: vx } : { x: vx, y: vy };
   }
   /** 화면이 돌면 스틱 자리도 화면 안으로 다시 넣는다 */
+  /**
+   * 화면이 돌면 스틱 자리를 다시 잡는다.
+   * ★ 고정 모드면 **왼쪽 아래로 되돌린다** (2026-08-27, 사용자 지정) —
+   *   화면 안으로 밀어 넣기만 하면 가로에서 쓰던 자리가 어중간하게 남는다.
+   */
   relayout(){
     const c = this.cfg;
-    c.x = snap(clamp(c.x, c.radius + 20, UIW - c.radius - 20));
-    c.y = snap(clamp(c.y, c.radius + 20, UIH - c.radius - 20));
+    if(!c.float){
+      const h = stickHome(c.radius);
+      c.x = snap(h.x); c.y = snap(h.y);
+    }else{
+      c.x = snap(clamp(c.x, c.radius + 20, UIW - c.radius - 20));
+      c.y = snap(clamp(c.y, c.radius + 20, UIH - c.radius - 20));
+    }
     this.active = false; this.pid = null; this.dx = this.dy = 0;
   }
   render(ctx){
@@ -7996,7 +8034,7 @@ class GameScene extends Scene {
      * 굽는 것은 **처음 세로로 그릴 때**다 — 가로로만 하는 사람에게 720x1280
      * 캔버스 두 장을 미리 만들어 안기는 것은 낭비다.
      */
-    this.pSky = null; this.pGnd = null; this.pMark = null;
+    this.pGnd = null;
     this.offGnd = 0;
     this.camSide = 0;                 // 좌우로 움직일 때 지평선이 따라 흐르는 양
     this.pclouds = [];                // 세로용 구름 (아래로 흐른다)
@@ -8046,21 +8084,6 @@ class GameScene extends Scene {
       down:(id,x,y,type,sx,sy) => {
         if(sx === undefined){ sx = x; sy = y; }
         /**
-         * ★ **마우스 더블클릭 = 따라가기 켜기/끄기.** (2026-08-27)
-         * 320ms 안에 40px 안쪽을 두 번 누르면 더블클릭이다.
-         * 손가락은 제외한다 — 누르지 않으면 좌표가 안 와서 뜻이 없다.
-         */
-        if(type === 'mouse' && this.state === 'play'){
-          const now = this.t;
-          if(now - this.lastClickT < 0.32 &&
-             Math.hypot(x - this.lastClickX, y - this.lastClickY) < 40){
-            this.lastClickT = -9;
-            this.toggleFollow();
-            return;
-          }
-          this.lastClickT = now; this.lastClickX = x; this.lastClickY = y;
-        }
-        /**
          * ★ 전체화면 단추. **이 핸들러 안에서 바로** 불러야 브라우저가 허용한다 —
          * 나중으로 미루면 "사용자가 누른 것" 으로 안 쳐 준다 (2026-08-27).
          * 어느 상태에서도 눌린다 — 결과 화면에서도 전체화면을 켜고 끌 수 있어야 한다.
@@ -8101,6 +8124,33 @@ class GameScene extends Scene {
         if(this.btnBomb.down(id,sx,sy)) return;
         if(this.btnMsl2 && this.btnMsl2.down(id,sx,sy)) return;
         if(this.btnBomb2 && this.btnBomb2.down(id,sx,sy)) return;
+        /**
+         * ★★ **두 번 누르면 "따라가기" 가 켜진다 — 손가락도 된다.** (2026-08-27, 사용자 신고)
+         *
+         * *"잡아서 끌고 다니는 모드 더블클릭하면 적용되어야 하는데 그거 적용 안되네?"*
+         *
+         * 예전에는 `type === 'mouse'` 일 때만 봤다. 폰에서 안 되는 것이 당연했다.
+         * 마우스와 손가락은 켜졌을 때 하는 일이 조금 다르다:
+         *
+         *   마우스 — 누르지 않아도 커서를 따라온다 (`pointermove` 가 계속 온다)
+         *   손가락 — **화면 아무 데나** 짚고 끌면 따라온다. 용을 정확히 짚을 필요가
+         *            없어서 작은 화면에서 훨씬 편하다. 이게 손가락판 "잡고 끌기" 다.
+         *
+         * ★ 자리는 **UI 판정 뒤**다. 앞에 두면 무기 단추를 연타하는 것이
+         *   따라가기 토글로 먹혀 버린다.
+         */
+        if(this.state === 'play'){
+          const now = this.t;
+          if(now - this.lastClickT < 0.32 &&
+             Math.hypot(x - this.lastClickX, y - this.lastClickY) < 40){
+            this.lastClickT = -9;
+            this.toggleFollow();
+            return;
+          }
+          this.lastClickT = now; this.lastClickX = x; this.lastClickY = y;
+        }
+        /* 따라가기 중이면 짚은 그 자리로 곧바로 옮긴다 (손가락은 이때부터 좌표가 온다) */
+        if(this.followMouse && this.state === 'play'){ this.moveTo(x, y, 0, 0); return; }
         /* 그다음이 **캐릭터 잡기**. 스틱보다 먼저 봐야 한다 —
            스틱이 화면 아무 데나 뜨는 설정이면 캐릭터 위에서도 스틱이 잡힌다 */
         if(this.grabDown(id,x,y)) return;
@@ -9582,68 +9632,38 @@ class GameScene extends Scene {
    * 그리는 순서는 먼 것부터다: 하늘 → 지평선 능선/랜드마크 → 아지랑이 →
    * 땅 → 구름(그림자와 함께) → 속도선.
    */
+  /**
+   * ★★ **세로 배경 — 화면 전부가 지상이다.** (2026-08-27, 사용자 지정)
+   *
+   * *"배경의 하늘이나 끝에 피라미드 들이 왼쪽으로 흐르는거 없애고, 그냥 1945
+   *   같은 하늘을 날아다니는 걸로 하자. 배경은 그냥 지상이고 (...) 위쪽 30프로
+   *   없애면 될거 같아"*
+   *
+   * 처음에는 위 30% 를 하늘로 두고 지평선에 먼 능선과 그 판의 상징물을 세웠다.
+   * 그런데 그것들은 **가로로 흘러야** 자연스러운 물건이다. 위에서 내려다보는
+   * 그림 위에 옆으로 흐르는 띠가 얹히니 두 시점이 싸웠다.
+   *
+   * 그래서 하늘을 통째로 뺐다. 화면 전부가 **위에서 본 땅**이고, 그 땅이
+   * 아래로 흐른다. 우리는 그 위를 곧장 위로 난다 — 1945 가 그렇다.
+   * 구름만 남긴다. 구름은 위에서 봐도 구름이고, 그림자가 같이 흐르면
+   * "내가 저 위를 난다" 가 한눈에 읽힌다.
+   */
   renderBgPortrait(ctx){
     const st = this.theme, sd = 1000 + this.stage*17;
-    if(!this.pSky) this.pSky = buildPortSky(st.sky);
     if(!this.pGnd) this.pGnd = buildGround(sd, st);
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(this.pSky, 0, 0);
 
     /* ── 땅 : 아래로 흐른다. 두 장을 이어 붙여 이음새를 없앤다 ── */
     const gy = ((this.offGnd % GND_H) + GND_H) % GND_H;
-    ctx.save();
-    ctx.beginPath(); ctx.rect(0, PORT_HZ, PORT_W, PORT_H - PORT_HZ); ctx.clip();
     ctx.drawImage(this.pGnd, 0, snap(gy - GND_H));
     ctx.drawImage(this.pGnd, 0, snap(gy));
-    /* 저 멀리는 흐리다 — 지평선 쪽으로 갈수록 하늘색이 섞인다 */
-    const hz = ctx.createLinearGradient(0, PORT_HZ, 0, PORT_HZ + 240);
-    const hazeC = rampColor(st.sky || SKY_TITLE, 1);
-    hz.addColorStop(0, hazeC); hz.addColorStop(1, hazeC + '00');
-    ctx.globalAlpha = 0.55; ctx.fillStyle = hz;
-    ctx.fillRect(0, PORT_HZ, PORT_W, 240); ctx.globalAlpha = 1;
-    ctx.restore();
-
-    /* ── 지평선 : 먼 능선을 **선 위에만** 남긴다 ── */
-    const ridge = this.far || this.mid || this.near;
-    if(ridge){
-      const L = st.layers.find(l => l.c) || { b: 620 };
-      ctx.save();
-      ctx.beginPath(); ctx.rect(0, 0, PORT_W, PORT_HZ + PX); ctx.clip();
-      const dy = PORT_HZ - L.b;
-      const hx = -snap(((this.offFar*0.5 + this.camSide*0.4) % GAME_W + GAME_W) % GAME_W);
-      ctx.globalAlpha = 0.62;
-      ctx.drawImage(ridge, hx, dy); ctx.drawImage(ridge, hx + GAME_W, dy);
-      ctx.globalAlpha = 1;
-      ctx.restore();
-    }
-    /* ── 판의 상징물은 **지평선 위에** 세운다 ──
-       위에서 내려다본 땅에 옆모습 피라미드를 눕히면 어색하다.
-       저 멀리 지평선에 실루엣으로 서 있는 것이 시점에 맞는다. */
-    const mk = st.mark;
-    if(mk){
-      if(!this.pMark){
-        const made = makeCanvas(PORT_W, PORT_HZ + 8);
-        drawLandmark(made.c, mk.s, snap(PORT_W*mk.x), PORT_HZ + 2,
-                     snap(mk.w*0.62), snap(mk.h*0.62), mixHex(mk.c, '#000000', 0.30), sd);
-        this.pMark = made.cv;
-      }
-      const mx = -snap(((this.offFar*0.5 + this.camSide*0.4) % PORT_W + PORT_W) % PORT_W);
-      ctx.globalAlpha = 0.85;
-      ctx.drawImage(this.pMark, mx, 0); ctx.drawImage(this.pMark, mx + PORT_W, 0);
-      ctx.globalAlpha = 1;
-    }
-    /* 지평선 자리에 얇은 빛줄 — 하늘과 땅의 경계를 못 박는다 */
-    ctx.globalAlpha = 0.5; ctx.fillStyle = st.line || '#ffffff';
-    ctx.fillRect(0, PORT_HZ - PX, PORT_W, PX); ctx.globalAlpha = 1;
 
     /* ── 구름 : 내가 **위를 난다.** 구름 밑에 그림자가 같이 흐른다 ── */
     for(const cl of this.pclouds){
       const x = snap(cl.x), y = snap(cl.y);
-      if(y > PORT_HZ){
-        ctx.globalAlpha = 0.20; ctx.fillStyle = '#000000';
-        ctx.fillRect(x + PX*5, y + PX*6, cl.w, cl.h);
-      }
+      ctx.globalAlpha = 0.20; ctx.fillStyle = '#000000';
+      ctx.fillRect(x + PX*5, y + PX*6, cl.w, cl.h);
       ctx.globalAlpha = cl.a; ctx.fillStyle = st.cloud || '#ffffff';
       ctx.fillRect(x, y, cl.w, cl.h);
       ctx.fillRect(x + snap(cl.w*0.22), y - PX*2, snap(cl.w*0.5), PX*2);
@@ -10175,8 +10195,10 @@ class GameScene extends Scene {
     if(this.followT > 0){
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * Math.min(1, this.followT / 0.4);
-      ko(ctx, this.followMouse ? '마우스 따라가기 켜짐 (더블클릭으로 끄기)' : '마우스 따라가기 꺼짐',
-        uiCx(), 636, 2, { align:'center', color:'#9fe8ff', outline:PAL.outline });
+      /* ★ 손가락도 되므로 "마우스" 를 뺐다. 자리도 화면 높이에서 뽑는다 (2026-08-27) */
+      ko(ctx, this.followMouse ? '따라가기 켜짐 (두 번 눌러 끄기)' : '따라가기 꺼짐',
+        uiCx(), Math.round(UIH*0.88), 2,
+        { align:'center', color:'#9fe8ff', outline:PAL.outline });
       ctx.globalAlpha = pa;
     }
 
@@ -10194,8 +10216,21 @@ class GameScene extends Scene {
     if(this.formT > 0 && this.formName){
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * Math.min(1, this.formT / 0.5) * 0.85;
-      ko(ctx, this.formName + ' 대형', UIW - 30, UIH/2 - 12, 3,
-        { align:'right', color:'#9fe8ff', outline:PAL.outline });
+      /**
+       * ★ **적이 나오는 쪽에 뜬다.** (2026-08-27, 사용자 지정)
+       * *"가로로는 중간, 위치는 상단에 뜨게끔해, 적군들이 등장하는 위치에
+       *   문구가 떠야 한다고"*
+       *
+       * 세로에서 적은 **위에서** 내려온다. 그래서 화면 위쪽 한가운데다.
+       * 가로에서는 적이 오른쪽에서 오므로 오른쪽 중간 그대로 둔다.
+       * (스테이지 이름 띠 152 와 오른쪽 위 단추들 아래를 지나야 안 겹친다)
+       */
+      if(portrait)
+        ko(ctx, this.formName + ' 대형', uiCx(), 200, 3,
+          { align:'center', color:'#9fe8ff', outline:PAL.outline });
+      else
+        ko(ctx, this.formName + ' 대형', UIW - 30, UIH/2 - 12, 3,
+          { align:'right', color:'#9fe8ff', outline:PAL.outline });
       ctx.globalAlpha = pa;
     }
 
@@ -10701,8 +10736,29 @@ function optGet(){
  */
 function makeStickCfg(){
   const o = optGet(), r = STICK_R[clamp(o.stickSize,0,2)];
-  return { x:158, y:GAME_H-158, radius:r, knob:Math.round(r*0.38),
+  /**
+   * ★ **왼쪽 아래에 고정한다.** (2026-08-27, 사용자 지정)
+   * *"콘트롤러 투명한 스틱 모양 왼쪽 아래로 고정시켜"*
+   *
+   * 자리는 **화면**(UIW/UIH)에서 뽑는다. 판 크기(GAME_H=720)로 잡아 두면
+   * 세로(1280)에서는 화면 한가운데에 떠 버린다.
+   * 손가락 닿는 자리는 스틱 반지름에 맞춰 띄운다 — 크게 키운 사람도 안 잘린다.
+   */
+  const c = stickHome(r);
+  return { x:c.x, y:c.y, radius:r, knob:Math.round(r*0.38),
            alpha:o.stickAlpha, dead:0.16, float:!!o.stickFloat };
+}
+/**
+ * 고정 모드일 때 스틱이 앉는 자리 — **왼쪽 아래**.
+ *
+ * ★ 가로는 예전 값(158, 562) 그대로 둔다 (2026-08-27) — "가로 모드는 건들지
+ *   말고" 라는 지시가 있었고, 실제로 20px 옮겨져 있었다.
+ *   세로만 화면 높이(1280)에서 뽑는다. 판 높이(720)로 잡으면 화면 한가운데다.
+ */
+function stickHome(r){
+  if(!portrait) return { x:158, y:GAME_H - 158 };
+  const m = r + 60;
+  return { x:m, y:UIH - m };
 }
 function applyAudioOpt(){
   const o = optGet();
