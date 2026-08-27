@@ -2511,6 +2511,12 @@ class Player {
      * 안 맞는다. 0이 되면 안전한 자리에서 되살아나 3초 동안 반짝인다.
      */
     this.deadT = 0;
+    /**
+     * ★ **한 방 맞았다는 표시.** (2026-08-27, 사용자 지정)
+     * *"생명력이 조금이라도 줄어들때 주인공 캐릭터 얼굴이 해골로 변하는 액션"*
+     * 0 보다 크면 머리에 해골이 겹쳐 뜬다.
+     */
+    this.hitT = 0;
     /* ★ 하트 3개로 시작한다. (2026-08-26, 사용자 지정)
        5개일 때는 일부러 맞으러 다녀도 죽기가 어려웠다 — 한 대에 25뿐이라
        목숨 하나에 4대, 다섯 목숨이면 스무 대를 맞아야 끝났다. */
@@ -4023,6 +4029,35 @@ class DragonRider extends EnemyBase {
  * 어디가 막혔고 어디가 열렸는지 한눈에 읽혀야 한다.
  * 튕겨낸 직후에는 잠깐 하얗게 빛난다.
  */
+/**
+ * 맞은 순간 머리에 겹쳐 뜨는 해골. (2026-08-27, 사용자 지정)
+ * 작게, 그러나 **눈이 이미 보고 있는 자리**에 — 그래야 싸우면서도 읽힌다.
+ */
+const SKULL = [
+  '.WWWWW.',
+  'WWWWWWW',
+  'WKWWWKW',
+  'WKWWWKW',
+  'WWWKWWW',
+  '.WWWWW.',
+  '.W.W.W.',
+];
+function drawSkull(ctx, cx, cy, cell, k){
+  const w = SKULL[0].length*cell, h = SKULL.length*cell;
+  const ox = snap(cx - w/2), oy = snap(cy - h/2);
+  const pa = ctx.globalAlpha;
+  ctx.globalAlpha = pa * Math.min(1, k*3);      // 뜰 때 확 나타났다 사그라든다
+  for(let r=0;r<SKULL.length;r++){
+    for(let c=0;c<SKULL[r].length;c++){
+      const ch = SKULL[r][c];
+      if(ch === '.') continue;
+      ctx.fillStyle = ch === 'K' ? '#1a0a10' : '#fff4f4';
+      ctx.fillRect(ox + c*cell, oy + r*cell, cell, cell);
+    }
+  }
+  ctx.globalAlpha = pa;
+}
+
 function drawFrontShield(ctx, e, flashT){
   const box = e.box;
   const mid = box.y + box.h/2, half = box.h * e.shield * 0.5;
@@ -4698,6 +4733,12 @@ function polyRing(pts, n) {
   return out;
 }
 
+/**
+ * 대형이 들어갈 세로 폭. 위아래로 이만큼 안에 모양이 다 들어와야
+ * `clamp` 에 잘리지 않는다 (110 ~ 610).
+ */
+const FORM_TOP = 130, FORM_BAND = 460;
+
 const FORMATIONS = [
   {
     /** 학익진 — 가운데가 앞서고 양 날개가 뒤로 감싼다 */
@@ -4767,6 +4808,90 @@ const FORMATIONS = [
       for (let i = 0; i < n; i++) {
         const k = i - (n - 1) / 2;
         out.push({ dx: (i % 2) * FORM_GAP * 0.35, dy: k * FORM_ROW * 0.95 });
+      }
+      return out;
+    },
+  },
+  {
+    /**
+     * ★ **화살표** — 왼쪽(플레이어 쪽)을 겨눈 촉.
+     * 촉 두 변과 자루로 이루어진 닫힌 선 위에 세운다.
+     */
+    ko: '화살표',
+    at(n) {
+      const R = Math.max(2, n / 5) * FORM_ROW;
+      const D2 = Math.max(2.4, n / 5) * FORM_GAP;
+      return polyRing([
+        { x: 0,        y: 0 },            // 촉 끝 (왼쪽)
+        { x: D2 * 1.5, y: -R * 1.5 },     // 위 날개
+        { x: D2 * 1.5, y: -R * 0.5 },
+        { x: D2 * 3.0, y: -R * 0.5 },     // 자루 위
+        { x: D2 * 3.0, y:  R * 0.5 },     // 자루 아래
+        { x: D2 * 1.5, y:  R * 0.5 },
+        { x: D2 * 1.5, y:  R * 1.5 },     // 아래 날개
+      ], n);
+    },
+  },
+  {
+    /**
+     * ★ **하트** — 매개변수 곡선을 그대로 쓴다.
+     * 손으로 점을 찍으면 하트처럼 안 보인다 — 수식이 훨씬 정직하다.
+     */
+    ko: '하트',
+    at(n) {
+      const S = Math.max(1.1, n / 13) * FORM_ROW;
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const t = (i / n) * Math.PI * 2;
+        const hx = 16 * Math.pow(Math.sin(t), 3);
+        const hy = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+        /* **세워서** 온다 — 눕히면 하트로 안 보인다 (모로 누운 하트를 알아보기는 어렵다) */
+        out.push({ dx: hx * S * 0.5, dy: -hy * S * 0.5 });
+      }
+      return out;
+    },
+  },
+  {
+    /** ★ **십자** — 네 갈래로 곧게 뻗는다. 가운데가 비어 뚫고 지나가기 쉽다 */
+    ko: '십자',
+    at(n) {
+      const A = Math.max(2, n / 5) * FORM_ROW;
+      const B = Math.max(2, n / 5) * FORM_GAP;
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const arm = i % 4, k = 1 + ((i / 4) | 0);
+        if (arm === 0) out.push({ dx: B * 2,          dy: -A * k });
+        if (arm === 1) out.push({ dx: B * 2,          dy:  A * k });
+        if (arm === 2) out.push({ dx: B * 2 - B * k,  dy: 0 });
+        if (arm === 3) out.push({ dx: B * 2 + B * k,  dy: 0 });
+      }
+      return out;
+    },
+  },
+  {
+    /** ★ **나선** — 소용돌이처럼 감겨 들어온다 */
+    ko: '나선',
+    at(n) {
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const t = i / Math.max(1, n - 1);
+        const a = t * Math.PI * 3.2;
+        const r = (0.4 + t * 1.5) * FORM_ROW * Math.max(1.4, n / 6);
+        out.push({ dx: FORM_GAP * 2 + Math.cos(a) * r * 1.4, dy: Math.sin(a) * r });
+      }
+      return out;
+    },
+  },
+  {
+    /** ★ **물결** — 파도처럼 오르내리며 밀려온다 */
+    ko: '물결',
+    at(n) {
+      const out = [];
+      /* 파장을 **무리 전체에 두 번**으로 고정한다 — 마릿수가 달라져도 늘 파도로 보인다 */
+      for (let i = 0; i < n; i++) {
+        const t = i / Math.max(1, n - 1);
+        out.push({ dx: t * FORM_GAP * n * 0.42,
+                   dy: Math.sin(t * Math.PI * 4) * FORM_ROW * Math.max(2.2, n / 3) });
       }
       return out;
     },
@@ -4878,7 +5003,7 @@ class Director {
     // 10스테이지를 넘으면 정면뿐 아니라 위/아래 대각선에서도 밀고 들어온다
     const diagonal = this.stage > DIAGONAL_STAGE && Math.random() < 0.5;
     const from = diagonal ? (Math.random() < 0.5 ? -1 : 1) : 0;
-    const y0 = from === 0 ? 150 + Math.random()*380
+    let y0 = from === 0 ? 150 + Math.random()*380
              : (from < 0 ? -70 - Math.random()*90 : GAME_H + 70 + Math.random()*90);
     /**
      * ★ **대형을 짜서 들어온다.** (2026-08-26, 사용자 지정)
@@ -4888,11 +5013,36 @@ class Director {
     const F = n >= 4
       ? FORMATIONS[(Math.random() * FORMATIONS.length) | 0]
       : FORMATIONS[FORMATIONS.length - 1];
-    const spots = F.at(n);
+    let spots = F.at(n);
+    /**
+     * ★★ **모양이 화면에 들어오게 줄인다.** (2026-08-27, 사용자 지적)
+     *
+     * *"대형이 너무 흩어져서 등장하니 재미가 없다"*
+     *
+     * 자리는 제대로 잡고 있었는데, 바로 아래에서 `clamp(y0 + dy, 110, 610)` 로
+     * **세로를 잘라 버렸다.** 대형이 세로 500px 보다 크면 넘치는 것들이 전부
+     * 위아래 끝으로 눌려서 **두 줄로 뭉갰다** — 하트든 별이든 다 같은 모양이 됐다.
+     *
+     * 잘라서 맞추는 대신 **줄여서 맞춘다.** 가로도 같은 배율로 줄여야 모양이
+     * 안 찌그러진다. 그리고 세로 한가운데에 놓아 위아래로 고르게 편다.
+     */
+    {
+      let lo = Infinity, hi = -Infinity;
+      for(const sp of spots){ if(sp.dy < lo) lo = sp.dy; if(sp.dy > hi) hi = sp.dy; }
+      const span = hi - lo;
+      if(span > FORM_BAND){
+        const k = FORM_BAND / span;
+        spots = spots.map(sp => ({ dx: sp.dx * k, dy: sp.dy * k }));
+        lo *= k; hi *= k;
+      }
+      /* 세로 한가운데에 오도록 기준선을 다시 잡는다 (정면으로 올 때만) */
+      if(from === 0) y0 = FORM_TOP + (FORM_BAND - (hi - lo))/2 - lo;
+    }
 
     /* 이름이 뜨는 건 정면으로 밀고 들어오는 큰 대형일 때만 —
        위아래에서 파고드는 건 대형이 눈에 안 보이고, 매번 뜨면 시끄럽다 */
-    if(from === 0 && n >= 6 && F.ko !== '무리') s.noteFormation(F.ko);
+    /* 이름은 정면으로 밀고 들어오는 대형일 때만 — 위아래에서 파고들면 모양이 안 보인다 */
+    if(from === 0 && n >= 5 && F.ko !== '무리') s.noteFormation(F.ko);
 
     const make = (x, y) => kind === 'zombie' ? new WingZombie(x, y, 160 + Math.random()*70)
                          : kind === 'rider'  ? new DragonRider(x, y)
@@ -4900,6 +5050,21 @@ class Director {
                          : kind === 'thief'  ? new CoinThief(x, y)
                          :                     new HeavyRider(x, y);
 
+    /**
+     * ★★ **대형이 흩어지지 않게.** (2026-08-27, 사용자 지적)
+     *
+     * *"대형을 갖춰서 등장해야 재밌는데 대형이 너무 흩어져서 등장하니 재미가 없다"*
+     *
+     * 자리는 제대로 잡아 놓고 있었다. 그런데 구성원마다
+     *   · 속도가 제각각이고 (`160 + Math.random()*70`)
+     *   · 흔들림 위상이 제각각이라 (`this.t = Math.random()*6`)
+     * **몇 초 만에 모양이 풀렸다.** 그래서 무슨 대형인지 볼 새가 없었다.
+     *
+     * 한 무리는 **같은 속도, 같은 위상**으로 들어온다 — 그래야 모양이 눈에 남는다.
+     * 대신 무리마다 값이 다르므로 모든 적이 똑같이 움직이지는 않는다.
+     */
+    const groupSpd = 0.86 + Math.random()*0.28;     // 이 무리의 속도 배수
+    const groupPh = Math.random()*Math.PI*2;        // 이 무리의 흔들림 위상
     for(let i=0;i<spots.length;i++){
       const sp = spots[i];
       const x = GAME_W + 80 + sp.dx;
@@ -4911,6 +5076,11 @@ class Director {
         e = make(x, y0 + sp.dy*0.8 + sp.dx*0.3*from);
         e.diveTo = clamp(140 + Math.random()*440, 120, 600);
         e.diveV  = (from < 0 ? 1 : -1) * (110 + Math.random()*70);
+      }
+      /* 한 무리는 같은 속도·같은 박자로 — 이게 있어야 대형이 보인다 */
+      if(e){
+        if(typeof e.vx === 'number') e.vx *= groupSpd;
+        e.t = groupPh;
       }
       s.enemies.push(e);
     }
@@ -6894,7 +7064,12 @@ class GameScene extends Scene {
    *
    * 표가 끝나는 곳 → 묻는 말 → 버튼 → 안내 순서로 **밀어서** 잡는다.
    */
-  endTableBottom(){ return END_ROW_Y + ((this.endRows || 5) - 1)*END_ROW_GAP + 34; }
+  /**
+   * 표가 끝나는 줄(가로줄) 아래로 **30px 을 더 띄운다.** (2026-08-27, 사용자 지정)
+   * *"획득금화 아래로 30px정도 여백을 만들라고"*
+   * 아래 것들(묻는 말·버튼·안내)이 전부 이 값에서 나오므로 여기만 바꾸면 된다.
+   */
+  endTableBottom(){ return END_ROW_Y + ((this.endRows || 5) - 1)*END_ROW_GAP + 34 + 30; }
   endAskY(){ return this.endTableBottom() + 26; }
   endBtnY(){
     const ask = this.state === 'clear' && this.stage < 20;
@@ -7031,6 +7206,7 @@ class GameScene extends Scene {
     }
     p.update(dt, mv);
     if(p.hurtT > 0) p.hurtT -= dt;
+    if(p.hitT > 0) p.hitT -= dt;
     if(p.shieldT > 0){
       p.shieldT -= dt;
       for(const h of p.shieldHits) h.t += dt;
@@ -7416,6 +7592,19 @@ class GameScene extends Scene {
     /* 기본 피해 25 -> 34. 목숨 하나가 네 대에서 세 대로 줄어든다 */
     /* 마스크를 꼈으면 피해가 줄어든다 (1P 한테만) */
     if(p.pid === 1) this.stageHits++;      // 무피격 보너스 판정용 (기획 10)
+    /**
+     * ★ **맞은 티가 나야 한다.** (2026-08-27, 사용자 지정)
+     *
+     * *"생명력이 조금씩 사라졌잖아, 이때 액션이 없으니깐 (...) 내가 당하고 있는건지
+     *   모르겠어"*
+     *
+     * 체력 막대는 화면 구석에 있어서 싸우는 동안 볼 겨를이 없다.
+     * **얼굴이 해골로 바뀌면** 눈이 이미 보고 있는 자리에서 바로 읽힌다.
+     */
+    p.hitT = 0.55;
+    Flash.add('#ff2b3c', 0.06, 0.14);
+    Particles.spawn(p.x + 20, p.y - 10, 10,
+      { spd:300, life:0.4, pal:['#ffffff','#ff9a5a','#ff2b3c','#8f1230'] });
     p.hp -= (dmg || 34) * (p.pid === 1 ? (1 - EQ.dmgCut) : 1);
     if(p.hp <= 0){
       p.lives = Math.max(0, p.lives - 1);
@@ -7508,6 +7697,12 @@ class GameScene extends Scene {
         ctx.globalAlpha = Math.floor(p.hurtT*12) % 2 === 0 ? 0.32 : 0.78;
         p.render(ctx); ctx.globalAlpha = 1;
       }else p.render(ctx);
+      /* ★ 맞은 직후에는 머리에 해골 (2026-08-27) */
+      if(p.hitT > 0){
+        const m = p.metrics;
+        drawSkull(ctx, p.x + m.w*0.20, p.y - m.h*0.16,
+                  Math.max(PX, Math.round(m.h*0.055/PX)*PX), p.hitT / 0.55);
+      }
       if(p.shieldT > 0) drawShield(ctx, p);
       if(this.p2){                      // 2인일 때 누가 누군지 표시
         const c = p.pid === 1 ? P1_COLOR : P2_COLOR;
@@ -7925,8 +8120,8 @@ class GameScene extends Scene {
     if(this.formT > 0 && this.formName){
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * Math.min(1, this.formT / 0.5) * 0.85;
-      ko(ctx, this.formName + ' 대형', 30, GAME_H/2 - 12, 3,
-        { color:'#9fe8ff', outline:PAL.outline });
+      ko(ctx, this.formName + ' 대형', GAME_W - 30, GAME_H/2 - 12, 3,
+        { align:'right', color:'#9fe8ff', outline:PAL.outline });
       ctx.globalAlpha = pa;
     }
 
