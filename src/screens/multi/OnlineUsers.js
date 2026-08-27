@@ -36,7 +36,8 @@ export default function OnlineUsers(nav, params = {}) {
    * 이 화면이 실제로 읽는 값은 다섯 개뿐이다. `at` 은 어디에도 안 나온다.
    */
   const viewKey = (rows) => rows
-    .map((u) => [u.uid, u.nickname ?? '', u.characterId ?? '', u.shoesOwned ?? 0, u.state ?? ''].join(':'))
+    .map((u) => [u.uid, u.nickname ?? '', u.characterId ?? '', u.shoesOwned ?? 0,
+                 u.dragon ?? 0, u.coins ?? 0, u.state ?? ''].join(':'))
     .join('|');
   let lastView = null;
 
@@ -79,6 +80,14 @@ export default function OnlineUsers(nav, params = {}) {
   }
 
   const isDragon = params.game === 'dragon';
+  /* 드래곤 그림은 게임 모듈에 있다 — 신발 쪽에서는 아예 안 받는다 */
+  let dragonMod = null;
+  if (isDragon) {
+    import('../DragonGame.js')
+      .then((m) => m.loadDragon())
+      .then((m) => { dragonMod = m; nav.refresh(); })
+      .catch(() => {});          // 못 받아도 닉네임과 금화는 나온다
+  }
 
   function row(u) {
     const ch = characterById(u.characterId);
@@ -95,8 +104,16 @@ export default function OnlineUsers(nav, params = {}) {
           nav,
         }),
     }, [
-      ch ? el('img.online-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko, loading: 'lazy', decoding: 'async' })
-         : el('div.online-face'),
+      /**
+       * ★ **드래곤 쪽에서는 드래곤 얼굴.** (2026-08-27, 사용자 지정)
+       * 신발 캐릭터가 뜨면 여기가 어느 게임인지 알 수 없다.
+       * 그림은 게임 모듈이 갖고 있으므로 늦게 오면 그때 채운다.
+       */
+      isDragon
+        ? el('div.online-face', null,
+            [dragonMod ? dragonMod.dragonPortrait(u.dragon | 0, 1) : null].filter(Boolean))
+        : (ch ? el('img.online-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko, loading: 'lazy', decoding: 'async' })
+              : el('div.online-face')),
       el('div.online-name', `${u.nickname || '???'}${isMe ? ` (${S.meTag})` : ''}`),
       /**
        * ★ **드래곤 쪽에서 "신발 N켤레" 가 뜨면 안 된다.** (2026-08-27, 사용자 지적)

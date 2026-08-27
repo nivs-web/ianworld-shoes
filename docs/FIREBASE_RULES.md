@@ -854,3 +854,20 @@ Vercel → 프로젝트 → Settings → **Environment Variables** 에 `.env.exa
 **같이 바뀐 것**: `setState('lobby')` 가 예전에는 `game` 을 지웠다(`''`).
 이제 지우지 않는다 — 남의 카드에 "현재위치: 드래곤 스트라이커 로비" 를 띄우려면
 로비에 있어도 어느 게임의 로비인지 알아야 한다. 오락실 첫 화면만 빈 값이다.
+
+### 2026-08-27 — `presence/$uid/dragon` 추가
+
+현재접속자 목록에 **신발 캐릭터 얼굴**이 떴다. 드래곤 쪽에서는 고른 드래곤이
+떠야 하는데, 얼굴을 그리려면 번호 하나가 필요하다 (그림은 게임 모듈이 갖고 있다).
+
+```
+"dragon": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 29" }
+```
+
+콘솔에 게시 완료. 게시 후 다시 읽어 확인했다 —
+presence 필드: at · characterId · coins · dragon · game · lastActive ·
+multiLosses · multiWins · nickname · shoesOwned · state.
+
+**주의**: 처음 한 번은 게시가 안 먹었다(편집기에 넣자마자 눌렀더니 반영 전이었다).
+"게시되지 않은 변경사항" 이 뜬 것을 **확인한 뒤에** 누르고, 누른 뒤에는
+새로고침해서 실제로 저장됐는지 다시 읽어야 한다.
