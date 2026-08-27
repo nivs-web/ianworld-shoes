@@ -60,8 +60,18 @@ const num = (v) => Number(v || 0).toLocaleString('en-US');
  */
 function koFitScale(str, box, max){
   const availW = box.w - PX*10, availH = box.h - PX*6;
-  let s = max;
-  while(s > 1 && (koMeasure(String(str), s) > availW || KO_H*s > availH)) s -= 0.5;
+  /**
+   * ★★ **배율은 정수만.** (2026-08-27, 세로 모드에서 드러남)
+   *
+   * 예전에는 0.5 씩 줄였다. 그런데 이 글꼴은 **도트**다 — 3.5 배로 늘리면
+   * 픽셀 열이 어떤 데는 세 개, 어떤 데는 네 개로 복제되어 획이 **겹쳐 보인다.**
+   * 세로에서 버튼이 넓어지자 마침 3.5 가 뽑혀서 "처음부터 다시" 가
+   * 글자가 두 번 찍힌 것처럼 뭉개졌다.
+   *
+   * 정수로만 줄이면 늘 또렷하다. 한 단계 작아질 뿐 넘치는 일은 없다.
+   */
+  let s = Math.max(1, Math.floor(max));
+  while(s > 1 && (koMeasure(String(str), s) > availW || KO_H*s > availH)) s -= 1;
   return s;
 }
 /**
@@ -1033,8 +1043,21 @@ const END_ROW_Y   = 190;
  * 화면 아래로 넘친다. 아래 것들이 전부 표 끝에서 계산되므로 여기만 맞으면 된다.
  */
 const END_ROW_GAP = 44, END_ROW_GAP_TIGHT = 38;
-const END_LABEL_X = 452;                     // 이름 (왼쪽 정렬)
-const END_NUM_R   = 828;                     // 숫자가 끝나는 자리 (오른쪽 정렬)
+/**
+ * ★ **표는 화면 한가운데에 붙인다.** (2026-08-27)
+ * 폭 376 짜리 표를 화면 가운데에 놓는다. 1280 자리에 박아 두면 세로(720)에서는
+ * 숫자가 화면 밖으로 나가 **값이 아예 안 보인다** (실제로 그랬다).
+ */
+const END_TABLE_W = 376;
+const endLabelX = () => Math.round(UIW/2 - END_TABLE_W/2);
+const endNumR   = () => Math.round(UIW/2 + END_TABLE_W/2);
+/**
+ * ★ 제목과 표의 높이도 화면에 맞춘다 (2026-08-27).
+ * 세로는 위쪽에 HUD 가 두 줄로 깔려 있어서, 가로 기준 104 에 제목을 놓으면
+ * **점수/금화 위에 겹친다.**
+ */
+const endTitleY = () => portrait ? 230 : END_TITLE_Y;
+const endRowY   = () => portrait ? 320 : END_ROW_Y;
 /* 단위(점·마리·초·개)는 뺐다 — 없어도 무슨 숫자인지 보면 안다 (2026-08-27, 사용자 지정) */
 /* 아래쪽 자리(묻는 말·버튼·안내)는 표 길이에서 계산한다 — endAskY/endBtnY/endHintY */
 
@@ -4178,13 +4201,30 @@ class Weather {
       this.next -= dt;
       if(this.next <= 0){ this.next = 2.5 + Math.random()*5; this.flash = 0.26; Shake.add(4, 0.2); }
     }
+    /**
+     * ★ **세로에서는 떨어지는 축이 바뀐다.** (2026-08-27)
+     *
+     * 비와 눈은 **화면 아래로** 떨어져야 한다. 그런데 판은 90도 돌아 있어서
+     * 화면 아래는 판의 **-x** 다 — 판의 +y 로 떨어뜨리면 비가 옆으로 흐른다.
+     * 바람(흘러가는 방향)도 같이 90도 돈다.
+     */
     for(const q of this.p){
       if(this.kind === 'rain' || this.kind === 'storm'){
-        q.y += q.v*dt; q.x -= q.v*0.34*dt*K;
-        if(q.y > GAME_H){ q.y = -30; q.x = Math.random()*GAME_W*1.4; }
+        if(portrait){
+          q.x -= q.v*dt; q.y += q.v*0.34*dt*K;
+          if(q.x < -30){ q.x = GAME_W + 30; q.y = Math.random()*GAME_H*1.4 - GAME_H*0.2; }
+        }else{
+          q.y += q.v*dt; q.x -= q.v*0.34*dt*K;
+          if(q.y > GAME_H){ q.y = -30; q.x = Math.random()*GAME_W*1.4; }
+        }
       }else if(this.kind === 'snow' || this.kind === 'leaf'){
-        q.y += q.v*dt; q.x -= (140 + q.v)*K*dt*0.6;
-        if(q.y > GAME_H || q.x < -20){ q.y = -20; q.x = Math.random()*GAME_W*1.3; }
+        if(portrait){
+          q.x -= q.v*dt; q.y += (140 + q.v)*K*dt*0.6;
+          if(q.x < -20 || q.y > GAME_H + 20){ q.x = GAME_W + 20; q.y = Math.random()*GAME_H - 40; }
+        }else{
+          q.y += q.v*dt; q.x -= (140 + q.v)*K*dt*0.6;
+          if(q.y > GAME_H || q.x < -20){ q.y = -20; q.x = Math.random()*GAME_W*1.3; }
+        }
       }else if(this.kind === 'stars'){
         q.x -= q.v*K*dt;
         if(q.x < -8){ q.x = GAME_W + Math.random()*80; q.y = snap(Math.random()*GAME_H); }
@@ -4205,7 +4245,11 @@ class Weather {
   renderFront(ctx){
     if(this.kind === 'rain' || this.kind === 'storm'){
       ctx.globalAlpha = 0.42; ctx.fillStyle = '#cfe8ff';
-      for(const q of this.p) ctx.fillRect(snap(q.x), snap(q.y), PX, q.len);
+      /* 빗줄기는 **떨어지는 방향으로** 길어야 한다 — 세로면 판의 x 축이다 */
+      for(const q of this.p){
+        if(portrait) ctx.fillRect(snap(q.x), snap(q.y), q.len, PX);
+        else ctx.fillRect(snap(q.x), snap(q.y), PX, q.len);
+      }
       ctx.globalAlpha = 1;
     }else if(this.kind === 'snow'){
       ctx.globalAlpha = 0.85; ctx.fillStyle = '#ffffff';
@@ -7791,9 +7835,19 @@ const STAGE_TIME = 80;              // 중간보스가 나올 때까지의 제�
  * 1280 기준으로 박아 두면 화면 밖으로 나간다.
  */
 function timeBar(){
+  /**
+   * ★ 세로는 폭이 720 뿐이라 가운데에 480 짜리 막대를 놓으면 **좌우의 점수판과
+   * 겹친다.** 세로에서는 맨 위에 화면 폭 전체로 한 줄 깔고, 점수판을 그 아래로
+   * 내린다 (`HUD_TOP`).
+   */
+  if(portrait) return { x: 20, y: 14, w: UIW - 40, h: 22 };
   const w = Math.min(480, UIW - 300);
   return { x: Math.round(UIW/2 - w/2), y: 16, w, h: 26 };
 }
+/** 점수판이 시작하는 높이. 세로는 시간 막대 아래로 내린다 */
+const hudTop = () => portrait ? 48 : 20;
+/** 스테이지 이름 띠의 높이. 점수판(약 92px) 아래에 놓는다 */
+const hudBannerY = () => portrait ? hudTop() + 104 : 46;
 /**
  * ★★ **전체화면 단추를 화면에 박아 둔다.** (2026-08-27, 사용자 지정)
  *
@@ -8586,8 +8640,16 @@ class GameScene extends Scene {
       if(this.boltT <= 0){
         this.boltT = 2.6 + Math.random()*1.6;
         const p = this.livePlayers()[0];
-        this.rocks.push({ bolt:true, x: (p ? p.x : 400) + (Math.random()-0.5)*160,
-                          y:0, r:0, v:0, t:-0.65 });   // 음수 = 예고 시간
+        /**
+         * ★ 두 축의 자리를 **둘 다** 적어 둔다 (2026-08-27).
+         * 번개는 하늘에서 떨어지는 것이라 화면이 돌면 떨어지는 축도 돈다.
+         * 어느 쪽을 쓸지는 그릴 때·맞출 때 그 순간의 방향으로 고른다 —
+         * 번개가 떠 있는 1초 사이에 화면을 돌려도 어긋나지 않는다.
+         */
+        this.rocks.push({ bolt:true,
+                          x: (p ? p.x : 400) + (Math.random()-0.5)*160,
+                          y: (p ? p.y : GAME_H/2) + (Math.random()-0.5)*160,
+                          r:0, v:0, t:-0.65 });   // 음수 = 예고 시간
       }
       for(const k of this.rocks) k.t += dt;
       this.rocks = this.rocks.filter(k => k.t < 0.5);
@@ -8763,13 +8825,23 @@ class GameScene extends Scene {
     return { x: this.p2 ? (UIW - 240 - s - 12) : (UIW - s - p), y: p, w: s, h: s };
   }
   endRowGap(){ return (this.endRows || 5) >= 7 ? END_ROW_GAP_TIGHT : END_ROW_GAP; }
-  endTableBottom(){ return END_ROW_Y + ((this.endRows || 5) - 1)*this.endRowGap() + 34 + 30; }
+  endTableBottom(){ return endRowY() + ((this.endRows || 5) - 1)*this.endRowGap() + 34 + 30; }
   endAskY(){ return this.endTableBottom() + 26; }
   endBtnY(){
     const ask = this.state === 'clear' && this.stage < 20;
     return Math.round(this.endTableBottom() + (ask ? 84 : 44));
   }
-  endHintY(){ return this.endBtnY() + 74 + 30; }
+  /**
+   * 안내 문구의 높이.
+   * ★ 세로에서는 버튼이 **세로로 쌓이므로** 마지막 버튼 아래로 내려야 한다
+   *   (2026-08-27). 가로 기준으로 버튼 한 칸만 비켜 놓았더니 두 번째 버튼
+   *   글씨 위에 겹쳐 찍혀서, 글자가 두 번 인쇄된 것처럼 뭉개져 보였다.
+   */
+  endHintY(){
+    const n = this.endItems().length;
+    const last = this.endRect(n - 1);
+    return last.y + last.h + 30;
+  }
   endRect(i){
     const n = this.endItems().length;
     /* 세로에서는 폭이 720 뿐이라 셋을 나란히 못 세운다 — 세로로 쌓는다 */
@@ -9296,7 +9368,9 @@ class GameScene extends Scene {
       if(!struck) for(const k of this.rocks){
         if(k.bolt){
           if(k.t < 0) continue;                         // 아직 예고 중
-          if(Math.abs(p.x - k.x) < 26){ struck = true; dmg = 30; break; }
+          /* 세로면 번개는 화면 세로줄 = 판의 x 축을 따라 떨어진다 */
+          const d0 = portrait ? Math.abs(p.y - k.y) : Math.abs(p.x - k.x);
+          if(d0 < 26){ struck = true; dmg = 30; break; }
         }else if(Math.hypot(p.x - k.x, p.y - k.y) < k.r + 20){ struck = true; dmg = 30; break; }
       }
       if(!struck) for(const w of this.waves){
@@ -9907,19 +9981,25 @@ class GameScene extends Scene {
   renderRule(ctx){
     for(const k of this.rocks){
       if(k.bolt){
-        const x = snap(k.x);
+        /**
+         * 번개 줄기. 화면에서 **세로로** 내리꽂혀야 한다.
+         * 가로에서는 판의 y 축이 화면 세로지만, 세로에서는 판의 x 축이 화면 세로다.
+         * 어느 축으로 그을지만 갈리고 나머지는 같다 — `bar` 하나로 묶는다.
+         */
+        const along = portrait
+          ? (c, off, w) => c.fillRect(0, snap(k.y) + off, GAME_W, w)   // 판 x 축을 따라
+          : (c, off, w) => c.fillRect(snap(k.x) + off, 0, w, GAME_H);  // 판 y 축을 따라
         if(k.t < 0){
           /* 예고 — 떨어질 자리가 깜빡인다 */
           ctx.globalAlpha = 0.30 + 0.4*Math.abs(Math.sin(k.t*26));
           ctx.fillStyle = '#fff6a0';
-          ctx.fillRect(x - PX, 0, PX*2, GAME_H);
+          along(ctx, -PX, PX*2);
           ctx.globalAlpha = 1;
         }else{
-          const a = 1 - k.t/0.5;
-          ctx.globalAlpha = a;
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(x - PX*3, 0, PX*6, GAME_H);
-          ctx.fillStyle = '#fff6a0'; ctx.fillRect(x - PX*6, 0, PX*3, GAME_H);
-          ctx.fillRect(x + PX*3, 0, PX*3, GAME_H);
+          ctx.globalAlpha = 1 - k.t/0.5;
+          ctx.fillStyle = '#ffffff'; along(ctx, -PX*3, PX*6);
+          ctx.fillStyle = '#fff6a0'; along(ctx, -PX*6, PX*3);
+                                     along(ctx,  PX*3, PX*3);
           ctx.globalAlpha = 1;
         }
       }else{
@@ -9968,7 +10048,7 @@ class GameScene extends Scene {
   }
   renderHUD(ctx){
     // 1인 : 왼쪽 위 고정 / 2인 : 2P 왼쪽 위, 1P 오른쪽 위
-    const LX = 24, RX = UIW - 240, TY = 20;
+    const LX = 24, RX = UIW - 240, TY = hudTop();
     if(this.p2){
       this.drawPlayerPanel(ctx, this.p2, LX, TY, P2_COLOR);
       this.drawPlayerPanel(ctx, this.p1, RX, TY, P1_COLOR);
@@ -9983,7 +10063,7 @@ class GameScene extends Scene {
      * 하이픈으로 바꿨다 — 굳이 글꼴을 늘릴 이유가 없다.
      */
     /* ★ 한 단계 작게 (2026-08-27, 사용자 지정) */
-    ko(ctx, this.stage + '스테이지 - ' + this.theme.n, uiCx(), 46, 2,
+    ko(ctx, this.stage + '스테이지 - ' + this.theme.n, uiCx(), hudBannerY(), 2,
       { align:'center', color:'#cfe6ff' });
 
     /* 전체화면 단추 — 늘 같은 자리에 있어야 찾는다 */
@@ -10004,22 +10084,24 @@ class GameScene extends Scene {
      * 이 장치의 전부다.
      */
     if(!this.p2){
-      const CX = UIW - 150;
+      /* 세로는 폭이 좁아 오른쪽 끝에 더 붙이고, 점수판 아래에서 시작한다 */
+      const CX = portrait ? UIW - 96 : UIW - 150;
+      const CY = portrait ? hudBannerY() + 44 : 0;
       if(this.chainT > 0 && this.killStreak >= 3){
         const mul = this.chainMul();
         const k = clamp(this.chainT / CHAIN_HOLD, 0, 1);
         const hot = k < 0.34 && Math.floor(this.t*10) % 2 === 0;   // 끊기기 직전에 깜빡
-        drawText(ctx, 'x' + mul.toFixed(1), CX, 86, 5,
+        drawText(ctx, 'x' + mul.toFixed(1), CX, CY + 86, 5,
           { align:'center', color: hot ? '#ff4d5a' : PAL.gold, outline:PAL.outline, shadow:'#000' });
-        ko(ctx, this.killStreak + '연속', CX, 130, 2, { align:'center', color:'#cfe6ff' });
-        ctx.fillStyle = '#1a2440'; ctx.fillRect(CX - 60, 152, 120, PX*2);
+        ko(ctx, this.killStreak + '연속', CX, CY + 130, 2, { align:'center', color:'#cfe6ff' });
+        ctx.fillStyle = '#1a2440'; ctx.fillRect(CX - 60, CY + 152, 120, PX*2);
         ctx.fillStyle = hot ? '#ff4d5a' : PAL.fire[3];
-        ctx.fillRect(CX - 60, 152, snap(120*k), PX*2);
+        ctx.fillRect(CX - 60, CY + 152, snap(120*k), PX*2);
       }
       if(this.grazeTotal > 0){
         const big = this.grazeFlash > 0;
         ctx.globalAlpha = big ? 1 : 0.62;
-        ko(ctx, '스침 ' + this.grazeTotal, CX, 174, big ? 3 : 2,
+        ko(ctx, '스침 ' + this.grazeTotal, CX, CY + 174, big ? 3 : 2,
           { align:'center', color: big ? '#ffffff' : '#8fb8e0' });
         ctx.globalAlpha = 1;
       }
@@ -10159,7 +10241,7 @@ class GameScene extends Scene {
     drawTimeBar(ctx, timeBar(), clamp(this.timeLeft / (this.duel ? DUEL.TIME : STAGE_TIME), 0, 1), this.t);
 
     drawText(ctx, this.p2 ? '1P: ARROWS / RSHIFT / RALT     2P: WASD / ` / 1'
-                          : '1P: ARROWS / RSHIFT / RALT     ESC: PAUSE', uiCx(), 700, 2,
+                          : '1P: ARROWS / RSHIFT / RALT     ESC: PAUSE', uiCx(), UIH - 20, 2,
       { align:'center', color:'#cfe6ff', shadow:'#0a1830' });
 
     if(this.state === 'pause') this.renderPause(ctx);
@@ -10227,7 +10309,14 @@ class GameScene extends Scene {
      * 다 끝난 뒤에는 제목 뒤(위쪽)로 올라가 배경 노릇만 한다 —
      * "지금 이만큼 있다" 는 것만 남기고 자리는 표에 내준다.
      */
-    const CY = done ? 118 : 300;
+    /**
+     * 큰 숫자가 앉는 높이.
+     * 정산이 끝나면(`done`) 표와 버튼에 자리를 내주고 물러난다.
+     * ★ 세로는 화면이 1280 이라 가로 기준 118 을 그대로 쓰면 **점수판과 제목
+     *   위에 겹친다.** 세로에서는 아래쪽 빈 곳으로 내린다 (2026-08-27).
+     */
+    const CY = done ? (portrait ? UIH - 170 : 118)
+                    : (portrait ? Math.round(UIH*0.42) : 300);
     const kOwn = tallyK(t, TALLY.own), kPlus = tallyK(t, TALLY.plus);
     const kGain = tallyK(t, TALLY.gain), kEq = tallyK(t, TALLY.eq);
     const kRoll = tallyK(t, TALLY.roll), kBoom = tallyK(t, TALLY.boom);
@@ -10326,7 +10415,7 @@ class GameScene extends Scene {
     const title = clear ? (this.duel ? '결투 종료' : '스테이지 클리어')
                         : (this.endReason || '게임오버');
     /* ★ 세 단계 작게 (2026-08-27, 사용자 지정) */
-    ko(ctx, title, uiCx(), END_TITLE_Y, 4,
+    ko(ctx, title, uiCx(), endTitleY(), 4,
       { align:'center', color: clear ? PAL.gold : '#c81f2e', outline:PAL.outline });
     if(this.stateT > 0.6){
       /**
@@ -10374,10 +10463,10 @@ class GameScene extends Scene {
       this.endRows = rows.length;      // 아래 문구·버튼 자리가 이 값에서 나온다
       /* 표의 위아래에 얇은 줄 — 어디서 시작하고 끝나는지 눈이 먼저 안다 */
       const gap = rows.length >= 7 ? END_ROW_GAP_TIGHT : END_ROW_GAP;
-      const ruleW = END_NUM_R + 4 - END_LABEL_X;
+      const ruleW = END_TABLE_W + 4;
       ctx.fillStyle = '#3a3358';
-      ctx.fillRect(END_LABEL_X, END_ROW_Y - 22, ruleW, PX);
-      ctx.fillRect(END_LABEL_X, END_ROW_Y + (rows.length - 1)*gap + 34, ruleW, PX);
+      ctx.fillRect(endLabelX(), endRowY() - 22, ruleW, PX);
+      ctx.fillRect(endLabelX(), endRowY() + (rows.length - 1)*gap + 34, ruleW, PX);
 
       /**
        * ★★ **숫자도 이름과 같은 글꼴·같은 크기로.** (2026-08-27, 사용자 지적)
@@ -10390,13 +10479,13 @@ class GameScene extends Scene {
        * 오락실 글꼴에도 숫자가 있으므로 둘 다 그걸로 그린다 — 한 줄로 읽힌다.
        */
       for(let i=0;i<rows.length;i++){
-        const y = END_ROW_Y + i*gap;
+        const y = endRowY() + i*gap;
         if(this.stateT < 0.6 + i*0.10) break;
         const gold = rows[i][0] === '획득 금화' || rows[i][0] === '무피격 금화'
                   || rows[i][0] === '합산 총 금화';
-        ko(ctx, rows[i][0], END_LABEL_X, y, 3,
+        ko(ctx, rows[i][0], endLabelX(), y, 3,
           { color: gold ? '#ffd24a' : '#8a9bbf', outline:PAL.outline });
-        ko(ctx, rows[i][1], END_NUM_R, y, 3,
+        ko(ctx, rows[i][1], endNumR(), y, 3,
           { align:'right', color: gold ? '#ffd24a' : PAL.white, outline:PAL.outline });
       }
     }
