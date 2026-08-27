@@ -349,6 +349,39 @@ service cloud.firestore {
             "out": {
               ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
             },
+            "score": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "coins": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20000 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "bosses": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "done": {
+              ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "gx": {
+              ".validate": "newData.isNumber() && newData.val() >= -200 && newData.val() <= 1500 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "gy": {
+              ".validate": "newData.isNumber() && newData.val() >= -200 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "glv": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "took": {
+              ".validate": "newData.hasChildren() && ($uid == auth.uid || newData.val() == data.val())",
+              "$i": {
+                ".validate": "newData.isNumber()"
+              }
+            },
+            "dragon": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 29 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "wallet": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000 && ($uid == auth.uid || newData.val() == data.val())"
+            },
             "$other": {
               ".validate": false
             },
@@ -391,14 +424,30 @@ service cloud.firestore {
           },
           "cards": {
             "$uid": {
-              "nickname": { ".validate": "newData.isString() && newData.val().length <= 16" },
-              "characterId": { ".validate": "newData.isString() && newData.val().length <= 24" },
-              "items": { ".validate": "newData.isString() && newData.val().length <= 64" },
-              "stairs": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
-              "shoesFound": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000" },
-              "revives": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
-              "joinedAt": { ".validate": "newData.isNumber()" },
-              "$other": { ".validate": false }
+              "nickname": {
+                ".validate": "newData.isString() && newData.val().length <= 16"
+              },
+              "characterId": {
+                ".validate": "newData.isString() && newData.val().length <= 24"
+              },
+              "items": {
+                ".validate": "newData.isString() && newData.val().length <= 64"
+              },
+              "stairs": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+              },
+              "shoesFound": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+              },
+              "revives": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
+              },
+              "joinedAt": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
             }
           },
           "given": {
@@ -427,6 +476,9 @@ service cloud.firestore {
           "$other": {
             ".validate": false
           }
+        },
+        "game": {
+          ".validate": "(newData.val() == 'shoes' || newData.val() == 'dragon') && (!data.exists() || newData.val() == data.val())"
         },
         "$other": {
           ".validate": false
@@ -489,6 +541,15 @@ service cloud.firestore {
         "lastActive": {
           ".validate": "newData.val() == now"
         },
+        "game": {
+          ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon')"
+        },
+        "coins": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+        },
+        "dragon": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 29"
+        },
         "$other": {
           ".validate": false
         }
@@ -529,6 +590,9 @@ service cloud.firestore {
           },
           "read": {
             ".validate": "newData.isBoolean()"
+          },
+          "game": {
+            ".validate": "newData.val() == 'shoes' || newData.val() == 'dragon'"
           },
           "$other": {
             ".validate": false

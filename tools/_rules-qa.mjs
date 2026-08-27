@@ -18,8 +18,28 @@ const rulesDoc = readFileSync('docs/FIREBASE_RULES.md', 'utf8');
 const src = readFileSync('src/services/multiplayer.js', 'utf8');
 
 // ── 규칙에서 허용 키 뽑기 ─────────────────────
-const i = rulesDoc.indexOf('## Realtime Database');
-const json = /```json\n([\s\S]*?)\n```/.exec(rulesDoc.slice(i))[1];
+/**
+ * * 줄바꿈을 가리지 않는다 (2026-08-27).
+ *
+ * 예전에는 정규식으로 잘라냈는데 LF 만 봤다. 이 문서가 CRLF 로
+ * 저장된 순간 블록을 못 찾아 **검사가 통째로 안 돌았다.**
+ * 그것도 "규칙이 틀렸다" 가 아니라 "널의 속성을 읽을 수 없다" 로
+ * 터져서 원인이 안 보였다.
+ *
+ * 정규식 대신 문자열로 자른다 — 줄바꿈이 무엇이든 상관없고,
+ * 못 찾으면 무엇을 못 찾았는지 말하고 멈춘다.
+ */
+const FENCE = '`' + '`' + '`';
+const head = rulesDoc.indexOf(FENCE + 'json', rulesDoc.indexOf('## Realtime Database'));
+/* 여는 울타리 줄의 끝(줄바꿈 문자 10) 다음이 본문이다 */
+const NL = String.fromCharCode(10);
+const bodyAt = head < 0 ? -1 : rulesDoc.indexOf(NL, head) + 1;
+const tailAt = bodyAt <= 0 ? -1 : rulesDoc.indexOf(FENCE, bodyAt);
+if (tailAt < 0) {
+  console.error('FIREBASE_RULES.md 의 "## Realtime Database" 아래에서 json 블록을 못 찾았다');
+  process.exit(1);
+}
+const json = rulesDoc.slice(bodyAt, tailAt);
 const rules = JSON.parse(json).rules;
 
 const room = rules.rooms.$code;

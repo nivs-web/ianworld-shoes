@@ -97,6 +97,21 @@
             "done": {
               ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
             },
+            "gx": {
+              ".validate": "newData.isNumber() && newData.val() >= -200 && newData.val() <= 1500 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "gy": {
+              ".validate": "newData.isNumber() && newData.val() >= -200 && newData.val() <= 1000 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "glv": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "took": {
+              ".validate": "newData.hasChildren() && ($uid == auth.uid || newData.val() == data.val())",
+              "$i": {
+                ".validate": "newData.isNumber()"
+              }
+            },
             "dragon": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 29 && ($uid == auth.uid || newData.val() == data.val())"
             },
