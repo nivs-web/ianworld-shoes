@@ -8047,7 +8047,15 @@ const PORT_PANEL_Y  = 96;      // 점수판
 function timeBar(){
   if(portrait){
     const right = FS_BTN.size*2 + 10 + FS_BTN.pad + 10;   // 단추 둘이 차지하는 폭
-    return { x: 20, y: PORT_BAR_Y, w: UIW - 20 - right, h: 22 };
+    /**
+     * ★ **모래시계가 잘렸다.** (2026-08-27, 사용자 신고 — "왼쪽 맨위에 모래시계가 짤려")
+     * `drawTimeBar` 는 `B.x - 22` 자리에 모래시계를 그린다(가로모드는 막대가
+     * 가운데라 여유가 넉넉해 안 잘렸다). 세로모드는 막대가 왼쪽 끝(x:20)에
+     * 붙어 있어 `20-22=-2` — 화면 밖. 막대 왼쪽에 모래시계 자리(30px)를 먼저
+     * 비워 두는 것으로 고친다.
+     */
+    const left = 50;
+    return { x: left, y: PORT_BAR_Y, w: UIW - left - right, h: 22 };
   }
   const w = Math.min(480, UIW - 300);
   return { x: Math.round(UIW/2 - w/2), y: 16, w, h: 26 };
@@ -10452,7 +10460,12 @@ class GameScene extends Scene {
     y += 26;                       // 불레벨 눈금 아래로 한 줄
 
     const LBL = 52;                      // 라벨 뒤 숫자가 시작하는 자리
-    ko(ctx, '점수', x, y - 2, 2, { color:'#8a93b8' });
+    /**
+     * ★ **살짝 더 선명하게.** (2026-08-27, 사용자 신고 — "점수 금화 (보유 0) 이
+     * 글씨 부분이 너무 흐려서 잘 안보여") 라벨 밝기를 한 단만 올린다 — 숫자보다
+     * 눈에 띄면 안 되니 여전히 옅은 색이되, 안 읽힐 만큼은 아니게.
+     */
+    ko(ctx, '점수', x, y - 2, 2, { color:'#aab4dc' });
     drawDigits(ctx, String(Math.min(999999, p.score|0)).padStart(6, '0'), x + LBL, y - 2, 3,
       { color: col, outline:PAL.outline });
     y += 24;
@@ -10470,7 +10483,7 @@ class GameScene extends Scene {
        */
       const run = RUN.coins | 0;
       const wallet = RUN.wallet0 | 0;    // 고정 — 이번 판에서 번 것은 왼쪽 숫자가 센다
-      ko(ctx, '금화', x, y - 2, 2, { color:'#8a93b8' });
+      ko(ctx, '금화', x, y - 2, 2, { color:'#aab4dc' });
       /* `drawDigits` 는 고정폭이라 `textWidth` 와 다르다 — 그리면서 준 폭을 그대로 쓴다 */
       const dw = drawDigits(ctx, String(Math.min(9999, run)), x + LBL, y - 2, 3,
         { color:'#ffd24a', outline:PAL.outline });
@@ -10481,9 +10494,9 @@ class GameScene extends Scene {
        * 색을 낮추고 반투명까지 걸어 한 걸음 뒤로 물린다.
        */
       const pa = ctx.globalAlpha;
-      ctx.globalAlpha = pa * 0.55;
+      ctx.globalAlpha = pa * 0.7;
       ko(ctx, '(보유 ' + wallet.toLocaleString('en-US') + ')', x + LBL + dw + 10, y, 2,
-        { color:'#8a6a30' });
+        { color:'#c9a24e' });
       ctx.globalAlpha = pa;
       y += 24;
     }
