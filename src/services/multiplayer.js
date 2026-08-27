@@ -1064,17 +1064,22 @@ export async function publishDuelProgress(code, { score, coins, bosses, alive = 
 }
 
 /**
- * ★★ **결투 고스트 — 자리와 먹은 금화.** (2026-08-27)
+ * ★★ **결투 고스트 — 자리·불레벨·하트.** (2026-08-27, 최대 4인으로 확장)
  *
  * 진행도(`publishDuelProgress`)와 **따로 보낸다.** 방 규칙은 모르는 필드가
  * 하나만 있어도 쓰기를 통째로 거부하는데, 자리를 점수·금화와 같은 쓰기에
  * 실으면 규칙이 아직 게시되기 전인 순간에 **점수까지 같이 안 올라간다.**
  * 따로 보내면 최악이라도 고스트만 안 보이고 승패는 정상으로 굴러간다.
  *
- * 10Hz 다. 자리 둘·불레벨 하나·비트 묶음 열몇 개라 한 번에 100바이트가 안 된다.
+ * ★ **`took`(먹은 금화 번호)는 더 이상 안 보낸다.** (2026-08-27, 사용자 지정)
+ * *"서로 금화를 뺏어 먹을 필요는 없을거 같아"* — 결투가 씨앗 금화를 두고
+ * 다투던 것을 그만두고 각자 제 화면에서 벌게 되면서, 상대가 먹은 번호를
+ * 알아야 할 이유가 없어졌다.
+ *
+ * 10Hz 다. 자리 둘·불레벨·하트 하나씩이라 한 번에 100바이트가 안 된다.
  */
 let lastGhostAt = 0;
-export async function publishGhost(code, { x, y, lv, lives, took }) {
+export async function publishGhost(code, { x, y, lv, lives }) {
   const t = Date.now();
   if (t - lastGhostAt < 90) return;
   lastGhostAt = t;
@@ -1083,8 +1088,6 @@ export async function publishGhost(code, { x, y, lv, lives, took }) {
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
     gx: Math.round(x) | 0, gy: Math.round(y) | 0, glv: lv | 0,
     lives: lives | 0,
-    /* 빈 배열은 RTDB 가 노드를 지우는 것으로 읽는다 — 규칙의 hasChildren 에 걸린다 */
-    took: (took && took.length) ? took.map((n) => n | 0) : [0],
   }), undefined, '결투 고스트').catch(() => {});
 }
 
