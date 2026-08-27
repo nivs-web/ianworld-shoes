@@ -9350,7 +9350,9 @@ const DIFFS = {
    * 1.30 이면 세 대 — 보통(세 대)과 같은 횟수지만 적이 많고 빨라서 여전히 어렵다.
    * 어려움이 어려워야 할 이유는 "한 대가 아픈 것" 이 아니라 "쉴 틈이 없는 것" 이다.
    */
-  hard:   { count: 1.28, speed: 1.18, hp: 1.30, atk: 1.30, boss: 1.20, coin: 1.4 },
+  /* ★ 어려움의 보스만 20% 더 (2026-08-27, 사용자 지정): 1.20 -> 1.44.
+     쉬움·보통은 그대로다 — 어려움을 고른 사람에게만 더 얹는다 */
+  hard:   { count: 1.28, speed: 1.18, hp: 1.30, atk: 1.30, boss: 1.44, coin: 1.4 },
 };
 function diffOf() { return DIFFS[DG.difficulty] || DIFFS.normal; }
 function diffScale() { return diffOf().count; }
