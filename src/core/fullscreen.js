@@ -45,13 +45,16 @@ export async function exitFullscreen() {
  * 그래서 오락실은 전체화면만 켜고 방향은 건드리지 않는다. 각 게임이 시작할 때
  * 자기 방향을 걸고, 끝나면 푼다.
  *
- * ★ **거는 게임은 이제 신발을 찾아서 하나뿐이다.** (2026-08-27)
- * 드래곤 스트라이커는 세로가 기본이고 가로도 되므로 **잠그지 않고 푼다** —
- * 잠가 두면 폰을 돌려도 화면이 안 따라온다. 그래서 `lockLandscape` 는 없앴다.
+ * ★ **드래곤은 "사람이 고른 방향" 을 건다.** (2026-08-27)
+ * 세로가 기본이고, 게임 안 오른쪽 위 단추로 가로로 바꿀 수 있다.
+ * 폰 회전에 딸려 가지 않게 **고른 쪽으로 잠근다** — 싸우는 중에 손목이 기울었다고
+ * 판이 뒤집히면 손이 엉킨다. 신발을 찾아서는 세로 전용이라 늘 세로를 건다.
  *
  * 안드로이드 크롬만 지원하고 **전체화면이 아니면 실패한다** — 둘 다 조용히 넘어간다.
+ * 안 먹는 기기(아이폰 등)에서는 캔버스 비율만 바뀌고 게임은 그대로 돌아간다.
  */
 export async function lockPortrait() { return lockOrientation('portrait'); }
+export async function lockLandscape() { return lockOrientation('landscape'); }
 
 async function lockOrientation(dir) {
   try {

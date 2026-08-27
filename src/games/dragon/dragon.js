@@ -4,7 +4,8 @@
  * 아래 5,200여 줄은 단일 HTML 이던 시절 그대로다(렌더·물리·보스·사운드 합성).
  * 맨 끝의 「모듈 경계」 만 오락실에 붙이려고 새로 썼다.
  */
-import { enterFullscreen, exitFullscreen, isFullscreen, unlockOrientation } from '../../core/fullscreen.js';
+import { enterFullscreen, exitFullscreen, isFullscreen,
+         lockPortrait, lockLandscape } from '../../core/fullscreen.js';
 import { text as koBlit, measure as koMeasure } from '../../core/pixelfont.js';
 import { FLAME_PALS } from './items.js';
 
@@ -7852,6 +7853,13 @@ function timeBar(){
 }
 /** 점수판이 시작하는 높이. 세로는 시간 막대 아래로 내린다 */
 const hudTop = () => portrait ? 48 : 20;
+/**
+ * 오른쪽 위 단추 두 개(전체화면·방향)의 높이.
+ *
+ * ★ 세로에서는 시간 막대가 **화면 폭 전체**로 깔리므로 같은 높이에 두면
+ *   막대 밑에 깔려 안 보인다 (실제로 그랬다). 막대 아래로 내린다.
+ */
+const btnTopY = () => portrait ? 44 : FS_BTN.pad;
 /** 스테이지 이름 띠의 높이. 점수판(약 92px) 아래에 놓는다 */
 const hudBannerY = () => portrait ? hudTop() + 104 : 46;
 /**
@@ -8058,6 +8066,11 @@ class GameScene extends Scene {
          * 어느 상태에서도 눌린다 — 결과 화면에서도 전체화면을 켜고 끌 수 있어야 한다.
          */
         {
+          /* 방향 전환이 먼저 — 전체화면 단추 바로 옆이라 판정이 겹치면 안 된다 */
+          const o = this.orientRect();
+          if(sx >= o.x - 6 && sx <= o.x + o.w + 6 && sy >= o.y - 6 && sy <= o.y + o.h + 6){
+            toggleOrientation(); this.uiTap = true; return;
+          }
           const r = this.fsRect();
           if(sx >= r.x - 8 && sx <= r.x + r.w + 8 && sy >= r.y - 8 && sy <= r.y + r.h + 8){
             toggleFullscreen(); SND.sfx('blip'); this.uiTap = true; return;
@@ -8828,7 +8841,15 @@ class GameScene extends Scene {
    */
   fsRect(){
     const s = FS_BTN.size, p = FS_BTN.pad;
-    return { x: this.p2 ? (UIW - 240 - s - 12) : (UIW - s - p), y: p, w: s, h: s };
+    return { x: this.p2 ? (UIW - 240 - s - 12) : (UIW - s - p), y: btnTopY(), w: s, h: s };
+  }
+  /**
+   * 방향 전환 단추 — 전체화면 단추 **바로 왼쪽**에 나란히 (2026-08-27, 사용자 지정).
+   * 둘 다 "화면을 어떻게 보여줄까" 를 다루는 것이라 같이 있어야 찾는다.
+   */
+  orientRect(){
+    const r = this.fsRect();
+    return { x: r.x - r.w - 10, y: r.y, w: r.w, h: r.h };
   }
   endRowGap(){ return (this.endRows || 5) >= 7 ? END_ROW_GAP_TIGHT : END_ROW_GAP; }
   endTableBottom(){ return endRowY() + ((this.endRows || 5) - 1)*this.endRowGap() + 34 + 30; }
@@ -10072,13 +10093,20 @@ class GameScene extends Scene {
     ko(ctx, this.stage + '스테이지 - ' + this.theme.n, uiCx(), hudBannerY(), 2,
       { align:'center', color:'#cfe6ff' });
 
-    /* 전체화면 단추 — 늘 같은 자리에 있어야 찾는다 */
+    /* 전체화면 단추와 방향 전환 단추 — 늘 같은 자리에 있어야 찾는다 */
     {
-      const r = this.fsRect();
-      ctx.globalAlpha = 0.34;
-      ctx.fillStyle = '#0a0a14'; ctx.fillRect(r.x - PX, r.y - PX, r.w + PX*2, r.h + PX*2);
-      ctx.globalAlpha = 0.66;
-      drawFsIcon(ctx, r.x, r.y, r.w, '#cfe6ff', isFullscreen());
+      const plate = (r) => {
+        ctx.globalAlpha = 0.34;
+        ctx.fillStyle = '#0a0a14';
+        ctx.fillRect(r.x - PX, r.y - PX, r.w + PX*2, r.h + PX*2);
+        ctx.globalAlpha = 0.66;
+      };
+      const fr = this.fsRect();
+      plate(fr);
+      drawFsIcon(ctx, fr.x, fr.y, fr.w, '#cfe6ff', isFullscreen());
+      const or = this.orientRect();
+      plate(or);
+      drawOrientIcon(ctx, or.x, or.y, or.w, '#cfe6ff', portrait);
       ctx.globalAlpha = 1;
     }
 
@@ -10628,15 +10656,41 @@ const OPT_DEFAULT = {
    * 패드가 하나뿐인 사람도 2인 플레이를 볼 수 있게 하려는 것이고,
    * 혼자서 캐릭터 둘을 굴리는 것도 된다.
    */
-  splitPad:0
+  splitPad:0,
+  /**
+   * ★★ **화면 방향은 폰이 아니라 사람이 정한다.** (2026-08-27, 사용자 지정)
+   *
+   * *"세로 버젼으로 게임하다가, 가로 버젼으로 하다가 그렇게 왔다갔다 하면
+   *   엉망이 될거 같아 (...) 기본적으로 세로모드로 시작하게 만들고 싶어,
+   *   가로모드 원하면 (...) 아이콘 하나 넣고 그거 누르면 변환되게"*
+   *
+   * 예전에는 **창 비율**을 보고 정했다(`vh > vw`). 그러면 손목이 조금만
+   * 기울어도 판이 통째로 뒤집힌다 — 싸우는 중에 그러면 손이 엉킨다.
+   *
+   * 그래서 **저장되는 설정**으로 바꾼다. 기본은 세로다 (폰은 세로로 든다).
+   * 바꾸는 길은 오른쪽 위 단추 하나뿐이고, 한 번 고르면 폰을 어떻게 들든
+   * 그대로 간다.
+   */
+  portrait:1
 };
 const STICK_R = [62, 78, 96], BTN_R = [54, 68, 82];
 
+/**
+ * 설정 판 번호. **항목을 새로 넣으면 반드시 올린다.**
+ *
+ * ★★ (2026-08-27, 세로 모드에서 물림)
+ * 예전 코드는 `_v` 가 같으면 저장된 것을 그대로 썼다. 그래서 새 항목
+ * (`portrait`)을 넣어도 **이미 저장이 있는 사람에게는 안 들어갔다** — 값이
+ * `undefined` 라 세로가 기본인데 가로로 시작했다. 새로 깐 사람만 멀쩡했으니
+ * 내 화면에서는 절대 안 보였을 버그다.
+ */
+const OPT_V = 2;
 function optGet(){
   // 매번 새 객체를 만들면 참조가 끊기고 프레임마다 할당이 생기므로 1회만 정규화한다
   const o = Save.data.opt;
-  if(!o || o._v !== 1)
-    Save.data.opt = Object.assign({ _v:1 }, OPT_DEFAULT, o || {});
+  if(!o || o._v !== OPT_V)
+    /* 기본값 위에 **쓰던 값**을 얹는다. 판 번호는 맨 뒤라 옛 번호가 안 이긴다 */
+    Save.data.opt = Object.assign({}, OPT_DEFAULT, o || {}, { _v: OPT_V });
   Input.splitPad = !!Save.data.opt.splitPad;
   return Save.data.opt;
 }
@@ -10665,7 +10719,31 @@ function applyAudioOpt(){
    맡긴다. 신발을 찾아서는 세로 전용이라 여전히 자기 것을 건다. */
 function toggleFullscreen(){
   if(isFullscreen()){ exitFullscreen(); return; }
-  enterFullscreen().then((ok) => { if(ok) unlockOrientation(); });
+  enterFullscreen().then((ok) => { if(ok) applyOrientationLock(); });
+}
+/**
+ * ★★ **고른 방향을 폰에도 건다.** (2026-08-27)
+ *
+ * 화면만 세로로 그리고 폰은 자유롭게 두면, 폰을 가로로 눕혔을 때 세로 판이
+ * 옆으로 누운 채 조그맣게 뜬다. 고른 방향으로 **폰까지 같이 잠가야** 늘 꽉 찬다.
+ *
+ * 안드로이드 크롬의 전체화면에서만 먹는다 — 안 먹는 기기에서는 조용히 넘어가고,
+ * 그때는 캔버스 비율만 바뀐다 (게임은 어느 쪽이든 돌아간다).
+ */
+function applyOrientationLock(){
+  if(optGet().portrait) lockPortrait(); else lockLandscape();
+}
+/**
+ * 세로 <-> 가로. 오른쪽 위 단추가 부른다.
+ * 설정을 바꾸고, 저장하고, 폰에도 같은 방향을 걸고, 화면을 다시 잰다.
+ */
+function toggleOrientation(){
+  const o = optGet();
+  o.portrait = o.portrait ? 0 : 1;
+  Save.save();
+  applyOrientationLock();
+  resize();
+  SND.sfx('blip');
 }
 
 /* 전체화면 아이콘 (네 모서리 꺾쇠). on=true 면 안쪽을 향하는 축소 아이콘 */
@@ -10686,6 +10764,36 @@ function drawFsIcon(ctx, x, y, size, color, on){
     corner(x0+m, y0+m, -1, -1); corner(x1-m, y0+m,  1, -1);
     corner(x0+m, y1-m, -1,  1); corner(x1-m, y1-m,  1,  1);
   }
+}
+
+/**
+ * 방향 전환 아이콘.
+ *
+ * **네모 두 개를 겹쳐** 그린다 — 지금 방향은 흐리게, 누르면 갈 방향은 밝게.
+ * 처음엔 화살표를 붙여 봤는데 44px 짜리 도트에서는 그냥 얼룩으로 보였다.
+ * 세로 네모와 가로 네모가 겹친 그림은 설명이 필요 없다.
+ */
+function drawOrientIcon(ctx, x, y, size, color, isPortrait){
+  const t = Math.max(PX, Math.round(size/11));       // 테두리 두께
+  /** 축을 가운데에 맞춘 빈 네모 하나 */
+  const box = (w, h, col, alpha) => {
+    const bx = Math.round(x + (size - w)/2), by = Math.round(y + (size - h)/2);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = col;
+    ctx.fillRect(bx, by, w, t);
+    ctx.fillRect(bx, by + h - t, w, t);
+    ctx.fillRect(bx, by, t, h);
+    ctx.fillRect(bx + w - t, by, t, h);
+  };
+  const a0 = ctx.globalAlpha;
+  const LONG = Math.round(size*0.94), SHORT = Math.round(size*0.56);
+  /* 지금 방향 — 흐리게 */
+  if(isPortrait) box(SHORT, LONG, color, a0*0.34);
+  else           box(LONG, SHORT, color, a0*0.34);
+  /* 누르면 갈 방향 — 밝게 */
+  if(isPortrait) box(LONG, SHORT, color, a0);
+  else           box(SHORT, LONG, color, a0);
+  ctx.globalAlpha = a0;
 }
 
 /* ==================================================================
@@ -11306,8 +11414,8 @@ function resize() {
   if (!canvas) return;
   const vw = window.innerWidth, vh = window.innerHeight;
   const wasPortrait = portrait;
-  portrait = vh > vw;
-  /* 세로로도 돌아가므로 "돌려주세요" 안내는 더 이상 안 띄운다 */
+  /* ★ 방향은 **설정**이 정한다 — 창 비율이 아니라 (2026-08-27, `OPT_DEFAULT.portrait`) */
+  portrait = !!optGet().portrait;
   /* 화면이 돌면 캔버스의 가로세로도 바꾼다 — 게임 판은 그대로다 */
   const cw = portrait ? PORT_W : GAME_W;
   const ch = portrait ? PORT_H : GAME_H;
@@ -11459,6 +11567,12 @@ export function mount(host, opts = {}) {
 
   Save.load();
   optGet();
+  /**
+   * ★ 지난번에 고른 방향을 폰에도 다시 건다 (2026-08-27).
+   * 오락실이 이미 전체화면을 켜 놓았으므로 여기서 걸면 먹는다.
+   * 기본은 세로다 — 폰은 세로로 드니까.
+   */
+  applyOrientationLock();
   if (typeof opts.character === 'number') {
     Save.data.dragon = clamp(opts.character | 0, 0, 9);
     Save.save();
@@ -11772,6 +11886,8 @@ export const __test = {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   },
   get portrait() { return portrait; },
+  /* 검사용 — 방향은 이제 **설정**이라 창 크기를 속여도 안 바뀐다 */
+  set portrait(v) { optGet().portrait = v ? 1 : 0; Save.save(); resize(); },
   get splitPad() { return Input.splitPad; },
   set splitPad(v) { optGet().splitPad = v ? 1 : 0; Input.splitPad = !!v; },
   get padAxis() { return { p1: { ...Input.padAxis }, p2: { ...Input.padAxis2 } }; },

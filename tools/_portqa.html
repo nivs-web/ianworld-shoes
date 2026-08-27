@@ -22,18 +22,31 @@ const host = document.getElementById('host');
 const DT = 1/60;
 let fails = 0;
 const check = (ok, msg) => { if(!ok){ fails++; say('  X ' + msg); } else say('  o ' + msg); };
+/** 게임 안 `timeBar()` 와 같은 값 — 밖에서는 못 부르므로 여기 적어 둔다 */
+const timeBarOf = () => ({ x:20, y:14, w:680, h:22 });
 
-/** 화면 크기를 속여서 방향을 바꾼다 */
+/**
+ * 방향을 바꾼다.
+ *
+ * ★ 방향은 이제 **저장되는 설정**이다 (2026-08-27) — 창 비율이 아니라.
+ * 그래서 창 크기만 속여서는 안 바뀐다. 창 크기는 letterbox 배율에만 쓰이므로
+ * 같이 맞춰 주되, 방향 자체는 설정으로 건다.
+ */
 function setSize(w, h){
   Object.defineProperty(window, 'innerWidth',  { value: w, configurable: true });
   Object.defineProperty(window, 'innerHeight', { value: h, configurable: true });
   window.dispatchEvent(new Event('resize'));
+}
+function setPortrait(T, on){
+  setSize(on ? 400 : 900, on ? 800 : 500);
+  T.portrait = on;
 }
 
 function run(portrait, flipEvery){
   setSize(portrait ? 400 : 900, portrait ? 800 : 500);
   DR.mount(host, { onExit(){}, onEnd(){}, difficulty:'normal' });
   const T = DR.__test;
+  setPortrait(T, portrait);
   for(let i=0;i<400 && T.scene!=='GameScene';i++){ T.press('confirm'); T.pump(DT); }
   let t = 0, lastStage = 1, flips = 0, err = null, draws = 0;
   const CAP = 45*60;
@@ -70,8 +83,7 @@ function run(portrait, flipEvery){
         lastStage = sc.stage;
         if(flipEvery){
           flips++;
-          const p = flips % 2 === 1;
-          setSize(p ? 900 : 400, p ? 500 : 800);
+          setPortrait(T, flips % 2 === 0);
         }
       }
       if(sc.state === 'clear'){
@@ -90,6 +102,31 @@ function run(portrait, flipEvery){
   DR.unmount(); host.innerHTML = '';
   return out;
 }
+
+say('=== 0. 기본값 ===');
+{
+  /**
+   * ★ **처음 켜면 무조건 세로다.** (2026-08-27, 사용자 지정)
+   * 창이 가로로 넓어도 세로여야 한다 — 방향은 폰이 아니라 사람이 정한다.
+   * 저장을 지우고 **맨 먼저** 돌려서 "새로 깐 사람" 을 흉내낸다.
+   * `Save.data` 는 모듈 싱글턴이라, 다른 검사가 설정을 한 번이라도 건드리고 나면
+   * localStorage 를 지워도 그 값이 메모리에 남는다 — 그래서 순서가 중요하다.
+   */
+  try{ for(const k of Object.keys(localStorage))
+         if(/dragon/i.test(k)) localStorage.removeItem(k); }catch(e){}
+  setSize(1000, 520);                       // 일부러 가로로 넓은 창
+  DR.mount(host, { onExit(){}, onEnd(){}, difficulty:'normal' });
+  const T = DR.__test;
+  for(let i=0;i<400 && T.scene!=='GameScene';i++){ T.press('confirm'); T.pump(DT); }
+  check(T.portrait === true, '가로로 넓은 창에서도 세로로 시작한다');
+  const sc = T.scene0();
+  const o = sc.orientRect(), f = sc.fsRect();
+  check(o.x + o.w <= f.x, '방향 단추가 전체화면 단추 왼쪽에 있다');
+  const tb = timeBarOf(sc);
+  check(o.y >= tb.y + tb.h, '두 단추가 시간 막대와 안 겹친다');
+  DR.unmount(); host.innerHTML = '';
+}
+show();
 
 const ONLY = new URLSearchParams(location.search).get('only');
 if(!ONLY){
@@ -129,6 +166,7 @@ say('=== 4. 손가락 좌표 ===');
   setSize(400, 800);
   DR.mount(host, { onExit(){}, onEnd(){}, difficulty:'normal' });
   const T = DR.__test;
+  setPortrait(T, true);
   for(let i=0;i<400 && T.scene!=='GameScene';i++){ T.press('confirm'); T.pump(DT); }
   const sc = T.scene0();
   const cv = host.querySelector('canvas');
