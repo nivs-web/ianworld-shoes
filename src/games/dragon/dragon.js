@@ -566,8 +566,12 @@ const KEYCODE_TO_CODE = {
   8:'Backspace', 9:'Tab', 13:'Enter', 16:'ShiftRight', 27:'Escape', 32:'Space',
   37:'ArrowLeft', 38:'ArrowUp', 39:'ArrowRight', 40:'ArrowDown',
   48:'Digit0', 49:'Digit1', 50:'Digit2', 51:'Digit3',
-  65:'KeyA', 66:'KeyB', 68:'KeyD', 69:'KeyE', 70:'KeyF', 77:'KeyM',
-  80:'KeyP', 81:'KeyQ', 83:'KeyS', 87:'KeyW', 88:'KeyX', 90:'KeyZ',
+  /* ★ A~Z 를 전부 채운다 (2026-08-27) — 예전에는 열두 개만 있어서
+     빠진 키는 한글 상태에서 되살릴 길이 없었다 */
+  65:'KeyA', 66:'KeyB', 67:'KeyC', 68:'KeyD', 69:'KeyE', 70:'KeyF', 71:'KeyG',
+  72:'KeyH', 73:'KeyI', 74:'KeyJ', 75:'KeyK', 76:'KeyL', 77:'KeyM', 78:'KeyN',
+  79:'KeyO', 80:'KeyP', 81:'KeyQ', 82:'KeyR', 83:'KeyS', 84:'KeyT', 85:'KeyU',
+  86:'KeyV', 87:'KeyW', 88:'KeyX', 89:'KeyY', 90:'KeyZ',
   114:'F3', 192:'Backquote', 219:'BracketLeft', 221:'BracketRight'
 };
 const KEYNAME_TO_CODE = {
@@ -580,14 +584,41 @@ const KEYNAME_TO_CODE = {
   '[':'BracketLeft', ']':'BracketRight',
   alt:'AltRight', altgraph:'AltRight', control:'ControlRight', ctrl:'ControlRight',
   shift:'ShiftRight',
-  // 한글(두벌식) 입력 상태에서 e.code 까지 비어 오는 기기 대응.
-  // e.key 로 들어오는 자모를 물리 키 위치로 되돌린다.
+  /**
+   * ★★ **한글 입력 상태에서도 물리 키 위치를 되찾는다.** (두벌식 전부)
+   *
+   * *"wsad이런 버튼들은 한영이 잘못되어 있거나 하면 작동 안하는 오류가 있어,
+   *   무슨 경우가 있어도 무조건 작동되게 만들어"* (2026-08-27)
+   *
+   * 화살표·Shift·Alt·Esc 가 멀쩡한 이유는 **IME 가 그 키들은 안 건드리기** 때문이다.
+   * 글자 키만 IME 를 지나면서 `e.code` 가 비거나 `keyCode` 가 229(조합 중)로 오고,
+   * `e.key` 에는 자모(ㅈ)나 **조합된 음절(주)** 이 실려 온다.
+   *
+   * 그래서 세 겹으로 막는다:
+   *   ① 두벌식 자모 **전부** (예전에는 열아홉 개만 있었다)
+   *   ② 쌍자음·이중모음까지
+   *   ③ 조합된 음절은 **첫 자음을 뽑아** 되돌린다 (`resolveKeyCode`)
+   */
   'ㅂ':'KeyQ', 'ㅃ':'KeyQ', 'ㅈ':'KeyW', 'ㅉ':'KeyW', 'ㄷ':'KeyE', 'ㄸ':'KeyE',
   'ㄱ':'KeyR', 'ㄲ':'KeyR', 'ㅅ':'KeyT', 'ㅆ':'KeyT',
-  'ㅁ':'KeyA', 'ㄴ':'KeyS', 'ㅇ':'KeyD', 'ㄹ':'KeyF',
+  'ㅛ':'KeyY', 'ㅕ':'KeyU', 'ㅑ':'KeyI', 'ㅐ':'KeyO', 'ㅒ':'KeyO',
+  'ㅔ':'KeyP', 'ㅖ':'KeyP',
+  'ㅁ':'KeyA', 'ㄴ':'KeyS', 'ㅇ':'KeyD', 'ㄹ':'KeyF', 'ㅎ':'KeyG',
+  'ㅗ':'KeyH', 'ㅓ':'KeyJ', 'ㅏ':'KeyK', 'ㅣ':'KeyL',
   'ㅋ':'KeyZ', 'ㅌ':'KeyX', 'ㅊ':'KeyC', 'ㅍ':'KeyV',
-  'ㅡ':'KeyM', 'ㅔ':'KeyP', 'ㅐ':'KeyO'
+  'ㅠ':'KeyB', 'ㅜ':'KeyN', 'ㅡ':'KeyM'
 };
+/**
+ * 조합된 한글 음절의 **첫 자음**. IME 가 'ㅈ' 이 아니라 '주' 를 실어 보내는
+ * 기기가 있다 — 그때도 W 라는 것을 알아내야 한다.
+ */
+const HANGUL_LEAD = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ',
+                     'ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+function hangulLeadOf(ch){
+  const c = ch.charCodeAt(0);
+  if(c < 0xAC00 || c > 0xD7A3) return '';
+  return HANGUL_LEAD[Math.floor((c - 0xAC00) / 588)] || '';
+}
 function resolveKeyCode(e){
   // Alt / Control 은 좌우를 구분해야 하므로 location 을 먼저 본다
   const kc = e.keyCode || e.which || 0;
@@ -599,9 +630,23 @@ function resolveKeyCode(e){
     return e.location === 1 ? 'ShiftLeft' : 'ShiftRight';
   const c = e.code;
   if(c && c !== 'Unidentified' && c !== '') return c;
-  const k = (e.key || '').toLowerCase();
+  const raw = e.key || '';
+  const k = raw.toLowerCase();
   if(KEYNAME_TO_CODE[k]) return KEYNAME_TO_CODE[k];
-  if(KEYCODE_TO_CODE[kc]) return KEYCODE_TO_CODE[kc];
+  /**
+   * ★ 조합된 음절('주')이면 첫 자음('ㅈ')을 뽑아 되돌린다 (2026-08-27).
+   * 자모 하나만 보내는 기기는 위에서 이미 걸리고, 여기는 그다음 그물이다.
+   */
+  if(raw.length === 1){
+    const lead = hangulLeadOf(raw);
+    if(lead && KEYNAME_TO_CODE[lead]) return KEYNAME_TO_CODE[lead];
+  }
+  /**
+   * ★ `keyCode` 는 **자판 배열과 무관한 물리 위치**다 (2026-08-27).
+   * 229 는 "IME 가 조합 중" 이라는 뜻이라 위치 정보가 없다 — 그때는 포기한다.
+   * 그 외에는 여기서 거의 다 잡힌다: 한/영이 어느 쪽이든 W 는 늘 87 이다.
+   */
+  if(kc && kc !== 229 && KEYCODE_TO_CODE[kc]) return KEYCODE_TO_CODE[kc];
   return '';
 }
 
@@ -697,7 +742,9 @@ const Input = {
       canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
       const p = toGame(e);
       this.taps++;
-      if(this.pointerHandler && this.pointerHandler.down) this.pointerHandler.down(e.pointerId, p.x, p.y);
+      /* ★ 마우스인지 손가락인지 알려 준다 — 더블클릭 따라가기는 마우스만이다 */
+      if(this.pointerHandler && this.pointerHandler.down)
+        this.pointerHandler.down(e.pointerId, p.x, p.y, e.pointerType || 'mouse');
     });
     canvas.addEventListener('pointermove', e => {
       if(!this.pointerHandler || !this.pointerHandler.move) return;
@@ -846,7 +893,13 @@ class Scene {
  * 한 줄을 옮길 때 아래 것들을 같이 못 옮겨서 또 겹친다.
  */
 const END_TITLE_Y = 104;
-const END_ROW_Y   = 232, END_ROW_GAP = 44;   // 다섯 줄 -> 232 ~ 408
+/**
+ * ★ **제목과 표 사이를 절반으로.** (2026-08-27, 사용자 지정)
+ * 제목을 7 → 4 로 줄이면서 아래가 휑해졌다 — 제목 아래(약 148)와 표 시작(232)
+ * 사이가 84px 이었다. 42px 로 좁힌다. 표 아래 것들은 표 길이에서 계산하므로
+ * 여기만 바꾸면 화면 전체가 같이 올라온다.
+ */
+const END_ROW_Y   = 190, END_ROW_GAP = 44;
 const END_LABEL_X = 452;                     // 이름 (왼쪽 정렬)
 const END_NUM_R   = 828;                     // 숫자가 끝나는 자리 (오른쪽 정렬)
 /* 단위(점·마리·초·개)는 뺐다 — 없어도 무슨 숫자인지 보면 안다 (2026-08-27, 사용자 지정) */
@@ -6061,7 +6114,22 @@ class GameScene extends Scene {
     this.stick = new VirtualStick(makeStickCfg());
     this.buildButtons();
     Input.pointerHandler = {
-      down:(id,x,y) => {
+      down:(id,x,y,type) => {
+        /**
+         * ★ **마우스 더블클릭 = 따라가기 켜기/끄기.** (2026-08-27)
+         * 320ms 안에 40px 안쪽을 두 번 누르면 더블클릭이다.
+         * 손가락은 제외한다 — 누르지 않으면 좌표가 안 와서 뜻이 없다.
+         */
+        if(type === 'mouse' && this.state === 'play'){
+          const now = this.t;
+          if(now - this.lastClickT < 0.32 &&
+             Math.hypot(x - this.lastClickX, y - this.lastClickY) < 40){
+            this.lastClickT = -9;
+            this.toggleFollow();
+            return;
+          }
+          this.lastClickT = now; this.lastClickX = x; this.lastClickY = y;
+        }
         if(this.state === 'play' &&
            x >= TIME_BAR.x - 10 && x <= TIME_BAR.x + TIME_BAR.w + 10 &&
            y >= TIME_BAR.y - 10 && y <= TIME_BAR.y + TIME_BAR.h + 10){
@@ -6162,6 +6230,9 @@ class GameScene extends Scene {
      *   손가락 밑으로 순간이동하지 않고 **잡은 그 자세 그대로** 따라온다.
      */
     this.dragId = null; this.dragOff = { x:0, y:0 }; this.dragT = 0;
+    /* 마우스 더블클릭으로 켜는 '따라가기' (2026-08-27) */
+    this.followMouse = false; this.followT = 0;
+    this.lastClickT = -9; this.lastClickX = 0; this.lastClickY = 0;
     this.formName = ''; this.formT = 0;   // 방금 나온 적 대형 이름
 
     this.director = new Director(this, this.stage, this.duel);
@@ -6193,7 +6264,7 @@ class GameScene extends Scene {
    * ★ **캐릭터를 잡고 끄는 동안에는 감춘다.** (2026-08-26, 사용자 지정)
    * 두 조작이 같이 떠 있으면 뭘로 움직이고 있는지 헷갈리고, 스틱이 화면을 가린다.
    */
-  stickVisible(){ return this.dragId === null && (!this.p2 || !this.p1UsesKeys); }
+  stickVisible(){ return this.dragId === null && !this.followMouse && (!this.p2 || !this.p1UsesKeys); }
 
   /* 1인일 때는 오른쪽에만, 2인일 때는 좌우로 나눠 배치한다 */
   buildButtons(){
@@ -6592,6 +6663,47 @@ class GameScene extends Scene {
       /* 벌떼는 물량으로 간다 — 디렉터가 알아서 본다 (enemyScale) */
     }
   }
+  /**
+   * ★★ **빵 터져서 죽는다.** (2026-08-27, 사용자 지정)
+   *
+   * *"현재 액션이 에니메이션 효과가 너무 심심해, 조금더 화려하게 폭발해서
+   *   죽었으면 좋겠어, 빵 터져서 죽는 것 같은 느낌으로"*
+   *
+   * 폭발 하나로는 "맞았다" 로 읽힌다. **터지는 것에도 순서가 있어야** 큰 사고로
+   * 보인다 — 흰 섬광으로 한 번 멎었다가, 가운데가 크게 터지고, 그 둘레로
+   * 여덟 방향의 작은 폭발이 **시차를 두고** 번지고, 파편과 불티가 흩어진다.
+   *
+   * 하트를 하나 잃든 마지막 하나가 없어지든 **같은 연출**이다 (사용자 지정) —
+   * 죽는 것은 죽는 것이고, 마지막이라고 더 초라할 이유가 없다.
+   */
+  playerDeathFx(p){
+    Shake.add(30, 1.1);
+    Freeze.add(0.14);                                   // 한 박자 멎는다
+    Flash.add('#ffffff', 0.08, 0.18);                   // 흰 섬광
+    Flash.add('#ff6a4a', 0.22, 0.40);                   // 이어서 붉게 물든다
+    /* 가운데 큰 불덩이 + 겹치는 두 겹 */
+    this.booms.push(new Boom(p.x, p.y, 210, 0.85));
+    this.booms.push(new Boom(p.x, p.y, 130, 0.55));
+    /* 둘레로 번지는 여덟 방향 — `delay` 대신 시차를 반지름으로 준다 */
+    for(let i=0;i<8;i++){
+      const a = i*Math.PI/4 + 0.3;
+      const d = 52 + (i % 3)*26;
+      this.booms.push(new Boom(p.x + Math.cos(a)*d, p.y + Math.sin(a)*d,
+                               70 + (i % 3)*22, 0.5 + (i % 4)*0.09));
+    }
+    /* 충격파 세 겹 — 크기와 속도를 달리해 퍼지는 결이 보이게 */
+    this.waves.push(new Shockwave(p.x, p.y, 240, 0.34));
+    this.waves.push(new Shockwave(p.x, p.y, 400, 0.52));
+    this.waves.push(new Shockwave(p.x, p.y, 560, 0.72));
+    /* 불티 · 파편 · 재 */
+    Particles.spawn(p.x, p.y, 90, { spd:760, life:1.1 });
+    Particles.spawn(p.x, p.y, 34, { spd:520, life:1.4, grav:900, size:PX*2,
+      pal:['#ffe6c0','#ff9a5a','#c4343a','#5c1520'] });
+    Particles.spawn(p.x, p.y, 26, { spd:300, life:1.6, grav:-40, size:PX,
+      pal:['#ffffff','#ffd8a0','#8a8a96','#3a3a44'] });
+    SND.sfx('boomL'); SND.sfx('nuke');
+    Input.rumble(1.0, 0.9, 500);
+  }
   /** 지금 연쇄 배수 (1.0 ~ CHAIN_MAX). 세 마리째부터 붙는다 */
   chainMul(){
     if(this.chainT <= 0 || this.killStreak < 3) return 1;
@@ -6796,7 +6908,7 @@ class GameScene extends Scene {
        * 발사·무기·무적시간·쉴드·콤보는 키보드로 놀 때와 **완전히 똑같이** 돌아야 하고,
        * 적과 부딪히면 당연히 아파야 한다. `grabbed` 는 가속 계산만 건너뛰게 한다.
        */
-      if(this.dragId !== null){ this.dragT += dt; mv = { x:0, y:0, grabbed:true }; }
+      if(this.dragId !== null || this.followMouse){ this.dragT += dt; mv = { x:0, y:0, grabbed:true }; }
     }else{
       mv = Input.moveVectorFor(2);
     }
@@ -7012,6 +7124,7 @@ class GameScene extends Scene {
     for(const r of this.roars)     r.update(dt, this);
     Particles.update(dt); Popups.update(dt); Flash.update(dt); Shake.update(dt);
     if(this.grazeFlash > 0) this.grazeFlash -= dt;
+    if(this.followT > 0) this.followT -= dt;
     if(this.ruleT > 0) this.ruleT -= dt;
     this.updateRule(dt);
     /* 연쇄는 가만히 있으면 끊긴다 — 이것이 이 장치의 전부다 */
@@ -7230,17 +7343,7 @@ class GameScene extends Scene {
        */
       p.deadT = RESPAWN_DELAY;
       p.hurtT = 0;
-      Shake.add(20, 0.7);
-      Freeze.add(0.08);
-      Flash.add('#ff6a4a', 0.10, 0.26);
-      this.booms.push(new Boom(p.x, p.y, 150, 0.72));
-      this.booms.push(new Boom(p.x - 40, p.y + 26, 96, 0.58));
-      this.booms.push(new Boom(p.x + 44, p.y - 20, 84, 0.52));
-      this.waves.push(new Shockwave(p.x, p.y, 300, 0.4));
-      Particles.spawn(p.x, p.y, 56, { spd:620, life:1.0 });
-      Particles.spawn(p.x, p.y, 18, { spd:380, life:1.2, grav:820, size:PX*2,
-        pal:['#ffe6c0','#ff9a5a','#c4343a','#5c1520'] });
-      SND.sfx('boomL');
+      this.playerDeathFx(p);
       /**
        * ★ **결투에서 죽으면 점수를 20% 잃는다.** (2026-08-26, 사용자 지정)
        * 목숨이 다섯이라 그냥 몸으로 밀고 들어가는 게 이득이 되면 안 된다 —
@@ -7409,14 +7512,41 @@ class GameScene extends Scene {
     return true;
   }
 
+  /**
+   * ★★ **더블클릭하면 버튼을 안 눌러도 따라온다.** (2026-08-27, 사용자 지정)
+   *
+   * *"드래그 하는건 버튼을 꾹 누르고 움직여야 하는데, 더블클릭하면 (...)
+   *   클릭 버튼을 누르지 않고 마우스만 움직이면서 게임을 할 수 있게"*
+   *
+   * 손가락에는 없는 기능이다(누르지 않으면 좌표 자체가 안 온다). 마우스는
+   * 누르지 않아도 `pointermove` 가 계속 오므로 **잡은 것과 똑같이** 굴릴 수 있다.
+   * 한 번 더 더블클릭하면 풀린다.
+   */
+  toggleFollow(){
+    this.followMouse = !this.followMouse;
+    if(this.followMouse){
+      this.dragId = null;
+      this.stick.up(this.stick.pid);       // 스틱과 동시에 밀면 서로 싸운다
+      SND.sfx('confirm');
+    }else SND.sfx('blip');
+    this.followT = 1.6;                    // 안내 문구가 떠 있는 시간
+  }
   /** 잡은 손가락을 따라간다. 화면 밖으로는 안 나가게 가둔다 */
   grabMove(id, x, y){
+    if(this.followMouse) return this.moveTo(x, y, 0, 0);
     if(this.dragId !== id) return false;
     const p = this.p1;
     if(!p || p.out){ this.dragId = null; return false; }
     const m = p.metrics;
-    const nx = clamp(x + this.dragOff.x, m.bL + PLAYER.MARGIN, GAME_W - m.bR - PLAYER.MARGIN);
-    const ny = clamp(y + this.dragOff.y, m.bT + PLAYER.MARGIN, GAME_H - m.bB - PLAYER.MARGIN);
+    return this.moveTo(x, y, this.dragOff.x, this.dragOff.y);
+  }
+  /** 화면 좌표로 1P 를 옮긴다. 잡기와 따라가기가 **같은 셈**을 쓴다 */
+  moveTo(x, y, offX, offY){
+    const p = this.p1;
+    if(!p || p.out || this.state !== 'play') return false;
+    const m = p.metrics;
+    const nx = clamp(x + offX, m.bL + PLAYER.MARGIN, GAME_W - m.bR - PLAYER.MARGIN);
+    const ny = clamp(y + offY, m.bT + PLAYER.MARGIN, GAME_H - m.bB - PLAYER.MARGIN);
     /**
      * 속도를 기록해 둔다 — 잔상과 날갯짓이 "지금 얼마나 빠른가" 를 보고 정해지는데,
      * 끌어서 옮기면 위치만 바뀌고 속도가 0 이라 **날개가 멈춘 채 미끄러진다.**
@@ -7475,10 +7605,25 @@ class GameScene extends Scene {
       { color: col, outline:PAL.outline });
     y += 24;
     if(p.pid === 1){
-      /* 금화는 1P 것만 센다 — 지갑의 주인이 1P 다 */
+      /**
+       * 금화는 1P 것만 센다 — 지갑의 주인이 1P 다.
+       *
+       * ★ **이번 판에서 번 것과 지갑에 있는 것을 같이 보여준다.** (2026-08-27, 사용자 지정)
+       * *"금화 0 (보유금화 0000) 이렇게 표기되서, 내가 보유한 금화는 얼마이고
+       *   이번판에서 이정도 모아서 합치면 얼마가 되겠다 라는걸 알 수 있게"*
+       *
+       * 앞은 **이번 판에서 주운 것**, 괄호 안은 **지갑 + 이번 판**이다 —
+       * 즉 지금 판을 끝내면 갖게 될 금화다. 그래야 "이어하기 500 이 되나",
+       * "저 드래곤을 살 수 있나" 를 게임 중에 바로 셈할 수 있다.
+       */
+      const run = RUN.coins | 0;
+      const wallet = (DG.coins() | 0) + run;
       ko(ctx, '금화', x, y - 2, 2, { color:'#8a93b8' });
-      drawDigits(ctx, String(Math.min(9999, RUN.coins|0)), x + LBL, y - 2, 3,
+      /* `drawDigits` 는 고정폭이라 `textWidth` 와 다르다 — 그리면서 준 폭을 그대로 쓴다 */
+      const dw = drawDigits(ctx, String(Math.min(9999, run)), x + LBL, y - 2, 3,
         { color:'#ffd24a', outline:PAL.outline });
+      ko(ctx, '(보유 ' + wallet.toLocaleString('en-US') + ')', x + LBL + dw + 10, y, 2,
+        { color:'#c8880f' });
       y += 24;
     }
     // 하트
@@ -7640,12 +7785,31 @@ class GameScene extends Scene {
       ctx.globalAlpha = 1;
     }
 
-    /* 방금 짜고 들어온 대형 이름 — 화면 오른쪽 위, 조용히 떴다 사라진다 */
+    /* 따라가기를 켜고 끌 때 짧게 알린다 — 눌러도 안 움직이면 고장인 줄 안다 */
+    if(this.followT > 0){
+      const pa = ctx.globalAlpha;
+      ctx.globalAlpha = pa * Math.min(1, this.followT / 0.4);
+      ko(ctx, this.followMouse ? '마우스 따라가기 켜짐 (더블클릭으로 끄기)' : '마우스 따라가기 꺼짐',
+        640, 636, 2, { align:'center', color:'#9fe8ff', outline:PAL.outline });
+      ctx.globalAlpha = pa;
+    }
+
+    /**
+     * 방금 짜고 들어온 적 대형 이름.
+     *
+     * ★ **오른쪽 위에서 왼쪽 가운데로 옮겼다.** (2026-08-27, 사용자 지적)
+     * *"장벽대형, 별대형, 등등 이름이 등장하는데, 그건 화면 왼쪽 중간에 나오게해,
+     *   콤보로 올라가는거 글씨랑 겹친다"*
+     *
+     * 연쇄 배수(`x3.4`)와 스침 수를 오른쪽 위에 세우면서 자리가 겹쳤다.
+     * 왼쪽 가운데는 좌상단 패널 아래이고 플레이어가 노는 자리(x 320 안팎)보다
+     * 왼쪽이라 **아무것도 안 가린다.**
+     */
     if(this.formT > 0 && this.formName){
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * Math.min(1, this.formT / 0.5) * 0.85;
-      ko(ctx, this.formName + ' 대형', GAME_W - 30, 110, 3,
-        { align:'right', color:'#9fe8ff', outline:PAL.outline });
+      ko(ctx, this.formName + ' 대형', 30, GAME_H/2 - 12, 3,
+        { color:'#9fe8ff', outline:PAL.outline });
       ctx.globalAlpha = pa;
     }
 
@@ -7685,7 +7849,8 @@ class GameScene extends Scene {
     if(this.pickupT > 0 && this.pickupMsg){
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * Math.min(1, this.pickupT/0.4);
-      ko(ctx, this.pickupMsg, 640, 200, 5,
+      /* ★ 5 → 3 (2026-08-27, 사용자 지정). `Popups` 와 다른 경로라 따로 남아 있었다 */
+      ko(ctx, this.pickupMsg, 640, 200, 3,
         { align:'center', color:PAL.gold, outline:PAL.outline });
       ctx.globalAlpha = pa;
     }
@@ -8975,6 +9140,8 @@ export const __test = {
   get busy() { return !!(scenes && scenes.busy); },
   get running() { return rafId !== 0; },
   get keysDown() { return Input.down.size; },
+  /* 검사용 — 마지막 keydown 이 어느 물리 키로 해석됐나 (한/영 무관 검사에 쓴다) */
+  get lastKey() { return Input.lastKey; },
   press(action) { Input.just.add(action); },
   scene0() { return scenes ? scenes.current : null; },
   /* 검사용 — rAF 가 멈춰 있는 환경에서 패드 폴링과 설정을 직접 부른다 */
