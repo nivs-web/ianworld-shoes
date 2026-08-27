@@ -133,14 +133,27 @@ export default function DragonGame(nav, opt = {}) {
          */
         if (duelCode && m.setDuelPeer) {
           const myUid = currentUser()?.uid;
+          let roomSeed = 0;
           unsubRoom = Room.subscribeRoom(duelCode, (r) => {
             if (!live || !r || !r.players) return;
             const foe = Object.entries(r.players)
               .find(([uid, v]) => uid !== myUid && v && !v.waiting);
             if (!foe) return;
             const v = foe[1];
-            m.setDuelPeer({ alive: v.alive !== false, coins: v.coins | 0,
-                            name: v.nickname || '' });
+            m.setDuelPeer({
+              alive: v.alive !== false, coins: v.coins | 0,
+              name: v.nickname || '', dragon: v.dragon | 0, lives: v.lives,
+              /* 자리는 안 왔을 수도 있다 — 규칙이 아직 게시되기 전이면 없다.
+                 없으면 넣지 않는다(0,0 으로 두면 고스트가 왼쪽 위 구석에 선다) */
+              ...(v.gx !== undefined && v.gy !== undefined ? { x: v.gx, y: v.gy } : {}),
+              ...(v.glv !== undefined ? { lv: v.glv } : {}),
+              ...(Array.isArray(v.took) ? { took: v.took } : {}),
+            });
+            /* 금화 비의 씨앗 — 둘이 같은 씨앗을 써야 금화가 같은 자리에 뜬다 */
+            if (roomSeed === 0 && r.seed && m.setDuelSeed) {
+              roomSeed = r.seed | 0;
+              m.setDuelSeed(roomSeed);
+            }
           });
         }
         /* 접속자 목록에 '게임 중' 으로 뜨게 한다 (신발게임의 toCanvas 와 같은 자리) */
@@ -175,6 +188,12 @@ export default function DragonGame(nav, opt = {}) {
           onProgress(r) {
             if (!live || !duelCode) return;
             Room.publishDuelProgress(duelCode, r).catch(() => {});
+          },
+
+          /** 결투: 내 자리와 먹은 금화 (진행도와 **따로** 나간다) */
+          onGhost(g) {
+            if (!live || !duelCode) return;
+            Room.publishGhost(duelCode, g).catch(() => {});
           },
 
           /** 한 판 끝 */

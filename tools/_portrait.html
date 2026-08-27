@@ -7,9 +7,13 @@
 import * as DR from '/src/games/dragon/dragon.js';
 const MODE = new URLSearchParams(location.search).get('mode') || 'play';
 DR.mount(document.getElementById('host'),
-  { onExit(){}, onEnd(){}, onProgress(){}, difficulty:'normal', mode: MODE, code: 'TEST' });
+  { onExit(){}, onEnd(){}, onProgress(){}, onGhost(g){ window.__ghosts.push(g); },
+    difficulty:'normal', mode: MODE, code: 'TEST', seed: 12345 });
 /** 결투 비교판을 보려면 상대가 있어야 한다 — 가짜 상대를 하나 넣는다 */
 window.__peer = (o) => DR.setDuelPeer(o);
+window.__seed = (n) => DR.setDuelSeed(n);
+/** 게임이 밖으로 보내는 고스트를 받아 둔다 (실제 방 대신) */
+window.__ghosts = [];
 const T = DR.__test;
 window.__T = T; window.__DR = DR;
 window.__toGame = (n) => { for(let i=0;i<400 && T.scene!=='GameScene';i++){ T.press('confirm'); T.pump(1/60); }

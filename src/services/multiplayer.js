@@ -1064,6 +1064,31 @@ export async function publishDuelProgress(code, { score, coins, bosses, alive = 
 }
 
 /**
+ * ★★ **결투 고스트 — 자리와 먹은 금화.** (2026-08-27)
+ *
+ * 진행도(`publishDuelProgress`)와 **따로 보낸다.** 방 규칙은 모르는 필드가
+ * 하나만 있어도 쓰기를 통째로 거부하는데, 자리를 점수·금화와 같은 쓰기에
+ * 실으면 규칙이 아직 게시되기 전인 순간에 **점수까지 같이 안 올라간다.**
+ * 따로 보내면 최악이라도 고스트만 안 보이고 승패는 정상으로 굴러간다.
+ *
+ * 10Hz 다. 자리 둘·불레벨 하나·비트 묶음 열몇 개라 한 번에 100바이트가 안 된다.
+ */
+let lastGhostAt = 0;
+export async function publishGhost(code, { x, y, lv, lives, took }) {
+  const t = Date.now();
+  if (t - lastGhostAt < 90) return;
+  lastGhostAt = t;
+  const fb = await rt();
+  if (!fb) return;
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), {
+    gx: Math.round(x) | 0, gy: Math.round(y) | 0, glv: lv | 0,
+    lives: lives | 0,
+    /* 빈 배열은 RTDB 가 노드를 지우는 것으로 읽는다 — 규칙의 hasChildren 에 걸린다 */
+    took: (took && took.length) ? took.map((n) => n | 0) : [0],
+  }), undefined, '결투 고스트').catch(() => {});
+}
+
+/**
  * ★ **살아 있다는 신호.** (2026-08-19)
  *
  * 진행도만으로는 부족하다 — 일시정지 중이거나 죽어서 부활을 고르는 동안에는

@@ -361,6 +361,9 @@ service cloud.firestore {
             "done": {
               ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
             },
+            "lives": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20 && ($uid == auth.uid || newData.val() == data.val())"
+            },
             "gx": {
               ".validate": "newData.isNumber() && newData.val() >= -200 && newData.val() <= 1500 && ($uid == auth.uid || newData.val() == data.val())"
             },
