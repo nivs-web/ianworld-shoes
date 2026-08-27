@@ -3425,9 +3425,25 @@ function buildTopArt(){
   pair(A_RIDER, A_TOP_RIDER);
   for(let i=0;i<A_WINGS.length;i++) pair(A_WINGS[i], A_TOP_WINGS[i % A_TOP_WINGS.length]);
 }
-/** 지금 방향에 맞는 격자. 짝이 없으면 원래 것을 그대로 쓴다 */
+/**
+ * ★★ **윗모습은 "싸우는 판" 안에서만.** (2026-08-27, 사용자 지정)
+ *
+ * *"기본 드래곤 캐릭터, 게임 로비에서, 하늘에서 보고 있는 캐릭터가 아니라
+ *   기본 캐릭터로 노출되게 만들어. 이렇게 위에서 아래로 보는 캐릭터는
+ *   오직 세로 모드에서만 작동하는거야"*
+ *
+ * 예전에는 `portrait` 하나만 보고 갈아 끼웠다. 그런데 그 값은 **게임 전체**에
+ * 걸려 있어서, 로비의 캐릭터 그림·상점의 미리보기·좌상단 점수판의 작은 용까지
+ * 전부 윗모습으로 바뀌었다. 그것들은 판 위의 물건이 아니라 **초상화**다 —
+ * 옆모습이 맞다.
+ *
+ * 그래서 판을 그리는 동안에만 켜지는 깃발을 따로 둔다.
+ * `GameScene.renderWorld` 가 켜고 끄고, 그 바깥은 전부 옛 옆모습 그대로다.
+ */
+let topArt = false;
+/** 지금 자리에 맞는 격자. 짝이 없으면 원래 것을 그대로 쓴다 */
 function artOf(grid){
-  if(!portrait) return grid;
+  if(!topArt) return grid;
   if(!TOP_ART) buildTopArt();
   return TOP_ART.get(grid) || grid;
 }
@@ -3522,7 +3538,7 @@ function blitCached(ctx, key, w, h, ox, oy, paint){
    * 같은 드래곤이라도 가로에서는 옆모습, 세로에서는 윗모습이라 **다른 그림**이다.
    * 방향을 안 섞으면 화면을 돌린 뒤에도 예전 그림이 그대로 나온다.
    */
-  if(portrait) key = 'T~' + key;
+  if(topArt) key = 'T~' + key;
   w = Math.ceil(w) + 2; h = Math.ceil(h) + 2;
   // 캐시가 오히려 손해인 크기거나 좌표가 정수가 아니면 그냥 직접 그린다
   if(w > 700 || h > 700 || (ox|0) !== ox || (oy|0) !== oy){ paint(ctx, ox, oy); return; }
@@ -3839,9 +3855,26 @@ class Player {
      * 다른 리액션보다 먼저 본다: 도는 중에 먹거나 맞아도 도는 것이 우선이다.
      */
     if(this.rollT > 0){
+      /**
+       * ★★ **도는 축은 화면을 따른다.** (2026-08-27, 사용자 지적)
+       *
+       * *"세로모드니깐 세로로 회전하면서 미사일 회피하는 기능이 작동해야지,
+       *   여기서 가로로 도는건 너무 이상한 애니메이션이다"*
+       *
+       * 종이 한 장이 뒤집히는 것은 **한쪽 폭이 0 을 지나 음수가 되는 것**으로
+       * 그린다. 문제는 어느 쪽 폭이냐다 — 판 좌표로 고정해 두면 화면이 돌았을 때
+       * 엉뚱한 축으로 돈다.
+       *
+       *   가로 : 판의 x 가 화면 가로  -> `sx` 를 흔든다
+       *   세로 : 판의 y 가 화면 가로  -> `sy` 를 흔든다
+       *
+       * 어느 쪽이든 **화면에서는 좌우로 뒤집히는** 같은 그림이 된다.
+       */
       const a = (1 - this.rollT/ROLL_TIME) * Math.PI * 2 * ROLL_TURNS;
-      s.sx = Math.cos(a);
-      s.sy = 1 + Math.abs(Math.sin(a))*0.10;      // 얇아질 때 살짝 길어진다
+      const flip = Math.cos(a);                     // 1 -> -1 -> 1
+      const bulge = 1 + Math.abs(Math.sin(a))*0.10; // 얇아질 때 살짝 길어진다
+      if(portrait){ s.sy = flip; s.sx = bulge; }
+      else        { s.sx = flip; s.sy = bulge; }
       return s;
     }
     if(this.fxT <= 0) return s;
@@ -6782,7 +6815,14 @@ const LOOT_TIME = 2.0;
  * 도는 모습과 무적을 **같이** 묶어 둔다 — 도는데 안 피해지면 그림이 거짓말을 한다.
  */
 const ROLL_TIME = 1.5;
-const ROLL_TURNS = 3;
+/**
+ * ★ **딱 한 바퀴.** (2026-08-27, 사용자 지정)
+ * *"딱 1바퀴만 360도 느리게 돌게 바꿔, 막 여러바퀴 회전하니 너무 보기 싫다"*
+ *
+ * 세 바퀴를 1.5초에 돌리면 팽이처럼 감긴다. 한 바퀴를 1.5초에 걸쳐 도는 것이
+ * "몸을 굴려 피했다" 로 읽히고, 도는 동안 안 맞는다는 것도 눈에 들어온다.
+ */
+const ROLL_TURNS = 1;
 /* 아무것도 안 산 사람의 손 안. 아이템 쇼핑의 계단으로 미사일 50 · 핵무기 12 까지 올린다.
    (`games/dragon/items.js` 의 BASE_MISSILES / BASE_BOMBS 와 같은 값이어야 한다) */
 const START_MISSILES = 5, START_BOMBS = 2;
@@ -9709,6 +9749,8 @@ class GameScene extends Scene {
   }
   /** 판 위의 물건들 — 가로든 세로든 똑같다 (세로면 이미 90도 돌아 있다) */
   renderWorld(ctx){
+    /* ★ 여기서만 윗모습 도트를 쓴다 — 로비·상점·점수판은 옆모습 그대로 */
+    topArt = portrait;
     ctx.save();
     ctx.translate(Shake.x, Shake.y);
     for(const e of this.enemies)   e.render(ctx);
@@ -9790,6 +9832,8 @@ class GameScene extends Scene {
      */
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    /* ★ 판이 끝났다 — UI 의 작은 용(점수판 등)은 **옆모습**이어야 한다 */
+    topArt = false;
     if(this.stickVisible()) this.stick.render(ctx);
     this.btnMsl.render(ctx, this.p1.missileCount);
     this.btnBomb.render(ctx, this.p1.bombCount);
@@ -11674,6 +11718,16 @@ export function mount(host, opts = {}) {
  *   부르는 쪽이 정해 준 것을 그려야 한다.
  */
 export function dragonPortrait(idx, cell = 3, padFlame, gear) {
+  /**
+   * ★ **초상화는 늘 옆모습이다.** (2026-08-27, 사용자 지정)
+   * 로비·상점·캐릭터 선택이 부르는 자리다. 세로로 놀던 중에 불려도
+   * 윗모습이 나오면 안 되므로 여기서 못 박는다 (`topArt` 주석 참고).
+   */
+  const wasTop = topArt; topArt = false;
+  try{ return dragonPortraitArt(idx, cell, padFlame, gear); }
+  finally{ topArt = wasTop; }
+}
+function dragonPortraitArt(idx, cell, padFlame, gear) {
   const i = clamp(idx | 0, 0, DRAGONS.length - 1);
   const d = DRAGONS[i];
   const f = FORMS.B;
