@@ -1519,7 +1519,22 @@ function paintPixelCircle(ctx, cx, cy, r, color){
    화면에 폭발이 15개면 그것만으로 프레임당 1000번이 넘는다.
    반지름을 도트 격자에 맞춰 반올림하면 실제로 나오는 모양은 몇 종류뿐이라
    구워두고 쓰면 된다. 너무 큰 원은 캔버스가 커지니 그냥 직접 그린다. */
-const CIRCLE_CACHE_MAX_R = 150;
+/**
+ * ★★ **150 은 너무 컸다 — 이것이 버벅임의 원인이었다.** (2026-08-27, 사용자 지적)
+ *
+ * *"이거 고사양 게임도 아닌데 화면이 왜 이렇게 버벅이는 느낌이 들까?"*
+ *
+ * 폭발과 충격파는 **반지름이 매 프레임 커진다.** 그래서 굽는 보람이 없는데도
+ * 반지름마다 캐시가 하나씩 생긴다 — 반지름 150 짜리 하나가 310x310 = 96,000 px 다.
+ * 충격파 한 번이 수십 개를 만들어 **스프라이트 예산(2.2M px)을 통째로 밀어내고**,
+ * 그 바람에 드래곤·적 스프라이트가 쫓겨나 **다음 프레임에 다시 구워졌다.**
+ * 실측: 300프레임 중 148프레임에서 스프라이트를 다시 구웠고(총 525번)
+ * 최악 프레임이 70ms 까지 튀었다 (예산은 16.7ms).
+ *
+ * 44 로 낮춘다. 이보다 큰 원은 그냥 직접 그린다 — 반지름 150 이라도
+ * fillRect 75번이라 굽는 것보다 싸다. **되풀이해서 쓰이는 작은 것만** 굽는다.
+ */
+const CIRCLE_CACHE_MAX_R = 44;
 function fillPixelCircle(ctx, cx, cy, r, color){
   if(r <= 0) return;
   if(r > CIRCLE_CACHE_MAX_R){ paintPixelCircle(ctx, cx, cy, r, color); return; }
@@ -6555,7 +6570,8 @@ class GameScene extends Scene {
      */
     const delta = Math.max(0, RUN.coins - RUN.banked);
     RUN.banked = RUN.coins;
-    /* 게임오버·포기는 그 자체로 판의 끝이다 — 나갈 때 또 세지 않는다 */
+    /* 게임오버·포기는 그 자체로 판의 끝이다 — 나갈 때 또 세지 않는다
+       (금화는 바로 위에서 차액으로 이미 넣었다) */
     if(kind !== 'clear' || this.stage >= 20) this.runEnded = true;
     DG.onFinish({
       duel: !!this.duel,
@@ -6668,15 +6684,30 @@ class GameScene extends Scene {
    * 나가는 그 순간에 한 번만 더 알린다. 금화는 0 이다 —
    * 이미 스테이지마다 차액으로 다 넣었다.
    */
+  /**
+   * ★★ **어느 문으로 나가든 여기를 지난다.** (2026-08-27, 사용자 신고)
+   *
+   * *"보유금화가 안올라가는 오류가 있어 (...) 금화들이 어디로 사라진건지 알 수 없다"*
+   *
+   * 금화는 스테이지가 끝날 때마다 넣는다. 그런데 **나가는 길이 여러 개**다 —
+   * ESC · 안드로이드 뒤로가기 · 세로 화면 안내의 [게임 포기하고 나가기] ·
+   * 그리고 창을 그냥 닫는 것. 그중 `finish()` 를 안 거치는 길로 나가면
+   * **그 스테이지에서 주운 금화가 통째로 사라진다.**
+   *
+   * 그래서 여기서 **남은 차액까지 마저 넣는다.** 이미 넣은 만큼(`banked`)을
+   * 빼고 보내므로 두 번 들어가지 않는다.
+   */
   endRun(){
     if(this.duel || this.runEnded) return;
     this.runEnded = true;
+    const delta = Math.max(0, RUN.coins - RUN.banked);
+    RUN.banked = RUN.coins;
     DG.onFinish({
       duel: false, bosses: 0,
       score: this.p1.score, total: this.score,
       stage: this.state === 'clear' ? this.stage : Math.max(0, this.stage - 1),
       level: this.p1.level,
-      coins: 0,                 // 금화는 스테이지마다 이미 넣었다
+      coins: delta,             // 아직 안 넣은 것이 있으면 여기서 넣는다
       cleared: this.state === 'clear' && this.stage >= 20,
       midRun: false,
     });
@@ -7769,14 +7800,24 @@ class GameScene extends Scene {
     if(this.rule === 'fog' || this.rule === 'dark'){
       const p = this.livePlayers()[0];
       const R = this.rule === 'dark' ? 300 : 420;
+      const col = this.rule === 'dark' ? '#05040a' : '#dfe9f0';
       ctx.save();
       ctx.globalAlpha = this.rule === 'dark' ? 0.80 : 0.46;
-      ctx.fillStyle = this.rule === 'dark' ? '#05040a' : '#dfe9f0';
+      ctx.fillStyle = col;
       if(p){
-        const g = ctx.createRadialGradient(p.x, p.y, R*0.45, p.x, p.y, R);
-        g.addColorStop(0, 'rgba(0,0,0,0)');
-        g.addColorStop(1, this.rule === 'dark' ? '#05040a' : '#dfe9f0');
-        ctx.fillStyle = g;
+        /**
+         * ★ 그라디언트를 **매 프레임 새로 만들지 않는다.** (2026-08-27)
+         * 화면 전체를 덮는 그라디언트는 만드는 값이 싸지 않은데, 16px 안쪽으로
+         * 움직인 것은 눈에 보이지도 않는다. 그만큼 움직였을 때만 다시 만든다.
+         */
+        const gx = Math.round(p.x / 16) * 16, gy = Math.round(p.y / 16) * 16;
+        if(!this._fogG || this._fogX !== gx || this._fogY !== gy || this._fogC !== col){
+          const g = ctx.createRadialGradient(gx, gy, R*0.45, gx, gy, R);
+          g.addColorStop(0, 'rgba(0,0,0,0)');
+          g.addColorStop(1, col);
+          this._fogG = g; this._fogX = gx; this._fogY = gy; this._fogC = col;
+        }
+        ctx.fillStyle = this._fogG;
       }
       ctx.fillRect(0, 0, GAME_W, GAME_H);
       ctx.restore();
@@ -9252,11 +9293,24 @@ export function requestPause() {
   if (!sc || typeof sc.setPause !== 'function') { DG.onExit(); return; }
   if (sc.state === 'play') sc.setPause(true);
   else if (sc.state === 'pause') sc.setPause(false);
-  else DG.onExit();                      // 결과 화면 등에서는 그냥 나간다
+  else {
+    if (sc.endRun) sc.endRun();          // 나가기 전에 정산부터 (2026-08-27)
+    DG.onExit();
+  }
 }
 
 /** 게임을 뗀다. 붙인 것을 하나도 남기지 않는다 */
 export function unmount() {
+  /**
+   * ★★ **마지막 그물.** (2026-08-27, 사용자 신고)
+   * 어떤 길로 화면을 떠나든 여기는 반드시 지난다 — 창을 닫든, 라우터가 갈아치우든.
+   * 아직 안 넣은 금화가 남아 있으면 여기서 넣는다. 이미 넣었으면 `runEnded` 가
+   * 막으므로 두 번 들어가지 않는다.
+   */
+  try {
+    const sc = scenes && scenes.current;
+    if (sc && sc.endRun) sc.endRun();
+  } catch (e) { /* 정산에 실패해도 화면은 닫아야 한다 */ }
   if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
   unbindAll();
   try { SND.stopBgm(); } catch (e) { /* 소리를 못 껐다고 화면이 멈추면 안 된다 */ }
