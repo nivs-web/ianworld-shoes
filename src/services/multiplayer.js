@@ -1040,9 +1040,13 @@ export async function publishProgress(code, { stairs, shoesFound, alive = true }
  * 무료 한도(RTDB) 안에서 넉넉하다.
  */
 let lastDuelAt = 0;
-export async function publishDuelProgress(code, { score, coins, bosses, alive = true }, done = false) {
+export async function publishDuelProgress(code, { score, coins, bosses, alive = true, now = false }, done = false) {
   const t = Date.now();
-  if (!done && t - lastDuelAt < 900) return;
+  /**
+   * ★ `now` 는 **초당 제한을 건너뛴다** (2026-08-27).
+   * 죽는 순간은 승부가 갈리는 순간이라 1초를 미루면 그동안 상대가 더 논다.
+   */
+  if (!done && !now && t - lastDuelAt < 900) return;
   lastDuelAt = t;
   const fb = await rt();
   if (!fb) return;

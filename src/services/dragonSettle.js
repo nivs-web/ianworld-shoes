@@ -24,6 +24,7 @@ import { currentUser } from './auth.js';
 import * as L from './storageLocal.js';
 import { get as getProfile, patch } from './profile.js';
 import * as Room from './multiplayer.js';
+import { duelRanking } from './duelRules.js';
 
 /** 한 사람이 거는 금화 */
 /**
@@ -38,32 +39,12 @@ import * as Room from './multiplayer.js';
 export const DUEL_STAKE = 200;
 
 /**
- * 결투 승패를 가른다.
- *
- * ★ **순서가 곧 규칙이다.** 보스를 많이 무너뜨린 사람이 이긴다 — 그게 이 결투가
- * 겨루자고 만든 값이다. 같으면 점수, 그것도 같으면 금화, 마지막은 uid 다.
- * uid 까지 가는 일은 사실상 없지만, **비기는 경우를 남겨 두면** 양쪽이
- * 서로 다른 답을 낼 수 있어서 반드시 끝까지 갈라야 한다.
- *
- * @param {object} players 방의 players 노드
- * @returns {string[]} 이긴 순서대로의 uid
+ * 판정 규칙은 **`duelRules.js` 에 있다.**
+ * 순수 계산이라 Firebase 를 안 들여오고, 그래서 노드에서 바로 검사된다
+ * (`node tools/_duel-qa.mjs`). 여기서는 다시 내보내기만 한다 —
+ * 부르는 쪽(`DuelResult`)이 어디서 왔는지 신경 쓸 이유가 없다.
  */
-export function duelRanking(players) {
-  return Object.entries(players ?? {})
-    .filter(([, p]) => p && !p.waiting)
-    .map(([uid, p]) => ({
-      uid,
-      bosses: p.bosses | 0,
-      score: p.score | 0,
-      coins: p.coins | 0,
-    }))
-    .sort((a, b) =>
-      (b.bosses - a.bosses) ||
-      (b.score - a.score) ||
-      (b.coins - a.coins) ||
-      (a.uid < b.uid ? -1 : 1))
-    .map((r) => r.uid);
-}
+export { duelRanking } from './duelRules.js';
 
 /**
  * 한 판이 끝났다 — 내 지갑에 반영한다.

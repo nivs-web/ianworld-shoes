@@ -2533,3 +2533,18 @@
   color: var(--c-accent);
   padding: 8px 0;
 }
+
+/**
+ * 결투 결과창 — 신발 결과창(`.victory`/`.defeat`)을 그대로 쓰고 두 가지만 더한다.
+ * (2026-08-27, 사용자 지정 — "신발을 찾아서 멀티게임의 결과창 디자인을 참고")
+ */
+.duel-cell.dead { color: #d9506a; }
+/** 정산 뒤의 내 지갑 — 순위표 아래 한 줄. 결과의 마침표라 가운데에 크게 */
+.duel-wallet {
+  margin: 12px 0 2px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f2b233;
+  letter-spacing: 0.5px;
+}

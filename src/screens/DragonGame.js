@@ -26,6 +26,7 @@ import { stopLoop, startLoop, isRunning } from '../core/loop.js';
 import * as Scene from '../core/scene.js';
 import * as Presence from '../services/presence.js';
 import * as Room from '../services/multiplayer.js';
+import { currentUser } from '../services/auth.js';
 
 /**
  * ★ **게임 코드는 누를 때 받는다.** 신발게임만 하는 사람에게 드래곤 본체를
@@ -80,10 +81,13 @@ export default function DragonGame(nav, opt = {}) {
   let stoppedArcadeLoop = false;
   /** 한 판은 한 번만 센다 — 결과가 두 번 와도 기록은 하나다 */
   let settled = false;
+  /** 결투: 방을 지켜보는 구독 해제 함수 */
+  let unsubRoom = null;
 
   return {
     onLeave() {
       live = false;
+      unsubRoom?.(); unsubRoom = null;
       setGameGuard(null);
       unlockOrientation();
       if (mod) mod.unmount();
@@ -118,6 +122,27 @@ export default function DragonGame(nav, opt = {}) {
          * 공짜로 도는 것은 아니다. 게임이 도는 동안에는 하나만 돌린다.
          */
         if (isRunning()) { stopLoop(); stoppedArcadeLoop = true; }
+        /**
+         * ★★ **결투: 상대를 지켜본다.** (2026-08-27, 사용자 지정)
+         *
+         * *"1명이 죽으면 둘다 게임이 끝나는게 맞는거 같아"*
+         *
+         * 게임 모듈은 Firebase 를 모른다 — 알게 하면 혼자 돌려 보는 검사가
+         * 불가능해진다. 그래서 **방을 여기서 읽어 게임에 넣어 준다.**
+         * 게임은 `setDuelPeer` 로 받은 값만 보고 판을 끝낼지 정한다.
+         */
+        if (duelCode && m.setDuelPeer) {
+          const myUid = currentUser()?.uid;
+          unsubRoom = Room.subscribeRoom(duelCode, (r) => {
+            if (!live || !r || !r.players) return;
+            const foe = Object.entries(r.players)
+              .find(([uid, v]) => uid !== myUid && v && !v.waiting);
+            if (!foe) return;
+            const v = foe[1];
+            m.setDuelPeer({ alive: v.alive !== false, coins: v.coins | 0,
+                            name: v.nickname || '' });
+          });
+        }
         /* 접속자 목록에 '게임 중' 으로 뜨게 한다 (신발게임의 toCanvas 와 같은 자리) */
         Presence.setState('playing', 'dragon');
         /* ESC · 안드로이드 뒤로가기를 게임이 먼저 받는다 — 곧바로 나가지 않고 일시정지 */

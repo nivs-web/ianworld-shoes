@@ -8264,6 +8264,7 @@ class GameScene extends Scene {
     this.timeLeft = this.duel ? DUEL.TIME : STAGE_TIME;
     this.endReason = ''; this.bonus = 0;
     this.duelBossKills = 0;           // 무너뜨린 보스 수 (결투 점수의 뼈대)
+    if(this.duel) resetDuelPeer();    // 지난 판의 "죽었다" 가 남으면 곧바로 끝나 버린다
     /* 이어하기로 들어왔으면 몇 번 썼는지 이어받는다 (한 판에 두 번까지) */
     this.continuesUsed = (this.carry && this.carry.continues) | 0;
     this.runEnded = false;      // 이 판의 끝을 이미 알렸는가
@@ -9271,6 +9272,19 @@ class GameScene extends Scene {
                         bosses: this.duelBossKills, alive: !this.p1.out,
                         timeLeft: Math.max(0, Math.round(this.timeLeft)) });
       }
+      /**
+       * ★★ **한 명이 죽으면 둘 다 끝난다.** (2026-08-27, 사용자 지정)
+       *
+       * *"1명이 죽으면 둘다 게임이 끝나는게 맞는거 같아"*
+       *
+       * 상대가 죽었다는 신호가 오면 내 판도 그 자리에서 멈춘다. 내가 살아 있으니
+       * 순위 규칙(생존 우선)에 따라 내가 이긴다 — 여기서 승패를 정하지는 않고
+       * **판을 끝내기만 한다.** 판정은 양쪽이 방을 보고 각자 센다.
+       */
+      if(PEER.seen && !PEER.alive && !this.p1.out){
+        this.finish('clear', '상대 탈락');
+        return;
+      }
     }else{
       // 중간보스가 등장하기 전까지만 시간이 흐른다.
       // 보스전까지 90초로 묶으면 고스테이지에서 물리적으로 못 깬다.
@@ -9675,6 +9689,14 @@ class GameScene extends Scene {
         // 이 플레이어만 탈락. 남은 사람이 있으면 게임은 계속된다
         p.hp = 0; p.out = true;
         Popups.add(p.x, p.y - 60, p.pid + 'P 탈락', '#ff4d5a', 5, true);
+        /**
+         * ★ 결투에서는 **곧바로** 알린다 (2026-08-27).
+         * 진행도는 1초에 한 번만 나가는데, 그동안 상대는 계속 금화를 줍는다.
+         * 죽은 순간은 승부가 갈리는 순간이라 그 1초가 그대로 억울함이 된다.
+         */
+        if(this.duel && p.pid === 1)
+          DG.onProgress({ score: p.score, coins: RUN.coins,
+                          bosses: this.duelBossKills, alive: false, now: true });
         if(this.players().length === 0){ this.finish('over', 'GAME OVER'); }
         return;
       }
@@ -11335,6 +11357,28 @@ function drawHUDDebug(ctx){
    ================================================================== */
 
 /** 오락실이 넘겨준 것들. mount() 가 채운다 */
+/**
+ * ★★ **결투 상대의 상태.** (2026-08-27, 사용자 지정)
+ *
+ * 오락실 껍데기가 방을 지켜보다가 여기에 넣어 준다. 게임 쪽은 이 값만 본다 —
+ * 게임이 Firebase 를 직접 아는 순간 혼자 돌려 보는 검사가 불가능해진다.
+ *
+ *   alive : 상대가 살아 있는가. `false` 가 되면 **내 판도 그 자리에서 끝난다**
+ *   coins : 상대가 주운 금화 (화면 위 점수판에 쓴다)
+ *   name  : 상대 이름
+ */
+const PEER = { alive: true, coins: 0, name: '', seen: false };
+/** 오락실이 방에서 읽은 상대 상태를 넣는다 */
+export function setDuelPeer(p){
+  if(!p) return;
+  if(p.alive !== undefined) PEER.alive = !!p.alive;
+  if(p.coins !== undefined) PEER.coins = p.coins | 0;
+  if(p.name  !== undefined) PEER.name  = String(p.name || '');
+  PEER.seen = true;
+}
+/** 판이 새로 시작할 때 지운다 — 지난 판의 "죽었다" 가 남으면 곧바로 끝나 버린다 */
+function resetDuelPeer(){ PEER.alive = true; PEER.coins = 0; PEER.name = ''; PEER.seen = false; }
+
 const DG = {
   difficulty: 'normal',
   onFinish() {},
