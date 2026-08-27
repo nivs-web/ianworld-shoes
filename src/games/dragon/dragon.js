@@ -2517,6 +2517,22 @@ class Player {
      * 0 보다 크면 머리에 해골이 겹쳐 뜬다.
      */
     this.hitT = 0;
+    /* 연발 제한 (2026-08-27) */
+    this.mslCool = 0; this.bombCool = 0; this.burstN = 0; this.burstT = 0;
+    /**
+     * ★★ **리액션.** (2026-08-27, 사용자 지정)
+     *
+     * *"뭔가 애니메이션이 있으면 재밌을거 같아"*
+     *
+     * 무엇을 먹었는지·맞았는지가 **캐릭터의 몸짓**으로 읽혀야 한다.
+     * 숫자와 글자는 화면 구석에 있어서 싸우는 동안 볼 겨를이 없다.
+     *
+     *   apple   사과   — 웃는 얼굴 + 날개가 쭉쭉 커졌다 작아진다
+     *   power   레벨업 — 한 바퀴 돌면서 0.5초 붉어지고 얼굴이 커졌다 작아진다
+     *   eat     무기   — 입을 벌려 삼킨다 (미사일·핵무기가 입으로 빨려 들어간다)
+     *   stagger 피격   — 작아지며 얼굴이 뒤로 꺾이고 휘청한다
+     */
+    this.fxKind = ''; this.fxT = 0; this.fxDur = 0; this.fxItem = '';
     /* ★ 하트 3개로 시작한다. (2026-08-26, 사용자 지정)
        5개일 때는 일부러 맞으러 다녀도 죽기가 어려웠다 — 한 대에 25뿐이라
        목숨 하나에 4대, 다섯 목숨이면 스무 대를 맞아야 끝났다. */
@@ -2548,6 +2564,44 @@ class Player {
   get muzzle(){
     const g = growthOf(this.level), f = FORMS[g.form];
     return { x: this.x + f.muzzle.x*g.cell, y: this.y + f.muzzle.y*g.cell };
+  }
+  /** 리액션을 시작한다. 같은 것이 겹치면 새 것으로 갈아 끼운다 */
+  startFx(kind, dur, item){
+    this.fxKind = kind; this.fxDur = dur; this.fxT = dur; this.fxItem = item || '';
+    if(kind === 'eat') this.mawT = Math.max(this.mawT || 0, dur);
+  }
+  /**
+   * 지금 리액션이 만드는 **몸의 변형**.
+   * 그리는 쪽은 이 값만 보고 변형을 걸면 된다 — 리액션이 늘어도 그리는 코드는 그대로다.
+   */
+  fxState(){
+    const k = this.fxDur > 0 ? 1 - this.fxT/this.fxDur : 1;   // 0 -> 1 로 흐른다
+    const s = { sx:1, sy:1, rot:0, ox:0, oy:0, tint:null, smile:false };
+    if(this.fxT <= 0) return s;
+    if(this.fxKind === 'apple'){
+      /* 슈퍼마리오처럼 쭉 커졌다 돌아온다. 세로를 먼저, 가로를 뒤따라 —
+         한 축씩 어긋나야 "부풀었다" 로 보인다 */
+      const p = Math.sin(k*Math.PI);
+      s.sx = 1 + p*0.42; s.sy = 1 + p*0.30;
+      s.smile = true;
+    }else if(this.fxKind === 'power'){
+      s.rot = k*Math.PI*2;                       // 한 바퀴
+      const p = Math.sin(k*Math.PI);
+      s.sx = 1 + p*0.26; s.sy = 1 + p*0.26;
+      if(k < 0.62) s.tint = '#ff2b3c';           // 0.5초쯤 붉게
+    }else if(this.fxKind === 'eat'){
+      /* 삼키는 순간 목이 한 번 꿀렁인다 */
+      const p = Math.sin(k*Math.PI*2);
+      s.sx = 1 + p*0.16; s.sy = 1 - p*0.12;
+    }else if(this.fxKind === 'stagger'){
+      /* 뒤로 꺾이며 작아졌다 돌아온다. 휘청 — 좌우로 한 번 흔들린다 */
+      const p = 1 - k;
+      s.rot = -p*0.42;                           // 얼굴이 뒤로(위로) 꺾인다
+      s.sx = 1 - p*0.20; s.sy = 1 - p*0.20;
+      s.ox = -p*22 + Math.sin(k*Math.PI*3)*p*10;
+      s.oy = -p*8;
+    }
+    return s;
   }
   setLevel(lv){
     const n = clamp(lv, 1, MAX_LEVEL);
@@ -3906,6 +3960,30 @@ class Shockwave {                       // 충격파 링 (보스 분노 / 미사
 /* ==================================================================
    적 공통 베이스
    ================================================================== */
+/**
+ * ★ **쏠 때 고개를 끄덕인다.** (2026-08-27, 사용자 지정)
+ *
+ * *"드래곤 타고 있는 적들은 공격을 쏠때 고개를 끄덕거린다거나,
+ *   뭔가 공격하고 있다는 애니매이션 움직임이 있었음 좋겠다"*
+ *
+ * 예전에는 탄만 나갔다 — **누가 쏜 건지** 알 수가 없어서 화면이 그냥 시끄러웠다.
+ * 쏘는 놈이 앞으로 한 번 숙였다 돌아오면 눈이 그쪽을 먼저 본다.
+ * `castT` 를 세워 두면 그리는 쪽이 알아서 숙인다.
+ */
+function castPose(ctx, e, draw){
+  if(!(e.castT > 0)) { draw(); return; }
+  const k = e.castT / CAST_TIME;                 // 1 -> 0
+  const dip = Math.sin(k*Math.PI);               // 숙였다 돌아온다
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.rotate(-dip*0.30);                         // 앞(왼쪽)으로 숙인다
+  ctx.translate(-dip*10, dip*4);
+  ctx.translate(-e.x, -e.y);
+  draw();
+  ctx.restore();
+}
+const CAST_TIME = 0.26;
+
 class EnemyBase {
   /* 보스가 쏘는 것에 스테이지 비례 데미지를 실어준다 (일반 적은 기본값 25) */
   arm(o){ if(this.hurtDmg) o.hurt = this.hurtDmg; return o; }
@@ -3963,6 +4041,7 @@ class DragonRider extends EnemyBase {
   update(dt, scene){
     this.t += dt;
     if(this.flash > 0) this.flash -= dt;
+    if(this.castT > 0) this.castT -= dt;
     if(this.knock > 0) this.knock = Math.max(0, this.knock - 900*dt);
     this.x += (this.vx + this.knock)*dt;
     applyDive(this, dt);
@@ -3975,6 +4054,7 @@ class DragonRider extends EnemyBase {
         const el = enemyLv();
         /* 연사 2.2~3.1초 -> 1.2~1.7초 */
         this.shootT = (2.2 - 1.0*el) + Math.random()*(0.9 - 0.4*el);
+        this.castT = CAST_TIME;                  // 쏘면서 고개를 숙인다
         const mx = this.x - 34, my = this.y + 6;
         const base = enemyAim(scene, mx, my), spd = 330 + 190*el;
         /**
@@ -4018,8 +4098,8 @@ class DragonRider extends EnemyBase {
     SND.sfx('boomM');
   }
   render(ctx){
-    drawFormDragon(ctx, RED_DRAGON_PAL, 'A', DR_CELL, this.x, this.y, this.pose, true,
-      this.flash > 0 ? '#ffffff' : null, [A_RIDER]);
+    castPose(ctx, this, () => drawFormDragon(ctx, RED_DRAGON_PAL, 'A', DR_CELL,
+      this.x, this.y, this.pose, true, this.flash > 0 ? '#ffffff' : null, [A_RIDER]));
     if(this.shield) drawFrontShield(ctx, this, this.shieldT);
   }
 }
@@ -4042,6 +4122,69 @@ const SKULL = [
   '.WWWWW.',
   '.W.W.W.',
 ];
+/**
+ * 사과를 먹었을 때 뜨는 웃는 얼굴. (2026-08-27, 사용자 지정)
+ * 해골과 **같은 자리**에 뜬다 — 좋은 일이든 나쁜 일이든 얼굴을 보면 안다.
+ */
+const SMILE = [
+  '.......',
+  '.E...E.',
+  '.E...E.',
+  '.......',
+  'M.....M',
+  '.MMMMM.',
+  '..MMM..',
+];
+/**
+ * 미사일 아이콘. 오른쪽이 탄두, 왼쪽이 꼬리 — 플레이어가 쏘는 방향과 같다.
+ * 도트 그리드로 그려야 게임 안의 다른 것들과 결이 맞는다.
+ */
+const MISSILE_ART = [
+  '.....................',
+  '..........KKK........',
+  '.....KKKKKWWWKK......',
+  '..KKKWWWWWWWWWWKK....',
+  '.KRWWWWWWWWWWWWWWK...',
+  'KKKWWRRRWWWWWWWWWWK..',
+  '.KRWWWWWWWWWWWWWWK...',
+  '..KKKWWWWWWWWWWKK....',
+  '.....KKKKKWWWKK......',
+  '..........KKK........',
+  '.....................',
+];
+function drawMissileIcon(ctx, cx, cy, t){
+  const cell = PX;
+  const W = MISSILE_ART[0].length, H = MISSILE_ART.length;
+  const ox = snap(cx - W*cell/2), oy = snap(cy - H*cell/2);
+  /* 뒤로 뿜는 불꽃 — 깜빡여서 "날고 있다" 로 보인다 */
+  const f = Math.floor(t*18) % 2 === 0 ? 3 : 2;
+  for(let i=0;i<f;i++){
+    ctx.fillStyle = i === 0 ? '#fff6c2' : (i === 1 ? '#ffb03a' : '#ff5a2e');
+    ctx.fillRect(ox - (i+1)*cell*2, oy + (H>>1)*cell - cell, cell*2, cell*2);
+  }
+  for(let r=0;r<H;r++){
+    for(let c=0;c<W;c++){
+      const ch = MISSILE_ART[r][c];
+      if(ch === '.') continue;
+      ctx.fillStyle = ch === 'K' ? '#2b2f3a' : (ch === 'R' ? '#ff4d5a' : '#e8ecf6');
+      ctx.fillRect(ox + c*cell, oy + r*cell, cell, cell);
+    }
+  }
+}
+
+function drawSmile(ctx, cx, cy, cell){
+  const w = SMILE[0].length*cell, h = SMILE.length*cell;
+  const ox = snap(cx - w/2), oy = snap(cy - h/2);
+  for(let r=0;r<SMILE.length;r++){
+    for(let c=0;c<SMILE[r].length;c++){
+      const ch = SMILE[r][c];
+      if(ch === '.') continue;
+      ctx.fillStyle = ch === 'E' ? '#fff4f4' : '#ffd24a';
+      ctx.fillRect(ox + c*cell, oy + r*cell, cell, cell);
+    }
+  }
+}
+
 function drawSkull(ctx, cx, cy, cell, k){
   const w = SKULL[0].length*cell, h = SKULL.length*cell;
   const ox = snap(cx - w/2), oy = snap(cy - h/2);
@@ -4249,9 +4392,11 @@ class HeavyRider extends EnemyBase {
     applyDive(this, dt);
     this.y = this.baseY + Math.sin(this.t*1.2)*38;
     this.flapUpdate(dt, 0.13);
+    if(this.castT > 0) this.castT -= dt;
     if(this.x < GAME_W - 60){
       this.missileT -= dt;
       if(this.missileT <= 0){
+        this.castT = CAST_TIME;                  // 쏘면서 고개를 숙인다
         const el = enemyLv();
         /* 유도탄이 잦아지고(2.6~3.6 -> 1.5~2.1초) 빨라지고(250 -> 380) 오래 쫓는다 */
         this.missileT = (2.6 - 1.1*el) + Math.random()*(1.0 - 0.4*el);
@@ -4285,8 +4430,8 @@ class HeavyRider extends EnemyBase {
     SND.sfx('boomM');
   }
   render(ctx){
-    drawFormDragon(ctx, PURPLE_DRAGON_PAL, 'A', HV_CELL, this.x, this.y, this.pose, true,
-      this.flash > 0 ? '#ffffff' : null, [A_RIDER]);
+    castPose(ctx, this, () => drawFormDragon(ctx, PURPLE_DRAGON_PAL, 'A', HV_CELL,
+      this.x, this.y, this.pose, true, this.flash > 0 ? '#ffffff' : null, [A_RIDER]));
   }
 }
 
@@ -4323,7 +4468,14 @@ class MidBoss extends EnemyBase {
         if(Math.abs(this.x - this.homeX) < 6){ this.phase = 'idle'; this.pt = 0; }
         break;
       case 'idle':                                    // 잠깐 부유하다 다음 패턴
+        /**
+         * ★ **가만히 떠 있지 않는다.** (2026-08-27, 사용자 지적)
+         * *"중간보스와 최종보스 움직임이 너무 심심해"*
+         * 위아래로만 흔들리던 것을 **앞뒤로도** 움직이게 하고, 다음 패턴을
+         * 준비하는 동안 몸을 조금 크게 부풀린다 — 뭔가 온다는 신호가 된다.
+         */
         this.y = this.homeY + Math.sin(this.t*1.1)*40;
+        this.x = this.homeX + Math.sin(this.t*0.7)*26;
         if(this.pt > (this.enraged ? 0.5 : 0.8)){ this.nextPattern(scene); }
         break;
       case 'breath':                                  // 패턴1 : 3연속 화염 브레스
@@ -4394,6 +4546,7 @@ class Boss extends EnemyBase {
     this.homeX = GAME_W - 250; this.homeY = GAME_H/2;
     this.enraged = false;
     this.swirlN = 0; this.swirlT = 0; this.swirlA = 0;
+    this.windUp = 0;                 // 다음 패턴 직전에 1 로 오른다 (예고 연출)
     this.wallN = 0; this.wallT = 0;
     this.stageNo = stage;
     this.hurtDmg = Math.round(28 * stagePowerOf(stage));
@@ -4468,7 +4621,14 @@ class Boss extends EnemyBase {
         if(Math.abs(this.x - this.homeX) < 8){ this.phase = 'idle'; this.pt = 0; }
         break;
       case 'idle':
+        /**
+         * ★ **최종보스도 가만히 안 있는다.** (2026-08-27, 사용자 지적)
+         * 위아래로만 흔들리면 큰 과녁일 뿐이다. 앞뒤로도 천천히 오가고,
+         * 다음 패턴 직전에는 **한 번 크게 뒤로 물러났다 온다** — 예고가 된다.
+         */
         this.y = this.homeY + Math.sin(this.t*0.9)*34;
+        this.x = this.homeX + Math.sin(this.t*0.55)*38;
+        this.windUp = clamp((this.pt - (this.enraged ? 0.20 : 0.40)) * 3.2, 0, 1);
         if(this.pt > (this.enraged ? 0.35 : 0.6)) this.nextPattern(scene);
         break;
       case 'swirl':                                   // 패턴1 : 화염 브레스 소용돌이
@@ -4598,6 +4758,18 @@ class Boss extends EnemyBase {
   render(ctx){
     const pal = this.enraged ? BOSS_PAL_RAGE : this.pal;
     const P = bossPartsOf(this.kind);
+    /**
+     * ★ **다음 패턴 직전에 몸을 부풀린다.** (2026-08-27)
+     * 큰 것이 숨을 들이켜는 것처럼 보여서 "온다" 를 읽을 수 있다.
+     * 화내는 중이면 더 크게 — 물러났다 덮치는 결이 난다.
+     */
+    const wu = this.windUp || 0;
+    if(wu > 0){
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.scale(1 + wu*0.09, 1 - wu*0.05);
+      ctx.translate(-this.x, -this.y);
+    }
     /* 부서진 파츠는 그림에서도 빠진다 — 부순 것이 눈에 보여야 한 일이 된다 */
     const gone = {};
     for(const p of this.parts) if(p.broken) gone[p.def.key] = 1;
@@ -4610,6 +4782,7 @@ class Boss extends EnemyBase {
     });
     drawFormDragon(ctx, pal, 'B', this.cell, this.x, this.y, this.pose, true,
       this.flash > 0 ? '#ffffff' : null, over, under);
+    if(wu > 0) ctx.restore();
     this.renderParts(ctx);
     // 미사일을 튕겨내는 보호막 (10스테이지 초과)
     if(this.absorbT > 0){
@@ -5225,6 +5398,25 @@ const MISSILE_VOLLEYS_TO_KILL_MID = 3;
  * 상한을 올리고 투하도 두 배로 늘려서, 아끼지 말고 쓰라는 게임이 되게 한다.
  */
 const MAX_MISSILE = 50, MAX_BOMB = 12;     // 보유 상한
+/**
+ * ★★ **연발에 제동을 건다.** (2026-08-27, 사용자 지정)
+ *
+ * *"너무 연발로 중간보스 최종보스 죽이니깐, 보스들이 너무 약하게 느껴짐"*
+ *
+ * 미사일은 연속으로 누를수록 한 번에 나가는 발수가 늘어난다(3 -> 6 -> 9...).
+ * 그러니 손가락만 빠르면 보스가 몇 초 만에 녹았다 — **보스를 두껍게 하는 대신
+ * 손을 묶는다.** 맷집을 올리는 것보다 이쪽이 옳다: 싸움이 길어지는 게 아니라
+ * "언제 쏟아붓느냐" 를 고르게 된다.
+ *
+ * 두 발까지는 연달아 나간다. 세 번째부터는 막고 2초를 쉰다.
+ */
+const MISSILE_BURST = 2;                   // 연달아 나갈 수 있는 횟수
+const MISSILE_COOL = 2.0;                  // 그 뒤 쉬는 시간 (초)
+/**
+ * 핵무기는 한 방이 화면을 비우고 10초 무적까지 준다 —
+ * 연달아 쓰면 그냥 계속 무적이다. 한 번 쓰면 15초는 못 쓴다.
+ */
+const BOMB_COOL = 15.0;
 /* 아무것도 안 산 사람의 손 안. 아이템 쇼핑의 계단으로 미사일 50 · 핵무기 12 까지 올린다.
    (`games/dragon/items.js` 의 BASE_MISSILES / BASE_BOMBS 와 같은 값이어야 한다) */
 const START_MISSILES = 5, START_BOMBS = 2;
@@ -5743,11 +5935,13 @@ class Item {
         break;
       }
       case ITEM_KIND.MISSILE:
-        ctx.fillStyle = '#5a6072'; ctx.fillRect(x - 16, y - 13, 32, 26);
-        ctx.fillStyle = '#7c8496'; ctx.fillRect(x - 16, y - 13, 32, PX);
-        ctx.fillStyle = '#2b2f3a'; ctx.fillRect(x - 16, y - PX/2, 32, PX);
-        ctx.fillStyle = '#e8ecf6'; ctx.fillRect(x - 9, y + PX, 14, PX*2);
-        ctx.fillStyle = '#ff4d5a'; ctx.fillRect(x + 5, y + PX, PX*2, PX*2);
+        /**
+         * ★ **미사일처럼 보이게.** (2026-08-27, 사용자 지적)
+         * *"아이콘이 사각형이고 무슨 모양인지 저거 먹으면 뭐인지 모르겠어"*
+         * 예전에는 그냥 회색 네모였다. 뾰족한 탄두 · 몸통 · 꼬리날개 ·
+         * 뒤로 뿜는 불꽃까지 그려야 한눈에 미사일로 읽힌다.
+         */
+        drawMissileIcon(ctx, x, y, this.t);
         break;
       case ITEM_KIND.BOMB:
         fillPixelCircle(ctx, x, y, 16, PAL.fire[3]);
@@ -6180,7 +6374,13 @@ const DROP_PLAN = [
    * **아껴 쓰는 물건이 아니라 그냥 두 번째 발사 버튼**이 된다.
    * 절반으로 줄여서 "지금 쓸까 아낄까" 를 생각하게 만든다.
    */
-  { kind:'missile', rounds:10, every: 5.5, first: 4 },   // 1인당 10개 (20 -> 10)
+  /**
+   * ★ **또 절반으로.** (2026-08-27, 사용자 지적)
+   * *"미사일이 너무 많으니 재미가 없다 (...) 미사일을 아껴 써야 하는데"*
+   * 판당 10개도 많았다 — 연발 제한(2번)까지 걸린 마당에 개수까지 넉넉하면
+   * 아낄 이유가 없다. 5개로 줄이고 간격도 두 배로.
+   */
+  { kind:'missile', rounds: 5, every:11.0, first: 6 },
   { kind:'apple',   rounds:10, every: 6.5, first: 7 },   // 1인당 10개 (그대로)
   /**
    * ★ **핵무기는 30초에 하나.** (2026-08-26, 사용자 지적)
@@ -6675,8 +6875,13 @@ class GameScene extends Scene {
         p.bombCount = Math.min(MAX_BOMB, p.bombCount + 1);
         msg = p.bombCount >= MAX_BOMB ? '핵무기 가득' : '핵무기 +1'; break;
       case ITEM_KIND.POWER:
-        msg = p.setLevel(p.level + 1) ? 'FIRE LV UP!' : 'MAX LEVEL'; break;
+        msg = p.setLevel(p.level + 1) ? 'FIRE LV UP!' : 'MAX LEVEL';
+        p.startFx('power', 0.8); break;
     }
+    /* ★ 무엇을 먹었는지 몸짓으로 (2026-08-27) */
+    if(it.kind === ITEM_KIND.APPLE || it.kind === ITEM_KIND.HEART) p.startFx('apple', 0.6);
+    else if(it.kind === ITEM_KIND.MISSILE) p.startFx('eat', 0.5, 'missile');
+    else if(it.kind === ITEM_KIND.BOMB)    p.startFx('eat', 0.5, 'bomb');
     this.addScore(50, p.pid, true);            // 아이템 줍기 (점수 눈금을 함께 탄다)
     SND.sfx(it.kind === ITEM_KIND.POWER ? 'levelup' : 'item');
     this.pickupMsg = (this.p2 ? (p.pid + 'P ') : '') + msg; this.pickupT = 1.2;
@@ -7207,6 +7412,7 @@ class GameScene extends Scene {
     p.update(dt, mv);
     if(p.hurtT > 0) p.hurtT -= dt;
     if(p.hitT > 0) p.hitT -= dt;
+    if(p.fxT > 0){ p.fxT -= dt; if(p.fxT <= 0){ p.fxKind = ''; p.fxItem = ''; } }
     if(p.shieldT > 0){
       p.shieldT -= dt;
       for(const h of p.shieldHits) h.t += dt;
@@ -7237,8 +7443,21 @@ class GameScene extends Scene {
     // 자기 필살기 연출 중에만 막는다. 예전엔 전역이라 1P 가 쓰면 2P 가 2초 넘게 아무것도 못 했다.
     const busyFx = this.roars.some(r => r.owner === p);
 
-    if(wantMsl && p.missileCount > 0 && !busyFx){
+    /* ★ 연발 제한 (2026-08-27) — 남은 쿨다운을 먼저 센다 */
+    if(p.mslCool > 0) p.mslCool -= dt;
+    if(p.bombCool > 0) p.bombCool -= dt;
+    if(p.burstT > 0){ p.burstT -= dt; if(p.burstT <= 0) p.burstN = 0; }
+
+    if(wantMsl && p.mslCool > 0 && p.missileCount > 0 && !busyFx){
+      /* 쉬는 중에 누르면 왜 안 나가는지 알려 준다 — 말이 없으면 고장인 줄 안다 */
+      Popups.add(p.x, p.y - 110, '미사일 연발은 ' + MISSILE_BURST + '번만 가능', '#ff9a5a', 4, true);
+      SND.sfx('deny');
+    }else if(wantMsl && p.missileCount > 0 && !busyFx){
       p.missileCount--;
+      /* 두 번까지 연달아. 세 번째부터 막고 쉰다 */
+      p.burstN = (p.burstT > 0 ? p.burstN : 0) + 1;
+      p.burstT = MISSILE.COMBO_WINDOW;
+      if(p.burstN >= MISSILE_BURST){ p.mslCool = MISSILE_COOL; p.burstN = 0; p.burstT = 0; }
       p.combo = (p.comboT > 0) ? Math.min(MISSILE.MAX_COMBO, p.combo + 1) : 1;
       p.comboT = MISSILE.COMBO_WINDOW;
       const n = p.combo * 3;
@@ -7252,8 +7471,13 @@ class GameScene extends Scene {
       Shake.add(7, 0.15);
       SND.sfx('missile'); Input.rumble(0.35, 0.25, 120);
     }
-    if(wantBomb && p.bombCount > 0 && !busyFx){
+    if(wantBomb && p.bombCool > 0 && p.bombCount > 0 && !busyFx){
+      Popups.add(p.x, p.y - 110,
+        '다음 핵 버튼은 ' + Math.ceil(p.bombCool) + '초 후에 사용가능', '#ff9a5a', 4, true);
+      SND.sfx('deny');
+    }else if(wantBomb && p.bombCount > 0 && !busyFx){
       p.bombCount--;
+      p.bombCool = BOMB_COOL;                  // 15초 동안 다시 못 쓴다
       p.shieldT = SHIELD_TIME; p.shieldHits.length = 0;   // 10초 무적 쉴드
       p.hurtT = 0;
       this.roars.push(new DragonRoar(this, p));
@@ -7602,6 +7826,7 @@ class GameScene extends Scene {
      * **얼굴이 해골로 바뀌면** 눈이 이미 보고 있는 자리에서 바로 읽힌다.
      */
     p.hitT = 0.55;
+    p.startFx('stagger', 0.45);          // 작아지며 뒤로 꺾이고 휘청 (2026-08-27)
     Flash.add('#ff2b3c', 0.06, 0.14);
     Particles.spawn(p.x + 20, p.y - 10, 10,
       { spd:300, life:0.4, pal:['#ffffff','#ff9a5a','#ff2b3c','#8f1230'] });
@@ -7692,11 +7917,39 @@ class GameScene extends Scene {
     for(const b of this.bolts)     b.render(ctx);
     for(const m of this.pmissiles) m.render(ctx);
     for(const p of this.livePlayers()){
+      /**
+       * ★ 리액션이 만드는 변형을 여기서 한 번에 건다 (2026-08-27).
+       * 리액션이 늘어도 `fxState()` 만 늘면 되고 그리는 코드는 그대로다.
+       */
+      const fx = p.fxState();
+      const moved = fx.sx !== 1 || fx.sy !== 1 || fx.rot !== 0 || fx.ox !== 0 || fx.oy !== 0;
+      if(moved){
+        ctx.save();
+        ctx.translate(p.x + fx.ox, p.y + fx.oy);
+        ctx.rotate(fx.rot);
+        ctx.scale(fx.sx, fx.sy);
+        ctx.translate(-p.x, -p.y);
+      }
       /* 무적 동안 **반투명하게 깜빡인다** — 지금 안 맞는다는 것이 보여야 한다 */
       if(p.hurtT > 0){
         ctx.globalAlpha = Math.floor(p.hurtT*12) % 2 === 0 ? 0.32 : 0.78;
         p.render(ctx); ctx.globalAlpha = 1;
       }else p.render(ctx);
+      /* 레벨업은 붉게 물든다 — 원본 위에 같은 그림을 색만 바꿔 얹는다 */
+      if(fx.tint){
+        const pa = ctx.globalAlpha;
+        ctx.globalAlpha = pa * 0.72;
+        drawDragon(ctx, p.dragon.pal, p.level, p.x, p.y, p.pose, false, fx.tint,
+                   p.dragon.always, p.dragonIdx, p.mawT > 0);
+        ctx.globalAlpha = pa;
+      }
+      if(moved) ctx.restore();
+      /* 사과를 먹으면 웃는다 */
+      if(fx.smile){
+        const m = p.metrics;
+        drawSmile(ctx, p.x + m.w*0.20, p.y - m.h*0.14,
+                  Math.max(PX, Math.round(m.h*0.05/PX)*PX));
+      }
       /* ★ 맞은 직후에는 머리에 해골 (2026-08-27) */
       if(p.hitT > 0){
         const m = p.metrics;
