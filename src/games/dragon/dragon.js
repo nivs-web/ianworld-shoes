@@ -76,6 +76,14 @@ function koFitBox(ctx, str, box, max, opt){
 
 const BUILD = 'B7';                 // 업로드한 파일이 최신인지 확인용 표식
 const GAME_W = 1280, GAME_H = 720;
+/**
+ * **세로 캔버스** 720 x 1280 — 가로 판을 90도 돌려 얹는 자리.
+ * (자세한 설명은 아래 `setWorldTransform` 근처에 있다.)
+ * ★ 여기서 선언한다 — 세로 배경 코드가 모듈 최상단에서 이 값을 쓴다.
+ */
+const PORT_W = GAME_H, PORT_H = GAME_W;
+/** 지금 세로로 도는가 */
+let portrait = false;
 const PX = 4;                       // 도트 1칸 = 4px. 모든 배경 요소는 이 그리드에 스냅
 const COLS = GAME_W / PX;           // 320칸
 const snap  = v => Math.round(v / PX) * PX;
@@ -1507,6 +1515,151 @@ function buildThumb(si, W, H){
 }
 
 /* 능선 블릿 : 투명한 위쪽 영역을 잘라내 드로우 비용을 줄인다 */
+/* ══════════════════════════════════════════════════════════════
+   세로 모드 배경 — 1945 처럼 **위에서 내려다본 땅** 위를 난다
+   ══════════════════════════════════════════════════════════════ */
+/**
+ * ★★ **세로 배경.** (2026-08-27, 사용자 지정)
+ *
+ * *"맵도 공중전이니 지상 이미지로 바꾸고 화면의 70프로 아래는 지상 30프로
+ *   맨 위에는 지평선이 있어. 지구를 비행하는 비행기가 지평선 위를 나는 이미지
+ *   (...) 최대한 1945 비행기 겜 참고해서 만들어"*
+ *
+ * ## 왜 가로 배경을 그냥 못 쓰는가
+ *
+ * 가로 배경은 **옆에서 본 능선**이 가로로 흐르는 그림이다. 판을 90도 돌리면
+ * 그 능선이 화면 **오른쪽에 세로로 서 버린다** — 실제로 그렇게 나왔다.
+ * 세로는 시점 자체가 다르다: 옆이 아니라 **위에서 내려다본다.**
+ *
+ * ## 어떻게 짓는가
+ *
+ *      0 ─────────────  하늘 (그러데이션)
+ *              구름
+ *    384 ═════════════  지평선 — 먼 능선 + 아지랑이
+ *              땅
+ *   1280 ─────────────  내 쪽
+ *
+ * 위 30% 는 하늘, 아래 70% 는 **위에서 본 땅**이다. 땅은 720x1280 짜리
+ * 지도를 한 장 구워 두고 **아래로 흘리며 두 번 겹쳐 찍는다** — 지도가
+ * 위아래로 이어지게 만들었으므로 이음새가 안 보인다.
+ *
+ * 땅의 색은 그 판의 능선 색을 그대로 가져온다. 그래야 피라미드 판은 모래빛,
+ * 침엽수림 판은 검푸른 숲빛으로 **판마다 다른 땅**이 된다 — 색을 따로 스무 벌
+ * 정하면 판을 늘릴 때마다 또 정해야 한다.
+ */
+const PORT_HZ = Math.round(PORT_H * 0.30);      // 지평선의 화면 높이 (384)
+const GND_H = PORT_H;                           // 지상 지도 한 장의 높이
+
+/** 위아래로 이어지는 지도라 세로 이음새를 넘어가면 두 번 찍는다 */
+function gndRect(c, x, y, w, h){
+  y = ((y % GND_H) + GND_H) % GND_H;
+  c.fillRect(snap(x), snap(y), snap(w), snap(h));
+  if(y + h > GND_H) c.fillRect(snap(x), snap(y - GND_H), snap(w), snap(h));
+  if(y < 0)         c.fillRect(snap(x), snap(y + GND_H), snap(w), snap(h));
+}
+
+/**
+ * 그 판의 **지상 지도** 한 장을 굽는다 (720 x 1280, 위아래로 이어진다).
+ *
+ * 위에서 내려다본 땅에 실제로 보이는 것들만 넣는다 —
+ * 밭뙈기, 길, 강, 숲덤불, 바위. 옆에서 볼 때의 "산봉우리" 는 여기 없다.
+ */
+/**
+ * 땅에 쓸 네 가지 색.
+ *
+ * 능선이 있는 판은 **그 능선 색을 그대로** 가져온다 — 그래야 가로로 보던 그 땅
+ * 위를 나는 것으로 읽힌다. 13~20 처럼 능선이 아예 없는 **하늘 판**은 색이 없으니
+ * 하늘 그러데이션에서 뽑아 온다. 하늘 판의 땅은 저 아래 **구름바다**인 셈이다.
+ */
+function groundPalette(st){
+  const L = st.layers, has = i => L[i] && L[i].c;
+  if(has(2) && has(3) && has(1) && has(0))
+    return { base:L[2].c, alt:L[3].c, feat:L[1].c, far:L[0].c };
+  const sky = st.sky || SKY_TITLE;
+  const at = p => rampColor(sky, p);
+  return {
+    base: mixHex(at(0.30), '#000000', 0.30),
+    alt:  mixHex(at(0.55), '#000000', 0.42),
+    feat: mixHex(st.acc || at(0.8), '#000000', 0.30),
+    far:  mixHex(at(0.10), '#000000', 0.20),
+  };
+}
+function buildGround(seed, st){
+  const { cv, c } = makeCanvas(PORT_W, GND_H);
+  const { base, alt, feat, far } = groundPalette(st);
+  const rnd = mulberry32(seed ^ 0x51ed);
+  const R = (a, b) => a + rnd()*(b - a);
+
+  c.fillStyle = base; c.fillRect(0, 0, PORT_W, GND_H);
+
+  /* ① 넓은 얼룩 — 땅이 한 색이면 흐르는 게 안 보인다 */
+  for(let i=0;i<26;i++){
+    c.fillStyle = mixHex(i%2 ? alt : far, base, R(0.30, 0.62));
+    const w = snap(R(90, 300)), h = snap(R(70, 240));
+    const x = snap(R(-60, PORT_W)), y = snap(R(0, GND_H));
+    /* 네모 하나로는 밭처럼 안 보인다 — 세 조각을 겹쳐 모서리를 흐트러뜨린다 */
+    gndRect(c, x, y, w, h);
+    gndRect(c, x + snap(w*0.3), y - snap(h*0.35), snap(w*0.6), snap(h*0.5));
+    gndRect(c, x - snap(w*0.2), y + snap(h*0.6),  snap(w*0.7), snap(h*0.45));
+  }
+
+  /* ② 밭뙈기 — 위에서 보면 땅은 네모로 갈라져 있다 */
+  for(let i=0;i<34;i++){
+    c.fillStyle = mixHex(alt, '#ffffff', R(0.02, 0.20));
+    gndRect(c, snap(R(0, PORT_W)), snap(R(0, GND_H)), snap(R(40, 130)), snap(R(30, 90)));
+  }
+
+  /* ③ 강 — 위아래로 이어져야 하므로 **정수 개의 물결**로 흔든다 */
+  {
+    const water = mixHex(far, '#1a3a6a', 0.55);
+    const edge  = mixHex(water, '#ffffff', 0.22);
+    const cx0 = R(0.25, 0.75)*PORT_W, per = 2 + ((rnd()*2)|0), amp = R(70, 150);
+    const wide = R(26, 54);
+    for(let y=0; y<GND_H; y+=PX){
+      const x = cx0 + Math.sin(y/GND_H*Math.PI*2*per)*amp
+                    + Math.sin(y/GND_H*Math.PI*2*per*2 + 1.1)*amp*0.28;
+      const w = wide + Math.sin(y/GND_H*Math.PI*2*3)*6;
+      c.fillStyle = edge;  c.fillRect(snap(x - w/2 - PX*2), y, snap(w + PX*4), PX);
+      c.fillStyle = water; c.fillRect(snap(x - w/2), y, snap(w), PX);
+    }
+  }
+
+  /* ④ 길 — 강보다 가늘고 밝다. 강과 길이 같이 있으면 사람이 사는 땅으로 읽힌다 */
+  {
+    const road = mixHex(base, '#ffffff', 0.34);
+    const cx0 = R(0, 1)*PORT_W, per = 1 + ((rnd()*3)|0), amp = R(40, 190);
+    for(let y=0; y<GND_H; y+=PX){
+      const x = cx0 + Math.sin(y/GND_H*Math.PI*2*per + 2.2)*amp;
+      c.fillStyle = road;
+      c.fillRect(snap(((x % PORT_W) + PORT_W) % PORT_W), y, PX*2, PX);
+    }
+  }
+
+  /* ⑤ 숲덤불과 바위 — 뭉쳐서 놓아야 덤불로 보인다. 하나씩 흩으면 먼지다 */
+  const dark = mixHex(feat, '#000000', 0.40);
+  for(let i=0;i<58;i++){
+    const gx = R(0, PORT_W), gy = R(0, GND_H), n = 3 + ((rnd()*7)|0), sp = R(14, 34);
+    for(let k=0;k<n;k++){
+      const x = gx + R(-sp, sp), y = gy + R(-sp, sp), s = snap(R(PX*2, PX*5));
+      c.fillStyle = dark; gndRect(c, x, y + PX, s, s);
+      c.fillStyle = feat; gndRect(c, x, y, s, s);
+    }
+  }
+  cv._seed = seed;
+  return cv;
+}
+
+/** 하늘 띠 — 판의 하늘색을 지평선 높이(384)에 맞춰 압축해 굽는다 */
+function buildPortSky(stops){
+  const { cv, c } = makeCanvas(PORT_W, PORT_HZ);
+  stops = stops || SKY_TITLE;
+  for(let y=0; y<PORT_HZ; y+=PX){
+    c.fillStyle = rampColor(stops, y/(PORT_HZ-PX));
+    c.fillRect(0, y, PORT_W, PX);
+  }
+  return cv;
+}
+
 function blitRidge(ctx, img, x){
   const t = img._top || 0, hh = GAME_H - t;
   if(hh <= 0) return;
@@ -6743,6 +6896,23 @@ class GameScene extends Scene {
     this.weather = st.fx ? new Weather(st.fx, sd) : null;
     this.offFar = 0; this.offMid = 0; this.offNear = 0; this.offFg = 0;
     this.scrollK = 1; this.camLead = 0;
+    /**
+     * ★ 세로 배경 (2026-08-27). 판마다 새로 굽는다.
+     * 굽는 것은 **처음 세로로 그릴 때**다 — 가로로만 하는 사람에게 720x1280
+     * 캔버스 두 장을 미리 만들어 안기는 것은 낭비다.
+     */
+    this.pSky = null; this.pGnd = null; this.pMark = null;
+    this.offGnd = 0;
+    this.camSide = 0;                 // 좌우로 움직일 때 지평선이 따라 흐르는 양
+    this.pclouds = [];                // 세로용 구름 (아래로 흐른다)
+    for(let i=0;i<9;i++)
+      this.pclouds.push({ x:snap(Math.random()*PORT_W), y:snap(Math.random()*PORT_H),
+                          w:snap(60+Math.random()*130), h:snap(16+Math.random()*26),
+                          sp:70+Math.random()*150, a:0.16+Math.random()*0.22 });
+    this.plines = [];                 // 세로용 속도선
+    for(let i=0;i<26;i++)
+      this.plines.push({ x:snap(Math.random()*PORT_W), y:snap(Math.random()*PORT_H),
+                         len:snap(30+Math.random()*90), sp:600+Math.random()*700 });
 
     // --- 플레이어 ---
     // 파이어 레벨은 절대 저장하지 않는다. 컨티뉴로 이어받을 때만 유지된다.
@@ -8135,6 +8305,21 @@ class GameScene extends Scene {
     this.offMid  = (this.offMid  +  330*K*dt) % GAME_W;
     this.offNear = (this.offNear +  700*K*dt) % GAME_W;
     this.offFg   = (this.offFg   + 1350*K*dt) % GAME_W;
+    /* ★ 세로 배경도 같은 K 로 흐른다 — 가로와 세로의 체감 속도가 달라지면 안 된다 */
+    this.offGnd = (this.offGnd + 700*K*dt) % GND_H;
+    {
+      /* 좌우로 움직이면 지평선이 반대로 흐른다. 세로에서 "좌우" 는 판의 y 다 */
+      const side = clamp(this.p1.vy / PLAYER.SPEED, -1, 1);
+      this.camSide += (side*90 - this.camSide) * Math.min(1, 5*dt);
+      for(const cl of this.pclouds){
+        cl.y += cl.sp*K*dt;
+        if(cl.y > PORT_H + 20){ cl.y = -40 - Math.random()*200; cl.x = snap(Math.random()*PORT_W); }
+      }
+      for(const l of this.plines){
+        l.y += l.sp*K*dt;
+        if(l.y > PORT_H + 20){ l.y = -l.len - Math.random()*300; l.x = snap(Math.random()*PORT_W); }
+      }
+    }
     for(const cl of this.clouds){
       cl.x -= cl.sp*K*dt;
       if(cl.x + cl.w < -20){ cl.x = GAME_W + Math.random()*260; cl.y = snap(40 + Math.random()*380); }
@@ -8260,7 +8445,96 @@ class GameScene extends Scene {
     Particles.spawn(p.x, p.y, 18, { spd:340, life:0.5, pal:['#fff','#ff9a5a','#ff4d5a','#8f1230'] });
   }
 
+  /**
+   * ★★ **세로 배경을 화면 좌표로 그린다.** (2026-08-27)
+   *
+   * 판 변환을 **풀고** 그린다. 배경은 판 위의 물건이 아니라 **창밖 풍경**이라
+   * 판과 같이 돌면 안 된다 — 돌리면 능선이 화면 오른쪽에 세로로 선다.
+   *
+   * 그리는 순서는 먼 것부터다: 하늘 → 지평선 능선/랜드마크 → 아지랑이 →
+   * 땅 → 구름(그림자와 함께) → 속도선.
+   */
+  renderBgPortrait(ctx){
+    const st = this.theme, sd = 1000 + this.stage*17;
+    if(!this.pSky) this.pSky = buildPortSky(st.sky);
+    if(!this.pGnd) this.pGnd = buildGround(sd, st);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(this.pSky, 0, 0);
+
+    /* ── 땅 : 아래로 흐른다. 두 장을 이어 붙여 이음새를 없앤다 ── */
+    const gy = ((this.offGnd % GND_H) + GND_H) % GND_H;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, PORT_HZ, PORT_W, PORT_H - PORT_HZ); ctx.clip();
+    ctx.drawImage(this.pGnd, 0, snap(gy - GND_H));
+    ctx.drawImage(this.pGnd, 0, snap(gy));
+    /* 저 멀리는 흐리다 — 지평선 쪽으로 갈수록 하늘색이 섞인다 */
+    const hz = ctx.createLinearGradient(0, PORT_HZ, 0, PORT_HZ + 240);
+    const hazeC = rampColor(st.sky || SKY_TITLE, 1);
+    hz.addColorStop(0, hazeC); hz.addColorStop(1, hazeC + '00');
+    ctx.globalAlpha = 0.55; ctx.fillStyle = hz;
+    ctx.fillRect(0, PORT_HZ, PORT_W, 240); ctx.globalAlpha = 1;
+    ctx.restore();
+
+    /* ── 지평선 : 먼 능선을 **선 위에만** 남긴다 ── */
+    const ridge = this.far || this.mid || this.near;
+    if(ridge){
+      const L = st.layers.find(l => l.c) || { b: 620 };
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, PORT_W, PORT_HZ + PX); ctx.clip();
+      const dy = PORT_HZ - L.b;
+      const hx = -snap(((this.offFar*0.5 + this.camSide*0.4) % GAME_W + GAME_W) % GAME_W);
+      ctx.globalAlpha = 0.62;
+      ctx.drawImage(ridge, hx, dy); ctx.drawImage(ridge, hx + GAME_W, dy);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+    /* ── 판의 상징물은 **지평선 위에** 세운다 ──
+       위에서 내려다본 땅에 옆모습 피라미드를 눕히면 어색하다.
+       저 멀리 지평선에 실루엣으로 서 있는 것이 시점에 맞는다. */
+    const mk = st.mark;
+    if(mk){
+      if(!this.pMark){
+        const made = makeCanvas(PORT_W, PORT_HZ + 8);
+        drawLandmark(made.c, mk.s, snap(PORT_W*mk.x), PORT_HZ + 2,
+                     snap(mk.w*0.62), snap(mk.h*0.62), mixHex(mk.c, '#000000', 0.30), sd);
+        this.pMark = made.cv;
+      }
+      const mx = -snap(((this.offFar*0.5 + this.camSide*0.4) % PORT_W + PORT_W) % PORT_W);
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(this.pMark, mx, 0); ctx.drawImage(this.pMark, mx + PORT_W, 0);
+      ctx.globalAlpha = 1;
+    }
+    /* 지평선 자리에 얇은 빛줄 — 하늘과 땅의 경계를 못 박는다 */
+    ctx.globalAlpha = 0.5; ctx.fillStyle = st.line || '#ffffff';
+    ctx.fillRect(0, PORT_HZ - PX, PORT_W, PX); ctx.globalAlpha = 1;
+
+    /* ── 구름 : 내가 **위를 난다.** 구름 밑에 그림자가 같이 흐른다 ── */
+    for(const cl of this.pclouds){
+      const x = snap(cl.x), y = snap(cl.y);
+      if(y > PORT_HZ){
+        ctx.globalAlpha = 0.20; ctx.fillStyle = '#000000';
+        ctx.fillRect(x + PX*5, y + PX*6, cl.w, cl.h);
+      }
+      ctx.globalAlpha = cl.a; ctx.fillStyle = st.cloud || '#ffffff';
+      ctx.fillRect(x, y, cl.w, cl.h);
+      ctx.fillRect(x + snap(cl.w*0.22), y - PX*2, snap(cl.w*0.5), PX*2);
+      ctx.fillRect(x - PX*2, y + cl.h, snap(cl.w*0.66), PX*2);
+    }
+    ctx.globalAlpha = 1;
+
+    /* ── 속도선 : 세로로 흐른다. 빨리 갈수록 길고 진하다 ── */
+    const sk = clamp((this.scrollK - 0.6) / 1.1, 0, 1);
+    ctx.globalAlpha = 0.14 + sk*0.30; ctx.fillStyle = st.line;
+    for(const l of this.plines)
+      ctx.fillRect(snap(l.x), snap(l.y), PX, snap(l.len*(0.6 + sk*0.9)));
+    ctx.globalAlpha = 1;
+
+    setWorldTransform(ctx);
+    if(this.weather) this.weather.renderBack(ctx);
+  }
   render(ctx){
+    if(portrait){ this.renderBgPortrait(ctx); this.renderWorld(ctx); return; }
     ctx.drawImage(this.sky, 0, 0);
     if(this.weather) this.weather.renderBack(ctx);
     for(const cl of this.clouds){
@@ -8283,7 +8557,10 @@ class GameScene extends Scene {
     ctx.globalAlpha = 0.14 + sk*0.30; ctx.fillStyle = this.theme.line;
     for(const l of this.lines) ctx.fillRect(snap(l.x), l.y, snap(l.len*(0.6 + sk*0.9)), PX);
     ctx.globalAlpha = 1;
-
+    this.renderWorld(ctx);
+  }
+  /** 판 위의 물건들 — 가로든 세로든 똑같다 (세로면 이미 90도 돌아 있다) */
+  renderWorld(ctx){
     ctx.save();
     ctx.translate(Shake.x, Shake.y);
     for(const e of this.enemies)   e.render(ctx);
@@ -8349,8 +8626,11 @@ class GameScene extends Scene {
     ctx.restore();
     Flash.render(ctx);
 
-    const fgx = -snap(((this.offFg + this.camLead*1.6) % GAME_W + GAME_W) % GAME_W);
-    if(this.fg){ blitRidge(ctx, this.fg, fgx); blitRidge(ctx, this.fg, fgx + GAME_W); }
+    /* 앞겹 능선은 **옆에서 본 그림**이라 세로에서는 안 그린다 */
+    if(!portrait && this.fg){
+      const fgx = -snap(((this.offFg + this.camLead*1.6) % GAME_W + GAME_W) % GAME_W);
+      blitRidge(ctx, this.fg, fgx); blitRidge(ctx, this.fg, fgx + GAME_W);
+    }
     if(this.weather) this.weather.renderFront(ctx);
     for(const r of this.roars) r.render(ctx);
 
@@ -9884,9 +10164,6 @@ let rafId = 0;
  * 손가락 좌표는 **거꾸로** 풀어야 한다(`toGame`). 그리고 글자와 HUD 는
  * 같이 돌면 안 되므로 **돌리기 전 화면 좌표**로 따로 그린다.
  */
-const PORT_W = GAME_H, PORT_H = GAME_W;      // 세로 캔버스 720 x 1280
-/** 지금 세로로 도는가 */
-let portrait = false;
 /**
  * **UI 좌표계** — 화면 그대로다 (가로 1280x720 / 세로 720x1280).
  *
