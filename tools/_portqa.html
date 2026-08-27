@@ -22,8 +22,12 @@ const host = document.getElementById('host');
 const DT = 1/60;
 let fails = 0;
 const check = (ok, msg) => { if(!ok){ fails++; say('  X ' + msg); } else say('  o ' + msg); };
-/** 게임 안 `timeBar()` 와 같은 값 — 밖에서는 못 부르므로 여기 적어 둔다 */
-const timeBarOf = () => ({ x:20, y:14, w:680, h:22 });
+/**
+ * ★ 자리는 **게임에게 물어본다** (2026-08-27).
+ * 여기 베껴 두면 게임에서 자리를 옮길 때마다 검사가 조용히 낡는다 —
+ * 실제로 시간 막대를 14 에서 44 로 내렸더니 옛 자리를 눌러 보고 "안 멈춘다" 고 했다.
+ */
+const timeBarOf = (T) => T.layout.timeBar;
 
 /**
  * 방향을 바꾼다.
@@ -122,8 +126,11 @@ say('=== 0. 기본값 ===');
   const sc = T.scene0();
   const o = sc.orientRect(), f = sc.fsRect();
   check(o.x + o.w <= f.x, '방향 단추가 전체화면 단추 왼쪽에 있다');
-  const tb = timeBarOf(sc);
-  check(o.y >= tb.y + tb.h, '두 단추가 시간 막대와 안 겹친다');
+  const tb = timeBarOf(T);
+  /* 막대와 단추는 **같은 줄에 나란히** 선다 — 겹치지만 않으면 된다 */
+  const 겹침 = o.x < tb.x + tb.w && o.x + o.w > tb.x
+             && o.y < tb.y + tb.h && o.y + o.h > tb.y;
+  check(!겹침, '두 단추가 시간 막대와 안 겹친다');
   DR.unmount(); host.innerHTML = '';
 }
 show();
@@ -185,8 +192,8 @@ say('=== 4. 손가락 좌표 ===');
   };
 
   /* 시간 막대를 누르면 일시정지 */
-  const tb = { x: 360, y: 25 };
-  tap(tb.x, tb.y);
+  const bar = T.layout.timeBar;
+  tap(bar.x + bar.w/2, bar.y + bar.h/2);
   check(sc.state === 'pause', '시간 막대를 누르면 멈춘다 (지금 ' + sc.state + ')');
 
   /* 일시정지 메뉴의 두 번째 칸 */

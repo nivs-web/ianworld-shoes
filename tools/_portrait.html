@@ -5,7 +5,11 @@
 <script type="module">
 /** 세로 모드를 눈으로 확인하는 자리. 게임을 실제로 띄우고 몇 초 돌린다. */
 import * as DR from '/src/games/dragon/dragon.js';
-DR.mount(document.getElementById('host'), { onExit(){}, onEnd(){}, difficulty:'normal' });
+const MODE = new URLSearchParams(location.search).get('mode') || 'play';
+DR.mount(document.getElementById('host'),
+  { onExit(){}, onEnd(){}, onProgress(){}, difficulty:'normal', mode: MODE, code: 'TEST' });
+/** 결투 비교판을 보려면 상대가 있어야 한다 — 가짜 상대를 하나 넣는다 */
+window.__peer = (o) => DR.setDuelPeer(o);
 const T = DR.__test;
 window.__T = T; window.__DR = DR;
 window.__toGame = (n) => { for(let i=0;i<400 && T.scene!=='GameScene';i++){ T.press('confirm'); T.pump(1/60); }

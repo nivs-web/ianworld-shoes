@@ -6448,8 +6448,9 @@ class Director {
      * 한 마리를 무너뜨리면 잠깐 숨 돌릴 틈을 주고 **더 센 놈**이 올라온다.
      * 세기는 스테이지 값으로 매긴다 — 이미 있는 눈금을 다시 만들 이유가 없다.
      */
-    this.duelN = 0;                    // 지금까지 내보낸 보스 수
-    this.duelWait = duel ? 2.5 : 0;    // 다음 보스까지 남은 시간
+    this.duelN = 0;                    // 지금까지 내보낸 물결 수
+    /* 첫 물결까지 20초 — 그동안은 잡몹만 (사용자 지정) */
+    this.duelWait = duel ? DUEL.OPEN : 0;
   }
   update(dt){
     this.t += dt;
@@ -6482,9 +6483,17 @@ class Director {
     }
   }
   /**
-   * 결투의 진행.
-   * 보스가 없으면 다음 놈을 부르고, 그 사이사이 잡몹이 계속 흘러들어온다 —
-   * 보스만 덩그러니 있으면 300초가 지루하다.
+   * ★★ **결투의 진행 — 물결 하나씩.** (2026-08-27, 사용자 지정)
+   *
+   *     0~20초   잡몹만
+   *     20초     물결 1 (중간보스 1)
+   *     쓸어내면 15초 잡몹 -> 물결 2 (최종보스 1)
+   *     쓸어내면 15초 잡몹 -> 물결 3 (중간보스 2)
+   *     ...
+   *
+   * 다음 물결은 **앞 물결을 다 쓸어낸 뒤**에만 온다. 시간으로만 밀면 못 잡은
+   * 보스가 쌓여서 어느 순간 감당이 안 되는데, 그건 어려운 것이 아니라 불공평한 것이다.
+   * 대신 **틈이 15초로 짧아서** 숨 돌릴 새가 없다.
    */
   updateDuel(dt){
     const s = this.s;
@@ -6492,29 +6501,39 @@ class Director {
 
     if(!bossAlive){
       this.duelWait -= dt;
-      if(this.duelWait <= 0 && this.duelN < DUEL.BOSSES){
+      if(this.duelWait <= 0){
+        const w = duelWave(this.duelN);
         this.duelN++;
-        const st = DUEL.bossStage(this.duelN);
-        this.stage = st;
-        CUR_STAGE = st;                       // 적 생성자가 이 값을 본다
-        /* 홀수 번째는 기사, 짝수 번째는 최종보스형 — 열 마리가 다 같으면 지겹다 */
-        const b = (this.duelN % 2 === 1)
-          ? new MidBoss(st, s.p1.level)
-          : new Boss(st, s.p1.level);
-        s.enemies.push(b); s.boss = b;
+        this.stage = w.tier;
+        CUR_STAGE = w.tier;                     // 적 생성자가 이 값을 본다
+        for(let k=0;k<w.n;k++){
+          const b = w.kind === 'mid' ? new MidBoss(w.tier, s.p1.level)
+                                     : new Boss(w.tier, s.p1.level);
+          /* 여럿이면 세로로 벌려 놓는다 — 겹쳐 나오면 한 마리로 보인다 */
+          if(w.n > 1) b.y = clamp(GAME_H*(k + 1)/(w.n + 1), 120, GAME_H - 120);
+          s.enemies.push(b);
+          if(k === 0) s.boss = b;
+        }
         s.bossBannerT = 2.2;
         s.duelBossNo = this.duelN;
+        s.duelWaveLeft = w.n;                   // 이 물결에서 남은 보스 수
         Shake.add(6, 0.4); SND.sfx('warn');
       }
     }else{
-      this.duelWait = 2.5;                    // 다음 놈까지의 틈
+      this.duelWait = DUEL.GAP;                 // 다음 물결까지의 틈
     }
 
-    /* 잡몹 보충 — 보스전 사이의 빈 시간을 채운다 */
+    /**
+     * 잡몹은 **쉬지 않고** 들어온다. 보스가 없는 틈도, 보스전 중에도.
+     * ★ 물결이 오를수록 빨라진다 (2026-08-27) — 보스만 세지면 "큰 놈 하나"
+     *   가 되고, 그건 어렵다기보다 지루하다. 사방이 차 오르는 압박이 있어야
+     *   "1분 넘게는 못 버틴다" 가 된다.
+     */
     this.addT -= dt;
     if(this.addT <= 0){
-      this.addT = BOSS_ADD_INTERVAL;
-      this.spawnGroup(Math.random() < 0.7 ? 'zombie' : 'rider', Math.random() < 0.5 ? 2 : 3);
+      this.addT = Math.max(0.55, BOSS_ADD_INTERVAL - this.duelN * 0.30);
+      this.spawnGroup(Math.random() < 0.65 ? 'zombie' : 'rider',
+                      3 + Math.min(5, this.duelN));
     }
   }
 
@@ -7883,17 +7902,69 @@ const COIN_PER_ARC  = 6;            // 한 뭉치에 몇 개
  * "누가 오래 버티나" 가 되어 300초 제한이 무의미해진다.
  */
 const DUEL = {
-  TIME: 300,            // 한 판 300초
-  LIVES: 5,             // 하트 다섯 고정 (아이템으로 안 늘어난다)
-  BOSSES: 10,           // 보스 열 마리
+  /**
+   * ★★ **결투는 한 판짜리 생존전이다.** (2026-08-27, 사용자 지정)
+   *
+   * *"게임은 20개 스테이지가 아니라 단 1개의 스테이지로 구성해 (...)
+   *   1분정도는 버틸 수 있어도, 그 이상 버티지 못하게 어려운 난이도로"*
+   *
+   * 스무 판을 도는 싱글과 달리 결투는 **한 자리에서 끝까지 버티는** 게임이다.
+   * 무대는 하나, 대신 밀려오는 것이 계속 커진다.
+   */
+  TIME: 160,            // 게이지가 다 되면 그냥 끝난다. 대개 그 전에 죽는다
+  /**
+   * ★ **하트 셋.** (2026-08-27)
+   * 다섯이면 몸으로 밀고 들어가도 160초가 그냥 간다 — 실제로 봇이 150초를
+   * 버텼다. 셋이면 한 번 실수가 곧바로 무겁고, *"1분 넘게는 못 버틴다"* 가 된다.
+   */
+  LIVES: 3,
   DIFFICULTY: 'hard',   // 어려움 고정 — 둘이 같은 조건이어야 겨루기가 된다
-  /** 보스 n(1부터) 이 몇 스테이지짜리 세기인가. 열째가 20스테이지 보스만큼 세다 */
-  bossStage: (n) => Math.min(20, n * 2),
+  /** 결투가 서는 무대. 한 판이므로 하나로 못 박는다 */
+  STAGE: 9,
+  /** 처음 잡몹만 나오는 시간 */
+  OPEN: 20,
+  /** 보스와 보스 사이, 잡몹이 밀려드는 시간 */
+  GAP: 15,
   /** 죽으면 점수를 이만큼 잃는다 — 뺏기는 게 아니라 사라진다 */
   DEATH_PENALTY: 0.20,
   /** 보스 하나를 무너뜨릴 때마다 받는 몫 */
   BOSS_SCORE: 30,          // 점수 눈금(1/100)에 맞춘 값
 };
+
+/**
+ * ★★ **결투의 보스 사다리.** (2026-08-27, 사용자 지정)
+ *
+ * *"20초 지나면 중간보스1마리 등장, 중간보스 없애면 15초동안 일반 악당 등장 >
+ *   최종보스1마리 등장 > (...) > 중간보스2마리등장 > (...) > 더 큰 최종보스 >
+ *   (...) > 중간보스 3마리 > (...) > 최종보스 2마리 > 이런식으로 조금씩 보스가
+ *   커지거나, 양이 많아지거나, 더 강해지는거야"*
+ *
+ * 한 줄이 한 물결이다. `kind` 는 어느 놈이고, `n` 은 몇 마리고, `tier` 는 세기다.
+ * 세기는 **스테이지 눈금**으로 매긴다 — 이미 있는 저울을 다시 만들 이유가 없다.
+ *
+ * 표가 끝나면 **마지막 줄을 되풀이하되 한 칸씩 세진다.** 160초를 다 버티는
+ * 사람이 나오면 그때는 표를 늘리는 것이 아니라 저절로 감당이 안 되어야 한다.
+ */
+const DUEL_LADDER = [
+  { kind: 'mid',  n: 1, tier: 11 },   // 20초 뒤 — 첫 중간보스 하나
+  { kind: 'boss', n: 1, tier: 14 },   // 최종보스 하나
+  { kind: 'mid',  n: 2, tier: 16 },   // 중간보스 둘
+  { kind: 'boss', n: 1, tier: 18 },   // 더 큰 최종보스
+  { kind: 'mid',  n: 3, tier: 20 },   // 중간보스 셋
+  { kind: 'boss', n: 2, tier: 20 },   // 최종보스 둘
+  { kind: 'mid',  n: 4, tier: 20 },   // 중간보스 넷
+  { kind: 'boss', n: 2, tier: 20 },   // 최종보스 둘 — 여기부터는 되풀이하며 세진다
+];
+/**
+ * n 번째(0부터) 물결.
+ * 표를 넘어가면 마지막 줄을 되풀이하되 **마릿수가 한 마리씩 는다** —
+ * 표를 무한히 적는 대신 규칙 하나로 끝을 없앤다.
+ */
+function duelWave(i){
+  const last = DUEL_LADDER[DUEL_LADDER.length - 1];
+  if(i < DUEL_LADDER.length) return DUEL_LADDER[i];
+  return { kind: last.kind, n: last.n + (i - DUEL_LADDER.length + 1), tier: 20 };
+}
 
 /**
  * ★ **금화로 사는 컨티뉴.** (2026-08-26)
@@ -7944,8 +8015,24 @@ function timeBar(){
   const w = Math.min(480, UIW - 300);
   return { x: Math.round(UIW/2 - w/2), y: 16, w, h: 26 };
 }
-/** 점수판이 시작하는 높이 */
-const hudTop = () => portrait ? PORT_PANEL_Y : 20;
+/**
+ * ★★ **결투 비교판이 서는 높이.** (2026-08-27, 사용자 지정)
+ * 시간 게이지 바로 아래, 화면 맨 위쪽이다 — *"꼭 화면 상단에"*.
+ */
+const duelHudTop = () => portrait ? PORT_BAR_Y + 48 : 52;
+/**
+ * 점수판이 시작하는 높이.
+ *
+ * ★ 결투의 **세로**에서는 비교판 아래로 내린다 (2026-08-27). 세로는 폭이
+ *   720 뿐이라 왼쪽 위 점수판과 가운데 비교판이 가로로 겹친다.
+ *   가로는 폭이 넉넉해 나란히 서므로 그대로 둔다.
+ */
+const hudTop = () => {
+  if(!portrait) return 20;
+  return DUEL_ON ? duelHudTop() + 150 : PORT_PANEL_Y;
+};
+/** 지금 결투 중인가 — 자리를 정하는 함수들이 씬을 모르므로 여기에 둔다 */
+let DUEL_ON = false;
 /** 오른쪽 위 단추 두 개(전체화면·방향)의 높이 — 막대와 같은 줄에 선다 */
 const btnTopY = () => portrait ? PORT_BAR_Y - 11 : FS_BTN.pad;
 /** 스테이지 이름 띠의 높이 — 세로에서는 **맨 위**다 */
@@ -8265,6 +8352,7 @@ class GameScene extends Scene {
     this.endReason = ''; this.bonus = 0;
     this.duelBossKills = 0;           // 무너뜨린 보스 수 (결투 점수의 뼈대)
     if(this.duel) resetDuelPeer();    // 지난 판의 "죽었다" 가 남으면 곧바로 끝나 버린다
+    DUEL_ON = !!this.duel;            // 자리를 정하는 함수들이 이 값을 본다
     /* 이어하기로 들어왔으면 몇 번 썼는지 이어받는다 (한 판에 두 번까지) */
     this.continuesUsed = (this.carry && this.carry.continues) | 0;
     this.runEnded = false;      // 이 판의 끝을 이미 알렸는가
@@ -8399,7 +8487,7 @@ class GameScene extends Scene {
       this.duelBossKills++;
       /* 보스는 결투 점수의 뼈대다 — 잡몹만 잡아서는 이길 수 없어야 한다 */
       this.addScore(DUEL.BOSS_SCORE, 1);
-      Popups.add(GAME_W/2, 220, '보스 ' + this.duelBossKills + ' / ' + DUEL.BOSSES,
+      Popups.add(GAME_W/2, 220, '보스 ' + this.duelBossKills + '마리 격파',
                  PAL.gold, 5, true);
     }
     const big = !(b instanceof MidBoss);
@@ -8586,7 +8674,13 @@ class GameScene extends Scene {
     if(kind !== 'clear' || this.stage >= 20) this.runEnded = true;
     DG.onFinish({
       duel: !!this.duel,
-      bosses: this.duelBossKills | 0,
+      /**
+       * ★ 방 규칙의 상한이 10 이라 **넘기면 쓰기가 통째로 거부된다** (2026-08-27).
+       * 사다리가 끝없어졌으므로 넘길 수 있다. 승패를 가르는 값도 아니므로
+       * (지금은 생존 -> 금화) 여기서 잘라 낸다 — 표시용 숫자 하나 때문에
+       * 점수·금화가 통째로 안 올라가면 안 된다.
+       */
+      bosses: Math.min(10, this.duelBossKills | 0),
       score: this.p1.score,
       total: this.score,
       stage: kind === 'clear' ? this.stage : Math.max(0, this.stage - 1),
@@ -9269,7 +9363,7 @@ class GameScene extends Scene {
       if(this.duelPushT <= 0){
         this.duelPushT = 1.0;
         DG.onProgress({ score: this.p1.score, coins: RUN.coins,
-                        bosses: this.duelBossKills, alive: !this.p1.out,
+                        bosses: Math.min(10, this.duelBossKills), alive: !this.p1.out,
                         timeLeft: Math.max(0, Math.round(this.timeLeft)) });
       }
       /**
@@ -9696,7 +9790,7 @@ class GameScene extends Scene {
          */
         if(this.duel && p.pid === 1)
           DG.onProgress({ score: p.score, coins: RUN.coins,
-                          bosses: this.duelBossKills, alive: false, now: true });
+                          bosses: Math.min(10, this.duelBossKills), alive: false, now: true });
         if(this.players().length === 0){ this.finish('over', 'GAME OVER'); }
         return;
       }
@@ -10183,6 +10277,180 @@ class GameScene extends Scene {
       ctx.restore();
     }
   }
+  /**
+   * =========================================================================
+   * 결투 비교판 — **내가 이기고 있나 지고 있나**를 한눈에.
+   * =========================================================================
+   *
+   * (2026-08-27, 사용자 지정)
+   *
+   * *"내금화0 vs 상대금화0 이라고 써 있고 네모난사각박스에 본인 드래곤 캐릭터
+   *   이미지를 넣어 (...) 내 캐릭터는 빨간 박스 테두리 / 상대 캐릭터는 파란 박스
+   *   테두리 (...) 승리중인 캐릭터가 박스크기가 1.3배 정도 크게 (...) 양쪽이
+   *   왔다갔다하며 서로 경쟁하면 오, 내가 이기고 있다, 에이 내가 지고 있네,
+   *   이걸 한눈에 알 수 있도록"*
+   *
+   * ## 짜임
+   *
+   *     [내 용]  내 금화 000   vs   000 상대 금화  [상대 용]
+   *              [========= 막대 =========]
+   *                    1등 유지중
+   *
+   * ## 무엇으로 "이기고 있다" 를 말하는가
+   *
+   * 같은 사실을 **네 가지 방식으로 동시에** 말한다. 싸우는 중에는 화면을
+   * 뜯어볼 겨를이 없으므로, 곁눈질 한 번에 들어와야 한다.
+   *
+   *   1. 박스 크기   이기는 쪽이 1.3배 (가장 먼저 눈에 띈다)
+   *   2. 숫자 크기   이기는 쪽이 한 단계 크다
+   *   3. 막대        이기는 쪽이 더 차 있다
+   *   4. 한 줄 문구  "1등 유지중" / "금화 N개 차이로 패배하고 있음"
+   *
+   * 넷이 **같은 방향을 가리키므로** 무엇을 봐도 답이 같다. 하나만 두면
+   * 못 보고 지나치고, 서로 다른 것을 가리키면 헷갈린다.
+   *
+   * ## 자리
+   *
+   * 세로는 폭이 720 뿐이라 점수판(왼쪽 위)과 가로로 겹친다. 그래서 결투에서는
+   * 비교판을 맨 위에 두고 **점수판을 그 아래로 내린다**(`hudTop`).
+   * 가로는 폭이 넉넉해 점수판 옆에 나란히 선다.
+   */
+  duelBoxSize(win){
+    const base = portrait ? 62 : 66;
+    return Math.round(base * (win ? 1.3 : 1));
+  }
+  /** 비교판이 차지하는 세로 구간 — 점수판이 이 아래에서 시작한다 */
+  duelPanelBottom(){ return duelHudTop() + (portrait ? 150 : 142); }
+  /**
+   * ★ **결투 화면의 위쪽은 한 줄로 쌓는다.** (2026-08-27)
+   *
+   *     세로                        가로
+   *     ────────────────────        ────────────────────
+   *      14 시간 게이지              16 시간 게이지
+   *      92 비교판                   52 비교판 (가운데)
+   *     242 점수판                   20 점수판 (왼쪽, 비교판과 x 가 다르다)
+   *     392 보스 체력바             212 보스 체력바
+   *
+   * 각자 제 자리에 박아 두면 하나를 옮길 때마다 다른 것이 겹친다 —
+   * 실제로 보스 체력바가 비교판을, 점수판이 보스 체력바를 덮었다.
+   * **앞의 것이 끝나는 자리에서 다음 것이 시작하도록** 이어 붙인다.
+   */
+  duelBossBarY(){
+    if(!this.duel) return 110;
+    return portrait ? hudTop() + 150 : 212;
+  }
+
+  renderDuelHud(ctx){
+    const mine = RUN.coins | 0;
+    const foe  = PEER.coins | 0;
+    const iWin = mine >= foe;
+    const top  = duelHudTop();
+    const cx   = uiCx();
+
+    /**
+     * ── 바탕판 ──
+     * ★ 이게 없으면 **글자가 배경에 묻힌다** (2026-08-27). 판 위로는 불줄기와
+     *   금화가 지나가고 땅빛도 밝아서, 검은 외곽선만으로는 안 읽힌다.
+     *   HUD 는 언제 봐도 읽혀야 하므로 제 바탕을 들고 있어야 한다.
+     */
+    /**
+     * ★ 가로에서는 **가운데로 모은다** (2026-08-27). 화면 폭을 다 쓰면
+     *   왼쪽 위 점수판을 덮는다 — 세로는 점수판이 아래로 내려가 있어 괜찮다.
+     */
+    const half = portrait ? (UIW/2 - 12) : 400;
+    {
+      const h = portrait ? 148 : 140;
+      const px = Math.round(cx - half - 14), pw = Math.round((half + 14) * 2);
+      ctx.globalAlpha = 0.52;
+      ctx.fillStyle = '#07060f';
+      ctx.fillRect(px, top - 14, pw, h);
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = '#2a2440';
+      ctx.fillRect(px, top - 14, pw, PX);
+      ctx.fillRect(px, top - 14 + h - PX, pw, PX);
+      ctx.globalAlpha = 1;
+    }
+
+    /* ── 좌우 초상 박스 ──
+       바깥으로 벌려 놓아야 가운데 숫자가 널찍하다. 이긴 쪽이 커지므로
+       **바깥 모서리를 고정**하고 안쪽으로 자란다 — 안 그러면 화면을 넘어간다 */
+    const drawSide = (isMe) => {
+      const win  = isMe ? iWin : !iWin;
+      const sz   = this.duelBoxSize(win);
+      const col  = isMe ? '#ff4d5a' : '#4d9aff';        // 나는 빨강, 상대는 파랑
+      /* 바깥 모서리를 고정하고 **안쪽으로** 자란다 — 안 그러면 화면을 넘어간다 */
+      const x    = Math.round(isMe ? cx - half : cx + half - sz);
+      const y    = top + Math.round((this.duelBoxSize(true) - sz) / 2);
+      /* 박스 — 바탕, 테두리, 이긴 쪽은 테두리를 한 겹 더 두른다 */
+      ctx.fillStyle = '#0b0a16';
+      ctx.fillRect(x, y, sz, sz);
+      ctx.fillStyle = col;
+      const t = win ? PX*2 : PX;
+      ctx.fillRect(x, y, sz, t);
+      ctx.fillRect(x, y + sz - t, sz, t);
+      ctx.fillRect(x, y, t, sz);
+      ctx.fillRect(x + sz - t, y, t, sz);
+      /* 용 초상 — 박스 안에 맞춰 넣는다. 초상은 늘 **옆모습**이다 (`topArt` 주석) */
+      const idx = isMe ? (this.p1.dragonIdx | 0) : (PEER.dragon | 0);
+      const cell = (sz - PX*6) / 36;
+      const cv = dragonPortrait(idx, cell);
+      ctx.drawImage(cv, Math.round(x + (sz - cv.width)/2),
+                        Math.round(y + (sz - cv.height)/2));
+      /* 이긴 쪽 박스에는 작은 왕관 — 크기만으로는 1.3배가 긴가민가할 때가 있다 */
+      if(win){
+        ctx.fillStyle = PAL.gold;
+        for(let i=0;i<3;i++)
+          ctx.fillRect(x + Math.round(sz*0.28) + i*Math.round(sz*0.18), y - PX*4, PX*2, PX*4);
+        ctx.fillRect(x + Math.round(sz*0.24), y - PX*2, Math.round(sz*0.54), PX*2);
+      }
+      return { x, y, sz };
+    };
+    const meBox = drawSide(true);
+    const foBox = drawSide(false);
+
+    /* ── 가운데 숫자 ── 이기는 쪽이 한 단계 크다 */
+    const numY = top + 14;
+    const big = portrait ? 5 : 6, small = portrait ? 3 : 4;
+    /* 숫자 사이 — 'vs' 가 들어갈 만큼 벌린다. 붙여 두면 큰 숫자가 'vs' 를 먹는다 */
+    const gap = portrait ? 58 : 68;
+    drawText(ctx, String(mine), cx - gap, numY, iWin ? big : small,
+      { align:'right', color: iWin ? '#ff7a86' : '#9aa3c0', outline:PAL.outline, shadow:'#000' });
+    drawText(ctx, String(foe), cx + gap, numY, iWin ? small : big,
+      { align:'left', color: !iWin ? '#8fc0ff' : '#9aa3c0', outline:PAL.outline, shadow:'#000' });
+    ko(ctx, 'vs', cx, numY + 6, 2, { align:'center', color:'#6f7aa0' });
+    /* 숫자가 무엇인지 한 번은 적어 준다 — 처음 보는 사람은 모른다 */
+    ko(ctx, '내 금화', cx - gap, numY + 40, 2, { align:'right', color:'#8a93b8' });
+    ko(ctx, '상대 금화', cx + gap, numY + 40, 2, { align:'left', color:'#8a93b8' });
+
+    /* ── 막대 ── 두 사람의 몫을 폭으로 나눈다. 둘 다 0 이면 반반 */
+    const barW = Math.max(180, foBox.x - (meBox.x + meBox.sz) - 24);
+    const barX = Math.round(cx - barW/2);
+    const barY = top + (portrait ? 96 : 92);
+    const barH = 16;
+    const tot = mine + foe;
+    const k = tot > 0 ? mine / tot : 0.5;
+    ctx.fillStyle = '#0b0a16'; ctx.fillRect(barX - PX, barY - PX, barW + PX*2, barH + PX*2);
+    ctx.fillStyle = '#3b4a86'; ctx.fillRect(barX, barY, barW, barH);              // 상대 몫
+    ctx.fillStyle = '#c8324a'; ctx.fillRect(barX, barY, Math.round(barW*k), barH); // 내 몫
+    /* 한가운데 눈금 — 어디가 반인지 보여야 "앞서고 있다" 가 읽힌다 */
+    ctx.fillStyle = '#e8e2ff';
+    ctx.fillRect(Math.round(barX + barW/2) - PX, barY - PX*2, PX*2, barH + PX*4);
+
+    /* ── 한 줄 문구 ── */
+    const diff = Math.abs(mine - foe);
+    const msg = iWin ? '1등 유지중' : ('금화 ' + diff + '개 차이로 패배하고 있음');
+    ko(ctx, msg, cx, barY + barH + 12, 2,
+      { align:'center', color: iWin ? PAL.gold : '#ff7a86', outline:PAL.outline });
+
+    /* 상대가 아직 안 붙었으면 그렇다고 말한다 — 0 대 0 을 겨루는 중으로 오해한다 */
+    if(!PEER.seen)
+      ko(ctx, '상대를 기다리는 중', cx, barY + barH + 36, 2,
+        { align:'center', color:'#6f7aa0' });
+    else if(!PEER.alive)
+      ko(ctx, PEER.name + ' 탈락!', cx, barY + barH + 36, 2,
+        { align:'center', color:'#ff4d5a', outline:PAL.outline });
+  }
+
   renderHUD(ctx){
     // 1인 : 왼쪽 위 고정 / 2인 : 2P 왼쪽 위, 1P 오른쪽 위
     const LX = 24, RX = UIW - 240, TY = hudTop();
@@ -10200,8 +10468,13 @@ class GameScene extends Scene {
      * 하이픈으로 바꿨다 — 굳이 글꼴을 늘릴 이유가 없다.
      */
     /* ★ 한 단계 작게 (2026-08-27, 사용자 지정) */
-    ko(ctx, '스테이지' + this.stage + ' - ' + this.theme.n, uiCx(), hudBannerY(), 2,
-      { align:'center', color:'#cfe6ff' });
+    /* 결투는 무대가 하나뿐이라 이름을 알려 줄 것이 없다 — 그 자리를 비교판이 쓴다 */
+    if(!this.duel)
+      ko(ctx, '스테이지' + this.stage + ' - ' + this.theme.n, uiCx(), hudBannerY(), 2,
+        { align:'center', color:'#cfe6ff' });
+
+    /* ★ 결투 비교판 — 점수판보다 **먼저** 그린다 (2026-08-27, 사용자 지정) */
+    if(this.duel) this.renderDuelHud(ctx);
 
     /* 전체화면 단추와 방향 전환 단추 — 늘 같은 자리에 있어야 찾는다 */
     {
@@ -10230,7 +10503,9 @@ class GameScene extends Scene {
     if(!this.p2){
       /* 세로는 폭이 좁아 오른쪽 끝에 더 붙이고, 점수판 아래에서 시작한다 */
       const CX = portrait ? UIW - 96 : UIW - 150;
-      const CY = portrait ? hudBannerY() + 44 : 0;
+      /* ★ 결투에서는 비교판이 위쪽을 다 쓰므로 그 아래에서 시작한다 (2026-08-27) */
+      const CY = this.duel ? (this.duelPanelBottom() + 96 - 86)
+               : (portrait ? hudBannerY() + 44 : 0);
       if(this.chainT > 0 && this.killStreak >= 3){
         const mul = this.chainMul();
         const k = clamp(this.chainT / CHAIN_HOLD, 0, 1);
@@ -10315,8 +10590,10 @@ class GameScene extends Scene {
        * 가로에서는 적이 오른쪽에서 오므로 오른쪽 중간 그대로 둔다.
        * (스테이지 이름 띠 152 와 오른쪽 위 단추들 아래를 지나야 안 겹친다)
        */
+      /* ★ 결투에서는 위쪽을 비교판이 다 쓰므로 그 아래로 내린다 (2026-08-27) */
       if(portrait)
-        ko(ctx, this.formName + ' 대형', uiCx(), 200, 3,
+        ko(ctx, this.formName + ' 대형', uiCx(),
+          this.duel ? this.duelPanelBottom() + 18 : 200, 3,
           { align:'center', color:'#9fe8ff', outline:PAL.outline });
       else
         ko(ctx, this.formName + ' 대형', UIW - 30, UIH/2 - 12, 3,
@@ -10361,14 +10638,21 @@ class GameScene extends Scene {
       const pa = ctx.globalAlpha;
       ctx.globalAlpha = pa * Math.min(1, this.pickupT/0.4);
       /* ★ 5 → 3 (2026-08-27, 사용자 지정). `Popups` 와 다른 경로라 따로 남아 있었다 */
-      ko(ctx, this.pickupMsg, uiCx(), 200, 3,
+      ko(ctx, this.pickupMsg, uiCx(),
+        this.duel ? this.duelBossBarY() + 44 : 200, 3,
         { align:'center', color:PAL.gold, outline:PAL.outline });
       ctx.globalAlpha = pa;
     }
 
     const b = this.boss;
     if(b && !b.dead){
-      const w = 720, x = uiCx() - w/2, y = 110;
+      /**
+       * ★ 화면 폭 안에 넣는다 (2026-08-27). 720 으로 박혀 있어서 **세로에서는
+       *   화면을 통째로 가로지르며** 그 자리에 있는 결투 비교판을 덮었다.
+       *   결투에서는 비교판 아래로 내린다.
+       */
+      const w = Math.min(720, UIW - 40), x = uiCx() - w/2;
+      const y = this.duelBossBarY();
       ctx.fillStyle = '#0a0a14'; ctx.fillRect(x - PX, y - PX, w + PX*2, 20 + PX*2);
       ctx.fillStyle = '#2a2030'; ctx.fillRect(x, y, w, 20);
       const k = clamp(b.hp / b.maxHp, 0, 1);
@@ -11367,17 +11651,20 @@ function drawHUDDebug(ctx){
  *   coins : 상대가 주운 금화 (화면 위 점수판에 쓴다)
  *   name  : 상대 이름
  */
-const PEER = { alive: true, coins: 0, name: '', seen: false };
+const PEER = { alive: true, coins: 0, name: '', dragon: 0, seen: false };
 /** 오락실이 방에서 읽은 상대 상태를 넣는다 */
 export function setDuelPeer(p){
   if(!p) return;
   if(p.alive !== undefined) PEER.alive = !!p.alive;
   if(p.coins !== undefined) PEER.coins = p.coins | 0;
   if(p.name  !== undefined) PEER.name  = String(p.name || '');
+  if(p.dragon !== undefined) PEER.dragon = clamp(p.dragon | 0, 0, 9);
   PEER.seen = true;
 }
 /** 판이 새로 시작할 때 지운다 — 지난 판의 "죽었다" 가 남으면 곧바로 끝나 버린다 */
-function resetDuelPeer(){ PEER.alive = true; PEER.coins = 0; PEER.name = ''; PEER.seen = false; }
+function resetDuelPeer(){
+  PEER.alive = true; PEER.coins = 0; PEER.name = ''; PEER.dragon = 0; PEER.seen = false;
+}
 
 const DG = {
   difficulty: 'normal',
@@ -11756,7 +12043,8 @@ export function mount(host, opts = {}) {
   /* 타이틀도 스테이지 선택도 없다. 로비가 이미 "시작" 을 받았고,
      이 게임의 한 판은 언제나 1스테이지에서 시작한다. */
   scenes.set(
-    opts.mode === 'duel' ? new GameScene(1, null, true)
+    /* ★ 결투는 **한 무대**에서 끝까지 버틴다 (2026-08-27, 사용자 지정) */
+    opts.mode === 'duel' ? new GameScene(DUEL.STAGE, null, true)
     : opts.mode === 'chars' ? new CharacterSelectScene()
     : opts.mode === 'options' ? new OptionsScene()
     : new GameScene(1)
@@ -12064,6 +12352,22 @@ export const __test = {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   },
   get portrait() { return portrait; },
+  /**
+   * 검사용 — 화면에 붙어 있는 것들의 **실제 자리**.
+   *
+   * ★ 검사 쪽에서 좌표를 베껴 두면 **여기를 옮길 때마다 검사가 조용히 낡는다**
+   *   (2026-08-27, 실제로 그랬다 — 시간 막대를 14 에서 44 로 내렸더니 검사가
+   *   옛 자리를 눌러 보고 "안 멈춘다" 고 했다). 아는 사람에게 물어본다.
+   */
+  get layout() {
+    const sc = scenes && scenes.current;
+    return {
+      timeBar: timeBar(),
+      fsRect: sc && sc.fsRect ? sc.fsRect() : null,
+      orientRect: sc && sc.orientRect ? sc.orientRect() : null,
+      hudTop: hudTop(),
+    };
+  },
   /* 검사용 — 방향은 이제 **설정**이라 창 크기를 속여도 안 바뀐다 */
   set portrait(v) { optGet().portrait = v ? 1 : 0; Save.save(); resize(); },
   get splitPad() { return Input.splitPad; },
