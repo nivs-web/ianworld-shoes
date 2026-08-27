@@ -11,4 +11,17 @@ window.__T = T; window.__DR = DR;
 window.__toGame = (n) => { for(let i=0;i<400 && T.scene!=='GameScene';i++){ T.press('confirm'); T.pump(1/60); }
   for(let i=0;i<(n|0);i++) T.pump(1/60); return T.scene; };
 window.__shot = () => document.querySelector('#host canvas').toDataURL('image/png');
+/** 화면을 잘라 파일로 보낸다. 도구 결과로 실어 나르면 문맥이 금방 찬다 */
+window.__save = (name, sx, sy, sw, sh, zoom) => {
+  const src = document.querySelector('#host canvas');
+  sx = sx|0; sy = sy|0; sw = sw || src.width; sh = sh || src.height; zoom = zoom || 1;
+  const t = document.createElement('canvas');
+  t.width = Math.round(sw*zoom); t.height = Math.round(sh*zoom);
+  const g = t.getContext('2d'); g.imageSmoothingEnabled = false;
+  g.drawImage(src, sx, sy, sw, sh, 0, 0, t.width, t.height);
+  return fetch('http://localhost:4191/', { method:'POST',
+    body: JSON.stringify({ name, data: t.toDataURL('image/png') }) }).then(r => r.text());
+};
+/** 판 좌표를 화면 좌표로 (세로 기준) */
+window.__scr = o => ({ x: o.y, y: 1280 - o.x });
 </script></body></html>
