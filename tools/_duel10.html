@@ -1,0 +1,185 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>결투 10판 스트레스</title>
+<style>body{background:#111;color:#ddd;font:12px/1.55 monospace;padding:16px;white-space:pre-wrap}</style>
+</head><body><div id="out">도는 중…</div><div id="host" style="width:400px;height:800px"></div>
+<script type="module">
+/**
+ * ★ **소리를 아예 못 낸다.** (2026-08-27, 사용자 지정 — "영화 보고 있으니 소리 끄고")
+ * 게임 모듈을 불러오기 **전에** AudioContext 를 지운다. `SND.init()` 은
+ * `window.AudioContext` 가 없으면 `ready=false` 로 조용히 넘어가도록 이미
+ * 짜여 있다 — 옵션(bgmOn/sfxOn)을 끄는 것보다 이쪽이 훨씬 확실하다.
+ * 옵션은 사람이 바꿀 수 있지만 이 값은 스크립트가 시작하기 전에 이미 없다.
+ */
+window.AudioContext = undefined;
+window.webkitAudioContext = undefined;
+
+/**
+ * **결투를 10판 완주시키며 버그를 찾는다.**
+ *
+ * 이 세션에서 새로 만든 것들 — 상단 비교판, 하트 표시, 고스트, 씨앗 금화,
+ * 즉시 종료 — 은 전부 **모듈 전역 상태**(`PEER`, `DUEL_ON`, `topArt`, `RUN`)에
+ * 얹혀 있다. 한 판만 열어 보면 멀쩡한데, **여러 판을 잇달아 열면** 지난 판의
+ * 상태가 새어 들어오는 종류의 버그가 있다 — 그래서 10판을 잇달아 돈다.
+ *
+ * 봇은 죽지 않는다(hp 를 계속 채운다) — 재려는 것은 봇의 실력이 아니라
+ * **10판을 잇달아 열어도 게임이 계속 멀쩡한가**다. 대신 진짜 결투처럼
+ * 상대를 흉내낸다: 고스트를 흘리고, 가끔 죽었다가 살아나고, 금화를 먹는다.
+ */
+import * as DR from '/src/games/dragon/dragon.js';
+
+const lines = []; const say = (s) => lines.push(s);
+const show = () => { document.getElementById('out').textContent = lines.join('\n'); };
+const host = document.getElementById('host');
+const DT = 1/60;
+
+const bugs = [];
+const bug = (n, why) => { bugs.push({ n, why }); say('  BUG ' + n + ' : ' + why); };
+
+function setSize(w, h){
+  Object.defineProperty(window, 'innerWidth', { value: w, configurable: true });
+  Object.defineProperty(window, 'innerHeight', { value: h, configurable: true });
+  window.dispatchEvent(new Event('resize'));
+}
+
+function playOne(round){
+  const errs = [];
+  const onErr = (e) => errs.push(String(e?.message || e));
+  window.addEventListener('error', onErr);
+
+  const portrait = round % 2 === 0;
+  setSize(portrait ? 400 : 900, portrait ? 800 : 500);
+
+  let exitCalled = 0, endCalled = null, ghostSeenLives = new Set();
+  DR.unmount(); host.innerHTML = '';
+  DR.mount(host, {
+    onExit(){ exitCalled++; },
+    onEnd(e){ endCalled = e; },
+    onProgress(){},
+    onGhost(g){ if(g.lives !== undefined) ghostSeenLives.add(g.lives); },
+    difficulty: 'normal', mode: 'duel', code: 'R' + round, seed: 111000 + round,
+  });
+  const T = DR.__test; T.portrait = portrait;
+  for(let i=0;i<400 && T.scene!=='GameScene'; i++){ T.press('confirm'); T.pump(DT); }
+  if(T.scene !== 'GameScene'){
+    bug('R' + round + '-scene', '게임 화면으로 안 들어갔다 (scene=' + T.scene + ')');
+    window.removeEventListener('error', onErr);
+    return { round, errs, ok:false };
+  }
+  const sc = T.scene0();
+
+  /* 상대를 흉내낸다 — 죽었다 살아나고, 가끔 금화를 흘린다 */
+  let peerAlive = true, peerCoins = 0, peerLives = 3;
+  DR.setDuelPeer({ alive:true, coins:0, name:'상대'+round, dragon: round % 10, lives:3 });
+
+  let t = 0, framesDrawn = 0;
+  const CAP = 170;   // 결투 최대 160초 + 여유
+  const startCoins = T.coins;
+  /* ★ 'pause' 도 판이 진행 중인 것으로 친다 — 아니면 일시정지를 건 순간
+     검사 루프가 끝나 버려서 재개(resume) 을 시험할 수가 없다 */
+  while(t < CAP && (sc.state === 'play' || sc.state === 'pause')){
+    const p = sc.p1;
+    let tx = 320, ty = 440;
+    const boss = (sc.enemies||[]).find(e => e.isBoss && !e.dead);
+    if(boss){ tx = boss.x - 300; ty = boss.y; }
+    else if(sc.items && sc.items.length){
+      let best=null, bd=1e9;
+      for(const it of sc.items){ const d=Math.hypot(it.x-p.x, it.y-p.y); if(d<bd){bd=d;best=it;} }
+      if(best){ tx=best.x; ty=best.y; }
+    }
+    p.x += Math.max(-9, Math.min(9, tx-p.x));
+    p.y += Math.max(-9, Math.min(9, ty-p.y));
+    if(p.missileCount>0) T.press('p1missile');
+    if(boss && p.bombCount>0) T.press('p1bomb');
+    /* 하트 셋이라 실수 두어 번이면 죽는다 — 재려는 것은 생존이 아니므로 채운다,
+       단 **가끔은 그대로 둬서 하트 줄어드는 그림을 실제로 본다** */
+    if(round % 3 !== 0 && p.hp < 100) p.hp = 100;
+
+    /* 상대도 살아 움직이는 것처럼 — 죽음/부활/금화 변화를 섞는다 */
+    peerCoins += Math.random() < 0.3 ? 1 : 0;
+    if(round % 4 === 1 && t > 15 && peerAlive && Math.random() < 0.004){
+      peerAlive = false; peerLives = 0;
+    }
+    DR.setDuelPeer({ alive: peerAlive, coins: peerCoins, lives: peerLives,
+                     x: p.x + 150, y: p.y - 60, dragon: round % 10 });
+
+    /* 판마다 다른 방식으로 흔든다 — 실제로 여러 사람이 여러 방법으로 논다 */
+    if(round === 3 && Math.abs(t - 8) < DT) sc.giveUp();               // 조기 포기
+    if(round === 6 && Math.abs(t - 10) < DT){ T.portrait = !T.portrait; }  // 방향 전환
+    if(round === 4 && Math.abs(t - 12) < DT){
+      const cv = host.querySelector('canvas');
+      const r = cv.getBoundingClientRect();
+      const fire = (sx, sy) => {
+        cv.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 77, bubbles: true,
+          clientX: r.left + sx/cv.width*r.width, clientY: r.top + sy/cv.height*r.height }));
+        cv.dispatchEvent(new PointerEvent('pointerup', { pointerId: 77, bubbles: true }));
+      };
+      const psx = p.y, psy = 1280 - p.x;
+      fire(psx, psy); fire(psx, psy);      // 더블탭 -> 따라가기 켜기
+    }
+    if(round === 8 && Math.abs(t - 30) < DT) sc.setPause(true);        // 일시정지
+    if(round === 8 && Math.abs(t - 31) < DT) sc.setPause(false);       // 재개
+
+    T.pump(DT); t += DT;
+    /* 화면 확인이 목적이 아니다 — 그리는 것은 아주 가끔만, 탭이 멎는 것을 막는다 (2026-08-27) */
+    if(Math.floor(t) % 5 === 0 && Math.floor(t*60) % 60 === 0){ T.draw(); framesDrawn++; }
+  }
+
+  for(let i=0;i<120 && exitCalled === 0 && sc.state !== 'play'; i++){ T.pump(DT); }
+  T.draw();
+
+  /* ── 검사 ── */
+  if(errs.length) bug('R'+round+'-throw', '예외 ' + errs.length + '건: ' + errs[0]);
+  if(sc.p1.lives < 0 || sc.p1.lives > DR.__test ? false : false) {} // no-op keep structure
+
+  const hearts = sc.p1.lives;
+  if(hearts < 0 || hearts > 3) bug('R'+round+'-hearts', '내 하트가 범위 밖 (' + hearts + ')');
+  if(sc.p1.score < 0) bug('R'+round+'-score', '점수가 음수 (' + sc.p1.score + ')');
+  if(T.coins < startCoins) bug('R'+round+'-coins', '금화가 판 도중 줄었다 (' + startCoins + ' -> ' + T.coins + ')');
+  if(!['play','clear','over','pause'].includes(sc.state))
+    bug('R'+round+'-state', '알 수 없는 상태 (' + sc.state + ')');
+  if(exitCalled > 1) bug('R'+round+'-exit', 'onExit 가 두 번 이상 불렸다 (' + exitCalled + '번)');
+  if(exitCalled === 0) bug('R'+round+'-noexit', '판이 안 끝나 onExit 가 안 불렸다 (state=' + sc.state + ')');
+
+  /* 화면 배치 — 결투 비교판이 실제로 화면 안에 있는가 */
+  const cv = host.querySelector('canvas');
+  const fr = sc.fsRect ? sc.fsRect() : null;
+  const or_ = sc.orientRect ? sc.orientRect() : null;
+  if(fr && (fr.x < 0 || fr.x + fr.w > cv.width)) bug('R'+round+'-fsoff', '전체화면 단추가 화면 밖 (' + JSON.stringify(fr) + ', 캔버스폭 ' + cv.width + ')');
+  if(or_ && (or_.x < 0 || or_.x + or_.w > cv.width)) bug('R'+round+'-oroff', '방향 단추가 화면 밖');
+  if(sc.duelBossBarY){
+    const by = sc.duelBossBarY();
+    if(by < 0 || by > cv.height) bug('R'+round+'-bossoff', '보스 체력바 자리가 화면 밖 (' + by + ')');
+  }
+
+  /* 결투 전용 — 물결/사다리가 정상 범위인가 */
+  if(sc.duelBossNo !== undefined && (sc.duelBossNo < 0 || sc.duelBossNo > 40))
+    bug('R'+round+'-wave', '물결 번호가 이상하다 (' + sc.duelBossNo + ')');
+  if(sc.duelBossKills > 30) bug('R'+round+'-bosskills', '보스 격파 수가 이상하다 (' + sc.duelBossKills + ')');
+
+  window.removeEventListener('error', onErr);
+  DR.unmount(); host.innerHTML = '';
+
+  return { round, t: Math.round(t), state: sc.state, exitCalled, hearts,
+           score: sc.p1.score, coins: T.coins, waves: sc.duelBossNo, boss: sc.duelBossKills,
+           errs, framesDrawn };
+}
+
+for(let r=1;r<=10;r++){
+  say('=== 판 ' + r + ' (' + (r%2===0?'세로':'가로') + ') ===');
+  show();
+  let res;
+  try{ res = playOne(r); }
+  catch(e){ bug('R'+r+'-crash', '판 자체가 멈췄다: ' + (e?.stack || e)); res = null; }
+  if(res)
+    say('  ' + res.t + '초 / ' + res.state + ' / 하트' + res.hearts + ' / 점수' + res.score +
+        ' / 금화' + res.coins + ' / 물결' + res.waves + ' / 격파' + res.boss +
+        ' / exit' + res.exitCalled + ' / 그린장수' + res.framesDrawn);
+  show();
+}
+
+say('');
+say(bugs.length === 0 ? '버그 0건' : (bugs.length + '건 발견'));
+show();
+window.__done = true;
+window.__bugs = bugs;
+</script></body></html>

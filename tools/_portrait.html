@@ -3,6 +3,16 @@
 <style>html,body{margin:0;background:#000;height:100%;overflow:hidden}#host{width:100vw;height:100vh}</style>
 </head><body><div id="host"></div>
 <script type="module">
+/**
+ * ★ **소리를 아예 못 낸다.** (2026-08-27, 사용자 지정 — "영화 보고 있으니 소리 끄고")
+ * 게임 모듈을 불러오기 **전에** AudioContext 를 지운다. `SND.init()` 은
+ * `window.AudioContext` 가 없으면 `ready=false` 로 조용히 넘어가도록 이미
+ * 짜여 있다 — 옵션(bgmOn/sfxOn)을 끄는 것보다 이쪽이 훨씬 확실하다.
+ * 옵션은 사람이 바꿀 수 있지만 이 값은 스크립트가 시작하기 전에 이미 없다.
+ */
+window.AudioContext = undefined;
+window.webkitAudioContext = undefined;
+
 /** 세로 모드를 눈으로 확인하는 자리. 게임을 실제로 띄우고 몇 초 돌린다. */
 import * as DR from '/src/games/dragon/dragon.js';
 const MODE = new URLSearchParams(location.search).get('mode') || 'play';

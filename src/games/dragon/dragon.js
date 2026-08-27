@@ -8145,6 +8145,13 @@ function popEase(k){
   return 1 + Math.sin((1 - k) * Math.PI * 1.5) * (1 - k) * 0.55;
 }
 
+/**
+ * 손가락으로 잡을 때 화면 위로 띄우는 거리(px). 폰에서 손가락 끝의 폭이 대략
+ * 이 정도라 이만큼 띄우면 캐릭터가 손가락에 안 가린다.
+ * (사용자가 예로 든 "1cm" — 일반적인 폰 화면 배율에서 대략 이 값이다)
+ */
+const TOUCH_GRAB_LIFT = 96;
+
 class GameScene extends Scene {
   /** ★ 이 씬만 세로에서 판을 90도 돌려 그린다 (2026-08-27) */
   rotates = true;
@@ -8299,21 +8306,22 @@ class GameScene extends Scene {
         if(this.btnMsl2 && this.btnMsl2.down(id,sx,sy)) return;
         if(this.btnBomb2 && this.btnBomb2.down(id,sx,sy)) return;
         /**
-         * ★★ **두 번 누르면 "따라가기" 가 켜진다 — 손가락도 된다.** (2026-08-27, 사용자 신고)
+         * ★★ **더블클릭 따라가기는 다시 마우스 전용이다.** (2026-08-27, 사용자 신고)
          *
-         * *"잡아서 끌고 다니는 모드 더블클릭하면 적용되어야 하는데 그거 적용 안되네?"*
+         * *"마우스도 없는데 더블클릭하며 뭔가 작동되는 듯 보이는데 그건 왜 그래?"*
          *
-         * 예전에는 `type === 'mouse'` 일 때만 봤다. 폰에서 안 되는 것이 당연했다.
-         * 마우스와 손가락은 켜졌을 때 하는 일이 조금 다르다:
+         * 지난 판에서 손가락도 받게 넓혔는데, 그러자 **빠르게 놨다 다시 짚는**
+         * 정상적인 드래그 동작(사용자가 이번에 원하는 바로 그 조작법)이 이
+         * 몸짓과 구분이 안 됐다 — 0.32초·40px 안에서 다시 짚으면 무조건
+         * "따라가기" 로 켜져 버렸고, 따라가기는 손가락 정중앙에 용을 박아
+         * (`moveTo(x,y,0,0)`) 오히려 화면을 더 가렸다. 사용자가 겪은 오류가 이것이다.
          *
-         *   마우스 — 누르지 않아도 커서를 따라온다 (`pointermove` 가 계속 온다)
-         *   손가락 — **화면 아무 데나** 짚고 끌면 따라온다. 용을 정확히 짚을 필요가
-         *            없어서 작은 화면에서 훨씬 편하다. 이게 손가락판 "잡고 끌기" 다.
-         *
-         * ★ 자리는 **UI 판정 뒤**다. 앞에 두면 무기 단추를 연타하는 것이
-         *   따라가기 토글로 먹혀 버린다.
+         * 마우스는 누르지 않아도 `pointermove` 가 계속 오므로 따라가기가 뜻이
+         * 있지만, 손가락은 **잡아 끄는 것 자체가 이미 "누르지 않아도 되는" 조작이
+         * 아니라서** 따라가기가 딱히 더 편하지도 않다. 손가락 쪽은 아래에서
+         * 만드는 **손가락 위 오프셋**이 같은 문제(화면이 안 보인다)를 더 깔끔하게 푼다.
          */
-        if(this.state === 'play'){
+        if(type === 'mouse' && this.state === 'play'){
           const now = this.t;
           if(now - this.lastClickT < 0.32 &&
              Math.hypot(x - this.lastClickX, y - this.lastClickY) < 40){
@@ -8323,11 +8331,11 @@ class GameScene extends Scene {
           }
           this.lastClickT = now; this.lastClickX = x; this.lastClickY = y;
         }
-        /* 따라가기 중이면 짚은 그 자리로 곧바로 옮긴다 (손가락은 이때부터 좌표가 온다) */
+        /* 따라가기 중이면 짚은 그 자리로 곧바로 옮긴다 (마우스 전용이라 여기도 마우스뿐이다) */
         if(this.followMouse && this.state === 'play'){ this.moveTo(x, y, 0, 0); return; }
         /* 그다음이 **캐릭터 잡기**. 스틱보다 먼저 봐야 한다 —
            스틱이 화면 아무 데나 뜨는 설정이면 캐릭터 위에서도 스틱이 잡힌다 */
-        if(this.grabDown(id,x,y)) return;
+        if(this.grabDown(id,x,y,type)) return;
         if(this.stickVisible()) this.stick.down(id,sx,sy);
       },
       move:(id,x,y,sx,sy) => {
@@ -8795,7 +8803,15 @@ class GameScene extends Scene {
         for(const p of alive) p.score += each;
       }
       this.score += this.bonus;   // 보너스는 이미 눈금에 맞춘 값이다
-      for(const p of this.allPlayers()) if(!p.out) p.lives = Math.min(MAX_LIVES, p.lives + 1);
+      /**
+       * ★ **결투는 하트를 안 채운다.** (2026-08-27, 10판 스트레스 검사에서 잡음)
+       *
+       * 결투는 "상대 탈락" 으로도 `finish('clear', ...)` 를 부른다 — 이 함수는
+       * 원래 **스테이지 클리어** 전용이라 목숨을 하나 채워 주는데, 그게 결투에도
+       * 새어 들어가서 하트가 3에서 **4로** 올랐다. 결투는 하트가 셋으로 고정이다
+       * (`DUEL.LIVES`) — 여기서도 지켜야 비교판의 하트 줄이 안 어긋난다.
+       */
+      if(!this.duel) for(const p of this.allPlayers()) if(!p.out) p.lives = Math.min(MAX_LIVES, p.lives + 1);
       SND.sfx('fanfare');
       Save.data.unlocked = Math.max(Save.data.unlocked, Math.min(20, this.stage + 1));
       // 클리어 보너스로 레벨을 주지 않는다.
@@ -8945,6 +8961,18 @@ class GameScene extends Scene {
    */
   giveUp(){
     this.finish('over', '게임 포기');
+    /**
+     * ★ **결투 중 자진 포기는 `onExit` 을 두 번 부를 뻔했다.** (2026-08-27,
+     *   10판 스트레스 검사에서 잡음)
+     *
+     * 결투는 판이 끝나면 1.1초 뒤 **스스로** `DG.onExit()` 을 부른다
+     * (`updateEnd`). 여기서도 곧바로 부르면 — 포기는 즉시 나가는 것이 맞으므로
+     * 그대로 두되 — `duelExited` 를 미리 켜서 뒤따라오는 자동 호출을 막아야
+     * **두 번 불리지 않는다.** 밖에서(`DragonGame.onExit`) 두 번째 호출은
+     * 대개 무해하지만, 결과 화면을 두 번 만들거나 방을 두 번 나가는 식으로
+     * 새는 자리가 될 수 있다.
+     */
+    this.duelExited = true;
     DG.onExit();
   }
   /**
@@ -10221,14 +10249,40 @@ class GameScene extends Scene {
    * 캐릭터를 잡았는가. 잡았으면 이 터치는 이동 전용이 된다.
    * 1P 만 잡을 수 있다 — 2P 는 키보드/패드로 들어온 사람이라 화면을 만지지 않는다.
    */
-  grabDown(id, x, y){
+  /**
+   * ★★ **손가락은 캐릭터를 안 가린다 — 화면 위쪽으로 띄워서 잡는다.**
+   * (2026-08-27, 사용자 지정)
+   *
+   * *"손가락으로 화면을 가려서 화면이 안보여 (...) 손가락 바로 위 1cm 위에
+   *   캐릭터가 보여서, 미사일 피하는지 안피하는지 잘 확인이 가능하도록"*
+   *
+   * 예전 방식은 **잡는 순간의 (캐릭터 - 손가락) 차이**를 그대로 유지했다.
+   * 그러면 어디를 짚든 캐릭터는 짚은 그 순간 있던 자리에 그대로 있다가 손가락을
+   * 따라가므로, 결국 **손가락이 캐릭터 위나 바로 옆**에 놓이기 쉽다 — 마우스는
+   * 커서가 가늘어 상관없지만 손가락은 두껍다.
+   *
+   * 손가락은 대신 **화면에서 언제나 위쪽으로 고정된 거리**를 둔다. 마우스는
+   * 예전 그대로(잡은 순간의 위치를 지킨다) — 커서는 화면을 안 가리므로 바꿀
+   * 이유가 없다.
+   *
+   * "위" 는 **화면** 기준이다. 세로에서는 판이 90도 돌아 있으므로 화면 위가
+   * 판의 +x 다(용의 진행 방향과 같다 — 세로 모드를 짤 때 정한 그 약속).
+   */
+  grabDown(id, x, y, type){
     if(this.state !== 'play' || this.dragId !== null) return false;
     const p = this.p1;
     if(!p || p.out) return false;
     const r = p.shieldR;
     if(Math.hypot(x - p.x, y - p.y) > r) return false;
     this.dragId = id;
-    this.dragOff.x = p.x - x; this.dragOff.y = p.y - y;
+    if(type === 'mouse'){
+      this.dragOff.x = p.x - x; this.dragOff.y = p.y - y;
+    }else{
+      /* 손가락 — 화면 위로 `TOUCH_GRAB_LIFT` 만큼 띄운다. 판이 돌아 있으면
+         "화면 위" 가 가리키는 판의 축도 같이 돈다 */
+      if(portrait){ this.dragOff.x = TOUCH_GRAB_LIFT; this.dragOff.y = 0; }
+      else{ this.dragOff.x = 0; this.dragOff.y = -TOUCH_GRAB_LIFT; }
+    }
     this.dragT = 0;
     /* 스틱이 떠 있었다면 놓아 준다 — 둘이 동시에 밀면 서로 싸운다 */
     this.stick.up(this.stick.pid);
@@ -10524,7 +10578,14 @@ class GameScene extends Scene {
   renderDuelHud(ctx){
     const mine = RUN.coins | 0;
     const foe  = PEER.coins | 0;
-    const iWin = mine >= foe;
+    /**
+     * ★ **동점은 "이기는 쪽" 이 아니다.** (2026-08-27, 10판 스트레스 검사에서 잡음)
+     * `mine >= foe` 로 동률을 승리로 치면, 0 대 0 처럼 흔한 상황에서 **양쪽
+     * 화면 모두 자기 박스가 커지고 왕관이 뜬다** — 둘 다 이기고 있다고 잘못 읽힌다.
+     * 엄격히 앞설 때만 이기는 쪽으로 친다.
+     */
+    const tie  = mine === foe;
+    const iWin = mine > foe;
     const top  = duelHudTop();
     const cx   = uiCx();
 
@@ -10556,7 +10617,7 @@ class GameScene extends Scene {
        바깥으로 벌려 놓아야 가운데 숫자가 널찍하다. 이긴 쪽이 커지므로
        **바깥 모서리를 고정**하고 안쪽으로 자란다 — 안 그러면 화면을 넘어간다 */
     const drawSide = (isMe) => {
-      const win  = isMe ? iWin : !iWin;
+      const win  = !tie && (isMe ? iWin : !iWin);
       const sz   = this.duelBoxSize(win);
       const col  = isMe ? '#ff4d5a' : '#4d9aff';        // 나는 빨강, 상대는 파랑
       /* 바깥 모서리를 고정하고 **안쪽으로** 자란다 — 안 그러면 화면을 넘어간다 */
@@ -10649,7 +10710,15 @@ class GameScene extends Scene {
 
     /* ── 한 줄 문구 ── */
     const diff = Math.abs(mine - foe);
-    const msg = iWin ? '1등 유지중' : ('금화 ' + diff + '개 차이로 패배하고 있음');
+    /**
+     * ★ **동점이면 "1등 유지중" 이 두 화면에 동시에 뜬다.** (2026-08-27,
+     *   10판 스트레스 검사에서 잡음)
+     *
+     * `iWin = mine >= foe` 라 0 대 0(판이 막 시작했을 때)에도 항상 참이다.
+     * 그러면 나도 "1등 유지중", 상대도 "1등 유지중" 을 본다 — 실제로는 아무도
+     * 앞서지 않았는데 둘 다 이기고 있다고 착각한다. 동점은 따로 말한다.
+     */
+    const msg = diff === 0 ? '동점' : (iWin ? '1등 유지중' : ('금화 ' + diff + '개 차이로 패배하고 있음'));
     ko(ctx, msg, cx, barY + barH + 12, 2,
       { align:'center', color: iWin ? PAL.gold : '#ff7a86', outline:PAL.outline });
 
@@ -10754,16 +10823,29 @@ class GameScene extends Scene {
       ctx.globalAlpha = pa;
     }
     /**
+     * ★★ **판 좌표를 화면 좌표로 바꿔서 그린다.** (2026-08-27, 사용자 신고)
+     *
+     * *"터치로 이동하면 반투명한 쉴드(눌려있다는걸 표현하는것) 그것이
+     *   재멋대로 움직이는 오류가 있어"*
+     *
+     * 이 자리는 `renderHUD` 안이라 변환을 **푼 뒤**(화면 좌표)에 그린다.
+     * 그런데 `p.x, p.y` 는 **판 좌표**다. 가로에서는 판과 화면이 같아서
+     * 우연히 맞았지만, 세로에서는 판이 90도 돌아 있어서 **완전히 다른 자리에
+     * 찍혔다.** 캐릭터는 (돌아간 채로) 제자리에서 움직이는데 이 원은 안 돌아간
+     * 좌표를 그대로 써서 **전혀 다른 방향으로 미끄러졌다** — 그래서 "재멋대로"
+     * 움직이는 것처럼 보였다.
+     *
      * 잡고 있다는 표시 — 필살기 쉴드와 **같은 크기**지만 훨씬 옅다.
      * 쉴드처럼 진하게 그리면 무적인 줄 안다. "눌린 느낌" 만 나면 된다.
      */
     if(this.dragId !== null && this.p1 && !this.p1.out){
       const p = this.p1, r = p.shieldR;
+      const sx = portrait ? p.y : p.x, sy = portrait ? (GAME_W - p.x) : p.y;
       const k = Math.min(1, this.dragT * 6);          // 잡는 순간 부드럽게 나타난다
       ctx.globalAlpha = 0.16 * k;
-      fillPixelCircle(ctx, p.x, p.y, r, '#9fd8ff');
+      fillPixelCircle(ctx, sx, sy, r, '#9fd8ff');
       ctx.globalAlpha = 0.42 * k;
-      drawPixelRing(ctx, p.x, p.y, r, PX*2, '#9fd8ff');
+      drawPixelRing(ctx, sx, sy, r, PX*2, '#9fd8ff');
       ctx.globalAlpha = 1;
     }
 
