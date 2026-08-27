@@ -8597,7 +8597,16 @@ class GameScene extends Scene {
     /* ★ 연쇄를 이어 붙인다. 끊기기 전에 다음을 잡으면 배수가 오른다 (기획 7) */
     this.chainT = CHAIN_HOLD;
     if(this.killStreak > this.chainBest) this.chainBest = this.killStreak;
-    if(this.killStreak % 2 === 0) this.items.push(new Item(e.x, e.y, ITEM_KIND.COIN));
+    /**
+     * ★ **결투에서는 적이 금화를 안 떨어뜨린다.** (2026-08-27)
+     *
+     * 결투의 금화는 씨앗이 정한 비다(`duelCoinAt`) — 번호가 붙어 있어서 두
+     * 화면에 같은 자리에 뜨고, 먹으면 상대 화면에서 지워진다.
+     * 여기서 떨어뜨리면 **번호 없는 금화**가 섞여서 한쪽 화면에만 존재하게 된다.
+     * 겨루는 대상은 두 사람이 똑같이 보는 것뿐이어야 한다.
+     */
+    if(!this.duel && this.killStreak % 2 === 0)
+      this.items.push(new Item(e.x, e.y, ITEM_KIND.COIN));
   }
 
   pickup(it, who){
@@ -8813,6 +8822,20 @@ class GameScene extends Scene {
       if(c.t > t) break;
       const it = new Item(GAME_W + 60, c.y, ITEM_KIND.COIN);
       it.no = this.coinN;
+      /**
+       * ★★ **흔들리는 위상까지 씨앗으로 정한다.** (2026-08-27, 검사에서 잡음)
+       *
+       * `Item` 은 위아래로 흔들리는데 그 위상이 `Math.random()` 이고,
+       * 흔들림이 **`y` 에 누적된다**(`y += sin(t)*38*dt`). 그래서 같은 씨앗으로
+       * 같은 번호를 뿌려도 **두 화면의 금화가 조금씩 다른 곳으로 흘러갔다.**
+       * 여덟 개 중 일곱 개가 어긋났다 — 눈으로는 절대 못 봤을 종류다.
+       *
+       * 자리는 화면 밖에서 시작하게 다시 넣는다. `Item` 의 생성자는 좌표를
+       * 화면 안으로 가두는데(보스가 화면 밖에서 죽어도 주울 수 있게), 결투
+       * 금화는 **밖에서 흘러들어와야** 하므로 그 가둠을 지나서 놓는다.
+       */
+      it.x = GAME_W + 60;
+      it.t = hash1(this.coinN * 2 + 3, this.seed) * 6;
       /* 결투 금화는 **오래 남는다** — 짧으면 다투기 전에 사라진다 */
       it.life = 26;
       this.items.push(it);
