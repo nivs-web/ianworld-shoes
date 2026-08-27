@@ -8151,6 +8151,8 @@ function popEase(k){
  * (사용자가 예로 든 "1cm" — 일반적인 폰 화면 배율에서 대략 이 값이다)
  */
 const TOUCH_GRAB_LIFT = 96;
+/** 손가락으로 조절할 수 있는 오프셋의 위아래 한계 (px) */
+const TOUCH_LIFT_MIN = 40, TOUCH_LIFT_MAX = 240;
 
 class GameScene extends Scene {
   /** ★ 이 씬만 세로에서 판을 90도 돌려 그린다 (2026-08-27) */
@@ -8333,13 +8335,38 @@ class GameScene extends Scene {
         }
         /* 따라가기 중이면 짚은 그 자리로 곧바로 옮긴다 (마우스 전용이라 여기도 마우스뿐이다) */
         if(this.followMouse && this.state === 'play'){ this.moveTo(x, y, 0, 0); return; }
+        /**
+         * ★★ **손가락 두 개 — 오프셋을 벌리거나 좁힌다.** (2026-08-27, 사용자 지정)
+         *
+         * *"이 간격을 두 손가락을 늘리면 더 벌어지게 만들 수 있니?"*
+         *
+         * 이미 한 손가락으로 캐릭터를 끌고 있는 동안(`dragId` 가 잡혀 있는 동안)
+         * **다른 손가락이 하나 더** 닿으면 핀치로 본다. 두 손가락 사이 거리가
+         * 늘어난 만큼 오프셋이 늘고, 줄어든 만큼 준다 — 흔한 두 손가락 확대·축소
+         * 몸짓 그대로다. 시작할 때 거리를 0으로 보정하지 않고 **그 순간의 오프셋에서
+         * 이어서** 조절하므로, 살짝만 벌려도 갑자기 확 벌어지지 않는다.
+         */
+        if(type !== 'mouse' && this.dragId !== null && id !== this.dragId && !this.pinch){
+          this.pinch = { id, startDist: Math.hypot(sx - this.dragSX, sy - this.dragSY),
+                         startLift: this.touchLift };
+          return;
+        }
         /* 그다음이 **캐릭터 잡기**. 스틱보다 먼저 봐야 한다 —
            스틱이 화면 아무 데나 뜨는 설정이면 캐릭터 위에서도 스틱이 잡힌다 */
-        if(this.grabDown(id,x,y,type)) return;
+        if(this.grabDown(id,x,y,type,sx,sy)) return;
         if(this.stickVisible()) this.stick.down(id,sx,sy);
       },
       move:(id,x,y,sx,sy) => {
         if(sx === undefined){ sx = x; sy = y; }
+        if(this.pinch && id === this.pinch.id){
+          const dist = Math.hypot(sx - this.dragSX, sy - this.dragSY);
+          this.touchLift = clamp(this.pinch.startLift + (dist - this.pinch.startDist),
+                                  TOUCH_LIFT_MIN, TOUCH_LIFT_MAX);
+          this.applyTouchLift();
+          this.liftHintT = 1.2;
+          return;
+        }
+        if(this.dragId === id){ this.dragSX = sx; this.dragSY = sy; }
         if(this.grabMove(id,x,y)) return;          // 캐릭터 잡기는 판 좌표
         if(this.stickVisible()) this.stick.move(id,sx,sy);
       },
@@ -8347,6 +8374,11 @@ class GameScene extends Scene {
         this.btnMsl.up(id); this.btnBomb.up(id);
         if(this.btnMsl2) this.btnMsl2.up(id);
         if(this.btnBomb2) this.btnBomb2.up(id);
+        if(this.pinch && id === this.pinch.id){
+          this.pinch = null;
+          /* 맞춘 값을 다음 판에도 쓴다 — 매번 다시 벌리게 하면 조절이 아니라 짜증이다 */
+          optGet().touchLift = Math.round(this.touchLift); Save.save();
+        }
         if(this.dragId === id) this.dragId = null;
         this.stick.up(id);
       }
@@ -8431,6 +8463,10 @@ class GameScene extends Scene {
      *   손가락 밑으로 순간이동하지 않고 **잡은 그 자세 그대로** 따라온다.
      */
     this.dragId = null; this.dragOff = { x:0, y:0 }; this.dragT = 0;
+    this.dragSX = 0; this.dragSY = 0;      // 잡은 손가락의 **화면** 좌표 (핀치 기준점)
+    this.pinch = null;                     // 두 번째 손가락으로 오프셋을 조절하는 중
+    this.touchLift = clamp(optGet().touchLift || TOUCH_GRAB_LIFT, TOUCH_LIFT_MIN, TOUCH_LIFT_MAX);
+    this.liftHintT = 0;                    // "손가락 간격 000px" 안내가 떠 있는 시간
     /* 마우스 더블클릭으로 켜는 '따라가기' (2026-08-27) */
     this.followMouse = false; this.followT = 0;
     this.lastClickT = -9; this.lastClickX = 0; this.lastClickY = 0;
@@ -9723,6 +9759,7 @@ class GameScene extends Scene {
     Particles.update(dt); Popups.update(dt); Flash.update(dt); Shake.update(dt);
     if(this.grazeFlash > 0) this.grazeFlash -= dt;
     if(this.followT > 0) this.followT -= dt;
+    if(this.liftHintT > 0) this.liftHintT -= dt;
     if(this.ruleT > 0) this.ruleT -= dt;
     this.updateRule(dt);
     /* 연쇄는 가만히 있으면 끊긴다 — 이것이 이 장치의 전부다 */
@@ -10268,7 +10305,7 @@ class GameScene extends Scene {
    * "위" 는 **화면** 기준이다. 세로에서는 판이 90도 돌아 있으므로 화면 위가
    * 판의 +x 다(용의 진행 방향과 같다 — 세로 모드를 짤 때 정한 그 약속).
    */
-  grabDown(id, x, y, type){
+  grabDown(id, x, y, type, sx, sy){
     if(this.state !== 'play' || this.dragId !== null) return false;
     const p = this.p1;
     if(!p || p.out) return false;
@@ -10278,15 +10315,24 @@ class GameScene extends Scene {
     if(type === 'mouse'){
       this.dragOff.x = p.x - x; this.dragOff.y = p.y - y;
     }else{
-      /* 손가락 — 화면 위로 `TOUCH_GRAB_LIFT` 만큼 띄운다. 판이 돌아 있으면
+      /* 손가락 — 화면 위로 (사람이 맞춰 둔) 오프셋만큼 띄운다. 판이 돌아 있으면
          "화면 위" 가 가리키는 판의 축도 같이 돈다 */
-      if(portrait){ this.dragOff.x = TOUCH_GRAB_LIFT; this.dragOff.y = 0; }
-      else{ this.dragOff.x = 0; this.dragOff.y = -TOUCH_GRAB_LIFT; }
+      this.applyTouchLift();
+      /* 이 손가락의 **화면** 좌표를 기준점으로 남긴다 — 나중에 두 번째 손가락이
+         닿으면 이 자리에서부터 거리를 잰다. sx,sy 가 안 왔으면(검사 등에서
+         직접 부를 때) 판 좌표로 대신한다 — 가로에서는 어차피 같은 값이다 */
+      this.dragSX = sx !== undefined ? sx : x;
+      this.dragSY = sy !== undefined ? sy : y;
     }
     this.dragT = 0;
     /* 스틱이 떠 있었다면 놓아 준다 — 둘이 동시에 밀면 서로 싸운다 */
     this.stick.up(this.stick.pid);
     return true;
+  }
+  /** 지금 `touchLift` 값으로 오프셋을 다시 계산한다 (핀치 도중에도 부른다) */
+  applyTouchLift(){
+    if(portrait){ this.dragOff.x = this.touchLift; this.dragOff.y = 0; }
+    else{ this.dragOff.x = 0; this.dragOff.y = -this.touchLift; }
   }
 
   /**
@@ -10861,6 +10907,20 @@ class GameScene extends Scene {
     }
 
     /**
+     * 핀치로 손가락 오프셋을 조절하는 동안 값을 보여준다.
+     * ★ 안 보여 주면 지금 몇 px 인지, 한계에 닿았는지 알 방법이 없다 (2026-08-27).
+     */
+    if(this.liftHintT > 0){
+      const pa = ctx.globalAlpha;
+      ctx.globalAlpha = pa * Math.min(1, this.liftHintT / 0.4);
+      const atMax = this.touchLift >= TOUCH_LIFT_MAX, atMin = this.touchLift <= TOUCH_LIFT_MIN;
+      ko(ctx, '손가락 간격 ' + Math.round(this.touchLift) + 'px' + (atMax || atMin ? ' (한계)' : ''),
+        uiCx(), Math.round(UIH*0.88), 2,
+        { align:'center', color: (atMax||atMin) ? '#ffb04a' : '#9fe8ff', outline:PAL.outline });
+      ctx.globalAlpha = pa;
+    }
+
+    /**
      * 방금 짜고 들어온 적 대형 이름.
      *
      * ★ **오른쪽 위에서 왼쪽 가운데로 옮겼다.** (2026-08-27, 사용자 지적)
@@ -11373,7 +11433,16 @@ const OPT_DEFAULT = {
    * 바꾸는 길은 오른쪽 위 단추 하나뿐이고, 한 번 고르면 폰을 어떻게 들든
    * 그대로 간다.
    */
-  portrait:1
+  portrait:1,
+  /**
+   * ★★ **손가락 오프셋 — 두 손가락으로 벌려 조절한다.** (2026-08-27, 사용자 지정)
+   * *"이 간격을 두 손가락을 늘리면 더 벌어지게 만들 수 있니?"*
+   *
+   * 한 손가락으로 캐릭터를 끄는 동안 **다른 손가락 하나를 더** 대고 벌리거나
+   * 좁히면 이 값이 바뀐다. 그 자리에서 한 번 맞추고 나면 다음 판에도 그대로다 —
+   * 매번 다시 맞추게 하면 조절 기능이 아니라 짜증이 된다.
+   */
+  touchLift: TOUCH_GRAB_LIFT
 };
 const STICK_R = [62, 78, 96], BTN_R = [54, 68, 82];
 
@@ -11386,7 +11455,7 @@ const STICK_R = [62, 78, 96], BTN_R = [54, 68, 82];
  * `undefined` 라 세로가 기본인데 가로로 시작했다. 새로 깐 사람만 멀쩡했으니
  * 내 화면에서는 절대 안 보였을 버그다.
  */
-const OPT_V = 2;
+const OPT_V = 3;
 function optGet(){
   // 매번 새 객체를 만들면 참조가 끊기고 프레임마다 할당이 생기므로 1회만 정규화한다
   const o = Save.data.opt;
