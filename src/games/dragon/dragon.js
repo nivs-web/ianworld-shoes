@@ -2519,6 +2519,7 @@ class Player {
     this.hitT = 0;
     /* 연발 제한 (2026-08-27) */
     this.mslCool = 0; this.bombCool = 0; this.burstN = 0; this.burstT = 0;
+    this.rollT = 0;                  // 회피 롤 남은 시간 (2026-08-27)
     /**
      * ★★ **리액션.** (2026-08-27, 사용자 지정)
      *
@@ -2577,6 +2578,18 @@ class Player {
   fxState(){
     const k = this.fxDur > 0 ? 1 - this.fxT/this.fxDur : 1;   // 0 -> 1 로 흐른다
     const s = { sx:1, sy:1, rot:0, ox:0, oy:0, tint:null, smile:false };
+    /**
+     * ★ **한 바퀴 도는 모습.** (2026-08-27)
+     * 세로축을 중심으로 도는 것은 **가로 폭이 0 을 지나 음수가 되는 것**으로
+     * 그린다 — 종이 한 장이 뒤집히는 것과 같은 셈이다.
+     * 다른 리액션보다 먼저 본다: 도는 중에 먹거나 맞아도 도는 것이 우선이다.
+     */
+    if(this.rollT > 0){
+      const a = (1 - this.rollT/ROLL_TIME) * Math.PI * 2 * ROLL_TURNS;
+      s.sx = Math.cos(a);
+      s.sy = 1 + Math.abs(Math.sin(a))*0.10;      // 얇아질 때 살짝 길어진다
+      return s;
+    }
     if(this.fxT <= 0) return s;
     if(this.fxKind === 'apple'){
       /* 슈퍼마리오처럼 쭉 커졌다 돌아온다. 세로를 먼저, 가로를 뒤따라 —
@@ -5462,6 +5475,24 @@ const MISSILE_COOL = 2.0;                  // 그 뒤 쉬는 시간 (초)
  * 연달아 쓰면 그냥 계속 무적이다. 한 번 쓰면 15초는 못 쓴다.
  */
 const BOMB_COOL = 15.0;
+/**
+ * ★★ **미사일을 누르면 한 바퀴 돌며 피한다.** (2026-08-27, 사용자 지정)
+ *
+ * *"1945게임 보면 폭탄 쏘면 비행기가 한바퀴 돌아. 그것처럼 (...) 상대 미사일이
+ *   넘 많이 날아와 피할곳이 없으면 이걸 누르면 종이가 가로 방향으로 360도
+ *   뒤집는 것처럼 용이 한바퀴 돌며 상대 공격을 약 2초동안 피하는거야"*
+ *
+ * 탄이 화면을 덮으면 **피할 자리가 물리적으로 없는** 순간이 온다. 그때 쓸 수
+ * 있는 것이 하나는 있어야 억울하지 않다 — 그런데 그것이 공짜면 안 된다.
+ * 미사일에 묶어 두면 **총알을 태워서 사는 것**이 되어 값이 붙는다
+ * (판당 다섯 개 + 연발 2회 제한).
+ *
+ * 도는 동안 계속 돈다 — 세 바퀴. 돌고 있는 것 자체가 "지금 안 맞는다" 는 표시다.
+ */
+/** 최종보스를 잡고 나서 금화를 주울 수 있는 시간 (초) */
+const LOOT_TIME = 2.0;
+const ROLL_TIME = 2.0;
+const ROLL_TURNS = 3;
 /* 아무것도 안 산 사람의 손 안. 아이템 쇼핑의 계단으로 미사일 50 · 핵무기 12 까지 올린다.
    (`games/dragon/items.js` 의 BASE_MISSILES / BASE_BOMBS 와 같은 값이어야 한다) */
 const START_MISSILES = 5, START_BOMBS = 2;
@@ -6747,6 +6778,7 @@ class GameScene extends Scene {
       RUN.wallet0 = DG.coins() | 0;      // 이 판을 시작할 때의 지갑 (고정)
     }
     this.boss = null; this.bossBannerT = 0; this.bossDeathT = 0;
+    this.lootT = undefined;           // 최종보스 뒤 금화 줍는 시간
     this.killStreak = 0;
     this.chainT = 0;                 // 연쇄가 끊기기까지 남은 시간
     this.chainBest = 0;              // 이 스테이지에서 가장 길었던 연쇄
@@ -7588,6 +7620,7 @@ class GameScene extends Scene {
     p.update(dt, mv);
     if(p.hurtT > 0) p.hurtT -= dt;
     if(p.hitT > 0) p.hitT -= dt;
+    if(p.rollT > 0) p.rollT -= dt;
     if(p.fxT > 0){ p.fxT -= dt; if(p.fxT <= 0){ p.fxKind = ''; p.fxItem = ''; } }
     if(p.shieldT > 0){
       p.shieldT -= dt;
@@ -7645,7 +7678,11 @@ class GameScene extends Scene {
           new PlayerMissile(m.x, m.y, tg[i], dmg, i*0.045, (i % 2) ? 1 : -1), { pid: p.pid }));
       Particles.spawn(m.x, m.y, 14, { ang:0, spread:2.2, spd:520, life:0.36, size:PX*2 });
       Shake.add(7, 0.15);
-      SND.sfx('missile'); Input.rumble(0.35, 0.25, 120);
+      /* ★ 쏘면서 한 바퀴 — 이 동안 안 맞는다 (2026-08-27) */
+      p.rollT = ROLL_TIME;
+      Particles.spawn(p.x, p.y, 16, { spd:360, life:0.5,
+        pal:['#ffffff','#cfe8ff','#7fb8ff','#3f6fae'] });
+      SND.sfx('missile'); SND.sfx('shield'); Input.rumble(0.35, 0.25, 120);
     }
     if(wantBomb && p.bombCool > 0 && p.bombCount > 0 && !busyFx){
       Popups.add(p.x, p.y - 110,
@@ -7695,7 +7732,26 @@ class GameScene extends Scene {
      * `finalBossKilled` 가 서서 **41초 만에 판이 끝났다.** 결투를 끝내는 것은
      * 오직 300초와 목숨 다섯뿐이다.
      */
-    if(!this.duel && this.finalBossKilled && this.bossDeathT <= 0){ this.finish('clear'); return; }
+    /**
+     * ★ **최종보스를 잡고 나서 2초를 더 준다.** (2026-08-27, 사용자 지정)
+     *
+     * *"최종 보스 죽고 나면 바로 종료 되는데 눈에 보이는 금화 먹을시간 2초정도"*
+     *
+     * 보스가 터지면서 금화가 우수수 떨어지는데 그 순간 판이 끝나 버렸다 —
+     * 눈앞에 있는 것을 못 줍고 끝나면 억울하다.
+     * 줍는 동안 **화면의 금화가 스스로 다가온다** — 2초는 뛰어다니기엔 짧다.
+     */
+    if(!this.duel && this.finalBossKilled && this.bossDeathT <= 0){
+      if(this.lootT === undefined) this.lootT = LOOT_TIME;
+      this.lootT -= dt;
+      const p = this.livePlayers()[0];
+      if(p) for(const it of this.items){
+        if(it.dead || it.kind !== ITEM_KIND.COIN) continue;
+        const a = Math.atan2(p.y - it.y, p.x - it.x);
+        it.x += Math.cos(a)*620*dt; it.y += Math.sin(a)*620*dt;
+      }
+      if(this.lootT <= 0){ this.finish('clear'); return; }
+    }
 
     // ---- 2P 난입 / 캐릭터 선택 ----
     if(!this.p2 && !this.joining && Input.pressed('p2join')) this.startJoin();
@@ -7984,7 +8040,7 @@ class GameScene extends Scene {
    * 통째로 뚫린다. 부활 직후 3초를 지켜야 하는 마당에 그런 구멍이 있으면 안 된다.
    */
   hurtPlayer(p, dmg){
-    if(p.out || p.deadT > 0 || p.shieldT > 0 || p.hurtT > 0) return;
+    if(p.out || p.deadT > 0 || p.shieldT > 0 || p.hurtT > 0 || p.rollT > 0) return;
     /* 맞고 나서의 무적 시간. 1.1초는 너무 길어 연달아 맞는 일이 거의 없었다 */
     p.hurtT = 0.85;
     Shake.add(10, 0.25);
