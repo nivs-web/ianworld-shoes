@@ -5120,6 +5120,17 @@ const PURPLE_DRAGON_PAL = mkPal({       // 적3 : 통통한 보라 드래곤
   C:'#efe6ff', W:'#fff4f4', P:'#6a3b9e', w:'#2e1747', f:'#4a2a70', k:'#1c0d2c'
 });
 /**
+ * ★★ 검은 드래곤 — 탄도 유도 미사일을 쏘는 새 적. (2026-08-27, 사용자 지정)
+ * *"검은색 드래곤을 등장 시키자... 보라색 드래곤 크기와 비슷한데"*
+ * 색만 다른 보라 드래곤이 아니라 **검은 몸에 붉은 눈**으로 확실히 구분되게 한다 —
+ * 이 색을 보면 "저건 유도 미사일을 쏜다" 를 몸이 먼저 기억해야 한다.
+ */
+const BLACK_DRAGON_PAL = mkPal({
+  K:'#000000', D:'#0c0c10', M:'#17171d', L:'#26262e', T:'#101014',
+  E:'#ff2b3c', H:'#ff8a90', N:'#000000', G:'#3a3a44', S:'#232329',
+  C:'#1c1c22', W:'#ff2b3c', P:'#1a1a20', w:'#08080a', f:'#141418', k:'#020203'
+});
+/**
  * 돌진병. 다른 잡몹과 **색이 확실히 달라야** 한다 —
  * 조준선이 뜨기 전에도 "저건 돌진하는 놈" 인 것을 알아봐야 비킬 준비를 한다.
  * 잿빛 몸에 형광 주황 — 화면의 어느 배경 위에서도 튄다.
@@ -5782,6 +5793,141 @@ class HeavyRider extends EnemyBase {
   }
   render(ctx){
     castPose(ctx, this, () => drawFormDragon(ctx, PURPLE_DRAGON_PAL, 'A', HV_CELL,
+      this.x, this.y, this.pose, true, this.flash > 0 ? '#ffffff' : null, [A_RIDER]));
+  }
+}
+
+/**
+ * ★★ 검은 드래곤의 유도 미사일 — 단 1발, 플레이어 미사일의 절반 속도로 쫓아온다.
+ * (2026-08-27, 사용자 지정)
+ *
+ * *"탄도 유도 미사일을 쏨, 단 1발씩 쏨, 근데 내가 쏘는 미사일 보다 0.5배 느림,
+ *   근데 주인공 캐릭터를 쫓아 오기 때문에 피해야함, 3초 동안 피하면, 이 탄도
+ *   유도 미사일은 아래로 빠르게 사라짐. 근데 안피하고 그냥 재자리에 서 있으면
+ *   맞으면 한방에 터짐"*
+ *
+ * 기존 `HomingMissile`(헤비 라이더용)을 그대로 안 쓰는 이유는 셋 —
+ *   ① 속도가 **플레이어 미사일의 정확히 절반**이어야 한다(`MISSILE.CHASE_SPD`는
+ *      이 파일 뒤쪽에 정의돼 있어 실행 시점에 직접 계산한다).
+ *   ② **3초를 못 피하면** 그때부터 도망치듯 아래(월드 -x, 다른 모든 것이 빠지는
+ *      방향)로 빠르게 가속해 빠진다 — 기존 것은 수명이 다 되면 조용히 지운다.
+ *   ③ **맞으면 한방**이라 `hurt` 를 확실히 목숨을 깎는 값으로 못박는다.
+ */
+class BlackMissile {
+  constructor(x, y, target){
+    this.x = x; this.y = y;
+    this.ang = Math.PI;
+    this.spd = MISSILE.CHASE_SPD * 0.5;      // 내 미사일의 절반
+    this.turn = 2.3;
+    this.target = target; this.t = 0; this.dead = false;
+    this.chaseLife = 3.0;                    // 이 동안 쫓는다
+    this.fleeing = false;
+    this.hurt = 999;                         // 맞으면 무조건 한방
+    this.isBlack = true;                     // 플레이어 미사일이 무조건 요격하는 표식
+  }
+  /**
+   * ★ **판정을 살짝 넉넉하게.** (2026-08-27)
+   * 플레이어의 판정칸은 `p.y` 에서 조금 아래로 치우쳐 있다(발밑 쪽). 탄이 딱
+   * `p.x,p.y` 를 노리고 오면 겨우 몇 픽셀 차이로 스치듯 비껴가는 경우가 있었다 —
+   * *"안피하고 그냥 재자리에 서 있으면 맞으면 한방에 터짐"* 이라는 약속을
+   * 물리 오차가 깨면 안 되므로 탄의 판정을 조금 키워 확실히 맞게 한다.
+   */
+  get box(){ return { x:this.x - 16, y:this.y - 14, w:32, h:28 }; }
+  update(dt){
+    this.t += dt;
+    if(!this.fleeing){
+      this.chaseLife -= dt;
+      const tg = this.target;
+      if(tg && !tg.out){
+        const want = Math.atan2(tg.y - this.y, tg.x - this.x);
+        let d = want - this.ang;
+        while(d >  Math.PI) d -= Math.PI*2;
+        while(d < -Math.PI) d += Math.PI*2;
+        this.ang += clamp(d, -this.turn*dt, this.turn*dt);
+      }
+      this.x += Math.cos(this.ang)*this.spd*dt;
+      this.y += Math.sin(this.ang)*this.spd*dt;
+      if(this.chaseLife <= 0){
+        this.fleeing = true;
+        this.ang = Math.PI;                  // "아래" 로 방향을 튼다
+      }
+    }else{
+      this.spd = Math.min(1400, this.spd + 2200*dt);   // 도망치듯 빠르게 가속
+      this.x += Math.cos(this.ang)*this.spd*dt;
+      this.y += Math.sin(this.ang)*this.spd*dt;
+      if(this.x < -100) this.dead = true;
+    }
+    if(this.t > 0.05 && Math.random() < 0.6)
+      Particles.spawn(this.x, this.y, 1, { spd:40, life:0.26, grav:-10, drag:4,
+        pal:['#ff2b3c','#ff8a3a','#3a3a44'] });
+    if(this.y < -100 || this.y > GAME_H + 100 || this.x > GAME_W + 140) this.dead = true;
+  }
+  render(ctx){
+    const x = snap(this.x), y = snap(this.y);
+    const c = Math.cos(this.ang), s = Math.sin(this.ang);
+    ctx.fillStyle = '#ff2b3c'; ctx.fillRect(snap(x - c*16), snap(y - s*16), PX*2, PX*2);  // 꼬리 불꽃
+    ctx.fillStyle = '#17171d'; ctx.fillRect(x - 9, y - PX, 18, PX*2);                     // 동체
+    ctx.fillStyle = '#ff2b3c'; ctx.fillRect(x + 6, y - PX, PX*2, PX*2);                   // 탄두
+    ctx.fillStyle = '#000000'; ctx.fillRect(x - 11, y - PX*2, PX, PX*4);                  // 꼬리날개
+  }
+}
+
+/**
+ * ★★ 검은 드래곤 — 10초에 1마리, 보스가 떠 있는 동안엔 쉰다. (2026-08-27, 사용자 지정)
+ * *"검은색 드래곤을 등장 시키자 이 드래곤은 중간보스 말고, 보라색 드래곤
+ *   크기와 비슷한데 10초에 1마리씩만 등장함 보스 등장할땐 등장하지 않음"*
+ * 몸집은 `HeavyRider`(보라 드래곤)와 같은 `HV_CELL`. 색만 다른 게 아니라
+ * 검은 팔레트로 확실히 구분한다.
+ */
+const BK_CELL = HV_CELL;                              // 보라 드래곤과 같은 덩치
+const BLACK_DRAGON_EVERY = 10.0;                       // 10초에 1마리
+class BlackDragon extends EnemyBase {
+  constructor(x, y){
+    /**
+     * ★ **보라 드래곤(HeavyRider)만큼 튼튼하게.** (2026-08-27)
+     * 처음엔 잡몹 수준(90)으로 뒀더니 미사일을 쏘기도 전에 기본 화염에
+     * 녹아 없어졌다 — 몸집을 맞췄으면 맷집도 맞아야 "한 발은 쏜다".
+     */
+    super(x, y, enemyHp(220), 260);
+    this.vx = -(120 + Math.random()*30);
+    this.fireT = 0.7;                 // 등장하고 잠깐 뒤 쏜다
+    this.fired = false;               // 딱 1발만 — 재장전 없다
+  }
+  get box(){ return { x:this.x - 53, y:this.y - 43, w:106, h:86 }; }
+  update(dt, scene){
+    this.t += dt;
+    if(this.flash > 0) this.flash -= dt;
+    if(this.knock > 0) this.knock = Math.max(0, this.knock - 900*dt);
+    this.x += (this.vx + this.knock)*dt;
+    applyDive(this, dt);
+    this.y = this.baseY + Math.sin(this.t*1.1)*34;
+    this.flapUpdate(dt, 0.13);
+    if(this.castT > 0) this.castT -= dt;
+    if(!this.fired){
+      this.fireT -= dt;
+      if(this.fireT <= 0){
+        this.fired = true;
+        this.castT = CAST_TIME;
+        const tg = scene.nearestPlayer(this.x, this.y);
+        scene.missiles.push(new BlackMissile(this.x - 50, this.y, tg));
+        SND.sfx('missile');
+      }
+    }
+    if(this.x < -160) this.dead = true;
+  }
+  die(scene){
+    super.die(scene);
+    scene.booms.push(new Boom(this.x, this.y, 130, 0.5));
+    scene.waves.push(new Shockwave(this.x, this.y, 340, 0.36));
+    Particles.spawn(this.x, this.y, 44, { spd:560, life:0.7,
+      pal:['#ff2b3c','#26262e','#000000'] });
+    if(this.gotScore > 0) Popups.add(this.x, this.y - 50, this.gotScore, PAL.fire[0], 5);
+    Shake.add(13, 0.24);
+    Flash.add('#ff2b3c', 0.08, 0.22);
+    SND.sfx('boomM');
+  }
+  render(ctx){
+    castPose(ctx, this, () => drawFormDragon(ctx, BLACK_DRAGON_PAL, 'A', BK_CELL,
       this.x, this.y, this.pose, true, this.flash > 0 ? '#ffffff' : null, [A_RIDER]));
   }
 }
@@ -7396,6 +7542,80 @@ class Item {
   }
 }
 
+/**
+ * ★★ 중간보스를 잡으면 뜨는 "피하는 하트" — 그냥 먹는 하트가 아니라 하나의
+ * 이벤트로 만든다. (2026-08-27, 사용자 지정)
+ *
+ * *"중간보스 잡으면 하트나가 떠다니게 만들어, 근데 이 하트는 파이어레벨업
+ *   아이템처럼 좀 크기를 크게 만들어, 근데 이 녀석은 재자리 혹은 근처를 살살
+ *   비행기 캐릭터를 피하는 것처럼 1.5초 정도 좌우로 움직이다가, 아주 빠른
+ *   속도로 아래로 떨어졌으면 좋겠어, 그것도 살짝 주인공 캐릭터를 피하면서
+ *   (...) 그냥 가만히 서있으면 이 녀석이 피해서 아래로 사라지고 내 근처
+ *   오는 순간 오른쪽이나 왼쪽으로 타이밍 맞춰서 이동해야만 먹을 수 있게"*
+ *
+ * 두 박자로 나눈다.
+ *   ① **살랑임(JUKE_T=1.5초)** — 제자리 근처에서 좌우로 흔들리다가, 플레이어가
+ *      다가오면 반대쪽으로 슬쩍 밀린다. 완전히 도망가 버리면 아무도 못 잡으므로
+ *      "슬쩍" 정도로 그친다 — 타이밍만 맞으면 잡을 수 있어야 한다.
+ *   ② **낙하** — 세로 기준 "아래"(= 월드 -x, 다른 모든 아이템이 빠지는 방향)로
+ *      빠르게 빠지며, 그동안에도 계속 플레이어를 슬쩍 피한다.
+ *      화면 밖으로 나가면 그냥 사라진다 — **효과 없음.** 못 먹으면 그걸로 끝이다.
+ */
+const EVADE_HEART_JUKE_T    = 1.5;   // 살랑이는 시간
+const EVADE_HEART_JUKE_AMP  = 110;   // 살랑이는 폭
+const EVADE_HEART_DODGE_R   = 190;   // 이 안에 들어오면 피하기 시작
+const EVADE_HEART_DODGE_SPD = 320;   // 피하는 속도
+const EVADE_HEART_FALL_SPD  = 620;   // 낙하 속도
+
+class EvasiveHeart extends Item {
+  constructor(x, y){
+    super(x, y, ITEM_KIND.HEART);
+    this.r = ITEM_BIG_R;              // 파이어레벨업 아이템만큼 크게
+    this.vx = 0;                      // 기본 Item 의 좌이동을 끄고 직접 다룬다
+    this.life = 999;                  // 스스로 낙하 끝에 사라진다 — 시간으로 안 없앤다
+    this.baseY = this.y;
+    this.evadeT = EVADE_HEART_JUKE_T;
+    this.falling = false;
+  }
+  update(dt, pull, scene){
+    this.t += dt;
+    const p = scene && scene.p1 && !scene.p1.out ? scene.p1 : null;
+    let dodge = 0;
+    if(p){
+      const d = Math.hypot(p.x - this.x, p.y - this.y);
+      if(d > 1 && d < EVADE_HEART_DODGE_R){
+        const away = (this.y - p.y) >= 0 ? 1 : -1;
+        dodge = away * (1 - d / EVADE_HEART_DODGE_R) * EVADE_HEART_DODGE_SPD;
+      }
+    }
+    if(!this.falling){
+      this.evadeT -= dt;
+      const sway = Math.sin(this.t * 3.4) * EVADE_HEART_JUKE_AMP;
+      this.y = clamp(this.baseY + sway + dodge * 0.4, 70, GAME_H - 70);
+      if(this.evadeT <= 0) this.falling = true;
+    } else {
+      this.x += -EVADE_HEART_FALL_SPD * dt;
+      this.y = clamp(this.y + dodge * dt, 60, GAME_H - 60);
+      if(this.x < -80) this.dead = true;
+    }
+  }
+  paint(ctx){
+    const x = snap(this.x), y = snap(this.y);
+    const S = PX * 2.4;                 // 기본 하트보다 훨씬 크게 그린다
+    ctx.fillStyle = '#ff2b4a';
+    const rows = ['.XX.XX.','XXXXXXX','XXXXXXX','.XXXXX.','..XXX..','...X...'];
+    for(let r=0;r<rows.length;r++) for(let c=0;c<7;c++)
+      if(rows[r][c] === 'X') ctx.fillRect(snap(x - 14*2.4 + c*S), snap(y - 12*2.4 + r*S), S, S);
+    ctx.fillStyle = '#ff8fa0';
+    ctx.fillRect(snap(x - 10*2.4), snap(y - 8*2.4), S*2, S);
+    /* 남은 살랑임 시간을 링으로 — 언제 낙하가 시작되는지 감이 와야 쫓아갈 수 있다 */
+    if(!this.falling){
+      const k = clamp(this.evadeT / EVADE_HEART_JUKE_T, 0, 1);
+      drawPixelRing(ctx, x, y, this.r + 8, PX*2, `rgba(255,255,255,${(0.15+k*0.35).toFixed(2)})`);
+    }
+  }
+}
+
 /* ==================================================================
    화면 버튼 (우하단 미사일 / 필살기) - 도트 아이콘
    ================================================================== */
@@ -8405,6 +8625,7 @@ class GameScene extends Scene {
       RUN.wallet0 = DG.coins() | 0;      // 이 판을 시작할 때의 지갑 (고정)
     }
     this.boss = null; this.bossBannerT = 0; this.bossDeathT = 0;
+    this.blackT = BLACK_DRAGON_EVERY;   // 검은 드래곤 — 10초마다 1마리 (보스 등장 중엔 쉼)
     this.lootT = undefined;           // 최종보스 뒤 금화 줍는 시간
     this.killStreak = 0;
     this.chainT = 0;                 // 연쇄가 끊기기까지 남은 시간
@@ -8625,7 +8846,7 @@ class GameScene extends Scene {
       this.heartDropped = true;
       this.items.push(new Item(e.x - 80, e.y, ITEM_KIND.POWER));
       /* 결투에서는 하트가 안 나온다 — 목숨이 늘면 300초 제한이 무의미해진다 */
-      if(giveHeart && !this.duel) this.items.push(new Item(e.x + 80, e.y, ITEM_KIND.HEART));
+      if(giveHeart && !this.duel) this.items.push(new EvasiveHeart(e.x + 80, e.y));
       return;
     }
     if(e instanceof Boss){
@@ -9579,6 +9800,24 @@ class GameScene extends Scene {
         SND.sfx('shield');
       }
       SND.sfx('missile'); Input.rumble(0.35, 0.25, 120);
+      /**
+       * ★★ **검은 드래곤 미사일은 내가 쏘면 무조건 맞는다.** (2026-08-27, 사용자 지정)
+       * *"만약 내가 이 미사일이 날아 올때 내가 내 미사일을 쏘면, 무조건 이
+       *   미사일을 명중시키게 셋팅해"*
+       * 실제 유도/충돌 물리에 맡기면 속도차·각도에 따라 빗나갈 수 있다 —
+       * 이 규칙의 취지("쏘면 반드시 막는다")와 어긋난다. 그래서 쏘는 바로 그
+       * 순간 나를 쫓고 있는 검은 미사일을 **확정으로** 요격한다.
+       */
+      for(const mi of this.missiles){
+        if(mi.dead || !mi.isBlack || mi.target !== p) continue;
+        mi.dead = true;
+        this.booms.push(new Boom(mi.x, mi.y, 70, 0.4));
+        Particles.spawn(mi.x, mi.y, 20, { spd:420, life:0.5,
+          pal:['#ffffff','#ff2b3c','#ff8a3a'] });
+        Popups.add(mi.x, mi.y - 40, '요격!', '#ff8a3a', 4, true);
+        Shake.add(8, 0.18);
+        SND.sfx('boomM');
+      }
     }
     if(wantBomb && p.bombCool > 0 && p.bombCount > 0 && !busyFx){
       Popups.add(p.x, p.y - 110,
@@ -9693,6 +9932,23 @@ class GameScene extends Scene {
 
     // ---- 웨이브 / 아이템 ----
     this.director.update(dt);
+    /**
+     * ★ **검은 드래곤 — 10초에 1마리, 보스가 있는 동안엔 쉰다.**
+     * 결투에서는 안 낸다 — 결투는 두 화면이 완전히 같은 것만 겨루게 짜여 있고
+     * (씨앗 금화·고스트) 이 적은 씨앗 없이 무작위로 움직이므로 한쪽 화면에서만
+     * 벌어지는 일이 된다.
+     */
+    if(!this.duel){
+      const bossActive = this.enemies.some(e => !e.dead && (e instanceof MidBoss || e instanceof Boss));
+      if(!bossActive){
+        this.blackT -= dt;
+        if(this.blackT <= 0){
+          this.blackT = BLACK_DRAGON_EVERY;
+          const y0 = 140 + Math.random()*(GAME_H - 280);
+          this.enemies.push(new BlackDragon(GAME_W + 90, y0));
+        }
+      }
+    }
     if(this.bossBannerT > 0) this.bossBannerT -= dt;
     if(this.formT > 0) this.formT -= dt;
     if(this.pickupT > 0) this.pickupT -= dt;
@@ -9762,7 +10018,7 @@ class GameScene extends Scene {
     const pull = (EQ.magnet > 0 && this.p1 && !this.p1.out && this.p1.hp > 0)
       ? (this.p1.deadT > 0 ? null : { x: this.p1.x, y: this.p1.y, r: EQ.magnet })
       : null;
-    for(const it of this.items)    it.update(dt, pull);
+    for(const it of this.items)    it.update(dt, pull, this);
     for(const r of this.roars)     r.update(dt, this);
     Particles.update(dt); Popups.update(dt); Flash.update(dt); Shake.update(dt);
     if(this.grazeFlash > 0) this.grazeFlash -= dt;
