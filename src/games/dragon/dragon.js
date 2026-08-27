@@ -4149,34 +4149,48 @@ const SMILE = [
  * 미사일 아이콘. 오른쪽이 탄두, 왼쪽이 꼬리 — 플레이어가 쏘는 방향과 같다.
  * 도트 그리드로 그려야 게임 안의 다른 것들과 결이 맞는다.
  */
+/**
+ * ★ **세워진 로켓.** (2026-08-27, 사용자 지정)
+ * *"로케트가 세워져 있는 디자인으로 (...) 위를 향하게 세워져 있고,
+ *   누가봐도 로케트다 라는 느낌"*
+ *
+ * 눕힌 것은 미사일인지 물고기인지 헷갈렸다. **위를 향해 선 로켓**은
+ * 뾰족한 코 · 몸통 · 창문 · 양옆 날개 · 아래로 뿜는 불꽃이 한 덩어리로 읽힌다.
+ *   K 외곽 · W 흰 몸통 · R 붉은 코와 날개 · B 파란 창문
+ */
 const MISSILE_ART = [
-  '.....................',
-  '..........KKK........',
-  '.....KKKKKWWWKK......',
-  '..KKKWWWWWWWWWWKK....',
-  '.KRWWWWWWWWWWWWWWK...',
-  'KKKWWRRRWWWWWWWWWWK..',
-  '.KRWWWWWWWWWWWWWWK...',
-  '..KKKWWWWWWWWWWKK....',
-  '.....KKKKKWWWKK......',
-  '..........KKK........',
-  '.....................',
+  '.....KKK.....',
+  '....KRRRK....',
+  '....KRRRK....',
+  '...KRRRRRK...',
+  '...KWWWWWK...',
+  '...KWBBBWK...',
+  '...KWBBBWK...',
+  '...KWWWWWK...',
+  '..KKWWWWWKK..',
+  '.KRRKWWWKRRK.',
+  'KRRRKWWWKRRRK',
+  'KRRKKWWWKKRRK',
+  '.KK.KKKKK.KK.',
 ];
 function drawMissileIcon(ctx, cx, cy, t){
   const cell = PX;
   const W = MISSILE_ART[0].length, H = MISSILE_ART.length;
   const ox = snap(cx - W*cell/2), oy = snap(cy - H*cell/2);
-  /* 뒤로 뿜는 불꽃 — 깜빡여서 "날고 있다" 로 보인다 */
+  /* 아래로 뿜는 불꽃 — 길이가 깜빡여서 "날고 있다" 로 보인다 */
   const f = Math.floor(t*18) % 2 === 0 ? 3 : 2;
   for(let i=0;i<f;i++){
     ctx.fillStyle = i === 0 ? '#fff6c2' : (i === 1 ? '#ffb03a' : '#ff5a2e');
-    ctx.fillRect(ox - (i+1)*cell*2, oy + (H>>1)*cell - cell, cell*2, cell*2);
+    const w = (3 - i)*cell*2;
+    ctx.fillRect(snap(cx - w/2), oy + H*cell + i*cell*2, w, cell*2);
   }
   for(let r=0;r<H;r++){
     for(let c=0;c<W;c++){
       const ch = MISSILE_ART[r][c];
       if(ch === '.') continue;
-      ctx.fillStyle = ch === 'K' ? '#2b2f3a' : (ch === 'R' ? '#ff4d5a' : '#e8ecf6');
+      ctx.fillStyle = ch === 'K' ? '#2b2f3a'
+                    : ch === 'R' ? '#ff4d5a'
+                    : ch === 'B' ? '#6fc8ff' : '#e8ecf6';
       ctx.fillRect(ox + c*cell, oy + r*cell, cell, cell);
     }
   }
@@ -6525,6 +6539,49 @@ const TIME_BAR = { x: 400, y: 16, w: 480, h: 26 };   // 상단 중앙 시간 게
 const FS_BTN = { size: 44, pad: 14 };
 const P1_COLOR = '#8fd0ff', P2_COLOR = '#ffa8d0';
 
+/**
+ * ★★ **금화 정산 — 부자가 된 기분.** (2026-08-27, 사용자 지정)
+ *
+ * *"핵심은 보유 금화. 획득 금화 합친다. 애니메이션 효과. 합쳐졌다.
+ *   금화가 쏟아진다. 이걸 시각적으로 애니메이션 넣어. 부자가 된듯한 애니메이션"*
+ *
+ * 판이 끝나면 표가 툭 뜨는 것이 전부였다. 30분을 들여 모은 금화가
+ * **표의 한 줄**로 끝나니 번 것 같지가 않다.
+ *
+ * 여섯 걸음으로 나눠 보여 준다. 각 걸음이 **하나씩만** 말하게 해야
+ * 눈이 따라온다 — 한꺼번에 다 움직이면 아무것도 안 읽힌다.
+ *
+ *   ① 보유    가운데에 지금까지 모은 금화가 크게 튀어나온다
+ *   ② 더하기  그 오른쪽에 `+` 가 튀어나온다
+ *   ③ 획득    그 오른쪽에 이번 판에서 번 금화가 뜬다
+ *   ④ 합체    획득이 0.5초에 걸쳐 보유 쪽으로 날아가 부딪히며 꿀렁인다
+ *   ⑤ 슬롯    합쳐진 숫자가 슬롯머신처럼 빠르게 올라간다
+ *   ⑥ 폭발    다 오르면 화면 절반만 하게 커졌다 작아지고, 뒤로 금화가 쏟아진다
+ *
+ * 걸음마다 시각을 못 박아 두면(`TALLY`) 순서를 바꾸거나 늘리기가 쉽다.
+ */
+const TALLY = {
+  own:   [0.00, 0.55],      // ① 보유가 튀어나온다
+  plus:  [0.55, 0.85],      // ② +
+  gain:  [0.85, 1.30],      // ③ 획득
+  merge: [1.30, 1.80],      // ④ 0.5초에 걸쳐 날아가 합쳐진다
+  roll:  [1.80, 2.85],      // ⑤ 슬롯머신
+  boom:  [2.85, 3.45],      // ⑥ 커졌다 작아지고 금화가 쏟아진다
+  end:    3.45,
+};
+/** 0~1 로 편 진행도. 아직 안 왔으면 -1, 지났으면 2 */
+function tallyK(t, span){
+  if(t < span[0]) return -1;
+  if(t > span[1]) return 2;
+  return (t - span[0]) / (span[1] - span[0]);
+}
+/** 튀어나오는 곡선 — 살짝 넘겼다 제자리로 (뻣뻣하지 않게) */
+function popEase(k){
+  if(k <= 0) return 0;
+  if(k >= 1) return 1;
+  return 1 + Math.sin((1 - k) * Math.PI * 1.5) * (1 - k) * 0.55;
+}
+
 class GameScene extends Scene {
   /* carry : 이전 스테이지에서 이어받는 플레이어 상태 (컨티뉴) */
   /**
@@ -6685,7 +6742,10 @@ class GameScene extends Scene {
     this.scoreFrac = 0;               // 점수의 소수 자리 (100 으로 나누며 생긴다)
     this.kills = 0;
     /* 새 판이 아니라 **이어지는 스테이지**면 동전을 이어서 센다 */
-    if(!this.carry){ RUN.coins = 0; RUN.coinFrac = 0; RUN.banked = 0; RUN.noHitRun = 0; }
+    if(!this.carry){
+      RUN.coins = 0; RUN.coinFrac = 0; RUN.banked = 0; RUN.noHitRun = 0;
+      RUN.wallet0 = DG.coins() | 0;      // 이 판을 시작할 때의 지갑 (고정)
+    }
     this.boss = null; this.bossBannerT = 0; this.bossDeathT = 0;
     this.killStreak = 0;
     this.chainT = 0;                 // 연쇄가 끊기기까지 남은 시간
@@ -6721,6 +6781,9 @@ class GameScene extends Scene {
     this.continuesUsed = (this.carry && this.carry.continues) | 0;
     this.runEnded = false;      // 이 판의 끝을 이미 알렸는가
     this.endRows = 5;                 // 결과 표의 줄 수 (자리 계산에 쓴다)
+    /* 금화 정산 애니메이션 (판이 진짜 끝났을 때만 돈다) */
+    this.tallyT = -1;                 // -1 = 안 함
+    this.tallyCoins = []; this.tallyShown = 0;
     this.finalBossKilled = false; this.menuIdx = 0; this.endIdx = 0;
     this.tapIdx = -1;                 // 터치로 고른 메뉴 번호
     /**
@@ -7025,6 +7088,13 @@ class GameScene extends Scene {
       /* 판이 계속되는가 — 판수(`dragonPlays`)는 진짜 끝났을 때만 센다 */
       midRun: kind === 'clear' && this.stage < 20,
     });
+    /**
+     * ★ **판이 진짜 끝났을 때만** 정산 애니메이션을 돌린다 (2026-08-27).
+     * 스테이지마다 돌리면 스무 번을 보게 되고, 스무 번째에는 아무 감흥이 없다.
+     */
+    if(kind === 'over' || (kind === 'clear' && this.stage >= 20)){
+      this.tallyT = 0; this.tallyCoins = []; this.tallyShown = 0;
+    }
     if(kind === 'clear'){
       /* 결투는 남은 목숨으로 점수를 주지 않는다 — 겨루는 값은 오직 보스와 금화다 */
       /**
@@ -7242,6 +7312,24 @@ class GameScene extends Scene {
     SND.sfx('boomL'); SND.sfx('nuke');
     Input.rumble(1.0, 0.9, 500);
   }
+  /**
+   * 금화가 터져 쏟아진다. 숫자 **뒤에서** 튀어나와 화면을 채운다 —
+   * 앞에서 쏟아지면 정작 봐야 할 숫자를 가린다.
+   */
+  burstCoins(){
+    for(let i=0;i<90;i++){
+      const a = -Math.PI/2 + (Math.random() - 0.5) * 2.4;
+      const sp = 420 + Math.random()*680;
+      this.tallyCoins.push({
+        x: 640 + (Math.random()-0.5)*220, y: 360 + (Math.random()-0.5)*90,
+        vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
+        r: 10 + Math.random()*9, t: -Math.random()*0.22, ph: Math.random()*7,
+      });
+    }
+    Shake.add(16, 0.5);
+    Flash.add(PAL.gold, 0.10, 0.22);
+    SND.sfx('coin'); SND.sfx('fanfare');
+  }
   /** 지금 연쇄 배수 (1.0 ~ CHAIN_MAX). 세 마리째부터 붙는다 */
   chainMul(){
     if(this.chainT <= 0 || this.killStreak < 3) return 1;
@@ -7421,6 +7509,18 @@ class GameScene extends Scene {
   }
   updateEnd(dt){
     this.stateT += dt;
+    if(this.tallyT >= 0 && this.tallyT < TALLY.end + 3.0){
+      const was = this.tallyT;
+      this.tallyT += dt;
+      /* ⑥ 다 오른 순간 금화가 터진다 — 한 번만 */
+      if(was < TALLY.boom[0] && this.tallyT >= TALLY.boom[0]) this.burstCoins();
+      for(const c of this.tallyCoins){
+        c.vy += 1400*dt; c.x += c.vx*dt; c.y += c.vy*dt; c.t += dt;
+        /* 바닥에서 한 번 튄다 — 진짜 쏟아지는 것처럼 */
+        if(c.y > GAME_H - 30 && c.vy > 0){ c.y = GAME_H - 30; c.vy *= -0.42; c.vx *= 0.7; }
+      }
+      this.tallyCoins = this.tallyCoins.filter(c => c.t < 3.0);
+    }
     for(const b of this.booms) b.update(dt);
     Particles.update(dt); Popups.update(dt); Flash.update(dt); Shake.update(dt);
     this.booms = this.booms.filter(o => !o.dead);
@@ -8239,7 +8339,7 @@ class GameScene extends Scene {
        * "저 드래곤을 살 수 있나" 를 게임 중에 바로 셈할 수 있다.
        */
       const run = RUN.coins | 0;
-      const wallet = (DG.coins() | 0) + run;
+      const wallet = RUN.wallet0 | 0;    // 고정 — 이번 판에서 번 것은 왼쪽 숫자가 센다
       ko(ctx, '금화', x, y - 2, 2, { color:'#8a93b8' });
       /* `drawDigits` 는 고정폭이라 `textWidth` 와 다르다 — 그리면서 준 폭을 그대로 쓴다 */
       const dw = drawDigits(ctx, String(Math.min(9999, run)), x + LBL, y - 2, 3,
@@ -8571,12 +8671,109 @@ class GameScene extends Scene {
       { align:'center', color:'#8a7bb8' });
   }
 
+  /**
+   * 금화 정산. 여섯 걸음을 순서대로 그린다 — `TALLY` 가 시각을 갖고 있으므로
+   * 여기서는 **지금 몇 번째 걸음인지**만 보고 그린다.
+   * @returns 아직 도는 중이면 true (표와 버튼은 그동안 기다린다)
+   */
+  renderTally(ctx){
+    const t = this.tallyT;
+    if(t < 0) return false;
+    const own = RUN.wallet0 | 0, gain = RUN.coins | 0, total = own + gain;
+
+    /**
+     * ★ 정산 동안에는 배경을 **더 어둡게** 깐다.
+     * 뒤에서 적이 날고 글자가 뜨면 정작 볼 숫자가 안 읽힌다 —
+     * 이 순간만큼은 화면에 이것 하나만 있어야 한다.
+     */
+    ctx.globalAlpha = 0.72;
+    ctx.fillStyle = '#07040e'; ctx.fillRect(0, 0, GAME_W, GAME_H);
+    ctx.globalAlpha = 1;
+
+    /* 쏟아지는 금화는 **숫자 뒤에** — 앞에 있으면 정작 볼 것을 가린다 */
+    for(const c of this.tallyCoins){
+      if(c.t < 0) continue;
+      drawCoin(ctx, snap(c.x), snap(c.y), c.r, c.ph + c.t*6);
+    }
+
+    const CY = 300;
+    const kOwn = tallyK(t, TALLY.own), kPlus = tallyK(t, TALLY.plus);
+    const kGain = tallyK(t, TALLY.gain), kMg = tallyK(t, TALLY.merge);
+    const kRoll = tallyK(t, TALLY.roll), kBoom = tallyK(t, TALLY.boom);
+
+    /* ⑤⑥ 합쳐진 뒤 — 하나의 큰 숫자만 남는다 */
+    if(kRoll >= 0){
+      let shown = total;
+      if(kRoll < 1 && kRoll >= 0){
+        /* 슬롯머신 — 끝에 가까울수록 천천히 (착 붙는 느낌) */
+        const e = 1 - Math.pow(1 - kRoll, 3);
+        shown = Math.round(own + gain*e);
+        if(Math.floor(t*40) % 2 === 0) shown += Math.floor(Math.random()*9);   // 자리가 덜덜 떨린다
+      }
+      /**
+       * ★ **다 오르면 화면 절반만 하게 부푼다.** (2026-08-27, 사용자 지정)
+       * 굴러가는 동안은 7배로 읽을 만하게, 다 오르면 25배까지 부풀렸다가
+       * 21배에 자리잡고 꿀렁인다 (11px 글꼴 x 25 = 275px, 화면의 38% —
+       * 여기에 아래 '보유 금화' 까지 더하면 절반쯤을 덮는다).
+       * 숫자만 남긴다 — '금화' 를 붙이면 폭이 모자라 배율이 깎인다.
+       */
+      const txt = num(shown);
+      let s = 7;
+      if(kBoom >= 0 && kBoom <= 1){
+        s = 7 + Math.sin(Math.min(1, kBoom*1.5)*Math.PI) * 18 + Math.sin(kBoom*Math.PI*3.2)*1.6;
+      }else if(kBoom > 1){
+        s = 21 + Math.sin(t*3.4)*0.8;                 // 다 커진 뒤에도 천천히 숨 쉰다
+      }
+      /* 자릿수가 많아 화면을 넘치면 그만큼 줄인다 — 잘리는 것보다 낫다 */
+      const maxS = (GAME_W - 80) / Math.max(1, koMeasure(txt, 1));
+      s = Math.min(s, maxS);
+      ko(ctx, txt, 640, CY - KO_H*s/2, Math.max(4, s),
+        { align:'center', color:PAL.gold, outline:PAL.outline, shadow:'#000' });
+      if(kBoom > 0.35)
+        ko(ctx, '보유 금화', 640, CY + KO_H*s/2 + 26, 4,
+          { align:'center', color:'#ffe6b0', outline:PAL.outline, shadow:'#000' });
+      return t < TALLY.end + 1.6;
+    }
+
+    /* ①②③④ — 왼쪽 보유 · 가운데 + · 오른쪽 획득 */
+    const OWN_X = 470, PLUS_X = 640, GAIN_X = 812;
+    if(kOwn >= 0){
+      const s = 5 * (kOwn < 1 ? popEase(kOwn) : 1);
+      ko(ctx, num(own), OWN_X, CY - KO_H*s/2, Math.max(1, s),
+        { align:'center', color:PAL.gold, outline:PAL.outline, shadow:'#000' });
+      ko(ctx, '보유 금화', OWN_X, CY + 46, 2, { align:'center', color:'#8a9bbf' });
+    }
+    if(kPlus >= 0){
+      const s = 5 * (kPlus < 1 ? popEase(kPlus) : 1);
+      ko(ctx, '+', PLUS_X, CY - KO_H*s/2, Math.max(1, s),
+        { align:'center', color:'#ffffff', outline:PAL.outline });
+    }
+    if(kGain >= 0){
+      /* ④ 획득이 보유 쪽으로 날아간다. 도착하며 한 번 꿀렁 */
+      let x = GAIN_X, s = 5 * (kGain < 1 ? popEase(kGain) : 1), a = 1;
+      if(kMg >= 0 && kMg <= 1){
+        const e = kMg*kMg*(3 - 2*kMg);                 // 부드럽게 출발해 부드럽게 도착
+        x = GAIN_X + (OWN_X - GAIN_X)*e;
+        s = 5 * (1 + Math.sin(kMg*Math.PI)*0.35);
+        a = 1 - Math.max(0, (kMg - 0.82)/0.18);        // 끝에서 스며든다
+      }
+      ctx.globalAlpha = a;
+      ko(ctx, num(gain), x, CY - KO_H*s/2, Math.max(1, s),
+        { align:'center', color:'#7fffa8', outline:PAL.outline, shadow:'#000' });
+      if(kMg < 0) ko(ctx, '획득 금화', GAIN_X, CY + 46, 2, { align:'center', color:'#8a9bbf' });
+      ctx.globalAlpha = 1;
+    }
+    return true;
+  }
+
   renderEnd(ctx){
     const clear = this.state === 'clear';
     ctx.globalAlpha = Math.min(0.78, this.stateT * 1.6);
     ctx.fillStyle = clear ? '#0d1a10' : '#160a0e'; ctx.fillRect(0,0,GAME_W,GAME_H);
     ctx.globalAlpha = 1;
     if(this.stateT < 0.35) return;
+    /* 정산이 도는 동안에는 표도 버튼도 안 낸다 — 한 번에 하나만 봐야 읽힌다 */
+    if(this.renderTally(ctx)) return;
     const title = clear ? (this.duel ? '결투 종료' : '스테이지 클리어')
                         : (this.endReason || '게임오버');
     /* ★ 세 단계 작게 (2026-08-27, 사용자 지정) */
@@ -9270,7 +9467,15 @@ const DG = {
  * 보내는데 `coins` 는 누적값이라, 뺀 만큼을 기억해 두지 않으면 같은 금화를
  * 스무 번 넣게 된다.
  */
-const RUN = { coins: 0, coinFrac: 0, banked: 0, noHitRun: 0 };
+/**
+ * `wallet0` — **판을 시작할 때의 지갑.**
+ *
+ * ★ (2026-08-27, 사용자 지정) *"보유금화는 고정시켜. 현재 금화만 올라가게"*
+ * 예전에는 지갑 + 이번 판을 더해 보여 줬는데, 스테이지가 끝날 때마다 지갑에
+ * 넣으므로 **판이 바뀔 때마다 괄호 안 숫자가 툭 뛰었다.** 기준이 움직이면
+ * "얼마를 벌었나" 를 셀 수가 없다. 시작할 때의 값으로 못 박는다.
+ */
+const RUN = { coins: 0, coinFrac: 0, banked: 0, noHitRun: 0, wallet0: 0 };
 
 /**
  * ★ **낀 아이템은 1P 것이다.** (2026-08-26)
