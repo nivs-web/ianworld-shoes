@@ -212,7 +212,7 @@ export const S = {
   /* 오락실 카드에는 점수 대신 금화를 적는다 — 점수는 순위표용이고,
      이 게임에서 실제로 돈 구슬을 하는 것은 금화다 (2026-08-26, 사용자 지정) */
   dragonTotalCoins: (n) => `총 금화 보유 ${n.toLocaleString('en-US')}개`,
-  dragonBestStage: (n) => `최고 스테이지 ${n}단계`,
+  dragonBestStage: (n) => `최고 스테이지${n}`,
   dragonPlays: (n) => `싱글게임 ${n.toLocaleString('en-US')}게임`,
   dragonFireLv: (n) => `최고 파이어 LV${n}`,
   dragonMenuCharacter: '드래곤변경',
@@ -450,7 +450,7 @@ export const S = {
   /* 결투는 금화를 걸고 하므로 상대가 얼마를 들고 있는지가 제일 궁금하다 */
   walletCoins: (n) => `보유중인 금화 ${Number(n || 0).toLocaleString('en-US')}개`,
   dragonCardStat: (best, w, l) =>
-    `최고 ${best}스테이지 · 결투 ${w}승 ${l}패`,
+    `최고 스테이지${best} · 결투 ${w}승 ${l}패`,
   /**
    * 방 목록용 짧은 표기 (2026-08-19). 한 줄에 상태·방번호·이름·인원·입장 버튼이
    * 다 들어가야 해서 "보유"를 뺐다 — 신발 아이콘이 이미 붙어 있어 뜻은 안 흐려진다.

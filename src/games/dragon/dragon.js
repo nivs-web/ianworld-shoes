@@ -7919,27 +7919,37 @@ const STAGE_TIME = 80;              // 중간보스가 나올 때까지의 제�
  * ★ 화면 폭에서 뽑는다 (2026-08-27) — 세로에서는 화면이 720 밖에 안 되므로
  * 1280 기준으로 박아 두면 화면 밖으로 나간다.
  */
+/**
+ * ★★ **세로의 위쪽 세 줄.** (2026-08-27, 사용자 지정)
+ *
+ * *"맨 위에, 게이지바가 아니라, 맨 위에 스테이지1 - 모래의 피라미드 이렇게
+ *   먼저 뜨고 그 아래 게이지바가 뜨게 만들어"*
+ *
+ *     18   스테이지1 - 모래의 피라미드      (어디인지가 먼저다)
+ *     44   [===== 남은 시간 =====] [방향][전체화면]
+ *     96   점수판 (하트 · 생명력 · 불레벨 · 점수 · 금화)
+ *
+ * 막대는 화면 폭을 다 쓰지 않고 **오른쪽 단추 둘의 자리를 비워 둔다** —
+ * 예전에는 끝까지 늘려서 단추가 막대 밑에 깔렸다.
+ * 가로는 예전 그대로다.
+ */
+const PORT_BANNER_Y = 18;      // 스테이지 이름 띠
+const PORT_BAR_Y    = 44;      // 시간 막대 · 오른쪽 위 단추 둘
+const PORT_PANEL_Y  = 96;      // 점수판
 function timeBar(){
-  /**
-   * ★ 세로는 폭이 720 뿐이라 가운데에 480 짜리 막대를 놓으면 **좌우의 점수판과
-   * 겹친다.** 세로에서는 맨 위에 화면 폭 전체로 한 줄 깔고, 점수판을 그 아래로
-   * 내린다 (`HUD_TOP`).
-   */
-  if(portrait) return { x: 20, y: 14, w: UIW - 40, h: 22 };
+  if(portrait){
+    const right = FS_BTN.size*2 + 10 + FS_BTN.pad + 10;   // 단추 둘이 차지하는 폭
+    return { x: 20, y: PORT_BAR_Y, w: UIW - 20 - right, h: 22 };
+  }
   const w = Math.min(480, UIW - 300);
   return { x: Math.round(UIW/2 - w/2), y: 16, w, h: 26 };
 }
-/** 점수판이 시작하는 높이. 세로는 시간 막대 아래로 내린다 */
-const hudTop = () => portrait ? 48 : 20;
-/**
- * 오른쪽 위 단추 두 개(전체화면·방향)의 높이.
- *
- * ★ 세로에서는 시간 막대가 **화면 폭 전체**로 깔리므로 같은 높이에 두면
- *   막대 밑에 깔려 안 보인다 (실제로 그랬다). 막대 아래로 내린다.
- */
-const btnTopY = () => portrait ? 44 : FS_BTN.pad;
-/** 스테이지 이름 띠의 높이. 점수판(약 92px) 아래에 놓는다 */
-const hudBannerY = () => portrait ? hudTop() + 104 : 46;
+/** 점수판이 시작하는 높이 */
+const hudTop = () => portrait ? PORT_PANEL_Y : 20;
+/** 오른쪽 위 단추 두 개(전체화면·방향)의 높이 — 막대와 같은 줄에 선다 */
+const btnTopY = () => portrait ? PORT_BAR_Y - 11 : FS_BTN.pad;
+/** 스테이지 이름 띠의 높이 — 세로에서는 **맨 위**다 */
+const hudBannerY = () => portrait ? PORT_BANNER_Y : 46;
 /**
  * ★★ **전체화면 단추를 화면에 박아 둔다.** (2026-08-27, 사용자 지정)
  *
@@ -8322,9 +8332,19 @@ class GameScene extends Scene {
     const br = Math.round(BTN_R[clamp(o.btnSize,0,2)] * shrink), br2 = Math.round(br*0.92);
     /* ★ 화면 크기에서 뽑는다 — 세로면 720x1280 이다 (2026-08-27) */
     const my = UIH - br - 52;
-    const rx = UIW < 900 ? UIW - br - 24 : UIW - br - 140;   // 세로는 폭이 좁아 더 붙인다
+    const rx = portrait ? UIW - br - 24 : UIW - br - 140;   // 세로는 폭이 좁아 더 붙인다
     this.btnMsl  = new TouchButton(rx, my, br, ICON_MISSILE, 4, P1_COLOR, this.p2 ? '1P' : '');
-    this.btnBomb = new TouchButton(UIW - br2 - 24, my - br - 40, br2, ICON_BOMB, 4, PAL.gold, this.p2 ? '1P' : '');
+    /**
+     * ★ **핵 단추를 미사일 단추에서 떼어 놓는다.** (2026-08-27, 사용자 지적)
+     * *"미사일 버튼과 핵 버튼이 있는데 너무 딱 붙어 있어, 살짝 핵버튼을 위로 올려서"*
+     *
+     * 예전 간격(`br + 40`)은 두 **반지름의 합**(br + br2 = 1.92·br)보다 짧았다.
+     * 크게 쓰는 사람일수록 더 겹친다 — 실제로 원이 서로 파고들어 있었다.
+     * 두 반지름을 더한 만큼 띄우고 손가락이 지날 틈을 얹는다.
+     * 가로는 자리가 넉넉하므로 예전 그대로 둔다.
+     */
+    const gap = portrait ? (br + br2 + 26) : (br + 40);
+    this.btnBomb = new TouchButton(UIW - br2 - 24, my - gap, br2, ICON_BOMB, 4, PAL.gold, this.p2 ? '1P' : '');
     this.btnMsl.alpha = this.btnBomb.alpha = o.btnAlpha;
     if(this.p2){
       // 스틱이 남아 있으면 겹치지 않도록 2P 버튼을 위로 올린다
@@ -9995,16 +10015,45 @@ class GameScene extends Scene {
     const W = 216;
     let y = y0;
     /**
-     * ★ **한 줄에 몰지 않는다.** (2026-08-26, 사용자 지적)
+     * ★★ **순서: 하트 / 생명력 / 불레벨 / 점수 / 금화.** (2026-08-27, 사용자 지정)
      *
-     * 점수와 금화를 나란히 놨더니 여섯 자리 점수가 길어질 때 **글자가 겹쳤다.**
-     * 폭을 재서 밀어 넣는 방법도 있지만, 자릿수가 바뀔 때마다 금화가 좌우로
-     * 흔들려서 읽기 나쁘다. 줄을 하나 늘리는 편이 낫다 —
+     * *"왼쪽 위에 하트,생명력,파이어레벨,점수,금화, 이렇게 순서를 바꿔 (...)
+     *   숫자가 아래쪽에 뜨는게 맞는거 같다"*
      *
-     *     점수 000000
-     *     금화 000
-     *     (하트)
+     * 싸우는 동안 **계속 봐야 하는 것**과 **가끔 확인하는 것**은 다르다.
+     * 하트·생명력·불레벨은 지금 당장의 목숨이 걸린 값이라 위에 있어야 하고,
+     * 점수와 금화는 판이 끝나고 세어도 되는 값이다.
+     *
+     * 각 덩어리는 `y` 를 이어받아 아래로 쌓는다 — 순서만 바꿔 놓으면
+     * 자리는 알아서 따라온다.
      */
+    // 하트
+    const rows = ['.XX.XX.','XXXXXXX','.XXXXX.','..XXX..','...X...'];
+    for(let i=0;i<Math.min(MAX_LIVES, 8);i++){
+      ctx.fillStyle = i < p.lives ? (p.out ? '#4a2030' : '#ff2b4a') : '#2b3448';
+      const hx = x + i*26;
+      for(let r=0;r<rows.length;r++) for(let c=0;c<7;c++)
+        if(rows[r][c] === 'X') ctx.fillRect(hx + c*3, y + r*3, 3, 3);
+    }
+    if(p.lives > 8)
+      drawText(ctx, 'x' + p.lives, x + 8*26 + 4, y + 2, 2, { color:'#ff8fa0' });
+    y += 22;
+    // 생명(HP) 게이지
+    ctx.fillStyle = '#0a1420'; ctx.fillRect(x, y, W, 18);
+    ctx.fillStyle = '#20344d'; ctx.fillRect(x+3, y+3, W-6, 12);
+    const hk = clamp(p.hp/100, 0, 1);
+    ctx.fillStyle = p.out ? '#3a2030' : (hk > 0.5 ? '#5ee07a' : (hk > 0.25 ? '#ffd24a' : '#ff4d5a'));
+    ctx.fillRect(x+3, y+3, snap((W-6)*hk), 12);
+    y += 22;
+    // 레벨
+    drawText(ctx, p.pid + 'P  LV' + p.level + (p.out ? '  OUT' : ''), x, y, 2,
+      { color: p.out ? '#7a6a80' : col, shadow:'#0a1830' });
+    for(let i=1;i<=MAX_LEVEL;i++){
+      ctx.fillStyle = i <= p.level ? PAL.fire[Math.min(6, 6 - Math.floor(i*0.55))] : '#20344d';
+      ctx.fillRect(x + 92 + (i-1)*12, y + 1, 9, 10);
+    }
+    y += 26;                       // 불레벨 눈금 아래로 한 줄
+
     const LBL = 52;                      // 라벨 뒤 숫자가 시작하는 자리
     ko(ctx, '점수', x, y - 2, 2, { color:'#8a93b8' });
     drawDigits(ctx, String(Math.min(999999, p.score|0)).padStart(6, '0'), x + LBL, y - 2, 3,
@@ -10040,31 +10089,6 @@ class GameScene extends Scene {
         { color:'#8a6a30' });
       ctx.globalAlpha = pa;
       y += 24;
-    }
-    // 하트
-    const rows = ['.XX.XX.','XXXXXXX','.XXXXX.','..XXX..','...X...'];
-    for(let i=0;i<Math.min(MAX_LIVES, 8);i++){
-      ctx.fillStyle = i < p.lives ? (p.out ? '#4a2030' : '#ff2b4a') : '#2b3448';
-      const hx = x + i*26;
-      for(let r=0;r<rows.length;r++) for(let c=0;c<7;c++)
-        if(rows[r][c] === 'X') ctx.fillRect(hx + c*3, y + r*3, 3, 3);
-    }
-    if(p.lives > 8)
-      drawText(ctx, 'x' + p.lives, x + 8*26 + 4, y + 2, 2, { color:'#ff8fa0' });
-    y += 22;
-    // 생명(HP) 게이지
-    ctx.fillStyle = '#0a1420'; ctx.fillRect(x, y, W, 18);
-    ctx.fillStyle = '#20344d'; ctx.fillRect(x+3, y+3, W-6, 12);
-    const hk = clamp(p.hp/100, 0, 1);
-    ctx.fillStyle = p.out ? '#3a2030' : (hk > 0.5 ? '#5ee07a' : (hk > 0.25 ? '#ffd24a' : '#ff4d5a'));
-    ctx.fillRect(x+3, y+3, snap((W-6)*hk), 12);
-    y += 22;
-    // 레벨
-    drawText(ctx, p.pid + 'P  LV' + p.level + (p.out ? '  OUT' : ''), x, y, 2,
-      { color: p.out ? '#7a6a80' : col, shadow:'#0a1830' });
-    for(let i=1;i<=MAX_LEVEL;i++){
-      ctx.fillStyle = i <= p.level ? PAL.fire[Math.min(6, 6 - Math.floor(i*0.55))] : '#20344d';
-      ctx.fillRect(x + 92 + (i-1)*12, y + 1, 9, 10);
     }
   }
 
@@ -10154,7 +10178,7 @@ class GameScene extends Scene {
      * 하이픈으로 바꿨다 — 굳이 글꼴을 늘릴 이유가 없다.
      */
     /* ★ 한 단계 작게 (2026-08-27, 사용자 지정) */
-    ko(ctx, this.stage + '스테이지 - ' + this.theme.n, uiCx(), hudBannerY(), 2,
+    ko(ctx, '스테이지' + this.stage + ' - ' + this.theme.n, uiCx(), hudBannerY(), 2,
       { align:'center', color:'#cfe6ff' });
 
     /* 전체화면 단추와 방향 전환 단추 — 늘 같은 자리에 있어야 찾는다 */
@@ -10614,7 +10638,7 @@ class GameScene extends Scene {
      * 버튼이 정한 배율을 그대로 쓴다 — 버튼이 커지든 작아지든 늘 같이 간다.
      */
     if(clear && this.stage < 20)
-      ko(ctx, (this.stage + 1) + '스테이지로 갈까요?', uiCx(), this.endAskY(), bScale,
+      ko(ctx, '스테이지' + (this.stage + 1) + '로 갈까요?', uiCx(), this.endAskY(), bScale,
         { align:'center', color:'#cfe6ff', outline:PAL.outline });
     for(let i=0;i<items.length;i++){
       const on = i === this.endIdx;
