@@ -873,7 +873,13 @@ const Input = {
     canvas.addEventListener('pointerdown', e => {
       e.preventDefault();
       SND.resume();
-      canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+      /**
+       * ★ 포인터 붙잡기는 **실패해도 무시한다** (2026-08-27).
+       * 이미 놓인 포인터거나 브라우저가 모르는 포인터면 여기서 예외가 나는데,
+       * 그러면 아래 줄이 통째로 안 돌아 **누른 것이 사라진다.**
+       * 붙잡기는 있으면 좋은 것이지 없으면 안 되는 것이 아니다.
+       */
+      try{ canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId); }catch(err){}
       const p = toGame(e), s = toScreen(e);
       this.taps++;
       /**
@@ -11290,7 +11296,6 @@ let rafId = 0;
 let UIW = GAME_W, UIH = GAME_H;
 const uiCx = () => UIW / 2;
 let hostEl = null;
-let rotateEl = null;
 let last = 0, acc = 0;
 
 const FIXED = 1 / 60, MAX_STEPS = 5;
@@ -11301,7 +11306,6 @@ function resize() {
   const wasPortrait = portrait;
   portrait = vh > vw;
   /* 세로로도 돌아가므로 "돌려주세요" 안내는 더 이상 안 띄운다 */
-  if (rotateEl) rotateEl.classList.remove('show');
   /* 화면이 돌면 캔버스의 가로세로도 바꾼다 — 게임 판은 그대로다 */
   const cw = portrait ? PORT_W : GAME_W;
   const ch = portrait ? PORT_H : GAME_H;
@@ -11434,29 +11438,18 @@ export function mount(host, opts = {}) {
   const stage = document.createElement('div');
   stage.className = 'dg-stage';
   canvas = document.createElement('canvas');
-  canvas.width = GAME_W; canvas.height = GAME_H;
+  /**
+   * ★ **세로가 기본이다.** (2026-08-27, 사용자 지정)
+   * *"요즘 폰은 다 세로로 들고 있으니 세로 모드 게임 형태가 기본형으로 바꾸자"*
+   * 실제 크기는 곧바로 `resize()` 가 화면을 보고 정한다 — 여기 값은 첫 한 장을
+   * 그릴 때까지의 잠깐짜리다.
+   */
+  canvas.width = PORT_W; canvas.height = PORT_H;
   canvas.className = 'dg-canvas';
   stage.appendChild(canvas);
 
-  /* 가로 전용이다. 오락실(신발게임)은 세로 전용이라 이 안내를 들고 있지 않다 */
-  rotateEl = document.createElement('div');
-  rotateEl.className = 'dg-rotate';
-  rotateEl.innerHTML =
-    '<div class="dg-rot-icon"></div>' +
-    '<p>가로 모드로 돌려주세요</p>' +
-    '<p class="dg-sub">PLEASE ROTATE YOUR DEVICE</p>';
-  /**
-   * ★ **여기에도 나갈 길을 둔다.** (2026-08-26, 사용자 지정)
-   * 가로로 못 돌리는 상황이 있는데 안내만 띄우면 갇힌다 —
-   * "선택의 여지가 없는 느낌" 이라는 게 정확히 그것이다.
-   */
-  const quit = document.createElement('button');
-  quit.type = 'button';
-  quit.className = 'dg-quit';
-  quit.textContent = '게임 포기하고 나가기';
-  quit.addEventListener('click', () => DG.onExit());
-  rotateEl.appendChild(quit);
-  stage.appendChild(rotateEl);
+  /* ★ "가로로 돌려주세요" 안내는 없앴다 (2026-08-27) —
+       세로에서도 그대로 돌아가므로 막을 이유가 없다 */
   host.appendChild(stage);
 
   ctx = canvas.getContext('2d', { alpha: false });
@@ -11817,6 +11810,5 @@ export function unmount() {
   scenes = null;
   ctx = null;
   canvas = null;
-  rotateEl = null;
   if (hostEl) { hostEl.innerHTML = ''; hostEl = null; }
 }

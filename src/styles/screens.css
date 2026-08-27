@@ -2172,37 +2172,7 @@
   touch-action: none;          /* 스크롤·확대가 조작을 먹지 않게 */
 }
 
-/* 가로 전용 안내. 신발게임은 세로 전용이라 오락실 껍데기에는 이런 게 없다 */
-.dg-rotate {
-  position: absolute;
-  inset: 0;
-  display: none;
-  place-items: center;
-  align-content: center;
-  gap: 10px;
-  background: #0a0616;
-  color: #ffd24a;
-  text-align: center;
-  padding: 24px;
-  z-index: 2;
-}
-.dg-rotate.show { display: grid; }
-.dg-rotate p { margin: 0; font-size: 15px; font-weight: 700; }
-.dg-rotate .dg-sub { font-size: 11px; color: #8a7bb8; font-weight: 400; letter-spacing: 1px; }
-.dg-rot-icon {
-  width: 46px; height: 74px;
-  border: 4px solid #ffd24a;
-  border-radius: 6px;
-  margin: 0 auto;
-  animation: dg-tilt 1.8s ease-in-out infinite;
-}
-@keyframes dg-tilt {
-  0%, 40% { transform: rotate(0deg); }
-  60%, 100% { transform: rotate(-90deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dg-rot-icon { animation: none; transform: rotate(-90deg); }
-}
+/* '가로로 돌려주세요' 안내는 없앴다 (2026-08-27) — 세로에서도 그대로 돌아간다 */
 
 /* 게임이 뜨면 그 위를 덮으므로 따로 지울 필요가 없다 */
 .dragon-loading {

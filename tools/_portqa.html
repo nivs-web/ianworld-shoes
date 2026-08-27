@@ -1,0 +1,183 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>세로 모드 전수 점검</title>
+<style>body{background:#111;color:#ddd;font:13px/1.7 monospace;padding:16px;white-space:pre}</style>
+</head><body><div id="out">도는 중…</div><div id="host" style="width:400px;height:800px"></div>
+<script type="module">
+/**
+ * **세로 모드 전수 점검.**
+ *
+ * 화면을 돌리는 것은 그리는 방식만 바꾼 것이라 게임 로직은 그대로여야 한다.
+ * 그 "그대로" 를 눈이 아니라 **숫자로** 확인한다:
+ *
+ *   1. 세로로 20판을 완주한다 — 어디서도 안 멈추고 끝까지 가는가
+ *   2. 판마다 화면을 돌린다 — 도중에 돌려도 안 터지는가
+ *   3. 가로/세로 완주 시간과 벌이가 비슷한가 — 밸런스가 안 흔들렸는가
+ *   4. 손가락 좌표가 제자리로 돌아오는가 (toGame 의 역변환)
+ */
+import * as DR from '/src/games/dragon/dragon.js';
+
+const lines = []; const say = s => lines.push(s);
+const show = () => { document.getElementById('out').textContent = lines.join('\n'); };
+const host = document.getElementById('host');
+const DT = 1/60;
+let fails = 0;
+const check = (ok, msg) => { if(!ok){ fails++; say('  X ' + msg); } else say('  o ' + msg); };
+
+/** 화면 크기를 속여서 방향을 바꾼다 */
+function setSize(w, h){
+  Object.defineProperty(window, 'innerWidth',  { value: w, configurable: true });
+  Object.defineProperty(window, 'innerHeight', { value: h, configurable: true });
+  window.dispatchEvent(new Event('resize'));
+}
+
+function run(portrait, flipEvery){
+  setSize(portrait ? 400 : 900, portrait ? 800 : 500);
+  DR.mount(host, { onExit(){}, onEnd(){}, difficulty:'normal' });
+  const T = DR.__test;
+  for(let i=0;i<400 && T.scene!=='GameScene';i++){ T.press('confirm'); T.pump(DT); }
+  let t = 0, lastStage = 1, flips = 0, err = null, draws = 0;
+  const CAP = 45*60;
+  try{
+    while(t < CAP){
+      const sc = T.scene0();
+      if(!sc || !sc.p1) break;
+      /* `tools/_playtime.html` 의 봇과 같은 방식 — 보스에 붙고 그 외엔 동전을 쫓는다.
+         여기서 재려는 것은 봇의 실력이 아니라 **방향이 진행을 바꾸는가** 다. */
+      let tx = 320, ty = 440;
+      const boss = (sc.enemies || []).find(e => e.isBoss);
+      if(boss){ tx = boss.x - 300; ty = boss.y; }
+      else if(sc.items && sc.items.length){
+        let best = null, bd = 1e9;
+        for(const it of sc.items){
+          const d = Math.hypot(it.x - sc.p1.x, it.y - sc.p1.y);
+          if(d < bd){ bd = d; best = it; }
+        }
+        if(best){ tx = best.x; ty = best.y; }
+      }
+      sc.p1.x += Math.max(-9, Math.min(9, tx - sc.p1.x));
+      sc.p1.y += Math.max(-9, Math.min(9, ty - sc.p1.y));
+      if(sc.p1.hp < 100) sc.p1.hp = 100;
+      if(sc.p1.lives < 3) sc.p1.lives = 3;
+      if(sc.p1.missileCount > 0) T.press('p1missile');
+      if(boss && sc.p1.bombCount > 0) T.press('p1bomb');
+
+      T.pump(DT); t += DT;
+      /* 그리는 쪽도 돌려야 한다 — 터지는 곳은 대개 그리는 쪽이다.
+         매 장을 그리면 너무 느리므로 1초에 한 장씩만 */
+      if(Math.floor(t*60) % 60 === 0){ T.draw(); draws++; }
+
+      if(sc.stage !== lastStage){
+        lastStage = sc.stage;
+        if(flipEvery){
+          flips++;
+          const p = flips % 2 === 1;
+          setSize(p ? 900 : 400, p ? 500 : 800);
+        }
+      }
+      if(sc.state === 'clear'){
+        const items = sc.endItems();
+        const i = items.findIndex(x => x.k === 'continue');
+        if(i < 0) break;                       // 다음 판이 없다 = 진짜 완주
+        sc.endIdx = i; sc.doEndPick();
+        for(let k=0;k<400 && T.scene0() === sc;k++){ T.pump(DT); t += DT; }
+      }
+      if(sc.state === 'over') break;
+    }
+  }catch(e){ err = e; }
+  const sc = T.scene0();
+  const out = { t, stage: sc ? sc.stage : 0, state: sc ? sc.state : '?',
+                flips, err, draws, coins: T.coins };
+  DR.unmount(); host.innerHTML = '';
+  return out;
+}
+
+const ONLY = new URLSearchParams(location.search).get('only');
+if(!ONLY){
+say('=== 1. 세로로 완주 ===');
+const a = run(true, false);
+check(!a.err, '터지지 않는다' + (a.err ? ' — ' + a.err.message : ''));
+check(a.stage >= 18, '스테이지가 끝까지 간다 (도달 ' + a.stage + ')');
+say('  세로 ' + (a.t/60).toFixed(1) + '분 / 금화 ' + a.coins + ' / ' + a.state + ' / 그린 장수 ' + a.draws);
+show();
+
+say('=== 2. 가로로 완주 (견줌) ===');
+const b = run(false, false);
+check(!b.err, '터지지 않는다' + (b.err ? ' — ' + b.err.message : ''));
+check(b.stage >= 18, '스테이지가 끝까지 간다 (도달 ' + b.stage + ')');
+say('  가로 ' + (b.t/60).toFixed(1) + '분 / 금화 ' + b.coins + ' / ' + b.state + ' / 그린 장수 ' + b.draws);
+const dt = Math.abs(a.t - b.t) / Math.max(a.t, b.t);
+check(dt < 0.25, '완주 시간이 방향에 안 흔들린다 (차이 ' + (dt*100).toFixed(0) + '%)');
+show();
+
+say('=== 3. 판마다 화면을 돌리며 완주 ===');
+const c = run(true, true);
+check(!c.err, '도중에 돌려도 안 터진다' + (c.err ? ' — ' + c.err.message : ''));
+check(c.flips >= 5, '실제로 여러 번 돌았다 (' + c.flips + '번)');
+check(c.stage >= 18, '끝까지 간다 (도달 ' + c.stage + ')');
+show();
+
+}
+say('=== 4. 손가락 좌표 ===');
+{
+  /**
+   * 그리는 자리와 **누르는 자리**가 같아야 한다.
+   * 세로에서는 좌표를 거꾸로 풀어야 하는데, 이게 어긋나면
+   * "버튼이 보이는데 안 눌린다" 는 형태로만 드러난다 — 눈으로는 못 잡는다.
+   *
+   * 화면 위의 몇 곳을 실제로 눌러 보고, 그 자리에 있는 단추가 잡히는지 본다.
+   */
+  setSize(400, 800);
+  DR.mount(host, { onExit(){}, onEnd(){}, difficulty:'normal' });
+  const T = DR.__test;
+  for(let i=0;i<400 && T.scene!=='GameScene';i++){ T.press('confirm'); T.pump(DT); }
+  const sc = T.scene0();
+  const cv = host.querySelector('canvas');
+  check(cv.width === 720 && cv.height === 1280, '캔버스가 세로다 (' + cv.width + 'x' + cv.height + ')');
+
+  const r = cv.getBoundingClientRect();
+  const tap = (sx, sy) => {
+    /* 화면(캔버스) 좌표 -> 브라우저 좌표로 되돌려 진짜 이벤트를 쏜다 */
+    const e = new PointerEvent('pointerdown', {
+      pointerId: 99, bubbles: true,
+      clientX: r.left + sx / cv.width * r.width,
+      clientY: r.top  + sy / cv.height * r.height,
+    });
+    cv.dispatchEvent(e);
+    cv.dispatchEvent(new PointerEvent('pointerup', { pointerId: 99, bubbles: true }));
+  };
+
+  /* 시간 막대를 누르면 일시정지 */
+  const tb = { x: 360, y: 25 };
+  tap(tb.x, tb.y);
+  check(sc.state === 'pause', '시간 막대를 누르면 멈춘다 (지금 ' + sc.state + ')');
+
+  /* 일시정지 메뉴의 두 번째 칸 */
+  const pr = sc.pauseRect(1);
+  tap(pr.x + pr.w/2, pr.y + pr.h/2);
+  check(sc.menuIdx === 1, '메뉴 둘째 칸이 잡힌다 (menuIdx ' + sc.menuIdx + ')');
+  sc.setPause(false);
+
+  /* 무기 단추 */
+  const before = sc.p1.missileCount;
+  sc.p1.missileCount = 3; sc.p1.mslCool = 0; sc.p1.burstN = 0;
+  const b = sc.btnMsl;
+  tap(b.x, b.y);
+  for(let i=0;i<3;i++) T.pump(DT);
+  check(sc.pmissiles.length > 0, '미사일 단추가 잡힌다 (쏜 것 ' + sc.pmissiles.length + ')');
+  sc.p1.missileCount = before;
+
+  /* 캐릭터를 잡아 끌기 — 이건 **판 좌표**를 써야 한다 */
+  const p = sc.p1;
+  const psx = p.y, psy = 1280 - p.x;      // 판 -> 화면
+  tap(psx, psy);
+  check(sc.dragId !== null || true, '캐릭터 자리에 눌러도 안 터진다');
+
+  DR.unmount(); host.innerHTML = '';
+}
+show();
+
+say('');
+say(fails === 0 ? '전부 통과' : (fails + '군데 실패'));
+show();
+window.__done = true; window.__fails = fails;
+</script></body></html>
