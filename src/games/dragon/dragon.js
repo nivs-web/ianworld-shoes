@@ -966,7 +966,12 @@ const END_TITLE_Y = 104;
  * 사이가 84px 이었다. 42px 로 좁힌다. 표 아래 것들은 표 길이에서 계산하므로
  * 여기만 바꾸면 화면 전체가 같이 올라온다.
  */
-const END_ROW_Y   = 190, END_ROW_GAP = 44;
+const END_ROW_Y   = 190;
+/**
+ * 줄간격. 줄이 많아지면 좁힌다 — 안 그러면 일곱 줄짜리(클리어 + 무피격 + 합산)가
+ * 화면 아래로 넘친다. 아래 것들이 전부 표 끝에서 계산되므로 여기만 맞으면 된다.
+ */
+const END_ROW_GAP = 44, END_ROW_GAP_TIGHT = 38;
 const END_LABEL_X = 452;                     // 이름 (왼쪽 정렬)
 const END_NUM_R   = 828;                     // 숫자가 끝나는 자리 (오른쪽 정렬)
 /* 단위(점·마리·초·개)는 뺐다 — 없어도 무슨 숫자인지 보면 안다 (2026-08-27, 사용자 지정) */
@@ -7491,7 +7496,8 @@ class GameScene extends Scene {
     const s = FS_BTN.size, p = FS_BTN.pad;
     return { x: this.p2 ? (GAME_W - 240 - s - 12) : (GAME_W - s - p), y: p, w: s, h: s };
   }
-  endTableBottom(){ return END_ROW_Y + ((this.endRows || 5) - 1)*END_ROW_GAP + 34 + 30; }
+  endRowGap(){ return (this.endRows || 5) >= 7 ? END_ROW_GAP_TIGHT : END_ROW_GAP; }
+  endTableBottom(){ return END_ROW_Y + ((this.endRows || 5) - 1)*this.endRowGap() + 34 + 30; }
   endAskY(){ return this.endTableBottom() + 26; }
   endBtnY(){
     const ask = this.state === 'clear' && this.stage < 20;
@@ -8907,10 +8913,11 @@ class GameScene extends Scene {
       const cx = lhsA > 0 ? (x + gapW*lhsA + wTot/2) : 640;
       ko(ctx, tot$, cx, CY - KO_H*rs/2, Math.max(4, rs),
         { align:'center', color:PAL.gold, outline:PAL.outline, shadow:'#000' });
-      /* 물러난 뒤에는 딱지도 뺀다 — 표가 들어올 자리다 */
-      if(kBoom > 0.35 && !done)
-        ko(ctx, '보유 금화', cx, CY + KO_H*rs/2 + 26, 4,
-          { align:'center', color:'#ffe6b0', outline:PAL.outline, shadow:'#000' });
+      /**
+       * ★ 큰 숫자 아래의 '보유 금화' 딱지를 뺐다. (2026-08-27, 사용자 지정)
+       * 화면을 채운 금화 더미와 커다란 숫자면 그것이 금화라는 걸 이미 안다 —
+       * 글자를 하나라도 덜어야 숫자가 더 커 보인다.
+       */
     }
     ctx.restore();
     /* 다 끝났으면 뒤로 물러나고 표·버튼에 자리를 내준다 */
@@ -8952,25 +8959,34 @@ class GameScene extends Scene {
        * *"점/마리/초/개 이런건 빼, 없어도 딱 보면 알지"*
        * 그리고 단위가 빠지면서 오른쪽 끝이 저절로 한 줄로 곧게 선다.
        */
+      /**
+       * ★ **합산 총 금화 한 줄.** (2026-08-27, 사용자 지정)
+       * *"뒤에 있으니 지금 총 보유 금화를 알 수가 없다"*
+       * 큰 숫자는 뒤로 물러나 절반만 보이므로, 표 안에도 또박또박 적어 준다.
+       */
+      const totalCoins = (RUN.wallet0 | 0) + (RUN.coins | 0);
       const rows = clear
         ? [['점수', num(this.score)],
            ['시간 보너스', '+' + num(this.bonus)],
            ...(this.noHit ? [['무피격 금화', '+' + this.noHitCoin]] : []),
            ['킬수', num(this.kills)],
            ['파이어 레벨', String(this.p1.level)],
-           ['획득 금화', num(RUN.coins)]]
+           ['획득 금화', num(RUN.coins)],
+           ['합산 총 금화', num(totalCoins)]]
         : [['점수', num(this.score)],
            ['킬수', num(this.kills)],
            ['파이어 레벨', String(this.p1.level)],
            ['남은 시간', String(Math.ceil(this.timeLeft))],
-           ['획득 금화', num(RUN.coins)]];
+           ['획득 금화', num(RUN.coins)],
+           ['합산 총 금화', num(totalCoins)]];
 
       this.endRows = rows.length;      // 아래 문구·버튼 자리가 이 값에서 나온다
       /* 표의 위아래에 얇은 줄 — 어디서 시작하고 끝나는지 눈이 먼저 안다 */
+      const gap = rows.length >= 7 ? END_ROW_GAP_TIGHT : END_ROW_GAP;
       const ruleW = END_NUM_R + 4 - END_LABEL_X;
       ctx.fillStyle = '#3a3358';
       ctx.fillRect(END_LABEL_X, END_ROW_Y - 22, ruleW, PX);
-      ctx.fillRect(END_LABEL_X, END_ROW_Y + (rows.length - 1)*END_ROW_GAP + 34, ruleW, PX);
+      ctx.fillRect(END_LABEL_X, END_ROW_Y + (rows.length - 1)*gap + 34, ruleW, PX);
 
       /**
        * ★★ **숫자도 이름과 같은 글꼴·같은 크기로.** (2026-08-27, 사용자 지적)
@@ -8983,9 +8999,10 @@ class GameScene extends Scene {
        * 오락실 글꼴에도 숫자가 있으므로 둘 다 그걸로 그린다 — 한 줄로 읽힌다.
        */
       for(let i=0;i<rows.length;i++){
-        const y = END_ROW_Y + i*END_ROW_GAP;
+        const y = END_ROW_Y + i*gap;
         if(this.stateT < 0.6 + i*0.10) break;
-        const gold = rows[i][0] === '획득 금화' || rows[i][0] === '무피격 금화';
+        const gold = rows[i][0] === '획득 금화' || rows[i][0] === '무피격 금화'
+                  || rows[i][0] === '합산 총 금화';
         ko(ctx, rows[i][0], END_LABEL_X, y, 3,
           { color: gold ? '#ffd24a' : '#8a9bbf', outline:PAL.outline });
         ko(ctx, rows[i][1], END_NUM_R, y, 3,
