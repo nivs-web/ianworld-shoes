@@ -6509,6 +6509,20 @@ const CONTINUE_MAX = 2;
 const STAGE_TIME = 80;              // 중간보스가 나올 때까지의 제한 시간 (초).
                                     // 보스가 등장하면 타이머는 멈춘다. 보스전은 시간제한 없이.
 const TIME_BAR = { x: 400, y: 16, w: 480, h: 26 };   // 상단 중앙 시간 게이지 (터치 시 일시정지)
+/**
+ * ★★ **전체화면 단추를 화면에 박아 둔다.** (2026-08-27, 사용자 지정)
+ *
+ * *"가끔 폰으로 하다보면 전체화면이 안된 상태에서 가로 모드 돌입하는데 그럼 너무
+ *   불편해.. 그냥 게임 우측 상단에 전체화면 그림으로 박아놓자"*
+ *
+ * 예전에는 키보드(F) 로만 켤 수 있었다 — 폰에는 키보드가 없다. 세로에서 가로로
+ * 돌리면 게임은 시작되는데 주소창이 남아 화면이 반쪽이 되고, 거기서 빠져나갈
+ * 길이 화면에 없었다.
+ *
+ * **누가 봐도 아는 네 모서리 꺾쇠**를 오른쪽 위에 고정한다. 한 번 더 누르면
+ * 안쪽을 향하는 창모드 아이콘으로 바뀐다.
+ */
+const FS_BTN = { size: 44, pad: 14 };
 const P1_COLOR = '#8fd0ff', P2_COLOR = '#ffa8d0';
 
 class GameScene extends Scene {
@@ -6612,6 +6626,17 @@ class GameScene extends Scene {
             return;
           }
           this.lastClickT = now; this.lastClickX = x; this.lastClickY = y;
+        }
+        /**
+         * ★ 전체화면 단추. **이 핸들러 안에서 바로** 불러야 브라우저가 허용한다 —
+         * 나중으로 미루면 "사용자가 누른 것" 으로 안 쳐 준다 (2026-08-27).
+         * 어느 상태에서도 눌린다 — 결과 화면에서도 전체화면을 켜고 끌 수 있어야 한다.
+         */
+        {
+          const r = this.fsRect();
+          if(x >= r.x - 8 && x <= r.x + r.w + 8 && y >= r.y - 8 && y <= r.y + r.h + 8){
+            toggleFullscreen(); SND.sfx('blip'); this.uiTap = true; return;
+          }
         }
         if(this.state === 'play' &&
            x >= TIME_BAR.x - 10 && x <= TIME_BAR.x + TIME_BAR.w + 10 &&
@@ -7314,6 +7339,17 @@ class GameScene extends Scene {
    * *"획득금화 아래로 30px정도 여백을 만들라고"*
    * 아래 것들(묻는 말·버튼·안내)이 전부 이 값에서 나오므로 여기만 바꾸면 된다.
    */
+  /**
+   * 전체화면 단추 자리.
+   *
+   * ★ **2P 가 들어오면 왼쪽으로 비킨다.** (2026-08-27, 사용자 지정)
+   * 2인이 되면 1P 패널이 오른쪽 위로 옮겨 온다(`GAME_W - 240`).
+   * 그 자리에 단추가 그대로 있으면 점수 위에 겹친다.
+   */
+  fsRect(){
+    const s = FS_BTN.size, p = FS_BTN.pad;
+    return { x: this.p2 ? (GAME_W - 240 - s - 12) : (GAME_W - s - p), y: p, w: s, h: s };
+  }
   endTableBottom(){ return END_ROW_Y + ((this.endRows || 5) - 1)*END_ROW_GAP + 34 + 30; }
   endAskY(){ return this.endTableBottom() + 26; }
   endBtnY(){
@@ -8330,6 +8366,16 @@ class GameScene extends Scene {
     /* ★ 한 단계 작게 (2026-08-27, 사용자 지정) */
     ko(ctx, this.stage + '스테이지 - ' + this.theme.n, 640, 46, 2,
       { align:'center', color:'#cfe6ff' });
+
+    /* 전체화면 단추 — 늘 같은 자리에 있어야 찾는다 */
+    {
+      const r = this.fsRect();
+      ctx.globalAlpha = 0.34;
+      ctx.fillStyle = '#0a0a14'; ctx.fillRect(r.x - PX, r.y - PX, r.w + PX*2, r.h + PX*2);
+      ctx.globalAlpha = 0.66;
+      drawFsIcon(ctx, r.x, r.y, r.w, '#cfe6ff', isFullscreen());
+      ctx.globalAlpha = 1;
+    }
 
     /**
      * ★ **연쇄와 스침.** (기획 7·6, 2026-08-27)
