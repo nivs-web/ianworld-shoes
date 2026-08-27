@@ -3456,16 +3456,26 @@ const FIRE = [ null,
      "이걸로 뭘 하나" 싶으면 다시 붙을 마음이 안 든다.
      **데미지는 그대로 두고 보이는 것만** 두 줄로 올린다 —
      세기가 오르는 게 아니라 초라해 보이지 않게 하는 것이 목적이다. */
+  /**
+   * ★ **모양만 화려하고 공격력은 거의 안 오른다.** (2026-08-27, 사용자 지정)
+   * *"파이어 레벨 업그레이드 해도 모양만 화려하고 공격력은 그다지 크게 업글 안된
+   *   형태가 좋은거 같아, 적들이 녹아내리니 게임이 재미가 없음"*
+   *
+   * 데미지는 18.3 -> 22.4 (1.22배). 예전 31.0 에서 더 낮췄다.
+   * 대신 두께(52->78) · 관통(0->1) · 사거리(170->224) · 연사는 그대로 오른다 —
+   * **보기에는 세지는데 실제로는 조금만 세진다.** 레벨업의 즐거움은 남기고
+   * 적이 녹아내리는 것만 막는다.
+   */
   { n: 2, bt:26.0, th: 52, dmg:  18.3, spd:1500, pierce:0, len:170 },  // Lv1  2줄= 52px  (죽으면 여기로)
-  { n: 2, bt:26.0, th: 52, dmg:  19.4, spd:1500, pierce:0, len:176 },  // Lv2  2줄= 52px
-  { n: 2, bt:26.0, th: 52, dmg:  20.6, spd:1510, pierce:0, len:182 },  // Lv3  2줄= 52px
-  { n: 2, bt:26.0, th: 52, dmg:  21.8, spd:1520, pierce:0, len:188 },  // Lv4  2줄= 52px
-  { n: 2, bt:26.0, th: 52, dmg:  23.1, spd:1530, pierce:0, len:194 },  // Lv5  2줄= 52px
-  { n: 3, bt:26.0, th: 78, dmg:  24.5, spd:1540, pierce:1, len:200 },  // Lv6  3줄= 78px  ← 여기서 두께 상한
-  { n: 3, bt:26.0, th: 78, dmg:  26.0, spd:1550, pierce:1, len:206 },  // Lv7
-  { n: 3, bt:26.0, th: 78, dmg:  27.6, spd:1560, pierce:1, len:212 },  // Lv8
-  { n: 3, bt:26.0, th: 78, dmg:  29.3, spd:1570, pierce:1, len:218 },  // Lv9
-  { n: 3, bt:26.0, th: 78, dmg:  31.0, spd:1580, pierce:1, len:224 }   // Lv10 예전 Lv4 데미지 수준
+  { n: 2, bt:26.0, th: 52, dmg:  18.7, spd:1500, pierce:0, len:176 },  // Lv2
+  { n: 2, bt:26.0, th: 52, dmg:  19.2, spd:1510, pierce:0, len:182 },  // Lv3
+  { n: 2, bt:26.0, th: 52, dmg:  19.6, spd:1520, pierce:0, len:188 },  // Lv4
+  { n: 2, bt:26.0, th: 52, dmg:  20.1, spd:1530, pierce:0, len:194 },  // Lv5
+  { n: 3, bt:26.0, th: 78, dmg:  20.5, spd:1540, pierce:1, len:200 },  // Lv6  3줄= 78px  ← 두께 상한
+  { n: 3, bt:26.0, th: 78, dmg:  21.0, spd:1550, pierce:1, len:206 },  // Lv7
+  { n: 3, bt:26.0, th: 78, dmg:  21.4, spd:1560, pierce:1, len:212 },  // Lv8
+  { n: 3, bt:26.0, th: 78, dmg:  21.9, spd:1570, pierce:1, len:218 },  // Lv9
+  { n: 3, bt:26.0, th: 78, dmg:  22.4, spd:1580, pierce:1, len:224 }   // Lv10 Lv1 의 1.22배뿐
 ];
 
 class FireBolt {
@@ -5332,7 +5342,19 @@ function bossPowerScale(level){ return Math.pow(fireDpsOf(level) / fireDpsOf(1),
  * 보스전을 판당 20초 안팎으로 되돌린다. 미사일 데미지도 이 값에서 나오므로
  * (`missileDamageOf`) 함께 따라 내려간다.
  */
-const MID_BOSS_BASE = 2600, BOSS_MUL = 2.8;
+/**
+ * ★ **최종보스를 두 배로.** (2026-08-27, 사용자 지정)
+ * *"최종보스가 너무 약함 (...) 지금 딱 이 상태보다 2배정도 강하게"*
+ * 중간보스는 그대로 두고 **최종보스만** 두껍게 한다 — 판의 마지막이
+ * 중간보스와 비슷한 무게면 끝났다는 느낌이 안 난다.
+ *
+ * ★ 2.8 -> 5.6 으로 두 배를 걸었더니 실제로는 1.5배밖에 안 올랐다.
+ *   보스 체력이 `bossPowerScale` 로 **내 화력에 연동**돼 있는데, 같은 작업에서
+ *   화력을 낮췄으니 그만큼 같이 내려간 것이다. 두 배가 되려면 7.3 이 필요하다
+ *   (2.8 x 2 / 0.768). 연동을 걷어내는 대신 값으로 맞춘다 —
+ *   연동은 "레벨을 올리면 보스도 같이 두꺼워진다" 는 다른 일을 하고 있다.
+ */
+const MID_BOSS_BASE = 2600, BOSS_MUL = 7.3;
 /* 스테이지가 1 오를 때마다 보스가 5% 씩 단단해지고 5% 씩 세게 때린다.
    1스테이지와 20스테이지 보스가 똑같으면 스테이지를 올라갈 이유가 없다.
    20스테이지 기준 2.53배. */
@@ -5381,7 +5403,16 @@ function enemyAim(scene, x, y){
 }
 
 let CUR_STAGE = 1;                  // 적 생성 시 참조할 현재 스테이지
-function enemyHp(base){ return Math.round(base * enemyToughOf(CUR_STAGE) * diffHp()); }
+/**
+ * ★ **모든 적이 20% 더 단단하다.** (2026-08-27, 사용자 지정)
+ * *"공격이 쎄서 안맞는거 같다 (...) 적의 모든 캐릭터 방어력을 20% 정도 키우자"*
+ * 화력을 깎는 대신 맷집을 올린 이유: 화력을 깎으면 **불줄기가 초라해 보이는데**,
+ * 지금 문제는 그림이 아니라 적이 너무 빨리 녹는 것이다.
+ */
+const ENEMY_TOUGH = 1.20;
+function enemyHp(base){
+  return Math.round(base * ENEMY_TOUGH * enemyToughOf(CUR_STAGE) * diffHp());
+}
 function midBossHpOf(stage, level){
   return Math.round(MID_BOSS_BASE * bossPowerScale(level || 1) * stagePowerOf(stage) * diffBoss());
 }
@@ -6799,7 +6830,16 @@ class GameScene extends Scene {
        * 달라지면 **한 스테이지에 한 칸** 이라는 눈금이 깨진다 —
        * 죽어도 레벨이 안 내려가게 바뀐 뒤로 그 눈금이 더 중요해졌다.
        */
-      const giveHeart = !this.heartDropped;
+      /**
+       * ★ **1스테이지에는 하트가 없다.** (2026-08-27, 사용자 지정)
+       *
+       * *"하트가 너무 많으니 죽지 않고, 무적이 되는거 같아"*
+       *
+       * 하트는 **중간보스를 잡아야만** 나오고, 한 판에 하나뿐이며,
+       * 첫 판에는 아예 없다. 시작할 때 셋을 들고 시작하므로 첫 판부터
+       * 늘려 주면 죽는다는 감각이 아예 안 생긴다.
+       */
+      const giveHeart = !this.heartDropped && this.stage >= 2;
       this.heartDropped = true;
       this.items.push(new Item(e.x - 80, e.y, ITEM_KIND.POWER));
       /* 결투에서는 하트가 안 나온다 — 목숨이 늘면 300초 제한이 무의미해진다 */
@@ -9696,8 +9736,8 @@ export const __test = {
   get coins() { return RUN.coins; },
   get boundCount() { return bound.length; },
   /* 검사용 — 그 스테이지의 보스를 하나 만들어 준다 (열 마리가 정말 다른지 보려면 필요하다) */
-  boss(stage) {
-    const b = new Boss(stage, 1);
+  boss(stage, level) {
+    const b = new Boss(stage, level || 1);
     return {
       name: b.name, cell: b.cell, hp: b.maxHp, box: b.box,
       draw(c, cx, cy) { b.x = cx; b.y = cy; b.pose = 2; b.render(c); },
