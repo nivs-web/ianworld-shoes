@@ -619,6 +619,53 @@ function hangulLeadOf(ch){
   if(c < 0xAC00 || c > 0xD7A3) return '';
   return HANGUL_LEAD[Math.floor((c - 0xAC00) / 588)] || '';
 }
+
+/**
+ * ★★ **두벌식 표를 손으로 적지 않는다.** (2026-08-27)
+ *
+ * 자모를 하나씩 적으면 **적다가 빠뜨린 것이 그대로 버그**가 된다 (실제로 열아홉 개만
+ * 적혀 있어서 절반이 안 먹었다). 자판 순서대로 늘어놓고 **만들어 쓴다.**
+ *
+ * 한글은 같은 글자가 **두 벌**로 온다 — 호환 자모(ㄱ U+3131)와 조합용 자모(U+1100).
+ * 기기마다 어느 쪽을 보낼지 모르므로 둘 다 넣는다.
+ */
+(function buildHangulKeyMap(){
+  const ROWS = [
+    ['KeyQ','KeyW','KeyE','KeyR','KeyT','KeyY','KeyU','KeyI','KeyO','KeyP'],
+    ['KeyA','KeyS','KeyD','KeyF','KeyG','KeyH','KeyJ','KeyK','KeyL'],
+    ['KeyZ','KeyX','KeyC','KeyV','KeyB','KeyN','KeyM'],
+  ];
+  const PLAIN = [
+    ['ㅂ','ㅈ','ㄷ','ㄱ','ㅅ','ㅛ','ㅕ','ㅑ','ㅐ','ㅔ'],
+    ['ㅁ','ㄴ','ㅇ','ㄹ','ㅎ','ㅗ','ㅓ','ㅏ','ㅣ'],
+    ['ㅋ','ㅌ','ㅊ','ㅍ','ㅠ','ㅜ','ㅡ'],
+  ];
+  const SHIFT = [
+    ['ㅃ','ㅉ','ㄸ','ㄲ','ㅆ','','','','ㅒ','ㅖ'],
+    ['','','','','','','','',''],
+    ['','','','','','',''],
+  ];
+  /* 호환 자모 -> 조합용 자모 (같은 글자의 다른 코드점) */
+  const LEAD_C = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+  const VOWEL_C = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ';
+  const alt = (ch) => {
+    const li = LEAD_C.indexOf(ch);
+    if(li >= 0) return String.fromCharCode(0x1100 + li);
+    const vi = VOWEL_C.indexOf(ch);
+    if(vi >= 0) return String.fromCharCode(0x1161 + vi);
+    return '';
+  };
+  for(let r=0;r<ROWS.length;r++){
+    for(let i=0;i<ROWS[r].length;i++){
+      for(const ch of [PLAIN[r][i], SHIFT[r][i]]){
+        if(!ch) continue;
+        KEYNAME_TO_CODE[ch] = ROWS[r][i];
+        const a = alt(ch);
+        if(a) KEYNAME_TO_CODE[a] = ROWS[r][i];
+      }
+    }
+  }
+})();
 function resolveKeyCode(e){
   // Alt / Control 은 좌우를 구분해야 하므로 location 을 먼저 본다
   const kc = e.keyCode || e.which || 0;
@@ -715,6 +762,26 @@ const Input = {
       SND.resume();                       // 자동재생 정책상 첫 입력에서 오디오 활성화
       const code = resolveKeyCode(e);
       this.lastKey = code || ('?' + (e.keyCode||0));
+      /**
+       * ★★ **못 알아들었으면 입력칸에서 손을 뗀다.** (2026-08-27, 사용자 지적)
+       *
+       * *"한글이던 영문이던 대문자던 소문자던 다 작동되게 만들면 되잖아"*
+       *
+       * 자모 표를 아무리 채워도 못 막는 경우가 하나 남는다 — **글자 입력칸에
+       * 포커스가 남아 있으면** IME 가 글자 키를 통째로 삼켜서
+       * `code` 도 비고 `keyCode` 도 229(조합 중)로 온다. 우리에게 오는 정보가 없다.
+       * 화살표·Shift·Alt·Esc 가 멀쩡한 이유도 이것이다 — IME 는 그 키들을 안 삼킨다.
+       *
+       * 그래서 **못 알아들은 그 순간 포커스를 떼어 낸다.** 그 한 번은 놓치지만
+       * 다음부터는 IME 를 거치지 않으므로 무조건 먹는다. 스스로 낫는다.
+       */
+      if(!code){
+        const a = document.activeElement;
+        if(a && a !== document.body &&
+           (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)){
+          try{ a.blur(); }catch(err){}
+        }
+      }
       const acts = this.KEYMAP[code];
       if(!acts) return;
       if(acts.indexOf('mute') >= 0 && !e.repeat){ SND.setBgmOn(!SND.bgmOn); SND.setSfxOn(SND.bgmOn); }
@@ -7622,8 +7689,17 @@ class GameScene extends Scene {
       /* `drawDigits` 는 고정폭이라 `textWidth` 와 다르다 — 그리면서 준 폭을 그대로 쓴다 */
       const dw = drawDigits(ctx, String(Math.min(9999, run)), x + LBL, y - 2, 3,
         { color:'#ffd24a', outline:PAL.outline });
+      /**
+       * ★ **괄호 안은 흐리게.** (2026-08-27, 사용자 지정)
+       * 지금 보는 숫자는 **이번 판에서 번 금화**다. 보유액은 참고로 곁들이는 것이라
+       * 같은 밝기면 둘 중 무엇을 봐야 하는지 눈이 헷갈린다.
+       * 색을 낮추고 반투명까지 걸어 한 걸음 뒤로 물린다.
+       */
+      const pa = ctx.globalAlpha;
+      ctx.globalAlpha = pa * 0.55;
       ko(ctx, '(보유 ' + wallet.toLocaleString('en-US') + ')', x + LBL + dw + 10, y, 2,
-        { color:'#c8880f' });
+        { color:'#8a6a30' });
+      ctx.globalAlpha = pa;
       y += 24;
     }
     // 하트
@@ -8814,6 +8890,12 @@ export function mount(host, opts = {}) {
   DG.onExit = opts.onExit || (() => {});
   DG.onCharacter = opts.onCharacter || (() => {});
   DG.onProgress = opts.onProgress || (() => {});
+  /* 게임이 뜨는 순간에도 한 번 떼어 둔다 — 닉네임·채팅 입력 뒤에 들어오면
+     포커스가 남아 있어 첫 키부터 IME 에 먹힌다 (2026-08-27) */
+  try{
+    const a = document.activeElement;
+    if(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) a.blur();
+  }catch(e){}
   DG.coins = opts.coins || (() => 0);
   DG.spendCoins = opts.spendCoins || (() => false);
   DG.addCoins = opts.addCoins || (() => {});
