@@ -257,7 +257,8 @@ export function buyDragon(idx, price) {
   const have = p.dragonCoins || 0;
   if (have < cost) return { ok: false, profile: p, short: cost - have };
   const owned = { ...(p.dragonOwned || {}), [i]: true };
-  /* 지갑에서만 뺀다 — 누적(dragonCoinsTotal)은 그대로라 금화왕 순위가 안 떨어진다 */
+  /* 지갑에서만 뺀다. 누적(dragonCoinsTotal)은 그대로다 —
+     ★ 다만 **금화왕 순위는 지갑으로 센다**(2026-08-27) 그래서 사면 순위가 내려간다 */
   return { ok: true, profile: patch({ dragonCoins: have - cost, dragonOwned: owned }), short: 0 };
 }
 
@@ -292,7 +293,8 @@ export function buyDragonItem(id, slot, price) {
   if (have < cost) return { ok: false, profile: p, short: cost - have };
   const items = { ...(p.dragonItems || {}), [id]: true };
   const equip = { ...(p.dragonEquip || {}), [slot]: id };
-  /* 지갑에서만 빼다 — 누적(dragonCoinsTotal)은 그대로라 금화왕 순위가 안 떨어진다 */
+  /* 지갑에서만 뺀다. 누적(dragonCoinsTotal)은 그대로다 —
+     ★ 다만 **금화왕 순위는 지갑으로 센다**(2026-08-27) 그래서 사면 순위가 내려간다 */
   return { ok: true, short: 0,
            profile: patch({ dragonCoins: have - cost, dragonItems: items, dragonEquip: equip }) };
 }

@@ -600,8 +600,21 @@ const dgValue = (sk, max) => {
 const DG_BOARDS = {
   score: { col: 'dragonScores', max: DG_SCORE_MAX, cache: 'dgs', field: 'score',
            allField: 'dragonBest' },
+  /**
+   * ★★ **금화 순위는 "지금 가진 것" 이다.** (2026-08-27, 사용자 지정)
+   *
+   * *"금화 1위가 아이템 사서 금화 줄어들면 금화1위가 아니지.
+   *   현재 실시간 금화 갯수로 순위에 실시간 반영해"*
+   *
+   * 예전에는 누적(`dragonCoinsTotal`)으로 줄을 세웠다. 그러면 **쓰든 안 쓰든
+   * 순위가 그대로**라, 아이템을 하나도 안 산 사람과 다 산 사람이 같은 자리에
+   * 선다. 그건 부자 순위가 아니라 "많이 논 사람" 순위다.
+   *
+   * 지갑(`dragonCoins`)으로 세우면 사는 순간 순위가 내려간다 — 쓸지 모을지가
+   * 판단이 된다.
+   */
   coin:  { col: 'dragonCoins',  max: DG_COIN_MAX,  cache: 'dgc', field: 'coins',
-           allField: 'dragonCoinsTotal' },
+           allField: 'dragonCoins' },
 };
 
 /**
@@ -734,7 +747,7 @@ export async function fetchDragonBoard(kind, tab, difficulty) {
 /**
  * 드래곤 왕 순위 넷. (2026-08-26, 사용자 지정)
  *
- *   금화왕  `dragonCoinsTotal`  지금까지 주운 금화를 모두 더한 값
+ *   금화왕  `dragonCoins`       **지금 가진** 금화 (쓰면 내려간다)
  *   싱글왕  `dragonPlays`       싱글게임을 많이 한 사람
  *   멀티왕  `dragonMultiWins`   멀티게임을 많이 이긴 사람
  *   승률왕  승률                 이긴 비율
@@ -752,7 +765,8 @@ export async function fetchDragonBoard(kind, tab, difficulty) {
  * @param {'coin'|'single'|'multi'|'rate'} tab
  */
 const DG_CROWN = {
-  coin:   { field: 'dragonCoinsTotal', unit: '금화' },
+  /* ★ 지금 가진 금화로 센다 — 쓰면 내려간다 (2026-08-27, 사용자 지정) */
+  coin:   { field: 'dragonCoins',      unit: '금화' },
   single: { field: 'dragonPlays',      unit: '게임' },
   multi:  { field: 'dragonMultiWins',  unit: '승' },
   rate:   { field: 'dragonMultiWins',  unit: '%' },   // 넉넉히 받아 승률로 다시 세운다
@@ -822,7 +836,7 @@ export async function fetchDragonCrowns() {
 
   try {
     const [score, coins, wins] = await Promise.all([
-      rankIn('dragonBest'), rankIn('dragonCoinsTotal'), rankIn('dragonMultiWins'),
+      rankIn('dragonBest'), rankIn('dragonCoins'), rankIn('dragonMultiWins'),
     ]);
     return { score, coins, wins };
   } catch { return null; }

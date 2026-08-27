@@ -292,7 +292,9 @@ export const S = {
   duelPrizeHow: '판돈과 두 사람이 판에서 주운 금화를 모두 가져갔습니다',
   duelPenaltyHow: '건 금화와 이번 판에서 주운 금화가 상대에게 갔습니다',
   duelBossCount: (n) => `보스 ${n}`,
-  duelAgain: '한 판 더',
+  /* ★ '한 판 더' -> '계속하기' (2026-08-27, 사용자 지정).
+     신발 결과창의 `stayInRoom` 과 같은 말이다 — 하는 일도 같다(방에 남는다) */
+  duelAgain: '계속하기',
   /* ★ 결과창을 신발 멀티 결과창 뼈대로 다시 짰다 (2026-08-27, 사용자 지정) */
   duelWinBig: '승리하셨습니다 !',
   duelWinSub: '판돈과 금화를 모두 가져왔습니다',
@@ -308,7 +310,7 @@ export const S = {
   /** 정산이 끝난 뒤의 내 지갑 — "그래서 지금 얼마인가" 를 마지막에 한 줄 */
   duelWalletNow: (n) => `보유 금화 ${n.toLocaleString('en-US')}개`,
   dragonRankAllScore: '계정에 남은 최고점수 — 난이도 구분 없이 한 줄씩',
-  dragonRankAllCoin: '지금까지 주운 금화를 모두 더한 값 — 절대로 줄지 않습니다',
+  dragonRankAllCoin: '지금 가지고 있는 금화 — 아이템을 사면 순위가 내려갑니다',
   dragonMultiRecord: (w, g) => `멀티게임 ${w}승 ${g}게임`,
   dragonMenuSettings: '설정',
   dragonHint: '난이도를 높이면 적이 많아지고 점수도 많이 오릅니다',

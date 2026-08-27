@@ -119,7 +119,16 @@ export default function DuelResult(nav, params = {}) {
     });
   }
 
-  /** 한 판 더 — 방을 되돌리고 대기방으로 (로비로 튕기지 않는다) */
+  /**
+   * 계속하기 — 방을 되돌리고 **대기방**으로.
+   *
+   * ★ (2026-08-27, 사용자 지정)
+   * *"이걸 누르면 멀티게임 방에서 로비로 탈출하는게 아니라 방 입장 누르면
+   *   뜨는 그 창이 계속 뜨게 만들어"*
+   *
+   * 방 입장을 누르면 뜨는 그 창이 `WaitingRoom` 이다. 자리를 지킨 채
+   * 거기로 `replace` 하므로 상대와 계속 이어서 붙을 수 있다.
+   */
   async function again() {
     if (staying) return;
     staying = true; nav.refresh();

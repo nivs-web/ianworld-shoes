@@ -9206,6 +9206,22 @@ class GameScene extends Scene {
         Shake.add(6, 0.12);
       }
     }
+    /**
+     * ★★ **결투는 끝나는 순간 결과창으로 간다.** (2026-08-27, 사용자 지정)
+     *
+     * *"둘 중 1명이 게임 종료되면 바로 게임이 끝나게 만들어버로 승리하셨습니다
+     *   떠야지. 혼자 무슨 재미로 멀티게임을 하냐"*
+     *
+     * 예전에는 여기서 "결과 보기" 단추 하나를 그려 놓고 **누를 때까지 기다렸다.**
+     * 상대가 죽어서 내가 이긴 순간에도 빈 화면을 보며 단추를 찾아야 했다.
+     * 판이 끝났다는 것은 이미 결정된 사실이라 물어볼 것이 없다.
+     *
+     * 1.1초만 둔다 — 폭발과 "상대 탈락" 이 눈에 들어갈 만큼이다.
+     */
+    if(this.duel){
+      if(this.stateT >= 1.1 && !this.duelExited){ this.duelExited = true; DG.onExit(); }
+      return;
+    }
     const tap = this.uiTap; this.uiTap = false;
     if(this.stateT < 1.0) return;
     const n = this.endItems().length;
@@ -9364,6 +9380,7 @@ class GameScene extends Scene {
         this.duelPushT = 1.0;
         DG.onProgress({ score: this.p1.score, coins: RUN.coins,
                         bosses: Math.min(10, this.duelBossKills), alive: !this.p1.out,
+                        lives: this.p1.lives | 0,
                         timeLeft: Math.max(0, Math.round(this.timeLeft)) });
       }
       /**
@@ -9790,7 +9807,8 @@ class GameScene extends Scene {
          */
         if(this.duel && p.pid === 1)
           DG.onProgress({ score: p.score, coins: RUN.coins,
-                          bosses: Math.min(10, this.duelBossKills), alive: false, now: true });
+                          bosses: Math.min(10, this.duelBossKills), alive: false,
+                          lives: 0, now: true });
         if(this.players().length === 0){ this.finish('over', 'GAME OVER'); }
         return;
       }
@@ -10320,7 +10338,7 @@ class GameScene extends Scene {
     return Math.round(base * (win ? 1.3 : 1));
   }
   /** 비교판이 차지하는 세로 구간 — 점수판이 이 아래에서 시작한다 */
-  duelPanelBottom(){ return duelHudTop() + (portrait ? 150 : 142); }
+  duelPanelBottom(){ return duelHudTop() + (portrait ? 172 : 164); }
   /**
    * ★ **결투 화면의 위쪽은 한 줄로 쌓는다.** (2026-08-27)
    *
@@ -10359,7 +10377,7 @@ class GameScene extends Scene {
      */
     const half = portrait ? (UIW/2 - 12) : 400;
     {
-      const h = portrait ? 148 : 140;
+      const h = portrait ? 170 : 162;   // 하트 한 줄이 들어갈 만큼
       const px = Math.round(cx - half - 14), pw = Math.round((half + 14) * 2);
       ctx.globalAlpha = 0.52;
       ctx.fillStyle = '#07060f';
@@ -10419,13 +10437,43 @@ class GameScene extends Scene {
       { align:'left', color: !iWin ? '#8fc0ff' : '#9aa3c0', outline:PAL.outline, shadow:'#000' });
     ko(ctx, 'vs', cx, numY + 6, 2, { align:'center', color:'#6f7aa0' });
     /* 숫자가 무엇인지 한 번은 적어 준다 — 처음 보는 사람은 모른다 */
-    ko(ctx, '내 금화', cx - gap, numY + 40, 2, { align:'right', color:'#8a93b8' });
-    ko(ctx, '상대 금화', cx + gap, numY + 40, 2, { align:'left', color:'#8a93b8' });
+    ko(ctx, '내 금화', cx - gap, numY + 38, 2, { align:'right', color:'#8a93b8' });
+    ko(ctx, '상대 금화', cx + gap, numY + 38, 2, { align:'left', color:'#8a93b8' });
+
+    /**
+     * ── 남은 하트 ── (2026-08-27, 사용자 지정)
+     *
+     * *"둘이서 게임 중일때 남은 하트가 몇개인지 이미지로 볼 수 있게 막대 그래프
+     *   위에 상대 하트 갯수 와 내 하트 갯수가 나와야함"*
+     *
+     * ★ **금화보다 이게 먼저다.** 결투는 먼저 죽는 사람이 지는 게임이라,
+     *   상대 하트가 하나 남았다는 것은 금화 차이보다 훨씬 큰 소식이다.
+     *   잃은 자리는 **빈 하트로 남겨** 둔다 — 그래야 "셋 중 하나 남았다" 가
+     *   읽힌다. 지워 버리면 원래 하나였는지 셋이었는지 알 수가 없다.
+     */
+    {
+      const hy = top + (portrait ? 74 : 70);
+      const hw = 7 * PX, hh = 5 * PX, step = hw + PX*3;
+      const rows = ['.XX.XX.','XXXXXXX','.XXXXX.','..XXX..','...X...'];
+      const hearts = (n, x0, dir, on, off) => {
+        for(let i=0;i<DUEL.LIVES;i++){
+          ctx.fillStyle = i < n ? on : off;
+          const hx = x0 + dir*i*step - (dir < 0 ? hw : 0);
+          for(let r=0;r<rows.length;r++) for(let c=0;c<7;c++)
+            if(rows[r][c] === 'X') ctx.fillRect(hx + c*PX, hy + r*PX, PX, PX);
+        }
+      };
+      /* 내 하트는 왼쪽에서 오른쪽으로, 상대는 오른쪽에서 왼쪽으로 —
+         각자 제 초상 쪽에서 자란다 */
+      hearts(this.p1.lives | 0, Math.round(cx - gap - 6), -1, '#ff2b4a', '#3a2036');
+      const pl = PEER.lives < 0 ? DUEL.LIVES : PEER.lives;
+      hearts(pl, Math.round(cx + gap + 6), 1, '#4d9aff', '#1e2a44');
+    }
 
     /* ── 막대 ── 두 사람의 몫을 폭으로 나눈다. 둘 다 0 이면 반반 */
     const barW = Math.max(180, foBox.x - (meBox.x + meBox.sz) - 24);
     const barX = Math.round(cx - barW/2);
-    const barY = top + (portrait ? 96 : 92);
+    const barY = top + (portrait ? 116 : 112);
     const barH = 16;
     const tot = mine + foe;
     const k = tot > 0 ? mine / tot : 0.5;
@@ -11651,7 +11699,7 @@ function drawHUDDebug(ctx){
  *   coins : 상대가 주운 금화 (화면 위 점수판에 쓴다)
  *   name  : 상대 이름
  */
-const PEER = { alive: true, coins: 0, name: '', dragon: 0, seen: false };
+const PEER = { alive: true, coins: 0, name: '', dragon: 0, lives: -1, seen: false };
 /** 오락실이 방에서 읽은 상대 상태를 넣는다 */
 export function setDuelPeer(p){
   if(!p) return;
@@ -11659,11 +11707,14 @@ export function setDuelPeer(p){
   if(p.coins !== undefined) PEER.coins = p.coins | 0;
   if(p.name  !== undefined) PEER.name  = String(p.name || '');
   if(p.dragon !== undefined) PEER.dragon = clamp(p.dragon | 0, 0, 9);
+  /* -1 은 "아직 모른다" — 0 으로 두면 상대가 하트를 다 잃은 것처럼 그린다 */
+  if(p.lives !== undefined) PEER.lives = clamp(p.lives | 0, 0, DUEL.LIVES);
   PEER.seen = true;
 }
 /** 판이 새로 시작할 때 지운다 — 지난 판의 "죽었다" 가 남으면 곧바로 끝나 버린다 */
 function resetDuelPeer(){
-  PEER.alive = true; PEER.coins = 0; PEER.name = ''; PEER.dragon = 0; PEER.seen = false;
+  PEER.alive = true; PEER.coins = 0; PEER.name = ''; PEER.dragon = 0;
+  PEER.lives = -1; PEER.seen = false;
 }
 
 const DG = {
