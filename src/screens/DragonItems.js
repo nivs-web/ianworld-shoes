@@ -36,6 +36,18 @@ export default function DragonItems(nav) {
   const looking = {};
   let mod = null;
   let live = true;
+  /**
+   * ★★ **미리보기 가로/세로 버튼.** (2026-08-28, 사용자 지정)
+   *
+   * *"미리보기도, 가로화면용 세로화면용 버튼을 만들어서, 미리보기도 가로
+   *   세로 장착시 어떻게 달라지는지 알 수 있게 바꿔"*
+   *
+   * 드래곤 몸은 세로 모드에서 완전히 다른 그림(위에서 본 모습)으로 바뀐다
+   * (`topArt`). 장비도 이번에 그 모습에 맞춰 따로 그렸으니, 사려는 사람이
+   * 실제로 어느 화면으로 놀든 미리 봐야 산 보람이 있다. 기본은 가로 —
+   * 지금까지 늘 그렇게 보여 왔던 모습을 안 놀래키려고 그대로 둔다.
+   */
+  let previewTop = false;
 
   loadDragon().then((m) => { mod = m; if (live) nav.refresh(); }).catch(() => {});
 
@@ -167,12 +179,28 @@ export default function DragonItems(nav) {
          */
         const cut = (eq, label, dim) => el('div.wear-cut', null, [
           el('div.wear-pic', { class: dim ? 'locked' : '' },
-            [mod ? mod.dragonPortrait(p.dragonCharacter | 0, 2, false, gearOf(eq)) : null].filter(Boolean)),
+            [mod ? mod.dragonPortrait(p.dragonCharacter | 0, 2, false, gearOf(eq), previewTop) : null]
+              .filter(Boolean)),
           el('div.wear-cap', label),
         ]);
+        /**
+         * ★★ 가로/세로 전환 — 왼쪽에 사각 버튼 두 개.
+         * 눌러도 `산것`/`낀것` 같은 다른 상태는 그대로다 — 화면만 바꿔 본다.
+         */
+        const orientBtn = (top, wide, label) => el('div.orient-btn', {
+          class: [wide ? 'wide' : 'tall', previewTop === top ? 'on' : ''].filter(Boolean).join(' '),
+          onclick: () => { if (previewTop !== top) { previewTop = top; Sfx.play('sfx_menu_move'); nav.refresh(); } },
+        }, [el('div.orient-ico'), label]);
         footer = el('div.wear-box', null, [
           el('div.wear-title', S.itemWearTitle),
-          el('div.wear-row', null, [cut(tryOn, S.itemCutPreview, !산것), cut(worn, S.itemCutCurrent)]),
+          el('div.wear-row', null, [
+            el('div.orient-toggle', null, [
+              orientBtn(false, true, S.itemPreviewLandscape),
+              orientBtn(true, false, S.itemPreviewPortrait),
+            ]),
+            cut(tryOn, S.itemCutPreview, !산것),
+            cut(worn, S.itemCutCurrent),
+          ]),
         ]);
       }
 

@@ -3684,11 +3684,152 @@ function drawMask(ctx, cx, cy, m, tint, lv){
   }
 }
 
-function drawGear(ctx, cx, cy, m, t, headTint, legTint, maskTint, maskLv){
+/**
+ * ★★ **마스크 — 위에서 본 모습을 따로 그린다.** (2026-08-28, 사용자 지정)
+ *
+ * *"세로 화면에서 아이템 다시 싹다 그려 (...) 지금 퀄리티가 너무 별로야.
+ *   착용하고 싶은 디자인으로 정성껏 만들어."*
+ *
+ * `drawMask` 는 **옆모습 전제**다 — "코 아래로 송곳니", "이마 위로 뿔" 은
+ * 옆에서 봐야 성립한다. 세로 모드는 드래곤을 위에서 내려다본다
+ * (`topArt`) — 몸이 통째로 다른 그림이니 장비도 다른 그림이어야 한다.
+ *
+ * 위에서 본 머리는 **앞쪽 중심선 위**에 있다(주둥이 방향 = +x, 좌우가 대칭축).
+ * 그래서 옆모습의 "위/아래"가 위에서 본 모습에서는 "앞/좌우"로 바뀐다 —
+ * 뿔은 위가 아니라 **앞으로 벌어지며 뻗고**, 송곳니는 아래가 아니라
+ * **주둥이 양옆으로 삐져나오고**, 눈구멍은 중심선 좌우에 하나씩 뚫린다.
+ */
+function drawMaskTop(ctx, cx, cy, m, tint, lv){
+  const u = Math.max(2, Math.round(m.cell));
+  const hx = snap(cx + m.w*0.40);     // 주둥이 앞끝 (앞 = +x)
+  const dark = '#0a0616';
+
+  const plate = (bx, bw, by, bh, c) => {
+    ctx.fillStyle = dark; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+    ctx.fillStyle = c;    ctx.fillRect(bx, by, bw, bh);
+  };
+
+  /* 1등급 — 주둥이를 가로지르는(좌우로 걸친) 가죽끈 하나 */
+  plate(hx - u*3, u*6, snap(cy) - u, u*2, tint);
+
+  /* 2등급부터 — 주둥이 위를 덮는 판 (앞뒤로 길게) */
+  if(lv >= 2){
+    plate(hx - u*9, u*12, snap(cy) - u*3, u*6, tint);
+    ctx.fillStyle = dark;
+    for(let i=0;i<3;i++) ctx.fillRect(snap(hx - u*6 + i*u*4), snap(cy) - u, u, u);
+  }
+
+  /* 3등급부터 — 주둥이 양옆으로 삐져나온 송곳니 (좌우 대칭축을 쓴다) */
+  if(lv >= 3){
+    for(const dy of [-u*5, u*5]){
+      ctx.fillStyle = dark;
+      ctx.fillRect(snap(hx - u) - 1, snap(cy + dy) - 1, u*3 + 2, u + 2);
+      ctx.fillStyle = '#fff4f4';
+      ctx.fillRect(snap(hx - u), snap(cy + dy), u*3, u);
+    }
+  }
+
+  /* 4등급부터 — 눈까지 덮는 면갑, 눈구멍은 중심선 좌우에 하나씩 */
+  if(lv >= 4){
+    plate(hx - u*15, u*7, snap(cy) - u*6, u*12, tint);
+    ctx.fillStyle = dark;
+    ctx.fillRect(snap(hx - u*12), snap(cy) - u*4, u*2, u*2);
+    ctx.fillRect(snap(hx - u*12), snap(cy) + u*2, u*2, u*2);
+  }
+
+  /**
+   * 5등급 — 용왕의 얼굴 (위에서 본 모습).
+   * 뿔 한 쌍은 앞으로 벌어지며 뻗고, 이마 보석은 뿔 사이 중심선에,
+   * 볼 판은 좌우로 넓게, 엄니는 주둥이 맨 앞에서 좌우로 크게 돋는다.
+   */
+  if(lv >= 5){
+    for(const dy of [-u*6, u*6]){
+      const dir = dy < 0 ? -1 : 1;
+      ctx.fillStyle = dark;
+      ctx.fillRect(snap(hx + u*4) - 1, snap(cy + dy) - 1, u*5 + 2, u + 2);
+      ctx.fillStyle = tint;
+      ctx.fillRect(snap(hx + u*4), snap(cy + dy), u*5, u);
+      ctx.fillRect(snap(hx + u*8), snap(cy + dy + dir*u), u*2, u);    // 갈라진 끝
+    }
+    ctx.fillStyle = dark;
+    ctx.fillRect(snap(hx) - 1, snap(cy) - u - 1, u*2 + 2, u*2 + 2);
+    ctx.fillStyle = '#ff4d6a';
+    ctx.fillRect(snap(hx), snap(cy) - u, u*2, u*2);
+    plate(hx - u*20, u*8, snap(cy) - u*9, u*18, tint);
+    for(const dy of [-u*9, u*8]){
+      ctx.fillStyle = dark;
+      ctx.fillRect(snap(hx + u*2) - 1, snap(cy + dy) - 1, u*6 + 2, u*2 + 2);
+      ctx.fillStyle = '#fff4f4';
+      ctx.fillRect(snap(hx + u*2), snap(cy + dy), u*6, u*2);
+    }
+  }
+}
+
+function drawGear(ctx, cx, cy, m, t, headTint, legTint, maskTint, maskLv, top){
   if(!headTint && !legTint && !maskTint) return;
   const u = Math.max(2, Math.round(m.cell));           // 장식 한 칸 = 드래곤 한 칸
   const sh = Math.sin(t*4);
   ctx.save();
+
+  if(top){
+    /**
+     * ★★ **위에서 본 모습은 축이 다르다.** (2026-08-28, 사용자 지정)
+     * 옆모습에서 "가로(m.w)"는 앞뒤, "세로(m.h)"는 위아래였다. 위에서 본
+     * 모습은 몸을 하늘에서 내려다보므로 "가로(m.w)"가 그대로 앞뒤(주둥이가
+     * 있는 쪽 = +x)이지만, "세로(m.h)"는 이제 위아래가 아니라 **좌우
+     * 날개폭**이다 — 옆모습 장비를 그대로 90도 돌려 붙이면 안 되는 이유다.
+     */
+    if(headTint){
+      /* 머리 관 — 옆모습처럼 "위로 솟는 관" 이 아니라, 주둥이 위에 얹혀
+         사방으로 뻗는 별관(원형 첨탑 다섯 개 + 가운데 보석)으로 다시 그린다 */
+      const hx = snap(cx + m.w*0.36), hy = snap(cy);
+      ctx.fillStyle = '#0a0616';
+      fillPixelCircle(ctx, hx, hy, u*4 + 1, '#0a0616');
+      ctx.fillStyle = headTint;
+      fillPixelCircle(ctx, hx, hy, u*4, headTint);
+      for(let i=0;i<5;i++){
+        const a = -Math.PI/2 + i*(Math.PI*2/5);
+        const len = i === 0 ? u*4 : u*3;
+        const tx = hx + Math.cos(a)*len, ty = hy + Math.sin(a)*len;
+        ctx.fillStyle = '#0a0616';
+        ctx.fillRect(snap(tx) - u/2 - 1, snap(ty) - u/2 - 1, u + 2, u + 2);
+        ctx.fillStyle = headTint;
+        ctx.fillRect(snap(tx) - u/2, snap(ty) - u/2, u, u);
+      }
+      ctx.globalAlpha = 0.55 + sh*0.35;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(hx - u/2, hy - u/2, u, u);
+      ctx.globalAlpha = 1;
+    }
+
+    if(maskTint) drawMaskTop(ctx, cx, cy, m, maskTint, maskLv || 1);
+
+    if(legTint){
+      /* 다리 — 몸통 아래(위에서 볼 땐 안 보여야 할 자리)가 아니라, 날개
+         사이로 살짝 삐져나온 발톱 두 쌍을 몸 중심선 좌우(m.h 축)에 놓는다.
+         뒤로 흐르는 잔광도 "위/아래" 가 아니라 "뒤"(-x, 꼬리 쪽)로 흘린다. */
+      const lx = snap(cx - m.w*0.06);
+      for(const dy of [-m.h*0.22, m.h*0.22]){
+        const ly = snap(cy + dy);
+        ctx.fillStyle = '#0a0616';
+        ctx.fillRect(lx - u*2 - 1, ly - u - 1, u*4 + 2, u*2 + 2);
+        ctx.fillStyle = legTint;
+        ctx.fillRect(lx - u*2, ly - u, u*4, u*2);          // 각반
+        ctx.fillRect(lx - u*2, ly + u, u, u);              // 발톱 셋
+        ctx.fillRect(lx,       ly + u, u, u);
+        ctx.fillRect(lx + u,   ly + u, u, u);
+      }
+      for(let i=1;i<=3;i++){
+        ctx.globalAlpha = (0.34 + sh*0.16) * (1 - (i-1)*0.28);
+        ctx.fillStyle = legTint;
+        for(const dy of [-m.h*0.22, m.h*0.22])
+          ctx.fillRect(snap(cx - m.w*0.20 - i*u*3), snap(cy + dy), u*(4-i), u);
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
 
   if(headTint){
     /* 머리는 오른쪽 위 — 뿔이 난 자리 바로 위에 관을 얹는다 */
@@ -4008,10 +4149,12 @@ class Player {
     const dg = this.dragon;
     drawDragon(ctx, dg.pal, this.level, this.x, this.y + bob, pose, false, null, dg.always,
                this.dragonIdx, this.mawT > 0);
-    /* 산 무장은 1P 것이다 — 2P 는 맨몸으로 낀 손님이다 */
+    /* 산 무장은 1P 것이다 — 2P 는 맨몸으로 낀 손님이다.
+       ★ 지금 몸이 옆모습인지 윗모습인지(`topArt`)를 장비에도 그대로 넘긴다 —
+       안 그러면 세로에서 윗모습 몸에 옆모습 장비가 얹혀 어긋난다 (2026-08-28) */
     if(this.pid === 1 && (EQ.head || EQ.leg || EQ.mask))
       drawGear(ctx, this.x, this.y + bob, this.metrics, this.t,
-               EQ.head, EQ.leg, EQ.mask, EQ.maskLv);
+               EQ.head, EQ.leg, EQ.mask, EQ.maskLv, topArt);
   }
 }
 
@@ -12759,27 +12902,34 @@ export function mount(host, opts = {}) {
  *   상점의 "입어 본 모습" 은 아직 안 산 것을 걸쳐 봐야 하므로 지금 낀 것(EQ)이 아니라
  *   부르는 쪽이 정해 준 것을 그려야 한다.
  */
-export function dragonPortrait(idx, cell = 3, padFlame, gear) {
+export function dragonPortrait(idx, cell = 3, padFlame, gear, topView) {
   /**
-   * ★ **초상화는 늘 옆모습이다.** (2026-08-27, 사용자 지정)
-   * 로비·상점·캐릭터 선택이 부르는 자리다. 세로로 놀던 중에 불려도
-   * 윗모습이 나오면 안 되므로 여기서 못 박는다 (`topArt` 주석 참고).
+   * ★ **초상화는 기본이 옆모습이다.** (2026-08-27, 사용자 지정)
+   * 로비·상점·캐릭터 선택이 부르는 자리다. 세로로 놀던 중에 불려도 윗모습이
+   * 저절로 나오면 안 되므로 `topArt` 를 여기서 못 박는다 (`topArt` 주석 참고).
+   *
+   * ★★ **단, 상점 미리보기는 부르는 쪽이 직접 윗모습을 요청할 수 있다.**
+   * (2026-08-28, 사용자 지정 — "미리보기도 가로 세로 장착시 어떻게
+   * 달라지는지 알 수 있게") `topView` 를 넘기면 그때만 윗모습으로 그린다 —
+   * 이 함수를 부르는 다른 자리(로비 등)는 인자를 안 넘기므로 그대로 옆모습이다.
    */
-  const wasTop = topArt; topArt = false;
-  try{ return dragonPortraitArt(idx, cell, padFlame, gear); }
+  const wasTop = topArt; topArt = !!topView;
+  try{ return dragonPortraitArt(idx, cell, padFlame, gear, topView); }
   finally{ topArt = wasTop; }
 }
-function dragonPortraitArt(idx, cell, padFlame, gear) {
+function dragonPortraitArt(idx, cell, padFlame, gear, topView) {
   const i = clamp(idx | 0, 0, DRAGONS.length - 1);
   const d = DRAGONS[i];
   const f = FORMS.B;
   const w = Math.ceil(f.cols * cell), h = Math.ceil(f.rows * cell);
   const { cv, c } = makeCanvas(w + (padFlame ? flamePad(cell) : 0), h);
-  /* 날개를 편 자세(pose 2)가 가장 드래곤처럼 보인다 */
-  drawGrid(c, f.wings[2], 0, 0, f.cols, cell, d.pal, false, null);
-  if(f.horns) drawGrid(c, f.horns[i % f.horns.length], 0, 0, f.cols, cell, d.pal, false, null);
-  drawGrid(c, f.body,     0, 0, f.cols, cell, d.pal, false, null);
-  for(const nm of (d.always || [])) if(f.parts[nm]) drawGrid(c, f.parts[nm], 0, 0, f.cols, cell, d.pal, false, null);
+  /* 날개를 편 자세(pose 2)가 가장 드래곤처럼 보인다.
+     `artOf()` 는 `topArt` 를 보고 옆모습/윗모습 격자를 골라 준다 — 위에서
+     `dragonPortrait` 가 그 값을 이미 맞춰 뒀다 */
+  drawGrid(c, artOf(f.wings[2]), 0, 0, f.cols, cell, d.pal, false, null);
+  if(f.horns) drawGrid(c, artOf(f.horns[i % f.horns.length]), 0, 0, f.cols, cell, d.pal, false, null);
+  drawGrid(c, artOf(f.body), 0, 0, f.cols, cell, d.pal, false, null);
+  for(const nm of (d.always || [])) if(f.parts[nm]) drawGrid(c, artOf(f.parts[nm]), 0, 0, f.cols, cell, d.pal, false, null);
   /**
    * ★ **산 무장은 로비에서도 보여야 한다.** (2026-08-26 D단계)
    * 머리무장과 다리무장은 세지 않은 대신 비싸고 화려한 물건이라,
@@ -12789,7 +12939,7 @@ function dragonPortraitArt(idx, cell, padFlame, gear) {
   const gl = gear ? gear.leg  : EQ.leg;
   const gm = gear ? gear.mask : EQ.mask;
   const gmv = gear ? (gear.maskLv || 1) : EQ.maskLv;
-  if(gh || gl || gm) drawGear(c, w/2, h/2, { w, h, cell }, 0.4, gh, gl, gm, gmv);
+  if(gh || gl || gm) drawGear(c, w/2, h/2, { w, h, cell }, 0.4, gh, gl, gm, gmv, !!topView);
   return cv;
 }
 

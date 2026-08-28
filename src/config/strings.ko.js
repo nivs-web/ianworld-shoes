@@ -158,6 +158,9 @@ export const S = {
    */
   itemCutPreview: '미리보기',
   itemCutCurrent: '현재 모습',
+  /** ★ 미리보기 가로/세로 전환 버튼 (2026-08-28, 사용자 지정) */
+  itemPreviewLandscape: '가로모드',
+  itemPreviewPortrait: '세로모드',
   /**
    * ★ `[모든 아이템 착용 해제]` 는 **뺐다**(2026-08-21 사용자 지정).
    * *"착용 여러번 눌러서 착용 해제 하면 되기 때문이고, 아이템이 없는 사람도 많을

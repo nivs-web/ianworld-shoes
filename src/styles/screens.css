@@ -2444,6 +2444,42 @@
 /* 안 산 아이템의 미리보기 — 모양만 비치고 색은 감춘다 */
 .wear-pic.locked canvas { filter: grayscale(1) brightness(0.5); }
 
+/**
+ * ★★ 미리보기 가로/세로 전환 — 왼쪽에 사각 버튼 두 개. (2026-08-28, 사용자 지정)
+ * "미리보기도, 가로화면용 세로화면용 버튼을 만들어서, 미리보기도 가로 세로
+ *  장착시 어떻게 달라지는지 알 수 있게 바꿔"
+ */
+.orient-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+.orient-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  background: rgba(245, 217, 160, 0.06);
+  border: 2px solid var(--c-line);
+  color: var(--c-text-light);
+  font-size: 9px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.orient-btn .orient-ico {
+  border: 2px solid currentColor;
+  border-radius: 1px;
+}
+.orient-btn.wide .orient-ico { width: 18px; height: 12px; }
+.orient-btn.tall .orient-ico { width: 12px; height: 18px; }
+.orient-btn.on {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+  background: rgba(245, 217, 160, 0.16);
+}
+
 /* 설정 화면의 한 줄 — 이름 + 고르는 칸.
    로비의 난이도 고르기와 같은 부품(`segmented`)을 써서 손이 헤매지 않는다. */
 .opt-row {
