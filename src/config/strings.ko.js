@@ -262,6 +262,12 @@ export const S = {
   dragonSplitPadHint: '켜면 패드 하나로 둘이 놀 수 있습니다 — 오른쪽 스틱과 RB/RT 가 1P, 왼쪽 스틱과 LB/LT 가 2P 입니다',
   dragonKeysPreview: '스틱 · 버튼 미리보기',
   dragonKeysPreviewHint: '가로로 돌려야 보입니다',
+  /** ★ 왼손잡이 모드 (2026-08-28, 사용자 지정) */
+  dragonHandedLabel: '조작 손',
+  dragonHandedHint: '드래그로 캐릭터를 끄는 경우, 미사일·핵 버튼이 고른 손 쪽으로 옮겨갑니다',
+  dragonHandedStick: '스틱',
+  dragonHandedMissile: '미사일',
+  dragonHandedBomb: '핵',
   dragonSoundHint: '소리는 게임을 한 번 만져야 켜집니다 (브라우저 규칙)',
   dragonRenameCost: (n) => `* 닉네임 변경에는 금화 ${n.toLocaleString('en-US')}개가 필요합니다`,
   dragonRenameNeed: (n) => `금화가 ${n.toLocaleString('en-US')}개 더 필요합니다`,

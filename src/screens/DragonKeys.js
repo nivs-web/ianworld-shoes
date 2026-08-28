@@ -26,6 +26,40 @@ const STICK_MODE = [
   { value: 0, label: '왼쪽 아래 고정' },
   { value: 1, label: '누른 자리에' },
 ];
+/** ★ 왼손잡이 모드 (2026-08-28, 사용자 지정) */
+const HANDED = [
+  { value: 'right', label: '오른손잡이' },
+  { value: 'left', label: '왼손잡이' },
+];
+
+/**
+ * ★★ **버튼 자리 미리보기.** (2026-08-28, 사용자 지정)
+ *
+ * *"버튼 위치 당연히 미리보기 만들어서 콘트롤러 위치 설정을 바꿀 수 있도록해"*
+ *
+ * 도트로 실물을 그릴 수는 없지만(위 주석 참고), **어디에 있는지**는 작은
+ * 상자 하나로도 충분히 보여줄 수 있다. `buildButtons()`/`stickHome()` 의
+ * 가로(landscape) 공식을 1280x720 화면 기준 비율로 옮겨 왔다 — 실제 자리와
+ * 어긋나면 이 숫자들도 같이 바꿔야 한다.
+ */
+function controlPreview(handed) {
+  const left = handed === 'left';
+  const stick = { x: 158 / 1280, y: (720 - 158) / 720 };
+  const msl = { x: (left ? 68 + 140 : 1280 - 68 - 140) / 1280, y: (720 - 68 - 52) / 720 };
+  const bomb = {
+    x: (left ? 63 + 24 : 1280 - 63 - 24) / 1280,
+    y: (720 - 68 - 52 - (68 + 40)) / 720,
+  };
+  const dot = (p, cls, label) => el('div.ctrl-dot', {
+    class: cls,
+    style: { left: `${(p.x * 100).toFixed(1)}%`, top: `${(p.y * 100).toFixed(1)}%` },
+  }, [el('span', label)]);
+  return el('div.ctrl-preview', null, [
+    dot(stick, 'stick', S.dragonHandedStick),
+    dot(msl, 'msl', S.dragonHandedMissile),
+    dot(bomb, 'bomb', S.dragonHandedBomb),
+  ]);
+}
 
 export default function DragonKeys(nav) {
   let mod = null;
@@ -66,6 +100,13 @@ export default function DragonKeys(nav) {
          * 얼굴 버튼(A/B)을 쓰면 엄지가 스틱에서 떨어져 그 순간 캐릭터가 멈춘다.
          */
         row('패드 스틱 나눠쓰기', ONOFF, o.splitPad, 'splitPad', S.dragonSplitPadHint),
+
+        /**
+         * ★★ 왼손잡이 모드 — 드래그로 캐릭터를 끄는 사람이 무기 버튼도
+         * 같은 손 쪽에서 누를 수 있게 옮긴다. (2026-08-28, 사용자 지정)
+         */
+        row(S.dragonHandedLabel, HANDED, o.handed, 'handed', S.dragonHandedHint),
+        controlPreview(o.handed),
 
         el('div.spacer'),
         button(S.dragonKeysPreview, () => {

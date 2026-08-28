@@ -8963,7 +8963,17 @@ class GameScene extends Scene {
     const br = Math.round(BTN_R[clamp(o.btnSize,0,2)] * shrink), br2 = Math.round(br*0.92);
     /* ★ 화면 크기에서 뽑는다 — 세로면 720x1280 이다 (2026-08-27) */
     const my = UIH - br - 52;
-    const rx = portrait ? UIW - br - 24 : UIW - br - 140;   // 세로는 폭이 좁아 더 붙인다
+    /**
+     * ★★ **왼손잡이면 무기 단추가 왼쪽에 선다.** (2026-08-28, 사용자 지정)
+     * 오른쪽 자리 계산과 정확히 같은 여백을 왼쪽 기준으로 뒤집는다 —
+     * 오른쪽 24/140 이 왼쪽에서도 그대로 24/140 이어야 화면 가장자리에
+     * 붙는 정도가 손잡이를 바꿔도 똑같아 보인다.
+     */
+    /* 2P 가 있으면 왼쪽은 이미 2P 단추 자리다 — 겹치지 않게 1P 는 오른쪽에 둔다 */
+    const left = o.handed === 'left' && !this.p2;
+    const rx = left
+      ? (portrait ? br + 24 : br + 140)
+      : (portrait ? UIW - br - 24 : UIW - br - 140);   // 세로는 폭이 좁아 더 붙인다
     this.btnMsl  = new TouchButton(rx, my, br, ICON_MISSILE, 4, P1_COLOR, this.p2 ? '1P' : '');
     /**
      * ★ **핵 단추를 미사일 단추에서 떼어 놓는다.** (2026-08-27, 사용자 지적)
@@ -8975,7 +8985,8 @@ class GameScene extends Scene {
      * 가로는 자리가 넉넉하므로 예전 그대로 둔다.
      */
     const gap = portrait ? (br + br2 + 26) : (br + 40);
-    this.btnBomb = new TouchButton(UIW - br2 - 24, my - gap, br2, ICON_BOMB, 4, PAL.gold, this.p2 ? '1P' : '');
+    const bx = left ? br2 + 24 : UIW - br2 - 24;
+    this.btnBomb = new TouchButton(bx, my - gap, br2, ICON_BOMB, 4, PAL.gold, this.p2 ? '1P' : '');
     this.btnMsl.alpha = this.btnBomb.alpha = o.btnAlpha;
     if(this.p2){
       // 스틱이 남아 있으면 겹치지 않도록 2P 버튼을 위로 올린다
@@ -11880,7 +11891,19 @@ const OPT_DEFAULT = {
    * 좁히면 이 값이 바뀐다. 그 자리에서 한 번 맞추고 나면 다음 판에도 그대로다 —
    * 매번 다시 맞추게 하면 조절 기능이 아니라 짜증이 된다.
    */
-  touchLift: TOUCH_GRAB_LIFT
+  touchLift: TOUCH_GRAB_LIFT,
+  /**
+   * ★★ **왼손잡이 모드 — 미사일·핵 버튼이 왼쪽으로.** (2026-08-28, 사용자 지정)
+   *
+   * *"왼쪽 콘트롤러 스틱으로 조절하지 않고 꾹 눌러서 콘트롤 하는 경우에는
+   *   미사일 핵무기 위치가 오른쪽이 아니라 왼쪽으로 자동이동 하도록 바꿔
+   *   (...) 오른손잡이용 왼손잡이용 있으면 될거 같아"*
+   *
+   * 기본은 `'right'`(예전 그대로 — 오른쪽). `'left'` 면 `buildButtons()` 가
+   * 1P 미사일·핵 단추를 왼쪽에 놓는다. 스틱은 그대로 왼쪽 아래에 둔다 —
+   * 사용자가 옮기라고 말한 건 무기 단추뿐이다.
+   */
+  handed: 'right'
 };
 const STICK_R = [62, 78, 96], BTN_R = [54, 68, 82];
 
@@ -11893,7 +11916,7 @@ const STICK_R = [62, 78, 96], BTN_R = [54, 68, 82];
  * `undefined` 라 세로가 기본인데 가로로 시작했다. 새로 깐 사람만 멀쩡했으니
  * 내 화면에서는 절대 안 보였을 버그다.
  */
-const OPT_V = 3;
+const OPT_V = 4;
 function optGet(){
   // 매번 새 객체를 만들면 참조가 끊기고 프레임마다 할당이 생기므로 1회만 정규화한다
   const o = Save.data.opt;
@@ -12980,6 +13003,8 @@ export function gameOptions() {
     sfxOn: o.sfxOn ? 1 : 0,
     bgm: Save.data.bgm | 0,
     tracks: BGM_TRACKS.map((t) => t.name),
+    /** ★ 왼손잡이 모드 (2026-08-28, 사용자 지정) — 'right' | 'left' */
+    handed: o.handed === 'left' ? 'left' : 'right',
   };
 }
 
@@ -12992,6 +13017,7 @@ export function setGameOption(key, value) {
     case 'btnSize':    o.btnSize = clamp(value | 0, 0, 2); break;
     case 'btnAlpha':   o.btnAlpha = clamp(+value || 0.5, 0.2, 0.8); o.stickAlpha = o.btnAlpha; break;
     case 'splitPad':   o.splitPad = value ? 1 : 0; Input.splitPad = !!value; break;
+    case 'handed':     o.handed = value === 'left' ? 'left' : 'right'; break;
     case 'bgmOn':      o.bgmOn = value ? 1 : 0; applyAudioOpt(); break;
     case 'sfxOn':      o.sfxOn = value ? 1 : 0; applyAudioOpt(); break;
     case 'bgm':

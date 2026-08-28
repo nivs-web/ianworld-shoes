@@ -2494,6 +2494,39 @@
 }
 
 /**
+ * ★★ 조작 손 미리보기 상자. (2026-08-28, 사용자 지정)
+ * "버튼 위치 당연히 미리보기 만들어서 콘트롤러 위치 설정을 바꿀 수 있도록해"
+ * 실제 화면(1280x720) 비율의 작은 상자에 스틱·무기 단추 자리를 점으로 찍는다.
+ */
+.ctrl-preview {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1280 / 720;
+  margin: 6px 0 12px;
+  background: #14100c;
+  border: 2px solid var(--c-panel-dark);
+}
+.ctrl-dot {
+  position: absolute;
+  width: 15%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.ctrl-dot span {
+  font-size: 8px;
+  color: #14100c;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.ctrl-dot.stick { background: rgba(160, 200, 255, 0.85); }
+.ctrl-dot.msl { background: rgba(255, 120, 130, 0.85); }
+.ctrl-dot.bomb { background: rgba(245, 217, 160, 0.85); }
+
+/**
  * ★ **드래곤 로비의 캐릭터 칸만 20% 넓다.** (2026-08-26, 사용자 지정)
  *
  * 공용 `.char-cell` 은 78px 이다 — 신발게임 캐릭터(날개와 반려견까지)에 맞춰
