@@ -6,7 +6,7 @@
  */
 import { enterFullscreen, exitFullscreen, isFullscreen,
          lockPortrait, lockLandscape } from '../../core/fullscreen.js';
-import { text as koBlit, measure as koMeasure } from '../../core/pixelfont.js';
+import { text as koBlit, measure as koMeasure, loadSmallFont } from '../../core/pixelfont.js';
 import { FLAME_PALS } from './items.js';
 
 /**
@@ -9407,8 +9407,9 @@ class GameScene extends Scene {
       if(s.name){
         const lx = portrait ? s.sx + 96 : s.sx;
         const ly = portrait ? s.sy : s.sy - 92;
+        /* ★ small:true — 사용자가 지은 닉네임이라 큰 글꼴엔 없는 글자가 있을 수 있다 */
         ko(ctx, s.name, lx, ly, 2,
-          { align:'center', color:'#8fc0ff', outline:PAL.outline });
+          { align:'center', color:'#8fc0ff', outline:PAL.outline, small:true });
       }
     }
   }
@@ -11160,8 +11161,9 @@ class GameScene extends Scene {
     ctx.globalAlpha = 1;
 
     const nameX = x + 34 + iconSz + 10;
+    /* ★ small:true — 닉네임(사용자가 지은 글자)이라 큰 글꼴엔 없는 글자가 있을 수 있다 */
     ko(ctx, r.name.slice(0, 8), nameX, midY - 7, 2,
-      { color: dead ? '#7a7690' : '#e8e2ff', outline:PAL.outline });
+      { color: dead ? '#7a7690' : '#e8e2ff', outline:PAL.outline, small:true });
 
     if(!r.seen){
       ko(ctx, '기다리는 중', x + w - 10, midY - 7, 2,
@@ -12839,6 +12841,19 @@ function frame(now) {
  */
 export function mount(host, opts = {}) {
   if (canvas) unmount();                       // 두 번 붙는 사고 방지
+
+  /**
+   * ★★ **닉네임이 깨지던 버그.** (2026-08-28, 사용자 신고 — "난금이좋아 라는
+   *   한글 이름 닉네임 글씨가 깨지네? 닉네임 글씨 안깨지는 폰트로 바꿔")
+   *
+   * `ko()` 가 빌려 쓰는 큰 글꼴(`FONT`, 11px)은 **이 게임 소스에 실제로 적힌
+   * 한글만** 굽는다(`tools/build-font.mjs`) — 사용자가 지은 닉네임은 그
+   * 목록에 없으니 없는 글자는 '?' 로 깨졌다. 오락실은 이미 이 문제를 풀어
+   * 뒀다 — KS X 1001 2,350자를 다 굽는 작은 글꼴(`font7.generated.json`,
+   * `small:true`)이 그것이다. 여기서 미리 받아 두고, 닉네임을 찍는 자리
+   * (결투 순위표·고스트 이름표)만 `small:true` 로 그 글꼴을 쓴다.
+   */
+  loadSmallFont().catch(() => {});
 
   /* 결투는 둘이 같은 조건이어야 겨루기가 된다 — 난이도를 고른 값으로 두면 안 된다 */
   DG.difficulty = opts.mode === 'duel' ? DUEL.DIFFICULTY : (opts.difficulty || 'normal');

@@ -483,9 +483,24 @@ export async function resetRoom(code) {
    * 있으면 잠깐 기다린다 — 지우는 순간 그 사람의 빚(최대 201켤레)이 통째로 면제된다.
    * 영원히 기다리지는 않는다: 끝난 지 3분이 지나면 안 온 것으로 본다.
    */
+  /**
+   * ★★ **드래곤 방은 신발을 안 건다 — 이 검사 자체가 안 맞는다.** (2026-08-28,
+   *   사용자 신고: "로비에서 자꾸 튕겨 네트워크 어쩍 메세지가 나와 (...)
+   *   게임 끝나고 계속하기 누르면 계속 되게 만들어")
+   *
+   * `hasUnclaimed`/`hasUnpaid` 는 `result.given`(패자가 낸 신발 목록)을 본다.
+   * 드래곤 결투는 신발이 아니라 금화를 걸고, 정산도 `settleDuel`/지갑으로
+   * 따로 돈다 — `result.given` 을 아예 안 쓴다. 그래서 `given[uid]` 는
+   * 드래곤 방에서 **항상 undefined** 이고, `hasUnpaid` 는 그걸 "아직 안 냈다"
+   * 로 읽어 매번 `pending` 을 돌려줬다 — "계속하기" 를 눌러도 3분 동안
+   * (`RESET_WAIT_MS`) 무조건 실패하고 화면은 그걸 네트워크 오류로 보여줬다.
+   * 신발 방(`game !== 'dragon'`)에서만 이 검사를 한다.
+   */
   const 끝난지 = Date.now() - (room.result?.endedAt ?? 0);
-  if (hasUnclaimed(room)) return 'pending';
-  if (hasUnpaid(room) && 끝난지 < RESET_WAIT_MS) return 'pending';
+  if (room.game !== 'dragon') {
+    if (hasUnclaimed(room)) return 'pending';
+    if (hasUnpaid(room) && 끝난지 < RESET_WAIT_MS) return 'pending';
+  }
 
   /**
    * ★ **다음 판에는 지금 이 방을 보고 있는 사람만 데려간다.** (2026-08-19)
