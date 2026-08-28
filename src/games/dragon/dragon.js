@@ -5798,20 +5798,18 @@ class HeavyRider extends EnemyBase {
 }
 
 /**
- * ★★ 검은 드래곤의 유도 미사일 — 단 1발, 플레이어 미사일의 절반 속도로 쫓아온다.
- * (2026-08-27, 사용자 지정)
+ * ★★ 검은 드래곤의 유도 미사일 — 단 1발, 플레이어 미사일과 같은 모양·크기.
+ * (2026-08-27, 사용자 재지정)
  *
- * *"탄도 유도 미사일을 쏨, 단 1발씩 쏨, 근데 내가 쏘는 미사일 보다 0.5배 느림,
- *   근데 주인공 캐릭터를 쫓아 오기 때문에 피해야함, 3초 동안 피하면, 이 탄도
- *   유도 미사일은 아래로 빠르게 사라짐. 근데 안피하고 그냥 재자리에 서 있으면
- *   맞으면 한방에 터짐"*
+ * *"미사일 크기는 주인공 캐릭터가 쏘는 미사일이랑 크기 모양 똑같음, 다만
+ *   검은색 테두리가 있음, 1발씩 쏘는 것이며, 느리게 날라오지만 1발이라도
+ *   맞으면 안됨, 무조건 피해야함, 미사일 위에는 3초라는 시간이 0.01초
+ *   단위로 3초에서 0.00초까지 빠르게 줄어들고 있어, 이 시간안에 피하면
+ *   이 미사일은 아주 작아지며 화면 아래로 소멸해"*
  *
- * 기존 `HomingMissile`(헤비 라이더용)을 그대로 안 쓰는 이유는 셋 —
- *   ① 속도가 **플레이어 미사일의 정확히 절반**이어야 한다(`MISSILE.CHASE_SPD`는
- *      이 파일 뒤쪽에 정의돼 있어 실행 시점에 직접 계산한다).
- *   ② **3초를 못 피하면** 그때부터 도망치듯 아래(월드 -x, 다른 모든 것이 빠지는
- *      방향)로 빠르게 가속해 빠진다 — 기존 것은 수명이 다 되면 조용히 지운다.
- *   ③ **맞으면 한방**이라 `hurt` 를 확실히 목숨을 깎는 값으로 못박는다.
+ * `PlayerMissile`과 판정칸(52x28)까지 똑같이 맞춘다 — "크기 모양 똑같음"이
+ * 그냥 눈으로 비슷하다는 말이 아니라 실제 부피도 같아야 한다는 뜻으로 읽었다.
+ * 그림은 `blackMissileSprite()`(검은 테두리를 두른 `missileSprite()` 변형)를 쓴다.
  */
 class BlackMissile {
   constructor(x, y, target){
@@ -5820,67 +5818,90 @@ class BlackMissile {
     this.spd = MISSILE.CHASE_SPD * 0.5;      // 내 미사일의 절반
     this.turn = 2.3;
     this.target = target; this.t = 0; this.dead = false;
-    this.chaseLife = 3.0;                    // 이 동안 쫓는다
-    this.fleeing = false;
+    this.chaseLife = BLACK_MISSILE_LIFE;     // 이 동안 쫓는다 — 화면에 0.00 까지 숫자로 보인다
+    this.fleeing = false;                    // 다 피했다 — 작아지며 사라지는 중
+    this.shrinkT = 0;
     this.hurt = 999;                         // 맞으면 무조건 한방
     this.isBlack = true;                     // 플레이어 미사일이 무조건 요격하는 표식
   }
   /**
-   * ★ **판정을 살짝 넉넉하게.** (2026-08-27)
-   * 플레이어의 판정칸은 `p.y` 에서 조금 아래로 치우쳐 있다(발밑 쪽). 탄이 딱
-   * `p.x,p.y` 를 노리고 오면 겨우 몇 픽셀 차이로 스치듯 비껴가는 경우가 있었다 —
-   * *"안피하고 그냥 재자리에 서 있으면 맞으면 한방에 터짐"* 이라는 약속을
-   * 물리 오차가 깨면 안 되므로 탄의 판정을 조금 키워 확실히 맞게 한다.
+   * ★ **다 피하면 더는 위험하지 않다.** (2026-08-27)
+   * 작아지는 동안에도 판정칸이 그대로면, "피했다" 고 안심한 순간 줄어드는
+   * 그림에 스쳐서 맞는 일이 생긴다. 도망 단계에서는 판정칸을 아예 없앤다.
    */
-  get box(){ return { x:this.x - 16, y:this.y - 14, w:32, h:28 }; }
+  get box(){
+    if(this.fleeing) return { x:-9999, y:-9999, w:0, h:0 };
+    return { x:this.x - 26, y:this.y - 14, w:52, h:28 };      // 플레이어 미사일과 같은 판정
+  }
   update(dt){
     this.t += dt;
-    if(!this.fleeing){
-      this.chaseLife -= dt;
-      const tg = this.target;
-      if(tg && !tg.out){
-        const want = Math.atan2(tg.y - this.y, tg.x - this.x);
-        let d = want - this.ang;
-        while(d >  Math.PI) d -= Math.PI*2;
-        while(d < -Math.PI) d += Math.PI*2;
-        this.ang += clamp(d, -this.turn*dt, this.turn*dt);
-      }
-      this.x += Math.cos(this.ang)*this.spd*dt;
-      this.y += Math.sin(this.ang)*this.spd*dt;
-      if(this.chaseLife <= 0){
-        this.fleeing = true;
-        this.ang = Math.PI;                  // "아래" 로 방향을 튼다
-      }
-    }else{
-      this.spd = Math.min(1400, this.spd + 2200*dt);   // 도망치듯 빠르게 가속
-      this.x += Math.cos(this.ang)*this.spd*dt;
-      this.y += Math.sin(this.ang)*this.spd*dt;
-      if(this.x < -100) this.dead = true;
+    if(this.fleeing){
+      this.shrinkT += dt;
+      this.x += -140*dt;                     // 살살 가라앉듯 "아래"(월드 -x)로 흘러간다
+      if(this.shrinkT >= BLACK_MISSILE_SHRINK_TIME) this.dead = true;
+      return;
+    }
+    this.chaseLife -= dt;
+    const tg = this.target;
+    if(tg && !tg.out){
+      const want = Math.atan2(tg.y - this.y, tg.x - this.x);
+      let d = want - this.ang;
+      while(d >  Math.PI) d -= Math.PI*2;
+      while(d < -Math.PI) d += Math.PI*2;
+      this.ang += clamp(d, -this.turn*dt, this.turn*dt);
+    }
+    this.x += Math.cos(this.ang)*this.spd*dt;
+    this.y += Math.sin(this.ang)*this.spd*dt;
+    if(this.chaseLife <= 0){
+      this.chaseLife = 0;
+      this.fleeing = true;
+      this.shrinkT = 0;
     }
     if(this.t > 0.05 && Math.random() < 0.6)
       Particles.spawn(this.x, this.y, 1, { spd:40, life:0.26, grav:-10, drag:4,
-        pal:['#ff2b3c','#ff8a3a','#3a3a44'] });
-    if(this.y < -100 || this.y > GAME_H + 100 || this.x > GAME_W + 140) this.dead = true;
+        pal:['#000000','#3a3a44','#ff2b3c'] });
+    if(this.y < -100 || this.y > GAME_H + 100 || this.x > GAME_W + 140 || this.x < -160) this.dead = true;
   }
   render(ctx){
-    const x = snap(this.x), y = snap(this.y);
-    const c = Math.cos(this.ang), s = Math.sin(this.ang);
-    ctx.fillStyle = '#ff2b3c'; ctx.fillRect(snap(x - c*16), snap(y - s*16), PX*2, PX*2);  // 꼬리 불꽃
-    ctx.fillStyle = '#17171d'; ctx.fillRect(x - 9, y - PX, 18, PX*2);                     // 동체
-    ctx.fillStyle = '#ff2b3c'; ctx.fillRect(x + 6, y - PX, PX*2, PX*2);                   // 탄두
-    ctx.fillStyle = '#000000'; ctx.fillRect(x - 11, y - PX*2, PX, PX*4);                  // 꼬리날개
+    const i = Math.round(this.ang / (Math.PI*2/16)) & 15;
+    const spr = blackMissileSprite(i);
+    const scale = this.fleeing ? Math.max(0, 1 - this.shrinkT/BLACK_MISSILE_SHRINK_TIME) : 1;
+    if(scale <= 0.02) return;
+    const w = spr.width*scale, h = spr.height*scale;
+    ctx.globalAlpha = this.fleeing ? Math.max(0.12, scale) : 1;
+    ctx.drawImage(spr, snap(this.x - w/2), snap(this.y - h/2), w, h);
+    ctx.globalAlpha = 1;
+    if(!this.fleeing){
+      /* ★ 3.00 -> 0.00 카운트다운 — 위에서 말한 그대로 숫자로 보여준다 */
+      drawText(ctx, this.chaseLife.toFixed(2), this.x, this.y - 34, 2,
+        { align:'center', color: this.chaseLife < 1 ? '#ff4d5a' : '#ffffff', outline:PAL.outline });
+    }
   }
 }
+const BLACK_MISSILE_LIFE = 3.0;          // 피해야 하는 시간 (사용자 지정: 3초)
+const BLACK_MISSILE_SHRINK_TIME = 0.4;   // 다 피했을 때 작아지며 사라지는 시간
 
 /**
- * ★★ 검은 드래곤 — 10초에 1마리, 보스가 떠 있는 동안엔 쉰다. (2026-08-27, 사용자 지정)
- * *"검은색 드래곤을 등장 시키자 이 드래곤은 중간보스 말고, 보라색 드래곤
- *   크기와 비슷한데 10초에 1마리씩만 등장함 보스 등장할땐 등장하지 않음"*
- * 몸집은 `HeavyRider`(보라 드래곤)와 같은 `HV_CELL`. 색만 다른 게 아니라
- * 검은 팔레트로 확실히 구분한다.
+ * ★★ 검은 드래곤 — 등장 → 빙글빙글 돌며 조준 → 1발 발사 → 즉시 퇴장.
+ * (2026-08-27, 사용자 재지정 — 등장 간격을 좁힘)
+ *
+ * *"이 검은색 드래곤은 일단 등장하면, 빙글빙글 돌다가 쫓아오는 미사일을
+ *   발사하는거야 (...) 미사일이 소멸 후에는 1-2초 이내에 다시 이 검은색
+ *   드래곤이 또 등장해야해 (...) 너무 드물게 등장한다, 등장하는 간격을
+ *   조금 더 좁혀"*
+ *
+ * 예전엔 "10초마다 1마리"라는 고정 시계였다. 그러면 미사일을 아무리 빨리
+ * 요격해도 다음 놈은 여전히 10초 뒤에나 온다 — "드물다"는 불만이 이거였다.
+ * 그래서 시계를 없애고 **사건에 이어 붙인다**: 미사일이 끝나야(맞았든,
+ * 요격됐든, 다 피해서 사라졌든) 그 순간부터 1~2초를 잰다(`GameScene` 의
+ * `blackDragon`/`blackMissileRef` 추적, 이 파일 뒤쪽 `update()` 참고).
+ * 잘 피하고 잘 요격할수록 다음 놈이 더 빨리 온다.
  */
 const BK_CELL = HV_CELL;                              // 보라 드래곤과 같은 덩치
-const BLACK_DRAGON_EVERY = 10.0;                       // 10초에 1마리
+const BLACK_DRAGON_GAP_MIN = 1.0;                      // 미사일이 끝난 뒤 다음 등장까지 — 최소
+const BLACK_DRAGON_GAP_MAX = 2.0;                      // 최대
+const BLACK_DRAGON_SPIN_TIME = 0.7;                    // 빙글빙글 도는 시간
+const BLACK_DRAGON_RETREAT_SPD = 900;                  // 쏘고 난 뒤 빠지는 속도
 class BlackDragon extends EnemyBase {
   constructor(x, y){
     /**
@@ -5890,29 +5911,43 @@ class BlackDragon extends EnemyBase {
      */
     super(x, y, enemyHp(220), 260);
     this.vx = -(120 + Math.random()*30);
-    this.fireT = 0.7;                 // 등장하고 잠깐 뒤 쏜다
+    this.enterT = 0.5;                // 화면 안으로 살짝 들어온 뒤에 돈다
+    this.spinning = false;
+    this.spinT = 0;
     this.fired = false;               // 딱 1발만 — 재장전 없다
+    this.retreating = false;
   }
   get box(){ return { x:this.x - 53, y:this.y - 43, w:106, h:86 }; }
   update(dt, scene){
     this.t += dt;
     if(this.flash > 0) this.flash -= dt;
     if(this.knock > 0) this.knock = Math.max(0, this.knock - 900*dt);
+    if(this.retreating){
+      this.x += (this.vx - BLACK_DRAGON_RETREAT_SPD)*dt;
+      if(this.x < -220) this.dead = true;
+      return;
+    }
+    if(this.spinning){
+      this.spinT += dt;
+      this.y = this.baseY + Math.sin(this.t*1.1)*34;
+      if(this.spinT >= BLACK_DRAGON_SPIN_TIME){
+        this.spinning = false;
+        this.fired = true;
+        const tg = scene.nearestPlayer(this.x, this.y);
+        const bm = new BlackMissile(this.x - 50, this.y, tg);
+        scene.missiles.push(bm);
+        scene.blackMissileRef = bm;             // 이 미사일이 끝나야 다음 놈이 예약된다
+        SND.sfx('missile');
+        this.retreating = true;
+      }
+      return;
+    }
     this.x += (this.vx + this.knock)*dt;
     applyDive(this, dt);
     this.y = this.baseY + Math.sin(this.t*1.1)*34;
     this.flapUpdate(dt, 0.13);
-    if(this.castT > 0) this.castT -= dt;
-    if(!this.fired){
-      this.fireT -= dt;
-      if(this.fireT <= 0){
-        this.fired = true;
-        this.castT = CAST_TIME;
-        const tg = scene.nearestPlayer(this.x, this.y);
-        scene.missiles.push(new BlackMissile(this.x - 50, this.y, tg));
-        SND.sfx('missile');
-      }
-    }
+    this.enterT -= dt;
+    if(this.enterT <= 0){ this.spinning = true; this.spinT = 0; }
     if(this.x < -160) this.dead = true;
   }
   die(scene){
@@ -5927,8 +5962,20 @@ class BlackDragon extends EnemyBase {
     SND.sfx('boomM');
   }
   render(ctx){
-    castPose(ctx, this, () => drawFormDragon(ctx, BLACK_DRAGON_PAL, 'A', BK_CELL,
-      this.x, this.y, this.pose, true, this.flash > 0 ? '#ffffff' : null, [A_RIDER]));
+    if(this.spinning){
+      /* ★ "빙글빙글" — 조준하는 두 바퀴를 실제로 돌려서 보여준다 */
+      const spin = (this.spinT / BLACK_DRAGON_SPIN_TIME) * Math.PI * 4;
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(spin);
+      ctx.translate(-this.x, -this.y);
+      drawFormDragon(ctx, BLACK_DRAGON_PAL, 'A', BK_CELL, this.x, this.y, this.pose, true,
+        this.flash > 0 ? '#ffffff' : null, [A_RIDER]);
+      ctx.restore();
+    } else {
+      castPose(ctx, this, () => drawFormDragon(ctx, BLACK_DRAGON_PAL, 'A', BK_CELL,
+        this.x, this.y, this.pose, true, this.flash > 0 ? '#ffffff' : null, [A_RIDER]));
+    }
   }
 }
 
@@ -7175,6 +7222,48 @@ function missileSprite(i){
   c.fillStyle = '#ffd0d4'; c.fillRect(22,  -8,  4,  6);
   c.restore();
   return (_mslSprites[i] = cv);
+}
+
+/**
+ * ★★ 검은 드래곤 미사일 그림 — 플레이어 미사일과 **같은 모양**에 검은
+ * 테두리만 두른다. (2026-08-27, 사용자 지정 — "미사일 크기는 주인공
+ * 캐릭터가 쏘는 미사일이랑 크기 모양 똑같음, 다만 검은색 테두리가 있음")
+ *
+ * `missileSprite()`와 완전히 같은 도형을 8방향으로 살짝 어긋나게 검게
+ * 한 벌 더 찍은 뒤(외곽선), 그 위에 원래 색을 그대로 얹는다 — 흔한
+ * "실루엣 뒤에 깔기" 외곽선 기법이다. 방향별로 한 번만 굽고 캐시한다.
+ */
+const _blackMslSprites = [];
+function blackMissileSprite(i){
+  const hit = _blackMslSprites[i];
+  if(hit) return hit;
+  const { cv, c } = makeCanvas(MSL_SPR, MSL_SPR);
+  const draw = (cx, ov) => {
+    cx.save();
+    cx.translate(MSL_SPR/2, MSL_SPR/2);
+    cx.rotate(i * Math.PI*2/16);
+    for(let k=0;k<4;k++){
+      cx.fillStyle = ov || PAL.fire[k];
+      const Ln = 26 - k*5, h = 16 - k*3;
+      cx.fillRect(-26 - Ln, -h/2, Ln, h);
+    }
+    cx.fillStyle = ov || '#ffffff'; cx.fillRect(-34, -PX, 10, PX*2);
+    cx.fillStyle = ov || '#0d0912'; cx.fillRect(-28, -13, 52, 26);
+    cx.fillStyle = ov || '#e8ecf6'; cx.fillRect(-26, -11, 46, 12);
+    cx.fillStyle = ov || '#8b93a8'; cx.fillRect(-26,   1, 46, 10);
+    cx.fillStyle = ov || '#5a6072'; cx.fillRect(-32, -20, 12, 40);
+    cx.fillStyle = ov || '#0d0912'; cx.fillRect(-34, -20,  4, 40);
+    cx.fillStyle = ov || '#0d0912'; cx.fillRect(20, -13, 12, 26);
+    cx.fillStyle = ov || '#ff4d5a'; cx.fillRect(20, -10, 10, 20);
+    cx.fillStyle = ov || '#ffd0d4'; cx.fillRect(22,  -8,  4,  6);
+    cx.restore();
+  };
+  const OF = 3;
+  for(const [dx, dy] of [[-OF,0],[OF,0],[0,-OF],[0,OF],[-OF,-OF],[OF,-OF],[-OF,OF],[OF,OF]]){
+    c.save(); c.translate(dx, dy); draw(c, '#000000'); c.restore();
+  }
+  draw(c);
+  return (_blackMslSprites[i] = cv);
 }
 
 function nearestEnemy(scene, x, y, exclude){
@@ -8602,7 +8691,13 @@ class GameScene extends Scene {
       RUN.wallet0 = DG.coins() | 0;      // 이 판을 시작할 때의 지갑 (고정)
     }
     this.boss = null; this.bossBannerT = 0; this.bossDeathT = 0;
-    this.blackT = BLACK_DRAGON_EVERY;   // 검은 드래곤 — 10초마다 1마리 (보스 등장 중엔 쉼)
+    /**
+     * 검은 드래곤 — 살아있는 개체(`blackDragon`)와 그 미사일(`blackMissileRef`)을
+     * 직접 들고 있는다. 다음 등장은 고정 시계가 아니라 **이 미사일이 끝나는
+     * 순간**부터 1~2초로 잡는다(`update()` 의 검은 드래곤 절 참고).
+     */
+    this.blackDragon = null; this.blackMissileRef = null;
+    this.blackT = 2.0 + Math.random()*1.5;   // 판 시작 후 첫 등장까지
     this.lootT = undefined;           // 최종보스 뒤 금화 줍는 시간
     this.killStreak = 0;
     this.chainT = 0;                 // 연쇄가 끊기기까지 남은 시간
@@ -9892,19 +9987,29 @@ class GameScene extends Scene {
     // ---- 웨이브 / 아이템 ----
     this.director.update(dt);
     /**
-     * ★ **검은 드래곤 — 10초에 1마리, 보스가 있는 동안엔 쉰다.**
-     * 결투에서는 안 낸다 — 결투는 두 화면이 완전히 같은 것만 겨루게 짜여 있고
-     * (씨앗 금화·고스트) 이 적은 씨앗 없이 무작위로 움직이므로 한쪽 화면에서만
-     * 벌어지는 일이 된다.
+     * ★★ **검은 드래곤 — 미사일이 끝나야 다음 놈을 잰다.** (2026-08-27, 사용자 재지정)
+     * *"미사일이 소멸 후에는 1-2초 이내에 다시 이 검은색 드래곤이 또 등장해야해
+     *   (...) 너무 드물게 등장한다, 등장하는 간격을 조금 더 좁혀"*
+     *
+     * 고정된 시계가 아니라 **사건에 이어 붙인다**: 살아있는 개체나 날아다니는
+     * 미사일이 있는 동안에는 시계를 쉬고, 그것이 사라지는 그 프레임에 다음
+     * 등장까지 1~2초를 새로 잰다. 결투에서는 안 낸다 — 결투는 두 화면이
+     * 완전히 같은 것만 겨루게 짜여 있는데(씨앗 금화·고스트) 이 적은 씨앗 없이
+     * 무작위로 움직이므로 한쪽 화면에서만 벌어지는 일이 된다.
      */
     if(!this.duel){
-      const bossActive = this.enemies.some(e => !e.dead && (e instanceof MidBoss || e instanceof Boss));
-      if(!bossActive){
+      const blackGap = () => BLACK_DRAGON_GAP_MIN + Math.random()*(BLACK_DRAGON_GAP_MAX - BLACK_DRAGON_GAP_MIN);
+      /* 개체나 미사일이 방금 사라졌으면 — 그 순간부터 다음 등장을 다시 잰다 */
+      if(this.blackDragon && this.blackDragon.dead){ this.blackDragon = null; this.blackT = blackGap(); }
+      if(this.blackMissileRef && this.blackMissileRef.dead){ this.blackMissileRef = null; this.blackT = blackGap(); }
+      const idle = !this.blackDragon && !this.blackMissileRef;
+      const bossActive = idle && this.enemies.some(e => !e.dead && (e instanceof MidBoss || e instanceof Boss));
+      if(idle && !bossActive){
         this.blackT -= dt;
         if(this.blackT <= 0){
-          this.blackT = BLACK_DRAGON_EVERY;
           const y0 = 140 + Math.random()*(GAME_H - 280);
-          this.enemies.push(new BlackDragon(GAME_W + 90, y0));
+          this.blackDragon = new BlackDragon(GAME_W + 90, y0);
+          this.enemies.push(this.blackDragon);
         }
       }
     }
