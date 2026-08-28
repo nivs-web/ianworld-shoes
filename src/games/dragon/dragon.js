@@ -6804,8 +6804,16 @@ class Director {
     this.duelWait = duel ? DUEL.OPEN : 0;
   }
   update(dt){
-    this.t += dt;
-    if(this.duel){ this.updateDuel(dt); return; }
+    if(this.duel){ this.t += dt; this.updateDuel(dt); return; }
+    /**
+     * ★ **쉬움은 시각표를 천천히 읽는다.** (2026-08-28, 사용자 지정)
+     * `TIMELINE` 의 시각은 그대로 두고, 그걸 재는 `this.t` 가 느리게 흐르게
+     * 한다 — 그러면 물결 사이 간격이 실제 시간으로 늘어난다(쉬움 1.54배).
+     * 결투는 두 화면이 같은 것만 봐야 하므로 위에서 이미 걸러 냈다(항상
+     * DIFFICULTY:'hard' 로 고정이라 pace=1 이지만, 그래도 손대지 않는다).
+     */
+    const pdt = dt * diffPace();
+    this.t += pdt;
     // 스크립트 소화
     while(this.idx < TIMELINE.length && this.t >= TIMELINE[this.idx].t){
       const e = TIMELINE[this.idx++];
@@ -6826,7 +6834,7 @@ class Director {
       this.spawnBoss();
     // 보스전 중에도 잡몹이 계속 흘러들어온다 (보스만 덩그러니 있으면 심심하다)
     if(this.midSpawned){
-      this.addT -= dt;
+      this.addT -= pdt;
       if(this.addT <= 0){
         this.addT = BOSS_ADD_INTERVAL;
         this.spawnGroup(Math.random() < 0.72 ? 'zombie' : 'rider', Math.random() < 0.5 ? 2 : 3);
@@ -12610,8 +12618,19 @@ const DIFFS = {
   /* atk 은 **목숨당 맞는 횟수**가 실제로 갈리도록 잡았다 (기본 한 방 34, 체력 100):
      쉬움 26 -> 4대 · 보통 34 -> 3대 · 어려움 53 -> 2대.
      1.45 로 두었을 때는 49 라 어려움도 3대였다 — 반올림에 묻혀 차이가 안 났다. */
-  easy:   { count: 0.80, speed: 0.88, hp: 0.80, atk: 0.75, boss: 0.80, coin: 0.8 },
-  normal: { count: 1.00, speed: 1.00, hp: 1.00, atk: 1.00, boss: 1.00, coin: 1.0 },
+  /**
+   * ★ **쉬움은 "덜 나온다" 뿐 아니라 "덜 자주 나온다".** (2026-08-28, 사용자 지정)
+   * *"쉬움 보통 어려움 (...) 적군 캐릭터 등장 빈도를 살짝 바꾸자... 쉬움인데도
+   *   너무 적이 많은거 같아. 좀 조절해봐"*
+   *
+   * `count` 는 물결 한 번에 몇 마리가 나오는지만 줄였다 — **얼마나 자주
+   * 물결이 오는지**는 난이도와 무관하게 고정이었다(`TIMELINE` 의 시각표는
+   * 그대로 흐른다). 그래서 쉬움도 물결 간격은 보통과 똑같이 촘촘했다.
+   * `pace` 를 새로 둬 `Director` 가 시각표를 재는 시계 자체를 늦춘다 —
+   * 쉬움은 실제 1초가 지나도 시각표는 0.65초만 지난 것으로 친다.
+   */
+  easy:   { count: 0.80, speed: 0.88, hp: 0.80, atk: 0.75, boss: 0.80, coin: 0.8, pace: 0.65 },
+  normal: { count: 1.00, speed: 1.00, hp: 1.00, atk: 1.00, boss: 1.00, coin: 1.0, pace: 1.00 },
   /**
    * ★ **어려움을 눅였다.** (2026-08-26, 실제로 해 보고)
    *
@@ -12621,7 +12640,7 @@ const DIFFS = {
    */
   /* ★ 어려움의 보스만 20% 더 (2026-08-27, 사용자 지정): 1.20 -> 1.44.
      쉬움·보통은 그대로다 — 어려움을 고른 사람에게만 더 얹는다 */
-  hard:   { count: 1.28, speed: 1.18, hp: 1.30, atk: 1.30, boss: 1.44, coin: 1.4 },
+  hard:   { count: 1.28, speed: 1.18, hp: 1.30, atk: 1.30, boss: 1.44, coin: 1.4, pace: 1.00 },
 };
 function diffOf() { return DIFFS[DG.difficulty] || DIFFS.normal; }
 function diffScale() { return diffOf().count; }
@@ -12629,6 +12648,7 @@ function diffSpeed() { return diffOf().speed; }
 function diffHp() { return diffOf().hp; }
 function diffAtk() { return diffOf().atk; }     // 적의 공격력
 function diffBoss() { return diffOf().boss; }   // 보스 체력
+function diffPace() { return diffOf().pace; }   // 물결이 오는 빈도(시각표를 재는 속도)
 /**
  * ★ **어려울수록 금화를 더 준다.** (2026-08-26)
  *
