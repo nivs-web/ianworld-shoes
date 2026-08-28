@@ -5799,17 +5799,25 @@ class HeavyRider extends EnemyBase {
 
 /**
  * ★★ 검은 드래곤의 유도 미사일 — 단 1발, 플레이어 미사일과 같은 모양·크기.
- * (2026-08-27, 사용자 재지정)
+ * (2026-08-27/28, 사용자 재지정)
  *
  * *"미사일 크기는 주인공 캐릭터가 쏘는 미사일이랑 크기 모양 똑같음, 다만
- *   검은색 테두리가 있음, 1발씩 쏘는 것이며, 느리게 날라오지만 1발이라도
- *   맞으면 안됨, 무조건 피해야함, 미사일 위에는 3초라는 시간이 0.01초
- *   단위로 3초에서 0.00초까지 빠르게 줄어들고 있어, 이 시간안에 피하면
- *   이 미사일은 아주 작아지며 화면 아래로 소멸해"*
+ *   검은색 테두리가 있음 (...) 무조건 피해야함, 미사일 위에는 (...) 시간이
+ *   0.01초 단위로 줄어들고 있어, 이 시간안에 피하면 (...)"* 그리고 이어서:
+ * *"3초는 너무 짧다. 미사일 쫓아 오는거 6초로 바꿔. 6초 지나면 미사일이
+ *   지상으로 떨어지게 디자인해.... 그러면서 소멸되게 만들어.. 지금 사라지는
+ *   모습이 엉성해."*
  *
  * `PlayerMissile`과 판정칸(52x28)까지 똑같이 맞춘다 — "크기 모양 똑같음"이
  * 그냥 눈으로 비슷하다는 말이 아니라 실제 부피도 같아야 한다는 뜻으로 읽었다.
  * 그림은 `blackMissileSprite()`(검은 테두리를 두른 `missileSprite()` 변형)를 쓴다.
+ *
+ * ★ **다 피했을 때: "작아지며 사라짐" → "추락하며 소멸".** (2026-08-28)
+ * 예전엔 제자리에서 크기만 줄어들다 사라졌다 — 사용자가 "엉성하다"고 지적했다.
+ * 이제는 통제를 잃은 듯 **빙글빙글 돌면서 가속해 "아래"(월드 -x, 다른 모든
+ * 것이 빠지는 방향 — 세로에서는 이게 실제 "바닥"쪽이다)로 추락**하고, 좌우로
+ * 휘청이며, 연기를 흘리다가 화면 밖으로 빠진다. 크기는 안 줄어든다 — 대신
+ * 16방향 스프라이트가 실제로 팽이처럼 돌아가며 "격추당해 떨어진다"를 그린다.
  */
 class BlackMissile {
   constructor(x, y, target){
@@ -5819,15 +5827,16 @@ class BlackMissile {
     this.turn = 2.3;
     this.target = target; this.t = 0; this.dead = false;
     this.chaseLife = BLACK_MISSILE_LIFE;     // 이 동안 쫓는다 — 화면에 0.00 까지 숫자로 보인다
-    this.fleeing = false;                    // 다 피했다 — 작아지며 사라지는 중
-    this.shrinkT = 0;
+    this.fleeing = false;                    // 다 피했다 — 추락하며 소멸하는 중
+    this.fallT = 0;
+    this.fallSpd = 60;
     this.hurt = 999;                         // 맞으면 무조건 한방
     this.isBlack = true;                     // 플레이어 미사일이 무조건 요격하는 표식
   }
   /**
    * ★ **다 피하면 더는 위험하지 않다.** (2026-08-27)
-   * 작아지는 동안에도 판정칸이 그대로면, "피했다" 고 안심한 순간 줄어드는
-   * 그림에 스쳐서 맞는 일이 생긴다. 도망 단계에서는 판정칸을 아예 없앤다.
+   * 추락하는 동안에도 판정칸이 그대로면, "피했다" 고 안심한 순간 스쳐서
+   * 맞는 일이 생긴다. 추락 단계에서는 판정칸을 아예 없앤다.
    */
   get box(){
     if(this.fleeing) return { x:-9999, y:-9999, w:0, h:0 };
@@ -5836,9 +5845,15 @@ class BlackMissile {
   update(dt){
     this.t += dt;
     if(this.fleeing){
-      this.shrinkT += dt;
-      this.x += -140*dt;                     // 살살 가라앉듯 "아래"(월드 -x)로 흘러간다
-      if(this.shrinkT >= BLACK_MISSILE_SHRINK_TIME) this.dead = true;
+      this.fallT += dt;
+      this.fallSpd += 1300*dt;                          // 통제를 잃고 점점 빨리 떨어진다
+      this.x += -this.fallSpd*dt;                        // "아래"(월드 -x)로 추락
+      this.y += Math.sin(this.fallT*10)*160*dt;          // 좌우로 휘청
+      this.ang += 11*dt;                                 // 빙글빙글 — 16방향 스프라이트가 팽이처럼 돈다
+      if(Math.random() < 0.85)
+        Particles.spawn(this.x, this.y, 1, { spd:50, life:0.4, grav:40, drag:2.6,
+          pal:['#3a3a44','#000000','#ff8a3a','#ff2b3c'] });
+      if(this.x < -160 || this.fallT > 1.6) this.dead = true;
       return;
     }
     this.chaseLife -= dt;
@@ -5855,7 +5870,7 @@ class BlackMissile {
     if(this.chaseLife <= 0){
       this.chaseLife = 0;
       this.fleeing = true;
-      this.shrinkT = 0;
+      this.fallT = 0;
     }
     if(this.t > 0.05 && Math.random() < 0.6)
       Particles.spawn(this.x, this.y, 1, { spd:40, life:0.26, grav:-10, drag:4,
@@ -5865,21 +5880,21 @@ class BlackMissile {
   render(ctx){
     const i = Math.round(this.ang / (Math.PI*2/16)) & 15;
     const spr = blackMissileSprite(i);
-    const scale = this.fleeing ? Math.max(0, 1 - this.shrinkT/BLACK_MISSILE_SHRINK_TIME) : 1;
-    if(scale <= 0.02) return;
-    const w = spr.width*scale, h = spr.height*scale;
-    ctx.globalAlpha = this.fleeing ? Math.max(0.12, scale) : 1;
-    ctx.drawImage(spr, snap(this.x - w/2), snap(this.y - h/2), w, h);
+    ctx.globalAlpha = this.fleeing ? Math.max(0.2, 1 - this.fallT/1.6) : 1;
+    ctx.drawImage(spr, snap(this.x - spr.width/2), snap(this.y - spr.height/2));
     ctx.globalAlpha = 1;
     if(!this.fleeing){
-      /* ★ 3.00 -> 0.00 카운트다운 — 위에서 말한 그대로 숫자로 보여준다 */
+      /* ★ 6.00 -> 0.00 카운트다운 — 위에서 말한 그대로 숫자로 보여준다 */
       drawText(ctx, this.chaseLife.toFixed(2), this.x, this.y - 34, 2,
-        { align:'center', color: this.chaseLife < 1 ? '#ff4d5a' : '#ffffff', outline:PAL.outline });
+        { align:'center', color: this.chaseLife < 1.5 ? '#ff4d5a' : '#ffffff', outline:PAL.outline });
     }
   }
 }
-const BLACK_MISSILE_LIFE = 3.0;          // 피해야 하는 시간 (사용자 지정: 3초)
-const BLACK_MISSILE_SHRINK_TIME = 0.4;   // 다 피했을 때 작아지며 사라지는 시간
+/**
+ * ★ **6초로.** (2026-08-28, 사용자 지정 — "3초는 너무 짧다. 미사일 쫓아
+ *   오는거 6초로 바꿔")
+ */
+const BLACK_MISSILE_LIFE = 6.0;
 
 /**
  * ★★ 검은 드래곤 — 등장 → 빙글빙글 돌며 조준 → 1발 발사 → 즉시 퇴장.
