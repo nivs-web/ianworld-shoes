@@ -386,7 +386,15 @@ export async function startChallenge(p, nav, game = 'shoes') {
   }
   toast(S.challengeSent, 1800);
   if (nav) {
+    /**
+     * ★★ **`game` 을 안 넘겼었다.** (2026-08-28, 사용자 신고 — "절대로 신발을
+     *   찾아서랑 섞이면 안됨")
+     * `WaitingRoom` 은 `params.game` 이 `'dragon'` 이 아니면 조용히 신발
+     * 모드로 그린다. 방금 만든 `code` 는 이미 `game`(위에서 받은 값) 그대로
+     * `createRoom` 에 실려 갔으니, 여기서도 같은 값을 넘겨야 화면과 방이
+     * 어긋나지 않는다 — 드래곤에서 대결을 걸었는데 신발 대기방이 뜨던 자리다.
+     */
     // 순환 참조를 피해 여기서 늦게 부른다 (WaitingRoom → UserCard → WaitingRoom)
-    import('./multi/WaitingRoom.js').then((m) => nav.push(m.default, { code })).catch(() => {});
+    import('./multi/WaitingRoom.js').then((m) => nav.push(m.default, { code, game })).catch(() => {});
   }
 }

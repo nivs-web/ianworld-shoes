@@ -145,7 +145,19 @@ export default function DuelResult(nav, params = {}) {
     if (!live) return;
     if (r === 'ok') {
       keepSeat = true;              // 다음 판을 하려고 남는 것이다 — 나가면 안 된다
-      return nav.replace(WaitingRoom, { code });
+      /**
+       * ★★ **`game: 'dragon'` 을 안 넘겼었다.** (2026-08-28, 사용자 신고 —
+       *   "멀티 방입장, 방목록 왔다갔다 하다보면 신발을 찾아서가 뜨는데
+       *   왜 그런거야? (...) 절대로 신발을 찾아서랑 섞이면 안됨")
+       *
+       * `WaitingRoom` 은 두 게임이 같이 쓰는 화면이라 `params.game` 이
+       * `'dragon'` 이 아니면 **조용히 신발 모드로** 그린다(그 파일의
+       * `const game = params.game === 'dragon' ? 'dragon' : 'shoes';`).
+       * 이 화면은 결투(드래곤) 전용인데 여기서 넘긴 적이 없었다 — 그래서
+       * "계속하기" 를 누르면 방은 그대로 드래곤 방인데 **화면만 신발
+       * 대기방으로** 바뀌었다.
+       */
+      return nav.replace(WaitingRoom, { code, game: 'dragon' });
     }
     toast(S.networkError);
     nav.refresh();
