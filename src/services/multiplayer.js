@@ -462,6 +462,23 @@ export async function joinRoom(code, known, game = GAME_SHOES) {
 export async function resetRoom(code) {
   const fb = await rt();
   if (!fb) return false;
+  /**
+   * ★★ **연결이 다시 붙는 중일 때를 안 봐줬다.** (2026-08-29, 사용자 신고 —
+   *   "둘이서 했을때... 1게임 끝나고 계속하기 누르면 네트워크를 찾을 수
+   *   없다고 뜨면서 이어지지가 않아 (...) 신발을 찾아서는 원래는 전혀
+   *   문제가 없었다는거야")
+   *
+   * 결과 화면은 사람이 읽고 고르는 화면이라 **가만히 있는 시간이 길다** —
+   * 특히 폰에서는 그동안 화면이 꺼지거나 다른 앱으로 넘어가면서 RTDB
+   * 소켓이 끊긴다. `readOnce` 는 "끊겨 있으면 콜백 자체가 안 온다"(위
+   * 문서)고 이미 적어 뒀는데, 정작 여기서는 그 경고를 무시하고 곧바로
+   * 읽었다 — 소켓이 **막 다시 붙는 중**이면 시한(8초) 안에도 못 받아
+   * `room` 이 `null` 이 되고 "네트워크를 찾을 수 없다"가 뜬다.
+   *
+   * `joinRoom`/`listRooms`/`scanOpenRooms` 등 다른 자리는 전부 읽기 전에
+   * `waitConnected` 로 붙을 때까지 잠깐 기다린다 — 여기만 빠져 있었다.
+   */
+  await waitConnected(fb);
   const read = await readOnce(fb, path(ROOMS, code));
   const room = read.val;
   if (!room) return false;
@@ -2070,6 +2087,12 @@ export async function readRoom(code) {
   const fb = await rt();
   if (!fb) return null;
   try {
+    /**
+     * ★ **여기도 `resetRoom` 과 같은 함정.** (2026-08-29) 결과 화면·대기방은
+     * 가만히 떠 있는 시간이 길어 소켓이 끊겼다 다시 붙는 경우가 흔하다 —
+     * 붙는 중일 때 곧바로 읽으면 시한 안에도 못 받아 "못 읽었다"로 오판한다.
+     */
+    await waitConnected(fb);
     const read = await readOnce(fb, path(ROOMS, code));
     return read.val;
   } catch {
