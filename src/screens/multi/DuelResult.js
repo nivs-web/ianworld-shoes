@@ -159,7 +159,20 @@ export default function DuelResult(nav, params = {}) {
        */
       return nav.replace(WaitingRoom, { code, game: 'dragon' });
     }
-    toast(S.networkError);
+    /**
+     * ★ **`pending` 도 네트워크 오류로 보였다.** (2026-08-29, 사용자 신고 —
+     *   "계속하기 누르면 네트워크를 찾을 수 없다고 뜨면서 이어지지가 않아")
+     * 드래곤 방은 신발 정산 검사를 이미 걸러 뒀으니(`resetRoom`) 이제
+     * `pending` 이 나올 일은 없어야 하지만, 혹시 나오더라도 신발 쪽
+     * (`MultiResult.js`)처럼 "정산 중" 으로 보이고 자동으로 다시 시도해야지
+     * 뜬금없는 네트워크 오류로 보이면 안 된다.
+     */
+    if (r === 'pending') {
+      toast(S.resetPending);
+      setTimeout(() => { if (live) nav.refresh(); }, 400);
+    } else {
+      toast(S.networkError);
+    }
     nav.refresh();
   }
 

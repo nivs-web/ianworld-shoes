@@ -10095,8 +10095,21 @@ class GameScene extends Scene {
        * 더 볼 것이 없으므로 내 판을 끝낸다 — 여기서 승패를 정하지는 않고
        * 판을 끝내기만 한다. 판정은 다들 방을 보고 각자 같은 규칙으로 센다.
        */
+      /**
+       * ★★ **죽음을 알리는 통로를 둘로 이중화한다.** (2026-08-29, 사용자 신고 —
+       *   "1명이 죽으면 둘다 게임이 종료되면서 승패가 나와야 하는데 (...)
+       *   이기고 있는 사람은 게임을 계속 한다면 1vs1을 계속 할 수가 없어")
+       *
+       * `alive` 는 진행도 채널(`publishDuelProgress`, 죽는 순간 `now:true` 로
+       * 한 번 더 못박는다)로만 온다 — 그 한 번의 쓰기가 어떤 이유로든(순간
+       * 끊김 등) 씹히면 상대는 영영 살아 있는 것으로 보인다. 고스트 채널
+       * (`pushGhost`, 10Hz)의 `lives` 는 완전히 다른 쓰기라, 하나가 막혀도
+       * 다른 하나가 몇 백 ms 안에 0을 실어 온다 — 둘 중 **하나만 죽었다고
+       * 말해도** 죽은 것으로 친다.
+       */
+      const 죽었다 = (s) => s.alive === false || s.lives === 0;
       const foesAllDead = this.peerCount() > 0 &&
-        [...PEERS.values()].every(s => s.seen && !s.alive);
+        [...PEERS.values()].every(s => s.seen && 죽었다(s));
       if(foesAllDead && !this.p1.out){
         this.finish('clear', '최후의 생존');
         return;
