@@ -29,7 +29,13 @@ service cloud.firestore {
     // 단 닉네임 중복 확인은 로그인한 사람이면 조회할 수 있어야 한다.
     match /users/{uid} {
       allow get: if isMe(uid);
-      allow list: if signedIn();          // nicknameLower 쿼리용
+      // ★★ 닉네임 중복 확인은 **한 건씩만**. (2026-08-29 보안 점검)
+      //    `list` 는 문서를 통째로 돌려준다 — 규칙은 어떤 필드를 줄지 가릴 수
+      //    없다. 제한이 없으면 로그인한 아무나(구글 계정만 있으면 된다)
+      //    조건 없는 쿼리로 **전체 계정을 훑을 수** 있었다.
+      //    클라이언트 쿼리는 이미 limit(1) 이라(profile.isNicknameTaken)
+      //    막히지 않고, 훑으려는 쪽은 이미 아는 이름 하나씩만 확인하게 된다.
+      allow list: if signedIn() && request.query.limit <= 1;
       allow create, update: if isMe(uid);
       allow delete: if false;             // 계정 삭제는 콘솔/함수로만
     }

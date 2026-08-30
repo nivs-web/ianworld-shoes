@@ -138,8 +138,24 @@ export async function pullRemote() {
   if (!snap.exists()) {
     // 첫 로그인 — 지금까지의 로컬 기록을 그대로 올린다
     const local = L.loadProfile();
+    /**
+     * ★★ **이메일은 서버에 올리지 않는다.** (2026-08-29, 보안 점검)
+     *
+     * 예전에는 `email: u.email` 을 같이 올렸다. 그런데 이 값은 **앱 어디서도
+     * 읽지 않는다** — 필요할 때는 로그인 정보(`currentUser()`)에서 바로
+     * 꺼내 쓴다. 쓰지도 않는 값을 남겨 두면 위험만 남는다.
+     *
+     * 특히 `users` 컬렉션은 닉네임 중복 확인 때문에 **로그인한 사람이면
+     * 조회(list)** 할 수 있다. Firestore 규칙은 "어떤 필드를 돌려줄지" 를
+     * 가릴 수 없으므로, 문서에 이메일이 들어 있으면 조회로 그대로 딸려
+     * 나온다. 구글 로그인이라 그 값은 **실제 지메일 주소**다.
+     *
+     * `local` 에도 이메일이 들어 있을 수 있어(`auth.js` 가 로컬 프로필에
+     * 적어 둔다) 펼치기 전에 덜어 낸다. 로컬(이 기기)에 남는 것은 상관없다.
+     */
+    const { email: _email, ...localSansEmail } = local;
     await withTimeout(
-      fb.storeMod.setDoc(userDoc(fb, u.uid), { ...local, uid: u.uid, email: u.email }, { merge: true }),
+      fb.storeMod.setDoc(userDoc(fb, u.uid), { ...localSansEmail, uid: u.uid }, { merge: true }),
       undefined, '계정 최초 생성');
     return local;
   }
