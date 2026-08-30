@@ -513,16 +513,24 @@ export async function resetRoom(code) {
    * (`joinRoom` 이 타는 바로 그 길).
    */
   if (!room.players?.[fb.uid]) {
+    /**
+     * ★ **자리부터 따로 되돌리고, 그 다음에 방을 되돌린다 — 쓰기가 둘이어야 한다.**
+     *
+     * 처음에는 "아래 한 번의 쓰기에 나를 같이 실어 보내면 된다" 고 생각했는데
+     * **모자랐다**(`tools/_multi-sim.mjs` S49 가 그 상태를 잡아냈다). 방을
+     * 통째로 되돌리는 쓰기는 방 규칙의 `.write` 를 지나야 하는데, 그 규칙이
+     * 가장 먼저 보는 것은 **"지금 서버에 내가 참가자로 있는가"** 다. 자리가
+     * 지워진 상태에서는 그 답이 '아니오' 라 거부된다.
+     *
+     * `players/{내uid}` 하나만 따로 쓰는 것은 **새로 들어오는 사람의 길**이라
+     * 규칙이 분명히 허용한다(`joinRoom` 이 타는 바로 그 길이다). 자리가 생기고
+     * 나면 나는 참가자이므로 이어지는 쓰기는 막힐 이유가 없다.
+     */
     const rec = { ...meRecord(L.loadProfile(), fb), ready: true };
-    if (room.state === 'waiting') {
-      /* 상대가 먼저 눌러 방이 이미 대기 중이면, 내 자리만 되돌리면 된다 */
-      try {
-        await withTimeout(fb.dbMod.set(
-          fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), rec), undefined, '자리 복구');
-      } catch { return false; }
-      return 'ok';
-    }
-    /* 아직 되돌리기 전이면 아래 한 번의 쓰기에 나를 같이 실어 보낸다 */
+    try {
+      await withTimeout(fb.dbMod.set(
+        fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), rec), undefined, '자리 복구');
+    } catch { return false; }
     room.players = { ...(room.players ?? {}), [fb.uid]: rec };
   }
 

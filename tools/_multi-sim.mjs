@@ -1760,5 +1760,45 @@ console.log('\nS48) ★ 한 명이라도 살아 있으면 방을 안 건드린�
   eq('★ 순위를 멋대로 박지 않는다', w.db.read(`rooms/${code}`).result?.rankings ?? null, null);
 }
 
+console.log('\nS49) ★★ 결과 화면에서 잠깐 끊겨도 "계속하기" 가 된다 (2026-08-29 사용자 신고)');
+{
+  /**
+   * *"1게임 끝나고 계속하기 누르면 네트워크 오류 뜬다"* — 재현 경로다.
+   *
+   * 결과 화면은 뜨는 순간 `rearmRoomSeat` 로 **"끊기면 내 자리를 지워라"** 를
+   * 서버에 예약한다. 그런데 결과 화면은 승패를 읽고 고르는 화면이라 오래
+   * 머물고, 폰에서는 그동안 화면이 꺼지며 소켓이 끊긴다 — 서버는 예약대로
+   * 자리를 지운다. 돌아와 "계속하기" 를 누르면 방 명단에 내가 없다.
+   *
+   * **연결은 멀쩡한데** 자리가 없어서 실패하는 것이라, 연결을 기다리는
+   * 것으로는 절대 안 고쳐진다. 그것이 이 검사가 못박는 사실이다.
+   */
+  const w = new World();
+  const A = w.player('A', { shoes: 20 });
+  const B = w.player('B', { shoes: 20 });
+  const code = await startRound(w, A, [B]);
+
+  await A.act(() => Room.publishProgress(code, { stairs: 9, shoesFound: 0 }, true));
+  await quitMidGame(B, code, { stairs: 2 });     // 계단이 낮은 B 가 진다
+  await quitMidGame(A, code, { stairs: 9 });
+
+  // 결과 화면이 하는 일: 자리 지킴 예약을 다시 켜고 정산한다 (MultiResult.runSettle)
+  await A.act(() => Room.rearmRoomSeat(code));
+  await B.act(() => Room.rearmRoomSeat(code));
+  await B.act(() => Settle.settleRoom(code).catch(() => null));   // 패자가 낸다
+  await A.act(() => Settle.settleRoom(code).catch(() => null));   // 승자가 걷는다
+
+  // A 가 결과를 읽는 동안 화면이 꺼져 소켓이 끊긴다 → 서버가 예약대로 A 를 지운다
+  w.db.dropConnection('A');
+  eq('끊기는 순간 A 의 자리가 지워진다', !!w.db.read(`rooms/${code}/players/A`), false);
+  w.db.restoreConnection('A');
+
+  // 돌아와서 "계속하기" 를 누른다
+  const r = await A.act(() => Room.resetRoom(code));
+  eq('★ 자리가 지워졌어도 계속하기가 된다', r, 'ok');
+  eq('★ A 가 다시 방에 앉아 있다', !!w.db.read(`rooms/${code}/players/A`), true);
+  eq('★ 방이 다음 판 대기 상태로 돌아왔다', w.db.read(`rooms/${code}/state`), 'waiting');
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n시뮬레이션 이상 없음');
 process.exit(fails ? 1 : 0);
