@@ -482,6 +482,50 @@ export async function resetRoom(code) {
   const read = await readOnce(fb, path(ROOMS, code));
   const room = read.val;
   if (!room) return false;
+
+  /**
+   * ★★★ **"계속하기" 가 네트워크 오류로 죽던 진짜 원인.** (2026-08-29, 사용자
+   *   신고 — "승리하셨습니다! 혹은 패배하셨습니다! 결과 나오고 계속하기 누르면
+   *   무조건 네트워크 연결을 확인해주세요라고 뜨면서 안된다")
+   *
+   * 결과 화면은 뜨는 순간 `rearmRoomSeat` 로 **"연결이 끊기면 내 자리를
+   * 지워라"** 를 서버에 예약한다(`armDisconnect` → `onDisconnect().remove()`).
+   * 탭을 닫고 떠난 사람이 방에 시체로 남지 않게 하려는 것이라 그 자체는 옳다.
+   *
+   * 그런데 결과 화면은 **사람이 승패를 읽고 고르는 화면**이라 오래 머문다.
+   * 폰에서는 그동안 화면이 꺼지거나 다른 앱으로 넘어가고, 그 순간 소켓이
+   * 끊기면서 **서버가 예약대로 내 자리를 지운다.** 돌아와서 "계속하기" 를
+   * 누르면 `room.players` 에 내가 없다 — 그러면
+   *
+   *   · 아래 `자리에있다` 걸러내기에서 아무도 안 남아 `n === 0` → `false`, 또는
+   *   · 방 규칙의 `.write`(내가 참가자여야 쓸 수 있다)에 걸려 쓰기가 거부 → 예외
+   *
+   * 어느 쪽이든 `resetRoom` 이 `false` 를 돌려주고 화면은 그걸
+   * "네트워크 연결을 확인해주세요" 로 보여줬다. **연결은 멀쩡한데** 자리가
+   * 없어진 것이라, 연결을 기다리는 것으로는 절대 안 고쳐진다.
+   *
+   * 두 게임이 이 함수를 그대로 나눠 쓰므로 신발·드래곤이 **동시에** 같은
+   * 증상을 냈다.
+   *
+   * 고침: **"계속하기" 를 누른 사람은 이 방에 남겠다는 뜻이다.** 자리가
+   * 지워져 있으면 스스로 다시 앉는다. 방 규칙도 이 경우를 이미 허용한다 —
+   * `.write` 의 둘째 갈래가 "예전에는 없었는데 이번 쓰기로 들어오는 나"다
+   * (`joinRoom` 이 타는 바로 그 길).
+   */
+  if (!room.players?.[fb.uid]) {
+    const rec = { ...meRecord(L.loadProfile(), fb), ready: true };
+    if (room.state === 'waiting') {
+      /* 상대가 먼저 눌러 방이 이미 대기 중이면, 내 자리만 되돌리면 된다 */
+      try {
+        await withTimeout(fb.dbMod.set(
+          fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), rec), undefined, '자리 복구');
+      } catch { return false; }
+      return 'ok';
+    }
+    /* 아직 되돌리기 전이면 아래 한 번의 쓰기에 나를 같이 실어 보낸다 */
+    room.players = { ...(room.players ?? {}), [fb.uid]: rec };
+  }
+
   if (room.state === 'waiting') return 'ok';
 
   /**

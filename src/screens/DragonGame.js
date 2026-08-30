@@ -135,11 +135,21 @@ export default function DragonGame(nav, opt = {}) {
          * 받은 값만 보고 판을 끝낼지 정한다.
          */
         if (duelCode && m.setDuelPeer) {
-          const myUid = currentUser()?.uid;
           unsubRoom = Room.subscribeRoom(duelCode, (r) => {
             if (!live || !r || !r.players) return;
-            for (const [uid, v] of Object.entries(r.players)) {
-              if (uid === myUid || !v || v.waiting) continue;
+            /**
+             * ★ **내 uid 는 그때그때 다시 읽는다.** (2026-08-29)
+             * 예전에는 구독을 걸 때 한 번만 읽어 뒀다. 그 순간 로그인이 아직
+             * 안 잡혀 있으면 `undefined` 가 되고, 그러면 아래 `uid === myUid`
+             * 가 영영 거짓이라 **나 자신도 상대로 등록된다** — 그 가짜 상대는
+             * 죽지 않으니 "모두 죽었는가" 가 절대 참이 안 된다.
+             */
+            const myUid = currentUser()?.uid;
+            /** 이번 판 사람들 (대기자는 이 판 사람이 아니다) */
+            const inRound = Object.entries(r.players).filter(([, v]) => v && !v.waiting);
+
+            for (const [uid, v] of inRound) {
+              if (uid === myUid) continue;
               m.setDuelPeer(uid, {
                 alive: v.alive !== false, coins: v.coins | 0,
                 name: v.nickname || '', dragon: v.dragon | 0, lives: v.lives,
@@ -148,6 +158,26 @@ export default function DragonGame(nav, opt = {}) {
                 ...(v.gx !== undefined && v.gy !== undefined ? { x: v.gx, y: v.gy } : {}),
                 ...(v.glv !== undefined ? { lv: v.glv } : {}),
               });
+            }
+
+            /**
+             * ★★★ **살아 있는 사람이 하나만 남으면 그 자리에서 끝낸다.**
+             *   (2026-08-29, 사용자 지정 — "1명이 죽으면 즉시 게임이 종료되게
+             *   만들어!")
+             *
+             * 1대1이면 상대가 죽는 그 순간 살아 있는 사람이 나 하나가 되므로
+             * 곧바로 끝난다 — 사용자가 요구한 그대로다. 넷이서 하면 마지막
+             * 한 명이 남을 때 끝난다(결과 화면의 정산 조건과 같은 규칙이다).
+             *
+             * **죽음을 두 통로로 함께 본다.** `alive` 는 진행도 채널, `lives`
+             * 는 고스트 채널로 서로 다른 쓰기다 — 하나가 씹혀도 다른 하나가
+             * 알려 준다. 사용자는 하트(=`lives`)가 0까지 줄어드는 것을 봤다고
+             * 했으므로, 적어도 그 통로는 살아 있다.
+             */
+            const 죽음 = (v) => v.alive === false || v.lives === 0;
+            const 살아있는수 = inRound.filter(([, v]) => !죽음(v)).length;
+            if (inRound.length >= 2 && 살아있는수 <= 1 && m.endDuelNow) {
+              m.endDuelNow('최후의 생존');
             }
           });
         }

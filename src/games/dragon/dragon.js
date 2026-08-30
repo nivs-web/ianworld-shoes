@@ -6888,11 +6888,22 @@ class Director {
      *   가 되고, 그건 어렵다기보다 지루하다. 사방이 차 오르는 압박이 있어야
      *   "1분 넘게는 못 버틴다" 가 된다.
      */
+    /**
+     * ★★ **잡몹 물량을 싱글 1스테이지 수준에서 시작한다.** (2026-08-29, 사용자 지정)
+     *
+     * 예전에는 첫 물결부터 `3 + duelN` 마리를 5.5초마다 냈다. 여기에
+     * `spawnGroup` 의 `enemyScale(tier)` 와 결투의 '어려움' 배수가 곱해지므로
+     * **실제로는 한 번에 열 마리가 넘게** 쏟아졌다 — "피하는게 불가능해" 의 정체다.
+     *
+     * 이제 한 바퀴(`duelN/2`)마다 아주 조금씩만 는다. 세기(tier)도 같이
+     * 오르므로 물량까지 빨리 늘리면 두 번 곱해져 금방 감당이 안 된다.
+     */
+    const cycle = Math.floor(this.duelN / 2);
     this.addT -= dt;
     if(this.addT <= 0){
-      this.addT = Math.max(0.55, BOSS_ADD_INTERVAL - this.duelN * 0.30);
+      this.addT = Math.max(1.6, BOSS_ADD_INTERVAL - cycle * 0.45);
       this.spawnGroup(Math.random() < 0.65 ? 'zombie' : 'rider',
-                      3 + Math.min(5, this.duelN));
+                      1 + Math.min(3, cycle));
     }
   }
 
@@ -8427,25 +8438,45 @@ const DUEL = {
  * 표가 끝나면 **마지막 줄을 되풀이하되 한 칸씩 세진다.** 160초를 다 버티는
  * 사람이 나오면 그때는 표를 늘리는 것이 아니라 저절로 감당이 안 되어야 한다.
  */
-const DUEL_LADDER = [
-  { kind: 'mid',  n: 1, tier: 11 },   // 20초 뒤 — 첫 중간보스 하나
-  { kind: 'boss', n: 1, tier: 14 },   // 최종보스 하나
-  { kind: 'mid',  n: 2, tier: 16 },   // 중간보스 둘
-  { kind: 'boss', n: 1, tier: 18 },   // 더 큰 최종보스
-  { kind: 'mid',  n: 3, tier: 20 },   // 중간보스 셋
-  { kind: 'boss', n: 2, tier: 20 },   // 최종보스 둘
-  { kind: 'mid',  n: 4, tier: 20 },   // 중간보스 넷
-  { kind: 'boss', n: 2, tier: 20 },   // 최종보스 둘 — 여기부터는 되풀이하며 세진다
-];
 /**
- * n 번째(0부터) 물결.
- * 표를 넘어가면 마지막 줄을 되풀이하되 **마릿수가 한 마리씩 는다** —
- * 표를 무한히 적는 대신 규칙 하나로 끝을 없앤다.
+ * ★★★ **결투는 "스테이지 1 을 계속 되풀이하는 판" 이다.** (2026-08-29, 사용자 지정)
+ *
+ * *"멀티게임에서 적군이 너무 많이 등장해서 게임이 재미가 없어, 아예 피하는게
+ *   불가능해 (...) 싱글게임 스테이지1이랑 똑같게 만들어, 다만
+ *   적군>블랙드래곤>블랙드래곤계속등장>중간보스>최종보스 (...) 부분을 계속
+ *   반복해 (...) 점점 조금씩 어려워지도록, 시작부터 어려운 것이 아니라,
+ *   첫 최종보스를 죽이고 나서 다음 적들이 나오는 시점부터 어려워야"*
+ *
+ * 예전 표는 **첫 물결부터 `tier: 11`** 이었다 — 11스테이지의 적 물량·체력·속도로
+ * 시작한다는 뜻이다. 잡몹 수는 `enemyScale(11)` 에 결투의 '어려움' 배수까지
+ * 곱해져 한 물결에 열 마리가 넘게 쏟아졌다. 사용자 말대로 **피하는 것이
+ * 물리적으로 불가능**했다.
+ *
+ * 이제 **한 바퀴(cycle) = 중간보스 → 최종보스** 로 두고, 그 한 바퀴가
+ * 싱글 스테이지 하나에 대응한다:
+ *
+ *     바퀴 0 : tier 1  (= 싱글 1스테이지와 같은 세기)
+ *     바퀴 1 : tier 3
+ *     바퀴 2 : tier 5   ...  두 칸씩 오르다 20 에서 멈춘다
+ *
+ * 첫 바퀴는 1스테이지와 똑같아 누구나 붙어 볼 만하고, **첫 최종보스를 잡은
+ * 뒤부터** 눈에 띄게 세진다 — 사용자가 말한 그 지점이다.
+ */
+const DUEL_CYCLE_TIER0 = 1;    // 첫 바퀴의 세기 (싱글 1스테이지)
+const DUEL_CYCLE_STEP = 2;     // 한 바퀴마다 오르는 칸
+
+/**
+ * n 번째(0부터) 물결. 짝수는 중간보스, 홀수는 최종보스 — 둘이 한 바퀴다.
+ * 끝이 없다: 바퀴가 돌수록 세기가 오르고(20에서 상한), 그 뒤로는 마릿수가 는다.
  */
 function duelWave(i){
-  const last = DUEL_LADDER[DUEL_LADDER.length - 1];
-  if(i < DUEL_LADDER.length) return DUEL_LADDER[i];
-  return { kind: last.kind, n: last.n + (i - DUEL_LADDER.length + 1), tier: 20 };
+  const cycle = Math.floor(i / 2);
+  const kind = (i % 2 === 0) ? 'mid' : 'boss';
+  const tier = Math.min(20, DUEL_CYCLE_TIER0 + cycle * DUEL_CYCLE_STEP);
+  /* 세기가 상한에 닿은 뒤로는 마릿수로 세진다 — 그전에는 한 마리씩만 */
+  const 상한바퀴 = Math.ceil((20 - DUEL_CYCLE_TIER0) / DUEL_CYCLE_STEP);
+  const n = cycle <= 상한바퀴 ? 1 : Math.min(4, 1 + (cycle - 상한바퀴));
+  return { kind, n, tier };
 }
 
 /**
@@ -10188,7 +10219,16 @@ class GameScene extends Scene {
      * 완전히 같은 것만 겨루게 짜여 있는데(씨앗 금화·고스트) 이 적은 씨앗 없이
      * 무작위로 움직이므로 한쪽 화면에서만 벌어지는 일이 된다.
      */
-    if(!this.duel){
+    /**
+     * ★★ **결투에도 검은 드래곤이 나온다.** (2026-08-29, 사용자 지정 —
+     *   "멀티게임에서도 블랙 드래곤 나오게 하고")
+     *
+     * 예전에는 결투에서 뺐다 — 그때는 두 사람이 **같은 금화**를 두고 다퉈서
+     * 화면에 뜨는 것이 양쪽에서 똑같아야 했기 때문이다. 지금은 각자 제 맵에서
+     * 각자 살아남는 방식으로 바뀌었으니(금화 쟁탈 제거) 서로 다르게 움직여도
+     * 아무 문제가 없다. 보스가 떠 있는 동안 쉬는 규칙은 그대로다.
+     */
+    {
       const blackGap = () => BLACK_DRAGON_GAP_MIN + Math.random()*(BLACK_DRAGON_GAP_MAX - BLACK_DRAGON_GAP_MIN);
       /* 개체나 미사일이 방금 사라졌으면 — 그 순간부터 다음 등장을 다시 잰다 */
       if(this.blackDragon && this.blackDragon.dead){ this.blackDragon = null; this.blackT = blackGap(); }
@@ -12505,6 +12545,33 @@ function drawHUDDebug(ctx){
  */
 const PEERS = new Map();
 /** 오락실이 방에서 읽은 상대 한 명의 상태를 넣는다 (uid 로 구분) */
+/**
+ * ★★★ **판을 지금 끝낸다 — 방을 읽는 쪽이 직접 부른다.** (2026-08-29, 사용자
+ *   신고 — "지금 계속 수십번 요청하고 있는데 (...) 1명이 죽으면 즉시 게임이
+ *   종료되게 만들어! (...) 이기고 있는 플레이어가 게임이 계속 된다는 것은
+ *   말이 안됨")
+ *
+ * 지금까지는 게임 **안**에 복사해 둔 상대 상태(`PEERS`)를 보고 스스로
+ * 끝냈다. 그 값이 오기까지 거치는 곳이 많다 —
+ *
+ *     상대 게임 → 상대 화면 → Firebase → 내 화면 → `setDuelPeer` → `PEERS`
+ *
+ * 그 중 한 군데만 어긋나도(내 uid 를 못 읽어 나까지 상대로 세는 경우 등)
+ * "모두 죽었는가" 판정이 영영 참이 안 된다. 실제로 사용자는 **하트가
+ * 0으로 줄어드는 것까지 봤는데도** 판이 안 끝났다.
+ *
+ * 그래서 판단을 **방을 실제로 읽는 쪽**(`DragonGame.js`)으로 옮긴다.
+ * 거기는 서버의 값을 그대로 보므로 중간 단계가 없다. 여기는 그 결정을
+ * 받아 실행만 한다.
+ */
+export function endDuelNow(reason){
+  const sc = scenes && scenes.current;
+  if(!sc || !sc.duel) return false;
+  if(sc.state !== 'play') return false;      // 이미 끝났다 (내가 죽은 경우 포함)
+  sc.finish('clear', reason || '상대 탈락');
+  return true;
+}
+
 export function setDuelPeer(uid, p){
   if(!uid || !p) return;
   let s = PEERS.get(uid);
