@@ -178,6 +178,18 @@ export function defaultProfile() {
     catchComboNormal: 0,
     catchComboHard: 0,
     /**
+     * ★ 3D캐치볼 (오락실 4번째 게임, 2026-10-29) — 기록은 2D 캐치볼과 따로 센다.
+     * 꾸미기 · 최고 레벨 · 연속 스트라이크 · 받은 모자/야구공은 같은 캐릭터라 2D 와 함께 쓴다(위 catch* 칸).
+     */
+    catch3dBestEasy: 0,
+    catch3dBestNormal: 0,
+    catch3dBestHard: 0,
+    catch3dComboEasy: 0,
+    catch3dComboNormal: 0,
+    catch3dComboHard: 0,
+    catch3dPlays: 0,
+    catch3dDifficulty: 'normal',
+    /**
      * 기간별 멀티 승수 (2026-08-19 23차) — 멀티게임순위의 오늘·주간·월간 탭.
      * `{ dy: {k, n}, wk: {k, n}, mo: {k, n} }` — `k` 는 그 기간의 키, `n` 은 승수.
      * 키가 바뀌면 `n` 을 1부터 다시 센다(그게 곧 리셋이다).

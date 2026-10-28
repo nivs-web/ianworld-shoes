@@ -39,8 +39,8 @@ import { lazyScreen } from './lazyScreen.js';
 const CatchMultiMenu = lazyScreen(() => import('./multi/CatchMultiMenu.js'), S.catchDuelTitle);
 const CatchRanking = lazyScreen(() => import('./CatchRanking.js'), S.catchRankTitle);
 
-/** 혼자 하기 · 대결 공통 — 꾸미기 · 성장 · 선물 */
-function lookOpts(p) {
+/** 혼자 하기 · 대결 공통 — 꾸미기 · 성장 · 선물 (3D캐치볼도 같은 캐릭터라 이것을 쓴다) */
+export function lookOpts(p) {
   return {
     team: p.catchTeam || 'red',
     look: p.catchLook || null,

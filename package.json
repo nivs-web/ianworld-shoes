@@ -35,8 +35,8 @@
     "assets:items": "node tools/build-items.mjs",
     "assets:crowns": "node tools/build-crowns.mjs",
     "preview:screens": "node tools/_screen-preview.mjs",
-  "//preview:dragon": "드래곤 스트라이커 포털 카드 + 로비. 로그인 게이트 뒤라 계정 없이 볼 통로가 이것뿐이다.",
-  "preview:dragon": "node tools/_screen-preview.mjs dragon",
+    "//preview:dragon": "드래곤 스트라이커 포털 카드 + 로비. 로그인 게이트 뒤라 계정 없이 볼 통로가 이것뿐이다.",
+    "preview:dragon": "node tools/_screen-preview.mjs dragon",
     "preview:result": "node tools/_screen-preview.mjs result",
     "assets:floors": "node tools/build-floor-bg.mjs",
     "preview:room": "node tools/_screen-preview.mjs room",
@@ -74,7 +74,8 @@
     "preview:wear": "node tools/_wear-preview.mjs"
   },
   "dependencies": {
-    "firebase": "^11.1.0"
+    "firebase": "^11.1.0",
+    "three": "0.160.0"
   },
   "devDependencies": {
     "@kfonts/neodgm": "^0.5.0",

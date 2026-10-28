@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  3D캐치볼 단독 검사 (Firebase 없이). 저장소 루트에서 정적 서버로 띄운다.
+    ?auto=1  자동 플레이 (잡기 · 초록에서 던지기)
+  three.js 는 node_modules 에서 그대로 읽는다 (import map).
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>catch3d harness</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#host{position:fixed;inset:0}</style>
+<script type="importmap">
+{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<div id="host"></div>
+<script>
+  window.addEventListener('error', (e) => { document.body.dataset.err = `${e.message} @${e.filename}:${e.lineno}:${e.colno}`; });
+</script>
+<script type="module">
+import * as CB from '/src/games/catch/catchball.js';
+import { createWorld3D } from '/src/games/catch/world3d.js';
+const q = new URLSearchParams(location.search);
+window.CB = CB;
+window.__fin = null;
+CB.mount(document.getElementById('host'), {
+  mode: 'solo', world3d: createWorld3D, titleLogo: '3D캐치볼', titleKicker: '진짜처럼 움직이는 3D 야구',
+  difficulty: q.get('diff') || 'normal', bests: { normal: 3 },
+  progress: { bestLevel: 6, bestStrikes: 12, hats: [0, 1, 2, 3, 4, 5], balls: [0, 1, 2, 3, 4] },
+  look: q.get('look') || null,
+  onFinish(r) { window.__fin = r; }, onExit(k) { window.__exit = k; },
+});
+if (q.get('auto') === '1') {
+  window.__mode = 'green';
+  setInterval(() => {
+    const d = CB._debug(); if (!d) return;
+    const { G, P, B, A } = d;
+    if (G.phase === 'flying' && B.state === 'flight' && B.toPlayer) {
+      P.tgx = B.target.x; P.tgy = B.target.y;
+      if (B.arriveAt - G.t < 0.05 && !P.pending) d.tryCatch();
+    }
+    if (window.__mode === 'green' && G.phase === 'holding' && G.phaseT > 0.6 && d.zoneOf(A.x, A.y) === 'g') d.doThrow();
+  }, 8);
+}
+</script>
+</body>
+</html>

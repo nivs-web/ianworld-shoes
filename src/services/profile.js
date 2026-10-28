@@ -265,6 +265,15 @@ export async function pullRemote() {
     catchComboEasy: Math.max(local.catchComboEasy ?? 0, remote.catchComboEasy ?? 0),
     catchComboNormal: Math.max(local.catchComboNormal ?? 0, remote.catchComboNormal ?? 0),
     catchComboHard: Math.max(local.catchComboHard ?? 0, remote.catchComboHard ?? 0),
+    /* 3D캐치볼 — 기록은 큰 쪽, 난이도는 마지막에 고른 쪽 */
+    catch3dBestEasy: Math.max(local.catch3dBestEasy ?? 0, remote.catch3dBestEasy ?? 0),
+    catch3dBestNormal: Math.max(local.catch3dBestNormal ?? 0, remote.catch3dBestNormal ?? 0),
+    catch3dBestHard: Math.max(local.catch3dBestHard ?? 0, remote.catch3dBestHard ?? 0),
+    catch3dComboEasy: Math.max(local.catch3dComboEasy ?? 0, remote.catch3dComboEasy ?? 0),
+    catch3dComboNormal: Math.max(local.catch3dComboNormal ?? 0, remote.catch3dComboNormal ?? 0),
+    catch3dComboHard: Math.max(local.catch3dComboHard ?? 0, remote.catch3dComboHard ?? 0),
+    catch3dPlays: Math.max(local.catch3dPlays ?? 0, remote.catch3dPlays ?? 0),
+    catch3dDifficulty: remote.catch3dDifficulty ?? local.catch3dDifficulty ?? 'normal',
   };
   L.reconcile(merged);
   L.saveProfile(merged);
@@ -446,6 +455,34 @@ export function catchBests(p) {
 export function setCatchDifficulty(d) {
   if (!CATCH_BEST_KEY[d]) return;
   if (L.loadProfile().catchDifficulty !== d) patch({ catchDifficulty: d });
+}
+/**
+ * ★ 3D캐치볼 한 판 끝 (오락실 4번째 게임, 2026-10-29). 기록은 2D 와 따로,
+ * 최고 레벨 · 연속 스트라이크는 같은 캐릭터라 2D 와 같은 칸(`saveCatchProgress`).
+ */
+const C3_BEST = { easy: 'catch3dBestEasy', normal: 'catch3dBestNormal', hard: 'catch3dBestHard' };
+const C3_COMBO = { easy: 'catch3dComboEasy', normal: 'catch3dComboNormal', hard: 'catch3dComboHard' };
+export function finishCatch3dRun(r) {
+  const before = L.loadProfile();
+  const diff = C3_BEST[r?.diff] ? r.diff : 'normal';
+  const s = clampInt(r?.score, 0, CATCH_SCORE_CAP);
+  const combo = clampInt(r?.maxCombo, 0, CATCH_SCORE_CAP);
+  const next = { catch3dPlays: (before.catch3dPlays || 0) + 1 };
+  if (s > (before[C3_BEST[diff]] | 0)) next[C3_BEST[diff]] = s;
+  if (combo > (before[C3_COMBO[diff]] | 0)) next[C3_COMBO[diff]] = combo;
+  const out = patch(next);
+  saveCatchProgress({ bestLevel: r?.level, bestStrikes: r?.maxStrikes });
+  return out;
+}
+export function catch3dBests(p) {
+  return { easy: p?.catch3dBestEasy | 0, normal: p?.catch3dBestNormal | 0, hard: p?.catch3dBestHard | 0 };
+}
+export function catch3dCombos(p) {
+  return { easy: p?.catch3dComboEasy | 0, normal: p?.catch3dComboNormal | 0, hard: p?.catch3dComboHard | 0 };
+}
+export function setCatch3dDifficulty(d) {
+  if (!C3_BEST[d]) return;
+  if (L.loadProfile().catch3dDifficulty !== d) patch({ catch3dDifficulty: d });
 }
 /** 캐치볼 1:1 대결 한 판의 승패 */
 export function recordCatchDuel(win) {

@@ -24,6 +24,10 @@ export const CSS = `
 .cb-root button{font:inherit;color:inherit;border:0;background:none;padding:0;margin:0;cursor:pointer;touch-action:manipulation;min-height:0;min-width:0;width:auto;height:auto;box-shadow:none;text-shadow:none;letter-spacing:normal;line-height:normal}
 .cb-root button:focus-visible{outline:3px solid var(--bulb);outline-offset:3px}
 .cb-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;image-rendering:auto}
+/* 3D캐치볼 — 3D 캔버스는 아래, 2D 캔버스(조준경 · 링 · 글자)는 투명하게 위 */
+.cb-gl{pointer-events:none}
+.cb-3d .cb-logo{font-size:clamp(46px,14.5vw,100px)}
+.cb-3d .cb-closet-top canvas{width:100%}
 
 /* ---------- HUD ---------- */
 .cb-hud{position:absolute;z-index:5;top:calc(var(--st) + 10px);left:var(--gut-l);right:var(--gut-r);

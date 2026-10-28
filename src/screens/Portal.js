@@ -21,6 +21,8 @@ import { lazyScreen } from './lazyScreen.js';
 const DragonLobby = lazyScreen(() => import('./DragonLobby.js'), S.dragonTitle);
 /** 3번째 게임 캐치볼도 누를 때 받는다 (2026-10-28). 카드를 누르면 곧바로 게임 타이틀이다 */
 const CatchGame = lazyScreen(() => import('./CatchGame.js'), S.catchTitle);
+/** 4번째 게임 3D캐치볼 (2026-10-29) — three.js 를 쓰므로 더더욱 누를 때 받는다 */
+const Catch3DGame = lazyScreen(() => import('./Catch3DGame.js'), S.catch3dTitle);
 
 /**
  * 게임 카드.  `sub` 는 카드 제목 아래 한 줄 — 게임마다 자랑할 숫자가 다르다
@@ -30,6 +32,7 @@ const CARDS = [
   { id: 'find_shoes', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
   { id: 'dragon_striker', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
   { id: 'catchball', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
+  { id: 'catchball3d', title: S.catch3dTitle, sub: (p) => S.catchBestLine(p.catch3dBestEasy | 0, p.catch3dBestNormal | 0, p.catch3dBestHard | 0), screen: () => Catch3DGame, ready: true },
 ];
 
 export default function Portal(nav) {

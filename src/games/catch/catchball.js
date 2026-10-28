@@ -7,6 +7,12 @@
  *
  * 파일 나눔: `ui.js` 스타일·DOM · `art.js` 그림·꾸미기 자료 · `audio.js` 효과음·배경음악 · 이 파일은 게임.
  *
+ * ## 3D캐치볼 (4번째 게임, 2026-10-29)
+ * 같은 게임을 `opts.world3d`(= `world3d.js` 의 `createWorld3D`)로 띄우면 경기장 · 인형 · 공을 3D 로 그린다.
+ * 규칙 · 입력 · HUD 는 이 파일 그대로다. 2D 캔버스는 투명해져서 3D 위에 조준경 · 링 · 글자만 얹는다 —
+ * 3D 카메라가 이 파일의 원근(`proj`)과 수학적으로 같아서 둘이 정확히 겹친다.
+ * three.js 는 화면(`screens/Catch3DGame.js`)이 따로 받아 넘긴다 — 2D 캐치볼 번들에는 안 들어간다.
+ *
  * ## 이 파일은 Firebase 를 모른다
  * 혼자 하는 판은 그대로 돌고, 1:1 대결(`mode: 'duel'`)은 화면(`screens/CatchGame.js`)이
  * 넣어 주는 두 통로로만 바깥과 이어진다.
@@ -86,6 +92,17 @@ function createGame(host, opts) {
   const cvs = root.querySelector('.cb-canvas');
   const ctx = cvs.getContext('2d');
   const hudEl = root.querySelector('.cb-hud');
+  /* 3D캐치볼 — 3D 를 못 켜는 기기면 조용히 2D 로 돈다 */
+  let W3 = null, glCv = null, closetMini = null, lessonMini = null;
+  if (opts.world3d) {
+    glCv = document.createElement('canvas');
+    glCv.className = 'cb-canvas cb-gl';
+    cvs.parentNode.insertBefore(glCv, cvs);
+    try { W3 = opts.world3d({ canvas: glCv }); root.classList.add('cb-3d'); }
+    catch (e) { console.warn('[3D캐치볼] 3D 를 켜지 못해 2D 로 돈다', e); glCv.remove(); glCv = null; W3 = null; }
+  }
+  if (opts.titleLogo) root.querySelector('.cb-logo').textContent = opts.titleLogo;
+  if (opts.titleKicker) root.querySelector('.cb-kicker').textContent = opts.titleKicker;
 
   const offs = [];
   const on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
@@ -276,8 +293,9 @@ function createGame(host, opts) {
     CX = W / 2;
     CY = feetY + a * F;
     APEX_MAX = Math.max(2.6, unproject(CX, SAFE.t + 70, 5.5).y - 0.25);
-    buildLayers();
     titleRect = null;
+    if (W3) W3.resize(W, H, DPR, { x: cam.x, y: cam.y, z: cam.z, pitch: cam.pitch, F, CX, CY });
+    else buildLayers();
   }
 
   /* ---------- 고정 배경 ---------- */
@@ -670,6 +688,11 @@ function createGame(host, opts) {
     B.state = 'flight'; B.toPlayer = true; B.segIdx = 0; B.trail.length = 0; B.bounces = 0;
     B.spin = pl.type === 'knuckle' ? 0.6 : 14;
     B.ballId = D ? (FRIEND.ball | 0) : 0;
+    if (W3) {
+      const h = W3.palHandPos(), s0 = B.segs[0];
+      s0.v = { x: s0.v.x + (s0.p0.x - h.x) / s0.T, y: s0.v.y + (s0.p0.y - h.y) / s0.T, z: s0.v.z + (s0.p0.z - h.z) / s0.T };
+      s0.p0 = { x: h.x, y: h.y, z: h.z };
+    }
     evalBall(0, B.pos);
     P.pending = null;
     setPose('follow');
@@ -849,7 +872,7 @@ function createGame(host, opts) {
     setPhase('throwing');
   }
   function launchPlayerBall() {
-    const hand = { x: P.bodyX + 0.22, y: 1.5 + P.lift, z: 0.2 };
+    const hand = W3 ? W3.handPos() : { x: P.bodyX + 0.22, y: 1.5 + P.lift, z: 0.2 };
     const tgt = { x: A.fx, y: A.fy, z: M.z - 0.25 };
     let T = A.T;
     if (D) {
@@ -1658,8 +1681,9 @@ function createGame(host, opts) {
       G.shakeT -= dt;
       const m = G.shakeMag * Math.max(0, G.shakeT) / 0.2;
       cvs.style.transform = `translate(${rand(-m, m).toFixed(1)}px,${rand(-m, m).toFixed(1)}px)`;
+      if (glCv) glCv.style.transform = cvs.style.transform;
       shaking = true;
-    } else if (shaking) { cvs.style.transform = ''; shaking = false; }
+    } else if (shaking) { cvs.style.transform = ''; if (glCv) glCv.style.transform = ''; shaking = false; }
   }
   function vibrate(p) {
     try { const ua = navigator.userActivation; if (navigator.vibrate && (!ua || ua.hasBeenActive)) navigator.vibrate(p); } catch (e) { /* 막힌 환경 */ }
@@ -1714,6 +1738,9 @@ function createGame(host, opts) {
       M.glove = Art.drawKidFront(ctx, mp.x, mp.y, mp.s, FRIEND, p, G.t, DPR);
     }
     M.head = { x: mp.x + p.offX * mp.s, y: mp.y - (1.62 + p.lift) * mp.s };
+    nameTag(mp);
+  }
+  function nameTag(mp) {
     if (D && G.phase !== 'title') {
       const fs = portrait ? 12 : 13;
       ctx.font = `${fs}px "Jua","Black Han Sans",sans-serif`;
@@ -1733,10 +1760,12 @@ function createGame(host, opts) {
     const rot = throwing ? -0.2 : -low * 2.5 + clamp((P.gx - (P.bodyX - 0.36)) * 0.5, -0.4, 0.4);
     const glove = { x: gp.x, y: gp.y, u: 0.4 * gp.s, rot, closed: P.glove, ball: B.state === 'player' && !(P.throwT >= 0 && P.throwT / THROW_DUR > 0.12) };
     Art.drawKidBack(ctx, feet.x, feet.y, feet.s, LOOK, playerPose(), glove, G.t);
-    /* 변화구를 고르면 공 든 손에 소용돌이 */
+    drawSwirl(gp.x, gp.y);
+  }
+  /** 변화구를 고르면 공 든 손에 소용돌이 */
+  function drawSwirl(hx, hy) {
     if (fx.swirl) {
       const s = fx.swirl, k = s.life / s.max;
-      const hx = gp.x, hy = gp.y;
       ctx.save(); ctx.translate(hx, hy); ctx.rotate((1 - k) * 9);
       ctx.strokeStyle = s.col; ctx.lineWidth = 4; ctx.globalAlpha = k;
       for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0, 0, 18 + i * 9 + (1 - k) * 20, i * 2.1, i * 2.1 + 1.6); ctx.stroke(); }
@@ -1961,7 +1990,61 @@ function createGame(host, opts) {
     ctx.beginPath(); ctx.ellipse(fx0, fy0, 0.75 * S, 0.17 * S, 0, 0, TAU); ctx.fill();
     Art.drawKidFront(ctx, fx0, fy0, S, LOOK, p, t, DPR, { big: true });
   }
+  /** 3D 화면에 넘기는 게임 상태 (게임 좌표 그대로) */
+  function snap3d() {
+    const throwing = P.throwT >= 0;
+    const u = throwing ? clamp(P.throwT / THROW_DUR, 0, 1) : -1;
+    const meHas = B.state === 'player';
+    const meBall = !meHas ? 'none' : throwing ? (u < RELEASE_U ? 'hand' : 'none') : G.phase === 'holding' ? 'hand' : 'glove';
+    const palHas = B.state === 'partner';
+    let palBall = 'none';
+    if (palHas) palBall = M.pose === 'windup' ? (M.poseT / Math.max(0.1, M.windDur) * RELEASE_U >= 0.12 ? 'hand' : 'glove') : M.pose === 'runBack' ? 'hand' : 'glove';
+    if (M.pose === 'follow') palBall = 'none';
+    let title = null;
+    if (G.phase === 'title') {
+      if (!titleRect) {
+        const a = $('stage').getBoundingClientRect(), b = root.getBoundingClientRect();
+        titleRect = { left: a.left - b.left, top: a.top - b.top, width: a.width, height: a.height, bottom: a.bottom - b.top };
+      }
+      title = titleRect;
+    }
+    return {
+      t: G.t, phase: G.phase, title,
+      me: { x: P.bodyX, gx: P.gx, gy: P.gy, close: P.glove, crouch: P.crouch, lift: P.lift, u,
+        mode: throwing ? 'throw' : meHas && G.phase === 'holding' ? 'set' : meHas ? 'caught' : 'track',
+        runPh: P.runPh, moving: Math.min(1, Math.abs(P.bodyV) * 0.7), ball: meBall, ballId: LOOK.ball | 0 },
+      pal: { x: M.x, z: M.z, pose: M.pose, poseT: M.poseT, windDur: M.windDur, judge: M.judge, dir: M.dir,
+        cx: M.catchLocal.x, cy: M.catchLocal.y, rem: B.launch + B.dur - G.t, tgtY: B.target.y, runPh: M.runPh,
+        oppGy: D ? D.opp.gy : null, ball: palBall, ballId: D ? (FRIEND.ball | 0) : 0 },
+      ball: { show: ballVisible(), x: B.pos.x, y: B.pos.y, z: B.pos.z, id: B.ballId | 0, rot: B.rot,
+        fly: B.state === 'flight' || B.state === 'free', toMe: B.toPlayer && (B.state === 'flight' || B.state === 'atGlove') },
+    };
+  }
+  /** 3D 가 그리다 실패하면 그 자리에서 2D 로 돌아간다 (게임은 멈추지 않는다) */
+  function fail3d(e) {
+    console.warn('[3D캐치볼] 3D 그리기 실패 — 2D 로 돈다', e);
+    try { W3.destroy(); } catch (err) { /* 무시 */ }
+    W3 = null; if (glCv) { glCv.remove(); glCv = null; }
+    root.classList.remove('cb-3d');
+    layout();
+  }
+  function render3d() {
+    try { W3.frame(snap3d()); } catch (e) { fail3d(e); return; }
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    if (G.phase === 'title') return;
+    const hp = proj(M.x, 1.82, M.z); M.head = { x: hp.x, y: hp.y };
+    try { const gw = W3.palGlovePos(), gp = proj(gw.x, gw.y, gw.z); M.glove = { x: gp.x, y: gp.y }; } catch (e) { M.glove = null; }
+    nameTag(proj(M.x, 0, M.z));
+    if (G.phase === 'holding') drawAimGuides();
+    if (G.phase === 'windup' || G.phase === 'flying' || G.phase === 'reposition' || G.phase === 'oppHold') drawCatchGuides();
+    if (G.phase === 'awaitResult' && M.glove) outlinedText('...', M.glove.x, M.glove.y - 26, '#ffffff', 22);
+    if (fx.swirl) { const h = W3.handPos(), q = proj(h.x, h.y, h.z); drawSwirl(q.x, q.y); }
+    drawFx();
+    drawBubble();
+  }
   function render() {
+    if (W3) { render3d(); return; }
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.drawImage(skyL, 0, 0, W, H);
     drawClouds();
@@ -2135,6 +2218,19 @@ function createGame(host, opts) {
     $('closet').hidden = false;
     preview = null; closetInfo = '';
     renderCloset();
+    if (W3) {
+      /* 3D캐치볼 — 3D 로 빙글빙글 도는 내 캐릭터 */
+      try { closetMini ||= W3.mini($('closetCv'), 'closet'); } catch (e) { closetMini = null; }
+      if (closetMini) {
+        const loop3 = (now) => {
+          if ($('closet').hidden) return;
+          try { closetMini.frame({ t: now / 1000, look: preview ? { ...LOOK, ...preview } : LOOK }); } catch (e) { /* 다음 장면에서 */ }
+          sheetRaf = requestAnimationFrame(loop3);
+        };
+        sheetRaf = requestAnimationFrame(loop3);
+        return;
+      }
+    }
     const cv = $('closetCv'), c = cv.getContext('2d');
     const loop = (now) => {
       if ($('closet').hidden) return;
@@ -2250,6 +2346,7 @@ function createGame(host, opts) {
   }
   function saveLook() {
     if (!D) FRIEND = Art.friendLook(LOOK);
+    if (W3) W3.setLooks(LOOK, FRIEND);
     try { opts.onLook?.(LOOK, Art.encodeLook(LOOK)); } catch (e) { /* 무시 */ }
   }
 
@@ -2306,6 +2403,18 @@ function createGame(host, opts) {
     $('lesson').hidden = false;
     lessonStep = 0; lessonAuto = true; lessonT0 = performance.now();
     renderLessonText();
+    if (W3) {
+      try { lessonMini ||= W3.mini($('lessonCv'), 'lesson'); } catch (e) { lessonMini = null; }
+      if (lessonMini) {
+        const loop3 = (now) => {
+          if ($('lesson').hidden) return;
+          try { lessonMini.frame({ t: now / 1000, look: LOOK, u: lessonU(now) }); } catch (e) { /* 다음 장면에서 */ }
+          sheetRaf = requestAnimationFrame(loop3);
+        };
+        sheetRaf = requestAnimationFrame(loop3);
+        return;
+      }
+    }
     const cv = $('lessonCv'), c = cv.getContext('2d');
     const loop = (now) => {
       if ($('lesson').hidden) return;
@@ -2313,17 +2422,7 @@ function createGame(host, opts) {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       if (cv.width !== Math.round(r.width * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
       c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, r.width, r.height);
-      let u;
-      if (lessonAuto) {
-        /* 천천히 한 바퀴 (단계마다 잠깐 멈춘다) */
-        const cyc = ((now - lessonT0) / 1000) % 7;
-        u = cyc < 6 ? cyc / 6 : 1;
-        const s = THROW_STEPS.reduce((acc, x, i) => (u >= x.u ? i : acc), 0);
-        if (s !== lessonStep) { lessonStep = s; renderLessonText(); }
-      } else {
-        const a = THROW_STEPS[lessonStep].u, b = (THROW_STEPS[lessonStep + 1] || { u: 1 }).u;
-        u = a + (b - a) * (0.5 + 0.5 * Math.sin(now / 400)) * 0.6;
-      }
+      const u = lessonU(now);
       const p = Art.basePose();
       frontFromKeys(p, throwPose(u));
       p.ballHand = u >= 0.12 && u < RELEASE_U; p.ballGlove = u < 0.12; p.face = 'focus';
@@ -2341,6 +2440,18 @@ function createGame(host, opts) {
       sheetRaf = requestAnimationFrame(loop);
     };
     sheetRaf = requestAnimationFrame(loop);
+  }
+  /** 자세 배우기의 지금 동작 위치 (자동 재생이면 천천히 한 바퀴, 아니면 그 단계 근처를 오간다) */
+  function lessonU(now) {
+    if (lessonAuto) {
+      const cyc = ((now - lessonT0) / 1000) % 7;
+      const u = cyc < 6 ? cyc / 6 : 1;
+      const s = THROW_STEPS.reduce((acc, x, i) => (u >= x.u ? i : acc), 0);
+      if (s !== lessonStep) { lessonStep = s; renderLessonText(); }
+      return u;
+    }
+    const a = THROW_STEPS[lessonStep].u, b = (THROW_STEPS[lessonStep + 1] || { u: 1 }).u;
+    return a + (b - a) * (0.5 + 0.5 * Math.sin(now / 400)) * 0.6;
   }
   function renderLessonText() {
     const s = THROW_STEPS[lessonStep];
@@ -2438,6 +2549,7 @@ function createGame(host, opts) {
 
   G.guideLeft = local.get('guideLeft', 3) | 0;
   buildCloud();
+  if (W3) W3.setLooks(LOOK, FRIEND);
   layout();
   syncSoundIcons();
   hud.lives(); hud.level();
@@ -2467,7 +2579,7 @@ function createGame(host, opts) {
   return {
     requestPause,
     remote,
-    oppLook(look) { if (D && look) FRIEND = asLook(look); },
+    oppLook(look) { if (D && look) { FRIEND = asLook(look); if (W3) W3.setLooks(null, FRIEND); } },
     dbg: { G, P, B, M, A, D, WIND, tryCatch, doThrow, catchR, zoneOf, zoneR, setSpeed, setPitch, PR },
     destroy() {
       dead = true;
@@ -2476,6 +2588,7 @@ function createGame(host, opts) {
       for (const id of timers) clearTimeout(id);
       timers.clear();
       try { audio.close(); } catch (e) { /* 무시 */ }
+      for (const x of [closetMini, lessonMini, W3]) { try { x?.destroy(); } catch (e) { /* 무시 */ } }
       root.remove();
     },
   };
