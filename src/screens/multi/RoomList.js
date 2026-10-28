@@ -23,7 +23,7 @@ import WaitingRoom from './WaitingRoom.js';
 import Lobby from '../Lobby.js';
 
 export default function RoomList(nav, params = {}) {
-  const game = params.game === 'dragon' ? 'dragon' : 'shoes';
+  const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : 'shoes';
   let rooms = null;      // null = 아직 못 받음
   let busy = false;
   let gone = false;
@@ -66,10 +66,12 @@ export default function RoomList(nav, params = {}) {
                 el('div.room-state', 상태),
                 el('div.room-name', S.roomRow(r.code, r.hostName, r.count, r.max)),
                 // 방장의 보유신발 — 대기방 참가자 카드와 같은 배지 (§11, 2026-08-19)
-                el('div.player-shoes', null, [
-                  el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
-                  el('span', S.roomShoes(r.hostShoes ?? 0)),
-                ]),
+                game === 'catch'
+                  ? el('div.player-shoes')
+                  : el('div.player-shoes', null, [
+                      el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
+                      el('span', S.roomShoes(r.hostShoes ?? 0)),
+                    ]),
                 r.full
                   ? el('div.room-full', S.roomFullShort)
                   : button(S.roomEnter, () => enter(r.code), { primary: !r.playing, disabled: busy }),

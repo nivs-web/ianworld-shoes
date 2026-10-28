@@ -367,6 +367,12 @@ service cloud.firestore {
             "done": {
               ".validate": "newData.isBoolean() && ($uid == auth.uid || newData.val() == data.val())"
             },
+            "th": {
+              ".validate": "newData.isString() && newData.val().length <= 48 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "ct": {
+              ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())"
+            },
             "lives": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20 && ($uid == auth.uid || newData.val() == data.val())"
             },
@@ -481,7 +487,7 @@ service cloud.firestore {
           }
         },
         "game": {
-          ".validate": "(newData.val() == 'shoes' || newData.val() == 'dragon') && (!data.exists() || newData.val() == data.val())"
+          ".validate": "(newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch') && (!data.exists() || newData.val() == data.val())"
         },
         "$other": {
           ".validate": false
@@ -545,7 +551,7 @@ service cloud.firestore {
           ".validate": "newData.val() == now"
         },
         "game": {
-          ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon')"
+          ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch')"
         },
         "coins": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"

@@ -19,6 +19,8 @@ import { lazyScreen } from './lazyScreen.js';
  * 카드에 보이는 건 제목과 최고 점수뿐이고 그 둘은 프로필에 이미 있다.
  */
 const DragonLobby = lazyScreen(() => import('./DragonLobby.js'), S.dragonTitle);
+/** 3번째 게임 캐치볼도 누를 때 받는다 (2026-10-28). 카드를 누르면 곧바로 게임 타이틀이다 */
+const CatchGame = lazyScreen(() => import('./CatchGame.js'), S.catchTitle);
 
 /**
  * 게임 카드.  `sub` 는 카드 제목 아래 한 줄 — 게임마다 자랑할 숫자가 다르다
@@ -27,6 +29,7 @@ const DragonLobby = lazyScreen(() => import('./DragonLobby.js'), S.dragonTitle);
 const CARDS = [
   { id: 'find_shoes', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
   { id: 'dragon_striker', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
+  { id: 'catchball', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBest || 0), screen: () => CatchGame, ready: true },
 ];
 
 export default function Portal(nav) {

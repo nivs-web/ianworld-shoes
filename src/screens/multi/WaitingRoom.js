@@ -76,7 +76,7 @@ export default function WaitingRoom(nav, params = {}) {
    * 대기방 화면은 두 게임이 그대로 나눠 쓴다 — 사람이 모이고 레디를 누르는 일은
    * 게임이 달라도 똑같기 때문이다. 갈리는 것은 **시작할 때 어느 다리로 가느냐** 뿐이다.
    */
-  const game = params.game === 'dragon' ? 'dragon' : 'shoes';
+  const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : 'shoes';
   const code = params.code;
   /**
    * ★★ **드래곤 방은 드래곤 방처럼 보여야 한다.** (2026-08-26, 사용자 신고)
@@ -105,7 +105,7 @@ export default function WaitingRoom(nav, params = {}) {
    * 그 경로를 아예 만들지 않는다. 방을 나가면 다음 화면이 뜨면서 `router.mount` 가
    * 다시 '대기중' 으로 되돌린다.
    */
-  Presence.setState('playing', params.game === 'dragon' ? 'dragon' : 'shoes');
+  Presence.setState('playing', game);
   const myUid = currentUser()?.uid;
   let room = null;
   let unsub = () => {};
@@ -253,6 +253,8 @@ export default function WaitingRoom(nav, params = {}) {
        */
       const bridge = game === 'dragon'
         ? import('../startDuel.js').then((m) => m.startDuel(nav, { code, room: r }))
+        : game === 'catch'
+        ? import('../startCatchDuel.js').then((m) => m.startCatchDuel(nav, { code, room: r }))
         : startMultiGame(nav, { code, room: r });
       bridge.catch((e) => {
         console.warn('[multi] 판 시작 실패', e);
@@ -294,6 +296,8 @@ export default function WaitingRoom(nav, params = {}) {
     document.removeEventListener('visibilitychange', onVisible);
     release();
     if (alsoLeaveRoom && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
+    /* 캐치볼 방은 캐치볼로 돌아간다 — 신발 로비로 튕기면 다른 게임이 된다 */
+    if (game === 'catch') { nav.back(); return; }
     nav.reset(Lobby);
   }
 
@@ -342,7 +346,7 @@ export default function WaitingRoom(nav, params = {}) {
       const allReady = enough && inRound.every((p) => p.ready || p.uid === room.hostUid);
 
       return screen(
-        title(game === 'dragon' ? S.duelRoomTitle(code) : S.multiRoomTitle(code)),
+        title(game === 'dragon' ? S.duelRoomTitle(code) : game === 'catch' ? S.catchRoomTitle(code) : S.multiRoomTitle(code)),
 
         // 비밀방은 코드가 커야 한다 — 친구한테 불러 줘야 하니까
         room.isPrivate
@@ -388,6 +392,9 @@ export default function WaitingRoom(nav, params = {}) {
               ? el('div.player-shoes.wallet-badge', null, [
                   el('span', S.walletCoins(p.wallet ?? 0)),
                 ])
+              /* 캐치볼은 걸린 것이 없다 — 자리만 지켜 표 칸을 맞춘다 */
+              : game === 'catch'
+              ? el('div.player-shoes')
               : el('div.player-shoes', null, [
                   el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
                   el('span', S.playerShoesOwned(p.shoesOwned ?? 0)),
@@ -405,9 +412,13 @@ export default function WaitingRoom(nav, params = {}) {
         el('div.hint', S.roomSlots(players.length, room.maxPlayers ?? MULTI.maxPlayers)),
         /* 무엇을 걸고 무엇을 겨루는지 — 시작을 누르기 전에 알아야 한다 */
         game === 'dragon' ? el('div.hint.duel-rule', S.duelRoomRule(DUEL_STAKE)) : null,
+        game === 'catch' ? el('div.hint.duel-rule', S.catchRoomRule) : null,
 
-        el('div.diff-title', S.difficultyTitle),
-        isHost
+        /* 캐치볼은 난이도가 없다 — 랠리가 길어질수록 저절로 어려워진다 */
+        game === 'catch' ? null : el('div.diff-title', S.difficultyTitle),
+        game === 'catch'
+          ? null
+          : isHost
           ? segmented(DIFFS, room.difficulty, (v) => Room.setRoomDifficulty(code, v))
           : el('div.hint', `${DIFFS.find((d) => d.value === room.difficulty)?.label ?? ''} · ${S.hostOnlyDifficulty}`),
 

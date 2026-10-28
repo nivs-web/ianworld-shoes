@@ -8,7 +8,7 @@ export const S = {
   portalTitle: '오락실 이안월드',
   gameTitle: '신발을 찾아서',
   /* 로그인 화면은 오락실 입구다 — 게임이 둘이 됐으니 한 쪽 이름만 걸어두면 안 된다 */
-  splashGames: '신발을 찾아서 · 드래곤 스트라이커',
+  splashGames: '신발을 찾아서 · 드래곤 스트라이커 · 캐치볼',
 
   // ── S01 로그인 ────────────────────────────
   touchToStart: '터치해서 시작',
@@ -207,6 +207,21 @@ export const S = {
   totalShoesCount: (n) => `총 신발 갯수 ${n}개`,
   /** 종류 수 — 이쪽이 130 기준이다 */
   dexProgress: (have, all) => `신발 종류 도감 ${have}/${all}개 완성`,
+
+  // ── 캐치볼 (오락실 3번째 게임, 2026-10-28) ────
+  catchTitle: '캐치볼',
+  /** 포털 카드 밑줄 */
+  catchBestLine: (n) => `최고 기록 ${Number(n || 0).toLocaleString('en-US')}개`,
+  catchLoading: '캐치볼을 불러오는 중...',
+  catchLoadFailed: '캐치볼을 불러오지 못했습니다. 잠시 후 다시 시도해주세요',
+  catchDuelTitle: '캐치볼 1:1 대결',
+  catchDuelHint: '둘이서 공을 주고받아요. 공 3개씩 가지고 시작해서, 먼저 다 잃으면 져요',
+  catchDuelHint2: '잡을 수 있는 공을 놓치면 하나 잃고, 손이 닿지 않게 던지면 던진 사람이 하나 잃어요. 걸린 것은 없어요',
+  catchRoomTitle: (n) => `캐치볼 ${n}번 방`,
+  catchRoomRule: '1:1 대결 · 공 3개씩 · 먼저 다 잃으면 져요 · 걸린 것은 없어요',
+  catchRematchFailed: '다시 대결을 준비하지 못했습니다. 잠시 후 다시 눌러주세요',
+  whereCatchLobby: '캐치볼',
+  whereCatchPlay: '캐치볼 게임중',
 
   // ── 드래곤 스트라이커 (오락실 2번째 게임) ────
   dragonTitle: '드래곤 스트라이커',

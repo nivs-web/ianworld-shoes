@@ -1,0 +1,83 @@
+<!doctype html>
+<!--
+  캐치볼 모듈 단독 검사 (Firebase 없이).
+    ?mode=solo                    혼자 하기
+    ?mode=duel&side=a|b           대결 한쪽 — _catch-duel.html 이 둘을 띄워 BroadcastChannel 로 잇는다
+    &auto=1                       자동 플레이 (잡기 성공률 &hit=0.8)
+  저장소 루트에서 정적 서버로 띄운다:  python -m http.server 8766
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>catch harness</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}</style>
+</head>
+<body>
+<div id="host"></div>
+<script>
+  /* 게임 루프 안에서 터진 오류를 화면 밖으로 꺼낸다 (iframe 콘솔은 잘 안 보인다) */
+  window.addEventListener('error', (e) => { document.body.dataset.err = `${e.message} @${e.filename}:${e.lineno}:${e.colno}`; });
+</script>
+<script type="module">
+import * as CB from '/src/games/catch/catchball.js';
+const q = new URLSearchParams(location.search);
+const mode = q.get('mode') || 'solo';
+const side = q.get('side') || 'a';
+const auto = q.get('auto') === '1';
+const hit = Number(q.get('hit') ?? 0.85);
+window.CB = CB;
+window.__log = [];
+const host = document.getElementById('host');
+
+if (mode === 'solo') {
+  CB.mount(host, { mode: 'solo', best: 3, onExit(k) { window.__exit = k; }, onBest(n) { window.__best = n; } });
+} else {
+  const bc = new BroadcastChannel('cb-duel-' + (q.get('room') || '1'));
+  const me = side === 'a' ? '이안' : '민준', you = side === 'a' ? '민준' : '이안';
+  const opp = { nickname: you, lives: 3, score: 0, seenAt: 0 };
+  bc.onmessage = (e) => {
+    if (e.data.side === side) return;
+    if (e.data.gone) { CB.setRemote(null); return; }
+    Object.assign(opp, e.data.fields);
+    /* 실제 RTDB 처럼 약간 늦게 도착시킨다 */
+    setTimeout(() => CB.setRemote({ ...opp }), 80 + Math.random() * 180);
+  };
+  const send = (fields) => bc.postMessage({ side, fields });
+  setInterval(() => send({ seenAt: Date.now() }), 2000);
+  CB.mount(host, {
+    mode: 'duel',
+    duel: {
+      gid: '777', iStart: side === 'a', myName: me, oppName: you, startInMs: 2500, absentMs: 30000,
+      send(f) { window.__log.push(JSON.stringify(f)); send(f); },
+      onEnd(r) { window.__end = r; },
+    },
+    onExit(k) { window.__exit = k; },
+  });
+}
+
+if (auto) {
+  setInterval(() => {
+    const d = CB._debug(); if (!d) return;
+    const { G, P, B, M } = d;
+    if (G.phase === 'flying' && B.state === 'flight' && B.toPlayer) {
+      if (B.__plan !== B.launch) { B.__plan = B.launch; B.__will = Math.random() < hit; }
+      if (B.__will) { P.tgx = B.target.x; P.tgy = B.target.y; }
+      if (B.__will && B.arriveAt - G.t < 0.05 && !P.pending) d.tryCatch();
+    }
+    if (G.phase === 'holding' && G.phaseT > (G.__holdT ??= 0.8 + Math.random() * 1.2)) {
+      G.__holdT = undefined;
+      /* 가끔 일부러 먼 곳을 노린다 */
+      if (Math.random() < 0.25) d.A.bx = M.x + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * 1.4);
+      d.doThrow();
+    }
+    const D = d.D;
+    document.body.dataset.state = JSON.stringify({
+      phase: G.phase, score: G.score, lives: G.lives,
+      ...(D ? { seq: D.seq, mySeq: D.mySeq, rally: D.rally, oppLives: D.opp.lives, oppScore: D.opp.score, ended: D.ended, win: D.win, reason: D.reason } : {}),
+    });
+  }, 8);
+}
+</script>
+</body>
+</html>

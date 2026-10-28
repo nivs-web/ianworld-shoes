@@ -1,0 +1,26 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>캐치볼 게임 화면 미리보기</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<!-- 진짜 CatchGame.js 화면(혼자 하기 타이틀)을 오락실 CSS 아래에서 띄운다. 전역 스타일이 새는지 보는 용도 -->
+<script type="importmap">
+{ "imports": { "/src/services/profile.js": "/tools/_catch-stub.js" } }
+</script>
+</head>
+<body class="ui-mode">
+<div id="ui" class="active"></div>
+<script type="module">
+import CatchGame from '/src/screens/CatchGame.js';
+const root = document.getElementById('ui');
+let live = null;
+const nav = {
+  refresh() { if (!live) return; root.innerHTML = ''; root.append(live.render(nav)); },
+  back() { window.__nav = 'back'; }, push(s) { window.__nav = 'push'; }, reset() {}, replace() {}, depth: () => 2,
+};
+live = CatchGame(nav, { mode: 'solo' });
+nav.refresh();
+window.__ready = true;
+</script>
+</body></html>

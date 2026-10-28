@@ -159,6 +159,13 @@ async function settleOnce(code, room = null) {
   if (!u || u.guest) return null;
   let r = room ?? await Room.readRoom(code);
   /**
+   * ★★ **캐치볼 방은 신발과 무관하다.** (2026-10-28)
+   * 아래 길은 순위가 없으면 신발 규칙으로 판을 끝내고(`finalizeResult`), 순위가 있으면
+   * 진 사람에게서 신발을 걷는다. 친선 대결인 캐치볼 방이 여기로 들어오면 **진 사람이
+   * 신발을 잃는다.** 볼일이 끝난 방으로 돌려줘서 기록만 치우게 한다.
+   */
+  if (r && Room.gameOf(r) === Room.GAME_CATCH) return { rank: 0, won: false, paid: [], took: [], pending: 0, lost: 0 };
+  /**
    * ★ **끝날 수 있는 판이면 여기서 끝낸다.** (2026-08-19)
    *
    * 순위를 박는 건 지금까지 **화면**의 일이었다. 그래서 둘 다 앱이 죽거나 튕기면

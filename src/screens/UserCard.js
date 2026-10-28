@@ -110,6 +110,7 @@ export function openUserCard(p, opt = {}) {
     if (state === 'offline') return S.whereUnknown;
     if (game === 'dragon') return state === 'playing' ? S.whereDragonPlay : S.whereDragonLobby;
     if (game === 'shoes') return state === 'playing' ? S.whereShoesPlay : S.whereShoesLobby;
+    if (game === 'catch') return state === 'playing' ? S.whereCatchPlay : S.whereCatchLobby;
     return state === 'playing' ? S.whereUnknown : S.whereArcade;
   }
   const paintPlace = () => {

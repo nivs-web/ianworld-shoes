@@ -152,6 +152,15 @@ export function defaultProfile() {
     dragonDifficulty: 'normal',
     dragonCharacter: 0,     // 고른 드래곤 번호 (0~9)
     /**
+     * ★ **캐치볼** (오락실 3번째 게임, 2026-10-28).
+     * 드래곤과 같은 이유로 칸을 따로 둔다. 돈이 없는 게임이라 기록과 전적뿐이다.
+     */
+    catchBest: 0,           // 혼자 하기 최고 기록 (잡은 공)
+    catchPlays: 0,          // 혼자 하기 판수
+    catchWins: 0,           // 1:1 대결 승
+    catchLosses: 0,         // 1:1 대결 패
+    catchTeam: 'red',       // 유니폼 색
+    /**
      * 기간별 멀티 승수 (2026-08-19 23차) — 멀티게임순위의 오늘·주간·월간 탭.
      * `{ dy: {k, n}, wk: {k, n}, mo: {k, n} }` — `k` 는 그 기간의 키, `n` 은 승수.
      * 키가 바뀌면 `n` 을 1부터 다시 센다(그게 곧 리셋이다).

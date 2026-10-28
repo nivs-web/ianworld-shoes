@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- 캐치볼 대결 검사 — 두 판을 나란히 띄우고 BroadcastChannel 로 잇는다. ?auto=1 이면 둘 다 자동 -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>catch duel</title>
+<style>
+  html,body{margin:0;height:100%;background:#222;font:13px sans-serif;color:#ddd}
+  .wrap{display:flex;gap:10px;padding:10px}
+  iframe{width:390px;height:720px;border:0;background:#000}
+  pre{margin:4px 0 0;white-space:pre-wrap;width:390px;min-height:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div><iframe id="a"></iframe><pre id="la"></pre></div>
+  <div><iframe id="b"></iframe><pre id="lb"></pre></div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const room = Math.random().toString(36).slice(2, 8);
+  const extra = (q.get('auto') ? '&auto=1' : '') + (q.get('hit') ? '&hit=' + q.get('hit') : '');
+  document.getElementById('a').src = `_catch-harness.html?mode=duel&side=a&room=${room}${extra}`;
+  document.getElementById('b').src = `_catch-harness.html?mode=duel&side=b&room=${room}${extra}`;
+  setInterval(() => {
+    for (const k of ['a', 'b']) {
+      try { document.getElementById('l' + k).textContent = document.getElementById(k).contentDocument.body.dataset.state || ''; } catch (e) {}
+    }
+  }, 300);
+</script>
+</body>
+</html>

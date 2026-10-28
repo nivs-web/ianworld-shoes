@@ -238,6 +238,12 @@ export async function pullRemote() {
     dragonEquip: remote.dragonEquip ?? local.dragonEquip ?? {},
     dragonCharacter: remote.dragonCharacter ?? local.dragonCharacter ?? 0,
     dragonDifficulty: remote.dragonDifficulty ?? local.dragonDifficulty ?? 'normal',
+    /* 캐치볼 — 기록·전적은 줄지 않으니 큰 쪽, 유니폼은 마지막에 고른 쪽 (드래곤과 같은 이유) */
+    catchBest: Math.max(local.catchBest ?? 0, remote.catchBest ?? 0),
+    catchPlays: Math.max(local.catchPlays ?? 0, remote.catchPlays ?? 0),
+    catchWins: Math.max(local.catchWins ?? 0, remote.catchWins ?? 0),
+    catchLosses: Math.max(local.catchLosses ?? 0, remote.catchLosses ?? 0),
+    catchTeam: remote.catchTeam ?? local.catchTeam ?? 'red',
   };
   L.reconcile(merged);
   L.saveProfile(merged);
@@ -348,6 +354,29 @@ export function spendDragonCoins(n) {
  * @param {{score:number, stage:number, level:number}} r
  * @returns {{profile:object, isBest:boolean}}
  */
+/**
+ * ★ **캐치볼 혼자 하기 한 판 끝.** (2026-10-28)
+ * 기록이 오를 때만 기록 칸을 쓴다(판수는 매번). 점수는 게임이 보낸 값이라 상한을 둔다.
+ */
+const CATCH_SCORE_CAP = 9999;
+export function finishCatchRun(score) {
+  const before = L.loadProfile();
+  const s = clampInt(score, 0, CATCH_SCORE_CAP);
+  const next = { catchPlays: (before.catchPlays || 0) + 1 };
+  if (s > (before.catchBest || 0)) next.catchBest = s;
+  return patch(next);
+}
+/** 캐치볼 1:1 대결 한 판의 승패 */
+export function recordCatchDuel(win) {
+  const b = L.loadProfile();
+  return patch(win ? { catchWins: (b.catchWins || 0) + 1 } : { catchLosses: (b.catchLosses || 0) + 1 });
+}
+/** 캐치볼 유니폼 색 */
+export function setCatchTeam(team) {
+  if (!['red', 'blue', 'yellow', 'purple'].includes(team)) return;
+  if (L.loadProfile().catchTeam !== team) patch({ catchTeam: team });
+}
+
 export function finishDragonRun(r) {
   const before = L.loadProfile();
   const score = Math.max(0, Math.min(DRAGON_SCORE_CAP, Math.round(Number(r?.score) || 0)));

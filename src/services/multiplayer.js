@@ -168,9 +168,15 @@ function meRecord(profile, fb) {
  */
 export const GAME_SHOES = 'shoes';
 export const GAME_DRAGON = 'dragon';
-const gameOf = (room) => (room && room.game) || GAME_SHOES;
+/**
+ * ★ **캐치볼 (3번째 게임, 2026-10-28).** 1:1 전용이라 방을 2인으로 판다.
+ * 신발 정산(`multiSettle`)·판 끝내기(`finalizeResult`)와는 **아예 엮이지 않는다** —
+ * 걸린 것이 없는 친선 대결이고, 신발 규칙으로 순위를 박으면 진 사람이 신발을 낸다.
+ */
+export const GAME_CATCH = 'catch';
+export const gameOf = (room) => (room && room.game) || GAME_SHOES;
 
-export async function createRoom({ isPrivate = false, difficulty, game = GAME_SHOES } = {}) {
+export async function createRoom({ isPrivate = false, difficulty, game = GAME_SHOES, maxPlayers } = {}) {
   const fb = await rt();
   if (!fb) return null;
   const p = L.loadProfile();
@@ -190,7 +196,7 @@ export async function createRoom({ isPrivate = false, difficulty, game = GAME_SH
         state: 'waiting',
         difficulty: difficulty ?? p.difficulty ?? 'normal',
         seed: Math.floor(Math.random() * 0x7fffffff),
-        maxPlayers: MULTI.maxPlayers,
+        maxPlayers: maxPlayers ?? MULTI.maxPlayers,
         createdAt: nowOn(fb, offset),
         players: { [fb.uid]: meRecord(p, fb) },
       };
@@ -566,7 +572,7 @@ export async function resetRoom(code) {
    * 신발 방(`game !== 'dragon'`)에서만 이 검사를 한다.
    */
   const 끝난지 = Date.now() - (room.result?.endedAt ?? 0);
-  if (room.game !== 'dragon') {
+  if (gameOf(room) === GAME_SHOES) {
     if (hasUnclaimed(room)) return 'pending';
     if (hasUnpaid(room) && 끝난지 < RESET_WAIT_MS) return 'pending';
   }
@@ -930,7 +936,7 @@ async function scanOpenRooms(fb, game) {
  * 내 방을 접고 그쪽으로 옮긴다. 판정 기준이 (생성시각, 코드)로 결정적이라
  * 양쪽이 같은 답을 내고 **정확히 한 명만** 움직인다.
  */
-export async function quickJoin({ difficulty, game = GAME_SHOES } = {}) {
+export async function quickJoin({ difficulty, game = GAME_SHOES, maxPlayers } = {}) {
   const fb = await rt();
   if (!fb) return null;
   await waitConnected(fb);
@@ -978,7 +984,7 @@ export async function quickJoin({ difficulty, game = GAME_SHOES } = {}) {
     if (got) return got;
   } catch { /* 못 찾으면 새로 판다 */ }
 
-  const mine = await createRoom({ isPrivate: false, difficulty, game });
+  const mine = await createRoom({ isPrivate: false, difficulty, game, maxPlayers });
   if (!mine) return null;
 
   // 같은 순간에 만들어진 방이 있으면 한쪽만 옮겨 간다 (동시 입장 해소)
@@ -1163,6 +1169,42 @@ export async function publishDuelProgress(code, { score, coins, bosses, alive = 
  * 10Hz 다. 자리 둘·불레벨·하트 하나씩이라 한 번에 100바이트가 안 된다.
  */
 let lastGhostAt = 0;
+/**
+ * ★ **캐치볼 대결 — 내 칸에 쓴다.** (2026-10-28)
+ *
+ * 게임 모듈(`games/catch/catchball.js`)이 보내는 값을 그대로 옮긴다. 규칙이 모르는 칸은
+ * 그 쓰기를 통째로 거부하므로(§9-0-34) **여기서 아는 칸만** 골라 보낸다.
+ *   th 던지기 · ct 판정 · lives · score · gx/gy 글러브 자리 · alive · done
+ * 하나라도 씹히면 상대 화면이 멈추므로, 실패는 삼키지 않고 한 번 더 보낸다.
+ */
+const CATCH_KEYS = { th: 'str', ct: 'str', lives: 'int', score: 'int', gx: 'int', gy: 'int', alive: 'bool', done: 'bool' };
+export async function publishCatch(code, fields) {
+  const fb = await rt();
+  if (!fb) return false;
+  const out = {};
+  for (const [k, v] of Object.entries(fields ?? {})) {
+    const t = CATCH_KEYS[k];
+    if (t === 'str' && typeof v === 'string') out[k] = v.slice(0, 48);
+    else if (t === 'int' && Number.isFinite(v)) out[k] = Math.round(v);
+    else if (t === 'bool') out[k] = !!v;
+  }
+  if (!Object.keys(out).length) return true;
+  const ref = fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid));
+  for (let i = 0; i < 2; i++) {
+    try { await withTimeout(fb.dbMod.update(ref, out), undefined, '캐치볼'); return true; }
+    catch { /* 한 번 더 */ }
+  }
+  return false;
+}
+
+/** 캐치볼 한 판이 끝났다 — 방을 `finished` 로. 둘 다 써도 같은 값이다 */
+export async function endCatchRound(code) {
+  const fb = await rt();
+  if (!fb) return;
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { state: 'finished' }),
+    undefined, '캐치볼 끝').catch(() => {});
+}
+
 export async function publishGhost(code, { x, y, lv, lives }) {
   const t = Date.now();
   if (t - lastGhostAt < 90) return;
@@ -1993,7 +2035,8 @@ export async function leaveRoom(code) {
    * (아직 뛰는 사람이 있으면) 자리를 지키고 물러난다. 판이 끝나면 그때 나가면 된다.
    */
   const 나 = room.players[fb.uid];
-  const 이번판참가자 = !nowaiter(나);
+  /* 캐치볼은 신발 규칙으로 판을 끝내지 않는다 — 언제든 그냥 나간다 (GAME_CATCH 주석) */
+  const 이번판참가자 = !nowaiter(나) && gameOf(room) !== GAME_CATCH;
   const 판진행중 = room.state !== 'waiting' && !room.result?.rankings;
   if (이번판참가자 && 판진행중) {
     if (roundOver(room, Date.now() + serverOffsetSync())) {
