@@ -136,6 +136,21 @@ const CSS = `
   border:3px solid var(--ink)!important;box-shadow:0 4px 0 var(--ink)!important}
 .cb-ghost:active{transform:translateY(3px)}
 .cb-duelbtn{background:var(--bulb)!important;font-family:var(--font-display)!important;font-size:22px!important}
+.cb-diffs{display:flex;align-items:center;gap:4px;background:rgba(255,250,240,.92);border:2.5px solid var(--ink);border-radius:999px;padding:4px 5px 4px 12px}
+.cb-dlabel{font-size:15px;margin-right:4px}
+.cb-dbtn{padding:6px 13px 5px!important;border-radius:999px;font-family:var(--font-display)!important;font-size:17px!important;color:var(--ink)!important;background:transparent!important}
+.cb-dbtn[aria-checked="true"]{color:var(--chalk)!important;box-shadow:0 2px 0 var(--ink)!important}
+.cb-dbtn[data-diff="easy"][aria-checked="true"]{background:#2f9a4f!important}
+.cb-dbtn[data-diff="normal"][aria-checked="true"]{background:#d8960c!important}
+.cb-dbtn[data-diff="hard"][aria-checked="true"]{background:var(--stitch)!important}
+.cb-speeds{position:absolute;z-index:6;left:calc(var(--gut-l) + 2px);bottom:calc(var(--sb) + 30px + var(--btn));width:var(--btn);display:flex;flex-direction:column;gap:6px}
+.cb-sp{width:100%!important;height:34px!important;border-radius:12px;font-family:var(--font-display)!important;font-size:15px!important;color:var(--ink)!important;
+  background:rgba(255,250,240,.94)!important;border:3px solid var(--ink)!important;box-shadow:0 3px 0 var(--ink)!important;opacity:.78;transition:transform .08s,opacity .15s}
+.cb-sp[aria-checked="true"]{opacity:1;transform:scale(1.06);color:var(--chalk)!important}
+.cb-sp.sp2[aria-checked="true"]{background:var(--stitch)!important}
+.cb-sp.sp1[aria-checked="true"]{background:#d8960c!important}
+.cb-sp.sp0[aria-checked="true"]{background:#2f78c9!important}
+@media (orientation:portrait) and (max-height:760px){.cb-howto{display:none}}
 .cb-howto{margin:0;font-size:14px;line-height:1.5;text-align:center;color:var(--chalk);background:rgba(21,48,75,.82);padding:7px 14px 6px;border-radius:12px}
 .cb-howto b{color:var(--bulb);font-weight:400}
 @media (orientation:landscape) and (max-height:560px){
@@ -196,7 +211,7 @@ const HTML = `
   <div class="cb-plate">
     <div class="cb-plate-label">잡은 공</div>
     <div class="cb-plate-num" data-cb="score">0</div>
-    <div class="cb-plate-best" data-cb="bestline">최고 <span data-cb="best">0</span></div>
+    <div class="cb-plate-best" data-cb="bestline"><span data-cb="bestDiffHud">보통</span> 최고 <span data-cb="best">0</span></div>
   </div>
   <div class="cb-mid">
     <div class="cb-chip" data-cb="level"><b>Lv.1</b>동네 캐치볼</div>
@@ -219,6 +234,11 @@ const HTML = `
 <div class="cb-hint" data-cb="hint" hidden></div>
 <div class="cb-banner" data-cb="banner" hidden><div class="cb-bmain" data-cb="bmain"></div><div class="cb-bsub" data-cb="bsub"></div></div>
 <div data-cb="controls" hidden>
+  <div class="cb-speeds" data-cb="speeds" role="radiogroup" aria-label="공 빠르기" hidden>
+    <button class="cb-sp sp2" type="button" role="radio" data-sp="2">빠른 볼</button>
+    <button class="cb-sp sp1" type="button" role="radio" data-sp="1">중간 볼</button>
+    <button class="cb-sp sp0" type="button" role="radio" data-sp="0">느린 볼</button>
+  </div>
   <button class="cb-act cb-throw off" data-cb="throwBtn" type="button" aria-label="던지기">
     <svg viewBox="0 0 64 64" aria-hidden="true">
       <path d="M6 22h12M3 32h14M6 42h12" stroke="#15304b" stroke-width="4" stroke-linecap="round"/>
@@ -246,7 +266,7 @@ const HTML = `
   <div class="cb-stage" data-cb="stage"></div>
   <footer class="cb-tbot">
     <div class="cb-row">
-      <div class="cb-bestpill">최고 기록 <b data-cb="bestTitle">0</b>개</div>
+      <div class="cb-bestpill"><span data-cb="bestDiff">보통</span> 최고 <b data-cb="bestTitle">0</b>개</div>
       <div class="cb-bestpill" data-cb="duelRec" hidden>1:1 대결 <b data-cb="duelWins">0</b>승 <b data-cb="duelLosses">0</b>패</div>
       <div class="cb-uni">
         <span>유니폼</span>
@@ -258,6 +278,12 @@ const HTML = `
         </div>
       </div>
     </div>
+    <div class="cb-diffs" role="radiogroup" aria-label="난이도" data-cb="diffs">
+      <span class="cb-dlabel">난이도</span>
+      <button class="cb-dbtn" type="button" role="radio" data-diff="easy">쉬움</button>
+      <button class="cb-dbtn" type="button" role="radio" data-diff="normal">보통</button>
+      <button class="cb-dbtn" type="button" role="radio" data-diff="hard">어려움</button>
+    </div>
     <button class="cb-big" data-cb="start" type="button">혼자 하기</button>
     <button class="cb-ghost cb-duelbtn" data-cb="duelBtn" type="button" hidden>친구랑 1:1 대결</button>
     <button class="cb-ghost" data-cb="exitTitle" type="button">나가기</button>
@@ -268,14 +294,14 @@ const HTML = `
   <div class="cb-vscard">
     <div class="cb-vsline"><span data-cb="vsMe">나</span><em>VS</em><span data-cb="vsOpp">상대</span></div>
     <div class="cb-vscount" data-cb="vsCount">3</div>
-    <div class="cb-vsrule">공 3개씩 · 놓치면 하나 잃어요 · 손 닿지 않게 던지면 던진 사람이 잃어요</div>
+    <div class="cb-vsrule" data-cb="vsRule">공 3개씩 · 놓치면 하나 잃어요 · 손 닿지 않게 던지면 던진 사람이 잃어요</div>
   </div>
 </section>
 <section class="cb-overlay" data-cb="over" hidden>
   <div class="cb-card" role="dialog" aria-modal="true">
     <h2 class="cb-ctitle" data-cb="overTitle">경기 끝!</h2>
     <div class="cb-board" data-cb="soloBoard">
-      <div class="cb-blabel">오늘 잡은 공</div>
+      <div class="cb-blabel" data-cb="soloLabel">오늘 잡은 공</div>
       <div class="cb-bnum" data-cb="overScore">0</div>
     </div>
     <div class="cb-board cb-vsboard" data-cb="duelBoard" hidden>
@@ -326,7 +352,10 @@ let inst = null;
  * @param {{wins:number, losses:number}} [opts.duelRecord]  타이틀에 띄울 대결 전적
  * @param {(team:string)=>void} [opts.onTeam]   유니폼을 바꿨다
  * @param {(kind:string)=>void} [opts.onExit]   'leave' | 'rematch' | 'forfeit'
- * @param {object} [opts.duel]  { gid, iStart, myName, oppName, startInMs, send(fields), onEnd(r) }
+ * @param {'easy'|'normal'|'hard'} [opts.difficulty]  혼자 하기 난이도 (대결은 duel.difficulty = 방 난이도)
+ * @param {{easy:number, normal:number, hard:number}} [opts.bests]  난이도별 최고 기록
+ * @param {(d:string)=>void} [opts.onDifficulty]  타이틀에서 난이도를 바꿨다
+ * @param {object} [opts.duel]  { gid, iStart, myName, oppName, difficulty, startInMs, send(fields), onEnd(r) }
  */
 export function mount(host, opts = {}) {
   unmount();
@@ -418,13 +447,44 @@ function createGame(host, opts) {
   const PARTNER_Z = 11;
   const GLOVE_Z = 0.35;
   const BALL_R = 0.075;
-  const EARLY = 0.24;
+  let EARLY = 0.24;          // 난이도가 넓히고 좁힌다 (applyDiff)
   const LATE = 0.075;
   /* 대결: 이 밖으로 던지면 악송구 (받는 사람 글러브가 닿는 곳 + 여유) */
   const REACH_X = 1.82, REACH_YMAX = 2.62, REACH_YMIN = -0.02;
   const reachable = (x, y) => Math.abs(x) <= REACH_X && y <= REACH_YMAX && y >= REACH_YMIN;
   /* 대결: 공을 쥐고 이만큼 버티면 저절로 던진다 */
   const HOLD_LIMIT = 12;
+
+  /**
+   * ★ **난이도** (2026-10-28, 사용자 지정 — 쉬움 · 보통 · 어려움)
+   *   T      공 비행시간 배율 (작을수록 빠르다)       R      글러브가 잡아 주는 반경 배율
+   *   early  '미리 눌러도 잡히는' 시간 배율             sway   던질 때 과녁이 흔들리는 정도
+   *   spread 공이 오는 자리의 폭                        typeGap 새 공(뜬공·땅볼·커브·너클)이 나오는 점수 간격
+   *   minT   가장 빠른 공의 비행시간 하한 (초)
+   * 대결에서는 방장이 대기방에서 고른 방 난이도를 두 사람이 똑같이 쓴다.
+   */
+  const DIFFS = {
+    easy:   { label: '쉬움',   T: 1.25, R: 1.22, early: 1.3,  sway: 0.6,  spread: 0.75, typeGap: 1.6, minT: 0.6 },
+    normal: { label: '보통',   T: 1.0,  R: 1.0,  early: 1.0,  sway: 1.0,  spread: 1.0,  typeGap: 1.0, minT: 0.48 },
+    hard:   { label: '어려움', T: 0.82, R: 0.84, early: 0.78, sway: 1.35, spread: 1.15, typeGap: 0.6, minT: 0.4 },
+  };
+  /**
+   * ★ **공 빠르기 — 던지는 사람이 고른다.** (2026-10-28, 사용자 지정)
+   * 빠른 볼은 잡기 어렵지만 과녁이 더 흔들려 악송구가 나기 쉽고, 느린 볼은 정확하지만 잡기 쉽다.
+   * 대결에서는 내가 고르고, 혼자 할 때 날아오는 공은 친구(컴퓨터)가 난이도에 맞춰 섞어 던진다.
+   * 순서가 곧 번호다: 0 느린 볼 · 1 중간 볼 · 2 빠른 볼 (대결 th 의 공종류 칸에 (번호+1)×10 으로 싣는다)
+   */
+  const SPEEDS = [
+    { label: '느린 볼', T: 1.35, sway: 0.5, add: 0, calls: ['느린 볼~', '살살 간다~'] },
+    { label: '중간 볼', T: 1.0, sway: 1.0, add: 0, calls: ['간다~!', '받아!'] },
+    { label: '빠른 볼', T: 0.62, sway: 1.6, add: 0.18, calls: ['빠른 볼!!', '세게 간다!'] },
+  ];
+  const TYPE_NAME = { lob: '뜬공', grounder: '땅볼', curve: '커브', fast: '강속구', knuckle: '너클볼' };
+  function callFor(type, speed) {
+    if (speed == null || speed === 1) return pick(CALLS[type]);
+    if (type === 'normal') return pick(SPEEDS[speed].calls);
+    return (speed === 2 ? '빠른 ' : '느린 ') + TYPE_NAME[type] + (speed === 2 ? '!' : '~');
+  }
 
   const CALLS = {
     normal: ['간다~!', '받아!', '잡아봐!', '자, 간다!'],
@@ -913,7 +973,7 @@ function createGame(host, opts) {
   const startTeam = TEAMS[opts.team] ? opts.team : (TEAMS[local.get('team', 'red')] ? local.get('team', 'red') : 'red');
   const G = {
     phase: 'title', t: 0, phaseT: 0, paused: false, freeze: 0,
-    score: 0, best: Math.max(0, opts.best | 0), lives: 3, combo: 0, maxCombo: 0, perfects: 0, nice: 0,
+    score: 0, best: 0, lives: 3, combo: 0, maxCombo: 0, perfects: 0, nice: 0,
     round: 0, team: startTeam, plan: null, holdDur: 0.6, seenTypes: new Set(), tut: {}, recordShown: false,
     shakeT: 0, shakeMag: 0, easyNext: false,
   };
@@ -943,8 +1003,22 @@ function createGame(host, opts) {
     lastSentTh: '', lastSentCt: '',
   } : null;
 
-  const catchR = () => (D ? Math.max(0.28, 0.34 - D.rally * 0.003) : Math.max(0.27, 0.36 - G.score * 0.0025));
-  const swayAmp = () => (D ? Math.min(1.1, Math.max(0, (D.rally - 1) * 0.07)) : Math.min(1.25, Math.max(0, (G.score - 3) * 0.045)));
+  /* 난이도 · 공 빠르기 */
+  const BESTS = { easy: 0, normal: 0, hard: 0, ...(opts.bests || {}) };
+  if (opts.best && !opts.bests) BESTS.normal = opts.best | 0;
+  const wantDiff = (DUEL && DUEL.difficulty) || opts.difficulty;
+  G.diff = DIFFS[wantDiff] ? wantDiff : 'normal';
+  G.speed = clamp(local.get('speed', 1) | 0, 0, 2);
+  const DF = () => DIFFS[G.diff];
+  function applyDiff() { EARLY = 0.24 * DF().early; G.best = BESTS[G.diff] | 0; }
+  applyDiff();
+
+  const catchR = () => DF().R * (D ? Math.max(0.28, 0.34 - D.rally * 0.003) : Math.max(0.27, 0.36 - G.score * 0.0025));
+  const swayAmp = () => {
+    const base = D ? Math.min(1.1, Math.max(0, (D.rally - 1) * 0.07)) : Math.min(1.25, Math.max(0, (G.score - 3) * 0.045));
+    const sp = SPEEDS[G.speed];
+    return (base * sp.sway + sp.add) * DF().sway;
+  };
   const levelOf = (s) => Math.min(LEVELS.length - 1, Math.floor(s / 10));
   const isPlaying = () => !['title', 'over', 'vs'].includes(G.phase);
   const fineMouse = window.matchMedia && matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -1011,14 +1085,25 @@ function createGame(host, opts) {
       default: return [fitSeg(rel, tgt, T, 6.5)];
     }
   }
+  /** 혼자 하기: 친구가 고르는 공 빠르기 (난이도가 높을수록 빠른 볼이 잦다) */
+  function pickSpeed(type) {
+    const s = G.score, d = G.diff;
+    let w = d === 'easy' ? [5, 4, s >= 10 ? 1 : 0] : d === 'hard' ? [2, 3.5, 4.5] : [2.5, 5, s >= 5 ? 2.5 : 0];
+    if (type === 'lob') w = [w[0], w[1], w[2] * 0.4];
+    const tot = w[0] + w[1] + w[2];
+    let r = Math.random() * tot;
+    for (let i = 0; i < 3; i++) { r -= w[i]; if (r <= 0) return i; }
+    return 1;
+  }
   function planThrow() {
     const s = G.score;
+    const gap = DF().typeGap;
+    /* '강속구' 공종류는 뺐다 — 빠르기는 이제 따로 고른다(SPEEDS) */
     const pool = [['normal', 3]];
-    if (s >= 5) pool.push(['lob', 1.2]);
-    if (s >= 9) pool.push(['grounder', 1.2]);
-    if (s >= 14) pool.push(['curve', 1.3]);
-    if (s >= 20) pool.push(['fast', 1.1]);
-    if (s >= 28) pool.push(['knuckle', 1.0]);
+    if (s >= 5 * gap) pool.push(['lob', 1.2]);
+    if (s >= 9 * gap) pool.push(['grounder', 1.2]);
+    if (s >= 14 * gap) pool.push(['curve', 1.3]);
+    if (s >= 28 * gap) pool.push(['knuckle', 1.0]);
     let type = 'normal';
     if (G.round > 2 && !G.easyNext) {
       let tot = 0; for (const [, w] of pool) tot += w;
@@ -1028,8 +1113,8 @@ function createGame(host, opts) {
     }
     G.easyNext = false;
     G.seenTypes.add(type);
-    const spreadX = Math.min(1.35, 0.2 + s * 0.045);
-    const yr = Math.min(0.85, 0.12 + s * 0.03);
+    const spreadX = Math.min(1.45, (0.2 + s * 0.045) * DF().spread);
+    const yr = Math.min(0.85, (0.12 + s * 0.03) * DF().spread);
     let tx = rand(-spreadX, spreadX), ty = clamp(1.1 + rand(-yr * 0.95, yr), 0.3, 2.1);
     let T = 1.55 - Math.min(s, 40) * 0.017 + rand(-0.06, 0.06);
     if (G.round <= 2) { tx = clamp(P.gx, -0.5, 0.5) + rand(-0.12, 0.12); ty = rand(0.95, 1.2); T = 1.75; }
@@ -1038,26 +1123,28 @@ function createGame(host, opts) {
     if (type === 'curve') T += 0.08;
     if (type === 'fast') T = Math.max(0.56, 0.86 - (s - 20) * 0.01);
     if (type === 'knuckle') T += 0.18;
+    const speed = G.round > 2 ? pickSpeed(type) : 1;
+    T = Math.max(DF().minT, T * DF().T * SPEEDS[speed].T);
     const rel = { x: M.x - 0.2, y: 1.6, z: M.z - 0.3 };
-    return { type, segs: buildSegs(type, rel, tx, ty, T), target: { x: tx, y: ty, z: GLOVE_Z } };
+    return { type, speed, segs: buildSegs(type, rel, tx, ty, T), target: { x: tx, y: ty, z: GLOVE_Z } };
   }
   /** 대결: 랠리가 길어질수록 빠르고, 공 종류가 늘어난다 */
   function duelPick() {
-    const r = D.rally;
+    const r = D.rally, gap = DF().typeGap;
     const pool = [['normal', 3]];
-    if (r >= 3) pool.push(['lob', 1.1]);
-    if (r >= 5) pool.push(['grounder', 1.1]);
-    if (r >= 7) pool.push(['curve', 1.2]);
-    if (r >= 10) pool.push(['fast', 1.0]);
-    if (r >= 14) pool.push(['knuckle', 0.9]);
+    if (r >= 3 * gap) pool.push(['lob', 1.1]);
+    if (r >= 5 * gap) pool.push(['grounder', 1.1]);
+    if (r >= 7 * gap) pool.push(['curve', 1.2]);
+    if (r >= 14 * gap) pool.push(['knuckle', 0.9]);
     let tot = 0; for (const [, w] of pool) tot += w;
     let x = Math.random() * tot, type = 'normal';
     for (const [k, w] of pool) { x -= w; if (x <= 0) { type = k; break; } }
     let T = Math.max(0.8, 1.45 - r * 0.035);
     if (type === 'lob') T = Math.max(1.4, 1.9 - r * 0.02);
-    if (type === 'fast') T = Math.max(0.6, 0.85 - (r - 10) * 0.01);
     if (type === 'knuckle') T += 0.15;
     if (type === 'curve') T += 0.06;
+    /* 빠르기는 던지는 내가 고른 것 (SPEEDS) */
+    T = Math.max(DF().minT, T * DF().T * SPEEDS[G.speed].T);
     return { type, T };
   }
 
@@ -1106,7 +1193,9 @@ function createGame(host, opts) {
     G.plan = planThrow();
     setPose('windup');
     M.windDur = Math.max(0.5, 0.95 - G.score * 0.009);
-    say(pick(CALLS[G.plan.type]), M.windDur + 0.5);
+    say(callFor(G.plan.type, G.plan.speed), M.windDur + 0.5);
+    if (G.plan.speed === 2 && !G.tut.fastIn) tutorial('fastIn', '빠른 볼! 금방 날아와요');
+    else if (G.plan.speed === 0 && !G.tut.slowIn) tutorial('slowIn', '느린 볼~ 너무 일찍 누르지 마세요');
     setPhase('windup');
     if (G.round <= 1) tutorial('move', fineMouse ? '마우스를 움직이면 글러브가 따라와요' : '화면을 손가락으로 끌면 글러브가 움직여요');
     if (G.plan.type !== 'normal' && !G.tut['type_' + G.plan.type]) tutorial('type_' + G.plan.type, TYPE_HINT[G.plan.type]);
@@ -1231,11 +1320,12 @@ function createGame(host, opts) {
     A.bx = M.x; A.by = 1.05; A.x = A.bx; A.y = A.by;
     setPose('ready');
     if (D) {
-      if (!G.tut.dthrow) tutorial('dthrow', '내 차례! 과녁을 맞춰 던지기\n상대 글러브에서 먼 곳일수록 잡기 어려워요');
+      if (!G.tut.dthrow) tutorial('dthrow', '내 차례! 빠르기를 고르고 과녁을 맞춰 던지기\n빠른 볼일수록 과녁이 더 흔들려요');
       return;
     }
     if (G.round <= 3 || Math.random() < 0.35) say(pick(['여기!', '이쪽이야!', '던져~!']), 0.9);
     if (G.round <= 3) tutorial('throw', '던지기 버튼을 눌러 친구에게 던져요!');
+    else if (!G.tut.speed) tutorial('speed', '던지기 위 버튼으로 공 빠르기를 골라요\n빠른 볼일수록 과녁이 더 흔들려요');
     if (swayAmp() > 0.05) tutorial('aim', '과녁이 친구 몸에 왔을 때 던지면 나이스 볼!\n' + (fineMouse ? '마우스로 과녁을 옮길 수도 있어요' : '끌어서 과녁을 옮길 수도 있어요'));
   }
   function judgeThrow(ax, ay) {
@@ -1257,13 +1347,13 @@ function createGame(host, opts) {
   function launchPlayerBall() {
     const hand = { x: P.bodyX + 0.22, y: 1.5 + P.lift, z: 0.2 };
     const tgt = { x: A.fx, y: A.fy, z: M.z - 0.25 };
-    let T = Math.max(0.62, 0.82 - G.score * 0.004);
+    let T = Math.max(0.42, Math.max(0.62, 0.82 - G.score * 0.004) * SPEEDS[G.speed].T);
     if (D) {
       /* 대결: 공 종류와 비행시간은 던지는 쪽이 정해 보낸다. 내 화면에서는 조금 느리게 —
          상대의 판정이 도착할 틈을 준다 (도착했는데 결과가 없으면 공을 잠깐 붙든다) */
       const pk = duelPick();
       D.mySeq = D.seq + 1; D.result = null;
-      const th = `${D.gid}|${D.mySeq}|${TYPES.indexOf(pk.type)}|${Math.round(-A.fx * 100)}|${Math.round(A.fy * 100)}|${Math.round(pk.T * 1000)}`;
+      const th = `${D.gid}|${D.mySeq}|${TYPES.indexOf(pk.type) + (G.speed + 1) * 10}|${Math.round(-A.fx * 100)}|${Math.round(A.fy * 100)}|${Math.round(pk.T * 1000)}`;
       D.lastSentTh = th;
       DUEL.send({ th });
       T = pk.T + 0.12;
@@ -1273,6 +1363,7 @@ function createGame(host, opts) {
     B.state = 'flight'; B.toPlayer = false; B.segIdx = 0; B.trail.length = 0; B.spin = 16; B.bounces = 0;
     evalBall(0, B.pos);
     B.judge = judgeThrow(A.fx, A.fy);
+    B.speed = G.speed;
     M.judge = B.judge; M.dir = A.fx >= M.x ? 1 : -1;
     M.catchLocal = { x: clamp(A.fx - M.x, -0.5, 0.7), y: clamp(A.fy, 0.4, 1.85) };
     setPose('track');
@@ -1300,7 +1391,9 @@ function createGame(host, opts) {
     B.state = 'partner';
     Snd.softPop();
     const hp = proj(M.x + (j === 'dive' ? M.dir * 1.2 : 0), 1.85, M.z);
-    const txt = { nice: '나이스 볼!', ok: '좋아!', dive: '다이빙 캐치!', jump: '점프 캐치!' }[j];
+    const txt = (B.speed === 2
+      ? { nice: '강속구 나이스 볼!', ok: '와, 빠르다!', dive: '다이빙 캐치!', jump: '점프 캐치!' }
+      : { nice: '나이스 볼!', ok: '좋아!', dive: '다이빙 캐치!', jump: '점프 캐치!' })[j];
     popText(txt, hp.x, hp.y - 8, j === 'nice' ? '#7cff6b' : '#ffffff', j === 'nice' ? 28 : 24, 1);
     if (j === 'nice') { G.nice++; burst(M.glove ? M.glove.x : hp.x, M.glove ? M.glove.y : hp.y, 8, ['#7cff6b', '#fff'], 140, 'star'); }
     setPose(j === 'dive' ? 'diveHold' : j === 'jump' ? 'jumpLand' : 'caught');
@@ -1355,13 +1448,16 @@ function createGame(host, opts) {
   }
   function startRemoteWindup(th) {
     D.inThrow = null;
-    const type = TYPES[th.type] || 'normal';
+    /* 공종류 칸 = 종류 + (빠르기+1)×10. 10 미만이면 빠르기를 안 보내던 판(중간 볼로 본다) */
+    const tc = th.type | 0, sc = Math.floor(tc / 10);
+    const type = TYPES[tc % 10] || 'normal';
+    const speed = sc >= 1 && sc <= 3 ? sc - 1 : 1;
     const tx = th.x / 100, ty = th.y / 100, T = clamp(th.T / 1000, 0.45, 3);
     const rel = { x: M.x - 0.2, y: 1.6, z: M.z - 0.3 };
     G.plan = { type, segs: buildSegs(type, rel, tx, ty, T), target: { x: tx, y: ty, z: GLOVE_Z }, wild: !reachable(tx, ty) };
     setPose('windup');
     M.windDur = 0.42;
-    say(pick(CALLS[type]), 0.9);
+    say(callFor(type, speed), 0.9);
     setPhase('windup');
     if (type !== 'normal' && !G.tut['type_' + type]) tutorial('type_' + type, TYPE_HINT[type]);
   }
@@ -1394,13 +1490,14 @@ function createGame(host, opts) {
   function gameOver() {
     setPhase('over');
     const newBest = G.score > G.best;
-    if (newBest) { G.best = G.score; try { opts.onBest?.(G.best); } catch (e) { /* 무시 */ } }
+    if (newBest) { G.best = G.score; BESTS[G.diff] = G.best; try { opts.onBest?.(G.best, G.diff); } catch (e) { /* 무시 */ } }
     setPose(G.score >= 10 ? 'cheer' : 'idle');
     Snd.over();
-    try { opts.onFinish?.(G.score); } catch (e) { /* 화면 쪽 실패는 게임을 멈추지 않는다 */ }
+    try { opts.onFinish?.(G.score, G.diff); } catch (e) { /* 화면 쪽 실패는 게임을 멈추지 않는다 */ }
     later(() => {
       if (G.phase !== 'over') return;
       $('overScore').textContent = G.score;
+      $('soloLabel').textContent = `오늘 잡은 공 · ${DF().label}`;
       $('overBest').textContent = G.best;
       $('overPerfect').textContent = G.perfects;
       $('overCombo').textContent = G.maxCombo;
@@ -1575,6 +1672,9 @@ function createGame(host, opts) {
     }
     else if (code === 'KeyZ' || code === 'KeyJ') tryCatch();
     else if (code === 'KeyX' || code === 'KeyK') doThrow();
+    else if (code === 'Digit1' || code === 'Numpad1') setSpeed(0);
+    else if (code === 'Digit2' || code === 'Numpad2') setSpeed(1);
+    else if (code === 'Digit3' || code === 'Numpad3') setSpeed(2);
   });
   on(window, 'keyup', (e) => { keys[e.code] = false; });
   on(window, 'blur', () => { for (const k in keys) keys[k] = false; });
@@ -2048,7 +2148,8 @@ function createGame(host, opts) {
         rem = B.arriveAt - G.t;
         const tg = B.target;
         inPos = Math.hypot(tg.x - P.gx, tg.y - P.gy) <= R;
-        const showFrom = !D && G.score < 6 ? 99 : 0.95;
+        /* 쉬움은 처음부터 끝까지 링을 보여 주고, 어려움은 마지막 0.6초에만 보여 준다 */
+        const showFrom = G.diff === 'easy' ? 99 : G.diff === 'hard' ? 0.6 : (!D && G.score < 6 ? 99 : 0.95);
         if (rem < showFrom && !B.wild) {
           const p = proj(tg.x, tg.y, GLOVE_Z);
           const rb = BALL_R * p.s * 1.3 + 3;
@@ -2071,7 +2172,7 @@ function createGame(host, opts) {
       circ(ctx, gp.x, gp.y, R * gp.s); ctx.stroke(); ctx.setLineDash([]);
       if (good) {
         ctx.fillStyle = 'rgba(124,255,107,.18)'; circ(ctx, gp.x, gp.y, R * gp.s); ctx.fill();
-        if (D || G.score < 15) outlinedText('지금!', gp.x, gp.y - R * gp.s - 14, '#7cff6b', 26);
+        if (G.diff === 'easy' || (G.diff === 'normal' && (D || G.score < 15))) outlinedText('지금!', gp.x, gp.y - R * gp.s - 14, '#7cff6b', 26);
       }
     } else if (G.phase === 'holding') {
       const z = M.z - 0.25;
@@ -2204,6 +2305,7 @@ function createGame(host, opts) {
     score(bump) {
       const el = $('score'); el.textContent = G.score;
       $('best').textContent = Math.max(G.best, G.score);
+      $('bestDiffHud').textContent = DF().label;
       if (bump) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
     },
     lives(lost) {
@@ -2217,7 +2319,7 @@ function createGame(host, opts) {
       box.setAttribute('aria-label', `남은 공 ${G.lives}개`);
     },
     level() {
-      if (D) { $('level').innerHTML = `<b>랠리</b>${D.rally}번째`; return; }
+      if (D) { $('level').innerHTML = `<b>${DF().label}</b>랠리 ${D.rally}`; return; }
       const lv = levelOf(G.score); $('level').innerHTML = `<b>Lv.${lv + 1}</b>${LEVELS[lv]}`;
     },
     combo() {
@@ -2245,6 +2347,7 @@ function createGame(host, opts) {
     const c = $('catchBtn'), t = $('throwBtn');
     c.classList.toggle('off', !catchOn); c.classList.toggle('ready', catchReady);
     t.classList.toggle('off', !throwOn); t.classList.toggle('ready', throwOn);
+    $('speeds').hidden = !throwOn;
   }
   let hintTimer = 0;
   function showHint(text, sec) {
@@ -2353,6 +2456,28 @@ function createGame(host, opts) {
     Snd.muted = !Snd.muted; local.set('muted', Snd.muted); syncMute();
     if (!Snd.muted) Snd.click();
   });
+  /* 난이도 (혼자 하기 타이틀) */
+  function setDiff(d) {
+    if (!DIFFS[d] || D) return;
+    G.diff = d; applyDiff();
+    root.querySelectorAll('.cb-dbtn').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.diff === d)));
+    $('bestDiff').textContent = DF().label; $('bestTitle').textContent = G.best;
+    try { opts.onDifficulty?.(d); } catch (e) { /* 무시 */ }
+  }
+  root.querySelectorAll('.cb-dbtn').forEach((b) => on(b, 'click', () => { Snd.init(); Snd.click(); setDiff(b.dataset.diff); }));
+  /* 공 빠르기 (던질 차례에만 보인다) */
+  function setSpeed(i) {
+    G.speed = clamp(i | 0, 0, 2); local.set('speed', G.speed);
+    root.querySelectorAll('.cb-sp').forEach((b) => b.setAttribute('aria-checked', String((b.dataset.sp | 0) === G.speed)));
+  }
+  root.querySelectorAll('.cb-sp').forEach((b) => on(b, 'pointerdown', (e) => { e.preventDefault(); Snd.init(); Snd.click(); setSpeed(b.dataset.sp | 0); }));
+  setSpeed(G.speed);
+  if (D) $('diffs').hidden = true;
+  else {
+    root.querySelectorAll('.cb-dbtn').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.diff === G.diff)));
+    $('bestDiff').textContent = DF().label;
+  }
+
   if (fineMouse) $('howto').innerHTML = '마우스로 글러브 이동 · 공이 오면 <b>클릭/스페이스</b>로 잡기 · 잡았으면 <b>한 번 더</b> 눌러 던지기';
   on(window, 'resize', layout);
   on(window, 'orientationchange', () => later(layout, 200));
@@ -2388,6 +2513,7 @@ function createGame(host, opts) {
     $('vs').hidden = false;
     $('vsMe').textContent = D.myName;
     $('vsOpp').textContent = D.oppName;
+    $('vsRule').textContent = `난이도 ${DF().label} · 공 3개씩 · 놓치면 하나 잃어요 · 빠르기는 던지는 사람이 골라요`;
     $('opp').hidden = false;
     $('bestline').hidden = true;
     hud.opp();

@@ -18,7 +18,7 @@
 
 import S from '../config/strings.ko.js';
 import { el, toast } from './ui.js';
-import { get as getProfile, finishCatchRun, recordCatchDuel, setCatchTeam } from '../services/profile.js';
+import { get as getProfile, finishCatchRun, recordCatchDuel, setCatchTeam, setCatchDifficulty, catchBests } from '../services/profile.js';
 import { unlockOrientation } from '../core/fullscreen.js';
 import { setGameGuard } from './router.js';
 import { stopLoop, startLoop, isRunning } from '../core/loop.js';
@@ -94,6 +94,7 @@ export default function CatchGame(nav, opt = {}) {
           gid: String(startAt % 1000000),
           iStart,
           myName: p.nickname || '나',
+          difficulty: room.difficulty || 'normal',
           oppName: opp.nickname || '상대',
           startInMs: Math.max(0, Math.min(8000, ms)),
           absentMs: MULTI.absentSeconds * 1000,
@@ -155,9 +156,11 @@ export default function CatchGame(nav, opt = {}) {
         m.mount(host, {
           mode: 'solo',
           team: p.catchTeam || 'red',
-          best: p.catchBest | 0,
+          difficulty: p.catchDifficulty || 'normal',
+          bests: catchBests(p),
           duelRecord: { wins: p.catchWins | 0, losses: p.catchLosses | 0 },
-          onFinish(score) { finishCatchRun(score); },
+          onFinish(score, diff) { finishCatchRun(score, diff); },
+          onDifficulty(d) { setCatchDifficulty(d); },
           onTeam(t) { setCatchTeam(t); },
           onDuel() { if (live) nav.push(CatchMultiMenu); },
           onExit() { if (live) nav.back(); },

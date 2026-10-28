@@ -49,6 +49,7 @@ if (mode === 'solo') {
     mode: 'duel',
     duel: {
       gid: '777', iStart: side === 'a', myName: me, oppName: you, startInMs: 2500, absentMs: 30000,
+      difficulty: q.get('diff') || 'normal',
       send(f) { window.__log.push(JSON.stringify(f)); send(f); },
       onEnd(r) { window.__end = r; },
     },
@@ -69,11 +70,13 @@ if (auto) {
       G.__holdT = undefined;
       /* 가끔 일부러 먼 곳을 노린다 */
       if (Math.random() < 0.25) d.A.bx = M.x + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * 1.4);
+      /* 빠르기도 아무거나 고른다 — 대결은 이 값이 상대 공 비행시간이 된다 */
+      d.G.speed = Math.floor(Math.random() * 3);
       d.doThrow();
     }
     const D = d.D;
     document.body.dataset.state = JSON.stringify({
-      phase: G.phase, score: G.score, lives: G.lives,
+      phase: G.phase, score: G.score, lives: G.lives, diff: G.diff,
       ...(D ? { seq: D.seq, mySeq: D.mySeq, rally: D.rally, oppLives: D.opp.lives, oppScore: D.opp.score, ended: D.ended, win: D.win, reason: D.reason } : {}),
     });
   }, 8);

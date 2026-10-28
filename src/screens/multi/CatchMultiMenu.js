@@ -11,7 +11,10 @@
 import S from '../../config/strings.ko.js';
 import { el, button, backButton, screen, title, toast } from '../ui.js';
 import * as Room from '../../services/multiplayer.js';
+import { get as getProfile } from '../../services/profile.js';
 import { lazyScreen } from '../lazyScreen.js';
+
+const DIFF_LABEL = { easy: S.difficultyEasy, normal: S.difficultyNormal, hard: S.difficultyHard };
 
 const WaitingRoom = lazyScreen(() => import('./WaitingRoom.js'), S.multiTitle);
 const RoomList = lazyScreen(() => import('./RoomList.js'), S.roomListTitle);
@@ -45,17 +48,20 @@ export default function CatchMultiMenu(nav) {
 
   return {
     render() {
+      /* 새로 파는 방은 혼자 하기에서 고른 난이도로 — 대기방에서 방장이 바꿀 수 있다 */
+      const diff = DIFF_LABEL[getProfile().catchDifficulty] ? getProfile().catchDifficulty : 'normal';
       return screen(
         title(S.catchDuelTitle),
         el('div.hint', S.catchDuelHint),
         el('div.hint', S.catchDuelHint2),
+        el('div.hint', S.catchNewRoomDiff(DIFF_LABEL[diff])),
 
         button(busy ? S.loading : S.joinRoom,
-          () => guard(() => Room.quickJoin({ game: GAME, maxPlayers: SEATS })),
+          () => guard(() => Room.quickJoin({ game: GAME, maxPlayers: SEATS, difficulty: diff })),
           { primary: true, disabled: busy }),
         button(S.roomListTitle, () => nav.push(RoomList, { game: GAME }), { disabled: busy }),
         button(S.createPrivateRoom,
-          () => guard(() => Room.createRoom({ isPrivate: true, game: GAME, maxPlayers: SEATS })),
+          () => guard(() => Room.createRoom({ isPrivate: true, game: GAME, maxPlayers: SEATS, difficulty: diff })),
           { disabled: busy }),
         button(S.enterByCode, () => nav.push(CodeInput, { game: GAME }), { disabled: busy }),
 

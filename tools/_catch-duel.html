@@ -19,7 +19,7 @@
 <script>
   const q = new URLSearchParams(location.search);
   const room = Math.random().toString(36).slice(2, 8);
-  const extra = (q.get('auto') ? '&auto=1' : '') + (q.get('hit') ? '&hit=' + q.get('hit') : '');
+  const extra = (q.get('auto') ? '&auto=1' : '') + (q.get('hit') ? '&hit=' + q.get('hit') : '') + (q.get('diff') ? '&diff=' + q.get('diff') : '');
   document.getElementById('a').src = `_catch-harness.html?mode=duel&side=a&room=${room}${extra}`;
   document.getElementById('b').src = `_catch-harness.html?mode=duel&side=b&room=${room}${extra}`;
   setInterval(() => {

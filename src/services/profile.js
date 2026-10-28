@@ -240,6 +240,10 @@ export async function pullRemote() {
     dragonDifficulty: remote.dragonDifficulty ?? local.dragonDifficulty ?? 'normal',
     /* 캐치볼 — 기록·전적은 줄지 않으니 큰 쪽, 유니폼은 마지막에 고른 쪽 (드래곤과 같은 이유) */
     catchBest: Math.max(local.catchBest ?? 0, remote.catchBest ?? 0),
+    catchBestEasy: Math.max(local.catchBestEasy ?? 0, remote.catchBestEasy ?? 0),
+    catchBestNormal: Math.max(local.catchBestNormal ?? 0, remote.catchBestNormal ?? 0),
+    catchBestHard: Math.max(local.catchBestHard ?? 0, remote.catchBestHard ?? 0),
+    catchDifficulty: remote.catchDifficulty ?? local.catchDifficulty ?? 'normal',
     catchPlays: Math.max(local.catchPlays ?? 0, remote.catchPlays ?? 0),
     catchWins: Math.max(local.catchWins ?? 0, remote.catchWins ?? 0),
     catchLosses: Math.max(local.catchLosses ?? 0, remote.catchLosses ?? 0),
@@ -359,12 +363,30 @@ export function spendDragonCoins(n) {
  * 기록이 오를 때만 기록 칸을 쓴다(판수는 매번). 점수는 게임이 보낸 값이라 상한을 둔다.
  */
 const CATCH_SCORE_CAP = 9999;
-export function finishCatchRun(score) {
+export function finishCatchRun(score, diff = 'normal') {
   const before = L.loadProfile();
   const s = clampInt(score, 0, CATCH_SCORE_CAP);
+  const key = CATCH_BEST_KEY[diff] || CATCH_BEST_KEY.normal;
   const next = { catchPlays: (before.catchPlays || 0) + 1 };
-  if (s > (before.catchBest || 0)) next.catchBest = s;
+  if (s > (catchBests(before)[diff] ?? 0)) next[key] = s;
   return patch(next);
+}
+/**
+ * ★ 난이도별 최고 기록 (2026-10-28). 난이도가 생기기 전의 `catchBest` 는 그 시절 판이
+ * 지금의 '보통' 이었으므로 보통에 합친다 — 칸을 지우지 않고 읽을 때 큰 쪽을 쓴다.
+ */
+const CATCH_BEST_KEY = { easy: 'catchBestEasy', normal: 'catchBestNormal', hard: 'catchBestHard' };
+export function catchBests(p) {
+  return {
+    easy: p?.catchBestEasy | 0,
+    normal: Math.max(p?.catchBestNormal | 0, p?.catchBest | 0),
+    hard: p?.catchBestHard | 0,
+  };
+}
+/** 캐치볼 혼자 하기 난이도 */
+export function setCatchDifficulty(d) {
+  if (!CATCH_BEST_KEY[d]) return;
+  if (L.loadProfile().catchDifficulty !== d) patch({ catchDifficulty: d });
 }
 /** 캐치볼 1:1 대결 한 판의 승패 */
 export function recordCatchDuel(win) {

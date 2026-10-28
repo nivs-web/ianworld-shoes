@@ -41,7 +41,8 @@ for (let round = 1; round <= ROUNDS; round++) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   const hit = [0.85, 0.6, 0.4][(round - 1) % 3];
-  await page.goto(`http://127.0.0.1:${PORT}/tools/_catch-duel.html?auto=1&hit=${hit}`);
+  const diff = ['easy', 'normal', 'hard'][(round - 1) % 3];
+  await page.goto(`http://127.0.0.1:${PORT}/tools/_catch-duel.html?auto=1&hit=${hit}&diff=${diff}`);
 
   const read = () => page.evaluate(() => ['a', 'b'].map((k) => {
     const d = document.getElementById(k).contentDocument;
@@ -65,6 +66,7 @@ for (let round = 1; round <= ROUNDS; round++) {
   else {
     if (!a.st.ended || !b.st.ended) problems.push(`안 끝났다 (a:${a.st.phase} b:${b.st.phase})`);
     if (a.st.win === b.st.win) problems.push(`승패가 겹친다 (a:${a.st.win} b:${b.st.win})`);
+    if (a.st.diff !== diff || b.st.diff !== diff) problems.push(`난이도가 안 들어갔다 (a:${a.st.diff} b:${b.st.diff})`);
     if (a.st.score !== b.st.oppScore || b.st.score !== a.st.oppScore) problems.push(`점수가 어긋난다 a:${a.st.score}/${b.st.oppScore} b:${b.st.score}/${a.st.oppScore}`);
     if (a.st.lives !== b.st.oppLives || b.st.lives !== a.st.oppLives) problems.push(`공 수가 어긋난다 a:${a.st.lives}/${b.st.oppLives} b:${b.st.lives}/${a.st.oppLives}`);
     const loser = a.st.win ? b : a;
@@ -78,8 +80,8 @@ for (let round = 1; round <= ROUNDS; round++) {
   const line = a.st && b.st
     ? `점수 ${a.st.score}:${b.st.score} · 공 ${a.st.lives}:${b.st.lives} · 던지기 ${Math.max(a.st.seq, b.st.seq)}번 · ${a.st.win ? 'a' : 'b'} 승 · ${sec}초 · 결과창 "${a.title}" / "${b.title}"`
     : '';
-  if (problems.length) { failed++; console.log(`✗ ${round}판 (잡기 ${hit}) ${line}`); for (const p of problems) console.log('    ' + p); }
-  else console.log(`✓ ${round}판 (잡기 ${hit}) ${line}`);
+  if (problems.length) { failed++; console.log(`✗ ${round}판 (${diff} · 잡기 ${hit}) ${line}`); for (const p of problems) console.log('    ' + p); }
+  else console.log(`✓ ${round}판 (${diff} · 잡기 ${hit}) ${line}`);
   if (round === 1) await page.screenshot({ path: join(ROOT, 'tools/_out/catch-duel.png') }).catch(() => {});
   await page.close();
 }

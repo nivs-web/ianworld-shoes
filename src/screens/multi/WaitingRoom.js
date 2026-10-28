@@ -414,11 +414,9 @@ export default function WaitingRoom(nav, params = {}) {
         game === 'dragon' ? el('div.hint.duel-rule', S.duelRoomRule(DUEL_STAKE)) : null,
         game === 'catch' ? el('div.hint.duel-rule', S.catchRoomRule) : null,
 
-        /* 캐치볼은 난이도가 없다 — 랠리가 길어질수록 저절로 어려워진다 */
-        game === 'catch' ? null : el('div.diff-title', S.difficultyTitle),
-        game === 'catch'
-          ? null
-          : isHost
+        /* 캐치볼도 방장이 난이도를 고른다 (2026-10-28) — 문구만 캐치볼 것으로 */
+        el('div.diff-title', game === 'catch' ? S.catchDiffTitle : S.difficultyTitle),
+        isHost
           ? segmented(DIFFS, room.difficulty, (v) => Room.setRoomDifficulty(code, v))
           : el('div.hint', `${DIFFS.find((d) => d.value === room.difficulty)?.label ?? ''} · ${S.hostOnlyDifficulty}`),
 

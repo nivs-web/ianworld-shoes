@@ -155,7 +155,11 @@ export function defaultProfile() {
      * ★ **캐치볼** (오락실 3번째 게임, 2026-10-28).
      * 드래곤과 같은 이유로 칸을 따로 둔다. 돈이 없는 게임이라 기록과 전적뿐이다.
      */
-    catchBest: 0,           // 혼자 하기 최고 기록 (잡은 공)
+    catchBest: 0,           // (옛 칸) 난이도가 생기기 전의 최고 기록 — 보통으로 친다
+    catchBestEasy: 0,       // 혼자 하기 최고 기록 · 쉬움
+    catchBestNormal: 0,     // 혼자 하기 최고 기록 · 보통
+    catchBestHard: 0,       // 혼자 하기 최고 기록 · 어려움
+    catchDifficulty: 'normal',
     catchPlays: 0,          // 혼자 하기 판수
     catchWins: 0,           // 1:1 대결 승
     catchLosses: 0,         // 1:1 대결 패

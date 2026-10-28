@@ -29,7 +29,7 @@ const CatchGame = lazyScreen(() => import('./CatchGame.js'), S.catchTitle);
 const CARDS = [
   { id: 'find_shoes', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
   { id: 'dragon_striker', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
-  { id: 'catchball', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBest || 0), screen: () => CatchGame, ready: true },
+  { id: 'catchball', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
 ];
 
 export default function Portal(nav) {

@@ -12,8 +12,11 @@ basePatch({
   catchWins: Number(q.get('cw') ?? 4),
   catchLosses: Number(q.get('cl') ?? 2),
   catchTeam: q.get('team') ?? 'red',
+  catchBestEasy: 31, catchBestHard: 9, catchDifficulty: q.get('diff') ?? 'normal',
 });
 
 export function finishCatchRun(score) { const p = baseGet(); return basePatch({ catchBest: Math.max(p.catchBest | 0, score | 0) }); }
 export function recordCatchDuel(win) { const p = baseGet(); return basePatch(win ? { catchWins: (p.catchWins | 0) + 1 } : { catchLosses: (p.catchLosses | 0) + 1 }); }
 export function setCatchTeam(team) { return basePatch({ catchTeam: team }); }
+export function setCatchDifficulty(d) { return basePatch({ catchDifficulty: d }); }
+export function catchBests(p) { return { easy: p.catchBestEasy | 0, normal: Math.max(p.catchBestNormal | 0, p.catchBest | 0), hard: p.catchBestHard | 0 }; }
