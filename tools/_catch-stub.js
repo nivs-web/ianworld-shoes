@@ -15,7 +15,12 @@ basePatch({
   catchBestEasy: 31, catchBestHard: 9, catchDifficulty: q.get('diff') ?? 'normal',
 });
 
-export function finishCatchRun(score) { const p = baseGet(); return basePatch({ catchBest: Math.max(p.catchBest | 0, score | 0) }); }
+export function finishCatchRun(r) { const p = baseGet(); return basePatch({ catchBest: Math.max(p.catchBest | 0, r?.score | 0) }); }
+export function catchCombos(p) { return { easy: p.catchComboEasy | 0, normal: p.catchComboNormal | 0, hard: p.catchComboHard | 0 }; }
+export function catchProgress(p) { return { bestLevel: Math.max(1, p.catchBestLevel | 0), bestStrikes: p.catchBestStrikes | 0, hats: p.catchHats || [0], balls: p.catchBalls || [0] }; }
+export function saveCatchProgress(pr) { const p = baseGet(); return basePatch({ catchBestLevel: Math.max(p.catchBestLevel | 0, pr?.bestLevel | 0), catchBestStrikes: Math.max(p.catchBestStrikes | 0, pr?.bestStrikes | 0) }); }
+export function saveCatchOwned(o) { return basePatch({ catchHats: o?.hats || [0], catchBalls: o?.balls || [0] }); }
+export function setCatchLook(code, team) { return basePatch({ catchLook: code, ...(team ? { catchTeam: team } : {}) }); }
 export function recordCatchDuel(win) { const p = baseGet(); return basePatch(win ? { catchWins: (p.catchWins | 0) + 1 } : { catchLosses: (p.catchLosses | 0) + 1 }); }
 export function setCatchTeam(team) { return basePatch({ catchTeam: team }); }
 export function setCatchDifficulty(d) { return basePatch({ catchDifficulty: d }); }

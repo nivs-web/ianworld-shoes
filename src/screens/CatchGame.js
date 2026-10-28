@@ -14,11 +14,18 @@
  * 5초마다 생존 신호를 보낸다 — 상대 화면이 30초 동안 신호를 못 받으면 내가 나간 것으로 본다.
  *
  * 걸린 것이 없는 친선 대결이라 정산이 없다. 승패는 계정 기록(`catchWins/catchLosses`)에만 남는다.
+ *
+ * ## 꾸미기 · 선물함 · 명예의 전당 (2026-10-29)
+ * 게임이 콜백으로 알려 주면 여기서 프로필에 적는다 — onLook · onProgress · onClaim · onFinish.
+ * 순위 문서(`catchPlayers/{uid}`)는 프로필이 바뀔 때 `services/catchRank.js` 가 몰아서 올린다.
+ * 대결 상대의 모습은 그 순위 문서에서 읽어 와 게임에 넣는다(`setOppLook`) — 못 읽으면 팀 모자 친구 모습.
  */
 
 import S from '../config/strings.ko.js';
 import { el, toast } from './ui.js';
-import { get as getProfile, finishCatchRun, recordCatchDuel, setCatchTeam, setCatchDifficulty, catchBests } from '../services/profile.js';
+import { get as getProfile, finishCatchRun, recordCatchDuel, setCatchTeam, setCatchDifficulty, catchBests,
+  catchCombos, catchProgress, saveCatchProgress, saveCatchOwned, setCatchLook } from '../services/profile.js';
+import { fetchCatchLook, syncCatchPlayer } from '../services/catchRank.js';
 import { unlockOrientation } from '../core/fullscreen.js';
 import { setGameGuard } from './router.js';
 import { stopLoop, startLoop, isRunning } from '../core/loop.js';
@@ -30,6 +37,19 @@ import { MULTI } from '../config/balance.js';
 import { lazyScreen } from './lazyScreen.js';
 
 const CatchMultiMenu = lazyScreen(() => import('./multi/CatchMultiMenu.js'), S.catchDuelTitle);
+const CatchRanking = lazyScreen(() => import('./CatchRanking.js'), S.catchRankTitle);
+
+/** 혼자 하기 · 대결 공통 — 꾸미기 · 성장 · 선물 */
+function lookOpts(p) {
+  return {
+    team: p.catchTeam || 'red',
+    look: p.catchLook || null,
+    progress: catchProgress(p),
+    onLook(look, code) { setCatchLook(code, look?.team); },
+    onProgress(pr) { saveCatchProgress(pr); },
+    onClaim(o) { saveCatchOwned(o); },
+  };
+}
 
 /** 게임 코드는 누를 때 받는다 — 다른 게임만 하는 사람의 부팅 번들에 넣지 않는다 */
 let mod = null;
@@ -85,12 +105,18 @@ export default function CatchGame(nav, opt = {}) {
       : String(myUid) < String(oppUid);
     const startAt = Number(room.startAt) || Date.now();
 
+    /* 내 모습을 순위 문서에 올려 둔다 — 상대 화면이 거기서 읽는다 */
+    syncCatchPlayer().catch(() => {});
+    let oppLook = null;
+    if (oppUid) fetchCatchLook(oppUid).then((code) => { if (!live || !code) return; oppLook = code; mod?.setOppLook?.(code); });
+
     Room.msUntilStart(startAt).catch(() => 3000).then((ms) => {
       if (!live) return;
       m.mount(host, {
         mode: 'duel',
-        team: p.catchTeam || 'red',
+        ...lookOpts(p),
         duel: {
+          oppLook,
           gid: String(startAt % 1000000),
           iStart,
           myName: p.nickname || '나',
@@ -155,14 +181,16 @@ export default function CatchGame(nav, opt = {}) {
         const p = getProfile();
         m.mount(host, {
           mode: 'solo',
-          team: p.catchTeam || 'red',
+          ...lookOpts(p),
           difficulty: p.catchDifficulty || 'normal',
           bests: catchBests(p),
+          combos: catchCombos(p),
           duelRecord: { wins: p.catchWins | 0, losses: p.catchLosses | 0 },
-          onFinish(score, diff) { finishCatchRun(score, diff); },
+          onFinish(r) { finishCatchRun(r); },
           onDifficulty(d) { setCatchDifficulty(d); },
           onTeam(t) { setCatchTeam(t); },
           onDuel() { if (live) nav.push(CatchMultiMenu); },
+          onRanking() { if (live) nav.push(CatchRanking, { diff: getProfile().catchDifficulty }); },
           onExit() { if (live) nav.back(); },
         });
       }).catch((e) => {

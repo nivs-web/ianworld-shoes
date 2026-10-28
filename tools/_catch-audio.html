@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>캐치볼 소리 시험</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { color-scheme: light dark; --bg: #f4f1ea; --fg: #222; --card: #fff; --line: #d8d2c4; --acc: #2f7d4f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #16181c; --fg: #e8e6e1; --card: #22252b; --line: #3a3e46; --acc: #5cc28a; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 15px/1.4 system-ui, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.note { margin: 0 0 14px; opacity: .75; font-size: 13px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  h2 { font-size: 14px; margin: 0 0 8px; opacity: .8; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { font: inherit; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; touch-action: manipulation; }
+  button:active { transform: translateY(1px); }
+  button.on { background: var(--acc); color: #fff; border-color: var(--acc); }
+  #state { font: 12px/1.4 ui-monospace, monospace; opacity: .8; }
+</style>
+</head>
+<body>
+<h1>캐치볼 소리 시험</h1>
+<p class="note">버튼을 누르면 소리가 납니다. (처음 한 번은 눌러야 소리가 켜져요)</p>
+
+<section>
+  <h2>설정</h2>
+  <div class="row">
+    <button id="mute">효과음 끄기</button>
+    <button id="bgmToggle">음악 끄기</button>
+    <button id="pause">일시정지</button>
+    <button id="resume">이어하기</button>
+    <button id="say">음성: 스트라이크!</button>
+  </div>
+  <p id="state"></p>
+</section>
+
+<section>
+  <h2>배경음악</h2>
+  <div class="row" id="moods"></div>
+</section>
+
+<section>
+  <h2>포구 (가장 중요)</h2>
+  <div class="row" id="catch"></div>
+</section>
+
+<section>
+  <h2>던지기 · 구종</h2>
+  <div class="row" id="throw"></div>
+</section>
+
+<section>
+  <h2>공 · 판정</h2>
+  <div class="row" id="ball"></div>
+</section>
+
+<section>
+  <h2>화면 · 보상</h2>
+  <div class="row" id="ui"></div>
+</section>
+
+<section>
+  <h2>환경</h2>
+  <div class="row" id="env"></div>
+</section>
+
+<script type="module">
+import { createAudio } from '/src/games/catch/audio.js';
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('catchAudioTest.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('catchAudioTest.' + k, JSON.stringify(v)); } catch { /* 무시 */ } },
+};
+const audio = createAudio(store);
+window.__audio = audio;
+
+const $ = (id) => document.getElementById(id);
+function btn(parent, label, fn) {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.addEventListener('click', () => { audio.init(); fn(b); refresh(); });
+  $(parent).appendChild(b);
+  return b;
+}
+const sfx = (parent, label, name, opt) => btn(parent, label, () => audio.play(name, opt));
+
+let mood = null;
+const moodBtns = {};
+[['title', '타이틀 (100)'], ['game', '경기 (120)'], ['duel', '대결 (132)'], [null, '음악 멈춤']].forEach(([m, label]) => {
+  moodBtns[m] = btn('moods', label, () => { mood = m; audio.bgm(m); });
+});
+
+sfx('catch', '퍼펙트 포구', 'catch', { grade: 'perfect' });
+sfx('catch', '그레잇 포구', 'catch', { grade: 'great' });
+sfx('catch', '나이스 포구', 'catch', { grade: 'nice' });
+sfx('catch', '늦은 포구', 'catch', { grade: 'late' });
+sfx('catch', '친구가 받음', 'catchSoft');
+sfx('catch', '헛손질', 'whiff');
+sfx('catch', '글러브 맞고 튕김', 'deflect');
+
+sfx('throw', '던지기 느림', 'throw', { speed: 0 });
+sfx('throw', '던지기 보통', 'throw', { speed: 1 });
+sfx('throw', '던지기 빠름', 'throw', { speed: 2 });
+sfx('throw', '직구 고름', 'pitchSelect', { kind: 'straight' });
+sfx('throw', '커브 고름', 'pitchSelect', { kind: 'curve' });
+sfx('throw', '슬라이더 고름', 'pitchSelect', { kind: 'slider' });
+sfx('throw', '포크 고름', 'pitchSelect', { kind: 'fork' });
+
+sfx('ball', '잔디에 튐', 'bounce');
+sfx('ball', '놓침', 'miss');
+sfx('ball', '스트라이크', 'strike');
+sfx('ball', '볼', 'ball');
+sfx('ball', '악송구', 'error');
+sfx('ball', '아웃', 'out');
+
+sfx('ui', '메뉴 버튼', 'select');
+sfx('ui', '탭', 'tab');
+sfx('ui', '카운트다운', 'countdown');
+sfx('ui', '시작!', 'go');
+sfx('ui', '레벨 업', 'levelUp');
+sfx('ui', '아이템 열림', 'unlock');
+sfx('ui', '게임 끝', 'gameOver');
+sfx('ui', '승리', 'win');
+sfx('ui', '패배', 'lose');
+
+sfx('env', '약한 바람', 'wind', { strength: 0.2 });
+sfx('env', '센 바람', 'wind', { strength: 1 });
+sfx('env', '관중 함성', 'cheer');
+btn('env', '3·2·1·시작 연속', () => {
+  [0, 700, 1400].forEach((ms) => setTimeout(() => audio.play('countdown'), ms));
+  setTimeout(() => audio.play('go'), 2100);
+});
+btn('env', '던지고 받기', () => {
+  audio.play('throw', { speed: 1 });
+  setTimeout(() => audio.play('catchSoft'), 650);
+  setTimeout(() => audio.play('throw', { speed: 2 }), 1500);
+  setTimeout(() => audio.play('catch', { grade: 'perfect' }), 1900);
+});
+
+$('mute').addEventListener('click', () => { audio.init(); audio.setMuted(!audio.muted); refresh(); });
+$('bgmToggle').addEventListener('click', () => { audio.init(); audio.setBgm(!audio.bgmOn); refresh(); });
+$('pause').addEventListener('click', () => { audio.pause(); refresh(); });
+$('resume').addEventListener('click', () => { audio.init(); audio.resume(); refresh(); });
+$('say').addEventListener('click', () => { audio.init(); audio.say('스트라이크!'); });
+
+function refresh() {
+  $('mute').textContent = audio.muted ? '효과음 켜기' : '효과음 끄기';
+  $('mute').classList.toggle('on', audio.muted);
+  $('bgmToggle').textContent = audio.bgmOn ? '음악 끄기' : '음악 켜기';
+  $('bgmToggle').classList.toggle('on', !audio.bgmOn);
+  Object.entries(moodBtns).forEach(([m, b]) => b.classList.toggle('on', String(mood) === m && m !== 'null'));
+  $('state').textContent = `효과음 ${audio.muted ? '꺼짐' : '켜짐'} · 음악 ${audio.bgmOn ? '켜짐' : '꺼짐'} · 분위기 ${mood || '없음'}`;
+}
+refresh();
+</script>
+</body>
+</html>

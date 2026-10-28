@@ -12,6 +12,7 @@ import { NICKNAME } from '../config/balance.js';
 import { isTestAccount } from '../config/testAccount.js';
 import * as Dex from './collection.js';
 import * as Rank from './leaderboard.js';
+import { syncCatchPlayerSoon } from './catchRank.js';
 /** 착용 자리 목록 — 표가 유일한 진실이라 슬롯이 늘어도 여기가 저절로 따라온다 */
 import { ITEM_CATS } from '../data/items.js';
 
@@ -46,6 +47,13 @@ function mergeWallet(a = {}, b = {}) {
  * 원격이 비어 있으면 로컬을 쓰고, 둘 다 있으면 원격(다른 기기에서 바꿨을 수 있다).
  */
 const pickName = (local, remote) => (remote || local || '');
+
+/** 번호 목록 합치기 (캐치볼 선물) — 한 기기에서 받은 선물이 다른 기기 값에 덮여 사라지면 안 된다 */
+function unionInts(a, b) {
+  const s = new Set([0]);
+  for (const v of [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])]) if (Number.isInteger(v) && v >= 0 && v < 64) s.add(v);
+  return [...s].sort((x, y) => x - y);
+}
 
 /** 뱃지 도장 병합 — 0은 "아직"이라 절대 이기지 못한다 */
 function earliestStamp(a, b) {
@@ -248,6 +256,15 @@ export async function pullRemote() {
     catchWins: Math.max(local.catchWins ?? 0, remote.catchWins ?? 0),
     catchLosses: Math.max(local.catchLosses ?? 0, remote.catchLosses ?? 0),
     catchTeam: remote.catchTeam ?? local.catchTeam ?? 'red',
+    /* 캐치볼 꾸미기는 마지막에 고른 쪽 · 받은 선물은 합친다(잃지 않는다) · 기록은 큰 쪽 */
+    catchLook: remote.catchLook || local.catchLook || '',
+    catchBestLevel: Math.max(local.catchBestLevel ?? 1, remote.catchBestLevel ?? 1),
+    catchBestStrikes: Math.max(local.catchBestStrikes ?? 0, remote.catchBestStrikes ?? 0),
+    catchHats: unionInts(local.catchHats, remote.catchHats),
+    catchBalls: unionInts(local.catchBalls, remote.catchBalls),
+    catchComboEasy: Math.max(local.catchComboEasy ?? 0, remote.catchComboEasy ?? 0),
+    catchComboNormal: Math.max(local.catchComboNormal ?? 0, remote.catchComboNormal ?? 0),
+    catchComboHard: Math.max(local.catchComboHard ?? 0, remote.catchComboHard ?? 0),
   };
   L.reconcile(merged);
   L.saveProfile(merged);
@@ -363,13 +380,55 @@ export function spendDragonCoins(n) {
  * 기록이 오를 때만 기록 칸을 쓴다(판수는 매번). 점수는 게임이 보낸 값이라 상한을 둔다.
  */
 const CATCH_SCORE_CAP = 9999;
-export function finishCatchRun(score, diff = 'normal') {
+/** @param {{score:number, diff:string, maxCombo?:number, maxStrikes?:number, level?:number}} r */
+export function finishCatchRun(r) {
   const before = L.loadProfile();
-  const s = clampInt(score, 0, CATCH_SCORE_CAP);
-  const key = CATCH_BEST_KEY[diff] || CATCH_BEST_KEY.normal;
+  const diff = CATCH_BEST_KEY[r?.diff] ? r.diff : 'normal';
+  const s = clampInt(r?.score, 0, CATCH_SCORE_CAP);
+  const combo = clampInt(r?.maxCombo, 0, CATCH_SCORE_CAP);
   const next = { catchPlays: (before.catchPlays || 0) + 1 };
-  if (s > (catchBests(before)[diff] ?? 0)) next[key] = s;
-  return patch(next);
+  if (s > (catchBests(before)[diff] ?? 0)) next[CATCH_BEST_KEY[diff]] = s;
+  if (combo > (before[CATCH_COMBO_KEY[diff]] | 0)) next[CATCH_COMBO_KEY[diff]] = combo;
+  const out = patch(next);
+  saveCatchProgress({ bestLevel: r?.level, bestStrikes: r?.maxStrikes });
+  syncCatchPlayerSoon();
+  return out;
+}
+const CATCH_COMBO_KEY = { easy: 'catchComboEasy', normal: 'catchComboNormal', hard: 'catchComboHard' };
+export function catchCombos(p) {
+  return { easy: p?.catchComboEasy | 0, normal: p?.catchComboNormal | 0, hard: p?.catchComboHard | 0 };
+}
+/** 최고 레벨 · 연속 스트라이크 — 오를 때만 쓴다 (게임 중에도 불린다) */
+export function saveCatchProgress(pr) {
+  const b = L.loadProfile();
+  const next = {};
+  const lv = clampInt(pr?.bestLevel, 1, 10), st = clampInt(pr?.bestStrikes, 0, CATCH_SCORE_CAP);
+  if (lv > (b.catchBestLevel | 0)) next.catchBestLevel = lv;
+  if (st > (b.catchBestStrikes | 0)) next.catchBestStrikes = st;
+  if (Object.keys(next).length) { patch(next); syncCatchPlayerSoon(); }
+}
+/** 선물함에서 받은 모자 · 야구공 */
+export function saveCatchOwned(o) {
+  const b = L.loadProfile();
+  const hats = unionInts(b.catchHats, o?.hats), balls = unionInts(b.catchBalls, o?.balls);
+  if (hats.join() !== unionInts(b.catchHats).join() || balls.join() !== unionInts(b.catchBalls).join()) patch({ catchHats: hats, catchBalls: balls });
+}
+/** 꾸미기 한 줄 (art.encodeLook) — 순위표에도 이 모습이 뜬다 */
+export function setCatchLook(code, team) {
+  if (typeof code !== 'string' || code.length > 64) return;
+  const b = L.loadProfile();
+  const next = {};
+  if (b.catchLook !== code) next.catchLook = code;
+  if (team && b.catchTeam !== team) next.catchTeam = team;
+  if (Object.keys(next).length) { patch(next); syncCatchPlayerSoon(3000); }
+}
+export function catchProgress(p) {
+  return {
+    bestLevel: Math.max(1, p?.catchBestLevel | 0),
+    bestStrikes: p?.catchBestStrikes | 0,
+    hats: unionInts(p?.catchHats),
+    balls: unionInts(p?.catchBalls),
+  };
 }
 /**
  * ★ 난이도별 최고 기록 (2026-10-28). 난이도가 생기기 전의 `catchBest` 는 그 시절 판이
@@ -391,11 +450,13 @@ export function setCatchDifficulty(d) {
 /** 캐치볼 1:1 대결 한 판의 승패 */
 export function recordCatchDuel(win) {
   const b = L.loadProfile();
-  return patch(win ? { catchWins: (b.catchWins || 0) + 1 } : { catchLosses: (b.catchLosses || 0) + 1 });
+  const out = patch(win ? { catchWins: (b.catchWins || 0) + 1 } : { catchLosses: (b.catchLosses || 0) + 1 });
+  syncCatchPlayerSoon();
+  return out;
 }
 /** 캐치볼 유니폼 색 */
 export function setCatchTeam(team) {
-  if (!['red', 'blue', 'yellow', 'purple'].includes(team)) return;
+  if (!['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'pink', 'navy'].includes(team)) return;
   if (L.loadProfile().catchTeam !== team) patch({ catchTeam: team });
 }
 

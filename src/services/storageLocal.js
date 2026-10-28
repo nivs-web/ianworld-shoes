@@ -165,6 +165,19 @@ export function defaultProfile() {
     catchLosses: 0,         // 1:1 대결 패
     catchTeam: 'red',       // 유니폼 색
     /**
+     * ★ 캐치볼 꾸미기 · 성장 (2026-10-29, 사용자 지정)
+     * 꾸미기는 `games/catch/art.js` 의 `encodeLook` 한 줄(숫자 14개)이다 — 서비스가 그림 모듈을 물지 않게.
+     * 모자는 최고 레벨, 야구공은 최대 연속 스트라이크로 열리고 **선물함에서 받아야** 내 것이 된다.
+     */
+    catchLook: '',
+    catchBestLevel: 1,      // 혼자 하기에서 도달한 가장 높은 레벨 (1~10)
+    catchBestStrikes: 0,    // 연속 스트라이크 최고 기록
+    catchHats: [0],         // 받은 모자 번호
+    catchBalls: [0],        // 받은 야구공 번호
+    catchComboEasy: 0,      // 연속 캐치 최고 (난이도별)
+    catchComboNormal: 0,
+    catchComboHard: 0,
+    /**
      * 기간별 멀티 승수 (2026-08-19 23차) — 멀티게임순위의 오늘·주간·월간 탭.
      * `{ dy: {k, n}, wk: {k, n}, mo: {k, n} }` — `k` 는 그 기간의 키, `n` 은 승수.
      * 키가 바뀌면 `n` 을 1부터 다시 센다(그게 곧 리셋이다).

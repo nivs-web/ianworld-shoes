@@ -131,6 +131,45 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── 캐치볼 명예의 전당 (2026-10-29) ─────────────────────────
+    //
+    // 계정당 한 장(`catchPlayers/{uid}`). 순위에 보일 값만 담은 공개 문서다 —
+    // `users` 는 list 가 한 건으로 묶여 있어서 바로 정렬할 수 없다(위 2026-08-29 점검).
+    // ★ 색인이 필요 없다. 모든 조회가 필드 하나로만 정렬한다.
+    // ★ 기록은 내려가지 않는다 · 상한 · 종합점수 식(services/catchRank.js 의 totalOf)을 여기서 강제한다.
+
+    function cbInt(v, maxV) { return v is int && v >= 0 && v <= maxV; }
+    function cbValid(uid, d) {
+      return d.uid == uid && d.uid == request.auth.uid
+          && d.keys().hasOnly(['uid', 'nickname', 'look', 'bestEasy', 'bestNormal', 'bestHard',
+                               'comboEasy', 'comboNormal', 'comboHard', 'strikes', 'level',
+                               'wins', 'losses', 'total', 'at'])
+          && d.nickname is string && d.nickname.size() <= 24
+          && d.look is string && d.look.size() <= 64
+          && cbInt(d.bestEasy, 9999) && cbInt(d.bestNormal, 9999) && cbInt(d.bestHard, 9999)
+          && cbInt(d.comboEasy, 9999) && cbInt(d.comboNormal, 9999) && cbInt(d.comboHard, 9999)
+          && cbInt(d.strikes, 9999)
+          && d.level is int && d.level >= 1 && d.level <= 10
+          && cbInt(d.wins, 100000) && cbInt(d.losses, 100000)
+          && d.total == d.bestEasy + d.bestNormal * 2 + d.bestHard * 3 + d.wins * 5
+          && d.at is int;
+    }
+    function cbNotDown(n, o) {
+      return n.bestEasy >= o.bestEasy && n.bestNormal >= o.bestNormal && n.bestHard >= o.bestHard
+          && n.comboEasy >= o.comboEasy && n.comboNormal >= o.comboNormal && n.comboHard >= o.comboHard
+          && n.strikes >= o.strikes && n.level >= o.level
+          && n.wins >= o.wins && n.losses >= o.losses;
+    }
+
+    match /catchPlayers/{uid} {
+      allow read: if true;
+      allow create: if signedIn() && cbValid(uid, request.resource.data);
+      // 같은 값도 통과시킨다 — 닉네임 · 꾸미기만 고치는 갱신이 지나가야 한다
+      allow update: if signedIn() && cbValid(uid, request.resource.data)
+                    && cbNotDown(request.resource.data, resource.data);
+      allow delete: if false;
+    }
+
     // 집계 캐시 — 읽기 전용. 쓰기는 서버(Cloud Functions)만.
     match /leaderboards/{doc} {
       allow read: if true;
