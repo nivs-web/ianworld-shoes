@@ -25,14 +25,17 @@
  *     공종류 칸 = 종류 번호 + (빠르기+1)×10
  *   · `ct` = `판|순번|결과`  (p 퍼펙트 · g 그레이트 · n 나이스 · l 아슬아슬 · m 놓침 · w 악송구)
  *
- * ## 던지기 (2026-10-29 개편, 사용자 지정 — 투포환 부채꼴 · 볼링 라인)
- *   > *"던질때 처음에 방향 맞추는거 터치 및 클릭해 … 그 다음에 직진 던지기 … 투포환 던지는 바닥 라인처럼
- *   >  부채꼴 라인 … 볼링 게임처럼 라인을 맞춰 직진으로 던지세요 … 진한 연두색 … 짧게 던지면 땅볼 … 길게 하면 뜬볼"*
- *   · ① **방향**: 바닥에 투포환 부채꼴이 깔린다. 던질 곳을 터치(클릭)하면 방향이 정해진다.
- *   · ② **직진 던지기**: 그 방향으로 진한 연두색 라인이 나온다. 라인을 따라 **라인 길이만큼** 손가락을 끈다.
- *     라인보다 짧으면 땅볼, 길면 뜬볼, 비스듬히 끌면 그만큼 옆으로 간다. 던지기 버튼을 꾹 눌러도 된다(누른 만큼 라인이 찬다).
- *   · 스트라이크 = 딱 좋은 길이 + 친구 가슴 쪽. 너무 짧게(공이 못 감) · 너무 길게(머리 위로) · 방향이 크게 벗어나면 실책.
- *     혼자 할 때 실책 3개면 아웃. 바람은 보통 · 어려움에서만 조금 민다.
+ * ## 던지기 (2026-10-29 3차, 사용자 지정 — 활쏘기 + 볼링, 1234player 베개 던지기처럼)
+ *   > *"방향 화살표가 오른쪽 왼쪽으로 빠르게 왔다갔다 하고 5분의 1의 확률로만 녹색 … 터치를 탁 하거나 왼쪽 버튼 …
+ *   >  손가락으로 튕겨서 앞으로 밀면서 손가락을 놔야해 … 흰색 가로 줄 … 그 흰 라인 근처에서 손을 떼야만 정확하게 …
+ *   >  옆으로 휘면 공도 그 방향으로 날라가서 아웃 … 공 위치에서부터 공을 터치하라고 터치 마크 … 너무 쉽지 않게"*
+ *   · ① **방향**: 바닥 부채꼴 안을 화살표가 일정한 빠르기로 왔다갔다 한다(삼각파 — 어느 자리에나 머무는 시간이 같다).
+ *     초록이 화살표가 머무는 시간의 **보통 1/5**(쉬움 26% · 어려움 15%), 나머지가 주황 · 빨강. 화면 아무 데나 톡
+ *     (또는 왼쪽 아래 버튼 · 스페이스)하는 **순간**의 방향으로 정해진다. 초록 = 친구 가슴, 주황 = 빗나감, 빨강 = 실책.
+ *   · ② **던지기**: 버튼은 다 숨긴다. 화면 아래 **공**을 누른 채 위로 휙 올려 **흰 가로 줄 근처에서 손을 뗀다.**
+ *     줄보다 일찍 떼면 땅볼(너무 일찍이면 실책), 줄을 넘어 떼면 뜬볼(너무 넘으면 머리 위로), 옆으로 휘어서 떼면
+ *     그만큼 옆으로 가고 많이 휘면 아웃. 천천히 밀어 올리면(놓는 순간이 느리면) 실책이다.
+ *   · 혼자 할 때 실책 3개면 아웃. 바람은 보통 · 어려움에서만 조금 민다.
  */
 
 import { CSS, HTML, BALL_SVG, FONT_HREF } from './ui.js';
@@ -152,22 +155,24 @@ function createGame(host, opts) {
   /**
    * ★ 난이도 — 받기와 던지기를 한꺼번에 바꾼다.
    *   받기: T 비행시간 · R 글러브 반경 · early 미리 눌러도 잡히는 시간 · spread 공 오는 폭 · typeGap 새 공 간격 · minT
-   *   던지기: band 딱 좋은 라인 길이 비율 [짧은 끝, 긴 끝] · strikeX 스트라이크로 치는 가로 폭(m)
+   *   던지기 ①: dirG/dirO 화살표가 초록 · (초록+주황)에 머무는 비율 · sweep 화살표가 끝에서 끝까지 가는 초
+   *   던지기 ②: relTol 흰 줄 위아래로 봐주는 폭(줄까지 거리 대비) · sideG/sideO 옆으로 휘어도 초록 · 주황인 폭
+   *           · vMin 놓는 순간 이보다 느리면 실책(px/ms) · strikeX 스트라이크 가로 폭(m)
    *           · wind 풍속 범위(m/s) · windK 바람이 공을 미는 정도(쉬움은 안 민다)
    *   per = 레벨 하나를 올리는 데 필요한 잡은 공
    */
   const DIFFS = {
-    easy:   { label: '쉬움',   T: 1.25, R: 1.22, early: 1.3,  spread: 0.75, typeGap: 1.6, minT: 0.6,  per: 15, band: [0.7, 1.35],  strikeX: 0.42, wind: [0, 2.5], windK: 0 },
-    normal: { label: '보통',   T: 1.0,  R: 1.0,  early: 1.0,  spread: 1.0,  typeGap: 1.0, minT: 0.48, per: 10, band: [0.8, 1.22],  strikeX: 0.3,  wind: [0.5, 5], windK: 0.5 },
-    hard:   { label: '어려움', T: 0.82, R: 0.84, early: 0.78, spread: 1.15, typeGap: 0.6, minT: 0.4,  per: 7,  band: [0.86, 1.15], strikeX: 0.22, wind: [2, 7.5], windK: 1 },
+    easy:   { label: '쉬움',   T: 1.25, R: 1.22, early: 1.3,  spread: 0.75, typeGap: 1.6, minT: 0.6,  per: 15, dirG: 0.26, dirO: 0.7, sweep: 0.8, relTol: 0.2, sideG: 0.12, sideO: 0.3, vMin: 0.45, strikeX: 0.42, wind: [0, 2.5], windK: 0 },
+    normal: { label: '보통',   T: 1.0,  R: 1.0,  early: 1.0,  spread: 1.0,  typeGap: 1.0, minT: 0.48, per: 10, dirG: 0.2, dirO: 0.6, sweep: 0.55, relTol: 0.14, sideG: 0.08, sideO: 0.22, vMin: 0.6, strikeX: 0.3,  wind: [0.5, 5], windK: 0.5 },
+    hard:   { label: '어려움', T: 0.82, R: 0.84, early: 0.78, spread: 1.15, typeGap: 0.6, minT: 0.4,  per: 7,  dirG: 0.15, dirO: 0.52, sweep: 0.42, relTol: 0.1, sideG: 0.06, sideO: 0.17, vMin: 0.75, strikeX: 0.22, wind: [2, 7.5], windK: 1 },
   };
-  /** 공 빠르기 — 0 느린 볼 · 1 중간 볼 · 2 빠른 볼. bandK = 딱 좋은 라인 길이 폭 배율(빠를수록 좁다) */
+  /** 공 빠르기 — 0 느린 볼 · 1 중간 볼 · 2 빠른 볼. bandK = 흰 줄에서 봐주는 폭(빠를수록 좁다) · sweepK = 화살표 빠르기(작을수록 빠르다) */
   const SPEEDS = [
-    { label: '느린 볼', T: 1.35, bandK: 1.15, calls: ['느린 볼~', '살살 간다~'] },
-    { label: '중간 볼', T: 1.0, bandK: 1.0, calls: ['간다~!', '받아!'] },
-    { label: '빠른 볼', T: 0.62, bandK: 0.8, calls: ['빠른 볼!!', '세게 간다!'] },
+    { label: '느린 볼', T: 1.35, bandK: 1.15, sweepK: 1.12, calls: ['느린 볼~', '살살 간다~'] },
+    { label: '중간 볼', T: 1.0, bandK: 1.0, sweepK: 1.0, calls: ['간다~!', '받아!'] },
+    { label: '빠른 볼', T: 0.62, bandK: 0.8, sweepK: 0.85, calls: ['빠른 볼!!', '세게 간다!'] },
   ];
-  /** 구종 — 직구 + 변화구 셋. 변화구는 받기 어렵지만 딱 좋은 라인 길이 폭이 조금 좁다 */
+  /** 구종 — 직구 + 변화구 셋. 변화구는 받기 어렵지만 흰 줄에서 봐주는 폭이 조금 좁다 */
   const PITCHES = [
     { label: '직구', type: 'normal', bandK: 1.0, Tk: 1.0, color: '#ffffff' },
     { label: '커브', type: 'curve', bandK: 0.92, Tk: 1.06, color: '#3fa9f5' },
@@ -599,87 +604,89 @@ function createGame(host, opts) {
     return Math.max(D ? DF().minT : 0.42, T * (D ? DF().T : 1) * SPEEDS[G.speed].T * PITCHES[G.pitch].Tk);
   }
 
-  /* ---------- 던지기 : 방향 · 직진 라인 · 판정 ---------- */
-  const SECTOR = 20 * Math.PI / 180;     // 투포환 부채꼴 반각
-  const CHARGE_TIME = 0.9;               // 던지기 버튼 · 스페이스를 이만큼 누르면 라인 끝(딱 좋은 길이)
+  /* ---------- 던지기 : ① 흔들리는 화살표 · ② 공을 위로 던져 흰 줄에서 놓기 · 판정 ---------- */
+  const SECTOR_X = 2.3;                  // 부채꼴이 친구 앞에서 벌어지는 반폭(m) — 화살표가 이 안을 왔다갔다
   const LIME = '#4cc417', LIME_HI = '#8cf04a';
-  /** 딱 좋은 라인 길이 비율 — 난이도 · 빠르기 · 구종이 폭을 바꾼다 */
+  const ZCOL = { g: '#3dff7a', o: '#ffb02e', r: '#ff4a3a' };
+  /** 흰 줄에서 봐주는 범위(줄까지 거리 대비) — 난이도 · 빠르기 · 구종이 폭을 바꾼다 */
   function throwBand() {
-    const k = SPEEDS[G.speed].bandK * PITCHES[G.pitch].bandK;
-    const [lo, hi] = DF().band;
-    return { lo: 1 - (1 - lo) * k, hi: 1 + (hi - 1) * k };
+    const k = SPEEDS[G.speed].bandK * PITCHES[G.pitch].bandK, t = DF().relTol * k;
+    return { lo: 1 - t, hi: 1 + t };
   }
   const zoneC = () => ({ x: M.x, y: 1.05 });
   /** 부채꼴 꼭짓점 — 내 발 앞 */
   const throwOrigin = () => ({ x: P.bodyX - 0.12, z: 0.45 });
-  /** 조준은 친구 쪽 면(z)에서의 가로 위치(A.bx)로 정한다 */
+  /** 친구 쪽 면(z) — 조준은 이 면에서의 가로 위치로 그린다 */
   const aimZ = () => M.z - 0.25;
-  function clampAim(x) {
-    const o = throwOrigin(), lim = Math.tan(SECTOR) * (aimZ() - o.z);
-    return clamp(x, o.x - lim, o.x + lim);
+  /** 화살표 자리(-1 ~ 1) → 초록 · 주황 · 빨강 */
+  const dirZone = (f) => { const a = Math.abs(f); return a <= DF().dirG ? 'g' : a <= DF().dirO ? 'o' : 'r'; };
+  /** 화살표가 한쪽 끝에서 다른 끝까지 가는 시간 — 빠른 볼일수록 빠르다 */
+  const sweepT = () => DF().sweep * SPEEDS[G.speed].sweepK;
+  /** 삼각파 — 일정한 빠르기로 왔다갔다 (어느 자리에나 머무는 시간이 같다 → 초록에 있는 시간 = dirG) */
+  const tri = (x) => 4 * Math.abs(x - Math.floor(x + 0.5)) - 1;
+  const aimFrac = () => tri(A.osc / (2 * sweepT()) + A.phase0);
+  /** 화살표가 가리키는 친구 면의 가로 위치 (그림용) */
+  const fracX = (f) => M.x + f * SECTOR_X;
+  /** 실제로 공이 가는 가로 위치 — 초록은 스트라이크 폭 안, 주황은 그 밖(잡을 수는 있다), 빨강은 실책 */
+  function landX(f) {
+    const g = DF().dirG, o = DF().dirO, sx = DF().strikeX, a = Math.abs(f), sg = Math.sign(f) || 1;
+    if (a <= g) return M.x + (f / g) * sx * 0.6;
+    if (a <= o) return M.x + sg * (sx + ((a - g) / (o - g)) * (0.95 - sx));
+    return M.x + sg * 2.1;
   }
-  /** 화면의 한 점 → 그 방향으로 던졌을 때 친구 면에서의 가로 위치 (바닥을 찍으면 부채꼴 꼭짓점에서 그 점 쪽) */
-  function aimXAt(sx, sy) {
-    const o = throwOrigin(), az = aimZ();
-    const px = (sx - CX) / F, py = (CY - sy) / F;
-    const dY = py * cosP - sinP;
-    if (dY < -1e-4) {
-      const t = -cam.y / dY, gx = cam.x + px * t, gz = cam.z + (py * sinP + cosP) * t;
-      if (gz > o.z + 0.6 && gz < az) return clampAim(o.x + (gx - o.x) * (az - o.z) / (gz - o.z));
-    }
-    return clampAim(unproject(sx, sy, az).x);
+  /** ② 화면 아래 공 자리 · 흰 줄 높이 (화면 좌표) */
+  function flickGeom() {
+    const bx = clamp(proj(P.bodyX - 0.1, 0, 0).x, 70, W - 70);
+    const by = portrait ? H - SAFE.b - 118 : H - SAFE.b - 62;
+    const D = portrait ? clamp(H * 0.26, 140, 240) : clamp(H * 0.36, 105, 160);
+    return { bx, by, R: 30, D, ly: by - D };
   }
-  /** 화면 위 직진 라인 — 시작점 · 방향(단위) · 딱 좋은 길이 L(px) */
-  function guideGeom() {
-    const o = throwOrigin(), az = aimZ();
-    const ang = Math.atan2(A.bx - o.x, az - o.z);
-    const s0 = proj(o.x + Math.sin(ang) * 1.3, 0, o.z + Math.cos(ang) * 1.3);
-    const far = proj(A.bx, 0, az);
-    let ux = far.x - s0.x, uy = far.y - s0.y;
-    const dist = Math.hypot(ux, uy) || 1; ux /= dist; uy /= dist;
-    const L = Math.max(110, Math.min(clamp(Math.min(W, H) * 0.36, 120, 230), dist * 0.7));
-    return { sx: s0.x, sy: s0.y, ux, uy, L, ang };
-  }
-  /** 끈 거리 → 라인 길이 비율 r · 옆으로 벗어난 각도 */
-  function dragRatio(dx, dy) {
-    const g = guideGeom();
-    const along = dx * g.ux + dy * g.uy, side = dy * g.ux - dx * g.uy;
-    return { r: along / g.L, along, side, ang: Math.atan2(side, Math.max(1, along)) };
-  }
+  /** 화면이 큰 기기(태블릿 · PC)는 같은 손놀림이 더 빠르게 잡히니 기준을 올린다 */
+  const flickScale = () => clamp(Math.min(W, H) / 400, 0.85, 1.5);
+  /** 놓은 높이(흰 줄 = 1) → 땅볼 · 직구 · 뜬볼 */
   function kindOf(r) {
     const b = throwBand();
-    return r < 0.3 ? 'dud' : r < b.lo ? 'ground' : r <= b.hi ? 'line' : r <= 1.9 ? 'fly' : 'over';
+    return r < 0.45 ? 'dud' : r < b.lo ? 'ground' : r <= b.hi ? 'line' : r <= 1.75 ? 'fly' : 'over';
   }
-  const KIND_WORD = { dud: '너무 약해요', ground: '땅볼', line: '딱 좋아요!', fly: '뜬볼', over: '너무 세요!' };
-  const KIND_COL = { dud: '#ff6b5e', ground: '#ffb347', line: LIME_HI, fly: '#8fd3ff', over: '#ff6b5e' };
-  /** 방향 확정 → ② 직진 던지기 */
+  /** 옆으로 휜 정도(줄까지 거리 대비) → 초록 · 주황 · 빨강 */
+  const sideZone = (sd) => { const a = Math.abs(sd); return a <= DF().sideG ? 'g' : a <= DF().sideO ? 'o' : 'r'; };
+  const KIND_WORD = { dud: '너무 일찍 놓았어요', ground: '땅볼', line: '딱 좋아요!', fly: '뜬볼', over: '너무 넘었어요', slow: '너무 천천히!' };
+  const KIND_COL = { dud: '#ff6b5e', ground: '#ffb347', line: LIME_HI, fly: '#8fd3ff', over: '#ff6b5e', slow: '#ff6b5e' };
+  /** ① 화살표 멈추기 — 누른 **순간**의 방향으로 정한다 (타이밍!) */
   function confirmDir() {
     if (A.step !== 'dir') return;
-    A.step = 'swipe'; A.drag = null; A.charge = -1;
-    sfx('select');
+    A.frac = aimFrac(); A.zone = dirZone(A.frac); A.bx = fracX(A.frac);
+    A.step = 'swipe'; A.drag = null; A.nag = 0;
+    $('hint').hidden = true;                  // ① 안내가 ② 글자를 가리지 않게
+    sfx(A.zone === 'g' ? 'select' : 'tab');
     const p = proj(A.bx, 1.4, aimZ());
-    popText('방향 결정!', p.x, p.y - 20, LIME_HI, 22, 0.8);
-    if (!G.tut.swipe2) tutorial('swipe2', fineMouse
-      ? '② 연두색 라인을 따라 직진으로 끌어서 놓아요\n라인보다 짧으면 땅볼, 길면 뜬볼'
-      : '② 연두색 라인을 따라 직진으로 쭉 밀어요\n라인보다 짧으면 땅볼, 길면 뜬볼');
+    popText(A.zone === 'g' ? '방향 좋아요!' : A.zone === 'o' ? '조금 빗나가요' : '빗나가요!', p.x, p.y - 20, ZCOL[A.zone], 22, 0.9);
   }
-  /** 끌어서 던지기 — 라인 방향으로 밀지 않았으면 false */
-  function swipeThrow(dx, dy) {
-    const d = dragRatio(dx, dy);
-    if (d.along < 12) return false;
-    doThrow({ r: d.r, dev: Math.tan(clamp(d.ang, -0.6, 0.6)) * (aimZ() - throwOrigin().z) * 0.3 });
+  /** ② 놓은 순간 판정 — 높이(흰 줄 기준) · 옆으로 휜 정도 · 빠르기(마지막 0.1초) */
+  function releaseOf(pts) {
+    if (!pts || pts.length < 2) return null;
+    const g = flickGeom(), st = pts[0], end = pts[pts.length - 1];
+    let s0 = st;
+    for (let i = pts.length - 1; i >= 0; i--) { s0 = pts[i]; if (end.t - pts[i].t >= 100) break; }
+    const dt = Math.max(16, end.t - s0.t);
+    return {
+      v: (s0.y - end.y) / dt / flickScale(),       // 위로 올라가는 빠르기 (px/ms)
+      rel: (g.by - end.y) / g.D,                   // 1 = 흰 줄
+      side: (end.x - g.bx) / g.D,                  // + 오른쪽으로 휨
+      total: Math.hypot(end.x - st.x, end.y - st.y),
+    };
+  }
+  /** 놓은 결과로 던진다 — 위로 던지지 않았으면 false */
+  function releaseThrow(rl) {
+    if (!rl || rl.total < 24 || rl.rel < 0.12) return false;
+    doThrow({ r: rl.rel, side: rl.side, slow: rl.v < DF().vMin });
     return true;
   }
-  function chargeStart(via) {
+  /** 던지기 버튼 · 스페이스 — ① 에서만 쓴다(화살표 멈추기). ② 는 공을 직접 던져야 한다 */
+  function throwKey() {
     if (G.paused || G.phase !== 'holding') return;
     if (A.step === 'dir') { confirmDir(); return; }
-    if (A.charge >= 0) return;
-    A.charge = 0; A.chargeVia = via;
-  }
-  function chargeEnd(via) {
-    if (!(A.charge >= 0) || A.chargeVia !== via) return;
-    const r = A.charge; A.charge = -1;
-    doThrow({ r, dev: 0 });
+    showHint(fineMouse ? '공을 클릭한 채로 위로 휙 끌어 올려\n흰색 줄에서 놓으세요!' : '공을 터치한 채로 위로 휙 던져\n흰색 줄에서 손을 떼세요!', 2.2);
   }
   function newWind() {
     const [a, b] = DF().wind;
@@ -880,63 +887,79 @@ function createGame(host, opts) {
   /* ---------- 던질 차례 ---------- */
   function beginHolding() {
     setPhase('holding');
-    A.step = 'dir'; A.bx = M.x; A.drag = null; A.charge = -1;
+    A.step = 'dir'; A.osc = 0; A.phase0 = Math.random(); A.drag = null;
+    A.frac = aimFrac(); A.zone = dirZone(A.frac); A.bx = fracX(A.frac);
     newWind();
     if (DF().windK > 0 && WIND.spd > 1.5) sfx('wind', { strength: clamp(WIND.spd / 7.5, 0, 1) });
     setPose('ready');
     syncThrowPanel();
     const tap = fineMouse ? '클릭' : '터치';
     if (D) {
-      if (!G.tut.dthrow) tutorial('dthrow', `내 차례! ① 던질 방향을 ${tap}\n② 연두색 라인 길이만큼 직진으로 쭉!`);
+      if (!G.tut.dthrow) tutorial('dthrow', `내 차례! ① 화살표가 초록일 때 ${tap}!\n② 공을 위로 던져 흰 줄에서 놓아요`);
       return;
     }
     if (G.round <= 2 || Math.random() < 0.3) say(pick(['여기!', '이쪽이야!', '던져~!']), 0.9);
-    if (!G.tut.throw) tutorial('throw', `① 던질 방향을 ${tap}하세요\n바닥의 부채꼴 안에서 골라요`);
-    else if (!G.tut.speed && G.round >= 3) tutorial('speed', '빠르기와 구종을 고를 수 있어요\n빠를수록·변화구일수록 딱 좋은 길이가 좁아져요');
+    if (!G.tut.throw) tutorial('throw', `① 화살표가 초록일 때 화면을 ${tap}!\n왼쪽 아래 [방향 탁!] 버튼을 눌러도 돼요`);
+    else if (!G.tut.speed && G.round >= 3) tutorial('speed', '빠르기와 구종을 고를 수 있어요\n빠른 볼일수록 화살표가 빨라지고 흰 줄에서 봐주는 폭이 좁아져요');
   }
   /**
-   * 던진다. o = { r: 라인 길이 비율, dev: 옆으로 벗어난 거리(m) } — 없으면 라인 끝까지 곧게(검사 도구 · 자동)
+   * 던진다. o = { r: 놓은 높이(흰 줄 = 1), side: 옆으로 휜 정도(줄까지 거리 대비), slow: 놓는 순간 느렸나 }
+   * 없으면 흰 줄에서 곧게(검사 도구 · 자동). 방향을 아직 안 멈췄으면 지금 화살표 자리로 멈춘다.
    * 판정은 **손을 놓는 순간** 정해진다. 공은 자세가 끝날 때 손을 떠난다.
    */
   function doThrow(o = {}) {
     if (G.paused || G.phase !== 'holding') return;
-    if (A.step === 'dir') A.step = 'swipe';
-    const r = Number.isFinite(o.r) ? o.r : 1, dev = Number.isFinite(o.dev) ? o.dev : 0;
+    if (A.step === 'dir') confirmDir();
+    const r = Number.isFinite(o.r) ? o.r : 1, sd = Number.isFinite(o.side) ? o.side : 0;
     const band = throwBand();
-    const kind = kindOf(r);
-    const T = myThrowT() * (kind === 'fly' || kind === 'over' ? 1.3 : kind === 'ground' || kind === 'dud' ? 1.12 : 1);
-    let lx = A.bx + dev + windDrift(T).x;
+    const kind = o.slow ? 'slow' : kindOf(r);
+    const sz = sideZone(sd);
+    /* 옆으로 휜 만큼 공도 옆으로 — 초록 폭 안이면 조금, 주황이면 많이, 빨강이면 아웃 */
+    const ad = Math.abs(sd), sgd = Math.sign(sd) || 1, stx = DF().strikeX;
+    const dev = sz === 'g' ? sgd * (ad / DF().sideG) * stx * 0.4
+      : sz === 'o' ? sgd * (stx * 0.4 + ((ad - DF().sideG) / (DF().sideO - DF().sideG)) * 0.7) : sgd * 2.2;
+    const T = myThrowT() * (kind === 'fly' || kind === 'over' ? 1.3 : kind === 'ground' || kind === 'dud' || kind === 'slow' ? 1.12 : 1);
+    const zone = A.zone || 'g';
+    let lx = landX(A.frac || 0) + dev + windDrift(T).x;
     let ly = kind === 'line' ? 1.05 + clamp(r - 1, -0.25, 0.25) * 0.8
-      : kind === 'ground' ? 0.32 : kind === 'dud' ? BALL_R
+      : kind === 'ground' ? 0.32 : kind === 'dud' || kind === 'slow' ? BALL_R
       : kind === 'fly' ? clamp(1.6 + (r - band.hi) * 1.6, 1.6, 2.45) : 3.1;
     const c = zoneC();
     const off = Math.abs(lx - c.x);
     let res, note = '';
-    if (kind === 'dud' || kind === 'over' || off > 1.55) {
+    if (zone === 'r' || sz === 'r' || kind === 'dud' || kind === 'slow' || kind === 'over' || off > 1.55) {
       res = 'error';
-      note = kind === 'dud' ? '너무 짧게 밀었어요 — 공이 못 갔어요' : kind === 'over' ? '너무 길게 밀었어요 — 머리 위로 넘어갔어요' : '방향이 너무 벗어났어요';
+      note = kind === 'slow' ? '너무 천천히 밀었어요\n공을 누르고 위로 휙! 던지듯 올려 흰 줄에서 놓으세요'
+        : kind === 'dud' ? '너무 일찍 놓았어요\n공을 위로 던져 흰색 줄까지 올리고 놓으세요'
+        : kind === 'over' ? '너무 넘어서 놓았어요 — 머리 위로 날아갔어요\n흰색 줄 근처에서 손을 떼세요'
+        : sz === 'r' ? `${sd > 0 ? '오른쪽' : '왼쪽'}으로 휘어서 아웃!\n똑바로 위로 던져 흰 줄 가운데에서 놓으세요`
+        : '빨강에서 멈춰서 크게 빗나갔어요\n화살표가 초록일 때 톡!';
       const sx = Math.sign((lx - c.x) || (Math.random() - 0.5));
       /* 대결: 받는 사람 손이 닿는 폭(REACH_X)을 확실히 벗어나야 상대 화면도 악송구로 읽는다 */
       if (D) lx = sx * rand(2.3, 2.8);
-      else if (kind !== 'dud' && kind !== 'over') lx = c.x + sx * Math.max(off, 1.9);
+      else if (kind !== 'dud' && kind !== 'slow' && kind !== 'over') lx = c.x + sx * Math.max(off, 1.9);
     } else {
-      res = kind === 'line' && off <= DF().strikeX ? 'strike' : 'ball';
-      if (kind === 'ground') note = '라인보다 짧게 — 땅볼!';
-      else if (kind === 'fly') note = '라인보다 길게 — 뜬볼!';
+      res = zone === 'g' && sz === 'g' && kind === 'line' && off <= DF().strikeX ? 'strike' : 'ball';
+      if (kind === 'ground') note = '흰 줄보다 일찍 놓아서 — 땅볼!';
+      else if (kind === 'fly') note = '흰 줄을 넘어서 놓아서 — 뜬볼!';
+      else if (sz === 'o') note = `${sd > 0 ? '오른쪽' : '왼쪽'}으로 조금 휘었어요 — 똑바로 위로!`;
+      else if (zone === 'o') note = '방향이 조금 빗나갔어요 (주황)';
       else if (off > DF().strikeX) note = lx > c.x ? '조금 오른쪽으로 갔어요' : '조금 왼쪽으로 갔어요';
       /* 대결: 볼은 받을 수 있는 공이어야 한다 (안 그러면 상대가 악송구로 읽는다) */
       if (D) { lx = clamp(lx, -1.72, 1.72); ly = clamp(ly, 0.08, 2.5); }
     }
     const kindType = kind === 'line' ? PITCHES[G.pitch].type : kind === 'fly' || kind === 'over' ? 'lob' : 'grounder';
-    Object.assign(A, { fx: lx, fy: ly, res, T, note, r, kind, type: kindType, short: kind === 'dud' && !D });
-    A.drag = null; A.charge = -1;
+    Object.assign(A, { fx: lx, fy: ly, res, T, note, r, kind, type: kindType, short: (kind === 'dud' || kind === 'slow') && !D });
+    A.drag = null;
     P.throwT = 0;
     P.throwRate = (!D && G.guideLeft > 0) ? 0.42 : 1;
     if (P.throwRate < 1) { G.guideLeft--; local.set('guideLeft', G.guideLeft); $('hint').hidden = true; }
     pressBtn('throwBtn');
     sfx('select');
     const gp = proj(c.x, 1.6, aimZ());
-    popText(KIND_WORD[kind], gp.x, gp.y - 30, KIND_COL[kind], 24, 0.9);
+    popText(sz === 'r' ? '아웃!' : KIND_WORD[kind], gp.x, gp.y - 30, sz === 'r' ? '#ff6b5e' : KIND_COL[kind], 24, 0.9);
+    /* 실책이면 어떻게 던지는지 다시 알려 준다 (대결도) */
+    if (res === 'error') showHint(note, 3);
     setPhase('throwing');
   }
   function launchPlayerBall() {
@@ -964,7 +987,7 @@ function createGame(host, opts) {
     M.catchLocal = { x: clamp(A.fx - M.x, -0.5, 0.7), y: clamp(A.fy, 0.4, 1.85) };
     setPose('track');
     sfx('throw', { speed: G.speed });
-    if (A.note && !D) showHint(A.note, 1.6);
+    if (A.note && !D && A.res !== 'error') showHint(A.note, 1.6);
     setPhase('toPartner');
   }
   /** 내 화면에서 친구 쪽으로 날아가는 공 (구종 모양을 흉내 낸다) */
@@ -1212,7 +1235,7 @@ function createGame(host, opts) {
       resolveCatch(B.arriveAt - G.t);
     }
   }
-  function contextAction() { if (G.phase === 'holding') chargeStart('key'); else tryCatch(); }
+  function contextAction() { if (G.phase === 'holding') throwKey(); else tryCatch(); }
   const aimPhase = () => G.phase === 'holding';
   /** 글러브는 손가락을 빠르게 따라온다 (사용자 지정) */
   function moveBy(dx, dy) {
@@ -1223,8 +1246,8 @@ function createGame(host, opts) {
   /**
    * 터치 하나를 따라간다.
    *   · 받을 때: 끌면 글러브가 움직이고, 손을 떼고 **다시 누르면** 그 순간이 잡기다 (사용자 지정)
-   *   · 던질 때 ①: 누르고 떼는 자리가 방향 (마우스는 올려만 놔도 미리 보인다)
-   *   · 던질 때 ②: 연두색 라인을 따라 끌어서 놓으면 던진다. 짧게 톡 누르면 방향을 다시 고른다
+   *   · 던질 때 ①: 화면 아무 데나 누르는 **순간** 왔다갔다 하던 화살표가 멈춘다
+   *   · 던질 때 ②: 화면 아래 공을 누른 채 위로 휙 — 흰 줄 근처에서 떼야 정확하다
    */
   let drag = null, mouseLast = null;
   const toLocal = (e) => { const r = cvs.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
@@ -1242,10 +1265,17 @@ function createGame(host, opts) {
     if (e.pointerType !== 'mouse') { try { cvs.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ } e.preventDefault(); }
     if (aimPhase() && !G.paused) {
       if (e.pointerType === 'mouse' && e.button !== 0) { drag = null; return; }
-      const pt = toLocal(e);
+      if (A.step === 'dir') { confirmDir(); return; }
+      const pt = toLocal(e), fg = flickGeom();
+      if (Math.hypot(pt.x - fg.bx, pt.y - fg.by) > fg.R * 2) {
+        /* 공이 아닌 곳을 눌렀다 — 공을 누르라고 알려 준다 */
+        A.nag = G.t;
+        showHint(fineMouse ? '아래 공을 클릭한 채로 위로 던지세요!' : '아래 공을 터치한 채로 위로 던지세요!', 1.6);
+        return;
+      }
       drag.aim = true;
-      A.drag = { x0: pt.x, y0: pt.y, x: pt.x, y: pt.y };
-      if (A.step === 'dir') A.bx = aimXAt(pt.x, pt.y);
+      A.drag = { x0: pt.x, y0: pt.y, x: pt.x, y: pt.y, pts: [{ t: performance.now(), x: pt.x, y: pt.y }] };
+      sfx('tab');
       return;
     }
     if (e.pointerType === 'mouse') {
@@ -1258,10 +1288,11 @@ function createGame(host, opts) {
   on(cvs, 'pointermove', (e) => {
     if (aimPhase() && !G.paused) {
       const pt = toLocal(e);
-      if (sameDrag(e) && drag.aim) {
-        if (A.drag) { A.drag.x = pt.x; A.drag.y = pt.y; }
-        if (A.step === 'dir') A.bx = aimXAt(pt.x, pt.y);
-      } else if (e.pointerType === 'mouse' && !drag && A.step === 'dir') A.bx = aimXAt(pt.x, pt.y);
+      if (sameDrag(e) && drag.aim && A.drag) {
+        A.drag.x = pt.x; A.drag.y = pt.y;
+        A.drag.pts.push({ t: performance.now(), x: pt.x, y: pt.y });
+        if (A.drag.pts.length > 40) A.drag.pts.shift();
+      }
       mouseLast = { x: e.clientX, y: e.clientY };
       return;
     }
@@ -1286,15 +1317,11 @@ function createGame(host, opts) {
     const a = A.drag; A.drag = null;
     if (G.phase !== 'holding' || G.paused || !a) return;
     const pt = toLocal(e);
-    if (A.step === 'dir') { A.bx = aimXAt(pt.x, pt.y); confirmDir(); return; }
-    const dx = pt.x - a.x0, dy = pt.y - a.y0;
-    if (Math.hypot(dx, dy) < 14) {
-      /* 짧게 톡 — 방향을 다시 고른다 */
-      A.bx = aimXAt(pt.x, pt.y); sfx('tab');
-      const p = proj(A.bx, 1.4, aimZ()); popText('방향 다시!', p.x, p.y - 20, '#ffffff', 20, 0.7);
-      return;
+    a.pts.push({ t: performance.now(), x: pt.x, y: pt.y });
+    if (!releaseThrow(releaseOf(a.pts))) {
+      A.nag = G.t;
+      showHint(fineMouse ? '공을 클릭한 채로 위로 휙 끌어 올려\n흰색 줄에서 놓으세요!' : '공을 터치한 채로 위로 휙 던져\n흰색 줄에서 손을 떼세요!', 2);
     }
-    if (!swipeThrow(dx, dy)) showHint('연두색 라인을 따라 앞으로 밀어요!', 1.8);
   };
   on(cvs, 'pointerup', endDrag);
   on(cvs, 'pointercancel', (e) => { if (sameDrag(e)) { if (drag.aim) A.drag = null; drag = null; } });
@@ -1307,14 +1334,8 @@ function createGame(host, opts) {
     on(el, 'click', (e) => { if (viaPointer) { viaPointer = false; return; } fn(e); });
   }
   bindAct('catchBtn', () => tryCatch());
-  /* 던지기 버튼 — ① 에서는 방향 확정(고른 게 없으면 친구 쪽), ② 에서는 꾹 누른 만큼 라인이 차고 떼면 던진다 */
-  {
-    const tb = $('throwBtn');
-    on(tb, 'pointerdown', (e) => { e.preventDefault(); ainit(); try { tb.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ } chargeStart('btn'); });
-    on(tb, 'pointerup', () => chargeEnd('btn'));
-    on(tb, 'pointercancel', () => chargeEnd('btn'));
-    on(tb, 'click', (e) => e.preventDefault());
-  }
+  /* 던지기 버튼 — ① 에서만 보인다(화살표 멈추기). ② 는 버튼 없이 공을 직접 던진다 */
+  bindAct('throwBtn', () => throwKey());
   function pressBtn(key) {
     const el = $(key);
     el.classList.add('down');
@@ -1341,7 +1362,7 @@ function createGame(host, opts) {
       e.preventDefault(); contextAction();
     }
     else if (code === 'KeyZ' || code === 'KeyJ') tryCatch();
-    else if (code === 'KeyX' || code === 'KeyK') chargeStart('key');
+    else if (code === 'KeyX' || code === 'KeyK') throwKey();
     else if (code === 'Digit1' || code === 'Numpad1') setSpeed(0);
     else if (code === 'Digit2' || code === 'Numpad2') setSpeed(1);
     else if (code === 'Digit3' || code === 'Numpad3') setSpeed(2);
@@ -1350,17 +1371,14 @@ function createGame(host, opts) {
     else if (code === 'Digit6') setPitch(2);
     else if (code === 'Digit7') setPitch(3);
   });
-  on(window, 'keyup', (e) => {
-    keys[e.code] = false;
-    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyX' || e.code === 'KeyK') chargeEnd('key');
-  });
+  on(window, 'keyup', (e) => { keys[e.code] = false; });
   on(window, 'blur', () => { for (const k in keys) keys[k] = false; });
   function keysUpdate(dt) {
     const kx = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
     const ky = (keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0);
     if (!kx && !ky) return;
     if (aimPhase()) {
-      if (A.step === 'dir') A.bx = clampAim(A.bx + kx * 1.6 * dt);
+      /* 던질 때 방향은 화살표 타이밍으로만 정한다 */
     } else {
       P.tgx = clamp(P.tgx + kx * 4.4 * dt, -1.55, 1.55);
       P.tgy = clamp(P.tgy + ky * 3.6 * dt, 0.15, 2.4);
@@ -1510,12 +1528,12 @@ function createGame(host, opts) {
         if (G.phaseT > 0.55) beginHolding();
         break;
       case 'holding': {
-        if (A.charge >= 0) { A.charge += dt / CHARGE_TIME; if (A.charge >= 2.2) chargeEnd(A.chargeVia); }
+        if (A.step === 'dir') { A.osc += dt; A.frac = aimFrac(); A.zone = dirZone(A.frac); A.bx = fracX(A.frac); }
         if (D) {
           const left = HOLD_LIMIT - G.phaseT;
           if (left < 5 && !G.tut['hold' + D.seq]) { G.tut['hold' + D.seq] = true; showHint('5초 안에 던져요!', 2); }
           /* 시간이 다 되면 약한 땅볼로 넘어간다 (기다리기만 해서는 이득이 없게) */
-          if (left <= 0) doThrow({ r: 0.55, dev: 0 });
+          if (left <= 0) doThrow({ r: 0.6, side: 0 });
         }
         break;
       }
@@ -1876,56 +1894,46 @@ function createGame(host, opts) {
     }
   }
   /**
-   * ★ 던질 때 — 투포환 부채꼴 + 볼링 라인 (2026-10-29 개편, 사용자 지정)
-   * ① 바닥에 부채꼴(흰 선 두 줄 · 거리 호). 고른 방향은 흰 점선.
-   * ② 그 방향으로 **진한 연두색 직진 라인**. 라인 끝까지 끌면 딱 좋은 공, 짧으면 땅볼, 길면 뜬볼.
+   * ★ 던질 때
+   * ① 바닥 부채꼴(빨강 · 주황 · 초록 칸) 위를 화살표가 왔다갔다 — 아무 데나 톡하면 멈춘다
+   * ② 부채꼴은 지우고, 화면 아래 공 + 진한 연두색 직진 길 + 흰 가로 줄. 공을 누른 채 위로 던져 흰 줄에서 놓는다
    */
   function groundPath(pts) { ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); }
   function drawAimGuides() {
-    const o = throwOrigin(), az = aimZ(), R = az - o.z;
+    const o = throwOrigin(), az = aimZ();
     const P0 = proj(o.x, 0, o.z);
-    const arc = (d, n = 18) => Array.from({ length: n + 1 }, (_, i) => { const a = -SECTOR + (2 * SECTOR * i) / n; return proj(o.x + Math.sin(a) * d, 0, o.z + Math.cos(a) * d); });
-    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    /* 부채꼴 바닥 */
-    groundPath([P0, ...arc(R, 24)]); ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3;
-    for (const sgn of [-1, 1]) { const q = proj(o.x + Math.sin(sgn * SECTOR) * R, 0, o.z + Math.cos(sgn * SECTOR) * R); groundPath([P0, q]); ctx.stroke(); }
-    ctx.setLineDash([7, 7]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.55)';
-    for (const d of [3, 6, 9]) { groundPath(arc(d)); ctx.stroke(); }
-    ctx.setLineDash([]);
-    /* 스트라이크 폭 — 친구 앞 바닥에 */
-    const sx = DF().strikeX, zl = proj(M.x - sx, 0, az), zr = proj(M.x + sx, 0, az);
-    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 4;
-    groundPath([zl, zr]); ctx.stroke();
-    /* 고른 방향 (바닥) */
-    const tg = proj(A.bx, 0, az);
-    if (A.step === 'dir') {
-      ctx.setLineDash([12, 9]); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4;
-      groundPath([P0, tg]); ctx.stroke(); ctx.setLineDash([]);
-    } else {
-      ctx.strokeStyle = 'rgba(76,196,23,.5)'; ctx.lineWidth = 7;
-      groundPath([P0, tg]); ctx.stroke();
-    }
-    /* 과녁 표시 (친구 가슴 높이) + 바람에 밀릴 자리 */
-    const tc = proj(A.bx, 1.05, az);
-    const ring = Math.max(8, 0.13 * tc.s);
-    ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(21,48,75,.75)'; circ(ctx, tc.x, tc.y, ring); ctx.stroke();
-    ctx.lineWidth = 3; ctx.strokeStyle = A.step === 'dir' ? '#ffffff' : LIME_HI; circ(ctx, tc.x, tc.y, ring); ctx.stroke();
-    const dr = windDrift(myThrowT());
-    if (Math.abs(dr.x) > 0.05) {
-      const tw = proj(A.bx + dr.x, 1.05, az);
-      ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(191,230,255,.95)'; ctx.lineWidth = 2;
-      groundPath([tc, tw]); ctx.stroke(); circ(ctx, tw.x, tw.y, ring * 0.7); ctx.stroke(); ctx.setLineDash([]);
-    }
-    ctx.restore();
     const labelY = SAFE.t + (portrait ? (D ? 236 : 214) : 112);
     if (A.step === 'dir') {
-      outlinedText(fineMouse ? '① 던질 방향을 클릭하세요' : '① 던질 방향을 터치하세요', W / 2, labelY, '#ffffff', portrait ? 21 : 18);
+      const at = (f) => proj(fracX(f), 0, az);
+      const wedge = (f0, f1, col) => {
+        const pts = [P0]; for (let i = 0; i <= 8; i++) pts.push(at(f0 + (f1 - f0) * i / 8));
+        groundPath(pts); ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+      };
+      const g = DF().dirG, oo = DF().dirO;
+      ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      wedge(-1, -oo, 'rgba(255,74,58,.3)'); wedge(oo, 1, 'rgba(255,74,58,.3)');
+      wedge(-oo, -g, 'rgba(255,176,46,.34)'); wedge(g, oo, 'rgba(255,176,46,.34)');
+      wedge(-g, g, 'rgba(61,255,122,.42)');
+      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 3;
+      groundPath([P0, at(-1)]); ctx.stroke(); groundPath([P0, at(1)]); ctx.stroke();
+      ctx.setLineDash([7, 7]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.5)';
+      for (const d of [0.33, 0.66]) {
+        groundPath(Array.from({ length: 13 }, (_, i) => { const f = -1 + i / 6; return proj(o.x + (fracX(f) - o.x) * d, 0, o.z + (az - o.z) * d); }));
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+      const tip = proj(A.bx, 0, az);
+      drawArrow(P0.x, P0.y, tip.x, tip.y, ZCOL[A.zone]);
+      outlinedText(fineMouse ? '① 화살표가 초록일 때 클릭!' : '① 화살표가 초록일 때 톡!', W / 2, labelY, '#ffffff', portrait ? 21 : 18);
+      outlinedText(fineMouse ? '화면 아무 데나 클릭 · 왼쪽 아래 버튼 · 스페이스 다 돼요' : '화면 아무 데나 터치해도, 왼쪽 아래 버튼을 눌러도 돼요', W / 2, labelY + 24, '#ffffff', portrait ? 13 : 12);
     } else {
-      drawLaneGuide();
-      outlinedText('② 볼링처럼 라인을 맞춰 직진으로 던지세요!', W / 2, labelY, LIME_HI, portrait ? 19 : 17);
-      outlinedText('라인보다 짧으면 땅볼 · 길면 뜬볼', W / 2, labelY + 24, '#ffffff', portrait ? 14 : 13);
+      /* 정한 방향 (얇게) */
+      const tip = proj(A.bx, 0, az);
+      ctx.save(); ctx.globalAlpha = 0.55; drawArrow(P0.x, P0.y, tip.x, tip.y, ZCOL[A.zone]); ctx.restore();
+      drawThrowPad();
+      outlinedText(fineMouse ? '② 공을 클릭한 채 위로 휙 던지세요!' : '② 공을 누른 채 위로 휙 던지세요!', W / 2, labelY, LIME_HI, portrait ? 20 : 17);
+      outlinedText('흰색 줄에서 손을 떼야 정확해요', W / 2, labelY + 24, '#ffffff', portrait ? 14 : 13);
     }
     if (D) {
       const left = Math.ceil(HOLD_LIMIT - G.phaseT);
@@ -1933,41 +1941,76 @@ function createGame(host, opts) {
     }
     if (DF().windK > 0) drawWind(W - 46 - SAFE.r, portrait ? labelY + 70 : SAFE.t + 112);
   }
-  /** ② 진한 연두색 직진 라인 + 끄는 만큼 차오르는 표시 */
-  function drawLaneGuide() {
-    const g = guideGeom(), b = throwBand();
-    const at = (r) => ({ x: g.sx + g.ux * g.L * r, y: g.sy + g.uy * g.L * r });
-    const seg = (a, c, col, w, dash) => { ctx.setLineDash(dash || []); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y); ctx.stroke(); ctx.setLineDash([]); };
+  /** 바닥 위 화살표 (테두리 + 색) */
+  function drawArrow(x0, y0, x1, y1, col) {
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+    const hx = x1 - ux * 22, hy = y1 - uy * 22, nx = -uy, ny = ux;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const [w, c] of [[16, 'rgba(21,48,75,.85)'], [10, col]]) {
+      ctx.strokeStyle = c; ctx.lineWidth = w;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(hx, hy); ctx.stroke();
+    }
+    ctx.fillStyle = col; ctx.strokeStyle = 'rgba(21,48,75,.85)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(hx + nx * 15, hy + ny * 15); ctx.lineTo(hx - nx * 15, hy - ny * 15); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  /**
+   * ② 공 · 직진 길(진한 연두색) · 흰 가로 줄.
+   * 흰 줄 위아래의 연한 띠가 '정확' 범위, 줄 아래 초록 · 주황 · 빨강이 옆으로 휘어도 되는 폭이다.
+   * 손가락을 대기 전에는 손가락(👆)이 공에서 흰 줄까지 올라가는 시범을 계속 보여 준다.
+   */
+  function drawThrowPad() {
+    const g = flickGeom(), b = throwBand();
+    const yAt = (r) => g.by - g.D * r;
     ctx.save(); ctx.lineCap = 'round';
-    /* 테두리 → 라인 → 뜬볼 구간(점선) */
-    seg(at(0), at(1), 'rgba(21,48,75,.7)', 19);
-    seg(at(1), at(1.9), 'rgba(143,211,255,.75)', 6, [9, 9]);
-    seg(at(0), at(1), LIME, 13);
-    /* 딱 좋은 구간 (밝게) */
-    seg(at(b.lo), at(Math.min(1, b.hi)), LIME_HI, 13);
-    /* 눈금: 짧은 끝 · 라인 끝 · 긴 끝 */
-    const tick = (r, len, col) => { const q = at(r); const nx = -g.uy, ny = g.ux; seg({ x: q.x - nx * len, y: q.y - ny * len }, { x: q.x + nx * len, y: q.y + ny * len }, col, 4); };
-    tick(b.lo, 10, '#ffffff'); tick(b.hi, 10, '#ffffff'); tick(1, 16, '#15304b');
-    /* 시작 동그라미 · 글자 */
-    ctx.lineWidth = 4; ctx.strokeStyle = '#ffffff'; circ(ctx, g.sx, g.sy, 15); ctx.stroke();
-    ctx.fillStyle = 'rgba(76,196,23,.85)'; circ(ctx, g.sx, g.sy, 10); ctx.fill();
-    const side = (r, txt, col, sz) => { const q = at(r); const nx = -g.uy, ny = g.ux; outlinedText(txt, q.x + nx * 46, q.y + ny * 46, col, sz); };
-    side(b.lo * 0.5, '땅볼', '#ffb347', 15);
-    side(1, '딱!', LIME_HI, 18);
-    side(1.55, '뜬볼', '#8fd3ff', 15);
-    /* 끄는 중 · 버튼을 누르는 중 — 라인을 따라 차오른다 */
-    let r = null, dev = 0, path = null;
-    if (A.drag) {
-      const dx = A.drag.x - A.drag.x0, dy = A.drag.y - A.drag.y0;
-      if (Math.hypot(dx, dy) > 6) { const d = dragRatio(dx, dy); r = d.r; dev = d.side; path = { x: g.sx + dx, y: g.sy + dy }; }
-    } else if (A.charge >= 0) r = A.charge;
-    if (r != null) {
-      const rr2 = clamp(r, 0, 2.1);
-      seg(at(0), at(rr2), 'rgba(255,240,140,.9)', 7);
-      if (path) seg({ x: g.sx, y: g.sy }, path, 'rgba(255,255,255,.95)', 3, [6, 5]);
-      const k = kindOf(r), q = at(rr2);
-      outlinedText(KIND_WORD[k], q.x - (-g.uy) * 52, q.y - g.ux * 52, KIND_COL[k], 20);
-      if (Math.abs(dev) > 18 && path) outlinedText('비스듬해요!', path.x, path.y + 26, '#ffb347', 15);
+    /* 정확 범위 띠 */
+    ctx.fillStyle = 'rgba(255,255,255,.16)';
+    ctx.fillRect(g.bx - g.D * 0.9, yAt(b.hi), g.D * 1.8, yAt(b.lo) - yAt(b.hi));
+    /* 직진 길 */
+    for (const [w, c] of [[20, 'rgba(21,48,75,.6)'], [13, LIME]]) {
+      ctx.strokeStyle = c; ctx.lineWidth = w;
+      ctx.beginPath(); ctx.moveTo(g.bx, g.by - g.R); ctx.lineTo(g.bx, g.ly); ctx.stroke();
+    }
+    /* 흰 가로 줄 + 옆 폭 (초록 · 주황 · 빨강) */
+    const xL = Math.max(10, g.bx - g.D * 0.9), xR = Math.min(W - 10, g.bx + g.D * 0.9);
+    ctx.strokeStyle = 'rgba(21,48,75,.75)'; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.moveTo(xL, g.ly); ctx.lineTo(xR, g.ly); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(xL, g.ly); ctx.lineTo(xR, g.ly); ctx.stroke();
+    const strip = (a0, a1, col) => { ctx.fillStyle = col; ctx.fillRect(g.bx + a0 * g.D, g.ly + 6, (a1 - a0) * g.D, 7); };
+    strip(-0.9, -DF().sideO, '#ff4a3a'); strip(DF().sideO, 0.9, '#ff4a3a');
+    strip(-DF().sideO, -DF().sideG, '#ffb02e'); strip(DF().sideG, DF().sideO, '#ffb02e');
+    strip(-DF().sideG, DF().sideG, '#3dff7a');
+    outlinedText('여기서 놓기!', clamp(xR - 50, 60, W - 60), g.ly - 18, '#ffffff', 15);
+    /* 공 (끄는 중이면 손가락을 따라온다) */
+    const dragging = A.drag && A.drag.pts;
+    const bxNow = dragging ? A.drag.x : g.bx, byNow = dragging ? A.drag.y : g.by;
+    if (!dragging) {
+      const pulse = 1 + 0.12 * Math.sin(G.t * 6);
+      ctx.strokeStyle = A.nag && G.t - A.nag < 1.2 ? '#ffd84a' : 'rgba(255,255,255,.9)'; ctx.lineWidth = 4;
+      circ(ctx, g.bx, g.by, g.R * 1.45 * pulse); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(21,48,75,.35)'; circ(ctx, bxNow + 3, byNow + 4, g.R); ctx.fill();
+    Art.drawBall(ctx, bxNow, byNow, g.R, dragging ? G.t * 12 : 0.4, ballId());
+    if (!dragging) {
+      outlinedText(fineMouse ? '클릭!' : '터치!', g.bx, g.by + g.R + 18, '#ffd84a', 16);
+      /* 시범 — 손가락이 공을 누르고 흰 줄까지 올라가서 놓는다 */
+      const k = (G.t % 1.6) / 1.6;
+      const up = k < 0.2 ? 0 : k < 0.62 ? ease((k - 0.2) / 0.42) : 1;
+      const fy = g.by - up * g.D, alpha = k < 0.75 ? 0.95 : Math.max(0, 0.95 - (k - 0.75) * 6);
+      ctx.globalAlpha = alpha;
+      if (up > 0) { ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(g.bx, g.by); ctx.lineTo(g.bx, fy); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.font = '34px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText('👆', g.bx + 4, fy + 6);
+      ctx.globalAlpha = 1;
+    } else {
+      /* 끄는 중 — 지금 떼면 어떻게 되는지 */
+      const rl = releaseOf(A.drag.pts.concat([{ t: performance.now(), x: A.drag.x, y: A.drag.y }]));
+      if (rl && rl.total > 8) {
+        const k = rl.v < DF().vMin && rl.rel > 0.3 ? 'slow' : kindOf(rl.rel), sz = sideZone(rl.side);
+        const word = sz === 'r' ? '휘었어요! 아웃' : KIND_WORD[k];
+        outlinedText(word, clamp(bxNow, 70, W - 70), byNow - g.R - 22, sz === 'r' ? '#ff6b5e' : KIND_COL[k], 18);
+      }
     }
     ctx.restore();
   }
@@ -2189,15 +2232,18 @@ function createGame(host, opts) {
     const catchOn = ['windup', 'flying', 'reposition', 'oppHold'].includes(G.phase) && B.state !== 'player';
     const catchReady = G.phase === 'flying';
     const s = `${catchOn}${catchReady}${holdingNow}${holdingNow ? A.step : ''}`;
+    const padStep = holdingNow && A.step === 'swipe';
     if (s === btnState) return;
     btnState = s;
     const c = $('catchBtn'), t = $('throwBtn');
     c.classList.toggle('off', !catchOn); c.classList.toggle('ready', catchReady);
-    c.hidden = holdingNow && !fineMouse;
+    /* ② 던지기 때는 버튼을 다 숨긴다 — 공을 직접 던진다 */
+    c.hidden = (holdingNow && !fineMouse) || padStep;
+    t.hidden = padStep;
     t.classList.toggle('off', !holdingNow); t.classList.toggle('ready', holdingNow);
-    $('tpanel').hidden = !holdingNow;
-    $('swipe').hidden = !holdingNow || fineMouse || A.step !== 'swipe';
-    $('throwLabel').textContent = !holdingNow ? '던지기' : A.step === 'dir' ? '방향 확정' : '꾹 눌러 던지기';
+    $('tpanel').hidden = !holdingNow || padStep;
+    $('swipe').hidden = true;
+    $('throwLabel').textContent = holdingNow ? '방향 탁!' : '던지기';
   }
   function syncThrowPanel() {
     root.querySelectorAll('.cb-sp').forEach((b) => b.setAttribute('aria-checked', String((b.dataset.sp | 0) === G.speed)));
@@ -2603,7 +2649,7 @@ function createGame(host, opts) {
   on($('bgm'), 'click', toggleBgm); on($('tBgm'), 'click', toggleBgm);
   /* 첫 터치에서 소리를 깨운다 (브라우저 자동재생 규칙) */
   on(root, 'pointerdown', () => ainit(), { capture: true });
-  if (fineMouse) $('howto').innerHTML = '마우스로 글러브 이동 · 공이 오면 <b>클릭/스페이스</b>로 잡기 · 던질 땐 <b>방향 클릭</b> → <b>연두색 라인만큼 끌기</b>';
+  if (fineMouse) $('howto').innerHTML = '마우스로 글러브 이동 · 공이 오면 <b>클릭/스페이스</b>로 잡기 · 던질 땐 <b>초록일 때 클릭</b> → <b>공을 위로 끌어 흰 줄에서 놓기</b>';
   on(window, 'resize', layout);
   on(window, 'orientationchange', () => later(layout, 200));
   on(document, 'visibilitychange', () => {
@@ -2657,7 +2703,7 @@ function createGame(host, opts) {
     requestPause,
     remote,
     oppLook(look) { if (D && look) { FRIEND = asLook(look); if (W3) W3.setLooks(null, FRIEND); } },
-    dbg: { G, P, B, M, A, D, WIND, tryCatch, doThrow, catchR, throwBand, guideGeom, aimXAt, confirmDir, swipeThrow, setSpeed, setPitch, PR },
+    dbg: { G, P, B, M, A, D, WIND, tryCatch, doThrow, catchR, throwBand, flickGeom, confirmDir, releaseOf, releaseThrow, dirZone, setSpeed, setPitch, PR },
     destroy() {
       dead = true;
       cancelAnimationFrame(raf); cancelAnimationFrame(sheetRaf);
