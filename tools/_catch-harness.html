@@ -4,6 +4,7 @@
     ?mode=solo                    혼자 하기
     ?mode=duel&side=a|b           대결 한쪽 — _catch-duel.html 이 둘을 띄워 BroadcastChannel 로 잇는다
     &auto=1                       자동 플레이 (잡기 성공률 &hit=0.8)
+    &w3d=1                        3D 화면으로 (3D캐치볼 — world3d.js · three.js 를 node_modules 에서 읽는다)
   저장소 루트에서 정적 서버로 띄운다:  python -m http.server 8766
 -->
 <html lang="ko">
@@ -12,6 +13,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>catch harness</title>
 <style>html,body{margin:0;height:100%;background:#000;overflow:hidden}</style>
+<script type="importmap">
+{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }
+</script>
 </head>
 <body>
 <div id="host"></div>
@@ -26,12 +30,14 @@ const mode = q.get('mode') || 'solo';
 const side = q.get('side') || 'a';
 const auto = q.get('auto') === '1';
 const hit = Number(q.get('hit') ?? 0.85);
+const w3d = q.get('w3d') === '1' ? (await import('/src/games/catch/world3d.js')).createWorld3D : null;
+const view = w3d ? { world3d: w3d } : {};
 window.CB = CB;
 window.__log = [];
 const host = document.getElementById('host');
 
 if (mode === 'solo') {
-  CB.mount(host, { mode: 'solo', best: 3, onExit(k) { window.__exit = k; }, onBest(n) { window.__best = n; } });
+  CB.mount(host, { mode: 'solo', ...view, best: 3, onExit(k) { window.__exit = k; }, onBest(n) { window.__best = n; } });
 } else {
   const bc = new BroadcastChannel('cb-duel-' + (q.get('room') || '1'));
   const me = side === 'a' ? '이안' : '민준', you = side === 'a' ? '민준' : '이안';
@@ -47,6 +53,7 @@ if (mode === 'solo') {
   setInterval(() => send({ seenAt: Date.now() }), 2000);
   CB.mount(host, {
     mode: 'duel',
+    ...view,
     duel: {
       gid: '777', iStart: side === 'a', myName: me, oppName: you, startInMs: 2500, absentMs: 30000,
       difficulty: q.get('diff') || 'normal',
@@ -76,6 +83,7 @@ if (auto) {
     }
     const D = d.D;
     document.body.dataset.state = JSON.stringify({
+      w3d: !!document.querySelector('.cb-root.cb-3d'),
       phase: G.phase, score: G.score, lives: G.lives, diff: G.diff,
       ...(D ? { seq: D.seq, mySeq: D.mySeq, rally: D.rally, oppLives: D.opp.lives, oppScore: D.opp.score, ended: D.ended, win: D.win, reason: D.reason } : {}),
     });

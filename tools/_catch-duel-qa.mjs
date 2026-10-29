@@ -9,6 +9,9 @@
  *   · 판 도중 오류가 없는가
  *
  * 정적 서버로 띄운다(번들 없이 모듈을 그대로 읽는다). `node tools/_catch-duel-qa.mjs [판수]`
+ *
+ * `--3d`  3D캐치볼 대결 (2026-10-29) — 판마다 '둘 다 3D' 와 '한쪽만 3D(2D 친구와 한 방)' 를 번갈아 돈다.
+ *         두 화면이 정말 3D(`.cb-3d`)로 그렸는지도 본다. `npm run qa:catch3d`
  */
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
@@ -28,7 +31,9 @@ const server = createServer(async (req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const PORT = server.address().port;
 
-const ROUNDS = Number(process.argv[2] || 3);
+const args = process.argv.slice(2);
+const THREE = args.includes('--3d');
+const ROUNDS = Number(args.find((a) => /^\d+$/.test(a)) || 3);
 const exe = process.env.CHROME_PATH;
 /* 플레이우라이트 전용 브라우저가 없으면 PC 에 깔린 크롬·엣지로 돈다 */
 const browser = await chromium.launch(exe ? { executablePath: exe } : {})
@@ -42,7 +47,9 @@ for (let round = 1; round <= ROUNDS; round++) {
   page.on('pageerror', (e) => errors.push(e.message));
   const hit = [0.85, 0.6, 0.4][(round - 1) % 3];
   const diff = ['easy', 'normal', 'hard'][(round - 1) % 3];
-  await page.goto(`http://127.0.0.1:${PORT}/tools/_catch-duel.html?auto=1&hit=${hit}&diff=${diff}`);
+  /* 3D: 홀수 판은 둘 다 3D, 짝수 판은 왼쪽만 3D */
+  const w3d = THREE ? (round % 2 ? 'ab' : 'a') : '';
+  await page.goto(`http://127.0.0.1:${PORT}/tools/_catch-duel.html?auto=1&hit=${hit}&diff=${diff}${w3d ? '&w3d=' + w3d : ''}`);
 
   const read = () => page.evaluate(() => ['a', 'b'].map((k) => {
     const d = document.getElementById(k).contentDocument;
@@ -71,6 +78,7 @@ for (let round = 1; round <= ROUNDS; round++) {
     if (a.st.lives !== b.st.oppLives || b.st.lives !== a.st.oppLives) problems.push(`공 수가 어긋난다 a:${a.st.lives}/${b.st.oppLives} b:${b.st.lives}/${a.st.oppLives}`);
     const loser = a.st.win ? b : a;
     if (loser.st.lives !== 0) problems.push(`진 쪽 공이 0이 아니다 (${loser.st.lives})`);
+    if (THREE && (a.st.w3d !== w3d.includes('a') || b.st.w3d !== w3d.includes('b'))) problems.push(`3D 화면이 아니다 (a:${a.st.w3d} b:${b.st.w3d}, 기대 ${w3d})`);
     if (!a.overShown || !b.overShown) problems.push(`결과 창이 안 떴다 (a:${a.overShown} b:${b.overShown})`);
   }
   for (const x of [a, b]) if (x.err) problems.push('오류: ' + x.err);
@@ -80,9 +88,10 @@ for (let round = 1; round <= ROUNDS; round++) {
   const line = a.st && b.st
     ? `점수 ${a.st.score}:${b.st.score} · 공 ${a.st.lives}:${b.st.lives} · 던지기 ${Math.max(a.st.seq, b.st.seq)}번 · ${a.st.win ? 'a' : 'b'} 승 · ${sec}초 · 결과창 "${a.title}" / "${b.title}"`
     : '';
-  if (problems.length) { failed++; console.log(`✗ ${round}판 (${diff} · 잡기 ${hit}) ${line}`); for (const p of problems) console.log('    ' + p); }
-  else console.log(`✓ ${round}판 (${diff} · 잡기 ${hit}) ${line}`);
-  if (round === 1) await page.screenshot({ path: join(ROOT, 'tools/_out/catch-duel.png') }).catch(() => {});
+  const tag = `${diff} · 잡기 ${hit}${THREE ? (w3d === 'ab' ? ' · 둘 다 3D' : ' · 왼쪽만 3D') : ''}`;
+  if (problems.length) { failed++; console.log(`✗ ${round}판 (${tag}) ${line}`); for (const p of problems) console.log('    ' + p); }
+  else console.log(`✓ ${round}판 (${tag}) ${line}`);
+  if (round <= (THREE ? 2 : 1)) await page.screenshot({ path: join(ROOT, `tools/_out/catch${THREE ? '3d' : ''}-duel${THREE ? '-' + w3d : ''}.png`) }).catch(() => {});
   await page.close();
 }
 

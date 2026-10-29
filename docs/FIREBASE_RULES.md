@@ -18,6 +18,10 @@ Firebase 콘솔에 **그대로 붙여넣는** 규칙이다. 프로덕션/잠금 
 > 전부 막힌다. 그래서 캐치볼 때는 **게시본에 캐치볼 블록만 얹어** 올렸다(6,113자, djb2 640088785).
 > 이 줄을 살리려면 그 순위표들을 먼저 공개 문서 방식(`catchPlayers` 처럼)으로 옮겨야 한다.
 
+> ⏳ **2026-10-29 3D캐치볼 칸(`catchPlayers` 의 best3* · combo3* 6개, `cb3`) — 아직 콘솔에 게시 전이다.**
+> 게시는 사용자 승인 뒤에 한다. 게시할 때도 위와 같이 **콘솔 게시본을 받아** 캐치볼 블록(`cbInt` ~ `cbNotDown`)만 이 문서 것으로 바꿔 올린다.
+> 게시 전에는 클라이언트가 3D 칸을 뺀 문서로 다시 써서 2D 순위는 그대로 돌고, 3D 탭만 빈다.
+
 ---
 
 ## Firestore
@@ -144,13 +148,19 @@ service cloud.firestore {
     // `users` 를 정렬하면 남의 계정 문서가 통째로 내려간다 — 순위에 보일 값만 따로 둔다.
     // ★ 색인이 필요 없다. 모든 조회가 필드 하나로만 정렬한다.
     // ★ 기록은 내려가지 않는다 · 상한 · 종합점수 식(services/catchRank.js 의 totalOf)을 여기서 강제한다.
+    // ★ 3D캐치볼 칸 6개(best3* · combo3*, 2026-10-29) — 예전 문서에는 없으니 get(키, 0) 으로 읽는다.
+    //   종합 점수에는 넣지 않는다. 클라이언트는 이 규칙이 게시되기 전이면 3D 칸을 빼고 다시 쓴다.
 
     function cbInt(v, maxV) { return v is int && v >= 0 && v <= maxV; }
+    function cb3(d, k) { return d.get(k, 0); }
     function cbValid(uid, d) {
       return d.uid == uid && d.uid == request.auth.uid
           && d.keys().hasOnly(['uid', 'nickname', 'look', 'bestEasy', 'bestNormal', 'bestHard',
                                'comboEasy', 'comboNormal', 'comboHard', 'strikes', 'level',
-                               'wins', 'losses', 'total', 'at'])
+                               'wins', 'losses', 'total', 'at',
+                               'best3Easy', 'best3Normal', 'best3Hard', 'combo3Easy', 'combo3Normal', 'combo3Hard'])
+          && cbInt(cb3(d, 'best3Easy'), 9999) && cbInt(cb3(d, 'best3Normal'), 9999) && cbInt(cb3(d, 'best3Hard'), 9999)
+          && cbInt(cb3(d, 'combo3Easy'), 9999) && cbInt(cb3(d, 'combo3Normal'), 9999) && cbInt(cb3(d, 'combo3Hard'), 9999)
           && d.nickname is string && d.nickname.size() <= 24
           && d.look is string && d.look.size() <= 64
           && cbInt(d.bestEasy, 9999) && cbInt(d.bestNormal, 9999) && cbInt(d.bestHard, 9999)
@@ -165,7 +175,10 @@ service cloud.firestore {
       return n.bestEasy >= o.bestEasy && n.bestNormal >= o.bestNormal && n.bestHard >= o.bestHard
           && n.comboEasy >= o.comboEasy && n.comboNormal >= o.comboNormal && n.comboHard >= o.comboHard
           && n.strikes >= o.strikes && n.level >= o.level
-          && n.wins >= o.wins && n.losses >= o.losses;
+          && n.wins >= o.wins && n.losses >= o.losses
+          && cb3(n, 'best3Easy') >= cb3(o, 'best3Easy') && cb3(n, 'best3Normal') >= cb3(o, 'best3Normal')
+          && cb3(n, 'best3Hard') >= cb3(o, 'best3Hard') && cb3(n, 'combo3Easy') >= cb3(o, 'combo3Easy')
+          && cb3(n, 'combo3Normal') >= cb3(o, 'combo3Normal') && cb3(n, 'combo3Hard') >= cb3(o, 'combo3Hard');
     }
 
     match /catchPlayers/{uid} {

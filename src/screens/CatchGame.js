@@ -19,6 +19,10 @@
  * 게임이 콜백으로 알려 주면 여기서 프로필에 적는다 — onLook · onProgress · onClaim · onFinish.
  * 순위 문서(`catchPlayers/{uid}`)는 프로필이 바뀔 때 `services/catchRank.js` 가 몰아서 올린다.
  * 대결 상대의 모습은 그 순위 문서에서 읽어 와 게임에 넣는다(`setOppLook`) — 못 읽으면 팀 모자 친구 모습.
+ *
+ * ## 3D캐치볼 대결 (`opt.view3d`, 2026-10-29)
+ * 방 · 주고받는 값 · 승패 기록은 2D 대결과 똑같고, 게임에 `world3d` 만 더 넘겨 **내 화면만** 3D 로 그린다.
+ * 그래서 2D 로 하는 친구와도 붙는다. 3D 화면(three.js)을 못 받으면 2D 로 그대로 한다.
  */
 
 import S from '../config/strings.ko.js';
@@ -60,10 +64,11 @@ export async function loadCatch() {
 
 /**
  * @param {object} nav
- * @param {{mode?:'solo'|'duel', code?:string, room?:object}} opt
+ * @param {{mode?:'solo'|'duel', code?:string, room?:object, view3d?:boolean}} opt
  */
 export default function CatchGame(nav, opt = {}) {
   const duelCode = opt.mode === 'duel' ? (opt.code || null) : null;
+  const view3d = !!(duelCode && opt.view3d);
   let live = true;
   let stoppedArcadeLoop = false;
   let unsubRoom = null;
@@ -86,13 +91,13 @@ export default function CatchGame(nav, opt = {}) {
     if (r === 'ok') {
       keepSeat = true;
       const { default: WaitingRoom } = await import('./multi/WaitingRoom.js');
-      if (live) nav.replace(WaitingRoom, { code: duelCode, game: 'catch' });
+      if (live) nav.replace(WaitingRoom, { code: duelCode, game: 'catch', view3d });
       return;
     }
     toast(S.catchRematchFailed, 2400);
   }
 
-  function mountDuel(m, host) {
+  function mountDuel(m, host, world) {
     const p = getProfile();
     const room = opt.room || {};
     const myUid = currentUser()?.uid;
@@ -114,6 +119,7 @@ export default function CatchGame(nav, opt = {}) {
       if (!live) return;
       m.mount(host, {
         mode: 'duel',
+        ...(world ? { world3d: world.createWorld3D } : null),
         ...lookOpts(p),
         duel: {
           oppLook,
@@ -176,7 +182,12 @@ export default function CatchGame(nav, opt = {}) {
         Presence.setState('playing', 'catch');
         /* ESC · 안드로이드 뒤로가기 — 혼자면 일시정지, 대결이면 기권할지 묻는다 */
         setGameGuard(() => m.requestPause());
-        if (duelCode) { mountDuel(m, host); return; }
+        if (duelCode) {
+          /* 3D 화면은 못 받아도 대결은 한다 — 2D 로 */
+          const w = view3d ? import('../games/catch/world3d.js').catch((e) => { console.warn('[3D캐치볼] 3D 화면을 받지 못해 2D 로 대결한다', e); return null; }) : Promise.resolve(null);
+          w.then((world) => { if (live) mountDuel(m, host, world); });
+          return;
+        }
 
         const p = getProfile();
         m.mount(host, {
@@ -199,7 +210,7 @@ export default function CatchGame(nav, opt = {}) {
       });
 
       return el('div.dragon-stage', null, [
-        el('div.dragon-loading', S.catchLoading),
+        el('div.dragon-loading', view3d ? S.catch3dLoading : S.catchLoading),
         host,
       ]);
     },

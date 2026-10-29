@@ -4,6 +4,8 @@
  *   쉬움 · 보통 · 어려움  x  최고기록(한 판에 잡은 공) · 콤보(연속 캐치)
  *   1:1 대결 — 이긴 횟수
  *   종합 — 세 난이도 최고기록과 1:1 승리를 무게 매겨 더한 값 (`catchRank.TOTAL_RULE`)
+ *   3D — 3D캐치볼 기록 (2026-10-29). 맨 위 '2D · 3D' 로 바꾼다. 쉬움 · 보통 · 어려움 x 최고기록 · 콤보.
+ *        1:1 승패는 2D · 3D 가 같은 칸이라 2D 쪽 '1:1' 에 같이 센다. 종합 점수에는 3D 를 넣지 않는다.
  *
  * ★ 줄마다 **캐릭터 얼굴(모자 포함) · 이모티콘 · 이름 · 글러브 모양**이 꼭 뜬다 (사용자 지정).
  * 그림은 캐치볼 그림 모듈(`games/catch/art.js`)을 받아 와서 그린다 — 오기 전에는 자리만 비워 둔다.
@@ -24,6 +26,11 @@ const BOARDS = [
   { value: 'duel', label: '1:1' },
   { value: 'total', label: '종합' },
 ];
+const VIEWS = [
+  { value: '2d', label: '캐치볼' },
+  { value: '3d', label: '3D캐치볼' },
+];
+const BOARDS_3D = BOARDS.slice(0, 3);
 const KINDS = [
   { value: 'best', label: '최고기록' },
   { value: 'combo', label: '콤보기록' },
@@ -38,10 +45,13 @@ const NOTE = {
 let art = null;
 const loadArt = () => (art ? Promise.resolve(art) : import('../games/catch/art.js').then((m) => (art = m)));
 
-/** @param {object} nav @param {{diff?:string}} opt */
+/** @param {object} nav @param {{diff?:string, view3d?:boolean}} opt */
 export default function CatchRanking(nav, opt = {}) {
   const me = getProfile();
-  let board = ['easy', 'normal', 'hard'].includes(opt.diff) ? opt.diff : (me.catchDifficulty || 'normal');
+  /* 3D캐치볼에서 열면 3D 순위부터 */
+  const from3d = !!opt.view3d;
+  let view = from3d ? '3d' : '2d';
+  let board = ['easy', 'normal', 'hard'].includes(opt.diff) ? opt.diff : ((from3d ? me.catch3dDifficulty : me.catchDifficulty) || 'normal');
   let kind = 'best';
   let state = { loading: true, rows: [], err: null };
   let live = true;
@@ -52,7 +62,7 @@ export default function CatchRanking(nav, opt = {}) {
   function load() {
     const my = ++reqId;
     state = { loading: true, rows: [], err: null };
-    const k = board === 'duel' || board === 'total' ? board : kind;
+    const k = board === 'duel' || board === 'total' ? board : view === '3d' ? kind + '3' : kind;
     fetchCatchBoard(k, board).then((r) => {
       if (!live || my !== reqId) return;
       state = r.ok ? { loading: false, rows: r.rows, err: null } : { loading: false, rows: [], err: r.reason || 'error' };
@@ -101,16 +111,23 @@ export default function CatchRanking(nav, opt = {}) {
     onLeave() { live = false; },
     render() {
       const byDiff = board !== 'duel' && board !== 'total';
+      const pickView = (v) => {
+        view = v;
+        /* 3D 에는 1:1 · 종합 판이 없다 — 난이도 판으로 돌린다 */
+        if (v === '3d' && !byDiff) board = (me.catch3dDifficulty || 'normal');
+        load(); nav.refresh();
+      };
       return screen(
         el('style', null, [CSS]),
         title(S.catchRankTitle),
-        segmented(BOARDS, board, (v) => { board = v; load(); nav.refresh(); }),
+        segmented(VIEWS, view, pickView),
+        segmented(view === '3d' ? BOARDS_3D : BOARDS, board, (v) => { board = v; load(); nav.refresh(); }),
         byDiff ? segmented(KINDS, kind, (v) => { kind = v; load(); nav.refresh(); }) : null,
         el('div.hint', NOTE[byDiff ? kind : board]),
         body(),
         mine(),
         el('div.spacer'),
-        backButton(S.catchBackToGame, () => nav.back()),
+        backButton(from3d ? S.catch3dBackToGame : S.catchBackToGame, () => nav.back()),
       );
     },
   };

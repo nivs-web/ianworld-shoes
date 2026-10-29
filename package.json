@@ -23,6 +23,8 @@
     "qa:duel": "node tools/_duel-qa.mjs",
     "//qa:catch": "캐치볼 1:1 대결 규약 — 두 판을 한 페이지에 띄워 끝까지 주고받게 한다 (Firebase 없이). 판수를 인자로: npm run qa:catch -- 5",
     "qa:catch": "node tools/_catch-duel-qa.mjs",
+    "//qa:catch3d": "3D캐치볼 대결 — 같은 검사를 3D 화면으로. 둘 다 3D 판과 한쪽만 3D(2D 친구와 한 방) 판을 번갈아 돈다",
+    "qa:catch3d": "node tools/_catch-duel-qa.mjs --3d 4",
     "//qa:pwa": "dist/ 를 실제로 띄우고 선을 뽑아 본다 — 반드시 npm run build 뒤에 돌린다.",
     "qa:pwa": "node tools/_pwa-qa.mjs",
     "//qa:rules": "RTDB 규칙과 클라이언트가 쓰는 필드가 어긋나지 않는지. 규칙이 미지의 키를 거부하므로 필드를 하나 추가하고 규칙에 안 적으면 멀티가 통째로 막힌다.",

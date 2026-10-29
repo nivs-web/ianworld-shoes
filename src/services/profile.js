@@ -472,6 +472,8 @@ export function finishCatch3dRun(r) {
   if (combo > (before[C3_COMBO[diff]] | 0)) next[C3_COMBO[diff]] = combo;
   const out = patch(next);
   saveCatchProgress({ bestLevel: r?.level, bestStrikes: r?.maxStrikes });
+  /* 3D 기록도 명예의 전당(3D 탭)에 오른다 — 같은 순위 문서의 3D 칸 */
+  if (next[C3_BEST[diff]] || next[C3_COMBO[diff]]) syncCatchPlayerSoon();
   return out;
 }
 export function catch3dBests(p) {

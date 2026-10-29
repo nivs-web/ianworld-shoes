@@ -24,6 +24,8 @@ import Lobby from '../Lobby.js';
 
 export default function RoomList(nav, params = {}) {
   const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : 'shoes';
+  /** 3D캐치볼에서 왔다 — 방은 같은 'catch' 방이고 대결 화면만 3D 로 그린다 */
+  const view3d = game === 'catch' && !!params.view3d;
   let rooms = null;      // null = 아직 못 받음
   let busy = false;
   let gone = false;
@@ -43,11 +45,11 @@ export default function RoomList(nav, params = {}) {
     const r = await Room.joinRoom(code, null, game).catch(() => 'error');
     busy = false;
     if (gone) return;
-    if (r === 'ok') return nav.replace(WaitingRoom, { code, game });
+    if (r === 'ok') return nav.replace(WaitingRoom, { code, game, view3d });
     if (r === 'waiting') {
       // 게임 중인 방 — 들어가긴 했고 다음 판부터 함께한다
       toast(S.roomJoinedAsWaiter, 2600);
-      return nav.replace(WaitingRoom, { code, game });
+      return nav.replace(WaitingRoom, { code, game, view3d });
     }
     toast({ full: S.roomFull, notfound: S.roomNotFound, started: S.roomAlreadyStarted , wronggame: S.roomWrongGame }[r] ?? S.networkError);
     load();   // 목록이 낡았을 것이다 — 다시 받는다

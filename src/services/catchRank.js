@@ -54,8 +54,22 @@ export function catchDoc(uid, p, at = Date.now()) {
     at: Math.round(at),
   };
   d.total = totalOf(d);
+  /* 3D캐치볼 기록 (2026-10-29) — 종합 점수에는 넣지 않는다(2D 종합 식을 그대로 둔다) */
+  for (const k of THREE_D) d[k] = ci(p?.[THREE_D_SRC[k]], 0, CAP);
   return d;
 }
+
+/**
+ * ★ 3D 칸 — 순위 문서 이름 ← 프로필 이름. 보안 규칙(cbValid 의 hasOnly)에 이 이름이 올라가야 쓰기가 통과한다.
+ * 규칙이 아직 이 칸을 모르면 쓰기 전체가 거부되므로, `syncCatchPlayer` 는 그때 3D 칸을 빼고 한 번 더 쓴다
+ * (2D 순위가 같이 막히지 않게).
+ */
+const THREE_D_SRC = {
+  best3Easy: 'catch3dBestEasy', best3Normal: 'catch3dBestNormal', best3Hard: 'catch3dBestHard',
+  combo3Easy: 'catch3dComboEasy', combo3Normal: 'catch3dComboNormal', combo3Hard: 'catch3dComboHard',
+};
+export const THREE_D = Object.keys(THREE_D_SRC);
+const without3d = (d) => { const o = { ...d }; for (const k of THREE_D) delete o[k]; return o; };
 
 let timer = 0;
 /** 몰아서 한 번 — 한 판 끝에 기록·레벨·스트라이크가 한꺼번에 오른다 */
@@ -71,22 +85,31 @@ export async function syncCatchPlayer() {
   const p = L.loadProfile();
   if (!p.nickname) return false;
   /* 꾸미기만 해 둔 사람도 올린다 — 대결 상대 화면이 이 문서에서 내 모습을 읽는다 (순위표는 0점 줄을 거른다) */
-  if (!((p.catchPlays | 0) > 0 || (p.catchWins | 0) + (p.catchLosses | 0) > 0 || p.catchLook)) return false;
+  if (!((p.catchPlays | 0) > 0 || (p.catch3dPlays | 0) > 0 || (p.catchWins | 0) + (p.catchLosses | 0) > 0 || p.catchLook)) return false;
   const fb = await getStore();
   if (!fb) return false;
   const { doc, setDoc } = fb.storeMod;
-  await withTimeout(setDoc(doc(fb.db, COL, u.uid), catchDoc(u.uid, p)), undefined, '캐치볼 순위 올리기');
+  const d = catchDoc(u.uid, p);
+  try {
+    await withTimeout(setDoc(doc(fb.db, COL, u.uid), d), undefined, '캐치볼 순위 올리기');
+  } catch (e) {
+    /* 3D 칸을 아는 규칙이 아직 게시 전이면 2D 칸만이라도 올린다 */
+    if (e?.code !== 'permission-denied') throw e;
+    await withTimeout(setDoc(doc(fb.db, COL, u.uid), without3d(d)), undefined, '캐치볼 순위 올리기(2D)');
+  }
   return true;
 }
 
 /**
  * 순위표 한 장
- * @param {'best'|'combo'|'duel'|'total'} kind
+ * @param {'best'|'combo'|'best3'|'combo3'|'duel'|'total'} kind   best3 · combo3 = 3D캐치볼
  * @param {'easy'|'normal'|'hard'} [diff]  best · combo 에서만
  */
 export const FIELD = {
   best: { easy: 'bestEasy', normal: 'bestNormal', hard: 'bestHard' },
   combo: { easy: 'comboEasy', normal: 'comboNormal', hard: 'comboHard' },
+  best3: { easy: 'best3Easy', normal: 'best3Normal', hard: 'best3Hard' },
+  combo3: { easy: 'combo3Easy', normal: 'combo3Normal', hard: 'combo3Hard' },
 };
 export async function fetchCatchBoard(kind, diff = 'normal') {
   if (!configured()) return { ok: false, reason: 'offline' };

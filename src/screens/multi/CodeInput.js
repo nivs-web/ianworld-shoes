@@ -16,6 +16,8 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '←', '0', '↵'];
 
 export default function CodeInput(nav, params = {}) {
   const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : 'shoes';
+  /** 3D캐치볼에서 왔다 — 방은 같은 'catch' 방이고 대결 화면만 3D 로 그린다 */
+  const view3d = game === 'catch' && !!params.view3d;
   let code = '';
   let busy = false;
 
@@ -25,7 +27,7 @@ export default function CodeInput(nav, params = {}) {
     nav.refresh();
     const r = await Room.joinRoom(code, null, game);
     busy = false;
-    if (r === 'ok') return nav.replace(WaitingRoom, { code, game });
+    if (r === 'ok') return nav.replace(WaitingRoom, { code, game, view3d });
     /**
      * ★ **대기자 입장을 여기서도 받는다.** (2026-08-18)
      * `joinRoom` 은 게임 중인 방이면 `'waiting'` 을 돌려준다(자리는 이미 잡았다).
@@ -35,7 +37,7 @@ export default function CodeInput(nav, params = {}) {
      */
     if (r === 'waiting') {
       toast(S.roomJoinedAsWaiter, 2600);
-      return nav.replace(WaitingRoom, { code, game });
+      return nav.replace(WaitingRoom, { code, game, view3d });
     }
     toast({ full: S.roomFull, started: S.roomAlreadyStarted, notfound: S.roomNotFound , wronggame: S.roomWrongGame }[r] ?? S.networkError);
     code = '';

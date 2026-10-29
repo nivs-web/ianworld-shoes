@@ -77,6 +77,8 @@ export default function WaitingRoom(nav, params = {}) {
    * 게임이 달라도 똑같기 때문이다. 갈리는 것은 **시작할 때 어느 다리로 가느냐** 뿐이다.
    */
   const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : 'shoes';
+  /** 3D캐치볼에서 온 캐치볼 방 — 방은 2D 와 같고, 시작하면 내 대결 화면만 3D 로 그린다 */
+  const view3d = game === 'catch' && !!params.view3d;
   const code = params.code;
   /**
    * ★★ **드래곤 방은 드래곤 방처럼 보여야 한다.** (2026-08-26, 사용자 신고)
@@ -254,7 +256,7 @@ export default function WaitingRoom(nav, params = {}) {
       const bridge = game === 'dragon'
         ? import('../startDuel.js').then((m) => m.startDuel(nav, { code, room: r }))
         : game === 'catch'
-        ? import('../startCatchDuel.js').then((m) => m.startCatchDuel(nav, { code, room: r }))
+        ? import('../startCatchDuel.js').then((m) => m.startCatchDuel(nav, { code, room: r, view3d }))
         : startMultiGame(nav, { code, room: r });
       bridge.catch((e) => {
         console.warn('[multi] 판 시작 실패', e);
@@ -346,7 +348,7 @@ export default function WaitingRoom(nav, params = {}) {
       const allReady = enough && inRound.every((p) => p.ready || p.uid === room.hostUid);
 
       return screen(
-        title(game === 'dragon' ? S.duelRoomTitle(code) : game === 'catch' ? S.catchRoomTitle(code) : S.multiRoomTitle(code)),
+        title(game === 'dragon' ? S.duelRoomTitle(code) : game === 'catch' ? (view3d ? S.catch3dRoomTitle(code) : S.catchRoomTitle(code)) : S.multiRoomTitle(code)),
 
         // 비밀방은 코드가 커야 한다 — 친구한테 불러 줘야 하니까
         room.isPrivate

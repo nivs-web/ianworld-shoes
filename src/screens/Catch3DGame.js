@@ -10,7 +10,9 @@
  *
  *   · 기록은 2D 와 **따로** 센다 (`catch3dBest*` · `catch3dCombo*` · `catch3dPlays`).
  *   · 꾸미기 · 최고 레벨 · 연속 스트라이크 · 받은 모자/야구공은 **같은 캐릭터**라 2D 와 같이 쓴다.
- *   · 1:1 대결 · 명예의 전당은 아직 2D 캐치볼에만 있다 (타이틀에 버튼이 안 뜬다).
+ *   · 1:1 대결은 2D 와 **같은 캐치볼 방**을 쓴다 (`CatchMultiMenu` 를 `view3d` 로 연다 — 내 화면만 3D).
+ *     승패도 2D 와 같은 칸(`catchWins/catchLosses`)에 센다.
+ *   · 명예의 전당은 2D 순위표의 '3D' 탭으로 연다 (`CatchRanking` 을 `view3d` 로).
  *   · 접속 상태는 'catch' 로 쓴다 — RTDB 규칙이 게임 이름을 shoes/dragon/catch 로만 받는다.
  *
  * WebGL 을 못 켜는 기기에서는 게임이 스스로 2D 로 돈다(`catchball.js` 의 `fail3d`).
@@ -25,6 +27,10 @@ import { stopLoop, startLoop, isRunning } from '../core/loop.js';
 import * as Scene from '../core/scene.js';
 import * as Presence from '../services/presence.js';
 import { lookOpts } from './CatchGame.js';
+import { lazyScreen } from './lazyScreen.js';
+
+const CatchMultiMenu = lazyScreen(() => import('./multi/CatchMultiMenu.js'), S.catch3dDuelTitle);
+const CatchRanking = lazyScreen(() => import('./CatchRanking.js'), S.catchRankTitle);
 
 let mods = null;
 /** 게임 모듈과 3D 화면을 같이 받는다 — 3D 는 three.js 가 들어 있어 크다 */
@@ -70,8 +76,11 @@ export default function Catch3DGame(nav) {
           difficulty: p.catch3dDifficulty || 'normal',
           bests: catch3dBests(p),
           combos: catch3dCombos(p),
+          duelRecord: { wins: p.catchWins | 0, losses: p.catchLosses | 0 },
           onFinish(r) { finishCatch3dRun(r); },
           onDifficulty(d) { setCatch3dDifficulty(d); },
+          onDuel() { if (live) nav.push(CatchMultiMenu, { view3d: true }); },
+          onRanking() { if (live) nav.push(CatchRanking, { view3d: true, diff: getProfile().catch3dDifficulty }); },
           onExit() { if (live) nav.back(); },
         });
       }).catch((e) => {
