@@ -86,6 +86,13 @@ export const CSS = `
 /* 던지기 판 — 빠르기 셋 + 구종 넷 (던질 차례에만) */
 .cb-tpanel{position:absolute;z-index:6;left:calc(var(--gut-l) + 2px);bottom:calc(var(--sb) + 30px + var(--btn));display:flex;gap:6px}
 .cb-tcol{display:flex;flex-direction:column;gap:5px;width:78px}
+/* 세로 폰 — 빠르기 · 구종 판을 던지기 버튼 옆 맨 아래 두 줄로 (부채꼴을 가리지 않게) */
+@media (orientation:portrait){
+  .cb-tpanel{left:calc(var(--gut-l) + var(--btn) + 14px);right:calc(var(--gut-r) + 2px);bottom:calc(var(--sb) + 10px);flex-direction:column;gap:7px}
+  .cb-tcol{flex-direction:row;width:auto;gap:5px}
+  .cb-tcol-h{display:none}
+  .cb-sp,.cb-pt{flex:1 1 0;min-width:0;height:30px!important;font-size:13px!important;padding:0 2px!important}
+}
 .cb-tcol-h{font-size:11px;color:var(--chalk);text-align:center;text-shadow:0 1px 0 var(--ink),1px 0 0 var(--ink),-1px 0 0 var(--ink)}
 .cb-sp,.cb-pt{width:100%!important;height:31px!important;border-radius:11px;font-family:var(--font-display)!important;font-size:14px!important;color:var(--ink)!important;
   background:rgba(255,250,240,.94)!important;border:3px solid var(--ink)!important;box-shadow:0 3px 0 var(--ink)!important;opacity:.8;transition:transform .08s,opacity .15s}

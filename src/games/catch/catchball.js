@@ -662,15 +662,25 @@ function createGame(host, opts) {
     const p = proj(A.bx, 1.4, aimZ());
     popText(A.zone === 'g' ? '방향 좋아요!' : A.zone === 'o' ? '조금 빗나가요' : '빗나가요!', p.x, p.y - 20, ZCOL[A.zone], 22, 0.9);
   }
-  /** ② 놓은 순간 판정 — 높이(흰 줄 기준) · 옆으로 휜 정도 · 빠르기(마지막 0.1초) */
+  /**
+   * ② 놓은 순간 판정 — 높이(흰 줄 기준) · 옆으로 휜 정도 · 빠르기.
+   * 빠르기는 손 떼기 전 **0.25초 안의 최고 빠르기**(30ms 넘는 구간마다 잰다) — 공을 잡고 멈칫했다가
+   * 휙 튕겨도 정상 던지기로 친다. 처음부터 끝까지 천천히 밀면 최고 빠르기도 낮아서 여전히 실책이다.
+   */
   function releaseOf(pts) {
     if (!pts || pts.length < 2) return null;
     const g = flickGeom(), st = pts[0], end = pts[pts.length - 1];
-    let s0 = st;
-    for (let i = pts.length - 1; i >= 0; i--) { s0 = pts[i]; if (end.t - pts[i].t >= 100) break; }
-    const dt = Math.max(16, end.t - s0.t);
+    let v = 0;
+    for (let i = pts.length - 1; i >= 0; i--) {
+      if (end.t - pts[i].t > 250) break;
+      for (let j = i + 1; j < pts.length; j++) {
+        const dt = pts[j].t - pts[i].t;
+        if (dt >= 30) { v = Math.max(v, (pts[i].y - pts[j].y) / dt); break; }
+      }
+    }
+    if (!v) v = (st.y - end.y) / Math.max(16, end.t - st.t);
     return {
-      v: (s0.y - end.y) / dt / flickScale(),       // 위로 올라가는 빠르기 (px/ms)
+      v: v / flickScale(),                         // 위로 올라가는 최고 빠르기 (px/ms)
       rel: (g.by - end.y) / g.D,                   // 1 = 흰 줄
       side: (end.x - g.bx) / g.D,                  // + 오른쪽으로 휨
       total: Math.hypot(end.x - st.x, end.y - st.y),
@@ -2238,7 +2248,7 @@ function createGame(host, opts) {
     const c = $('catchBtn'), t = $('throwBtn');
     c.classList.toggle('off', !catchOn); c.classList.toggle('ready', catchReady);
     /* ② 던지기 때는 버튼을 다 숨긴다 — 공을 직접 던진다 */
-    c.hidden = (holdingNow && !fineMouse) || padStep;
+    c.hidden = holdingNow;                    // 던질 차례에는 잡기 버튼이 필요 없다 (그 자리를 빠르기 · 구종 판이 쓴다)
     t.hidden = padStep;
     t.classList.toggle('off', !holdingNow); t.classList.toggle('ready', holdingNow);
     $('tpanel').hidden = !holdingNow || padStep;
