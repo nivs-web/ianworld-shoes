@@ -336,7 +336,7 @@ export const HTML = `
     </svg>
     <span>잡기</span>
   </button>
-  <div class="cb-swipe" data-cb="swipe" hidden><b>⬆</b>위로 밀어<br>던지기</div>
+  <div class="cb-swipe" data-cb="swipe" hidden><b>⬆</b>라인 따라<br>쭉 밀기</div>
 </div>
 <section class="cb-title" data-cb="title" hidden>
   <div class="cb-ttools">
@@ -371,7 +371,7 @@ export const HTML = `
       <button class="cb-ib" data-cb="openLesson" type="button"><i>🎓</i><span>자세 배우기</span></button>
       <button class="cb-ib" data-cb="exitTitle" type="button"><i>🚪</i><span>나가기</span></button>
     </div>
-    <p class="cb-howto" data-cb="howto">화면을 <b>끌면</b> 글러브가 움직여요 · 공이 오면 <b>잡기</b>(화면을 톡!) · 던질 땐 화면을 <b>위로 밀어요</b></p>
+    <p class="cb-howto" data-cb="howto">화면을 <b>끌면</b> 글러브가 움직여요 · 공이 오면 <b>잡기</b>(화면을 톡!) · 던질 땐 <b>방향을 톡</b> → <b>연두색 라인만큼 쭉</b></p>
   </footer>
 </section>
 <section class="cb-vs" data-cb="vs" hidden>

@@ -25,12 +25,14 @@
  *     공종류 칸 = 종류 번호 + (빠르기+1)×10
  *   · `ct` = `판|순번|결과`  (p 퍼펙트 · g 그레이트 · n 나이스 · l 아슬아슬 · m 놓침 · w 악송구)
  *
- * ## 던지기 (2026-10-29, 사용자 지정 — 양궁·사격 게임처럼)
- *   · 조준점이 위아래 좌우로 크게 흔들린다. 과녁은 초록(스트라이크) · 주황(볼) · 빨강(실책).
- *     초록에 머무는 시간이 **보통 1/5**(쉬움 1/4 · 어려움 1/7), 빠른 볼·변화구는 더 흔들린다.
- *   · 판마다 바람이 분다. 초록 한가운데로 던져도 바람에 밀리면 스트라이크가 아니다.
- *   · 던지기는 화면을 **아래에서 위로 쓸어 올리는 것**. 비스듬히 밀면 옆으로, 약하게 밀면 낮게 간다.
- *   · 빨강에서 던지면 실책 — 혼자 할 때 실책 3개면 아웃.
+ * ## 던지기 (2026-10-29 개편, 사용자 지정 — 투포환 부채꼴 · 볼링 라인)
+ *   > *"던질때 처음에 방향 맞추는거 터치 및 클릭해 … 그 다음에 직진 던지기 … 투포환 던지는 바닥 라인처럼
+ *   >  부채꼴 라인 … 볼링 게임처럼 라인을 맞춰 직진으로 던지세요 … 진한 연두색 … 짧게 던지면 땅볼 … 길게 하면 뜬볼"*
+ *   · ① **방향**: 바닥에 투포환 부채꼴이 깔린다. 던질 곳을 터치(클릭)하면 방향이 정해진다.
+ *   · ② **직진 던지기**: 그 방향으로 진한 연두색 라인이 나온다. 라인을 따라 **라인 길이만큼** 손가락을 끈다.
+ *     라인보다 짧으면 땅볼, 길면 뜬볼, 비스듬히 끌면 그만큼 옆으로 간다. 던지기 버튼을 꾹 눌러도 된다(누른 만큼 라인이 찬다).
+ *   · 스트라이크 = 딱 좋은 길이 + 친구 가슴 쪽. 너무 짧게(공이 못 감) · 너무 길게(머리 위로) · 방향이 크게 벗어나면 실책.
+ *     혼자 할 때 실책 3개면 아웃. 바람은 보통 · 어려움에서만 조금 민다.
  */
 
 import { CSS, HTML, BALL_SVG, FONT_HREF } from './ui.js';
@@ -150,28 +152,27 @@ function createGame(host, opts) {
   /**
    * ★ 난이도 — 받기와 던지기를 한꺼번에 바꾼다.
    *   받기: T 비행시간 · R 글러브 반경 · early 미리 눌러도 잡히는 시간 · spread 공 오는 폭 · typeGap 새 공 간격 · minT
-   *   던지기: amp 조준점 흔들림(m) · freq 흔들림 빠르기 · cG/cO 초록·주황 반경(흔들림 대비) · wind 풍속 범위(m/s)
-   *   cG·cO 는 계산으로 맞췄다 — 흔들림 위에 고르게 놓였을 때 초록에 머무는 시간이 쉬움 25% · 보통 20% · 어려움 15%,
-   *   빨강(실책)에 있는 시간이 쉬움 25% · 보통 40% · 어려움 50%.
+   *   던지기: band 딱 좋은 라인 길이 비율 [짧은 끝, 긴 끝] · strikeX 스트라이크로 치는 가로 폭(m)
+   *           · wind 풍속 범위(m/s) · windK 바람이 공을 미는 정도(쉬움은 안 민다)
    *   per = 레벨 하나를 올리는 데 필요한 잡은 공
    */
   const DIFFS = {
-    easy:   { label: '쉬움',   T: 1.25, R: 1.22, early: 1.3,  spread: 0.75, typeGap: 1.6, minT: 0.6,  per: 15, amp: 0.34, freq: 0.8,  cG: 0.435, cO: 0.891, wind: [0, 2.5] },
-    normal: { label: '보통',   T: 1.0,  R: 1.0,  early: 1.0,  spread: 1.0,  typeGap: 1.0, minT: 0.48, per: 10, amp: 0.46, freq: 1.0,  cG: 0.379, cO: 0.769, wind: [0.5, 5] },
-    hard:   { label: '어려움', T: 0.82, R: 0.84, early: 0.78, spread: 1.15, typeGap: 0.6, minT: 0.4,  per: 7,  amp: 0.58, freq: 1.25, cG: 0.325, cO: 0.681, wind: [2, 7.5] },
+    easy:   { label: '쉬움',   T: 1.25, R: 1.22, early: 1.3,  spread: 0.75, typeGap: 1.6, minT: 0.6,  per: 15, band: [0.7, 1.35],  strikeX: 0.42, wind: [0, 2.5], windK: 0 },
+    normal: { label: '보통',   T: 1.0,  R: 1.0,  early: 1.0,  spread: 1.0,  typeGap: 1.0, minT: 0.48, per: 10, band: [0.8, 1.22],  strikeX: 0.3,  wind: [0.5, 5], windK: 0.5 },
+    hard:   { label: '어려움', T: 0.82, R: 0.84, early: 0.78, spread: 1.15, typeGap: 0.6, minT: 0.4,  per: 7,  band: [0.86, 1.15], strikeX: 0.22, wind: [2, 7.5], windK: 1 },
   };
-  /** 공 빠르기 — 0 느린 볼 · 1 중간 볼 · 2 빠른 볼. amp = 조준점 흔들림 배율 */
+  /** 공 빠르기 — 0 느린 볼 · 1 중간 볼 · 2 빠른 볼. bandK = 딱 좋은 라인 길이 폭 배율(빠를수록 좁다) */
   const SPEEDS = [
-    { label: '느린 볼', T: 1.35, amp: 0.85, calls: ['느린 볼~', '살살 간다~'] },
-    { label: '중간 볼', T: 1.0, amp: 1.0, calls: ['간다~!', '받아!'] },
-    { label: '빠른 볼', T: 0.62, amp: 1.2, calls: ['빠른 볼!!', '세게 간다!'] },
+    { label: '느린 볼', T: 1.35, bandK: 1.15, calls: ['느린 볼~', '살살 간다~'] },
+    { label: '중간 볼', T: 1.0, bandK: 1.0, calls: ['간다~!', '받아!'] },
+    { label: '빠른 볼', T: 0.62, bandK: 0.8, calls: ['빠른 볼!!', '세게 간다!'] },
   ];
-  /** 구종 — 직구 + 변화구 셋. 변화구는 받기 어렵지만 조준이 더 흔들린다 */
+  /** 구종 — 직구 + 변화구 셋. 변화구는 받기 어렵지만 딱 좋은 라인 길이 폭이 조금 좁다 */
   const PITCHES = [
-    { label: '직구', type: 'normal', amp: 1.0, Tk: 1.0, color: '#ffffff' },
-    { label: '커브', type: 'curve', amp: 1.1, Tk: 1.06, color: '#3fa9f5' },
-    { label: '슬라이더', type: 'slider', amp: 1.12, Tk: 1.0, color: '#ff9f2e' },
-    { label: '포크볼', type: 'fork', amp: 1.15, Tk: 1.04, color: '#b48cff' },
+    { label: '직구', type: 'normal', bandK: 1.0, Tk: 1.0, color: '#ffffff' },
+    { label: '커브', type: 'curve', bandK: 0.92, Tk: 1.06, color: '#3fa9f5' },
+    { label: '슬라이더', type: 'slider', bandK: 0.9, Tk: 1.0, color: '#ff9f2e' },
+    { label: '포크볼', type: 'fork', bandK: 0.88, Tk: 1.04, color: '#b48cff' },
   ];
   const TYPES = ['normal', 'lob', 'grounder', 'curve', 'fast', 'knuckle', 'slider', 'fork'];
   const TYPE_NAME = { lob: '뜬공', grounder: '땅볼', curve: '커브', fast: '강속구', knuckle: '너클볼', slider: '슬라이더', fork: '포크볼' };
@@ -598,22 +599,87 @@ function createGame(host, opts) {
     return Math.max(D ? DF().minT : 0.42, T * (D ? DF().T : 1) * SPEEDS[G.speed].T * PITCHES[G.pitch].Tk);
   }
 
-  /* ---------- 던지기 : 조준 · 바람 · 판정 ---------- */
-  const throwAmp = () => DF().amp * SPEEDS[G.speed].amp * PITCHES[G.pitch].amp;
-  function swayAt(tt) {
-    const a = throwAmp(), f = DF().freq, s = A.seed;
-    return {
-      x: a * (0.62 * Math.sin(tt * 1.9 * f + s) + 0.38 * Math.sin(tt * 4.3 * f + 1.1 + s * 2)),
-      y: a * 0.8 * (0.6 * Math.sin(tt * 2.6 * f + 0.5 + s * 1.3) + 0.4 * Math.sin(tt * 5.1 * f + 2.0 + s * 3)),
-    };
+  /* ---------- 던지기 : 방향 · 직진 라인 · 판정 ---------- */
+  const SECTOR = 20 * Math.PI / 180;     // 투포환 부채꼴 반각
+  const CHARGE_TIME = 0.9;               // 던지기 버튼 · 스페이스를 이만큼 누르면 라인 끝(딱 좋은 길이)
+  const LIME = '#4cc417', LIME_HI = '#8cf04a';
+  /** 딱 좋은 라인 길이 비율 — 난이도 · 빠르기 · 구종이 폭을 바꾼다 */
+  function throwBand() {
+    const k = SPEEDS[G.speed].bandK * PITCHES[G.pitch].bandK;
+    const [lo, hi] = DF().band;
+    return { lo: 1 - (1 - lo) * k, hi: 1 + (hi - 1) * k };
   }
-  /** 과녁 크기 (m, 가로 반지름 — 세로는 ×0.8) */
-  const zoneR = () => ({ g: DF().cG * DF().amp, o: DF().cO * DF().amp });
   const zoneC = () => ({ x: M.x, y: 1.05 });
-  function zoneOf(x, y) {
-    const c = zoneC(), r = zoneR();
-    const d = Math.hypot(x - c.x, (y - c.y) / 0.8);
-    return d < r.g ? 'g' : d < r.o ? 'o' : 'r';
+  /** 부채꼴 꼭짓점 — 내 발 앞 */
+  const throwOrigin = () => ({ x: P.bodyX - 0.12, z: 0.45 });
+  /** 조준은 친구 쪽 면(z)에서의 가로 위치(A.bx)로 정한다 */
+  const aimZ = () => M.z - 0.25;
+  function clampAim(x) {
+    const o = throwOrigin(), lim = Math.tan(SECTOR) * (aimZ() - o.z);
+    return clamp(x, o.x - lim, o.x + lim);
+  }
+  /** 화면의 한 점 → 그 방향으로 던졌을 때 친구 면에서의 가로 위치 (바닥을 찍으면 부채꼴 꼭짓점에서 그 점 쪽) */
+  function aimXAt(sx, sy) {
+    const o = throwOrigin(), az = aimZ();
+    const px = (sx - CX) / F, py = (CY - sy) / F;
+    const dY = py * cosP - sinP;
+    if (dY < -1e-4) {
+      const t = -cam.y / dY, gx = cam.x + px * t, gz = cam.z + (py * sinP + cosP) * t;
+      if (gz > o.z + 0.6 && gz < az) return clampAim(o.x + (gx - o.x) * (az - o.z) / (gz - o.z));
+    }
+    return clampAim(unproject(sx, sy, az).x);
+  }
+  /** 화면 위 직진 라인 — 시작점 · 방향(단위) · 딱 좋은 길이 L(px) */
+  function guideGeom() {
+    const o = throwOrigin(), az = aimZ();
+    const ang = Math.atan2(A.bx - o.x, az - o.z);
+    const s0 = proj(o.x + Math.sin(ang) * 1.3, 0, o.z + Math.cos(ang) * 1.3);
+    const far = proj(A.bx, 0, az);
+    let ux = far.x - s0.x, uy = far.y - s0.y;
+    const dist = Math.hypot(ux, uy) || 1; ux /= dist; uy /= dist;
+    const L = Math.max(110, Math.min(clamp(Math.min(W, H) * 0.36, 120, 230), dist * 0.7));
+    return { sx: s0.x, sy: s0.y, ux, uy, L, ang };
+  }
+  /** 끈 거리 → 라인 길이 비율 r · 옆으로 벗어난 각도 */
+  function dragRatio(dx, dy) {
+    const g = guideGeom();
+    const along = dx * g.ux + dy * g.uy, side = dy * g.ux - dx * g.uy;
+    return { r: along / g.L, along, side, ang: Math.atan2(side, Math.max(1, along)) };
+  }
+  function kindOf(r) {
+    const b = throwBand();
+    return r < 0.3 ? 'dud' : r < b.lo ? 'ground' : r <= b.hi ? 'line' : r <= 1.9 ? 'fly' : 'over';
+  }
+  const KIND_WORD = { dud: '너무 약해요', ground: '땅볼', line: '딱 좋아요!', fly: '뜬볼', over: '너무 세요!' };
+  const KIND_COL = { dud: '#ff6b5e', ground: '#ffb347', line: LIME_HI, fly: '#8fd3ff', over: '#ff6b5e' };
+  /** 방향 확정 → ② 직진 던지기 */
+  function confirmDir() {
+    if (A.step !== 'dir') return;
+    A.step = 'swipe'; A.drag = null; A.charge = -1;
+    sfx('select');
+    const p = proj(A.bx, 1.4, aimZ());
+    popText('방향 결정!', p.x, p.y - 20, LIME_HI, 22, 0.8);
+    if (!G.tut.swipe2) tutorial('swipe2', fineMouse
+      ? '② 연두색 라인을 따라 직진으로 끌어서 놓아요\n라인보다 짧으면 땅볼, 길면 뜬볼'
+      : '② 연두색 라인을 따라 직진으로 쭉 밀어요\n라인보다 짧으면 땅볼, 길면 뜬볼');
+  }
+  /** 끌어서 던지기 — 라인 방향으로 밀지 않았으면 false */
+  function swipeThrow(dx, dy) {
+    const d = dragRatio(dx, dy);
+    if (d.along < 12) return false;
+    doThrow({ r: d.r, dev: Math.tan(clamp(d.ang, -0.6, 0.6)) * (aimZ() - throwOrigin().z) * 0.3 });
+    return true;
+  }
+  function chargeStart(via) {
+    if (G.paused || G.phase !== 'holding') return;
+    if (A.step === 'dir') { confirmDir(); return; }
+    if (A.charge >= 0) return;
+    A.charge = 0; A.chargeVia = via;
+  }
+  function chargeEnd(via) {
+    if (!(A.charge >= 0) || A.chargeVia !== via) return;
+    const r = A.charge; A.charge = -1;
+    doThrow({ r, dev: 0 });
   }
   function newWind() {
     const [a, b] = DF().wind;
@@ -621,8 +687,8 @@ function createGame(host, opts) {
     WIND.x = Math.cos(WIND.ang) * WIND.spd;      // + 오른쪽으로 분다
     WIND.h = Math.sin(WIND.ang) * WIND.spd;      // + 친구 쪽으로 (뒷바람)
   }
-  /** 바람에 밀리는 거리 — 오래 날수록(느린 공일수록) 많이 밀린다 */
-  const windDrift = (T) => ({ x: WIND.x * 0.045 * T, y: WIND.h * 0.02 * T });
+  /** 바람에 밀리는 거리 — 오래 날수록(느린 공일수록) 많이 민다. 쉬움은 안 민다 */
+  const windDrift = (T) => ({ x: WIND.x * 0.045 * T * DF().windK, y: 0 });
 
   /* ---------- 진행 단계 ---------- */
   /* 대결이 끝난 뒤에는 늦게 도착한 연출이 '끝' 화면을 덮지 못한다 */
@@ -814,76 +880,78 @@ function createGame(host, opts) {
   /* ---------- 던질 차례 ---------- */
   function beginHolding() {
     setPhase('holding');
-    A.bx = M.x; A.by = 1.05; A.seed = rand(0, TAU);
-    const s0 = swayAt(0); A.x = A.bx + s0.x; A.y = A.by + s0.y;
+    A.step = 'dir'; A.bx = M.x; A.drag = null; A.charge = -1;
     newWind();
-    if (WIND.spd > 1.5) sfx('wind', { strength: clamp(WIND.spd / 7.5, 0, 1) });
+    if (DF().windK > 0 && WIND.spd > 1.5) sfx('wind', { strength: clamp(WIND.spd / 7.5, 0, 1) });
     setPose('ready');
     syncThrowPanel();
+    const tap = fineMouse ? '클릭' : '터치';
     if (D) {
-      if (!G.tut.dthrow) tutorial('dthrow', '내 차례! 조준점이 초록일 때 화면을 위로 밀어 던져요\n바람도 봐야 해요');
+      if (!G.tut.dthrow) tutorial('dthrow', `내 차례! ① 던질 방향을 ${tap}\n② 연두색 라인 길이만큼 직진으로 쭉!`);
       return;
     }
     if (G.round <= 2 || Math.random() < 0.3) say(pick(['여기!', '이쪽이야!', '던져~!']), 0.9);
-    if (!G.tut.throw) tutorial('throw', fineMouse
-      ? '조준점이 초록일 때 클릭(스페이스)! 빨강에서 던지면 실책이에요\n바람에 공이 밀려요'
-      : '조준점이 초록일 때 화면을 아래에서 위로 쓱!\n빨강에서 던지면 실책 · 바람에 공이 밀려요');
-    else if (!G.tut.speed && G.round >= 3) tutorial('speed', '빠르기와 구종을 고를 수 있어요\n빠를수록·변화구일수록 조준이 더 흔들려요');
+    if (!G.tut.throw) tutorial('throw', `① 던질 방향을 ${tap}하세요\n바닥의 부채꼴 안에서 골라요`);
+    else if (!G.tut.speed && G.round >= 3) tutorial('speed', '빠르기와 구종을 고를 수 있어요\n빠를수록·변화구일수록 딱 좋은 길이가 좁아져요');
   }
   /**
-   * 던진다. fl = 쓸어 올리기 정보 {power(px/ms), dirX(가로/세로 비)} — 없으면 키보드·마우스(깨끗한 손놀림)
-   * 판정은 **누른 순간** 정해진다(양궁처럼). 공은 자세가 끝날 때 손을 떠난다.
+   * 던진다. o = { r: 라인 길이 비율, dev: 옆으로 벗어난 거리(m) } — 없으면 라인 끝까지 곧게(검사 도구 · 자동)
+   * 판정은 **손을 놓는 순간** 정해진다. 공은 자세가 끝날 때 손을 떠난다.
    */
-  function doThrow(fl) {
+  function doThrow(o = {}) {
     if (G.paused || G.phase !== 'holding') return;
-    let ex = 0, ey = 0, note = '';
-    if (fl) {
-      ex = clamp(fl.dirX * 0.55, -0.45, 0.45);
-      if (fl.power < 1.0) { ey = -(1.0 - fl.power) * 0.9; note = '약하게 밀었어요 — 공이 낮게 가요'; }
-      else if (fl.power > 4.5) { ey = Math.min(0.3, (fl.power - 4.5) * 0.15); note = '너무 세게 밀었어요 — 공이 높게 가요'; }
-      if (Math.abs(ex) > 0.12) note = ex > 0 ? '비스듬히 밀어서 오른쪽으로 갔어요' : '비스듬히 밀어서 왼쪽으로 갔어요';
-    }
-    const rx = A.x + ex, ry = A.y + ey;
-    const zone = zoneOf(rx, ry);                 // 손놀림 (바람 전)
-    const T = myThrowT();
-    const dr = windDrift(T);
-    let lx = rx + dr.x, ly = ry + dr.y;
+    if (A.step === 'dir') A.step = 'swipe';
+    const r = Number.isFinite(o.r) ? o.r : 1, dev = Number.isFinite(o.dev) ? o.dev : 0;
+    const band = throwBand();
+    const kind = kindOf(r);
+    const T = myThrowT() * (kind === 'fly' || kind === 'over' ? 1.3 : kind === 'ground' || kind === 'dud' ? 1.12 : 1);
+    let lx = A.bx + dev + windDrift(T).x;
+    let ly = kind === 'line' ? 1.05 + clamp(r - 1, -0.25, 0.25) * 0.8
+      : kind === 'ground' ? 0.32 : kind === 'dud' ? BALL_R
+      : kind === 'fly' ? clamp(1.6 + (r - band.hi) * 1.6, 1.6, 2.45) : 3.1;
     const c = zoneC();
-    let res;
-    if (zone === 'r') {
-      /* 빨강 = 실책 — 손에 닿지 않는 곳으로 크게 빗나간다 */
+    const off = Math.abs(lx - c.x);
+    let res, note = '';
+    if (kind === 'dud' || kind === 'over' || off > 1.55) {
       res = 'error';
+      note = kind === 'dud' ? '너무 짧게 밀었어요 — 공이 못 갔어요' : kind === 'over' ? '너무 길게 밀었어요 — 머리 위로 넘어갔어요' : '방향이 너무 벗어났어요';
       const sx = Math.sign((lx - c.x) || (Math.random() - 0.5));
       /* 대결: 받는 사람 손이 닿는 폭(REACH_X)을 확실히 벗어나야 상대 화면도 악송구로 읽는다 */
-      lx = D ? sx * rand(2.3, 2.8) : c.x + sx * rand(1.9, 2.4);
-      ly = clamp(c.y + (ly - c.y) * 2.2, 0.0, 3.1);
+      if (D) lx = sx * rand(2.3, 2.8);
+      else if (kind !== 'dud' && kind !== 'over') lx = c.x + sx * Math.max(off, 1.9);
     } else {
-      const d = Math.hypot(lx - c.x, (ly - c.y) / 0.8);
-      res = d < zoneR().g ? 'strike' : 'ball';
-      /* 대결: 볼은 바람에 밀려도 받을 수 있는 공이어야 한다 (안 그러면 상대가 악송구로 읽는다) */
+      res = kind === 'line' && off <= DF().strikeX ? 'strike' : 'ball';
+      if (kind === 'ground') note = '라인보다 짧게 — 땅볼!';
+      else if (kind === 'fly') note = '라인보다 길게 — 뜬볼!';
+      else if (off > DF().strikeX) note = lx > c.x ? '조금 오른쪽으로 갔어요' : '조금 왼쪽으로 갔어요';
+      /* 대결: 볼은 받을 수 있는 공이어야 한다 (안 그러면 상대가 악송구로 읽는다) */
       if (D) { lx = clamp(lx, -1.72, 1.72); ly = clamp(ly, 0.08, 2.5); }
     }
-    Object.assign(A, { fx: lx, fy: ly, res, zone, T, note });
+    const kindType = kind === 'line' ? PITCHES[G.pitch].type : kind === 'fly' || kind === 'over' ? 'lob' : 'grounder';
+    Object.assign(A, { fx: lx, fy: ly, res, T, note, r, kind, type: kindType, short: kind === 'dud' && !D });
+    A.drag = null; A.charge = -1;
     P.throwT = 0;
     P.throwRate = (!D && G.guideLeft > 0) ? 0.42 : 1;
     if (P.throwRate < 1) { G.guideLeft--; local.set('guideLeft', G.guideLeft); $('hint').hidden = true; }
     pressBtn('throwBtn');
     sfx('select');
+    const gp = proj(c.x, 1.6, aimZ());
+    popText(KIND_WORD[kind], gp.x, gp.y - 30, KIND_COL[kind], 24, 0.9);
     setPhase('throwing');
   }
   function launchPlayerBall() {
     const hand = W3 ? W3.handPos() : { x: P.bodyX + 0.22, y: 1.5 + P.lift, z: 0.2 };
-    const tgt = { x: A.fx, y: A.fy, z: M.z - 0.25 };
+    const tgt = { x: A.fx, y: A.fy, z: A.short ? rand(4.5, 6) : M.z - 0.25 };
     let T = A.T;
     if (D) {
       /* 대결: 구종·빠르기·도착점을 한 줄로. 내 화면에서는 조금 느리게 — 상대 판정이 올 틈 */
       D.mySeq = D.seq + 1; D.result = null;
-      const typeIdx = TYPES.indexOf(PITCHES[G.pitch].type) + (G.speed + 1) * 10;
+      const typeIdx = TYPES.indexOf(A.type || PITCHES[G.pitch].type) + (G.speed + 1) * 10;
       const th = `${D.gid}|${D.mySeq}|${typeIdx}|${Math.round(-A.fx * 100)}|${Math.round(A.fy * 100)}|${Math.round(T * 1000)}`;
       DUEL.send({ th });
       T = T + 0.12;
     }
-    const segs = buildSegsTo(PITCHES[G.pitch].type, hand, tgt, T);
+    const segs = buildSegsTo(A.type || PITCHES[G.pitch].type, hand, tgt, T);
     B.segs = segs;
     B.launch = G.t; B.dur = segs.reduce((a, s) => a + s.T, 0); B.arriveAt = G.t + B.dur; B.target = tgt;
     B.state = 'flight'; B.toPlayer = false; B.segIdx = 0; B.trail.length = 0; B.spin = 16; B.bounces = 0;
@@ -901,6 +969,13 @@ function createGame(host, opts) {
   }
   /** 내 화면에서 친구 쪽으로 날아가는 공 (구종 모양을 흉내 낸다) */
   function buildSegsTo(type, hand, tgt, T) {
+    if (type === 'grounder') {
+      /* 땅볼 — 가는 길 반쯤에서 한 번 튄다 */
+      const b = { x: lerp(hand.x, tgt.x, 0.55), y: BALL_R, z: lerp(hand.z, tgt.z, 0.55) };
+      const T1 = T * 0.58;
+      return [mkSeg(hand, b, T1, 9.8), mkSeg(b, tgt, T - T1, 9.8)];
+    }
+    if (type === 'lob') return [fitSeg(hand, tgt, T, 9.8)];
     if (type === 'slider' || type === 'fork') {
       const late = type === 'slider' ? { x: (Math.random() < 0.5 ? -1 : 1) * 0.5, y: 0 } : { x: 0, y: -0.5 };
       const s = mkSeg(hand, { x: tgt.x - late.x, y: tgt.y - late.y, z: tgt.z }, T, 6.5); s.late = late;
@@ -1137,28 +1212,21 @@ function createGame(host, opts) {
       resolveCatch(B.arriveAt - G.t);
     }
   }
-  function contextAction() { if (G.phase === 'holding') doThrow(); else tryCatch(); }
+  function contextAction() { if (G.phase === 'holding') chargeStart('key'); else tryCatch(); }
   const aimPhase = () => G.phase === 'holding';
+  /** 글러브는 손가락을 빠르게 따라온다 (사용자 지정) */
   function moveBy(dx, dy) {
-    if (aimPhase()) {
-      /* 조준경 배율 그대로 — 손가락이 움직인 만큼 조준점도 움직인다 */
-      A.bx = clamp(A.bx + dx / aimK, M.x - 2.6, M.x + 2.6);
-      A.by = clamp(A.by - dy / aimK, 0.1, 3.0);
-    } else {
-      /* 글러브는 손가락을 빠르게 따라온다 (사용자 지정) */
-      const sg = F / depthOf(1.1, GLOVE_Z);
-      P.tgx = clamp(P.tgx + dx / sg * 1.7, -1.55, 1.55);
-      P.tgy = clamp(P.tgy - dy / sg * 1.7, 0.15, 2.4);
-    }
+    const sg = F / depthOf(1.1, GLOVE_Z);
+    P.tgx = clamp(P.tgx + dx / sg * 1.7, -1.55, 1.55);
+    P.tgy = clamp(P.tgy - dy / sg * 1.7, 0.15, 2.4);
   }
   /**
    * 터치 하나를 따라간다.
-   *   · 끌면 글러브(받을 때) 또는 조준 기준점(던질 때)이 움직인다
-   *   · 던질 때 아래→위로 빠르게 쓸어 올리고 떼면 던진다 — 쓸어 올리는 동안 움직인 조준은 되돌린다
-   *   · 받을 때 손을 떼고 **다시 누르면** 그 순간이 잡기다 (사용자 지정)
+   *   · 받을 때: 끌면 글러브가 움직이고, 손을 떼고 **다시 누르면** 그 순간이 잡기다 (사용자 지정)
+   *   · 던질 때 ①: 누르고 떼는 자리가 방향 (마우스는 올려만 놔도 미리 보인다)
+   *   · 던질 때 ②: 연두색 라인을 따라 끌어서 놓으면 던진다. 짧게 톡 누르면 방향을 다시 고른다
    */
   let drag = null, mouseLast = null;
-  const baseHist = [];
   const toLocal = (e) => { const r = cvs.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   function tapCatchIfReady() {
     if (G.phase !== 'flying' || !B.toPlayer) return false;
@@ -1166,74 +1234,70 @@ function createGame(host, opts) {
     if (B.state === 'flight' && B.arriveAt - G.t <= EARLY + 0.35) { tryCatch(); return true; }
     return false;
   }
+  const sameDrag = (e) => drag && (e.pointerType === 'mouse' ? drag.mouse : e.pointerId === drag.id);
   on(cvs, 'pointerdown', (e) => {
     ainit();
     if (drag) return;
-    drag = { id: e.pointerType === 'mouse' ? 'mouse' : e.pointerId, x: e.clientX, y: e.clientY, pts: [{ t: performance.now(), x: e.clientX, y: e.clientY }], mouse: e.pointerType === 'mouse', moved: 0 };
-    if (e.pointerType === 'mouse') {
-      mouseLast = { x: e.clientX, y: e.clientY };
-      if (e.button === 0 && isPlaying() && !aimPhase()) tryCatch();
+    drag = { id: e.pointerType === 'mouse' ? 'mouse' : e.pointerId, x: e.clientX, y: e.clientY, mouse: e.pointerType === 'mouse', moved: 0, aim: false };
+    if (e.pointerType !== 'mouse') { try { cvs.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ } e.preventDefault(); }
+    if (aimPhase() && !G.paused) {
+      if (e.pointerType === 'mouse' && e.button !== 0) { drag = null; return; }
+      const pt = toLocal(e);
+      drag.aim = true;
+      A.drag = { x0: pt.x, y0: pt.y, x: pt.x, y: pt.y };
+      if (A.step === 'dir') A.bx = aimXAt(pt.x, pt.y);
       return;
     }
-    try { cvs.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
-    e.preventDefault();
+    if (e.pointerType === 'mouse') {
+      mouseLast = { x: e.clientX, y: e.clientY };
+      if (e.button === 0 && isPlaying()) tryCatch();
+      return;
+    }
     if (!G.paused) tapCatchIfReady();
   });
   on(cvs, 'pointermove', (e) => {
+    if (aimPhase() && !G.paused) {
+      const pt = toLocal(e);
+      if (sameDrag(e) && drag.aim) {
+        if (A.drag) { A.drag.x = pt.x; A.drag.y = pt.y; }
+        if (A.step === 'dir') A.bx = aimXAt(pt.x, pt.y);
+      } else if (e.pointerType === 'mouse' && !drag && A.step === 'dir') A.bx = aimXAt(pt.x, pt.y);
+      mouseLast = { x: e.clientX, y: e.clientY };
+      return;
+    }
     if (e.pointerType === 'mouse') {
-      const dragging = drag && drag.mouse;
       if (mouseLast && Math.abs(mouseLast.x - e.clientX) + Math.abs(mouseLast.y - e.clientY) < 1.5) return;
       if (!isPlaying() || G.paused) { mouseLast = { x: e.clientX, y: e.clientY }; return; }
-      if (aimPhase()) {
-        if (dragging) { drag.pts.push({ t: performance.now(), x: e.clientX, y: e.clientY }); if (drag.pts.length > 16) drag.pts.shift(); }
-        if (mouseLast) moveBy(e.clientX - mouseLast.x, e.clientY - mouseLast.y);
-        baseHist.push({ t: performance.now(), bx: A.bx, by: A.by }); if (baseHist.length > 30) baseHist.shift();
-      } else {
-        const lpnt = toLocal(e);
-        const w = unproject(lpnt.x, lpnt.y, GLOVE_Z);
-        P.tgx = clamp(w.x, -1.55, 1.55); P.tgy = clamp(w.y, 0.15, 2.4);
-      }
+      const lpnt = toLocal(e);
+      const w = unproject(lpnt.x, lpnt.y, GLOVE_Z);
+      P.tgx = clamp(w.x, -1.55, 1.55); P.tgy = clamp(w.y, 0.15, 2.4);
       mouseLast = { x: e.clientX, y: e.clientY };
       return;
     }
     if (!drag || e.pointerId !== drag.id) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-    drag.pts.push({ t: performance.now(), x: e.clientX, y: e.clientY }); if (drag.pts.length > 16) drag.pts.shift();
-    if (!G.paused && isPlaying()) {
-      moveBy(dx, dy);
-      if (aimPhase()) { baseHist.push({ t: performance.now(), bx: A.bx, by: A.by }); if (baseHist.length > 30) baseHist.shift(); }
-    }
+    if (!G.paused && isPlaying()) moveBy(dx, dy);
   });
-  /** 마지막 0.15초가 빠르게 위로 쓸어 올린 것이면 던지기 */
-  function flickOf(pts) {
-    if (!pts || pts.length < 2) return null;
-    const end = pts[pts.length - 1];
-    let start = end;
-    for (let i = pts.length - 1; i >= 0; i--) { if (end.t - pts[i].t > 150) break; start = pts[i]; }
-    const dt = Math.max(16, end.t - start.t), dy = end.y - start.y, dx = end.x - start.x;
-    const vy = dy / dt;
-    if (-dy > 40 && -vy > 0.55 && Math.abs(dx) < Math.abs(dy) * 1.3) return { power: -vy, dirX: dx / -dy, t0: start.t };
-    return null;
-  }
   const endDrag = (e) => {
-    if (!drag) return;
-    if (e.pointerType === 'mouse' ? !drag.mouse : e.pointerId !== drag.id) return;
+    if (!sameDrag(e)) return;
     const d = drag; drag = null;
-    if (G.phase !== 'holding' || G.paused) return;
-    const fl = flickOf(d.pts);
-    if (fl) {
-      /* 쓸어 올리는 동안 같이 움직인 조준 기준점을 그 전 자리로 되돌린다 */
-      for (let i = baseHist.length - 1; i >= 0; i--) if (baseHist[i].t <= fl.t0) { A.bx = baseHist[i].bx; A.by = baseHist[i].by; break; }
-      doThrow(d.mouse ? null : fl);
-    } else if (d.mouse && d.moved < 6) {
-      doThrow();                                  // 마우스는 클릭이 곧 던지기
-    } else if (!d.mouse && d.moved < 8 && !G.tut.swipeNag) {
-      G.tut.swipeNag = true; showHint('던질 땐 화면을 아래에서 위로 쓱 밀어 올려요!', 2);
+    if (!d.aim) return;
+    const a = A.drag; A.drag = null;
+    if (G.phase !== 'holding' || G.paused || !a) return;
+    const pt = toLocal(e);
+    if (A.step === 'dir') { A.bx = aimXAt(pt.x, pt.y); confirmDir(); return; }
+    const dx = pt.x - a.x0, dy = pt.y - a.y0;
+    if (Math.hypot(dx, dy) < 14) {
+      /* 짧게 톡 — 방향을 다시 고른다 */
+      A.bx = aimXAt(pt.x, pt.y); sfx('tab');
+      const p = proj(A.bx, 1.4, aimZ()); popText('방향 다시!', p.x, p.y - 20, '#ffffff', 20, 0.7);
+      return;
     }
+    if (!swipeThrow(dx, dy)) showHint('연두색 라인을 따라 앞으로 밀어요!', 1.8);
   };
   on(cvs, 'pointerup', endDrag);
-  on(cvs, 'pointercancel', (e) => { if (drag && (e.pointerType === 'mouse' || e.pointerId === drag.id)) drag = null; });
+  on(cvs, 'pointercancel', (e) => { if (sameDrag(e)) { if (drag.aim) A.drag = null; drag = null; } });
   on(cvs, 'contextmenu', (e) => e.preventDefault());
 
   function bindAct(key, fn) {
@@ -1243,11 +1307,14 @@ function createGame(host, opts) {
     on(el, 'click', (e) => { if (viaPointer) { viaPointer = false; return; } fn(e); });
   }
   bindAct('catchBtn', () => tryCatch());
-  bindAct('throwBtn', (e) => {
-    if (G.phase !== 'holding') return;
-    if (e && e.pointerType === 'touch') { showHint('던질 땐 화면을 아래에서 위로 쓱 밀어 올려요!', 2); return; }
-    doThrow();
-  });
+  /* 던지기 버튼 — ① 에서는 방향 확정(고른 게 없으면 친구 쪽), ② 에서는 꾹 누른 만큼 라인이 차고 떼면 던진다 */
+  {
+    const tb = $('throwBtn');
+    on(tb, 'pointerdown', (e) => { e.preventDefault(); ainit(); try { tb.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ } chargeStart('btn'); });
+    on(tb, 'pointerup', () => chargeEnd('btn'));
+    on(tb, 'pointercancel', () => chargeEnd('btn'));
+    on(tb, 'click', (e) => e.preventDefault());
+  }
   function pressBtn(key) {
     const el = $(key);
     el.classList.add('down');
@@ -1274,7 +1341,7 @@ function createGame(host, opts) {
       e.preventDefault(); contextAction();
     }
     else if (code === 'KeyZ' || code === 'KeyJ') tryCatch();
-    else if (code === 'KeyX' || code === 'KeyK') doThrow();
+    else if (code === 'KeyX' || code === 'KeyK') chargeStart('key');
     else if (code === 'Digit1' || code === 'Numpad1') setSpeed(0);
     else if (code === 'Digit2' || code === 'Numpad2') setSpeed(1);
     else if (code === 'Digit3' || code === 'Numpad3') setSpeed(2);
@@ -1283,15 +1350,17 @@ function createGame(host, opts) {
     else if (code === 'Digit6') setPitch(2);
     else if (code === 'Digit7') setPitch(3);
   });
-  on(window, 'keyup', (e) => { keys[e.code] = false; });
+  on(window, 'keyup', (e) => {
+    keys[e.code] = false;
+    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyX' || e.code === 'KeyK') chargeEnd('key');
+  });
   on(window, 'blur', () => { for (const k in keys) keys[k] = false; });
   function keysUpdate(dt) {
     const kx = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
     const ky = (keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0);
     if (!kx && !ky) return;
     if (aimPhase()) {
-      A.bx = clamp(A.bx + kx * 1.4 * dt, M.x - 2.6, M.x + 2.6);
-      A.by = clamp(A.by + ky * 1.1 * dt, 0.1, 3.0);
+      if (A.step === 'dir') A.bx = clampAim(A.bx + kx * 1.6 * dt);
     } else {
       P.tgx = clamp(P.tgx + kx * 4.4 * dt, -1.55, 1.55);
       P.tgy = clamp(P.tgy + ky * 3.6 * dt, 0.15, 2.4);
@@ -1441,13 +1510,12 @@ function createGame(host, opts) {
         if (G.phaseT > 0.55) beginHolding();
         break;
       case 'holding': {
-        const sw = swayAt(G.phaseT);
-        A.x = A.bx + sw.x;
-        A.y = clamp(A.by + sw.y, 0.0, 3.3);
+        if (A.charge >= 0) { A.charge += dt / CHARGE_TIME; if (A.charge >= 2.2) chargeEnd(A.chargeVia); }
         if (D) {
           const left = HOLD_LIMIT - G.phaseT;
           if (left < 5 && !G.tut['hold' + D.seq]) { G.tut['hold' + D.seq] = true; showHint('5초 안에 던져요!', 2); }
-          if (left <= 0) doThrow();
+          /* 시간이 다 되면 약한 땅볼로 넘어간다 (기다리기만 해서는 이득이 없게) */
+          if (left <= 0) doThrow({ r: 0.55, dev: 0 });
         }
         break;
       }
@@ -1808,108 +1876,117 @@ function createGame(host, opts) {
     }
   }
   /**
-   * ★ 던질 때 — 조준경 (양궁·사격 게임처럼)
-   * 친구는 11m 밖이라 실제 크기로 그리면 과녁이 손톱만 하다. 친구 가슴을 가운데 두고
-   * 과녁(빨강 바탕 · 주황 · 초록)과 흔들리는 조준점을 **크게 확대해서** 그린다.
-   * `aimK` = 조준경 배율(px/m) — 손가락으로 조준을 옮길 때도 같은 배율을 쓴다(moveBy).
+   * ★ 던질 때 — 투포환 부채꼴 + 볼링 라인 (2026-10-29 개편, 사용자 지정)
+   * ① 바닥에 부채꼴(흰 선 두 줄 · 거리 호). 고른 방향은 흰 점선.
+   * ② 그 방향으로 **진한 연두색 직진 라인**. 라인 끝까지 끌면 딱 좋은 공, 짧으면 땅볼, 길면 뜬볼.
    */
-  let aimK = 200;
+  function groundPath(pts) { ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); }
   function drawAimGuides() {
-    const c = zoneC(), r = zoneR();
-    const pc = proj(c.x, c.y, M.z - 0.25);
-    /* 가로 화면은 높이가 모자라 조금 작게 — 내 캐릭터 머리와 겹치지 않게 */
-    const K = aimK = clamp(Math.min(W, H) * (portrait ? 0.19 : 0.15) / r.o, 80, 700);
-    const R = r.o * 1.62 * K;
-    const top = SAFE.t + R + (portrait ? 96 : 68);
-    const cx = clamp(pc.x, R + 8, W - R - 8);
-    const cy = clamp(pc.y, top, Math.max(top, H - R - 12));
-    const toS = (x, y) => ({ x: cx + (x - c.x) * K, y: cy - (y - c.y) * K });
-    /* 조준경 */
-    ctx.save();
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU);
-    ctx.fillStyle = 'rgba(255,255,255,.2)'; ctx.fill();
-    ctx.clip();
-    ctx.fillStyle = 'rgba(255,74,58,.26)'; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
-    ctx.fillStyle = 'rgba(255,159,46,.55)'; ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(cx, cy, r.o * K, r.o * K * 0.8, 0, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(47,191,90,.78)'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.ellipse(cx, cy, r.g * K, r.g * K * 0.8, 0, 0, TAU); ctx.fill(); ctx.stroke();
-    /* 스트라이크 존 9칸 */
-    const gw = r.g * K * 0.66, gh = r.g * K * 0.8 * 0.66;
-    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.5;
-    ctx.strokeRect(cx - gw, cy - gh, gw * 2, gh * 2);
-    ctx.beginPath();
-    for (const f of [-1 / 3, 1 / 3]) { ctx.moveTo(cx + gw * 2 * f, cy - gh); ctx.lineTo(cx + gw * 2 * f, cy + gh); ctx.moveTo(cx - gw, cy + gh * 2 * f); ctx.lineTo(cx + gw, cy + gh * 2 * f); }
-    ctx.stroke();
-    ctx.restore();
-    /* 조준경 테두리 · 눈금 */
-    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(21,48,75,.9)';
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
-    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.8)';
-    ctx.beginPath(); ctx.arc(cx, cy, R - 4, 0, TAU); ctx.stroke();
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(21,48,75,.9)';
-    ctx.beginPath();
-    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; ctx.moveTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); ctx.lineTo(cx + Math.cos(a) * (R - 14), cy + Math.sin(a) * (R - 14)); }
-    ctx.stroke();
-    /* 쉬움 — 바람에 밀려 떨어질 자리 (점선) */
-    const dr = windDrift(myThrowT());
-    const pa = toS(A.x, A.y);
-    if (G.diff === 'easy' && WIND.spd > 0.3) {
-      const pg = toS(A.x + dr.x, A.y + dr.y);
-      ctx.setLineDash([5, 5]); ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pg.x, pg.y); ctx.stroke();
-      circ(ctx, pg.x, pg.y, 9); ctx.stroke(); ctx.setLineDash([]);
+    const o = throwOrigin(), az = aimZ(), R = az - o.z;
+    const P0 = proj(o.x, 0, o.z);
+    const arc = (d, n = 18) => Array.from({ length: n + 1 }, (_, i) => { const a = -SECTOR + (2 * SECTOR * i) / n; return proj(o.x + Math.sin(a) * d, 0, o.z + Math.cos(a) * d); });
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    /* 부채꼴 바닥 */
+    groundPath([P0, ...arc(R, 24)]); ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3;
+    for (const sgn of [-1, 1]) { const q = proj(o.x + Math.sin(sgn * SECTOR) * R, 0, o.z + Math.cos(sgn * SECTOR) * R); groundPath([P0, q]); ctx.stroke(); }
+    ctx.setLineDash([7, 7]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    for (const d of [3, 6, 9]) { groundPath(arc(d)); ctx.stroke(); }
+    ctx.setLineDash([]);
+    /* 스트라이크 폭 — 친구 앞 바닥에 */
+    const sx = DF().strikeX, zl = proj(M.x - sx, 0, az), zr = proj(M.x + sx, 0, az);
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 4;
+    groundPath([zl, zr]); ctx.stroke();
+    /* 고른 방향 (바닥) */
+    const tg = proj(A.bx, 0, az);
+    if (A.step === 'dir') {
+      ctx.setLineDash([12, 9]); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4;
+      groundPath([P0, tg]); ctx.stroke(); ctx.setLineDash([]);
+    } else {
+      ctx.strokeStyle = 'rgba(76,196,23,.5)'; ctx.lineWidth = 7;
+      groundPath([P0, tg]); ctx.stroke();
     }
-    /* 흔들리는 조준점 */
-    const zone = zoneOf(A.x, A.y);
-    const col = zone === 'g' ? '#3dff7a' : zone === 'o' ? '#ffb02e' : '#ff4a3a';
-    const rad = clamp(R * 0.12, 11, 18);
-    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(21,48,75,.75)'; circ(ctx, pa.x, pa.y, rad); ctx.stroke();
-    ctx.lineWidth = 3.5; ctx.strokeStyle = col; circ(ctx, pa.x, pa.y, rad); ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(pa.x - rad * 1.8, pa.y); ctx.lineTo(pa.x - rad * 0.4, pa.y); ctx.moveTo(pa.x + rad * 0.4, pa.y); ctx.lineTo(pa.x + rad * 1.8, pa.y);
-    ctx.moveTo(pa.x, pa.y - rad * 1.8); ctx.lineTo(pa.x, pa.y - rad * 0.4); ctx.moveTo(pa.x, pa.y + rad * 0.4); ctx.lineTo(pa.x, pa.y + rad * 1.8);
-    ctx.stroke();
-    ctx.fillStyle = col; circ(ctx, pa.x, pa.y, 3); ctx.fill();
-    const word = zone === 'g' ? '스트라이크 존!' : zone === 'o' ? '볼' : '위험! 실책';
-    /* 가로 화면은 위가 좁다 — 글자를 조준경 왼쪽에 둔다 */
-    if (portrait) outlinedText(word, cx, cy - R - 16, col, zone === 'g' ? 22 : 18);
-    else outlinedText(word, Math.max(72, cx - R - 72), cy - R * 0.45, col, zone === 'g' ? 20 : 17);
+    /* 과녁 표시 (친구 가슴 높이) + 바람에 밀릴 자리 */
+    const tc = proj(A.bx, 1.05, az);
+    const ring = Math.max(8, 0.13 * tc.s);
+    ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(21,48,75,.75)'; circ(ctx, tc.x, tc.y, ring); ctx.stroke();
+    ctx.lineWidth = 3; ctx.strokeStyle = A.step === 'dir' ? '#ffffff' : LIME_HI; circ(ctx, tc.x, tc.y, ring); ctx.stroke();
+    const dr = windDrift(myThrowT());
+    if (Math.abs(dr.x) > 0.05) {
+      const tw = proj(A.bx + dr.x, 1.05, az);
+      ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(191,230,255,.95)'; ctx.lineWidth = 2;
+      groundPath([tc, tw]); ctx.stroke(); circ(ctx, tw.x, tw.y, ring * 0.7); ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.restore();
+    const labelY = SAFE.t + (portrait ? (D ? 236 : 214) : 112);
+    if (A.step === 'dir') {
+      outlinedText(fineMouse ? '① 던질 방향을 클릭하세요' : '① 던질 방향을 터치하세요', W / 2, labelY, '#ffffff', portrait ? 21 : 18);
+    } else {
+      drawLaneGuide();
+      outlinedText('② 볼링처럼 라인을 맞춰 직진으로 던지세요!', W / 2, labelY, LIME_HI, portrait ? 19 : 17);
+      outlinedText('라인보다 짧으면 땅볼 · 길면 뜬볼', W / 2, labelY + 24, '#ffffff', portrait ? 14 : 13);
+    }
     if (D) {
       const left = Math.ceil(HOLD_LIMIT - G.phaseT);
-      if (left <= 5) outlinedText(String(Math.max(0, left)), cx, cy + R + 22, '#ffd84a', 26);
+      if (left <= 5) outlinedText(String(Math.max(0, left)), W / 2, labelY + 52, '#ffd84a', 26);
     }
-    drawWind(cx, cy, R);
+    if (DF().windK > 0) drawWind(W - 46 - SAFE.r, portrait ? labelY + 70 : SAFE.t + 112);
   }
-  /** 바람 — 풍향계 + 풍속 + 조준경 옆 깃발 */
-  function drawWind(cx, cy, R) {
-    const rw = 30;
-    /* 조준경 오른쪽 → 왼쪽 → 오른쪽 위 순서로, 조준경과 겹치지 않고 화면 안에 들어가는 자리 */
-    const fits = (x, y) => x - rw >= 6 && x + rw <= W - 6 && Math.hypot(x - cx, y - cy) >= R + rw + 6;
-    let wx = Math.min(cx + R + rw + 14, W - rw - 6), wy = cy - R * 0.45;
-    if (!fits(wx, wy)) { wx = Math.max(cx - R - rw - 14, rw + 6); }
-    if (!fits(wx, wy)) { wx = W - rw - 12; wy = Math.max(SAFE.t + 150, cy - R - 60); }
+  /** ② 진한 연두색 직진 라인 + 끄는 만큼 차오르는 표시 */
+  function drawLaneGuide() {
+    const g = guideGeom(), b = throwBand();
+    const at = (r) => ({ x: g.sx + g.ux * g.L * r, y: g.sy + g.uy * g.L * r });
+    const seg = (a, c, col, w, dash) => { ctx.setLineDash(dash || []); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y); ctx.stroke(); ctx.setLineDash([]); };
+    ctx.save(); ctx.lineCap = 'round';
+    /* 테두리 → 라인 → 뜬볼 구간(점선) */
+    seg(at(0), at(1), 'rgba(21,48,75,.7)', 19);
+    seg(at(1), at(1.9), 'rgba(143,211,255,.75)', 6, [9, 9]);
+    seg(at(0), at(1), LIME, 13);
+    /* 딱 좋은 구간 (밝게) */
+    seg(at(b.lo), at(Math.min(1, b.hi)), LIME_HI, 13);
+    /* 눈금: 짧은 끝 · 라인 끝 · 긴 끝 */
+    const tick = (r, len, col) => { const q = at(r); const nx = -g.uy, ny = g.ux; seg({ x: q.x - nx * len, y: q.y - ny * len }, { x: q.x + nx * len, y: q.y + ny * len }, col, 4); };
+    tick(b.lo, 10, '#ffffff'); tick(b.hi, 10, '#ffffff'); tick(1, 16, '#15304b');
+    /* 시작 동그라미 · 글자 */
+    ctx.lineWidth = 4; ctx.strokeStyle = '#ffffff'; circ(ctx, g.sx, g.sy, 15); ctx.stroke();
+    ctx.fillStyle = 'rgba(76,196,23,.85)'; circ(ctx, g.sx, g.sy, 10); ctx.fill();
+    const side = (r, txt, col, sz) => { const q = at(r); const nx = -g.uy, ny = g.ux; outlinedText(txt, q.x + nx * 46, q.y + ny * 46, col, sz); };
+    side(b.lo * 0.5, '땅볼', '#ffb347', 15);
+    side(1, '딱!', LIME_HI, 18);
+    side(1.55, '뜬볼', '#8fd3ff', 15);
+    /* 끄는 중 · 버튼을 누르는 중 — 라인을 따라 차오른다 */
+    let r = null, dev = 0, path = null;
+    if (A.drag) {
+      const dx = A.drag.x - A.drag.x0, dy = A.drag.y - A.drag.y0;
+      if (Math.hypot(dx, dy) > 6) { const d = dragRatio(dx, dy); r = d.r; dev = d.side; path = { x: g.sx + dx, y: g.sy + dy }; }
+    } else if (A.charge >= 0) r = A.charge;
+    if (r != null) {
+      const rr2 = clamp(r, 0, 2.1);
+      seg(at(0), at(rr2), 'rgba(255,240,140,.9)', 7);
+      if (path) seg({ x: g.sx, y: g.sy }, path, 'rgba(255,255,255,.95)', 3, [6, 5]);
+      const k = kindOf(r), q = at(rr2);
+      outlinedText(KIND_WORD[k], q.x - (-g.uy) * 52, q.y - g.ux * 52, KIND_COL[k], 20);
+      if (Math.abs(dev) > 18 && path) outlinedText('비스듬해요!', path.x, path.y + 26, '#ffb347', 15);
+    }
+    ctx.restore();
+  }
+  /** 바람 — 풍향계 + 풍속 (보통 · 어려움) */
+  function drawWind(wx, wy) {
+    const rw = 26;
     ctx.fillStyle = 'rgba(255,250,240,.94)'; ctx.strokeStyle = '#15304b'; ctx.lineWidth = 3;
     circ(ctx, wx, wy, rw); ctx.fill(); ctx.stroke();
     /* 화면 위쪽 = 친구 쪽(뒷바람) */
     const ang = Math.atan2(-WIND.h, WIND.x);
-    const len = 8 + clamp(WIND.spd / 7.5, 0, 1) * 13;
+    const len = 7 + clamp(WIND.spd / 7.5, 0, 1) * 11;
     ctx.save(); ctx.translate(wx, wy); ctx.rotate(ang);
     ctx.strokeStyle = '#2f78c9'; ctx.fillStyle = '#2f78c9'; ctx.lineWidth = 5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(len - 6, 0); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(len + 4, 0); ctx.lineTo(len - 8, -8); ctx.lineTo(len - 8, 8); ctx.closePath(); ctx.fill();
     ctx.restore();
-    outlinedText(`바람 ${WIND.spd.toFixed(1)}m/s`, clamp(wx, 58, W - 58), wy + rw + 15, '#ffffff', 15);
+    outlinedText(`바람 ${WIND.spd.toFixed(1)}m/s`, clamp(wx, 58, W - 58), wy + rw + 14, '#ffffff', 14);
     const side = Math.abs(WIND.x) < 0.4 ? '' : WIND.x > 0 ? '→ 오른쪽으로 밀려요' : '← 왼쪽으로 밀려요';
-    if (side) outlinedText(side, clamp(wx, 66, W - 66), wy + rw + 33, '#bfe6ff', 13);
-    /* 조준경 왼쪽 아래 깃발 — 바람 부는 쪽으로 펄럭인다 */
-    const fx0 = cx - R * 0.86, fyb = cy + R * 0.95, fyt = cy + R * 0.3;
-    ctx.strokeStyle = '#e9e4d8'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(fx0, fyb); ctx.lineTo(fx0, fyt); ctx.stroke();
-    const fl = (10 + clamp(WIND.spd / 7.5, 0, 1) * 26) * Math.sign(WIND.x || 1);
-    const wav = Math.sin(G.t * (4 + WIND.spd)) * 4;
-    ctx.fillStyle = '#ff5a4a'; ctx.strokeStyle = '#15304b'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(fx0, fyt); ctx.lineTo(fx0 + fl, fyt + 7 + wav); ctx.lineTo(fx0, fyt + 16); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (side) outlinedText(side, clamp(wx, 66, W - 66), wy + rw + 31, '#bfe6ff', 12);
   }
   function outlinedText(text, x, y, col, size) {
     ctx.font = `${size}px "Black Han Sans","Jua",sans-serif`;
@@ -2111,7 +2188,7 @@ function createGame(host, opts) {
     const holdingNow = G.phase === 'holding';
     const catchOn = ['windup', 'flying', 'reposition', 'oppHold'].includes(G.phase) && B.state !== 'player';
     const catchReady = G.phase === 'flying';
-    const s = `${catchOn}${catchReady}${holdingNow}`;
+    const s = `${catchOn}${catchReady}${holdingNow}${holdingNow ? A.step : ''}`;
     if (s === btnState) return;
     btnState = s;
     const c = $('catchBtn'), t = $('throwBtn');
@@ -2119,8 +2196,8 @@ function createGame(host, opts) {
     c.hidden = holdingNow && !fineMouse;
     t.classList.toggle('off', !holdingNow); t.classList.toggle('ready', holdingNow);
     $('tpanel').hidden = !holdingNow;
-    $('swipe').hidden = !holdingNow || fineMouse;
-    $('throwLabel').textContent = holdingNow && !fineMouse ? '위로 밀기' : '던지기';
+    $('swipe').hidden = !holdingNow || fineMouse || A.step !== 'swipe';
+    $('throwLabel').textContent = !holdingNow ? '던지기' : A.step === 'dir' ? '방향 확정' : '꾹 눌러 던지기';
   }
   function syncThrowPanel() {
     root.querySelectorAll('.cb-sp').forEach((b) => b.setAttribute('aria-checked', String((b.dataset.sp | 0) === G.speed)));
@@ -2526,7 +2603,7 @@ function createGame(host, opts) {
   on($('bgm'), 'click', toggleBgm); on($('tBgm'), 'click', toggleBgm);
   /* 첫 터치에서 소리를 깨운다 (브라우저 자동재생 규칙) */
   on(root, 'pointerdown', () => ainit(), { capture: true });
-  if (fineMouse) $('howto').innerHTML = '마우스로 글러브 이동 · 공이 오면 <b>클릭/스페이스</b>로 잡기 · 조준이 초록일 때 <b>클릭</b>으로 던지기';
+  if (fineMouse) $('howto').innerHTML = '마우스로 글러브 이동 · 공이 오면 <b>클릭/스페이스</b>로 잡기 · 던질 땐 <b>방향 클릭</b> → <b>연두색 라인만큼 끌기</b>';
   on(window, 'resize', layout);
   on(window, 'orientationchange', () => later(layout, 200));
   on(document, 'visibilitychange', () => {
@@ -2580,7 +2657,7 @@ function createGame(host, opts) {
     requestPause,
     remote,
     oppLook(look) { if (D && look) { FRIEND = asLook(look); if (W3) W3.setLooks(null, FRIEND); } },
-    dbg: { G, P, B, M, A, D, WIND, tryCatch, doThrow, catchR, zoneOf, zoneR, setSpeed, setPitch, PR },
+    dbg: { G, P, B, M, A, D, WIND, tryCatch, doThrow, catchR, throwBand, guideGeom, aimXAt, confirmDir, swipeThrow, setSpeed, setPitch, PR },
     destroy() {
       dead = true;
       cancelAnimationFrame(raf); cancelAnimationFrame(sheetRaf);

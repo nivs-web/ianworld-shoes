@@ -41,7 +41,9 @@ if (q.get('auto') === '1') {
       P.tgx = B.target.x; P.tgy = B.target.y;
       if (B.arriveAt - G.t < 0.05 && !P.pending) d.tryCatch();
     }
-    if (window.__mode === 'green' && G.phase === 'holding' && G.phaseT > 0.6 && d.zoneOf(A.x, A.y) === 'g') d.doThrow();
+    /* 새 던지기: ① 방향(친구 쪽) 확정 → ② 라인 끝까지 곧게 */
+    if (window.__mode === 'green' && G.phase === 'holding' && G.phaseT > 0.4 && A.step === 'dir') d.confirmDir();
+    if (window.__mode === 'green' && G.phase === 'holding' && G.phaseT > 0.8 && A.step === 'swipe') d.doThrow({ r: 1, dev: 0 });
   }, 8);
 }
 </script>
