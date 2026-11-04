@@ -4,7 +4,8 @@
 .oh { position: relative; margin: -12px -12px 0; overflow: hidden; flex-shrink: 0; }
 .oh-sc { position: relative; width: 100%; aspect-ratio: 900 / 1031; max-height: 56vh; background: #07060f url(/assets/ui/arcade/plate.webp) center top / cover no-repeat; overflow: hidden; }
 .oh-sc > * { position: absolute; pointer-events: none; }
-.oh::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22%; background: linear-gradient(180deg, transparent, #07060f); pointer-events: none; }
+/* 11/4 2차: 아래가 흐려지며 끝나는 그라데이션 없앰 → 또렷한 금색 선으로 끝 */
+.oh::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, #FFC93C 20%, #FFC93C 80%, transparent); opacity: .7; pointer-events: none; }
 
 /* 네온 다시 칠하기 */
 .oh-glow { inset: 0; background: url(/assets/ui/arcade/plate.webp) center top / cover no-repeat; filter: brightness(1.7) saturate(1.4); mix-blend-mode: screen; opacity: 0; animation: ohNeon 6s steps(1) infinite; }
@@ -60,9 +61,10 @@
 .oh-fw { position: absolute; left: 0; top: 0; pointer-events: none; will-change: transform, opacity; }
 
 /* ── 가운데 엠블럼 + 로고 ── */
-.oh-brand { position: absolute; left: 0; right: 0; bottom: 9%; display: flex; align-items: center; justify-content: center; gap: 2%; z-index: 2; pointer-events: none; }
+/* 11/4 2차: 로고를 용들 바로 아래 · 조금 작게 */
+.oh-brand { position: absolute; left: 0; right: 0; top: 41%; display: flex; align-items: center; justify-content: center; gap: 2%; z-index: 2; pointer-events: none; }
 .oh-brand::before { content: ''; position: absolute; left: 6%; right: 6%; top: -30%; bottom: -30%; background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, .78) 40%, transparent 72%); z-index: -1; }
-.oh-emblem { position: relative; width: 23%; aspect-ratio: 1; perspective: 600px; }
+.oh-emblem { position: relative; width: 17%; aspect-ratio: 1; perspective: 600px; }
 .oh-emblem img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .7)); animation: ohEmblemSpin 6.8s linear infinite; transform-style: preserve-3d; }
 /* 가만히(0~.6) → 반짝(.6~1.2) → 1초 → 1바퀴(2.2~3.0) → 1초 → 반짝(4.0~4.6) → 1초 → 2바퀴(5.6~6.8) → 반복 */
 @keyframes ohEmblemSpin {
@@ -83,7 +85,7 @@
   67.6% { background-position: -60% 0; opacity: 1 }
   67.7%, 100% { background-position: 160% 0; opacity: 1 }
 }
-.oh-logo { position: relative; width: 62%; }
+.oh-logo { position: relative; width: 48%; }
 .oh-logo img { display: block; width: 100%; height: auto;
   filter: drop-shadow(3px 0 0 #000) drop-shadow(-3px 0 0 #000) drop-shadow(0 3px 0 #000) drop-shadow(0 -3px 0 #000) drop-shadow(0 8px 6px rgba(0, 0, 0, .85)); }
 .oh-logo-shine { position: absolute; inset: 0; pointer-events: none;
