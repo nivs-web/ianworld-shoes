@@ -1,0 +1,35 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>side</title>
+<link rel="stylesheet" href="/src/styles/reset.css"><link rel="stylesheet" href="/src/styles/pixel-ui.css"><link rel="stylesheet" href="/src/styles/screens.css">
+<script>
+  (function () {
+    const uid = new URLSearchParams(location.search).get('uid');
+    const real = window.localStorage, pre = 'rmf_' + uid + ':';
+    Object.defineProperty(window, 'localStorage', { value: {
+      getItem: (k) => real.getItem(pre + k), setItem: (k, v) => real.setItem(pre + k, String(v)),
+      removeItem: (k) => real.removeItem(pre + k), clear: () => {}, key: () => null, get length() { return 0; } }, configurable: true });
+    window.AudioContext = undefined; window.webkitAudioContext = undefined;
+  })();
+</script></head>
+<body class="ui-mode"><div id="app"><canvas id="game" width="180" height="320"></canvas></div><div id="ui" class="active"></div>
+<script type="module">
+const uid = new URLSearchParams(location.search).get('uid');
+const L = await import('/src/services/storageLocal.js');
+L.resetAll(); L.loadProfile();
+L.patchProfile({ nickname: '친구' + uid, uid, dragonCharacter: uid === 'A' ? 3 : 7, dragonCoins: 5000 });
+const P = await import('/src/services/presence.js');
+await P.start();
+const { nav } = await import('/src/screens/router.js');
+(await import('/src/screens/inboxPopups.js')).start(nav);
+const Room = await import('/src/services/multiplayer.js');
+const WaitingRoom = (await import('/src/screens/multi/WaitingRoom.js')).default;
+window.__rm = { nav, Room, L, P, uid };
+let code;
+if (uid === 'A') { code = await Room.createRoom({ game: 'dragon' }); parent.__SIM.code = code; }
+else {
+  while (!parent.__SIM.code) await new Promise((r) => setTimeout(r, 100));
+  code = parent.__SIM.code;
+  await Room.joinRoom(code, undefined, 'dragon');
+}
+nav.reset(WaitingRoom, { code, game: 'dragon' });
+window.__ready = true;
+</script></body></html>

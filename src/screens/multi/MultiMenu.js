@@ -17,6 +17,9 @@ import WaitingRoom from './WaitingRoom.js';
 import CodeInput from './CodeInput.js';
 import RoomList from './RoomList.js';
 import MultiRank from '../MultiRank.js';
+import { lazyScreen } from '../lazyScreen.js';
+
+const Friends = lazyScreen(() => import('../Friends.js'), S.friendsTitle);
 import { crownImg } from '../crown.js';
 import Lobby from '../Lobby.js';
 
@@ -87,7 +90,12 @@ export default function MultiMenu(nav) {
           class: 'crown-btn', disabled: busy,
           icons: [crownImg(1, 'btn-crown'), crownImg(1, 'btn-crown')],
         }),
-        /* 현재접속자는 없앴다 (2026-11-04, 대표님 지시 — 비용). 운영자는 설정의 «통계» */
+        /**
+         * ★ **친구** (2026-11-04, 대표님 지시) — 없앤 «현재접속자» 자리.
+         * 모르는 사람 전원 대신 **내 친구만**, 열 때만 접속 여부를 읽는다(비용).
+         * 신발이 부족해도 막지 않는다 — 쪽지·초대는 판돈과 상관이 없다.
+         */
+        button(S.friendsTitle, () => nav.push(Friends), { disabled: busy }),
 
         !canPlay
           ? el('div.warn', null, [

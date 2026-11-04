@@ -1668,6 +1668,9 @@
 }
 .online-state.idle { color: var(--btn-hilite-on); }
 .online-state.playing { color: var(--c-panel-dark); }
+/* 친구 화면 (2026-11-04) — 미접속 친구는 흐리게, 같이 할 수 있는 친구(대기중)는 밝게 */
+.online-row.off { opacity: .55; }
+.online-state.lobby { color: var(--btn-hilite-on); }
 
 /**
  * ★ **[멀티게임순위] — 이 화면에서 혼자 다른 버튼.** (2026-08-19 23차, 사용자 지정)

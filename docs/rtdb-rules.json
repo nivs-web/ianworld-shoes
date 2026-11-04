@@ -251,6 +251,18 @@
         }
       }
     },
+    "friends": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        "$f": {
+          ".validate": "newData.hasChildren(['n', 'at']) && $f != $uid",
+          "n": { ".validate": "newData.isString() && newData.val().length <= 16" },
+          "at": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
     "admins": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
@@ -368,7 +380,7 @@
             ".validate": "newData.isBoolean()"
           },
           "game": {
-            ".validate": "newData.val() == 'shoes' || newData.val() == 'dragon'"
+            ".validate": "newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch'"
           },
           "$other": {
             ".validate": false

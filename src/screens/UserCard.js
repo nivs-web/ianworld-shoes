@@ -26,6 +26,7 @@ import * as Room from '../services/multiplayer.js';
 import { get as getProfile } from '../services/profile.js';
 import { stampFull } from './timeText.js';
 import { replyInput } from './replyInput.js';
+import * as Friends from '../services/friends.js';
 
 /**
  * ★ **못 보낸 이유를 구분해서 말한다.** (2026-08-19 12차, 사용자 지정)
@@ -250,7 +251,31 @@ export function openUserCard(p, opt = {}) {
         startChallenge(p, opt.nav, isDragon ? 'dragon' : 'shoes');
       }));
     }
+    /**
+     * ★ **친구 추가 / 친구 삭제.** (2026-11-04, 대표님 지시 · 권반장 전달)
+     * *"게임 뒤 채팅방에서 «친구 추가»"* — 대기방·결과 화면에서 이름을 누르면 이 카드가 뜬다.
+     * 친구인지 아직 모르면(목록을 읽는 중) 단추를 안 띄운다 — 잘못 누르면 반대로 동작한다.
+     */
+    if (!isMe && p.uid && friend !== null) {
+      row.append(button(friend ? S.friendRemove : S.friendAdd, async () => {
+        if (friend) {
+          if (await Friends.remove(p.uid)) { friend = false; toast(S.friendRemoved, 1600); }
+          else toast(S.networkError, 2000);
+        } else {
+          const r = await Friends.add(p.uid, p.nickname);
+          if (r === 'ok') { friend = true; toast(S.friendAdded, 1600); }
+          else toast(r === 'full' ? S.friendFull(Friends.FRIENDS_MAX) : S.networkError, 2000);
+        }
+        paintActions();
+        opt.onFriendChange?.();
+      }));
+    }
     row.append(button(S.close, close, { sfx: 'sfx_menu_back' }));
+  }
+  /** 친구인가 — null = 아직 모른다 (읽히면 단추를 다시 만든다) */
+  let friend = null;
+  if (!isMe && p.uid) {
+    Friends.isFriend(p.uid).then((v) => { friend = !!v; paintActions(); }).catch(() => {});
   }
   paintActions();
 

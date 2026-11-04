@@ -181,6 +181,9 @@ export function makeFb(db, uid) {
     orderByChild: (k) => ({ t: 'order', k }),
     equalTo: (v) => ({ t: 'eq', v }),
     limitToFirst: (n) => ({ t: 'limit', n }),
+    /* 쪽지 팝업이 최근 N통만 받는다 (2026-11-04) — 가짜 서버는 거르지 않고 전부 준다 */
+    orderByKey: () => ({ t: 'key' }),
+    limitToLast: (n) => ({ t: 'limitLast', n }),
 
     async get(r) {
       await tick();

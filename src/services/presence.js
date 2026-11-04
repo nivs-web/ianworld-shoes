@@ -565,6 +565,13 @@ export async function push(toUid, body, toName = '') {
   };
   if (body.text) item.text = String(body.text).slice(0, 100);
   if (body.code) item.code = String(body.code).slice(0, 8);
+  /**
+   * ★★ **어느 게임의 신청인지 싣는다.** (2026-11-04, 친구 두 창 시험에서 잡음)
+   * `sendChallenge` 는 `game` 을 넘기는데 **여기서 옮겨 담지 않았다.** 그래서 드래곤
+   * 1:1 대결 신청이 전부 신발 신청으로 도착했고, 받는 쪽이 수락하면 신발 방으로
+   * 들어가려다 거부되어(`wronggame`) «신청이 사라졌습니다» 만 떴다.
+   */
+  if (body.game && ['shoes', 'dragon', 'catch'].includes(body.game)) item.game = body.game;
 
   try {
     await withTimeout(
@@ -602,18 +609,28 @@ export const sendSystem = (toUid, text) => push(toUid, { kind: 'system', text })
  * @param {(rows: Array|null) => void} cb
  * @returns {() => void} 해제
  */
-export function subscribeInbox(cb) {
+/**
+ * ★ **늘 켜 두는 구독은 최근 `INBOX_RECENT` 통만.** (2026-11-04, 권반장 전달 — 비용)
+ * 쪽지 팝업(`inboxPopups`)은 접속해 있는 내내 구독한다 — 예전에는 쪽지함 **전체**
+ * (최대 200통 ≈ 30KB)를 접속할 때마다 받았다. 팝업에 필요한 것은 막 온 쪽지뿐이다.
+ * 쪽지함 화면(`Inbox`)은 열려 있는 동안만 `{ all: true }` 로 전부 받고, 정리도 거기서 한다.
+ */
+export const INBOX_RECENT = 30;
+
+export function subscribeInbox(cb, { all = false } = {}) {
   let off = () => {};
   let dead = false;
   rt().then((fb) => {
     if (dead) return;
     if (!fb) return cb(null);
-    const r = fb.dbMod.ref(fb.rtdb, path(INBOX, fb.uid));
+    const base = fb.dbMod.ref(fb.rtdb, path(INBOX, fb.uid));
+    const { query, orderByKey, limitToLast } = fb.dbMod;
+    const r = all ? base : query(base, orderByKey(), limitToLast(INBOX_RECENT));
     const h = fb.dbMod.onValue(r, (snap) => {
       const v = snap.val() ?? {};
       const rows = Object.entries(v).map(([id, m]) => ({ id, ...m }))
         .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
-      prune(fb, rows);
+      if (all) prune(fb, rows);      // 전부 본 쪽에서만 지운다 (일부만 보고 지우면 안 된다)
       cb(rows);
     }, () => cb(null));
     if (dead) { h(); return; }
