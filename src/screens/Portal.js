@@ -104,25 +104,19 @@ export default function Portal(nav) {
     },
     render() {
       const p = getProfile();
-      const playIcon = () => {
-        const ns = 'http://www.w3.org/2000/svg';
-        const sv = document.createElementNS(ns, 'svg'); sv.setAttribute('viewBox', '0 0 24 24'); sv.setAttribute('aria-hidden', 'true');
-        const pa = document.createElementNS(ns, 'path'); pa.setAttribute('d', 'M7 4.5v15l12.5-7.5z'); pa.setAttribute('fill', '#F26A1B');
-        sv.appendChild(pa); return sv;
-      };
       const sc = screen(
         /* 2026-11-04 대표님: 처음 화면 = 이안오락실 홈페이지 모바일 첫 화면 느낌(움직임) + 가운데 엠블럼·로고 */
         arcadeHero(),
-        /* 플레이어 이름 — 황금 칸 · 크고 선명하게 · 위아래 여백 같게 */
-        el('div.oh-player', null, [el('span.oh-player-label', S.playerName), el('span.oh-player-name', p.nickname)]),
-        /* 게임 목록 — 왼쪽 위 타이틀 그림 · 오른쪽 위 황금 [게임 플레이] · 아래 기록 한 줄 (빨간 이름·«터치해서 시작» 없앰) */
+        /* 플레이어 이름 — 아케이드 하이스코어 등록창(대표님 11/4 밤 1번) */
+        el('div.oh-player', null, [el('span.oh-player-label', 'PLAYER 1'), el('span.oh-player-name', null, [p.nickname, el('span.oh-player-cur', '▌')])]),
+        /* 게임 목록 — 왼쪽 위 타이틀 그림 · 오른쪽 위 정사각 PLAY(높이 = 그림 높이 · 대표님 11/4 밤 1번) · 아래 기록 한 줄 */
         ...CARDS.map((c) =>
           el('div.gc', null, [
             el('img.gc-art', { src: c.banner, alt: c.title, loading: 'lazy' }),
             el('button.gc-play', {
               type: 'button', 'aria-label': `${c.title} 게임 플레이`,
               onclick: () => { Sfx.play('sfx_menu_select'); nav.push(c.screen()); },
-            }, [playIcon(), '게임 플레이']),
+            }, ['PLAY']),
             el('div.gc-sub', c.sub(p)),
           ])
         ),
