@@ -465,7 +465,7 @@ export async function joinRoom(code, known, game = GAME_SHOES) {
  * 누가 눌러도 결과가 같아야 하므로 **이미 `waiting` 이면 아무것도 하지 않는다.**
  * 시드는 새로 뽑는다 — 같은 계단을 두 번 뛰면 외운 사람이 이긴다.
  */
-export async function resetRoom(code) {
+export async function resetRoom(code, { round } = {}) {
   const fb = await rt();
   if (!fb) return false;
   /**
@@ -488,6 +488,35 @@ export async function resetRoom(code) {
   const read = await readOnce(fb, path(ROOMS, code));
   const room = read.val;
   if (!room) return false;
+  const 드래곤 = gameOf(room) === GAME_DRAGON;
+
+  /**
+   * ★★★ **이미 다음 판이 돌고 있으면 되돌리지 않는다.** (2026-11-04, 권반장 전달 —
+   *   "드래곤 스트라이커 멀티 '한 판 더' 누르면 연속으로 안 되고 게임이 튕김")
+   *
+   * 결과 화면은 **자기가 뛴 판의 씨앗(`round`)** 을 들고 온다. 방의 씨앗이 그것과
+   * 다르고 상태가 `countdown`/`playing` 이면, 남들이 이미 **다음 판을 시작한 것**이다.
+   * 예전에는 그걸 모르고 방을 통째로 `waiting` 으로 되돌렸다 — 뛰고 있던 사람들의
+   * 판이 한가운데서 무너지고, 결과창도 대기방도 서로 엇갈려 "다시 방을 만들어야"
+   * 했다. 이제는 판을 건드리지 않고 **다음 판 대기자로 앉기만** 한다.
+   */
+  if (드래곤 && round != null && room.seed !== round
+      && (room.state === 'countdown' || room.state === 'playing')) {
+    const mine = room.players?.[fb.uid];
+    if (mine?.waiting) return 'ok';
+    try {
+      if (mine) {
+        await withTimeout(fb.dbMod.update(
+          fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)),
+          { waiting: true, ready: false, seenAt: fb.dbMod.serverTimestamp() }), undefined, '다음 판 대기');
+      } else {
+        await withTimeout(fb.dbMod.set(
+          fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)),
+          { ...meRecord(L.loadProfile(), fb), waiting: true }), undefined, '다음 판 대기');
+      }
+    } catch { return false; }
+    return 'ok';
+  }
 
   /**
    * ★★★ **"계속하기" 가 네트워크 오류로 죽던 진짜 원인.** (2026-08-29, 사용자
@@ -540,7 +569,20 @@ export async function resetRoom(code) {
     room.players = { ...(room.players ?? {}), [fb.uid]: rec };
   }
 
-  if (room.state === 'waiting') return 'ok';
+  if (room.state === 'waiting') {
+    /**
+     * ★ **드래곤: 남이 먼저 되돌려 둔 방이면 내 레디만 켠다.** (2026-11-04)
+     * 아래에서 보듯 드래곤 방은 되돌린 사람만 레디가 켜진다. 뒤이어 "계속하기"를
+     * 누른 사람은 여기로 오므로, 이 자리에서 **내 레디**를 켜야 방장이 시작할 수 있다.
+     */
+    if (드래곤 && room.players?.[fb.uid] && !room.players[fb.uid].ready) {
+      try {
+        await withTimeout(fb.dbMod.set(
+          fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid, 'ready')), true), undefined, '레디');
+      } catch { return false; }
+    }
+    return 'ok';
+  }
 
   /**
    * ★ **아직 아무도 못 걷은 신발이 있으면 지우지 않는다.** (2026-08-18)
@@ -604,7 +646,16 @@ export async function resetRoom(code) {
        * 여전히 `ready: false` 로 시작한다 — 신규 유저는 당연히 레디를 눌러야 한다.
        * 원하면 `레디 취소`로 언제든 끌 수 있다.
        */
-      ready: true, stairs: 0, shoesFound: 0, alive: true, joinedAt: v.joinedAt ?? Date.now(),
+      /**
+       * ★★ **드래곤은 누른 사람만 레디.** (2026-11-04, 권반장 전달 — 한 판 더 튕김)
+       * 여기서 전원을 레디로 켜면, 상대가 **아직 결과 화면에 있는데** 방장이 곧바로
+       * 시작할 수 있었다. 결과 화면은 카운트다운을 안 보므로 상대는 판에 못 들어가고,
+       * 뒤늦게 "계속하기"를 누르면 이미 돌고 있는 판을 되돌려 버렸다 — 그게 튕김이다.
+       * 드래곤 방은 **"계속하기"를 누른 사람만** 레디가 켜지고, 전원이 누르면
+       * 대기방이 곧장 다음 판을 연다(`WaitingRoom` 의 `again`).
+       */
+      ready: 드래곤 ? uid === fb.uid : true,
+      stairs: 0, shoesFound: 0, alive: true, joinedAt: v.joinedAt ?? Date.now(),
       // ★ 생존 신호도 지금으로 다시 찍는다 — 안 그러면 지난 판의 낡은 값 때문에
       //   **다음 판이 시작하자마자 전원이 '튕긴 사람'으로 판정된다.** (2026-08-19)
       seenAt: fb.dbMod.serverTimestamp(),
@@ -613,10 +664,29 @@ export async function resetRoom(code) {
       shoesOwned: v.shoesOwned ?? 0, multiWins: v.multiWins ?? 0, multiLosses: v.multiLosses ?? 0,
       // 착용 아이템도 프로필값이라 다음 판에 그대로 옮긴다 (값이 그대로라 규칙도 통과한다)
       items: typeof v.items === 'string' ? v.items : '',
+      /* 드래곤 얼굴과 지갑도 프로필값이다 — 안 옮기면 다음 판 대기방에서 전원이 0번 얼굴·금화 0 으로 보인다 */
+      ...(드래곤 && v.dragon !== undefined ? { dragon: v.dragon } : {}),
+      ...(드래곤 && v.wallet !== undefined ? { wallet: v.wallet } : {}),
     };
   }
   const n = Object.keys(players).length;
   if (!n) return false;
+  /**
+   * ★★★ **드래곤 방은 판을 먼저 닫고 되돌린다.** (2026-11-04, 권반장 전달 — 한 판 더 튕김의 진짜 원인)
+   *
+   * 방 규칙은 남의 `ready`·`alive` 를 **`finished` → `waiting`** 으로 넘어갈 때만 초기값으로
+   * 바꿔 준다(`docs/rtdb-rules.json`). 신발 방은 판이 끝날 때 `finishRound` 가 `finished` 를
+   * 써 두지만, **드래곤 결투는 아무도 안 써서 방이 `playing` 인 채로 결과 화면에 왔다.**
+   * 그래서 진 사람의 `alive:false → true`, 방장의 `ready:false → true` 가 거부되고
+   * 쓰기 전체가 통째로 실패 → "계속하기" 가 네트워크 오류로 끝나 방을 새로 파야 했다.
+   * (`tools/_dragon-rematch-sim.mjs` 가 재현한다 — 고치기 전 16건 실패)
+   */
+  if (드래곤 && room.state !== 'finished') {
+    try {
+      await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { state: 'finished' }),
+        undefined, '판 닫기');
+    } catch { return false; }
+  }
   try {
     await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), {
       state: 'waiting',

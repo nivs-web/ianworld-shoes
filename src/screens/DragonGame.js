@@ -266,7 +266,7 @@ export default function DragonGame(nav, opt = {}) {
             if (!live) return;
             if (duelCode) {
               import('./multi/DuelResult.js')
-                .then((r) => nav.replace(r.default, { code: duelCode }))
+                .then((r) => nav.replace(r.default, { code: duelCode, round: opt.round }))
                 .catch(() => nav.back());
               return;
             }

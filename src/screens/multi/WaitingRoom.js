@@ -197,6 +197,34 @@ export default function WaitingRoom(nav, params = {}) {
     return [r.state, r.hostUid, r.difficulty, r.maxPlayers, r.isPrivate ? 1 : 0, ps].join('/');
   }
   let lastView = null;
+  /**
+   * ★★ **"계속하기"로 돌아왔으면 전원이 준비되는 순간 다음 판을 연다.** (2026-11-04,
+   *   권반장 전달 — "같은 방·같은 사람끼리 바로 다음 판이 시작되게")
+   * 드래곤 방은 "계속하기"를 누른 사람만 레디가 켜진다(`resetRoom`). 그러니 전원이
+   * 레디라는 것은 **모두가 다음 판을 원한다**는 뜻이다 — 방장이 시작을 또 누를 필요가 없다.
+   * 한 번만 연다. 처음 들어온 방(결과 화면을 안 거친 방)은 지금처럼 방장이 누른다.
+   */
+  let autoStarted = false;
+  /**
+   * ★ **판돈이 모자란 사람이 있는가** (드래곤만). (2026-11-04, 권반장 전달 — 한 판 더 튕김 재확인)
+   * 몇 판 지면 금화가 판돈(200)보다 적어진다. 그 상태로 판이 시작되면 그 사람은
+   * `startDuel` 에서 판돈을 못 걸어 **대기방이 멈춘 채** 남고, 상대만 혼자 뛰었다.
+   * 방에 적힌 지갑(`wallet`)으로 시작 전에 미리 막는다.
+   */
+  const 판돈모자란사람 = (r) => game === 'dragon'
+    ? Object.values(r?.players ?? {}).filter((v) => v && !v.waiting && (v.wallet ?? DUEL_STAKE) < DUEL_STAKE)
+    : [];
+
+  function autoStart(r) {
+    if (autoStarted || game !== 'dragon' || !params.again || !r || r.state !== 'waiting') return;
+    if (r.hostUid !== myUid) return;
+    const inRound = Object.entries(r.players ?? {}).filter(([, v]) => v && !v.waiting);
+    if (inRound.length < MULTI.minPlayers) return;
+    if (!inRound.every(([uid, v]) => v.ready || uid === r.hostUid)) return;
+    if (판돈모자란사람(r).length) return;
+    autoStarted = true;
+    Room.startCountdown(code);
+  }
 
   unsub = Room.subscribeRoom(code, (r) => {
     /**
@@ -241,6 +269,7 @@ export default function WaitingRoom(nav, params = {}) {
      * 한 번 실패하고 멈추면 대기자는 그대로 갇힌다.
      */
     청소(r);
+    autoStart(r);
     if (r.state === 'finished') tryReset(r);
     if (!launched && !meNow?.waiting && (r.state === 'countdown' || r.state === 'playing')) {
       launched = true;
@@ -258,6 +287,12 @@ export default function WaitingRoom(nav, params = {}) {
         : game === 'catch'
         ? import('../startCatchDuel.js').then((m) => m.startCatchDuel(nav, { code, room: r, view3d }))
         : startMultiGame(nav, { code, room: r });
+      /* 드래곤: 판돈을 못 걸었다(`startDuel` 이 false) — 멈춘 대기방에 남기지 않고 드래곤 로비로 */
+      bridge.then((ok) => {
+        if (ok !== false || game !== 'dragon') return;
+        launched = false;
+        leave(true);
+      }, () => {});
       bridge.catch((e) => {
         console.warn('[multi] 판 시작 실패', e);
         launched = false;
@@ -280,6 +315,8 @@ export default function WaitingRoom(nav, params = {}) {
    */
   function tryReset(r) {
     if (resetting || left || launched) return;
+    /* 드래곤 방의 finished 는 "계속하기"가 되돌리는 도중 잠깐 스치는 상태다 — 끼어들면 남의 레디를 끈다 */
+    if (game === 'dragon') return;
     const rank = r.result?.rankings ?? [];
     if (rank.some((uid) => r.players?.[uid])) return;   // 아직 결과 화면에 있는 사람이 있다
     resetting = true;
@@ -300,6 +337,16 @@ export default function WaitingRoom(nav, params = {}) {
     if (alsoLeaveRoom && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
     /* 캐치볼 방은 캐치볼로 돌아간다 — 신발 로비로 튕기면 다른 게임이 된다 */
     if (game === 'catch') { nav.back(); return; }
+    /**
+     * ★ **드래곤 방은 드래곤 로비로.** (2026-11-04, 권반장 전달 — "한 판 뒤 로비로 튕김" 재확인)
+     * 예전에는 여기가 무조건 신발 로비(`Lobby`)였다. 결투 한 판 뒤 대기방에서 방이
+     * 사라지거나 시작이 실패하면 **엉뚱한 게임(신발) 로비로** 튕겼다.
+     * 신발 번들에 드래곤 로비를 싣지 않으려고 그때 받아 온다.
+     */
+    if (game === 'dragon') {
+      import('../DragonLobby.js').then((m) => nav.reset(m.default)).catch(() => nav.reset(Lobby));
+      return;
+    }
     nav.reset(Lobby);
   }
 
@@ -439,9 +486,18 @@ export default function WaitingRoom(nav, params = {}) {
           ? button(S.startGame, () => {
               if (!enough) return toast(S.needMorePlayers);
               if (!allReady) return toast(S.notEveryoneReady);
+              if (판돈모자란사람(room).length) {
+                return toast(S.duelPlayerNeedCoins(판돈모자란사람(room).map((v) => v.nickname || '???').join(', '), DUEL_STAKE), 2600);
+              }
               Room.startCountdown(code);
             }, { primary: true, class: allReady ? '' : 'dim' })
-          : button(me?.ready ? S.cancelReady : S.ready, () => Room.setReady(code, !me?.ready), { primary: !me?.ready }),
+          : button(me?.ready ? S.cancelReady : S.ready, () => {
+              /* 드래곤: 판돈이 없으면 레디도 못 한다 (시작해 봐야 못 건다) */
+              if (!me?.ready && game === 'dragon' && (getProfile().dragonCoins || 0) < DUEL_STAKE) {
+                return toast(S.duelNeedCoins(DUEL_STAKE), 2600);
+              }
+              Room.setReady(code, !me?.ready);
+            }, { primary: !me?.ready }),
 
         me?.waiting ? null : el('div.hint', isHost ? (enough ? S.waitingHostSelf : S.waitingPlayers) : S.waitingHost),
 

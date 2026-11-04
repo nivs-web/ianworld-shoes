@@ -168,6 +168,44 @@ function allow(db, uid, path, newValue) {
   return true;
 }
 
+
+/**
+ * ★ **남의 참가자 칸 — 진짜 규칙의 칸별 검증을 흉내 낸다.** (2026-11-04)
+ *
+ * 위 `allow` 는 경로 하나만 본다. 그런데 `resetRoom` 처럼 **방 통째로**(`rooms/{code}`)
+ * 쓰면 그 아래 남의 칸은 아무도 안 봤다 — 진짜 서버는 바뀐 잎마다 `.validate` 를 돈다
+ * (`docs/rtdb-rules.json`). 그래서 드래곤 방 "계속하기" 가 실서버에서는 거부되는데
+ * 시뮬에서는 통과했다. 이제 쓰기 **전후의 방을 견줘** 남의 칸이 바뀐 것을 잡는다.
+ *
+ *   · 값이 그대로면 통과, 지워지는 것도 통과(지워진 잎에는 검증이 안 돈다)
+ *   · ready/stairs/shoesFound/alive 만 **finished → waiting** (결과 없음) 일 때 초기값으로
+ */
+const RESETTABLE = { ready: (v) => typeof v === 'boolean', stairs: (v) => v === 0, shoesFound: (v) => v === 0, alive: (v) => v === true };
+function othersOk(db, uid, writes) {
+  const code = writes.map(([p]) => FakeDb.parts(p)).find((x) => x[0] === 'rooms' && x[1])?.[1];
+  if (!code) return true;
+  const before = db.read(`rooms/${code}`);
+  if (!before?.players) return true;
+  const tmp = new FakeDb();
+  tmp.data = { rooms: { [code]: clone(before) } };
+  for (const [p, v] of writes) tmp.write(p, v);
+  const after = tmp.read(`rooms/${code}`);
+  if (!after?.players) return true;
+  const resetting = before.state === 'finished' && after.state === 'waiting' && !after.result;
+  for (const [u, rec] of Object.entries(after.players)) {
+    if (u === uid || !rec || typeof rec !== 'object') continue;
+    const old = before.players[u];
+    if (!old) continue;
+    for (const [k, v] of Object.entries(rec)) {
+      if (JSON.stringify(v) === JSON.stringify(old[k])) continue;
+      if (k === 'seenAt' || k === 'offAt') continue;
+      if (resetting && RESETTABLE[k]?.(v)) continue;
+      return false;
+    }
+  }
+  return true;
+}
+
 export function makeFb(db, uid) {
   const dbMod = {
     serverTimestamp: () => ({ ...SV }),
@@ -215,7 +253,7 @@ export function makeFb(db, uid) {
 
     async set(r, v) {
       await tick();
-      if (!allow(db, uid, r.path, v)) { db.denyLog.push({ op: 'set', path: r.path, uid }); throw new Error('PERMISSION_DENIED ' + r.path); }
+      if (!allow(db, uid, r.path, v) || !othersOk(db, uid, [[r.path, db.fill(v)]])) { db.denyLog.push({ op: 'set', path: r.path, uid }); throw new Error('PERMISSION_DENIED ' + r.path); }
       db.write(r.path, db.fill(v));
       db.log.push({ op: 'set', path: r.path, uid });
       db.notify(r.path);
@@ -238,6 +276,10 @@ export function makeFb(db, uid) {
           db.denyLog.push({ op: 'update', path: full, uid });
           throw new Error('PERMISSION_DENIED ' + full);
         }
+      }
+      if (!othersOk(db, uid, Object.keys(patch).map((k) => [`${r.path}/${k}`, db.fill(patch[k])]))) {
+        db.denyLog.push({ op: 'update', path: r.path, uid });
+        throw new Error('PERMISSION_DENIED (남의 칸) ' + r.path);
       }
       for (const k of Object.keys(patch)) db.write(`${r.path}/${k}`, db.fill(patch[k]));
       db.log.push({ op: 'update', path: r.path, uid, keys: Object.keys(patch) });

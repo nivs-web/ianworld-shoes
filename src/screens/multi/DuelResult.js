@@ -24,6 +24,7 @@ import { el, button, backButton, screen, title, toast } from '../ui.js';
 import { currentUser } from '../../services/auth.js';
 import { get as getProfile } from '../../services/profile.js';
 import * as Room from '../../services/multiplayer.js';
+import { MULTI } from '../../config/balance.js';
 import { duelRanking, settleDuel, refundDuel, DUEL_STAKE } from '../../services/dragonSettle.js';
 import { loadDragon } from '../DragonGame.js';
 import WaitingRoom from './WaitingRoom.js';
@@ -55,13 +56,48 @@ export default function DuelResult(nav, params = {}) {
    */
   let keepSeat = false;
   let staying = false;
+  /** 내가 뛴 판의 씨앗. 방의 씨앗이 이것과 달라지면 누군가 다음 판을 준비한 것이다 */
+  const round = params.round;
+  /** 내가 뛴 판의 마지막 모습 — 정산 전에 방이 되돌려져도 이걸로 센다 */
+  let lastOfRound = null;
+  /** 지금 서버의 방 (생존 신호는 이걸 본다 — 화면의 표는 내가 뛴 판을 그대로 보인다) */
+  let liveRoom = null;
+
+  /**
+   * ★ **결과 화면에서도 "여기 있다"를 보낸다.** (2026-11-04, 권반장 전달 — 한 판 더 튕김)
+   * 결과 화면은 승패를 읽느라 오래 머무는데 신호가 없었다. 30초가 넘으면 먼저
+   * 대기방에 간 사람이 나를 유령으로 보고 치워(`purgeAbsent`) 다음 판에서 빠졌다.
+   * 방에 내가 있을 때만 보낸다 — 아니면 유령 노드를 만든다.
+   */
+  const beat = setInterval(() => {
+    if (!liveRoom?.players?.[me]) return;
+    Room.heartbeat(code).catch(() => {});
+  }, MULTI.heartbeatMs);
 
   loadDragon().then((m) => { mod = m; if (live) nav.refresh(); }).catch(() => {});
 
   /** 방을 지켜보다가 둘 다 끝나면 센다 */
   const unsub = Room.subscribeRoom(code, (r) => {
     if (!live || !r) return;
-    room = r;
+    /**
+     * ★ **정산 전에 방이 다음 판으로 되돌려졌다.** (2026-11-04)
+     * 상대가 먼저 "계속하기"를 누르면 점수·생존이 전부 지워진 방이 온다.
+     * 그걸로 세면 둘 다 0점이 되므로, 내가 뛴 판의 마지막 모습으로 센다.
+     */
+    liveRoom = r;
+    const 되돌려짐 = round != null && r.seed !== round;
+    if (!되돌려짐) lastOfRound = r;
+    room = 되돌려짐 && lastOfRound ? lastOfRound : r;
+    if (!outcome && 되돌려짐 && lastOfRound) {
+      const ps = Object.values(lastOfRound.players ?? {}).filter((p) => p && !p.waiting);
+      if (ps.length >= 2) {
+        outcome = settleDuel(lastOfRound);
+        Room.rearmRoomSeat(code).catch(() => {});
+      }
+      nav.refresh();
+      return;
+    }
+    if (outcome && 되돌려짐) { nav.refresh(); return; }   // 결과표는 내가 뛴 판 그대로 둔다
     if (!outcome) {
       const players = Object.values(r.players ?? {}).filter((p) => p && !p.waiting);
       const 모두끝 = players.length >= 2 && players.every((p) => p.done === true);
@@ -139,8 +175,14 @@ export default function DuelResult(nav, params = {}) {
    */
   async function again() {
     if (staying) return;
+    /**
+     * ★ **판돈이 없으면 다음 판에 못 앉는다.** (2026-11-04, 권반장 전달 — 한 판 더 재확인)
+     * 몇 판 지고 나면 금화가 판돈보다 적다. 그대로 대기방에 보내면 시작 순간
+     * 판돈을 못 걸어 멈췄다 — 여기서 이유를 말해 주고 결과 화면에 남긴다.
+     */
+    if ((getProfile().dragonCoins || 0) < DUEL_STAKE) { toast(S.duelNeedCoins(DUEL_STAKE), 2600); return; }
     staying = true; nav.refresh();
-    const r = await Room.resetRoom(code).catch(() => false);
+    const r = await Room.resetRoom(code, { round }).catch(() => false);
     staying = false;
     if (!live) return;
     if (r === 'ok') {
@@ -157,7 +199,8 @@ export default function DuelResult(nav, params = {}) {
        * "계속하기" 를 누르면 방은 그대로 드래곤 방인데 **화면만 신발
        * 대기방으로** 바뀌었다.
        */
-      return nav.replace(WaitingRoom, { code, game: 'dragon' });
+      /* `again` — 전원이 계속하기를 누르면 대기방이 곧바로 다음 판을 연다 */
+      return nav.replace(WaitingRoom, { code, game: 'dragon', again: true });
     }
     /**
      * ★ **`pending` 도 네트워크 오류로 보였다.** (2026-08-29, 사용자 신고 —
@@ -180,6 +223,7 @@ export default function DuelResult(nav, params = {}) {
     onLeave() {
       live = false;
       unsub?.();
+      clearInterval(beat);
       /* 결과를 보고 나갔으니 방에서 빠진다 — 남아 있으면 다음 판이 안 열린다.
          단, **한 판 더**로 나가는 길이면 자리를 지킨다 */
       if (!keepSeat) Room.leaveRoom(code).catch(() => {});
