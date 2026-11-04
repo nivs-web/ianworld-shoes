@@ -1,0 +1,9 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>드래곤 결투 두 창</title>
+<style>html,body{margin:0;background:#222;color:#ddd;font:12px monospace}.wrap{display:flex;gap:8px;padding:8px}
+iframe{width:400px;height:760px;border:0;background:#000}pre{width:400px;white-space:pre-wrap;margin:4px 0}</style></head>
+<body><div class="wrap"><div><iframe id="A"></iframe><pre id="lA"></pre></div><div><iframe id="B"></iframe><pre id="lB"></pre></div></div>
+<script type="module">
+import { FakeDb, makeFb } from '/tools/_sim/rtdb.mjs';
+window.__SIM = { db: new FakeDb(), makeFb, code: null };
+for (const k of ['A', 'B']) document.getElementById(k).src = `/tools/_rm/side.html?uid=${k}`;
+</script></body></html>

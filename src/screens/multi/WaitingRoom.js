@@ -197,6 +197,23 @@ export default function WaitingRoom(nav, params = {}) {
     return [r.state, r.hostUid, r.difficulty, r.maxPlayers, r.isPrivate ? 1 : 0, ps].join('/');
   }
   let lastView = null;
+  /**
+   * ★★ **"계속하기"로 돌아왔으면 전원이 준비되는 순간 다음 판을 연다.** (2026-11-04,
+   *   권반장 전달 — "같은 방·같은 사람끼리 바로 다음 판이 시작되게")
+   * 드래곤 방은 "계속하기"를 누른 사람만 레디가 켜진다(`resetRoom`). 그러니 전원이
+   * 레디라는 것은 **모두가 다음 판을 원한다**는 뜻이다 — 방장이 시작을 또 누를 필요가 없다.
+   * 한 번만 연다. 처음 들어온 방(결과 화면을 안 거친 방)은 지금처럼 방장이 누른다.
+   */
+  let autoStarted = false;
+  function autoStart(r) {
+    if (autoStarted || game !== 'dragon' || !params.again || !r || r.state !== 'waiting') return;
+    if (r.hostUid !== myUid) return;
+    const inRound = Object.entries(r.players ?? {}).filter(([, v]) => v && !v.waiting);
+    if (inRound.length < MULTI.minPlayers) return;
+    if (!inRound.every(([uid, v]) => v.ready || uid === r.hostUid)) return;
+    autoStarted = true;
+    Room.startCountdown(code);
+  }
 
   unsub = Room.subscribeRoom(code, (r) => {
     /**
@@ -241,6 +258,7 @@ export default function WaitingRoom(nav, params = {}) {
      * 한 번 실패하고 멈추면 대기자는 그대로 갇힌다.
      */
     청소(r);
+    autoStart(r);
     if (r.state === 'finished') tryReset(r);
     if (!launched && !meNow?.waiting && (r.state === 'countdown' || r.state === 'playing')) {
       launched = true;
@@ -280,6 +298,8 @@ export default function WaitingRoom(nav, params = {}) {
    */
   function tryReset(r) {
     if (resetting || left || launched) return;
+    /* 드래곤 방의 finished 는 "계속하기"가 되돌리는 도중 잠깐 스치는 상태다 — 끼어들면 남의 레디를 끈다 */
+    if (game === 'dragon') return;
     const rank = r.result?.rankings ?? [];
     if (rank.some((uid) => r.players?.[uid])) return;   // 아직 결과 화면에 있는 사람이 있다
     resetting = true;

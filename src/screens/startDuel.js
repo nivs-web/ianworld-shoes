@@ -18,7 +18,7 @@ import DragonGame, { loadDragon } from './DragonGame.js';
 
 let starting = false;
 
-export async function startDuel(nav, { code }) {
+export async function startDuel(nav, { code, room }) {
   if (starting) return false;
 
   /**
@@ -41,6 +41,7 @@ export async function startDuel(nav, { code }) {
   /* 판이 시작됐다 — 잠깐 끊겼다고 방에서 빠지면 안 된다 */
   Room.holdRoomSeat(code).catch(() => {});
 
-  nav.replace(DragonGame, { mode: 'duel', code });
+  /* 이 판의 씨앗 — 결과 화면이 "내가 뛴 판" 을 알아보는 표다 (`resetRoom` 의 `round`) */
+  nav.replace(DragonGame, { mode: 'duel', code, round: room?.seed });
   return true;
 }
