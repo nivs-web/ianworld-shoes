@@ -58,6 +58,10 @@ export class FakeDb {
   }
 
   write(path, value) {
+    /* 서버 증가(`increment(n)`) — 지금 값에 더한다 (2026-11-04, 운영자 통계) */
+    const inc = value && typeof value === 'object' && value['.sv'] && typeof value['.sv'].increment === 'number'
+      ? value['.sv'].increment : null;
+    if (inc !== null) value = (Number(this.read(path)) || 0) + inc;
     const parts = FakeDb.parts(path);
     if (!parts.length) { this.data = clone(value) ?? {}; return; }
     let cur = this.data;
@@ -209,11 +213,15 @@ function othersOk(db, uid, writes) {
 export function makeFb(db, uid) {
   const dbMod = {
     serverTimestamp: () => ({ ...SV }),
+    increment: (n) => ({ '.sv': { increment: n } }),
     ref: (_db, p = '') => ({ path: String(p) }),
     query: (r, ...mods) => ({ ...r, mods }),
     orderByChild: (k) => ({ t: 'order', k }),
     equalTo: (v) => ({ t: 'eq', v }),
     limitToFirst: (n) => ({ t: 'limit', n }),
+    /* 쪽지 팝업이 최근 N통만 받는다 (2026-11-04) — 가짜 서버는 거르지 않고 전부 준다 */
+    orderByKey: () => ({ t: 'key' }),
+    limitToLast: (n) => ({ t: 'limitLast', n }),
 
     async get(r) {
       await tick();

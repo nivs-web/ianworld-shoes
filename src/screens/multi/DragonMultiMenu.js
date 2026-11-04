@@ -17,9 +17,9 @@ import { DUEL_STAKE, canDuel } from '../../services/dragonSettle.js';
 import { lazyScreen } from '../lazyScreen.js';
 
 const WaitingRoom = lazyScreen(() => import('./WaitingRoom.js'), S.multiTitle);
+const Friends = lazyScreen(() => import('../Friends.js'), S.friendsTitle);
 const RoomList = lazyScreen(() => import('./RoomList.js'), S.roomListTitle);
 const CodeInput = lazyScreen(() => import('./CodeInput.js'), S.enterByCode);
-const OnlineUsers = lazyScreen(() => import('./OnlineUsers.js'), S.onlineUsers);
 const DragonRanking = lazyScreen(() => import('../DragonRanking.js'), S.dragonRankCoin);
 
 export default function DragonMultiMenu(nav) {
@@ -72,7 +72,8 @@ export default function DragonMultiMenu(nav) {
 
         /* 순위와 사람 찾기는 판돈과 무관하다 — 금화가 모자라도 막지 않는다 */
         button(S.dragonRankCoin, () => nav.push(DragonRanking, { kind: 'coin' }), { disabled: busy }),
-        button(S.onlineUsers, () => nav.push(OnlineUsers, { game: 'dragon' }), { disabled: busy }),
+        /* 친구 (2026-11-04) — 없앤 «현재접속자» 자리 */
+        button(S.friendsTitle, () => nav.push(Friends, { game: 'dragon' }), { disabled: busy }),
 
         !ok
           ? el('div.warn', null, [

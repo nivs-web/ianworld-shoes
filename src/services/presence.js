@@ -219,6 +219,8 @@ export async function start() {
         await fb.dbMod.onDisconnect(ref).remove();
         await writeCard(fb, ref);
       } catch { /* 규칙이 아직 없으면 조용히 넘어간다 — 게임은 그대로 돈다 */ }
+      /* 운영자 통계 (오늘 접속자 · 동시접속) — 붙을 때마다. 실패해도 게임과 무관하다 */
+      import('./stats.js').then((St) => St.onConnected(fb)).catch(() => {});
     });
     beat = setInterval(() => heartbeat().catch(() => {}), HEARTBEAT_MS);
     bindLifecycle();
@@ -258,8 +260,13 @@ async function heartbeat() {
   const inGame = myState === 'playing';
   if (!inGame && msSinceActive() > ACTIVITY_TIMEOUT_MS) return;
   if (Date.now() - lastWriteAt < WRITE_THROTTLE_MS) return;
+  /**
+   * ★ **`lastActive` 하나만 쓴다.** (2026-11-04, 권반장 전달 — 전송량 줄이기)
+   * 이 쓰기는 접속자 목록을 보고 있는 **모두에게** 그대로 내려간다. `at`(폰 시계)은
+   * 19차 이전 클라이언트용 예비 값이라 카드를 처음 쓸 때(`writeCard`) 한 번이면 충분하다.
+   */
   await withTimeout(myFb.dbMod.update(myRef, {
-    lastActive: myFb.dbMod.serverTimestamp(), at: Date.now(),
+    lastActive: myFb.dbMod.serverTimestamp(),
   }), undefined, '접속 유지');
   lastWriteAt = Date.now();
 }
@@ -287,7 +294,6 @@ function bindLifecycle() {
     if (document.visibilityState === 'hidden') { drop(); return; }
     markActive();
     if (myRef && myFb) writeCard(myFb, myRef).catch(() => {});
-    recomputeAll();
   });
   window.addEventListener('pagehide', drop);
 
@@ -304,7 +310,6 @@ function bindLifecycle() {
       writeCard(myFb, myRef).catch(() => {});
     }
     tick = now;
-    recomputeAll();
   }, RECOMPUTE_MS);
 }
 
@@ -394,16 +399,6 @@ export function refresh() {
 }
 
 /**
- * 접속자 목록을 구독한다.
- *
- * **못 붙었을 때는 `null` 을 준다.** 빈 배열로 뭉뚱그리면 화면이 "접속 중인 사람이
- * 없습니다"라고 **거짓말을 한다** — 연결이 안 된 것과 아무도 없는 것은 다르다
- * (§9-0-6 에서 순위표가 같은 거짓말을 했다).
- *
- * @param {(rows: Array|null) => void} cb
- * @returns {() => void} 해제
- */
-/**
  * ★ **살아 있는 접속인가** — 60초 안에 활동이 있었나. (2026-08-19 19차)
  *
  * `lastActive` 가 아예 없는 카드는 **19차 이전 클라이언트**가 쓴 것이다. 그런 카드는
@@ -420,57 +415,14 @@ export function isLive(card, now = serverNow()) {
   return presenceLive(card, now);
 }
 
-
-
 /**
- * 접속자 목록을 구독한다.
+ * ★★ **접속자 목록 구독(`subscribeOnline`)은 없앴다.** (2026-11-04, 대표님 지시 · 권반장 전달)
  *
- * **못 붙었을 때는 `null` 을 준다.** 빈 배열로 뭉뚱그리면 화면이 "접속 중인 사람이
- * 없습니다"라고 **거짓말을 한다** — 연결이 안 된 것과 아무도 없는 것은 다르다
- * (§9-0-6 에서 순위표가 같은 거짓말을 했다).
- *
- * ★ **거르는 일은 읽는 쪽이 한다.** 데이터는 이미 모두에게 내려와 있으므로 서버를
- *   한 번 더 거칠 이유가 없다(추가 쓰기·함수 호출 0). 대신 **오래됨은 이벤트를
- *   만들지 않으므로** 5초마다 스스로 다시 걸러야 한다 — 이게 없으면 `lastActive` 를
- *   넣어도 화면의 유령은 그대로 남는다.
- *
- * @param {(rows: Array|null) => void} cb
- * @returns {() => void} 해제
+ * 보는 사람마다 접속자 전원의 15초 신호를 실시간으로 받아 사람이 늘수록 제곱으로
+ * 비싸졌다(1,000명이면 시간당 2.7GB). 운영자는 숫자만 보면 되므로 `stats.js` 가
+ * 따로 센다. 접속 표시(`presence/{uid}`) 자체는 남는다 — 친구 접속 확인 · 방 유령
+ * 판정 · 대결 신청 가능 여부가 **한 사람씩** 읽어 쓴다(`readOne`).
  */
-export function subscribeOnline(cb) {
-  let off = () => {};
-  let dead = false;
-  const entry = { cb, raw: null };
-  watchers.add(entry);
-  rt().then((fb) => {
-    if (dead) return;
-    if (!fb) return cb(null);
-    const r = fb.dbMod.ref(fb.rtdb, PRESENCE);
-    const h = fb.dbMod.onValue(r, (snap) => {
-      entry.raw = snap.val() ?? {};
-      emit(entry);
-    }, () => { entry.raw = null; cb(null); });
-    if (dead) { h(); return; }
-    off = h;
-  }).catch(() => cb(null));
-  return () => { dead = true; watchers.delete(entry); off(); };
-}
-
-/** 구독자들 — 5초마다 같은 데이터로 다시 걸러 준다 */
-const watchers = new Set();
-
-function emit(entry) {
-  if (!entry.raw) return;
-  const now = serverNow();
-  const rows = Object.entries(entry.raw)
-    .map(([uid, p]) => ({ uid, ...p }))
-    .filter((r) => isLive(r, now));
-  entry.cb(rows);
-}
-
-function recomputeAll() {
-  for (const w of watchers) emit(w);
-}
 
 /**
  * 한 사람의 접속 상태만 (없으면 null = 미접속).
@@ -613,6 +565,13 @@ export async function push(toUid, body, toName = '') {
   };
   if (body.text) item.text = String(body.text).slice(0, 100);
   if (body.code) item.code = String(body.code).slice(0, 8);
+  /**
+   * ★★ **어느 게임의 신청인지 싣는다.** (2026-11-04, 친구 두 창 시험에서 잡음)
+   * `sendChallenge` 는 `game` 을 넘기는데 **여기서 옮겨 담지 않았다.** 그래서 드래곤
+   * 1:1 대결 신청이 전부 신발 신청으로 도착했고, 받는 쪽이 수락하면 신발 방으로
+   * 들어가려다 거부되어(`wronggame`) «신청이 사라졌습니다» 만 떴다.
+   */
+  if (body.game && ['shoes', 'dragon', 'catch'].includes(body.game)) item.game = body.game;
 
   try {
     await withTimeout(
@@ -650,18 +609,28 @@ export const sendSystem = (toUid, text) => push(toUid, { kind: 'system', text })
  * @param {(rows: Array|null) => void} cb
  * @returns {() => void} 해제
  */
-export function subscribeInbox(cb) {
+/**
+ * ★ **늘 켜 두는 구독은 최근 `INBOX_RECENT` 통만.** (2026-11-04, 권반장 전달 — 비용)
+ * 쪽지 팝업(`inboxPopups`)은 접속해 있는 내내 구독한다 — 예전에는 쪽지함 **전체**
+ * (최대 200통 ≈ 30KB)를 접속할 때마다 받았다. 팝업에 필요한 것은 막 온 쪽지뿐이다.
+ * 쪽지함 화면(`Inbox`)은 열려 있는 동안만 `{ all: true }` 로 전부 받고, 정리도 거기서 한다.
+ */
+export const INBOX_RECENT = 30;
+
+export function subscribeInbox(cb, { all = false } = {}) {
   let off = () => {};
   let dead = false;
   rt().then((fb) => {
     if (dead) return;
     if (!fb) return cb(null);
-    const r = fb.dbMod.ref(fb.rtdb, path(INBOX, fb.uid));
+    const base = fb.dbMod.ref(fb.rtdb, path(INBOX, fb.uid));
+    const { query, orderByKey, limitToLast } = fb.dbMod;
+    const r = all ? base : query(base, orderByKey(), limitToLast(INBOX_RECENT));
     const h = fb.dbMod.onValue(r, (snap) => {
       const v = snap.val() ?? {};
       const rows = Object.entries(v).map(([id, m]) => ({ id, ...m }))
         .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
-      prune(fb, rows);
+      if (all) prune(fb, rows);      // 전부 본 쪽에서만 지운다 (일부만 보고 지우면 안 된다)
       cb(rows);
     }, () => cb(null));
     if (dead) { h(); return; }

@@ -9374,7 +9374,8 @@ class GameScene extends Scene {
    * 있다) `render` 가 아니라 `update` 에 둔다.
    */
   updatePeers(dt){
-    const k = Math.min(1, 12 * dt);
+    /* 고스트가 5Hz 로 오므로(2026-11-04) 12 → 9 — 0.2초 간격 사이를 이어 그린다 */
+    const k = Math.min(1, 9 * dt);
     for(const s of PEERS.values()){
       if(s.has){ s.sx += (s.x - s.sx) * k; s.sy += (s.y - s.sy) * k; }
       if(s.deathFxT > 0) s.deathFxT -= dt;
@@ -9395,11 +9396,11 @@ class GameScene extends Scene {
       }
     }
   }
-  /** 내 자리·불레벨·하트를 10Hz 로 올린다 */
+  /** 내 자리·불레벨·하트를 5Hz 로 올린다 (10Hz → 5Hz, 2026-11-04 전송량 줄이기) */
   pushGhost(dt){
     this.ghostT -= dt;
     if(this.ghostT > 0) return;
-    this.ghostT = 0.1;
+    this.ghostT = 0.2;
     const p = this.p1;
     /**
      * 진행도(점수·금화·생사)는 **승패를 가르는 값**이라 반드시 올라가야 하고,

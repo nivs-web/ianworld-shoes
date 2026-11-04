@@ -1668,6 +1668,9 @@
 }
 .online-state.idle { color: var(--btn-hilite-on); }
 .online-state.playing { color: var(--c-panel-dark); }
+/* 친구 화면 (2026-11-04) — 미접속 친구는 흐리게, 같이 할 수 있는 친구(대기중)는 밝게 */
+.online-row.off { opacity: .55; }
+.online-state.lobby { color: var(--btn-hilite-on); }
 
 /**
  * ★ **[멀티게임순위] — 이 화면에서 혼자 다른 버튼.** (2026-08-19 23차, 사용자 지정)
@@ -2635,3 +2638,12 @@
   margin: 0 auto 8px;
   border-radius: 6px;
 }
+
+/* ── 운영자 통계 (2026-11-04) — 숫자 셋 + 최근 7일 막대 ── */
+.admin-stats { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.admin-stats .stat-line { font-size: 16px; }
+.admin-days { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.admin-day { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 8px; }
+.admin-day-k { opacity: .8; }
+.admin-day-bar { display: block; height: 10px; min-width: 2px; background: #e8a33a; }
+.admin-day-v { white-space: nowrap; font-size: 12px; }

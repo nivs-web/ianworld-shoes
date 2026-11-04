@@ -1866,13 +1866,10 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ⑥ 현재접속자
   {
     const mm = fs.readFileSync('src/screens/multi/MultiMenu.js', 'utf8');
-    const ou = fs.readFileSync('src/screens/multi/OnlineUsers.js', 'utf8');
-    has('멀티 메뉴에 현재접속자', mm, 'button(S.onlineUsers, () => nav.push(OnlineUsers)');
-    // 쪽지는 판돈과 무관하다 — 신발이 부족해도 사람은 볼 수 있어야 한다
-    has('신발이 없어도 들어간다', mm, '{ disabled: busy }');
-    has('접속자를 구독한다', ou, 'Presence.subscribeOnline(');
-    has('떠나면 구독을 끊는다', ou, 'onLeave() { unsub(); unsub = () => {}; }');
-    has('누르면 유저상태창', ou, 'onclick: () => openUserCard(u,');
+    /* 2026-11-04 대표님 지시: 실시간 접속자 목록은 없앴다 (비용) — 운영자는 «통계» */
+    no('★ 멀티 메뉴에 현재접속자 없음', mm, 'S.onlineUsers');
+    eq('★ 현재접속자 화면 파일 없음', fs.existsSync('src/screens/multi/OnlineUsers.js'), false);
+    no('★ 접속자 전체 구독 없음', fs.readFileSync('src/services/presence.js', 'utf8'), 'export function subscribeOnline');
   }
 
   // ⑦ 쪽지 · 대결신청
@@ -2036,12 +2033,11 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
 
   // ① 새로고침 버튼
   {
-    const ou = read('src/screens/multi/OnlineUsers.js');
-    has('현재접속자에 새로고침', ou, 'button(S.refreshList, refresh');
-    // 구독을 다시 걸어야 실제로 연결부터 새로 잡힌다 — 화면만 다시 그리면 그대로다
-    has('구독을 다시 건다', ou, 'unsub = listen();');
+    /* 현재접속자 화면은 없앴다 (2026-11-04) — 운영자 통계에 새로고침이 있다 */
+    const as = read('src/screens/AdminStats.js');
+    has('통계에 새로고침', as, 'button(S.refreshList, load)');
     eq('뒤로 버튼 위에 있다',
-      ou.indexOf('S.refreshList') < ou.indexOf('backButton(S.back'), true);
+      as.lastIndexOf('S.refreshList') < as.lastIndexOf('backButton(S.back'), true);
   }
 
   // ② 첫 화면을 세션 확인보다 먼저 (실측 726ms → 362ms)
@@ -2109,7 +2105,6 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ⑥ 목록 그림은 게으르게
   {
     const hof = read('src/screens/HallOfFame.js');
-    const ou = read('src/screens/multi/OnlineUsers.js');
     /**
      * 30차: 순위표 줄은 캐릭터 png 한 장이 아니라 **착용 모습**이라 `loading` 을 못 건다
      * (그림이 여러 장이다). 대신 로비·쇼핑과 같은 부품인지를 본다.
@@ -2119,7 +2114,6 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     // 캐릭터를 못 찾은 줄만 폭이 다르면 이름 시작점이 그 줄에서만 밀린다
     has('★ 캐릭터가 없어도 같은 크기 그림틀', read('src/screens/wearFigure.js'), "if (charId) put(characterSprite(charId, 'front')");
     no('자리표시자 div 를 안 쓴다', hof, "el('div.rank-face')");
-    has('접속자 얼굴 lazy', ou, "loading: 'lazy'");
   }
 }
 
@@ -2284,15 +2278,11 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   // ④ 구독 한 번에 화면을 통째로 다시 그리지 않는다
   {
     const wr = code(read('src/screens/multi/WaitingRoom.js'));
-    const ou = code(read('src/screens/multi/OnlineUsers.js'));
     has('대기방 — 보이는 값만 비교', wr, 'function viewKey(r)');
     has('대기방 — 같으면 안 그린다', wr, 'if (key === lastView) return;');
     // 생존 신호·진행도는 이 화면에 한 글자도 안 나온다 — 열쇠에 들어가면 안 된다
     no('대기방 열쇠에 seenAt 없음', /function viewKey\(r\)[\s\S]*?\n  }/.exec(wr)?.[0] ?? '', 'seenAt');
     no('대기방 열쇠에 stairs 없음', /function viewKey\(r\)[\s\S]*?\n  }/.exec(wr)?.[0] ?? '', 'stairs');
-    has('현재접속자 — 보이는 값만 비교', ou, 'const viewKey = (rows)');
-    has('현재접속자 — 같으면 안 그린다', ou, 'if (key === lastView) return;');
-    no('현재접속자 열쇠에 at 없음', /const viewKey = \(rows\)[\s\S]*?join\('\|'\);/.exec(ou)?.[0] ?? '', 'u.at');
   }
 
   // ⑤ 정산 도장은 **판 단위** — '계속하기' 로 이어 하는 판이 새면 안 된다
@@ -2385,7 +2375,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
    *    남는 공간을 나눠 가진다. 반대로 로딩·오류·빈 목록일 때는 여백이 있어야
    *    '내 순위' 와 버튼이 바닥에 붙는다.
    */
-  for (const f of ['src/screens/HallOfFame.js', 'src/screens/multi/OnlineUsers.js', 'src/screens/Inbox.js']) {
+  for (const f of ['src/screens/HallOfFame.js', 'src/screens/Inbox.js']) {
     const src = code(read(f));
     has(`${f} — 목록 표식`, src, 'listed = true');
     has(`${f} — 목록이면 여백을 뺀다`, src, "listed ? null : el('div.spacer')");
@@ -2528,9 +2518,8 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
     has('심장 박동 15초', pr, 'const HEARTBEAT_MS = 15 * 1000;');
     has('활동 시각은 서버가 찍는다', pr, 'lastActive: myFb.dbMod.serverTimestamp()');
     has('읽는 쪽에서 거른다', pr, 'export function isLive(card');
-    has('목록에 필터를 건다', pr, '.filter((r) => isLive(r, now))');
-    // 오래됨은 이벤트를 만들지 않는다 — 타이머로 다시 걸러야 유령이 사라진다
-    has('5초마다 다시 거른다', pr, 'recomputeAll();');
+    /* 2026-11-04: 접속자 목록 구독을 없앴으므로 다시 거를 목록도 없다 — 한 사람씩 읽을 때 거른다 */
+    has('한 사람 읽기도 거른다', pr, 'return isLive(v) ? v : null;');
     has('대결 상대 확인도 같은 잣대', pr, 'return isLive(v) ? v : null;');
     // 화면을 내리면 스스로 빠진다. beforeunload/unload 는 쓰지 않는다(크롬이 금지)
     has('숨으면 스스로 빠진다', pr, "if (document.visibilityState === 'hidden') { drop(); return; }");
@@ -3848,12 +3837,14 @@ console.log('\n58) ★ 유령 방 · 아웃체크중 30초 (2026-08-21 33차, �
   }
 
   // ③ 목록·청소·대기방 셋이 전부 그 판정을 쓴다
-  has('★ 목록이 접속 목록을 함께 읽는다', mp3, 'Promise.all([scanOpenRooms(fb), readLiveUids(fb)])');
+  /* 2026-11-04: 접속자 전체가 아니라 목록에 오른 방의 사람만 묻는다 (전송량) */
+  has('★ 목록이 접속 목록을 함께 읽는다', mp3, 'readLiveUids(fb, rooms.flatMap(');
   has('★ 목록을 여는 김에 청소한다', mp3, 'sweepEmptyRooms(fb, rooms, live);');
-  has('★ 대기방 정리도 접속 목록을 본다', mp3, 'const live = await readLiveUids(fb);');
+  has('★ 대기방 정리도 접속 목록을 본다', mp3, 'const live = await readLiveUids(fb, Object.keys(room.players ?? {}));');
+  no('★ 접속 노드를 통째로 읽지 않는다', mp3, 'readOnce(fb, PRESENCE)');
   has('내가 목록에 없으면 안 믿는다', mp3, 'live.has(fb.uid) ? live : null');
   // 대기방이 스냅샷마다 부르므로 잠깐 재사용한다 — 안 그러면 1.2초마다 접속 노드를 통째로 읽는다
-  has('접속 목록은 잠깐 재사용한다', mp3, 'if (Date.now() - liveCache.at < LIVE_TTL_MS) return liveCache.set;');
+  has('접속 목록은 잠깐 재사용한다', mp3, 'if (hit && t - hit.at < LIVE_TTL_MS) return;');
   // 판이 걸려 있으면 **먼저 끝낸다** — 순위 없이 지우면 항아리가 증발한다(§9-0-25)
   has('★ 판이 걸린 방은 먼저 끝낸다', mp3, "if (roundRunning(r) && !r.result?.rankings) {");
   has('★ 신발이 걸린 방은 목록에서만 내린다', mp3, "{ open: false }");

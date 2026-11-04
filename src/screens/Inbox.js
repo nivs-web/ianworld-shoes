@@ -71,7 +71,7 @@ export default function Inbox(nav) {
     // 대결 신청은 이력이 아니다 — 팝업이 처리하고 지운다
     rows = list.filter((m) => m.kind !== 'challenge').slice().reverse();
     nav.refresh();
-  });
+  }, { all: true });   // 쪽지함 화면은 이력 전부 (열려 있는 동안만) - 팝업 구독은 최근 30통
   /**
    * ★ **서버 값이 안 와도 차단 상태를 잃지 않는다.** (2026-08-19 14차)
    *

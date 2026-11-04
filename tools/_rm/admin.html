@@ -1,0 +1,10 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>운영자 통계 확인</title>
+<style>html,body{margin:0;background:#222}.wrap{display:flex;gap:8px;padding:8px}iframe{width:400px;height:760px;border:0;background:#000}</style></head>
+<body><div class="wrap"><iframe id="A"></iframe><iframe id="B"></iframe></div>
+<script type="module">
+import { FakeDb, makeFb } from '/tools/_sim/rtdb.mjs';
+const db = new FakeDb();
+db.write('admins/A', true);
+window.__SIM = { db, makeFb, code: 'none' };
+for (const k of ['A', 'B']) document.getElementById(k).src = `/tools/_rm/admin-side.html?uid=${k}`;
+</script></body></html>

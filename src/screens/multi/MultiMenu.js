@@ -16,8 +16,10 @@ import * as Room from '../../services/multiplayer.js';
 import WaitingRoom from './WaitingRoom.js';
 import CodeInput from './CodeInput.js';
 import RoomList from './RoomList.js';
-import OnlineUsers from './OnlineUsers.js';
 import MultiRank from '../MultiRank.js';
+import { lazyScreen } from '../lazyScreen.js';
+
+const Friends = lazyScreen(() => import('../Friends.js'), S.friendsTitle);
 import { crownImg } from '../crown.js';
 import Lobby from '../Lobby.js';
 
@@ -89,11 +91,11 @@ export default function MultiMenu(nav) {
           icons: [crownImg(1, 'btn-crown'), crownImg(1, 'btn-crown')],
         }),
         /**
-         * ★ **현재접속자** (2026-08-19 11차, 사용자 지정) — 방과 무관한 메뉴다.
-         * 방이 하나도 없어도 여기서 사람을 찾아 말을 걸고 대결을 신청할 수 있다.
-         * 신발이 부족해도 막지 않는다 — 쪽지는 판돈과 상관이 없다.
+         * ★ **친구** (2026-11-04, 대표님 지시) — 없앤 «현재접속자» 자리.
+         * 모르는 사람 전원 대신 **내 친구만**, 열 때만 접속 여부를 읽는다(비용).
+         * 신발이 부족해도 막지 않는다 — 쪽지·초대는 판돈과 상관이 없다.
          */
-        button(S.onlineUsers, () => nav.push(OnlineUsers), { disabled: busy }),
+        button(S.friendsTitle, () => nav.push(Friends), { disabled: busy }),
 
         !canPlay
           ? el('div.warn', null, [
