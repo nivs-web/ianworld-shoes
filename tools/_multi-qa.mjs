@@ -3848,12 +3848,14 @@ console.log('\n58) ★ 유령 방 · 아웃체크중 30초 (2026-08-21 33차, �
   }
 
   // ③ 목록·청소·대기방 셋이 전부 그 판정을 쓴다
-  has('★ 목록이 접속 목록을 함께 읽는다', mp3, 'Promise.all([scanOpenRooms(fb), readLiveUids(fb)])');
+  /* 2026-11-04: 접속자 전체가 아니라 목록에 오른 방의 사람만 묻는다 (전송량) */
+  has('★ 목록이 접속 목록을 함께 읽는다', mp3, 'readLiveUids(fb, rooms.flatMap(');
   has('★ 목록을 여는 김에 청소한다', mp3, 'sweepEmptyRooms(fb, rooms, live);');
-  has('★ 대기방 정리도 접속 목록을 본다', mp3, 'const live = await readLiveUids(fb);');
+  has('★ 대기방 정리도 접속 목록을 본다', mp3, 'const live = await readLiveUids(fb, Object.keys(room.players ?? {}));');
+  no('★ 접속 노드를 통째로 읽지 않는다', mp3, 'readOnce(fb, PRESENCE)');
   has('내가 목록에 없으면 안 믿는다', mp3, 'live.has(fb.uid) ? live : null');
   // 대기방이 스냅샷마다 부르므로 잠깐 재사용한다 — 안 그러면 1.2초마다 접속 노드를 통째로 읽는다
-  has('접속 목록은 잠깐 재사용한다', mp3, 'if (Date.now() - liveCache.at < LIVE_TTL_MS) return liveCache.set;');
+  has('접속 목록은 잠깐 재사용한다', mp3, 'if (hit && t - hit.at < LIVE_TTL_MS) return;');
   // 판이 걸려 있으면 **먼저 끝낸다** — 순위 없이 지우면 항아리가 증발한다(§9-0-25)
   has('★ 판이 걸린 방은 먼저 끝낸다', mp3, "if (roundRunning(r) && !r.result?.rankings) {");
   has('★ 신발이 걸린 방은 목록에서만 내린다', mp3, "{ open: false }");

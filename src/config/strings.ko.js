@@ -716,6 +716,8 @@ export const S = {
   stateShortPlaying: '게임중',
   stateShortIdle: '대기중',
   onlineCount: (n) => `현재 ${n}명 접속중`,
+  /* 접속자 목록은 최근 활동 순으로 상한까지만 받는다 (presence.ONLINE_LIST_MAX) */
+  onlineCountMany: (n) => `현재 ${n}명 이상 접속중 (최근 활동 순)`,
   noOneOnline: '접속 중인 사람이 없습니다',
   meTag: '나',
 

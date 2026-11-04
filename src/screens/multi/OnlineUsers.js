@@ -144,7 +144,8 @@ export default function OnlineUsers(nav, params = {}) {
        */
       return screen(
         title(S.onlineUsers),
-        list ? el('div.hint', S.onlineCount(list.length)) : null,
+        list ? el('div.hint', list.length >= Presence.ONLINE_LIST_MAX
+          ? S.onlineCountMany(Presence.ONLINE_LIST_MAX) : S.onlineCount(list.length)) : null,
         body,
         listed ? null : el('div.spacer'),
         button(S.refreshList, refresh, { sfx: 'sfx_menu_move' }),

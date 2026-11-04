@@ -258,8 +258,13 @@ async function heartbeat() {
   const inGame = myState === 'playing';
   if (!inGame && msSinceActive() > ACTIVITY_TIMEOUT_MS) return;
   if (Date.now() - lastWriteAt < WRITE_THROTTLE_MS) return;
+  /**
+   * ★ **`lastActive` 하나만 쓴다.** (2026-11-04, 권반장 전달 — 전송량 줄이기)
+   * 이 쓰기는 접속자 목록을 보고 있는 **모두에게** 그대로 내려간다. `at`(폰 시계)은
+   * 19차 이전 클라이언트용 예비 값이라 카드를 처음 쓸 때(`writeCard`) 한 번이면 충분하다.
+   */
   await withTimeout(myFb.dbMod.update(myRef, {
-    lastActive: myFb.dbMod.serverTimestamp(), at: Date.now(),
+    lastActive: myFb.dbMod.serverTimestamp(),
   }), undefined, '접속 유지');
   lastWriteAt = Date.now();
 }
@@ -445,7 +450,19 @@ export function subscribeOnline(cb) {
   rt().then((fb) => {
     if (dead) return;
     if (!fb) return cb(null);
-    const r = fb.dbMod.ref(fb.rtdb, PRESENCE);
+    /**
+     * ★★ **최근 활동한 사람 `ONLINE_LIST_MAX` 명까지만 받는다.** (2026-11-04, 권반장 전달 —
+     *   대표님 지시 "사람이 늘면 전송량이 제곱으로 커져 요금 폭탄")
+     *
+     * 예전에는 `presence` 를 통째로 구독했다. 그러면 보는 사람 한 명이 **접속자 전원의
+     * 15초 신호**를 다 받는다 — 보는 사람도 N, 신호도 N 이라 합계가 N² 이다.
+     * 이제 `lastActive` 순으로 마지막 100명만 받으므로 보는 사람 한 명의 몫이
+     * 접속자가 아무리 늘어도 100명분에서 멈춘다(합계가 N 에 비례). 100명 이하일 때는
+     * 지금과 똑같이 전원이 보인다. 순서 기준(`lastActive`)에는 규칙의 `.indexOn` 이
+     * 걸려 있어야 서버가 걸러 준다 — 없으면 SDK 가 통째로 받아 손으로 거른다(경고만 뜬다).
+     */
+    const { ref, query, orderByChild, limitToLast } = fb.dbMod;
+    const r = query(ref(fb.rtdb, PRESENCE), orderByChild('lastActive'), limitToLast(ONLINE_LIST_MAX));
     const h = fb.dbMod.onValue(r, (snap) => {
       entry.raw = snap.val() ?? {};
       emit(entry);
@@ -455,6 +472,9 @@ export function subscribeOnline(cb) {
   }).catch(() => cb(null));
   return () => { dead = true; watchers.delete(entry); off(); };
 }
+
+/** 접속자 목록이 한 번에 받는 최대 인원 (넘으면 화면에 "N명 이상" 으로 뜬다) */
+export const ONLINE_LIST_MAX = 100;
 
 /** 구독자들 — 5초마다 같은 데이터로 다시 걸러 준다 */
 const watchers = new Set();

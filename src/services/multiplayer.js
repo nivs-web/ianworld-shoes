@@ -653,21 +653,59 @@ export async function resetRoom(code) {
  * 3초면 홈 버튼을 누른 사람이 목록에서 빠지는 속도(즉시)에 비해 무시할 만한 지연이다.
  */
 const LIVE_TTL_MS = 3000;
-let liveCache = { at: 0, set: null };
+/** uid → { at: 읽은 시각, card: { lastActive, at } | null } */
+const liveCache = new Map();
+/** 한 번에 물어보는 사람 수의 상한 — 방 12개 × 4명 = 48 */
+const LIVE_MAX_UIDS = 48;
 
-export async function readLiveUids(fb) {
+/**
+ * ★★ **물어볼 사람만 읽는다.** (2026-11-04, 권반장 전달 — 대표님 지시 "요금 폭탄")
+ *
+ * 예전에는 `presence` 노드를 **통째로** 읽었다(접속자 N명 × 카드 ~250바이트).
+ * 그것도 대기방에 앉은 사람마다 5초에 한 번씩(`purgeAbsent`), 방 목록을 열 때마다.
+ * 접속자가 늘면 "읽는 사람 수 × 접속자 수" 로 **제곱**으로 불어난다 — 1,000명이면
+ * 대기방 하나가 5초마다 250KB 를 받는다.
+ *
+ * 그런데 답이 필요한 사람은 **그 방에 앉은 몇 명**뿐이다. 그래서 그 사람들의
+ * `presence/{uid}/lastActive` 잎(숫자 하나)만 읽는다. 접속자가 몇 명이든 받는 양이
+ * 고정이다(방 하나면 4명 × ~40바이트).
+ *
+ * 돌려주는 값의 뜻은 그대로다 — **물어본 사람 중 살아 있는 uid 집합**, 그리고
+ * 내가 목록에 안 보이면(내 접속 표시가 아직 안 붙었으면) `null`(근거로 안 쓴다).
+ *
+ * @param {object} fb
+ * @param {Iterable<string>} uids 살아 있는지 알고 싶은 사람들
+ */
+export async function readLiveUids(fb, uids = []) {
   fb = fb ?? await rt();
   if (!fb) return null;
-  if (Date.now() - liveCache.at < LIVE_TTL_MS) return liveCache.set;
-  const { val } = await readOnce(fb, PRESENCE).catch(() => ({ val: null }));
-  if (!val || typeof val !== 'object') return null;
+  const want = [...new Set([fb.uid, ...uids])].filter(Boolean).slice(0, LIVE_MAX_UIDS + 1);
+  const t = Date.now();
+  await Promise.all(want.map(async (uid) => {
+    const hit = liveCache.get(uid);
+    if (hit && t - hit.at < LIVE_TTL_MS) return;
+    const base = path(PRESENCE, uid);
+    const la = await readOnce(fb, path(base, 'lastActive')).catch(() => ({ ok: false, val: null }));
+    if (!la.ok) { liveCache.set(uid, { at: t, card: undefined }); return; }
+    let card = la.val != null ? { lastActive: la.val } : null;
+    /* 19차 이전 클라이언트는 `lastActive` 없이 `at` 만 쓴다 — 그때만 한 번 더 묻는다 */
+    if (!card) {
+      const at = await readOnce(fb, path(base, 'at')).catch(() => ({ ok: false, val: null }));
+      card = at.ok && at.val != null ? { at: at.val } : null;
+    }
+    liveCache.set(uid, { at: t, card });
+  }));
+  if (liveCache.size > 400) {          // 오래 켜 둔 탭에서 끝없이 쌓이지 않게
+    for (const [uid, v] of liveCache) if (t - v.at > LIVE_TTL_MS * 10) liveCache.delete(uid);
+  }
   const now = Date.now() + serverOffsetSync();
   const live = new Set();
-  for (const [uid, card] of Object.entries(val)) {
-    if (presenceLive(card, now)) live.add(uid);
+  for (const uid of want) {
+    const c = liveCache.get(uid)?.card;
+    if (c === undefined) { if (uid === fb.uid) return null; continue; }   // 못 읽었다
+    if (presenceLive(c, now)) live.add(uid);
   }
-  liveCache = { at: Date.now(), set: live.has(fb.uid) ? live : null };
-  return liveCache.set;
+  return live.has(fb.uid) ? live : null;
 }
 
 /**
@@ -681,7 +719,9 @@ export async function listRooms(game = GAME_SHOES) {
   const fb = await rt();
   if (!fb) return [];
   await waitConnected(fb);
-  const [rooms, live] = await Promise.all([scanOpenRooms(fb, game), readLiveUids(fb)]);
+  const rooms = await scanOpenRooms(fb, game);
+  /* 목록에 오른 방의 사람들만 물어본다 (접속자 전체를 받지 않는다) */
+  const live = await readLiveUids(fb, rooms.flatMap((r) => Object.keys(r?.players ?? {})));
   const max = MULTI.maxPlayers;
   const 지금 = Date.now() + serverOffsetSync();
   /**
@@ -774,7 +814,7 @@ export async function purgeAbsent(code, known) {
    * 입력이 없어도 15초마다 심장 박동을 보내므로 **접속 목록에 없으면 확실히 나간 것**이고,
    * 홈 버튼을 누르면 그 자리에서 카드가 지워지므로 `seenAt` 30초보다 훨씬 빠르다.
    */
-  const live = await readLiveUids(fb);
+  const live = await readLiveUids(fb, Object.keys(room.players ?? {}));
   const 없는사람 = (uid, v) => isStale(v, now) || (live ? !live.has(uid) : false);
   const 나갈사람 = Object.entries(room.players ?? {})
     .filter(([uid, v]) => uid !== fb.uid && 없는사람(uid, v))
@@ -1105,7 +1145,12 @@ export async function msUntilStart(startAt) {
  * 마지막 전송 이후 값이 바뀌었을 때만, 그것도 간격을 두고 보낸다.
  */
 let lastSent = { at: 0, stairs: -1, shoesFound: -1 };
-const PROGRESS_MS = 300;
+/**
+ * 300 → **500ms** (2026-11-04, 권반장 전달 — 전송량 줄이기). 계단을 초당 10칸
+ * 오르면 쓰기가 초당 3.3번 나가고, 4인 방이면 그게 셋에게 내려간다. 레이스
+ * 게이지는 초당 2번이면 충분히 부드럽다 — 끝/죽음은 `force` 로 즉시 나간다.
+ */
+const PROGRESS_MS = 500;
 
 export async function publishProgress(code, { stairs, shoesFound, alive = true }, force = false) {
   const t = Date.now();
@@ -1207,7 +1252,8 @@ export async function endCatchRound(code) {
 
 export async function publishGhost(code, { x, y, lv, lives }) {
   const t = Date.now();
-  if (t - lastGhostAt < 90) return;
+  /* 10Hz → 5Hz (2026-11-04, 전송량). 받는 쪽이 부드럽게 따라가므로(`updatePeers`) 끊겨 보이지 않는다 */
+  if (t - lastGhostAt < 180) return;
   lastGhostAt = t;
   const fb = await rt();
   if (!fb) return;

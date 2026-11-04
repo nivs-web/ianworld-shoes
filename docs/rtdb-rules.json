@@ -253,6 +253,7 @@
     },
     "presence": {
       ".read": "auth != null",
+      ".indexOn": ["lastActive"],
       "$uid": {
         ".write": "auth != null && auth.uid == $uid",
         ".validate": "!newData.exists() || newData.hasChildren(['nickname', 'state', 'at'])",
