@@ -716,8 +716,15 @@ export const S = {
   stateShortPlaying: '게임중',
   stateShortIdle: '대기중',
   onlineCount: (n) => `현재 ${n}명 접속중`,
-  /* 접속자 목록은 최근 활동 순으로 상한까지만 받는다 (presence.ONLINE_LIST_MAX) */
-  onlineCountMany: (n) => `현재 ${n}명 이상 접속중 (최근 활동 순)`,
+  /* 운영자 통계 (2026-11-04) — 현재접속자 목록 대신 숫자만 */
+  adminStatsTitle: '통계',
+  adminStatsFailed: '통계를 읽지 못했습니다 (운영자 계정·서버 규칙을 확인하세요)',
+  adminTodayVisitors: (n) => `오늘 접속자  ${n.toLocaleString('en-US')}명`,
+  adminLiveNow: (n) => `지금 동시접속  ${n.toLocaleString('en-US')}명`,
+  adminTodayPeak: (n) => `오늘 최대 동시접속  ${n.toLocaleString('en-US')}명`,
+  adminLast7: '최근 7일',
+  adminDayRow: (n, peak) => `${n.toLocaleString('en-US')}명 · 최대 ${peak.toLocaleString('en-US')}`,
+  adminStatsHint: '한국 시각 기준 · 접속자는 하루 한 번만 셉니다 · 동시접속은 연결 수(탭 포함)',
   noOneOnline: '접속 중인 사람이 없습니다',
   meTag: '나',
 

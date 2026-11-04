@@ -16,7 +16,6 @@ import * as Room from '../../services/multiplayer.js';
 import WaitingRoom from './WaitingRoom.js';
 import CodeInput from './CodeInput.js';
 import RoomList from './RoomList.js';
-import OnlineUsers from './OnlineUsers.js';
 import MultiRank from '../MultiRank.js';
 import { crownImg } from '../crown.js';
 import Lobby from '../Lobby.js';
@@ -88,12 +87,7 @@ export default function MultiMenu(nav) {
           class: 'crown-btn', disabled: busy,
           icons: [crownImg(1, 'btn-crown'), crownImg(1, 'btn-crown')],
         }),
-        /**
-         * ★ **현재접속자** (2026-08-19 11차, 사용자 지정) — 방과 무관한 메뉴다.
-         * 방이 하나도 없어도 여기서 사람을 찾아 말을 걸고 대결을 신청할 수 있다.
-         * 신발이 부족해도 막지 않는다 — 쪽지는 판돈과 상관이 없다.
-         */
-        button(S.onlineUsers, () => nav.push(OnlineUsers), { disabled: busy }),
+        /* 현재접속자는 없앴다 (2026-11-04, 대표님 지시 — 비용). 운영자는 설정의 «통계» */
 
         !canPlay
           ? el('div.warn', null, [

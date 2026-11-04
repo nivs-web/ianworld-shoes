@@ -219,6 +219,8 @@ export async function start() {
         await fb.dbMod.onDisconnect(ref).remove();
         await writeCard(fb, ref);
       } catch { /* 규칙이 아직 없으면 조용히 넘어간다 — 게임은 그대로 돈다 */ }
+      /* 운영자 통계 (오늘 접속자 · 동시접속) — 붙을 때마다. 실패해도 게임과 무관하다 */
+      import('./stats.js').then((St) => St.onConnected(fb)).catch(() => {});
     });
     beat = setInterval(() => heartbeat().catch(() => {}), HEARTBEAT_MS);
     bindLifecycle();
@@ -292,7 +294,6 @@ function bindLifecycle() {
     if (document.visibilityState === 'hidden') { drop(); return; }
     markActive();
     if (myRef && myFb) writeCard(myFb, myRef).catch(() => {});
-    recomputeAll();
   });
   window.addEventListener('pagehide', drop);
 
@@ -309,7 +310,6 @@ function bindLifecycle() {
       writeCard(myFb, myRef).catch(() => {});
     }
     tick = now;
-    recomputeAll();
   }, RECOMPUTE_MS);
 }
 
@@ -399,16 +399,6 @@ export function refresh() {
 }
 
 /**
- * 접속자 목록을 구독한다.
- *
- * **못 붙었을 때는 `null` 을 준다.** 빈 배열로 뭉뚱그리면 화면이 "접속 중인 사람이
- * 없습니다"라고 **거짓말을 한다** — 연결이 안 된 것과 아무도 없는 것은 다르다
- * (§9-0-6 에서 순위표가 같은 거짓말을 했다).
- *
- * @param {(rows: Array|null) => void} cb
- * @returns {() => void} 해제
- */
-/**
  * ★ **살아 있는 접속인가** — 60초 안에 활동이 있었나. (2026-08-19 19차)
  *
  * `lastActive` 가 아예 없는 카드는 **19차 이전 클라이언트**가 쓴 것이다. 그런 카드는
@@ -425,72 +415,14 @@ export function isLive(card, now = serverNow()) {
   return presenceLive(card, now);
 }
 
-
-
 /**
- * 접속자 목록을 구독한다.
+ * ★★ **접속자 목록 구독(`subscribeOnline`)은 없앴다.** (2026-11-04, 대표님 지시 · 권반장 전달)
  *
- * **못 붙었을 때는 `null` 을 준다.** 빈 배열로 뭉뚱그리면 화면이 "접속 중인 사람이
- * 없습니다"라고 **거짓말을 한다** — 연결이 안 된 것과 아무도 없는 것은 다르다
- * (§9-0-6 에서 순위표가 같은 거짓말을 했다).
- *
- * ★ **거르는 일은 읽는 쪽이 한다.** 데이터는 이미 모두에게 내려와 있으므로 서버를
- *   한 번 더 거칠 이유가 없다(추가 쓰기·함수 호출 0). 대신 **오래됨은 이벤트를
- *   만들지 않으므로** 5초마다 스스로 다시 걸러야 한다 — 이게 없으면 `lastActive` 를
- *   넣어도 화면의 유령은 그대로 남는다.
- *
- * @param {(rows: Array|null) => void} cb
- * @returns {() => void} 해제
+ * 보는 사람마다 접속자 전원의 15초 신호를 실시간으로 받아 사람이 늘수록 제곱으로
+ * 비싸졌다(1,000명이면 시간당 2.7GB). 운영자는 숫자만 보면 되므로 `stats.js` 가
+ * 따로 센다. 접속 표시(`presence/{uid}`) 자체는 남는다 — 친구 접속 확인 · 방 유령
+ * 판정 · 대결 신청 가능 여부가 **한 사람씩** 읽어 쓴다(`readOne`).
  */
-export function subscribeOnline(cb) {
-  let off = () => {};
-  let dead = false;
-  const entry = { cb, raw: null };
-  watchers.add(entry);
-  rt().then((fb) => {
-    if (dead) return;
-    if (!fb) return cb(null);
-    /**
-     * ★★ **최근 활동한 사람 `ONLINE_LIST_MAX` 명까지만 받는다.** (2026-11-04, 권반장 전달 —
-     *   대표님 지시 "사람이 늘면 전송량이 제곱으로 커져 요금 폭탄")
-     *
-     * 예전에는 `presence` 를 통째로 구독했다. 그러면 보는 사람 한 명이 **접속자 전원의
-     * 15초 신호**를 다 받는다 — 보는 사람도 N, 신호도 N 이라 합계가 N² 이다.
-     * 이제 `lastActive` 순으로 마지막 100명만 받으므로 보는 사람 한 명의 몫이
-     * 접속자가 아무리 늘어도 100명분에서 멈춘다(합계가 N 에 비례). 100명 이하일 때는
-     * 지금과 똑같이 전원이 보인다. 순서 기준(`lastActive`)에는 규칙의 `.indexOn` 이
-     * 걸려 있어야 서버가 걸러 준다 — 없으면 SDK 가 통째로 받아 손으로 거른다(경고만 뜬다).
-     */
-    const { ref, query, orderByChild, limitToLast } = fb.dbMod;
-    const r = query(ref(fb.rtdb, PRESENCE), orderByChild('lastActive'), limitToLast(ONLINE_LIST_MAX));
-    const h = fb.dbMod.onValue(r, (snap) => {
-      entry.raw = snap.val() ?? {};
-      emit(entry);
-    }, () => { entry.raw = null; cb(null); });
-    if (dead) { h(); return; }
-    off = h;
-  }).catch(() => cb(null));
-  return () => { dead = true; watchers.delete(entry); off(); };
-}
-
-/** 접속자 목록이 한 번에 받는 최대 인원 (넘으면 화면에 "N명 이상" 으로 뜬다) */
-export const ONLINE_LIST_MAX = 100;
-
-/** 구독자들 — 5초마다 같은 데이터로 다시 걸러 준다 */
-const watchers = new Set();
-
-function emit(entry) {
-  if (!entry.raw) return;
-  const now = serverNow();
-  const rows = Object.entries(entry.raw)
-    .map(([uid, p]) => ({ uid, ...p }))
-    .filter((r) => isLive(r, now));
-  entry.cb(rows);
-}
-
-function recomputeAll() {
-  for (const w of watchers) emit(w);
-}
 
 /**
  * 한 사람의 접속 상태만 (없으면 null = 미접속).

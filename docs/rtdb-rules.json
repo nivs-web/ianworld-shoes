@@ -251,6 +251,42 @@
         }
       }
     },
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": false
+      }
+    },
+    "stats": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() == true",
+      "live": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200000"
+      },
+      "days": {
+        "$day": {
+          ".validate": "$day.matches(/^[0-9]{8}$/)",
+          "u": {
+            "$uid": {
+              ".read": "auth != null && auth.uid == $uid",
+              ".write": "auth != null && auth.uid == $uid && !data.exists()",
+              ".validate": "newData.val() == true"
+            }
+          },
+          "n": {
+            ".write": "auth != null",
+            ".validate": "newData.isNumber() && newData.val() == (data.exists() ? data.val() : 0) + 1 && !data.parent().child('u').child(auth.uid).exists() && newData.parent().child('u').child(auth.uid).val() == true"
+          },
+          "peak": {
+            ".read": "auth != null",
+            ".write": "auth != null",
+            ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= newData.parent().parent().parent().child('live').val()"
+          },
+          "$other": { ".validate": false }
+        }
+      }
+    },
     "presence": {
       ".read": "auth != null",
       ".indexOn": ["lastActive"],

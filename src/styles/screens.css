@@ -2617,3 +2617,12 @@
   color: #f2b233;
   letter-spacing: 0.5px;
 }
+
+/* ── 운영자 통계 (2026-11-04) — 숫자 셋 + 최근 7일 막대 ── */
+.admin-stats { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.admin-stats .stat-line { font-size: 16px; }
+.admin-days { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.admin-day { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 8px; }
+.admin-day-k { opacity: .8; }
+.admin-day-bar { display: block; height: 10px; min-width: 2px; background: #e8a33a; }
+.admin-day-v { white-space: nowrap; font-size: 12px; }

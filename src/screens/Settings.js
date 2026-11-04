@@ -13,8 +13,15 @@ import SoundSettings from './SoundSettings.js';
 import BgSettings from './BgSettings.js';
 import Inbox from './Inbox.js';
 import MessageSettings from './MessageSettings.js';
+import { lazyScreen } from './lazyScreen.js';
+import * as Stats from '../services/stats.js';
+
+const AdminStats = lazyScreen(() => import('./AdminStats.js'), S.adminStatsTitle);
 
 export default function Settings(nav) {
+  /* 운영자만 «통계» 가 보인다 (서버의 admins/{uid}) — 확인되면 다시 그린다 */
+  let admin = false;
+  Stats.isAdmin().then((y) => { if (y) { admin = true; nav.refresh(); } }).catch(() => {});
   return {
     render() {
       return screen(
@@ -29,6 +36,7 @@ export default function Settings(nav) {
          */
         button(S.menuInbox, () => nav.push(Inbox)),
         button(S.menuMsgAccept, () => nav.push(MessageSettings)),
+        admin ? button(S.adminStatsTitle, () => nav.push(AdminStats)) : null,
 
         el('div.spacer'),
         backButton(S.back, () => nav.back())

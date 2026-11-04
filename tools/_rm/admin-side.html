@@ -1,0 +1,24 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>side</title>
+<link rel="stylesheet" href="/src/styles/reset.css"><link rel="stylesheet" href="/src/styles/pixel-ui.css"><link rel="stylesheet" href="/src/styles/screens.css">
+<script>
+  (function () {
+    const uid = new URLSearchParams(location.search).get('uid');
+    const real = window.localStorage, pre = 'rma_' + uid + ':';
+    Object.defineProperty(window, 'localStorage', { value: {
+      getItem: (k) => real.getItem(pre + k), setItem: (k, v) => real.setItem(pre + k, String(v)),
+      removeItem: (k) => real.removeItem(pre + k), clear: () => {}, key: () => null, get length() { return 0; } }, configurable: true });
+    window.AudioContext = undefined; window.webkitAudioContext = undefined;
+  })();
+</script></head>
+<body class="ui-mode"><div id="app"><canvas id="game" width="180" height="320"></canvas></div><div id="ui" class="active"></div>
+<script type="module">
+const uid = new URLSearchParams(location.search).get('uid');
+const L = await import('/src/services/storageLocal.js');
+L.resetAll(); L.loadProfile(); L.patchProfile({ nickname: '창' + uid, uid, dragonCoins: 5000 });
+const P = await import('/src/services/presence.js');
+await P.start();
+const { nav } = await import('/src/screens/router.js');
+const Settings = (await import('/src/screens/Settings.js')).default;
+nav.reset(Settings);
+window.__ready = true;
+</script></body></html>
