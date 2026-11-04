@@ -29,13 +29,8 @@ const DragonNickname = lazyScreen(() => import('./DragonNickname.js'), S.dragonR
  */
 const Inbox = lazyScreen(() => import('./Inbox.js'), S.menuInbox);
 const MessageSettings = lazyScreen(() => import('./MessageSettings.js'), S.menuMsgAccept);
-const AdminStats = lazyScreen(() => import('./AdminStats.js'), S.adminStatsTitle);
-import * as Stats from '../services/stats.js';
 
 export default function DragonSettings(nav) {
-  /* 운영자만 «통계» 가 보인다 (서버의 admins/{uid}) — 확인되면 다시 그린다 */
-  let admin = false;
-  Stats.isAdmin().then((y) => { if (y) { admin = true; nav.refresh(); } }).catch(() => {});
   return {
     render() {
       const p = getProfile();
@@ -50,7 +45,6 @@ export default function DragonSettings(nav) {
         /* 오락실 공용 — 신발게임 설정과 같은 것을 부른다 */
         button(S.menuInbox, () => nav.push(Inbox)),
         button(S.menuMsgAccept, () => nav.push(MessageSettings)),
-        admin ? button(S.adminStatsTitle, () => nav.push(AdminStats)) : null,
 
         el('div.spacer'),
         backButton(S.backToGameLobby, () => nav.back())

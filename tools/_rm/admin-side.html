@@ -18,7 +18,8 @@ L.resetAll(); L.loadProfile(); L.patchProfile({ nickname: '창' + uid, uid, drag
 const P = await import('/src/services/presence.js');
 await P.start();
 const { nav } = await import('/src/screens/router.js');
-const Settings = (await import('/src/screens/Settings.js')).default;
-nav.reset(Settings);
+const Portal = (await import('/src/screens/Portal.js')).default;
+nav.reset(Portal);   /* 2026-11-05: «통계» 는 오락실 첫 화면 아래쪽 */
+window.__rm = { nav };
 window.__ready = true;
 </script></body></html>

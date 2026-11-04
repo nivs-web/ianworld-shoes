@@ -6,7 +6,7 @@
 import S from '../config/strings.ko.js';
 import { el, button, backButton, screen, confirmDialog, toast } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
-import { signOut } from '../services/auth.js';
+import { signOut, onUserChanged, currentUser } from '../services/auth.js';
 import Lobby from './Lobby.js';
 import SplashLogin from './SplashLogin.js';
 import { canInstall, promptInstall, isStandalone, onInstallChange } from '../services/pwa.js';
@@ -21,6 +21,20 @@ import * as Sfx from '../audio/sfx.js';
  * 카드에 보이는 건 제목과 최고 점수뿐이고 그 둘은 프로필에 이미 있다.
  */
 const DragonLobby = lazyScreen(() => import('./DragonLobby.js'), S.dragonTitle);
+const AdminStats = lazyScreen(() => import('./AdminStats.js'), S.adminStatsTitle);
+
+/**
+ * ★ **운영자 «통계» 는 오락실 첫 화면에 둔다.** (2026-11-05, 대표님 — 권반장 전달)
+ * *"통계 위치를 어차피 운영자 아이디 1개만 그 메뉴가 보이는 거니깐 로비 진입 전 게임 선택창
+ *   아래쪽에서 누르게 만들어"* — 예전에는 신발·드래곤 설정 안에 있었다(한 곳으로 통일).
+ *
+ * 운영자 판별은 서버의 `admins/{내uid}` 한 칸이다(`stats.isAdmin`). 그걸 읽으려면 RTDB 를
+ * 붙여야 하는데, 첫 화면이 뜨자마자 붙이면 **모든 사람의 부팅**에 RTDB 청크가 끼어든다.
+ * 그래서 접속 표시가 원래 붙는 시점(부팅 2.5초 뒤 한가할 때, `presence.startLater`) 이후로
+ * 미뤄 확인한다. 한 번 확인한 답은 기억해 두고, 다른 계정으로 바뀌면 다시 묻는다.
+ */
+const ADMIN_CHECK_DELAY_MS = 3500;
+let adminFor = { uid: null, yes: false };
 /** 3번째 게임 캐치볼도 누를 때 받는다 (2026-10-28). 카드를 누르면 곧바로 게임 타이틀이다 */
 const CatchGame = lazyScreen(() => import('./CatchGame.js'), S.catchTitle);
 /** 4번째 게임 3D캐치볼 (2026-10-29) — three.js 를 쓰므로 더더욱 누를 때 받는다 */
@@ -87,6 +101,21 @@ export default function Portal(nav) {
 
   // 설치 가능 신호는 화면이 그려진 뒤에 온다 — 도착하면 버튼을 다시 그린다
   const off = onInstallChange(() => nav.refresh());
+  /* 운영자인지 — 확인되면 «통계» 단추를 그린다 (손님에게는 단추가 아예 없다) */
+  let live = true;
+  let adminTimer = null;
+  const offUser = onUserChanged((u) => {
+    clearTimeout(adminTimer);
+    const uid = u && !u.guest ? u.uid : null;
+    if (!uid) { if (adminFor.yes) { adminFor = { uid: null, yes: false }; nav.refresh(); } return; }
+    if (adminFor.uid === uid) return;                 // 이미 안다
+    adminTimer = setTimeout(() => {
+      import('../services/stats.js').then((St) => St.isAdmin()).then((yes) => {
+        adminFor = { uid, yes: !!yes };
+        if (live && yes) nav.refresh();
+      }).catch(() => {});
+    }, ADMIN_CHECK_DELAY_MS);
+  });
   startArcade(); // 첫 화면 폭죽(2026-11-04)
   // 전체화면이 켜지고 꺼질 때 버튼 글자를 바꿔야 한다 (사용자가 F11 로 껐을 수도 있다)
   const onFsChange = () => nav.refresh();
@@ -97,6 +126,9 @@ export default function Portal(nav) {
   return {
     onLeave() {
       off();
+      live = false;
+      offUser();
+      clearTimeout(adminTimer);
       stopArcade();
       for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
         document.removeEventListener(ev, onFsChange);
@@ -130,6 +162,8 @@ export default function Portal(nav) {
          * 아무것도 바꾸지 못하면서 자리만 차지한다.
          */
         !isStandalone() ? button(isFullscreen() ? S.fullscreenOff : S.fullscreenOn, onFullscreen) : null,
+        /* 운영자(admins/{uid} = true)에게만 — 오늘 접속자·동시접속 숫자 (2026-11-05) */
+        adminFor.yes && adminFor.uid === currentUser()?.uid ? button(S.adminStatsTitle, () => nav.push(AdminStats)) : null,
         backButton(S.logout, onLogout)
       );
       sc.classList.add('oh-screen');
