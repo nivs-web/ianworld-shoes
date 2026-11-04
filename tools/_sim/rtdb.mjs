@@ -132,6 +132,7 @@ function clone(v) { return v === undefined ? undefined : JSON.parse(JSON.stringi
  */
 function allow(db, uid, path, newValue) {
   const parts = FakeDb.parts(path);
+  if (parts[0] === 'stats') return statsOk(db, uid, parts, newValue);
   if (parts[0] !== 'rooms') return true;
   const code = parts[1];
   const room = db.read(`rooms/${code}`);
@@ -208,6 +209,25 @@ function othersOk(db, uid, writes) {
     }
   }
   return true;
+}
+
+/**
+ * ★ **운영자 통계 칸 규칙 흉내** (2026-11-05, `docs/rtdb-rules.json` 의 `stats`).
+ * 서버 증가(`increment`)는 지금 값에 더한 **결과**로 검사한다(진짜 서버와 같다).
+ * 특히 `live` 는 0 아래로 못 내려간다 — 운영에서 통계가 하나도 안 쌓인 원인이 이 규칙과
+ * "끊기면 −1" 예약이 만난 것이었다(아래 `onDisconnect` 의 등록 시 검사).
+ */
+function statsOk(db, uid, parts, v) {
+  const inc = v && typeof v === 'object' && v['.sv'] && typeof v['.sv'].increment === 'number' ? v['.sv'].increment : null;
+  const old = db.read(parts.join('/'));
+  const val = inc !== null ? (Number(old) || 0) + inc : v;
+  const [, a, day, leaf, who] = parts;
+  if (a === 'live') return typeof val === 'number' && val >= 0 && val <= 200000;
+  if (a !== 'days' || !/^[0-9]{8}$/.test(day || '')) return false;
+  if (leaf === 'u') return who === uid && old == null && val === true;
+  if (leaf === 'n') return typeof val === 'number' && val === (Number(old) || 0) + 1;
+  if (leaf === 'peak') return typeof val === 'number' && val > (Number(old) || 0) && val <= (Number(db.read('stats/live')) || 0);
+  return false;
 }
 
 export function makeFb(db, uid) {
@@ -314,6 +334,16 @@ export function makeFb(db, uid) {
      */
     onDisconnect(r) {
       const put = (op, value) => {
+        /**
+         * ★ **예약하는 순간 규칙을 검사한다** — 진짜 서버와 같다 (공식 문서: "When you establish an
+         * onDisconnect() operation ... The server checks security to make sure the user can perform
+         * the write event requested, and informs your app if it is invalid"). 예전 가짜 서버는
+         * 그냥 받아 줘서, 운영에서 통계가 0 으로 멈춘 버그를 시뮬이 못 잡았다 (2026-11-05).
+         */
+        if (op === 'set' && !allow(db, uid, r.path, value)) {
+          db.denyLog.push({ op: 'onDisconnect.set', path: r.path, uid });
+          return Promise.reject(new Error('PERMISSION_DENIED (onDisconnect) ' + r.path));
+        }
         db.disconnects.set(`${uid}|${r.path}`, { path: r.path, uid, op, value });
         return Promise.resolve(true);
       };

@@ -70,20 +70,46 @@ let countedDay = '';
 export async function onConnected(fb) {
   fb = fb ?? await rt();
   if (!fb) return;
-  const { ref, onDisconnect, set, runTransaction, increment } = fb.dbMod;
+  const day = dayKey();
+  /**
+   * ★★★ **세 가지를 따로따로 한다 — 하나가 실패해도 나머지는 센다.** (2026-11-05, 운영 버그)
+   *
+   * 예전에는 한 `try` 안에서 "끊기면 −1 예약 → +1 → 오늘 접속자 → 최대" 순으로 했다.
+   * 그런데 RTDB 는 `onDisconnect` 쓰기를 **예약하는 순간** 규칙으로 검사한다(공식 문서).
+   * `stats/live` 가 아직 없으면 −1 은 −1 이 되어 규칙(`>= 0`)에 걸리고, 예외가 나서
+   * **아래 전부가 건너뛰어졌다** — 아무도 +1 을 못 하니 `live` 는 영영 안 생기고,
+   * 운영에서 통계가 전부 0, `stats` 칸 자체가 안 생겼다. 규칙은 그대로 두고 코드만 고친다.
+   */
+  const liveNow = await countLive(fb);
+  try { await countToday(fb, day); } catch { /* 규칙 게시 전 등 — 다음 접속에 다시 */ }
+  if (liveNow > 0) {
+    try {
+      await fb.dbMod.runTransaction(fb.dbMod.ref(fb.rtdb, path(STATS, 'days', day, 'peak')),
+        (p) => (liveNow > (p | 0) ? liveNow : undefined));    // undefined = 그대로 둔다
+    } catch { /* 최대값만 못 올렸다 */ }
+  }
+}
+
+/**
+ * 동시접속 +1, 그리고 **그 다음에** "끊기면 −1" 예약. 지금 값을 돌려준다(못 셌으면 0).
+ *
+ * 순서가 중요하다: +1 을 해 둬야 예약 검사 때 −1 의 결과가 0 이상이라 규칙을 통과한다.
+ * 예약이 실패하면 방금 한 +1 을 되돌린다 — 안 그러면 끊겨도 안 줄어드는 유령 1명이 남는다.
+ * (+1 과 예약 사이에 끊기는 아주 짧은 틈에는 1명이 남을 수 있다 — 숫자 통계라 감수한다.)
+ */
+async function countLive(fb) {
+  const { ref, onDisconnect, set, increment } = fb.dbMod;
   const liveRef = ref(fb.rtdb, path(STATS, 'live'));
   try {
-    /* 끊기면 −1 을 **먼저** 예약한다 — 순서가 반대면 +1 만 남는 틈이 생긴다 */
-    await onDisconnect(liveRef).set(increment(-1));
     await withTimeout(set(liveRef, increment(1)), undefined, '동시접속');
-    const day = dayKey();
-    await countToday(fb, day);
-    const liveNow = (await readVal(fb, path(STATS, 'live'))) | 0;
-    if (liveNow > 0) {
-      await runTransaction(ref(fb.rtdb, path(STATS, 'days', day, 'peak')),
-        (p) => (liveNow > (p | 0) ? liveNow : undefined));    // undefined = 그대로 둔다
-    }
-  } catch { /* 규칙이 아직 게시 전이면 조용히 넘어간다 */ }
+  } catch { return 0; }
+  try {
+    await onDisconnect(liveRef).set(increment(-1));
+  } catch {
+    await withTimeout(set(liveRef, increment(-1)), undefined, '동시접속 되돌리기').catch(() => {});
+    return 0;
+  }
+  try { return Math.max(0, (await readVal(fb, path(STATS, 'live'))) | 0); } catch { return 0; }
 }
 
 /**
