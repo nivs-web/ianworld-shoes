@@ -2617,3 +2617,21 @@
   color: #f2b233;
   letter-spacing: 0.5px;
 }
+
+/* 2026-11-04 대표님 — 게임 카드 간판(게임 이름 위) · 로그인 화면 로고 그림 */
+.game-card-banner {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 792 / 336;
+  border-radius: 6px;
+  image-rendering: auto;
+}
+.splash-logo-img {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  margin: 0 auto 8px;
+  border-radius: 6px;
+}

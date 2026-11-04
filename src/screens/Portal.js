@@ -1,5 +1,5 @@
 /**
- * S03 포털 — 「오락실 이안월드」. 게임 카드 목록.
+ * S03 포털 — 「이안오락실」(2026-11-04 이름 변경 · 옛 이름 오락실 이안월드). 게임 카드 목록.
  * 지금은 「신발을 찾아서」 1종. 게임이 늘면 CARDS 에 추가한다.
  */
 
@@ -29,10 +29,10 @@ const Catch3DGame = lazyScreen(() => import('./Catch3DGame.js'), S.catch3dTitle)
  * (신발은 모은 켤레, 드래곤은 최고 점수).
  */
 const CARDS = [
-  { id: 'find_shoes', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
-  { id: 'dragon_striker', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
-  { id: 'catchball', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
-  { id: 'catchball3d', title: S.catch3dTitle, sub: (p) => S.catchBestLine(p.catch3dBestEasy | 0, p.catch3dBestNormal | 0, p.catch3dBestHard | 0), screen: () => Catch3DGame, ready: true },
+  { id: 'find_shoes', banner: '/assets/ui/banner_find_shoes.webp', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
+  { id: 'dragon_striker', banner: '/assets/ui/banner_dragon_striker.webp', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
+  { id: 'catchball', banner: '/assets/ui/banner_catchball.webp', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
+  { id: 'catchball3d', banner: '/assets/ui/banner_catchball3d.webp', title: S.catch3dTitle, sub: (p) => S.catchBestLine(p.catch3dBestEasy | 0, p.catch3dBestNormal | 0, p.catch3dBestHard | 0), screen: () => Catch3DGame, ready: true },
 ];
 
 export default function Portal(nav) {
@@ -102,11 +102,14 @@ export default function Portal(nav) {
       const p = getProfile();
       return screen(
         el('div.portal-head', null, [
-          el('img.portal-logo', { src: '/assets/ui/logo_portal.png', alt: S.portalTitle }),
+          /* 2026-11-04 대표님: 옛 «오락실 이안월드» 그림 → 이안오락실 홈페이지와 같은 느낌(드래곤 두 마리 · 불꽃 · 네온) + 이안오락실 로고 */
+          el('img.portal-logo', { src: '/assets/ui/logo_portal_v2.webp', alt: S.portalTitle }),
           el('div.portal-user', `${S.playerName} : ${p.nickname}`),
         ]),
         ...CARDS.map((c) =>
           el('div.game-card', null, [
+            /* 2026-11-04 대표님: 게임 이름(빨간 글씨) 위에 간판 */
+            c.banner ? el('img.game-card-banner', { src: c.banner, alt: c.title, loading: 'lazy' }) : null,
             el('div.game-card-title', c.title),
             el('div.game-card-sub', c.sub(p)),
             button(S.touchToStart, () => nav.push(c.screen()), { primary: true }),

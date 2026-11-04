@@ -74,7 +74,8 @@ export default function SplashLogin(nav) {
 
       return screen(
         el('div.splash', null, [
-          el('div.splash-logo', S.portalTitle),
+          /* 2026-11-04: 로그인 전에도 이안오락실 로고 그림 */
+          el('img.splash-logo-img', { src: '/assets/ui/logo_portal_v2.webp', alt: S.portalTitle }),
           el('div.splash-sub', S.splashGames),
         ]),
         el('div.spacer'),
