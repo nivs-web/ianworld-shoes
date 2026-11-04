@@ -175,6 +175,12 @@ export default function DuelResult(nav, params = {}) {
    */
   async function again() {
     if (staying) return;
+    /**
+     * ★ **판돈이 없으면 다음 판에 못 앉는다.** (2026-11-04, 권반장 전달 — 한 판 더 재확인)
+     * 몇 판 지고 나면 금화가 판돈보다 적다. 그대로 대기방에 보내면 시작 순간
+     * 판돈을 못 걸어 멈췄다 — 여기서 이유를 말해 주고 결과 화면에 남긴다.
+     */
+    if ((getProfile().dragonCoins || 0) < DUEL_STAKE) { toast(S.duelNeedCoins(DUEL_STAKE), 2600); return; }
     staying = true; nav.refresh();
     const r = await Room.resetRoom(code, { round }).catch(() => false);
     staying = false;

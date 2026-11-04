@@ -317,6 +317,8 @@ export const S = {
   duelStakeHint: (n) => `금화 ${n.toLocaleString('en-US')}개를 걸고, 이긴 사람이 전부 가져갑니다`,
   duelNeedCoins: (n) => `결투에는 금화 ${n.toLocaleString('en-US')}개가 필요합니다`,
   duelNeedCoinsHow: '싱글게임으로 금화를 모은 뒤에 다시 오세요',
+  /* 방장이 시작을 눌렀는데 판돈이 모자란 사람이 있다 (2026-11-04) */
+  duelPlayerNeedCoins: (names, n) => `${names} 님의 금화가 판돈(${n.toLocaleString('en-US')}개)보다 적어 시작할 수 없습니다`,
   duelWaiting: '상대가 끝나기를 기다리는 중…',
   duelRefunded: (n) => `금화 ${n.toLocaleString('en-US')}개를 돌려드렸습니다`,
   duelRefundedWhy: '상대가 오지 않아 결투가 성립하지 않았습니다',

@@ -81,6 +81,14 @@ for (const [i, o] of orders.entries()) {
   ok(`${n}판: 진 ${o.loser} 창은 패배, 이긴 쪽 창은 승리`, (await uiText(o.loser)).includes('졌습니다') && (await uiText(o.loser === 'A' ? 'B' : 'A')).includes('이겼습니다'));
   await page.screenshot({ path: join(OUT, `rm-${n}-result.png`) });
   await page.waitForTimeout(800);
+  if (n === 3) {
+    /* 판돈(200)보다 금화가 적으면 계속하기가 막히고 결과 화면에 남는다 (대기방이 멈추지 않게) */
+    await fr(o.first).evaluate(() => window.__rm.L.patchProfile({ dragonCoins: 50 }));
+    await click(o.first, '계속하기');
+    await page.waitForTimeout(1200);
+    ok(`${n}판: 금화가 판돈보다 적은 ${o.first} 는 계속하기가 막히고 결과 화면에 남는다`, (await uiText(o.first)).includes('계속하기') && (await room()).seed === seeds[seeds.length - 1]);
+    await fr(o.first).evaluate(() => window.__rm.L.patchProfile({ dragonCoins: 5000 }));
+  }
   await click(o.first, '계속하기');
   await wait(async () => !(await uiText(o.first)).includes('계속하기'), 15000, `${n}판 ${o.first} 대기방으로`);
   const t1 = await uiText(o.first);
@@ -97,6 +105,15 @@ for (const [i, o] of orders.entries()) {
   }
 }
 
+/* 4판 도중에 끝내고, 대기방에서 '뒤로' 를 누르면 신발이 아니라 드래곤 로비로 간다 */
+await page.waitForTimeout(5500);
+await wait(() => kill('B'), 20000, '4판 B 쓰러뜨리기');
+await wait(async () => (await uiText('A')).includes('계속하기'), 30000, '4판 결과');
+await click('A', '계속하기');
+await wait(async () => (await uiText('A')).includes('뒤로'), 15000, 'A 대기방');
+await click('A', '뒤로');
+await wait(() => fr('A').evaluate(() => !!document.querySelector('#ui .char-cell.dg')), 15000, 'A 드래곤 로비');
+ok('대기방에서 뒤로 → 드래곤 로비 (신발 로비로 안 튕김)', true);
 await page.screenshot({ path: join(OUT, 'rm-final.png') });
 const real = errors.filter((e) => !/favicon|404|serviceWorker|sw\.js|manifest/i.test(e));
 console.log('\n오류:', real.length ? real.slice(0, 10).join('\n') : '없음');
