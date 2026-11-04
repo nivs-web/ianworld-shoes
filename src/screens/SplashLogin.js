@@ -14,6 +14,7 @@ import { toast } from './ui.js';
 import NicknameSetup from './NicknameSetup.js';
 import Portal from './Portal.js';
 import { canInstall, promptInstall, isStandalone, onInstallChange, isMobile } from '../services/pwa.js';
+import { arcadeHero, startArcade, stopArcade } from './arcadeHero.js';
 
 export default function SplashLogin(nav) {
   let busy = false;
@@ -62,8 +63,9 @@ export default function SplashLogin(nav) {
     else if (r === 'unavailable') toast(S.installBookmarkGuide, 3200);
   }
 
+  startArcade(); // 첫 화면 폭죽(2026-11-04)
   return {
-    onLeave() { off(); },
+    onLeave() { off(); stopArcade(); },
     render() {
       const signedIn = !!currentUser();
       /**
@@ -73,9 +75,9 @@ export default function SplashLogin(nav) {
       const blocked = !canSignIn();
 
       return screen(
-        el('div.splash', null, [
-          /* 2026-11-04: 로그인 전에도 이안오락실 로고 그림 */
-          el('img.splash-logo-img', { src: '/assets/ui/logo_portal_v2.webp', alt: S.portalTitle }),
+        el('div.splash.oh-splash', null, [
+          /* 2026-11-04 대표님: 로그인 전에도 이안오락실 첫 화면(움직임 · 엠블럼 · 로고) */
+          arcadeHero(),
           el('div.splash-sub', S.splashGames),
         ]),
         el('div.spacer'),

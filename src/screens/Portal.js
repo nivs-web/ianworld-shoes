@@ -12,6 +12,8 @@ import SplashLogin from './SplashLogin.js';
 import { canInstall, promptInstall, isStandalone, onInstallChange } from '../services/pwa.js';
 import { enterFullscreen, exitFullscreen, isFullscreen } from '../core/fullscreen.js';
 import { lazyScreen } from './lazyScreen.js';
+import { arcadeHero, startArcade, stopArcade } from './arcadeHero.js';
+import * as Sfx from '../audio/sfx.js';
 
 /**
  * ★ **2번째 게임은 누를 때 받는다.** (드래곤 스트라이커)
@@ -85,6 +87,7 @@ export default function Portal(nav) {
 
   // 설치 가능 신호는 화면이 그려진 뒤에 온다 — 도착하면 버튼을 다시 그린다
   const off = onInstallChange(() => nav.refresh());
+  startArcade(); // 첫 화면 폭죽(2026-11-04)
   // 전체화면이 켜지고 꺼질 때 버튼 글자를 바꿔야 한다 (사용자가 F11 로 껐을 수도 있다)
   const onFsChange = () => nav.refresh();
   for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
@@ -94,27 +97,37 @@ export default function Portal(nav) {
   return {
     onLeave() {
       off();
+      stopArcade();
       for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
         document.removeEventListener(ev, onFsChange);
       }
     },
     render() {
       const p = getProfile();
-      return screen(
-        el('div.portal-head', null, [
-          /* 2026-11-04 대표님: 옛 «오락실 이안월드» 그림 → 이안오락실 홈페이지와 같은 느낌(드래곤 두 마리 · 불꽃 · 네온) + 이안오락실 로고 */
-          el('img.portal-logo', { src: '/assets/ui/logo_portal_v2.webp', alt: S.portalTitle }),
-          el('div.portal-user', `${S.playerName} : ${p.nickname}`),
-        ]),
+      const playIcon = () => {
+        const ns = 'http://www.w3.org/2000/svg';
+        const sv = document.createElementNS(ns, 'svg'); sv.setAttribute('viewBox', '0 0 24 24'); sv.setAttribute('aria-hidden', 'true');
+        const pa = document.createElementNS(ns, 'path'); pa.setAttribute('d', 'M7 4.5v15l12.5-7.5z'); pa.setAttribute('fill', '#F26A1B');
+        sv.appendChild(pa); return sv;
+      };
+      const sc = screen(
+        /* 2026-11-04 대표님: 처음 화면 = 이안오락실 홈페이지 모바일 첫 화면 느낌(움직임) + 가운데 엠블럼·로고 */
+        arcadeHero(),
+        /* 플레이어 이름 — 황금 칸 · 크고 선명하게 · 위아래 여백 같게 */
+        el('div.oh-player', null, [el('span.oh-player-label', S.playerName), el('span.oh-player-name', p.nickname)]),
+        /* 게임 목록 — 왼쪽 위 타이틀 그림 · 오른쪽 위 황금 [게임 플레이] · 아래 기록 한 줄 (빨간 이름·«터치해서 시작» 없앰) */
         ...CARDS.map((c) =>
-          el('div.game-card', null, [
-            /* 2026-11-04 대표님: 게임 이름(빨간 글씨) 위에 간판 */
-            c.banner ? el('img.game-card-banner', { src: c.banner, alt: c.title, loading: 'lazy' }) : null,
-            el('div.game-card-title', c.title),
-            el('div.game-card-sub', c.sub(p)),
-            button(S.touchToStart, () => nav.push(c.screen()), { primary: true }),
+          el('div.gc', null, [
+            el('img.gc-art', { src: c.banner, alt: c.title, loading: 'lazy' }),
+            el('button.gc-play', {
+              type: 'button', 'aria-label': `${c.title} 게임 플레이`,
+              onclick: () => { Sfx.play('sfx_menu_select'); nav.push(c.screen()); },
+            }, [playIcon(), '게임 플레이']),
+            el('div.gc-sub', c.sub(p)),
           ])
         ),
+        /* 5번째 자리 — 준비 중 */
+        el('div.gc-soon', null, ['5번째 게임 준비 중', el('span.dots', null, [el('i', '.'), el('i', '.'), el('i', '.')])]),
         el('div.spacer'),
         // 이미 홈 화면 앱으로 돌고 있으면 바로가기가 무의미하므로 감춘다
         !isStandalone() ? button(S.installShortcut, onInstall) : null,
@@ -125,6 +138,8 @@ export default function Portal(nav) {
         !isStandalone() ? button(isFullscreen() ? S.fullscreenOff : S.fullscreenOn, onFullscreen) : null,
         backButton(S.logout, onLogout)
       );
+      sc.classList.add('oh-screen');
+      return sc;
     },
   };
 }
