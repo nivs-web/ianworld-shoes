@@ -55,7 +55,7 @@ export function cutScale(vw, vh) {
 }
 
 function openCut(bId, name) {
-  const k = cutScale(window.innerWidth, window.innerHeight);
+  const k = cutScale(document.body?.clientWidth || window.innerWidth, window.innerHeight);
   const a = buildingAssets(bId);
   const img = (src) => el('img', { src, alt: '' });
 

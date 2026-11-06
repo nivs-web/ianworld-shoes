@@ -47,6 +47,12 @@ body {
   inset: 0;
   display: block;
   touch-action: none;
+  /* 2026-11-06 대표님 «가로가 1000픽셀이 넘어가면 쫙 늘어나 … 650픽셀로 고정해버려»
+     → PC 넓은 창에서도 앱 전체(로비·메뉴·게임)를 폭 650 안 가운데에 가둔다. 좌우는 html 배경(#0d0a08)이 여백.
+     contain: layout = 안쪽 position:fixed(#ui·#boot·게임 화면)의 기준이 창이 아니라 이 body 가 된다(transform 없이 · 픽셀 규칙 그대로) */
+  width: min(100%, 650px);
+  margin-inline: auto;
+  contain: layout;
 }
 
 img {

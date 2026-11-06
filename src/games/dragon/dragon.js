@@ -12819,7 +12819,7 @@ const FIXED = 1 / 60, MAX_STEPS = 5;
 /** 레터박스. 오락실 캔버스(180x320 정수배)와 달리 이 게임은 1280x720 을 소수배로 맞춘다 */
 function resize() {
   if (!canvas) return;
-  const vw = window.innerWidth, vh = window.innerHeight;
+  const vw = document.body?.clientWidth || window.innerWidth, vh = window.innerHeight; /* 폭은 body(PC 650 안) 기준 */
   const wasPortrait = portrait;
   /* ★ 방향은 **설정**이 정한다 — 창 비율이 아니라 (2026-08-27, `OPT_DEFAULT.portrait`) */
   portrait = !!optGet().portrait;
