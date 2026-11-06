@@ -7,7 +7,7 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, screen } from './ui.js';
+import { el, button, screen, goOraksilHome } from './ui.js';
 import { canSignIn, signInGoogle, currentUser } from '../services/auth.js';
 import { pullAll, get as getProfile } from '../services/profile.js';
 import { toast } from './ui.js';
@@ -78,7 +78,7 @@ export default function SplashLogin(nav) {
         el('div.splash.oh-splash', null, [
           /* 2026-11-04 대표님: 로그인 전에도 이안오락실 첫 화면(움직임 · 엠블럼 · 로고) */
           arcadeHero(),
-          el('div.splash-sub', S.splashGames),
+          /* 11/6 대표님 «게임명들 없애고» — 게임 이름 줄(S.splashGames) 뺌 */
         ]),
         el('div.spacer'),
         signedIn
@@ -92,6 +92,7 @@ export default function SplashLogin(nav) {
          * 가장 필요한 안드로이드 사용자에게 버튼이 아예 안 보이는 경우가 있었다.
          */
         !isStandalone() && (canInstall() || isMobile()) ? button(S.installShortcut, onInstall) : null,
+        button(S.goOraksilHome, goOraksilHome),
         el('div.hint', blocked ? S.loginUnavailable : signedIn ? S.loginWhy : S.loginRequired)
       );
     },

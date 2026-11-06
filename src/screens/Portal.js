@@ -4,7 +4,7 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, backButton, screen, confirmDialog, toast } from './ui.js';
+import { el, button, backButton, screen, confirmDialog, toast, goOraksilHome } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
 import { signOut, onUserChanged, currentUser } from '../services/auth.js';
 import Lobby from './Lobby.js';
@@ -157,6 +157,7 @@ export default function Portal(nav) {
         el('div.spacer'),
         // 이미 홈 화면 앱으로 돌고 있으면 바로가기가 무의미하므로 감춘다
         !isStandalone() ? button(S.installShortcut, onInstall) : null,
+        button(S.goOraksilHome, goOraksilHome),
         /**
          * 홈 화면 앱(standalone)은 이미 주소창이 없다 — 그 상태에서 전체화면 버튼은
          * 아무것도 바꾸지 못하면서 자리만 차지한다.

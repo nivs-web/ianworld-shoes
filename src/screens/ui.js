@@ -61,6 +61,19 @@ export function el(tag, props, children) {
  *   `icons` 는 글자 **양옆**에 놓을 그림 둘 (2026-08-19 23차 — [멀티게임순위] 의 왕관).
  *   버튼마다 마크업을 따로 짜지 않으려고 여기 한 곳에서만 만든다.
  */
+/** 2026-11-06 «이안오락실 홈페이지로 이동» — 로그인 전·후 첫 화면 맨 아래 · 오락실 사이트 안(iframe)이면 바깥 창째 옮긴다 */
+export const ORAKSIL_HOME_URL = 'https://onstori.com/oraksil';
+export function goOraksilHome() {
+  try {
+    if (window.top && window.top !== window) { window.top.location.href = ORAKSIL_HOME_URL; return; }
+  } catch {
+    /* 다른 도메인 바깥 창이라 못 옮기면 새 창으로 */
+    window.open(ORAKSIL_HOME_URL, '_blank', 'noopener');
+    return;
+  }
+  window.location.href = ORAKSIL_HOME_URL;
+}
+
 export function button(label, onClick, opt = {}) {
   const cls = ['pbtn', opt.primary && 'primary', opt.class].filter(Boolean).join(' ');
   const icons = (opt.icons ?? []).filter(Boolean);
