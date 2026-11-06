@@ -44,7 +44,7 @@ export function createBuffer(w, h) {
  * 소수 배율은 픽셀을 뭉개므로 절대 쓰지 않는다.
  */
 function computeScale() {
-  /* 폭은 창이 아니라 body(PC 에서 650 안에 갇힘 · reset.css) 기준 */
+  /* 폭은 창이 아니라 body(PC 에서 450 안에 갇힘 · reset.css) 기준 */
   const vw = document.body?.clientWidth || window.innerWidth;
   const vh = window.innerHeight;
   const s = Math.floor(Math.min(vw / VIEW_W, vh / VIEW_H));
