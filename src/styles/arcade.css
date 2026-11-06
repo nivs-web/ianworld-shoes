@@ -123,4 +123,4 @@
 
 /* 로그인 화면에서도 같은 첫 화면 */
 .splash.oh-splash { padding: 0; gap: 12px; align-items: stretch; }
-.splash.oh-splash .splash-sub { text-align: center; padding: 4px 8px 0; color: #e9dcc0; }
+.splash.oh-splash .splash-sub { text-align: center; padding: 4px 8px 0; color: #e9dcc0; word-break: keep-all; } /* 11/6 «3D캐치 / 볼» 낱말 가운데 끊김 → 낱말째 줄바꿈 */
