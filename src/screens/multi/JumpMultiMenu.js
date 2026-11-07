@@ -55,7 +55,7 @@ export default function JumpMultiMenu(nav) {
           el('h4', '마지막까지 안 걸리면 우승!'),
           el('div', `2~${JUMP_SEATS}명 · 같은 곡 · 동시에 시작`),
           el('div', `하트 ${SURVIVAL.hearts}개 · 걸리면 하나씩 잃어요`),
-          el('div', `방식 · 난이도는 방장이 골라요 (새 방: ${ctrl === 'both' ? '두 손' : '한 손'} · ${DIFFS[diff].label})`),
+          el('div', `방식 · 난이도는 방장이 골라요 (새 방: ${ctrl === 'both' ? '로프+점프' : '점프만'} · ${DIFFS[diff].label})`),
         ]),
         button(busy ? S.loading : '빠른 입장',
           () => guard(() => Room.quickJoin({ game: GAME, maxPlayers: JUMP_SEATS, difficulty: diff, ctrl })),

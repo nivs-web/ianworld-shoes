@@ -32,7 +32,7 @@ export default function JrReady(nav, params = {}) {
       const j = J.jr();
       const diff = j.diff;
       const D = DIFFS[diff];
-      const ctrlName = J.ctrlMode(j) === 'both' ? '두 손(로프+점프)' : '한 손';
+      const ctrlName = J.ctrlMode(j) === 'both' ? '로프+점프' : '점프만';
       let info;
       if (mode === 'stage') {
         const st = STAGES[no - 1];

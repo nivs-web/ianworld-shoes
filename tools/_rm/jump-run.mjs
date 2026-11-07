@@ -54,12 +54,12 @@ await wait(async () => Object.keys((await room())?.players || {}).length === 3, 
 ok('세 명이 한 방에 (정원 8)', (await room()).maxPlayers === 8);
 
 async function round(n, ctrl) {
-  console.log(`\n── ${n}판: ${ctrl === 'both' ? '두 손' : '한 손'}`);
+  console.log(`\n── ${n}판: ${ctrl === 'both' ? '로프+점프' : '점프만'}`);
   await wait(async () => (await uiText('B')).includes('레디') && (await uiText('A')).includes('방식'), 20000, `${n}판 대기방`);
   /* 방장이 방식을 고른다 → 다른 창에도 보인다 */
-  await click('A', ctrl === 'both' ? '두 손' : '한 손');
+  await click('A', ctrl === 'both' ? '로프+점프' : '점프만');
   await wait(async () => (await room()).ctrl === ctrl, 8000, `${n}판 방식 저장`);
-  await wait(async () => (await uiText('B')).includes(`${ctrl === 'both' ? '두 손' : '한 손'} · 방장이 골라요`), 8000, `${n}판 B 화면에 방식`);
+  await wait(async () => (await uiText('B')).includes(`${ctrl === 'both' ? '로프+점프' : '점프만'} · 방장이 골라요`), 8000, `${n}판 B 화면에 방식`);
   ok(`${n}판: 방장이 고른 방식이 방과 다른 창에 보인다 (${ctrl})`, true);
   if (n === 1) await page.screenshot({ path: join(OUT, 'rmj-1-wait.png') });
   for (const k of ['B', 'C']) { if (!(await room()).players[k]?.ready) await click(k, '레디'); }
@@ -84,7 +84,7 @@ async function round(n, ctrl) {
   ok(`${n}판: 방 판 끝(${r.state}) · A 하트 남음 · B · C 0`, r.state === 'finished' && (r.players.A.lives | 0) > 0 && (r.players.B.lives | 0) === 0 && (r.players.C.lives | 0) === 0);
   await page.screenshot({ path: join(OUT, `rmj-${n}-result.png`) });
   /* 같은 방에서 한 판 더 — 셋 모두 */
-  for (const k of U) await wait(() => click(k, '같은 방에서 한 판 더'), 30000, k + ' 한 판 더 단추');
+  for (const k of U) await click(k, '같은 방에서 한 판 더');
 }
 
 await round(1, 'jump');

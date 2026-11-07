@@ -37,7 +37,7 @@ const JrSettings = lazyScreen(() => import('./jumprope/JrSettings.js'), '설정 
 const JumpMultiMenu = lazyScreen(() => import('./multi/JumpMultiMenu.js'), '멀티 서바이벌');
 
 const SEG = DIFF_KEYS.map((k) => ({ value: k, label: DIFFS[k].label }));
-const CTRL_SEG = [{ value: 'jump', label: '한 손' }, { value: 'both', label: '두 손' }];   // 한 손 = 탭 · 꾹 · 좌우 밀기 타일, 두 손 = ROPE+JUMP
+const CTRL_SEG = [{ value: 'jump', label: '점프만' }, { value: 'both', label: '로프+점프' }];
 const STAT_SCALE = 2;
 
 /** `라벨 1,234 단위` 한 줄 — 숫자만 도트 글꼴 (DragonLobby 의 statLine 과 같은 방식) */
