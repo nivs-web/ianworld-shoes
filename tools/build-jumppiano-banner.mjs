@@ -234,6 +234,7 @@ const over = await sharp(png(out.over)).resize(BW, BH, { kernel: 'nearest' }).pn
 const banner = await sharp(plate, { raw: { width: BW, height: BH, channels: 3 } }).composite([{ input: over }]).png().toBuffer();
 await sharp(banner).webp({ lossless: true }).toFile(path.join(root, 'public/assets/ui/banner_jumppiano.webp'));
 await sharp(banner).toFile(path.join(root, 'tools/_out/banner_jumppiano_preview.png'));
+await sharp(png(out.logo)).resize(out.lw * 3, out.lh * 3, { kernel: 'nearest' }).png({ compressionLevel: 9 }).toFile(path.join(root, 'public/assets/jumppiano-logo.png'));   // 게임 안 로고(로비 제목)
 const cmp = ['banner_catchball.webp', 'banner_dragon_striker.webp'].map((f) => path.join(root, 'public/assets/ui', f));
 await sharp({ create: { width: BW * 2 + 12, height: BH * 2 + 12, channels: 3, background: '#000' } })
   .composite([

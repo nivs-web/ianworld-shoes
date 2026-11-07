@@ -22,7 +22,7 @@ export default function JumpPianoLobby(nav) {
       const best = (key) => st.best?.[`${st.ctrl}:${st.diff}:${key}`] | 0;
       const go = (mode, stageNo) => nav.push(JumpPianoGame, { mode, stageNo });
       return screen(
-        el('div.diff-title', S.pianoTitle),
+        el('img.jr-logo-img', { src: '/assets/jumppiano-logo.png', alt: S.pianoTitle, width: 540, height: 153, decoding: 'async' }),   // 배너와 같은 로고
         el('div.jr-next', '타일을 두드려 점프! 긴 타일은 꾹 · 슬라이더 타일은 밀면서 따라가요'),
         el('div.diff-title', '방식 · 난이도'),
         segmented(CTRL_SEG, st.ctrl, (v) => { pianoSave({ ctrl: v }); nav.refresh(); }),
