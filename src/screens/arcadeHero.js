@@ -62,7 +62,8 @@ export function startArcade() {
     const layer = document.querySelector('.oh-fwlayer');
     if (!layer || document.hidden) return;
     const W = layer.clientWidth, H = layer.clientHeight;
-    const cx = W * R(0.28, 0.72), cy = H * R(0.18, 0.5), n = 16, rad = R(28, 58), sz = 4, dur = R(1000, 1500);
+    const k0 = W / 380;                                   // 그림이 커지면 폭죽도 같이 (11/7)
+    const cx = W * R(0.2, 0.8), cy = H * R(0.14, 0.48), n = 24, rad = R(34, 70) * k0, sz = Math.round(5 * k0), dur = R(1100, 1700);
     const c1 = FW[(Math.random() * FW.length) | 0], c2 = FW[(Math.random() * FW.length) | 0];
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2 + R(-0.08, 0.08), r = rad * R(0.75, 1.05), c = k % 2 ? c1 : c2;
@@ -78,7 +79,7 @@ export function startArcade() {
       ], { duration: dur, easing: 'cubic-bezier(.2,.7,.4,1)' }).onfinish = () => d.remove();
     }
   };
-  const loop = () => { burst(); timer = window.setTimeout(loop, R(1100, 1900)); };
+  const loop = () => { burst(); if (Math.random() < 0.35) window.setTimeout(burst, 220); timer = window.setTimeout(loop, R(700, 1300)); };   // 가끔 두 발 연달아
   timer = window.setTimeout(loop, 500);
 }
 export function stopArcade() { if (timer) { clearTimeout(timer); timer = 0; } }

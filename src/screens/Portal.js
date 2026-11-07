@@ -4,7 +4,7 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, backButton, screen, confirmDialog, toast, goOraksilHome } from './ui.js';
+import { el, button, backButton, screen, confirmDialog, toast, goOraksilHome, presentOverlay } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
 import { signOut, onUserChanged, currentUser } from '../services/auth.js';
 import Lobby from './Lobby.js';
@@ -60,6 +60,20 @@ const CARDS = [
   { id: 'jumprope', banner: '/assets/ui/banner_jumprope.webp', title: S.jumpTitle, sub: (p) => S.jumpCardLine(jrBest(p), p.jr?.jumps), screen: () => JumpRopeLobby, ready: true },
   { id: 'jumppiano', banner: '/assets/ui/banner_jumppiano.webp', title: S.pianoTitle, sub: pianoLine, screen: () => JumpPianoLobby, ready: true },
 ];
+
+/** 플레이어 정보 (2026-11-07 대표님 «플레이어 누르면 플레이어 정보») — 게임마다 내 기록 한 줄씩 */
+function showPlayerInfo(p) {
+  Sfx.play('sfx_menu_select');
+  const rows = CARDS.map((c) => el('div.oh-pinfo-row', null, [el('div.oh-pinfo-game', c.title), el('div.oh-pinfo-val', c.sub(p))]));
+  const box = el('div.dialog.oh-pinfo', { onclick: (e) => e.stopPropagation() }, [
+    el('div.oh-pinfo-label', 'PLAYER 1'),
+    el('div.oh-pinfo-name', p.nickname || '???'),
+    el('div.oh-pinfo-list', null, rows),
+    button('닫기', () => close(), { primary: true }),
+  ]);
+  const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
+  const close = presentOverlay(overlay);
+}
 
 export default function Portal(nav) {
   /**
@@ -150,7 +164,7 @@ export default function Portal(nav) {
         /* 2026-11-04 대표님: 처음 화면 = 이안오락실 홈페이지 모바일 첫 화면 느낌(움직임) + 가운데 엠블럼·로고 */
         arcadeHero(),
         /* 플레이어 이름 — 아케이드 하이스코어 등록창(대표님 11/4 밤 1번) */
-        el('div.oh-player', null, [el('span.oh-player-label', 'PLAYER 1'), el('span.oh-player-name', null, [p.nickname, el('span.oh-player-cur', '▌')])]),
+        el('div.oh-player', { role: 'button', tabindex: 0, title: '플레이어 정보', onclick: () => showPlayerInfo(p) }, [el('span.oh-player-label', 'PLAYER 1'), el('span.oh-player-name', null, [p.nickname, el('span.oh-player-cur', '▌')])]),
         /* 게임 목록 — 왼쪽 위 타이틀 그림 · 오른쪽 위 정사각 PLAY(높이 = 그림 높이 · 대표님 11/4 밤 1번) · 아래 기록 한 줄 */
         ...CARDS.map((c) =>
           el('div.gc', null, [

@@ -57,7 +57,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   /* 어두운 금빛 스크롤 (파이어폭스) */
-  scrollbar-color: #d4a72c #0d0a08;
+  scrollbar-color: #8a6414 #0d0a08;
   scrollbar-width: thin;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
@@ -71,10 +71,10 @@
 #ui::-webkit-scrollbar { width: 12px; }
 #ui::-webkit-scrollbar-track { background: #0d0a08; border-left: 1px solid #2a2010; }
 #ui::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, #8a6a12, #ffd86b 45%, #c9971f);
-  border: 2px solid #0d0a08; border-radius: 6px; box-shadow: inset 0 0 0 1px #5a4108;
+  background: linear-gradient(90deg, #4a3406, #a77a16 45%, #6b4c0c);
+  border: 2px solid #0d0a08; border-radius: 6px; box-shadow: inset 0 0 0 1px #3a2804;
 }
-#ui::-webkit-scrollbar-thumb:hover { background: linear-gradient(90deg, #a07c18, #ffe590 45%, #e0ab2a); }
+#ui::-webkit-scrollbar-thumb:hover { background: linear-gradient(90deg, #5c420a, #c3911e 45%, #80600f); }
 #ui::-webkit-scrollbar-corner { background: #0d0a08; }
 
 body.ui-mode #stage {

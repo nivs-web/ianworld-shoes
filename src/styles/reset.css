@@ -53,6 +53,8 @@ body {
   width: min(100%, 450px);
   margin-inline: auto;
   contain: layout;
+  /* 2026-11-07: 창 끝까지 펼친 #ui(오른쪽 끝 스크롤 막대)를 자르지 않게 — 페이지 자체 스크롤은 html 이 막는다 */
+  overflow: visible;
 }
 
 img {

@@ -124,3 +124,14 @@
 /* 로그인 화면에서도 같은 첫 화면 */
 .splash.oh-splash { padding: 0; gap: 12px; align-items: stretch; }
 .splash.oh-splash .splash-sub { text-align: center; padding: 4px 8px 0; color: #e9dcc0; word-break: keep-all; } /* 11/6 «3D캐치 / 볼» 낱말 가운데 끊김 → 낱말째 줄바꿈 */
+
+/* ── 플레이어 정보 창 (11/7) — 하이스코어 창과 같은 금빛 이중 테 ── */
+.oh-player { cursor: pointer; }
+.oh-player:active { transform: translateY(1px); }
+.dialog.oh-pinfo { background: #000; border: 4px double #FFC93C; max-width: 400px; width: calc(100% - 24px); text-align: left; }
+.oh-pinfo-label { font-family: 'PretendardV', sans-serif; font-weight: 800; color: #4fd8ff; letter-spacing: .2em; font-size: 13px; }
+.oh-pinfo-name { font-size: 24px; color: #fff; margin: 4px 0 10px; }
+.oh-pinfo-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.oh-pinfo-row { border-top: 1px solid #3a2a08; padding-top: 7px; }
+.oh-pinfo-game { color: #FFC93C; font-size: 16px; }
+.oh-pinfo-val { color: #e8e2d0; font-size: 14px; margin-top: 2px; }
