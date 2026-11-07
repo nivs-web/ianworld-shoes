@@ -29,6 +29,12 @@ Firebase 콘솔에 **그대로 붙여넣는** 규칙이다. 프로덕션/잠금 
 > 게시할 때도 **콘솔 게시본을 받아** 아래 `jpInt` ~ `match /jumpPlayers` 블록만 얹어 올린다.
 > 게시 전에는 명예의 전당이 «여는 중» 안내만 띄우고, 기록은 계정(`users/{uid}.jr`)에 그대로 쌓인다(게시 뒤 다음 판에 저절로 올라간다).
 
+> ⏳ **2026-11-07 점프 피아노 `pianoPlayers` 칸 — 초안, 아직 콘솔에 게시 전이다(게시는 대표님 승인 뒤).**
+> 게시할 때도 **콘솔 게시본을 받아** 아래 `ppInt` ~ `match /pianoPlayers` 블록만 얹어 올린다(`jumpPlayers` 블록 바로 뒤).
+> 계정 값은 `users/{uid}.jp` 한 칸이다 — `users` 규칙은 칸을 가리지 않으므로(`isMe`) 규칙 변경 없이 지금도 저장된다.
+> 게시 전에는 점프 피아노 명예의 전당이 «여는 중» 안내만 띄우고, 기록은 계정(`users/{uid}.jp`)에 그대로 쌓인다(게시 뒤 다음 판에 저절로 올라간다).
+> RTDB(`rtdb-rules.json`)는 바꿀 것이 없다 — 점프 피아노는 아직 접속 표시 · 멀티를 쓰지 않는다(멀티는 다음 주).
+
 ---
 
 ## Firestore
@@ -227,6 +233,40 @@ service cloud.firestore {
       allow create: if signedIn() && jpValid(uid, request.resource.data);
       allow update: if signedIn() && jpValid(uid, request.resource.data)
                     && jpNotDown(request.resource.data, resource.data);
+      allow delete: if false;
+    }
+
+    // ── 점프 피아노 명예의 전당 (2026-11-07) ── ⏳ 초안 · 아직 콘솔에 게시 전 ──────────
+    //
+    // 계정당 한 장(`pianoPlayers/{uid}`). 줄넘기 `jumpPlayers` 블록을 복사해 이름만 바꿨다 —
+    // 두 게임은 기록을 섞지 않는다. 문서 모양(칸 · 상한)은 `jumpPlayers` 와 똑같다(`services/pianoRank.js`).
+    // ★ 색인이 필요 없다(필드 하나로만 정렬). ★ 기록은 내려가지 않는다 · 상한을 여기서 강제한다.
+    function ppInt(v, maxV) { return v is int && v >= 0 && v <= maxV; }
+    function ppValid(uid, d) {
+      return d.uid == uid && d.uid == request.auth.uid
+          && d.keys().hasOnly(['uid', 'nickname', 'look', 'rope', 'level', 'xp', 'bestEasy', 'bestNormal', 'bestHard',
+                               'ropes', 'stars', 'jumps', 'combo', 'at'])
+          && d.nickname is string && d.nickname.size() <= 24
+          && d.look is string && d.look.size() <= 32
+          && d.rope is string && d.rope.size() <= 24
+          && d.level is int && d.level >= 1 && d.level <= 20
+          && ppInt(d.xp, 10000000) && ppInt(d.bestEasy, 99999) && ppInt(d.bestNormal, 99999) && ppInt(d.bestHard, 99999)
+          && ppInt(d.ropes, 100) && ppInt(d.stars, 90) && ppInt(d.jumps, 100000000)
+          && ppInt(d.combo, 99999)
+          && d.at is int;
+    }
+    function ppNotDown(n, o) {
+      return n.xp >= o.xp && n.level >= o.level
+          && n.bestEasy >= o.bestEasy && n.bestNormal >= o.bestNormal && n.bestHard >= o.bestHard
+          && n.ropes >= o.ropes && n.stars >= o.stars && n.jumps >= o.jumps
+          && n.combo >= o.combo;
+    }
+
+    match /pianoPlayers/{uid} {
+      allow read: if true;
+      allow create: if signedIn() && ppValid(uid, request.resource.data);
+      allow update: if signedIn() && ppValid(uid, request.resource.data)
+                    && ppNotDown(request.resource.data, resource.data);
       allow delete: if false;
     }
 

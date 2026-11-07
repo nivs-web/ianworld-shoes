@@ -22,12 +22,12 @@ import * as BA from './beatArt.js';
 import { SURVIVAL, survivalTempo, survivalStatus, roundAt, roundBpm } from './survival.js';
 import { drawKid, kidHands, poseHands, ropeGeom, drawRope, drawHandles, rect, rbox, sprite, tone, OUT, SPR } from '../art.js';
 
-const SHORT_SIDE = 192;   // 2026-11-07 128 → 192: 도트를 잘게 — 선수가 화면에서 1/3 작아지고 타이밍이 더 또렷하다
-const NEO = "'Neo둥근모', 'Courier New', monospace";
+const SHORT_SIDE = 240;   // 2026-11-07 2차 192 → 240: 대표님 «도트가 너무 도트스러워 — 좀 줄여도»
+const NEO = "'Galmuri11', 'Neo둥근모', 'Courier New', monospace";   // 갈무리11 굵게(OFL) — 12px 격자 도트 글꼴
 const PRET = "'PretendardV', 'Pretendard', 'Arial Black', sans-serif";
 const KID_W = 80, KID_H = 76, KID_FOOT = 72;   // 선수 1배 캔버스 (줄 고리까지 들어가는 크기)
-const GRADE_COL = { perfect: '#ffd23f', great: '#6fe3ff', good: '#9be36f', miss: '#ff6b6b' };
-const GRADE_TXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
+const GRADE_COL = { perfect: '#ffd23f', great: '#6fe3ff', good: '#9be36f', miss: '#ff6b6b', empty: '#ff6a6a' };
+const GRADE_TXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS', empty: '콤보 끊김' };
 /* ---------- 재미 요소 (2026-11-07 기획 회의 12개 — 권반장 «게임이 재밌어야 함») ----------
  * ① 콤보 이정표 도장 ② 황금 줄(보너스) ③ 빨라요/늦어요 ④ 판정 글자 튀어오름 ⑤ 타격감(충격파 고리 · 진동)
  * ⑥ MISS 빨간 테두리 ⑦ 판 중 신기록 알림 ⑧ 미니 미션 ⑨ 콤보 줄 잔상 ⑩ 콤보 배율 표시 ⑪ GO! ⑫ 결과 점수 촤라락 */
@@ -55,6 +55,7 @@ let styleOn = false;
 export function mount(host, opts) {
   unmount();
   if (!styleOn) { const st = document.createElement('style'); st.textContent = CSS; document.head.append(st); styleOn = true; }
+  try { document.fonts?.load?.("24px 'Galmuri11'", '가A1').catch(() => {}); } catch { /* */ }
   host.innerHTML = '';
   host.classList.add('rb-host');
   const cv = document.createElement('canvas');
@@ -271,7 +272,14 @@ function doPress(lane, t) {
   if (G.jumpOnly && lane === 'R') { G.ropeAt = G.t; G.bothAt = G.t; }   // JUMP 하나: 기술 동작(옆 · 엇걸기)은 JUMP 로 저절로
   if (G.opts.opts?.vib !== false) try { navigator.vibrate?.(8); } catch { /* */ }   // ⑤ 누를 때 톡
   const res = G.judge.press(lane, t);
+  if (res?.kind === 'empty') { emptyHit(lane); return; }
   if (res) handle([res.kind ? res : { kind: 'hit', ...res, lane }]);
+}
+
+/** 빈 손 — 콤보가 끊겼다는 것만 짧게 보여 준다(체력은 그대로) */
+function emptyHit(lane) {
+  G.emptyAt = G.t;
+  if (G.lastEmptyMsg == null || G.t - G.lastEmptyMsg > 0.6) { G.lastEmptyMsg = G.t; pop(lane, 'empty', 0); }
 }
 
 function doRelease(lane, t) {
@@ -1033,8 +1041,8 @@ function drawButtons() {
 function drawReadyPanel() {
   const b = G.b;
   for (let y = G.hudH; y < G.btnTop; y++) for (let x = (y % 2); x < G.W; x += 2) rect(b, x, y, 1, 1, 'rgba(8,4,20,0.6)');
-  const pw = Math.min(G.W - 10, 150), ph = 86;
-  const x = Math.floor((G.W - pw) / 2), y = Math.max(G.hudH + 6, Math.floor(G.floorY / 2) - 46);
+  const pw = G.W - 12, ph = Math.round((fontPx(1) / G.S) * 1.4 * 7.4);
+  const x = Math.floor((G.W - pw) / 2), y = Math.max(G.hudH + 6, Math.floor(G.floorY / 2) - Math.round(ph / 2));
   rbox(b, x - 1, y - 1, pw + 2, ph + 2, OUT, 3);
   rbox(b, x, y, pw, ph, '#2b1a4a', 3);
   rect(b, x + 3, y + 2, pw - 6, 1, '#ffd23f');
@@ -1043,7 +1051,7 @@ function drawReadyPanel() {
 }
 
 /* ---------- 글자 (Neo둥근모 16px 배수 · 단추만 프리텐다드) ---------- */
-function fontPx(level) { return 16 * Math.max(1, Math.round(level * G.dpr)); }
+function fontPx(level) { return 12 * Math.max(1, Math.round(level * G.dpr * 4 / 3)); }   // 갈무리 12px 배수 — 크기는 예전 16px 단계와 비슷
 /** 콤보 숫자 글자 크기(level) — 숫자 높이가 화면 높이의 약 9.6%(신발을 찾아서 콤보의 1.3배) */
 function comboLevel() {
   const want = (G.cv.height * 0.096) / 0.72;          // Neo둥근모 숫자 ≈ 글자 크기의 72%
@@ -1061,7 +1069,7 @@ function ptxt(text, nx, ny, level, color, align = 'center', outline = true, fami
   else if (align === 'right') x -= w;
   const y = Math.round(ny * G.S - size * (family === NEO ? 0.5 : 0.56));
   if (outline) {
-    const o = Math.max(1, Math.round(size / (family === NEO ? 16 : 14)));
+    const o = Math.max(1, Math.round(size / (family === NEO ? 12 : 14)));
     ctx.fillStyle = '#1b0f0a';
     for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, -o], [-o, o], [o, o], [0, o * 2], [o, o * 2], [-o, o * 2]]) ctx.fillText(text, x + dx, y + dy);
   }
@@ -1074,9 +1082,9 @@ function drawTexts() {
   const st = G.judge.state;
   const W = G.W;
   const bpm = Math.round(bpmAt(G.tempo, Math.max(0, stepAtTime(G.chart.steps, Math.max(0, G.songT))) / 16));
-  ptxt(`${(st.score | 0).toLocaleString('en-US')}`, W - 20, 17, 0.75, '#ffe9a8', 'right');
-  ptxt(G.surv ? `R${Math.max(1, G.round + 1)} · BPM ${bpm}` : `BPM ${bpm}`, 4, 27, 0.75, bpm >= 150 ? '#ff9a3c' : '#c9e8ff', 'left');
-  if (G.surv && G.status) ptxt(`생존 ${G.status.aliveCount}/${G.status.total}`, W - 20, 27, 0.75, G.out ? '#ff9a9a' : '#9be36f', 'right');
+  ptxt(`${(st.score | 0).toLocaleString('en-US')}`, W - 20, 17, 1, '#ffe9a8', 'right');
+  ptxt(G.surv ? `R${Math.max(1, G.round + 1)} · BPM ${bpm}` : `BPM ${bpm}`, 4, 29, 1, bpm >= 150 ? '#ff9a3c' : '#c9e8ff', 'left');
+  if (G.surv && G.status) ptxt(`생존 ${G.status.aliveCount}/${G.status.total}`, W - 20, 29, 1, G.out ? '#ff9a9a' : '#9be36f', 'right');
   let below = G.hudH + 24;          // 콤보 아래 빈자리(미션 글자)
   if ((st.combo | 0) >= 2) {
     /* 콤보 숫자 — 권반장 «신발을 찾아서 콤보보다 30% 크게»: 숫자 높이 ≈ 화면 높이의 9.6% */
@@ -1103,7 +1111,7 @@ function drawTexts() {
   const ms = G.fun.mission;
   if (ms && G.phase === 'play') {
     const prog = ms.kind === 'nomiss' ? `${Math.max(0, Math.ceil(ms.sec))}초` : `${ms.got}/${ms.n}`;
-    ptxt(`${ms.text}  ${prog}`, G.cx, below, 0.75, '#9ad7ff');
+    ptxt(`${ms.text}  ${prog}`, G.cx, below + 2, 1, '#9ad7ff');
   }
   if (G.banners.length) {
     const bn = G.banners[G.banners.length - 1];
@@ -1114,8 +1122,8 @@ function drawTexts() {
     const y = G.floorY - 22 - Math.round(p.age * 14);
     if (p.age > 0.4 && Math.floor(p.age * 24) % 2) continue;
     const big = p.age < 0.1 ? 0.5 : 0;                 // ④ 튀어오름
-    ptxt(GRADE_TXT[p.grade], x, y, (p.grade === 'perfect' ? 1 : 0.75) + big, GRADE_COL[p.grade]);
-    if (p.early !== null && p.early !== undefined) ptxt(p.early ? '빨라요' : '늦어요', x, y + 9, 0.75, p.early ? '#6fd3ff' : '#ff9a3c');   // ③
+    ptxt(GRADE_TXT[p.grade], x, y, (p.grade === 'perfect' ? 1.5 : 1.25) + big, GRADE_COL[p.grade]);
+    if (p.early !== null && p.early !== undefined) ptxt(p.early ? '빨라요' : '늦어요', x, y + fontPx(1.4) / G.S, 1, p.early ? '#6fd3ff' : '#ff9a3c');   // ③
   }
   /* 단추 글자 — 프리텐다드 블랙, 단추 한가운데 큼직하게 */
   for (const [bt, label] of G.jumpOnly ? [[G.btnR, 'JUMP']] : [[G.btnL, 'ROPE'], [G.btnR, 'JUMP']]) {
@@ -1124,13 +1132,11 @@ function drawTexts() {
   }
   if (G.phase === 'ready' && G.readyBox) {
     const rb = G.readyBox;
-    ptxt(G.title, G.cx, rb.y + 11, 1, '#ffd23f');
-    ptxt(G.sub, G.cx, rb.y + 23, 0.75, '#c9b8ff', 'center', false);
     const tempo = G.tempo;
     const bpms = tempo.map((x) => x.bpm);
-    ptxt(`${G.jumpOnly ? '점프만' : '로프+점프'} · ${DIFFS[G.diff].label} · BPM ${Math.min(...bpms)}~${Math.max(...bpms)}`, G.cx, rb.y + 35, 0.75, '#ffffff', 'center', false);
-    ptxt(G.jumpOnly ? 'JUMP 하나 — 화면 어디든 눌러요' : '왼쪽 ROPE  ·  오른쪽 JUMP', G.cx, rb.y + 48, 0.75, '#9be36f', 'center', false);
-    ptxt(G.surv ? `하트 ${SURVIVAL.hearts}개 · 마지막 1명 우승` : '줄이 원에 쏙 들어올 때!', G.cx, rb.y + 59, 0.75, '#ffffff', 'center', false);
+    const lh = fontPx(1) / G.S * 1.4, y0 = rb.y + lh * 0.95;   // 줄 간격 = 글자 크기 (대표님 «글씨가 너무 작다 · 통일»)
+    [[G.title, 1.25, '#ffd23f'], [G.sub, 1, '#c9b8ff'], [`${G.jumpOnly ? '점프만' : '로프+점프'} · ${DIFFS[G.diff].label} · BPM ${Math.min(...bpms)}~${Math.max(...bpms)}`, 1, '#ffffff'], [G.jumpOnly ? 'JUMP 하나 — 화면 어디든 눌러요' : '왼쪽 ROPE  ·  오른쪽 JUMP', 1, '#9be36f'], [G.surv ? `하트 ${SURVIVAL.hearts}개 · 마지막 1명 우승` : '줄이 원에 쏙 들어올 때!', 1, '#ffffff']]
+      .forEach(([t, l, col], i) => ptxt(t, G.cx, y0 + i * lh, l, col, 'center', i === 0));
     if (G.surv) ptxt(G.startMs ? `곧 시작! ${Math.max(0, Math.ceil((G.startMs - performance.now()) / 1000))}` : '시작 시각 맞추는 중…', G.cx, rb.y + rb.h - 11, 1, '#ffd23f');
     else if (Math.floor(G.t * 2.2) % 2 === 0) ptxt('아무 단추나 누르면 시작!', G.cx, rb.y + rb.h - 11, 1, '#ffffff');
   } else if (G.phase === 'play' && G.songT < 0) {
@@ -1301,6 +1307,7 @@ export function _debug() {
 }
 
 const CSS = `
+@font-face { font-family: 'Galmuri11'; src: url('https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11-Bold.woff2') format('woff2'); font-display: swap; }
 @font-face { font-family: 'PretendardV'; src: url('https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2'); font-weight: 45 920; font-display: swap; }
 .rb-host { position: relative; width: 100%; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #0a0618; }
 .rb-canvas { display: block; touch-action: none; image-rendering: pixelated; }
@@ -1318,24 +1325,24 @@ const CSS = `
 .rb-star.on { animation: rbStar .4s steps(4) both; }
 @keyframes rbStar { 0% { transform: scale(0.25); opacity: 0 } 60% { transform: scale(1.3) } 100% { transform: scale(1) } }
 .rb-score { font-family: 'PretendardV', sans-serif; font-weight: 900; font-size: 26px; color: #fff; text-shadow: 2px 2px 0 #1b0f0a; }
-.rb-acc { font-size: 13px; color: #c9b8ff; }
+.rb-acc { font-size: 16px; color: #c9b8ff; }
 .rb-best { text-align: center; color: #ff8fd1; font-size: 16px; animation: rbBlink 0.5s steps(2) infinite; }
 @keyframes rbBlink { 50% { opacity: 0.35 } }
 .rb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .rb-cell { background: #150c28; padding: 5px 2px; text-align: center; box-shadow: inset 0 0 0 2px #3d2766; }
 .rb-cell.p .rb-v { color: #ffd23f; } .rb-cell.g .rb-v { color: #6fe3ff; } .rb-cell.o .rb-v { color: #9be36f; } .rb-cell.m .rb-v { color: #ff7a7a; }
-.rb-k { font-size: 10px; color: #c9b8ff; }
-.rb-v { font-size: 17px; }
+.rb-k { font-size: 13px; color: #c9b8ff; }
+.rb-v { font-size: 20px; }
 .rb-reward { display: flex; justify-content: center; gap: 14px; font-size: 16px; }
 .rb-rw.candy { color: #ffb3de; }
 .rb-up { text-align: center; color: #7cf09a; font-size: 18px; animation: rbBlink 0.4s steps(2) infinite; }
 .rb-got { background: #3a2a10; padding: 6px; box-shadow: inset 0 0 0 2px #ffd23f; }
-.rb-got-h { color: #ffd23f; text-align: center; font-size: 14px; margin-bottom: 3px; }
-.rb-got-i { font-size: 13px; text-align: center; }
+.rb-got-h { color: #ffd23f; text-align: center; font-size: 17px; margin-bottom: 3px; }
+.rb-got-i { font-size: 16px; text-align: center; }
 .rb-row { display: flex; gap: 8px; }
 .rb-row > * { flex: 1; }
 .rb-card .pbtn { font-size: 16px; padding: 9px 8px; }
-.rb-spec { position: absolute; left: 6px; right: 6px; top: 46px; background: rgba(20,10,40,0.82); padding: 6px; pointer-events: none; color: #fff4d6; font-size: 12px; box-shadow: 0 0 0 2px #ffdd8e, 0 0 0 4px #600f09; }
+.rb-spec { position: absolute; left: 6px; right: 6px; top: 46px; background: rgba(20,10,40,0.82); padding: 6px; pointer-events: none; color: #fff4d6; font-size: 14px; box-shadow: 0 0 0 2px #ffdd8e, 0 0 0 4px #600f09; }
 .rb-spec-h { text-align: center; color: #ff9a9a; font-size: 13px; margin-bottom: 4px; }
 .rb-rk-list { display: flex; flex-direction: column; gap: 2px; }
 .rb-rk { display: grid; grid-template-columns: 22px 1fr auto 64px; gap: 6px; align-items: center; padding: 2px 4px; background: #150c28; opacity: 0.6; }

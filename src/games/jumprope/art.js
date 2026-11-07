@@ -192,15 +192,17 @@ export function drawKid(c, xIn, footY, lookIn, pose = {}) {
       rect(c, shx, fy - 2, 5, 1, P.shoeS);
     }
   } else {
-    const up = tuck ? 3 : 0;
-    const legH = tuck ? 3 : 5 - drop;
+    /* pose.foot 'L' | 'R' (점프 피아노 한 발 뛰기): 반대쪽 다리는 무릎을 올린다. 줄넘기 챔피언은 이 값을 쓰지 않는다 */
     for (const s of [-1, 1]) {
-      const lx = s < 0 ? x - 6 - (tuck ? 1 : 0) : x + 3 + (tuck ? 1 : 0);
+      const tk = tuck || (pose.foot === 'L' && s > 0) || (pose.foot === 'R' && s < 0);
+      const up = tk ? (tuck ? 3 : 5) : 0;
+      const legH = tk ? 3 : 5 - drop;
+      const lx = s < 0 ? x - 6 - (tk ? 1 : 0) : x + 3 + (tk ? 1 : 0);
       rect(c, lx - 1, fy - 4 - legH - up, 5, legH + 1, OUT);
       rect(c, lx, fy - 4 - legH - up + 0, 3, legH, legC);
       rect(c, lx + (s < 0 ? 2 : 0), fy - 4 - legH - up, 1, legH, legS);
       if (P.pantsP === 'long' && P.pants2) rect(c, lx + 1, fy - 4 - legH - up, 1, legH, P.pants2);
-      const sx = s < 0 ? x - 9 - (tuck ? 1 : 0) : x + 1 + (tuck ? 1 : 0);
+      const sx = s < 0 ? x - 9 - (tk ? 1 : 0) : x + 1 + (tk ? 1 : 0);
       rbox(c, sx, fy - 4 - up, 8, 4, OUT, 1);
       rect(c, sx + 1, fy - 3 - up, 6, 2, P.shoe);
       rect(c, sx + (s < 0 ? 1 : 4), fy - 3 - up, 2, 1, tone(P.shoe, 0.45));

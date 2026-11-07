@@ -44,6 +44,9 @@ const JumpRopeLobby = lazyScreen(() => import('./JumpRopeLobby.js'), S.jumpTitle
 /** 6번째 게임 점프 피아노 (2026-11-07) — 줄넘기 챔피언과 따로 가는 «타일 피아노» 게임 */
 const JumpPianoLobby = lazyScreen(() => import('./JumpPianoLobby.js'), S.pianoTitle);
 const jrBest = (p) => { const e = p.jr?.endless || {}; return Math.max(e.easy | 0, e.normal | 0, e.hard | 0); };
+/** 점프 피아노 기록(프로필 `jp` — 챔피언 `jr` 과 따로). 한 판도 안 했으면 소개 한 줄 */
+const jpBest = (p) => { const e = p.jp?.endless || {}; return Math.max(e.easy | 0, e.normal | 0, e.hard | 0); };
+const pianoLine = (p) => ((p.jp?.plays | 0) > 0 ? S.pianoCardLine(jpBest(p), p.jp?.jumps) : '3칸 · 6칸 타일을 두드려 점프!');
 
 /**
  * 게임 카드.  `sub` 는 카드 제목 아래 한 줄 — 게임마다 자랑할 숫자가 다르다
@@ -55,7 +58,7 @@ const CARDS = [
   { id: 'catchball', banner: '/assets/ui/banner_catchball.webp', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
   { id: 'catchball3d', banner: '/assets/ui/banner_catchball3d.webp', title: S.catch3dTitle, sub: (p) => S.catchBestLine(p.catch3dBestEasy | 0, p.catch3dBestNormal | 0, p.catch3dBestHard | 0), screen: () => Catch3DGame, ready: true },
   { id: 'jumprope', banner: '/assets/ui/banner_jumprope.webp', title: S.jumpTitle, sub: (p) => S.jumpCardLine(jrBest(p), p.jr?.jumps), screen: () => JumpRopeLobby, ready: true },
-  { id: 'jumppiano', banner: '/assets/ui/banner_jumppiano.webp', title: S.pianoTitle, sub: () => '3칸 · 6칸 타일을 두드려 점프!', screen: () => JumpPianoLobby, ready: true },
+  { id: 'jumppiano', banner: '/assets/ui/banner_jumppiano.webp', title: S.pianoTitle, sub: pianoLine, screen: () => JumpPianoLobby, ready: true },
 ];
 
 export default function Portal(nav) {

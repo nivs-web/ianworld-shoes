@@ -519,6 +519,8 @@ export function tileChart(chart, level = 3, seed = 1) {
  * 노트: { lane, kind:'tap'|'hold', slide?: [{s,t,c}], label? } */
 const PAT1 = [[1, 1, 1, 1], [1, 0, 1, 2], [1, 2, 1, 0], [0, 1, 2, 1]];
 const PAT2 = [[0, 2, 0, 2], [2, 1, 0, 1], [0, 0, 2, 2], [1, 0, 2, 1]];
+const JUMP_LABEL = ['왼발 점프 / LEFT FOOT', '점프 / JUMP', '오른발 점프 / RIGHT FOOT'];
+const ROPE_LABEL = ['크로스 / CROSS', '돌리기 / TURN', '쌩쌩이 / DOUBLE UNDER'];
 export function pianoChart(base, mode, level = 3, seed = 1) {
   const rand = seeded(((seed | 0) * 151 + 313) >>> 0);
   const steps = base.steps;
@@ -558,23 +560,34 @@ export function pianoChart(base, mode, level = 3, seed = 1) {
     }
     if (!pat.length) { const pool = lv >= 2 ? PAT1.concat(PAT2) : PAT1; pat = [...pool[Math.floor(rand() * pool.length)]]; }
     const c = pat.shift();
-    let extra = n.kind === 'hold' ? { kind: 'hold', endStep: n.endStep, endT: n.endT, label: '이중 뛰기 / DOUBLE UNDER' } : null;
-    if (!extra && lv >= 2 && (J[i + 1] ? J[i + 1].t - n.t : 9) >= 0.95 && rand() < 0.4) extra = hold(n, i, J, '이중 뛰기 / DOUBLE UNDER');
-    out.push({ lane: 'J' + c, kind: 'tap', step: n.step, t: n.t, ...(extra || {}) });
+    /* 2026-11-07 2차 대표님: 칸마다 기술 — 가운데 점프 · 왼쪽 왼발 점프 · 오른쪽 오른발 점프. 길게 누르기 40% (피아노 치는 느낌) */
+    const lab = JUMP_LABEL[c];
+    let extra = n.kind === 'hold' ? { kind: 'hold', endStep: n.endStep, endT: n.endT } : null;
+    if (!extra && (J[i + 1] ? J[i + 1].t - n.t : 9) >= 0.5 && rand() < 0.4) extra = hold(n, i, J, null);
+    out.push({ lane: 'J' + c, kind: 'tap', step: n.step, t: n.t, ...(extra || {}), label: lab });
     i++;
   }
   /* 로프 칸 (두 손) */
+  let rpat = [];
   for (let i = 0; i < P.length;) {
     const n = P[i], lv = lvAt(n);
     if (lv >= 3 && n.kind === 'tap' && rand() < 0.16) {
       const sl = slideFrom(P, i, 3, 'P', 0, 2, '줄 휘두르기 / SIDE SWING');
       if (sl) { out.push(sl); i += 3; continue; }
     }
-    if (n.kind === 'hold') { out.push({ lane: 'P1', kind: 'hold', step: n.step, t: n.t, endStep: n.endStep, endT: n.endT, label: '천천히 돌리기 / SLOW TURN' }); i++; continue; }
+    /* 로프 칸도 칸마다 기술 — 가운데 그냥 돌리기 · 왼쪽 크로스 · 오른쪽 쌩쌩이(빠른 2바퀴). 길게 40% */
+    if (!rpat.length) { const pool = lv >= 2 ? PAT1.concat(PAT2) : PAT1; rpat = [...pool[Math.floor(rand() * pool.length)]]; }
     const nx = P[i + 1];
     const dbl = nx && nx.kind === 'tap' && nx.t - n.t <= 0.24;
-    out.push({ lane: 'P1', kind: 'tap', step: n.step, t: n.t, label: dbl ? '이중 뛰기 / DOUBLE UNDER' : null });
-    if (dbl) { out.push({ lane: 'P1', kind: 'tap', step: nx.step, t: nx.t }); i += 2; } else i++;
+    if (dbl) {                                       // 빠른 두 번 = 쌩쌩이 칸
+      out.push({ lane: 'P2', kind: 'tap', step: n.step, t: n.t, label: ROPE_LABEL[2] }, { lane: 'P2', kind: 'tap', step: nx.step, t: nx.t });
+      i += 2; continue;
+    }
+    const c = rpat.shift();
+    let extra = n.kind === 'hold' ? { kind: 'hold', endStep: n.endStep, endT: n.endT } : null;
+    if (!extra && (nx ? nx.t - n.t : 9) >= 0.5 && rand() < 0.4) extra = hold(n, i, P, null);
+    out.push({ lane: 'P' + c, kind: 'tap', step: n.step, t: n.t, ...(extra || {}), label: ROPE_LABEL[c] });
+    i++;
   }
   out.sort((a, b) => a.step - b.step || (a.lane < b.lane ? -1 : 1));
   out.forEach((n, id) => { n.id = id; n.tech = -1; });

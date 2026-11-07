@@ -14,6 +14,7 @@ import * as Dex from './collection.js';
 import * as Rank from './leaderboard.js';
 import { syncCatchPlayerSoon } from './catchRank.js';
 import { mergeJr } from './jumpropeState.js';
+import { mergeJp } from './jumppianoState.js';
 /** 착용 자리 목록 — 표가 유일한 진실이라 슬롯이 늘어도 여기가 저절로 따라온다 */
 import { ITEM_CATS } from '../data/items.js';
 
@@ -277,6 +278,8 @@ export async function pullRemote() {
     catch3dDifficulty: remote.catch3dDifficulty ?? local.catch3dDifficulty ?? 'normal',
     /* 줄넘기 챔피언 (2026-11-07) — 한 묶음(jr). 기록·별·경험치는 큰 쪽, 산 것은 합집합, 고른 것은 원격 */
     jr: mergeJr(local.jr, remote.jr),
+    /* 점프 피아노 (2026-11-07) — 따로 한 묶음(jp). 챔피언(jr)과 같은 병합 규칙, 값은 섞지 않는다 */
+    jp: mergeJp(local.jp, remote.jp),
   };
   L.reconcile(merged);
   L.saveProfile(merged);

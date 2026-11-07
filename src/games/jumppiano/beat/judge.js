@@ -143,8 +143,16 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
   }
 
   /* act — 한 손 타일(2026-11-07): 'tap' | 'left' | 'right'. 밀기 노트는 방향이 맞아야 한다(틀리면 MISS). 짧게 · 길게 노트는 아무 입력이나 받는다 */
+  /* 빈 손 (2026-11-07 대표님 «막 누르면 콤보가 올라가는 버그»): 노트가 없는 곳을 누르면 콤보가 끊긴다.
+     노트 바로 앞(판정 창의 2배 안)은 조금 일찍 누른 것으로 보고 봐준다 — 연타하면 그 밖의 누름이 끊는다 */
+  function emptyPress(l) {
+    if (state.combo > 0) comboBreak();
+    state.empty = (state.empty | 0) + 1;
+    return { kind: 'empty', lane: l, grade: null, scoreAdd: 0, combo: 0 };
+  }
   function press(l, t, act) {
-    if (!state.alive || !lane[l] || active[l] >= 0) return null;  // 꾹 누르는 중인 버튼은 또 못 누른다
+    if (!state.alive || active[l] >= 0) return null;  // 꾹 누르는 중인 칸은 또 못 누른다
+    if (!lane[l]) return emptyPress(l);                // 노트가 하나도 없는 칸  // 꾹 누르는 중인 버튼은 또 못 누른다
     const list = lane[l];
     while (ptr[l] < list.length && doneFor(list[ptr[l]], l)) ptr[l]++;
     for (let j = ptr[l]; j < list.length; j++) {
@@ -152,7 +160,7 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
       if (doneFor(id, l)) continue;
       const n = notes[id], d = t - n.t;
       if (d > GOOD) continue;                                          // 이미 지난 노트 — update 가 MISS 로 센다
-      if (d < -GOOD) return null;                                      // 가장 이른 노트도 아직 멀다 = 빈 손
+      if (d < -GOOD) return d < -GOOD * 2 ? emptyPress(l) : null;     // 가장 이른 노트도 아직 멀다 = 빈 손(바로 앞이면 봐준다)
       if ((n.act === 'left' || n.act === 'right') && act && act !== n.act) return applyMiss(n, t);
       const g = gradeOf(d);
       if (n.lane !== 'B') return applyHit(n, g, d, l, t);
@@ -162,7 +170,7 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
       const w = WORSE[s.pL.g] >= WORSE[s.pR.g] ? s.pL : s.pR;            // 둘 중 나쁜 등급
       return applyHit(n, w.g, w.d, 'B', t);
     }
-    return null;
+    return emptyPress(l);                                              // 남은 노트가 없다
   }
 
   function release(l, t) {

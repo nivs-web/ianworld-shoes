@@ -22,12 +22,12 @@ import * as BA from '../../jumprope/beat/beatArt.js';
 import { SURVIVAL, survivalTempo, survivalStatus, roundAt, roundBpm } from '../../jumprope/beat/survival.js';
 import { drawKid, kidHands, poseHands, ropeGeom, drawRope, drawHandles, rect, rbox, sprite, tone, OUT, SPR } from '../../jumprope/art.js';
 
-const SHORT_SIDE = 192;   // 2026-11-07 128 → 192: 도트를 잘게 — 선수가 화면에서 1/3 작아지고 타이밍이 더 또렷하다
-const NEO = "'Neo둥근모', 'Courier New', monospace";
+const SHORT_SIDE = 240;   // 2026-11-07 2차 192 → 240: 대표님 «도트가 너무 도트스러워 — 좀 줄여도»
+const NEO = "'Galmuri11', 'Neo둥근모', 'Courier New', monospace";   // 갈무리11 굵게(OFL) — 12px 격자 도트 글꼴
 const PRET = "'PretendardV', 'Pretendard', 'Arial Black', sans-serif";
 const KID_W = 80, KID_H = 76, KID_FOOT = 72;   // 선수 1배 캔버스 (줄 고리까지 들어가는 크기)
-const GRADE_COL = { perfect: '#ffd23f', great: '#6fe3ff', good: '#9be36f', miss: '#ff6b6b' };
-const GRADE_TXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
+const GRADE_COL = { perfect: '#ffd23f', great: '#6fe3ff', good: '#9be36f', miss: '#ff6b6b', empty: '#ff6a6a' };
+const GRADE_TXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS', empty: '콤보 끊김' };
 /* ---------- 재미 요소 (2026-11-07 기획 회의 12개 — 권반장 «게임이 재밌어야 함») ----------
  * ① 콤보 이정표 도장 ② 황금 줄(보너스) ③ 빨라요/늦어요 ④ 판정 글자 튀어오름 ⑤ 타격감(충격파 고리 · 진동)
  * ⑥ MISS 빨간 테두리 ⑦ 판 중 신기록 알림 ⑧ 미니 미션 ⑨ 콤보 줄 잔상 ⑩ 콤보 배율 표시 ⑪ GO! ⑫ 결과 점수 촤라락 */
@@ -55,6 +55,7 @@ let styleOn = false;
 export function mount(host, opts) {
   unmount();
   if (!styleOn) { const st = document.createElement('style'); st.textContent = CSS; document.head.append(st); styleOn = true; }
+  try { document.fonts?.load?.("24px 'Galmuri11'", '가A1').catch(() => {}); } catch { /* */ }
   host.innerHTML = '';
   host.classList.add('rb-host');
   const cv = document.createElement('canvas');
@@ -381,6 +382,7 @@ function doPress(lane, t, act) {
     if (side === 'R') { G.jumpAt = G.t; G.jumpHold = true; } else G.ropeAt = G.t;
     if (G.opts.opts?.vib !== false) try { navigator.vibrate?.(8); } catch { /* */ }
     const res = G.judge.press(G.lastPianoLane = arguments[0], t);
+    if (res?.kind === 'empty') { emptyHit(arguments[0]); return; }
     if (res) handle([res.kind ? res : { kind: 'hit', ...res, lane: arguments[0] }]);
     return;
   }
@@ -393,7 +395,14 @@ function doPress(lane, t, act) {
   if (G.jumpOnly && lane === 'R') { G.ropeAt = G.t; G.bothAt = G.t; }   // JUMP 하나: 기술 동작(옆 · 엇걸기)은 JUMP 로 저절로
   if (G.opts.opts?.vib !== false) try { navigator.vibrate?.(8); } catch { /* */ }   // ⑤ 누를 때 톡
   const res = G.judge.press(lane, t, act);
+  if (res?.kind === 'empty') { emptyHit(lane); return; }
   if (res) handle([res.kind ? res : { kind: 'hit', ...res, lane }]);
+}
+
+/** 빈 손 — 콤보가 끊겼다는 것만 짧게 보여 준다(체력은 그대로) */
+function emptyHit(lane) {
+  G.emptyAt = G.t;
+  if (G.lastEmptyMsg == null || G.t - G.lastEmptyMsg > 0.6) { G.lastEmptyMsg = G.t; pop(lane, 'empty', 0); }
 }
 
 function doRelease(lane, t) {
@@ -417,6 +426,7 @@ function handle(list) {
   if (G.surv && G.out) return;                       // 탈락해 관전 중 — 남은 노트의 MISS 는 조용히
   for (const r of list || []) {
     if (!r) continue;
+    if (r.lane?.length === 2 && r.grade && r.grade !== 'miss' && r.kind !== 'break' && r.kind !== 'half') pianoHitFx(r.lane, r.grade);
     const lane = r.lane || (r.note?.lane === 'L' ? 'L' : 'R');
     const lanes = r.note?.lane === 'B' ? ['L', 'R'] : [lane === 'B' ? 'R' : r.note?.lane || lane];
     if (r.kind === 'miss' || r.kind === 'break' || r.grade === 'miss') {
@@ -549,7 +559,8 @@ function update(dt) {
   if (G.t - G.shiftAt > 0.55) G.shiftTo = 0;
   G.shiftX += (G.shiftTo - G.shiftX) * Math.min(1, dt * 14);
   if (G.swipeFx) { G.swipeFx.age += dt; if (G.swipeFx.age > 0.35) G.swipeFx = null; }
-  for (const a of [G.hits, G.pops, G.banners, G.parts, G.fun.rings]) for (const p of a) p.age += dt;
+  for (const a of [G.hits, G.pops, G.banners, G.parts, G.fun.rings, G.lasers || []]) for (const p of a) p.age += dt;
+  if (G.lasers) G.lasers = G.lasers.filter((p) => p.age < 0.4);
   G.fun.rings = G.fun.rings.filter((p) => p.age < 0.35);
   G.fun.edge = Math.max(0, G.fun.edge - dt * 2.5);
   if (G.fun.stamp) { G.fun.stamp.age += dt; if (G.fun.stamp.age > 1.6) G.fun.stamp = null; }
@@ -750,9 +761,10 @@ function resize() {
   G.cx = Math.floor(G.W / 2);
   G.btnTop = G.H - 2;                 // 피아노 칸: 단추 없음(칸을 직접 누른다)
   const btnArea = 48;                 // (옛 단추 자리 계산이 쓰던 값 — 단추는 그리지 않는다)
-  G.floorY = G.H - Math.max(46, Math.round(G.H * 0.16));
+  G.kbH = Math.max(40, Math.round(G.H * 0.13));      // 맨 아래 피아노 건반
+  G.floorY = G.H - G.kbH;
   G.hudH = 36;
-  G.K = Math.max(1, Math.min(3, Math.floor((G.floorY - 22) / 52)));
+  G.K = Math.max(1, Math.min(2, Math.floor((G.floorY - 22) / 80)));   // 3차: 건반 위 캐릭터는 조금 작게
   G.laneW = Math.max(20, Math.min(26, Math.floor(G.W * 0.17)));
   const edge = 12;                   // 판정 원 · 다가오는 원이 화면 밖으로 잘리지 않게 가장자리를 띄운다
   G.colW = G.W / G.nCols;
@@ -790,16 +802,18 @@ function render() {
   b.translate(0, sh);
   const st = G.judge.state;
   const fever = !!(st.fever || G.feverOn);
-  drawSimpleBack(b, fever);         // 피아노 칸: 관중 · 하늘 · 날씨 없이 단색 배경 (2026-11-07 대표님 «심플하게»)
+  BA.drawArena(b, G.stage ? G.stage.arena : 4, G.W, G.H, G.floorY, G.t, { fever, energy: currentEnergy(), beat: G.phase === 'play' ? nowStep() / 4 : G.t * 2 });   // 대회 무대 그대로 (3차 «배경 화려하게»)
+  G.comic.drawBack(b);
   if (fever) BA.drawFeverAura(b, G.kx, G.floorY, G.K, G.t);
   drawKidBig();                    // 두 겹을 만들고 뒤쪽 줄만 먼저 깐다
   drawLanes();
   blitKid(G.kidCv);                // 몸 + 앞쪽 줄은 레인 위에 — 줄이 늘 또렷하게
-  drawNotes();                     // 노트는 맨 위
-  drawTargets();
+  drawNotes();                     // 반투명 타일 — 뒤 캐릭터가 비친다
+  drawLasers(b);                   // 레이저 · 바닥 폭발
+  drawKeyboard(b);                 // 맨 아래 도트 피아노 건반
   /* 다가오는 원은 끔(2026-11-07 대표님 — 동그라미 버튼이 점선 원에 딱 겹칠 때가 신호) */
   for (const rg of G.fun.rings) {   // ⑤ PERFECT 충격파 고리
-    const cx = (rg.lane === 'L' ? G.xL : G.xR) + G.laneW / 2 - 0.5;
+    const cx = rg.lane?.length === 2 ? laneCX(rg.lane) : (rg.lane === 'L' ? G.xL : G.xR) + G.laneW / 2 - 0.5;
     b.save(); b.globalAlpha = Math.max(0, 0.4 - rg.age);
     pring(b, cx, G.floorY, Math.round(G.laneW / 2 + 3 + rg.age * 60), 1, '#ffffff');
     b.restore();
@@ -1089,19 +1103,43 @@ const PIANO = {
   P: { f: '#ffb43a', h: '#fff0c2', on: '#ffffff' },          // 로프 타일 — 밝은 주황
   slideJ: ['#ff4f8b', '#ffa13a'], slideP: ['#5fd3ff', '#7c6bff'],
 };
-function tileH() { return Math.max(18, Math.min(34, Math.round(pxPerStep() * 6))); }
+/** 칸(소수) → 곡 시각 — 슬라이더 띠를 행마다 그릴 때 */
+/* ---------- 점프 피아노 화면 3차 (2026-11-07 대표님) ----------
+ * 뒤는 대회 무대 그대로(화려하게) · 칸은 «라인만» · 타일은 도트 타일(두툼한 안 투명 테 + 속 40% 반투명 — 뒤 캐릭터가 비친다) ·
+ * 맨 아래 도트 피아노 건반(오른손 점프 = 파란 건반 · 왼손 로프 = 빨간 건반, 누르면 팍 들어간다) ·
+ * 치면 칸을 따라 레이저가 솟고 아래에서 팍 터진다 · PERFECT / GREAT 은 큼직한 네온 글씨 · 콤보도 네온 큰 숫자. */
+const PCOL = {
+  J: { m: '#3f8cff', l: '#bfe0ff', d: '#173a8f', g: '#6fd3ff' },     // 오른손 · 점프 — 파랑
+  P: { m: '#ff4a5e', l: '#ffc0c8', d: '#8a1a2c', g: '#ff8a9a' },     // 왼손 · 로프 — 빨강
+};
+const laneOfCol = (i) => (G.jumpOnly ? 'J' + i : i < 3 ? 'P' + i : 'J' + (i - 3));
+function tileH() { return Math.max(16, Math.min(30, Math.round(pxPerStep() * 5))); }
 function drawPianoLanes() {
-  const b = G.b, top = G.hudH, bot = G.H;
+  const b = G.b, top = G.hudH, bot = G.floorY;
   b.save();
-  for (let i = 0; i < G.nCols; i++) {
-    const x = colX(i), w = colX(i + 1) - x;
-    b.globalAlpha = 0.16; rect(b, x, top, w, bot - top, i % 2 ? '#ffffff' : '#dfe8ff');
-    if (!G.jumpOnly && i < 3) { b.globalAlpha = 0.12; rect(b, x, top, w, bot - top, '#b07cff'); }
-    b.globalAlpha = 0.35; rect(b, x, top, 1, bot - top, '#ffffff');
-    const fl = G.pianoFlash?.[G.jumpOnly ? 'J' + i : i < 3 ? 'P' + i : 'J' + (i - 3)] || 0;
-    if (fl > 0) { b.globalAlpha = fl * 0.35; rect(b, x, G.floorY - 40, w, 40, '#ffffff'); }
+  for (let i = 0; i <= G.nCols; i++) {                               // 라인만 — 옅은 그늘 + 흰 줄
+    const x = Math.min(G.W - 1, colX(i));
+    b.globalAlpha = 0.22; rect(b, x - 1, top, 3, bot - top, '#05030f');
+    b.globalAlpha = 0.55; rect(b, x, top, 1, bot - top, i === 3 && !G.jumpOnly ? '#ffd23f' : '#ffffff');
+  }
+  for (let i = 0; i < G.nCols; i++) {                                // 누르는 칸 — 아래에서 솟는 옅은 빛
+    const ln = laneOfCol(i), fl = Math.max(G.down[ln] ? 0.7 : 0, G.pianoFlash?.[ln] || 0);
+    if (fl <= 0) continue;
+    const x = colX(i), w = colX(i + 1) - x, C = PCOL[ln[0]];
+    for (let k = 0; k < 6; k++) { b.globalAlpha = fl * 0.11 * (6 - k) / 6; rect(b, x + 1, bot - (k + 1) * 16, w - 1, 16, C.g); }
   }
   b.restore();
+}
+/** 도트 타일 — 바깥 진한 테 1 · 밝은/어두운 테 2(입체) · 속 40% 반투명 · 왼쪽 위 반짝 점 */
+function pixTile(b, x, y, w, h, C, glow) {
+  if (w < 8 || h < 6) return;
+  const O = '#0c0a26';
+  rect(b, x + 1, y, w - 2, 1, O); rect(b, x + 1, y + h - 1, w - 2, 1, O); rect(b, x, y + 1, 1, h - 2, O); rect(b, x + w - 1, y + 1, 1, h - 2, O);
+  b.save(); b.globalAlpha = glow ? 0.62 : 0.4; rect(b, x + 3, y + 3, w - 6, h - 6, C.m); b.restore();
+  rect(b, x + 1, y + 1, w - 2, 2, C.l); rect(b, x + 1, y + 1, 2, h - 2, C.l);
+  rect(b, x + 1, y + h - 3, w - 2, 2, C.d); rect(b, x + w - 3, y + 3, 2, h - 4, C.d);
+  rect(b, x + 3, y + 3, 1, 1, C.l);
+  rect(b, x + 4, y + 4, 3, 1, '#ffffff'); rect(b, x + 4, y + 5, 1, 2, '#ffffff');
 }
 function drawPianoNotes() {
   const b = G.b, ns = nowStep(), pps = pxPerStep(), th = tileH();
@@ -1114,35 +1152,33 @@ function drawPianoNotes() {
     const endS = n.kind === 'hold' ? n.endStep : n.step;
     if (endS < ns - 3) break;
     if (n.done && !n.holding) continue;
-    const side = n.lane[0], C = PIANO[side] || PIANO.J;
-    if (n.slide) {               // 슬라이더 — 칸을 가로지르는 띠(행마다 가운데를 옮겨 그린다)
-      const [c1, c2] = side === 'P' ? PIANO.slideP : PIANO.slideJ;
-      const y0 = yAt(n.step), y1 = yAt(n.endStep) - th;
-      const bw = Math.round(G.colW - 6);
-      for (let y = Math.max(G.hudH, y1); y <= Math.min(G.H, y0); y++) {
+    const side = n.lane[0], C = PCOL[side] || PCOL.J;
+    if (n.slide) {               // 슬라이더 — 칸을 가로지르는 띠(행마다 가운데를 옮겨 그린다) · 속은 반투명, 가장자리는 진하게
+      const y0 = Math.min(G.floorY, yAt(n.step)), y1 = yAt(n.endStep) - th;
+      const bw = Math.round(G.colW - 8);
+      for (let y = Math.max(G.hudH, y1); y <= y0; y++) {
         const st = ns + (G.floorY - y) / pps;
-        const t = timeAtStepLocal(st);
-        const x = Math.round(slideX(n, t) - bw / 2);
-        rect(b, x - 1, y, bw + 2, 1, OUT);
-        rect(b, x, y, bw, 1, (y0 - y) / Math.max(1, y0 - y1) < 0.5 ? c1 : c2);
+        const x = Math.round(slideX(n, timeAtStepLocal(st)) - bw / 2);
+        rect(b, x - 1, y, 3, 1, '#0c0a26'); rect(b, x + bw - 2, y, 3, 1, '#0c0a26');
+        rect(b, x + 1, y, 2, 1, C.l); rect(b, x + bw - 3, y, 2, 1, C.d);
+        b.save(); b.globalAlpha = n.holding ? 0.6 : 0.4; rect(b, x + 3, y, bw - 6, 1, C.m); b.restore();
       }
-      for (const q of n.slide) { const y = yAt(q.s); const x = Math.round(slideX(n, q.t)); if (y > G.hudH && y < G.H) rect(b, x - 1, y - 1, 3, 3, '#ffffff'); }
+      for (const q of n.slide) { const y = yAt(q.s); const x = Math.round(slideX(n, q.t)); if (y > G.hudH && y < G.floorY) { rect(b, x - 2, y - 2, 5, 5, '#0c0a26'); rect(b, x - 1, y - 1, 3, 3, '#ffffff'); } }
       continue;
     }
-    const x = colX(colIdx(n.lane)) + 2, w = colX(colIdx(n.lane) + 1) - colX(colIdx(n.lane)) - 4;
-    const yb = yAt(n.step), yt = n.kind === 'hold' ? yAt(n.endStep) - th : yb - th;
-    const top = Math.max(G.hudH, yt), hgt = yb - top;
-    if (hgt <= 0) continue;
-    rect(b, x - 1, top - 1, w + 2, hgt + 2, OUT);
-    rect(b, x, top, w, hgt, C.f);
-    rect(b, x, top, w, 1, C.h);
-    if (n.kind === 'hold') {
-      rect(b, x + Math.floor(w / 2) - 1, top + 3, 2, Math.max(0, hgt - 6), '#ffffff');
-      if (n.holding) { const fy = Math.max(top, G.floorY - 2); rect(b, x, fy, w, Math.max(0, yb - fy), C.on); }
+    const ci = colIdx(n.lane), x = colX(ci) + 3, w = colX(ci + 1) - colX(ci) - 6;
+    let yb = yAt(n.step);
+    if (n.holding) yb = Math.min(yb, G.floorY);          // 누르는 동안 판정선 아래는 먹힌다
+    const yt = n.kind === 'hold' ? yAt(n.endStep) - th : yb - th;
+    const top = Math.max(G.hudH, yt), hgt = Math.min(G.floorY + 2, yb) - top;
+    if (hgt <= 4) continue;
+    pixTile(b, x, top, w, hgt, C, n.holding);
+    if (n.kind === 'hold' && hgt > 16) {                  // 긴 타일 — 가운데 점선(피아노 건반 꾹)
+      for (let y = top + 8; y < top + hgt - 8; y += 4) rect(b, x + Math.floor(w / 2) - 1, y, 2, 2, C.l);
     }
+    if (n.gold) { const gx = x + w - 7, gy = top + 3; rect(b, gx + 1, gy, 1, 3, '#ffd23f'); rect(b, gx, gy + 1, 3, 1, '#ffd23f'); }
   }
 }
-/** 칸(소수) → 곡 시각 — 슬라이더 띠를 행마다 그릴 때 */
 function timeAtStepLocal(st) {
   const S = G.chart.steps, n = S.length - 1;
   if (st <= 0) return st * (S[1] - S[0]);
@@ -1150,6 +1186,84 @@ function timeAtStepLocal(st) {
   const i = Math.floor(st);
   return S[i] + (st - i) * (S[i + 1] - S[i]);
 }
+/** 맨 아래 도트 피아노 건반 — 칸마다 흰 건반 여러 개, 누르면 2칸 내려가고 칸 색(오른손 파랑 · 왼손 빨강)으로 */
+function drawKeyboard(b) {
+  const top = G.floorY + 1, h = G.H - top;
+  rect(b, 0, top - 1, G.W, h + 1, '#0c0a26');
+  const per = G.jumpOnly ? 3 : 2, n = G.nCols * per, kw = G.W / n;
+  const onCol = (col) => { const ln = laneOfCol(col); return G.down[ln] || (G.pianoFlash?.[ln] || 0) > 0.35; };
+  for (let i = 0; i < n; i++) {
+    const col = Math.floor(i / per), ln = laneOfCol(col), on = onCol(col), C = PCOL[ln[0]];
+    const x0 = Math.round(i * kw), x1 = Math.round((i + 1) * kw), w = x1 - x0, dy = on ? 3 : 0;
+    rect(b, x0, top + dy, w - 1, h - dy, on ? C.m : '#f6f7fb');
+    rect(b, x0, top + dy, w - 1, 2, on ? C.l : '#ffffff');
+    rect(b, x0, G.H - 5, w - 1, 5, on ? C.d : '#c3c8dc');
+    if (on) { rect(b, x0, top, w - 1, dy, '#05030f'); rect(b, x0 + 2, top + dy + 3, 2, Math.max(0, h - dy - 12), C.l); }
+    else rect(b, x0 + 1, G.H - 9, w - 3, 3, '#e3e6f2');
+    rect(b, x1 - 1, top, 1, h, '#5a5f7a');
+  }
+  const bh = Math.round(h * 0.58), bw = Math.max(4, Math.round(kw * 0.56));
+  for (let i = 0; i < n - 1; i++) {
+    if (i % 7 === 2 || i % 7 === 6) continue;                     // 미-파 · 시-도 사이엔 검은 건반이 없다
+    const x = Math.round((i + 1) * kw - bw / 2) - 1, on = onCol(Math.floor(i / per)) && onCol(Math.floor((i + 1) / per));
+    const dy = on ? 2 : 0;
+    rect(b, x - 1, top, bw + 2, bh + 1 + dy, '#05030f'); rect(b, x, top + dy, bw, bh, '#1e2033');
+    rect(b, x + 1, top + dy + 1, 1, bh - 5, '#4a4e6e'); rect(b, x, top + dy + bh - 3, bw, 3, '#0e0f1a');
+  }
+  rect(b, 0, top, G.W, 1, '#c8304a');                                  // 건반 위 빨간 천(피아노)
+  b.save(); b.globalAlpha = 0.35; rect(b, 0, top - 4, G.W, 3, '#ffffff'); b.restore();
+  rect(b, 0, top - 1, G.W, 1, '#fff3cf');                              // 판정선
+}
+/** 치면: 칸을 따라 레이저가 솟고 아래에서 팍 터진다(도트) */
+function pianoHitFx(lane, grade) {
+  if (!G.lasers) G.lasers = [];
+  G.lasers.push({ lane, grade, age: 0, seed: Math.random() * 6 });
+  if (G.lasers.length > 8) G.lasers.shift();
+  const i = colIdx(lane), cx = colX(i) + G.colW / 2, C = PCOL[lane[0]];
+  burst(cx, G.floorY - 2, grade === 'perfect' ? ['#ffffff', C.g, '#ffd23f'] : ['#ffffff', C.g], grade === 'perfect' ? 10 : 6);
+  G.trick = { lane, at: G.t };
+}
+function drawLasers(b) {
+  for (const L of G.lasers || []) {
+    const a = Math.max(0, 1 - L.age / 0.32);
+    if (a <= 0) continue;
+    const i = colIdx(L.lane), x = colX(i), w = colX(i + 1) - x, cx = Math.round(x + w / 2), C = PCOL[L.lane[0]];
+    const top = G.hudH, bot = G.floorY, per = L.grade === 'perfect';
+    b.save();
+    const gw = Math.max(3, Math.round((w / 2 - 2) * (1 - L.age * 2)));
+    b.globalAlpha = a * 0.22; rect(b, cx - gw, top, gw * 2, bot - top, C.g);
+    b.globalAlpha = a * 0.65; rect(b, cx - 3, top, 6, bot - top, C.g);
+    b.globalAlpha = a; rect(b, cx - 1, top, 2, bot - top, '#ffffff');
+    /* 바닥 폭발 — 점선 빛살 12갈래 + 흰 덩어리 */
+    const r = (per ? 10 : 7) + L.age * (per ? 90 : 60);
+    for (let k = 0; k < 12; k++) {
+      const an = Math.PI + (k / 11) * Math.PI + (k % 2 ? 0.05 : -0.05);
+      const len = k % 2 ? r * 0.65 : r;
+      for (let s = len * 0.35; s < len; s += 2) rect(b, Math.round(cx + Math.cos(an) * s), Math.round(bot + Math.sin(an) * s * 0.8), 2, 2, s > len * 0.75 ? C.g : '#ffffff');
+    }
+    for (const [rx, ry, al, col] of [[w * 0.55, 7, 0.35, C.g], [w * 0.35, 4, 0.7, '#ffffff']]) {
+      b.globalAlpha = a * al;
+      for (let y = -ry; y <= 0; y++) { const hw = Math.round(rx * Math.sqrt(1 - (y * y) / (ry * ry))); rect(b, cx - hw, bot + y, hw * 2, 1, col); }
+    }
+    b.restore();
+  }
+}
+/** 네온 글씨 — 큼직하게 · 색 빛 번짐 + 흰 속 (캔버스 위, 도트 아님) */
+function neon(text, nx, ny, level, col, italic = true) {
+  const ctx = G.ctx, size = Math.round(level * 16 * G.dpr);
+  ctx.save();
+  ctx.font = `${italic ? 'italic ' : ''}900 ${size}px ${PRET}`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  const x = Math.round(nx * G.S), y = Math.round(ny * G.S);
+  ctx.shadowColor = col; ctx.shadowBlur = size * 0.55;
+  ctx.lineWidth = Math.max(3, size * 0.16); ctx.strokeStyle = '#1a0630'; ctx.strokeText(text, x, y);
+  ctx.lineWidth = Math.max(2, size * 0.09); ctx.strokeStyle = col; ctx.strokeText(text, x, y);
+  ctx.shadowBlur = size * 0.2; ctx.fillStyle = '#ffffff'; ctx.fillText(text, x, y);
+  ctx.restore();
+}
+const NEON_COL = { perfect: '#ff4fd8', great: '#3fd0ff', good: '#9be36f', miss: '#ff5050', empty: '#ff6a6a' };
+
+const TRICK_NAME = { J0: '왼발!', J2: '오른발!', P0: '크로스!', P2: '쌩쌩이!' };
 function drawPianoLine(b) {
   b.save();
   b.globalAlpha = 0.22; rect(b, 0, G.floorY - 4, G.W, 8, '#ffffff');
@@ -1157,6 +1271,9 @@ function drawPianoLine(b) {
   b.restore();
 }
 function drawPianoTexts() {
+  const tr = G.trick, ta = tr ? G.t - tr.at : 9;
+  if (tr && ta < 0.55 && TRICK_NAME[tr.lane] && G.phase === 'play') ptxt(TRICK_NAME[tr.lane], G.kx, G.floorY - 46 * G.K - 10 - Math.round(ta * 16), 1.25, PCOL[tr.lane[0]].g);
+  return;
   const ns = nowStep(), pps = pxPerStep(), th = tileH();
   const topStep = ns + (G.floorY - G.hudH) / pps;
   for (const n of G.chart.notes) {
@@ -1268,6 +1385,14 @@ function kidPose(theta) {
     else if (pose === 'spin' && st.alive) return { state: 'spin', spin: Math.min(0.999, Math.max(0, (G.songT - tech.t0) / Math.max(0.2, tech.t1 - tech.t0)) * (TECHS[tech.id].spin ?? 1)), lift, tuck, theta, t: T };
     else if (pose === 'release' && (G.down.L || (G.jumpOnly && G.down.R))) state = 'release';
   }
+  /* 칸마다 기술 (3차): 점프 — 왼쪽 왼발 · 가운데 양발 · 오른쪽 오른발 / 로프 — 왼쪽 크로스 · 가운데 돌리기 · 오른쪽 쌩쌩이 */
+  const tr = G.trick, ta = tr ? T - tr.at : 9;
+  if (tr && ta < 0.4 && st.alive && G.phase === 'play') {
+    const c = +tr.lane[1];
+    if (tr.lane[0] === 'J' && c !== 1) return { state: 'stand', foot: c === 0 ? 'L' : 'R', lift: Math.max(lift, ta < 0.3 ? 9 : 0), tuck: 0, theta, t: T };
+    if (tr.lane[0] === 'P' && c === 0) return { state: 'cross', lift, tuck, theta, t: T };
+    if (tr.lane[0] === 'P' && c === 2) return { state: 'high', lift: Math.max(lift, ta < 0.32 ? 16 : 0), tuck: 1, theta, t: T };
+  }
   if (G.phase === 'ready') state = 'ready';
   return { state, lift, tuck, crouch: lift === 0 && since < 0.38 && since > 0.3 ? 1 : 0, theta, t: T };
 }
@@ -1301,7 +1426,7 @@ function drawKidBig() {
   const hands = drawKid(k, x, fy, G.opts.look, pose);
   try { G.comic.drawFace(k, x, fy, pose); } catch { /* 표정 연출 실패는 넘어간다 */ }
   /* ⑨ 콤보 20+ · 피버면 줄에 잔상 두 겹(빠르게 도는 느낌) */
-  if (!tangled && G.phase === 'play' && ((G.judge.state.combo | 0) >= 20 || G.feverOn)) {
+  if (!tangled && G.phase === 'play' && ((G.judge.state.combo | 0) >= 20 || G.feverOn || (G.trick?.lane === 'P2' && G.t - G.trick.at < 0.45))) {   // 쌩쌩이 = 줄 잔상
     for (const [d, a] of [[0.9, 0.16], [0.45, 0.32]]) {
       const gg = ropeGeom(hands, x, fy, theta - d);
       const cc = gg.depth >= 0 ? k : kb;
@@ -1375,8 +1500,8 @@ function drawButtons() {
 function drawReadyPanel() {
   const b = G.b;
   for (let y = G.hudH; y < G.btnTop; y++) for (let x = (y % 2); x < G.W; x += 2) rect(b, x, y, 1, 1, 'rgba(8,4,20,0.6)');
-  const pw = Math.min(G.W - 10, 150), ph = 86;
-  const x = Math.floor((G.W - pw) / 2), y = Math.max(G.hudH + 6, Math.floor(G.floorY / 2) - 46);
+  const pw = G.W - 12, ph = Math.round((fontPx(1) / G.S) * 1.4 * 7.4);
+  const x = Math.floor((G.W - pw) / 2), y = Math.max(G.hudH + 6, Math.floor(G.floorY / 2) - Math.round(ph / 2));
   rbox(b, x - 1, y - 1, pw + 2, ph + 2, OUT, 3);
   rbox(b, x, y, pw, ph, '#2b1a4a', 3);
   rect(b, x + 3, y + 2, pw - 6, 1, '#ffd23f');
@@ -1385,7 +1510,7 @@ function drawReadyPanel() {
 }
 
 /* ---------- 글자 (Neo둥근모 16px 배수 · 단추만 프리텐다드) ---------- */
-function fontPx(level) { return 16 * Math.max(1, Math.round(level * G.dpr)); }
+function fontPx(level) { return 12 * Math.max(1, Math.round(level * G.dpr * 4 / 3)); }   // 갈무리 12px 배수 — 크기는 예전 16px 단계와 비슷
 /** 콤보 숫자 글자 크기(level) — 숫자 높이가 화면 높이의 약 9.6%(신발을 찾아서 콤보의 1.3배) */
 function comboLevel() {
   const want = (G.cv.height * 0.096) / 0.72;          // Neo둥근모 숫자 ≈ 글자 크기의 72%
@@ -1403,7 +1528,7 @@ function ptxt(text, nx, ny, level, color, align = 'center', outline = true, fami
   else if (align === 'right') x -= w;
   const y = Math.round(ny * G.S - size * (family === NEO ? 0.5 : 0.56));
   if (outline) {
-    const o = Math.max(1, Math.round(size / (family === NEO ? 16 : 14)));
+    const o = Math.max(1, Math.round(size / (family === NEO ? 12 : 14)));
     ctx.fillStyle = '#1b0f0a';
     for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o, -o], [o, -o], [-o, o], [o, o], [0, o * 2], [o, o * 2], [-o, o * 2]]) ctx.fillText(text, x + dx, y + dy);
   }
@@ -1416,9 +1541,9 @@ function drawTexts() {
   const st = G.judge.state;
   const W = G.W;
   const bpm = Math.round(bpmAt(G.tempo, Math.max(0, stepAtTime(G.chart.steps, Math.max(0, G.songT))) / 16));
-  ptxt(`${(st.score | 0).toLocaleString('en-US')}`, W - 20, 17, 0.75, '#ffe9a8', 'right');
-  ptxt(G.surv ? `R${Math.max(1, G.round + 1)} · BPM ${bpm}` : `BPM ${bpm}`, 4, 27, 0.75, bpm >= 150 ? '#ff9a3c' : '#c9e8ff', 'left');
-  if (G.surv && G.status) ptxt(`생존 ${G.status.aliveCount}/${G.status.total}`, W - 20, 27, 0.75, G.out ? '#ff9a9a' : '#9be36f', 'right');
+  ptxt(`${(st.score | 0).toLocaleString('en-US')}`, W - 20, 17, 1, '#ffe9a8', 'right');
+  ptxt(G.surv ? `R${Math.max(1, G.round + 1)} · BPM ${bpm}` : `BPM ${bpm}`, 4, 29, 1, bpm >= 150 ? '#ff9a3c' : '#c9e8ff', 'left');
+  if (G.surv && G.status) ptxt(`생존 ${G.status.aliveCount}/${G.status.total}`, W - 20, 29, 1, G.out ? '#ff9a9a' : '#9be36f', 'right');
   let below = G.hudH + 24;          // 콤보 아래 빈자리(미션 글자)
   if ((st.combo | 0) >= 2) {
     /* 콤보 숫자 — 권반장 «신발을 찾아서 콤보보다 30% 크게»: 숫자 높이 ≈ 화면 높이의 9.6% */
@@ -1427,9 +1552,11 @@ function drawTexts() {
     const lv = comboLevel() + bounce * 0.5;
     const half = (fontPx(lv) * 0.36) / G.S;           // 숫자 반 높이(도트)
     const cy = G.hudH + 20 + half;                     // 예고 띠(hudH+4~17) 아래
-    ptxt(String(c), G.cx, cy, lv, c >= 100 ? '#ff7fd1' : c >= 50 ? '#ffd23f' : '#ffffff');
+    if (c !== G.lastCombo) { G.lastCombo = c; G.comboKickAt = G.t; }
+    const kick = Math.max(0, 1 - (G.t - (G.comboKickAt ?? -9)) / 0.16);
+    neon(String(c), G.cx, cy, lv * (1 + kick * 0.22), c >= 100 ? '#ff4fd8' : c >= 50 ? '#ffd23f' : '#3fd0ff', false);   // 네온 큰 콤보
     const mult = comboMult(c);
-    ptxt(mult > 1 ? `COMBO  ×${mult}` : 'COMBO', G.cx, cy + half + 7, 1, mult >= 2 ? '#ffd23f' : '#ffe9a8');   // ⑩ 배율
+    neon(mult > 1 ? `COMBO ×${mult}` : 'COMBO', G.cx, cy + half + 9, 1.15, mult >= 2 ? '#ffd23f' : '#ff4fd8');   // ⑩ 배율
     below = cy + half + 18;
   }
   /* ① 이정표 도장 — 쾅 하고 커졌다가 자리 잡는다 */
@@ -1445,19 +1572,23 @@ function drawTexts() {
   const ms = G.fun.mission;
   if (ms && G.phase === 'play') {
     const prog = ms.kind === 'nomiss' ? `${Math.max(0, Math.ceil(ms.sec))}초` : `${ms.got}/${ms.n}`;
-    ptxt(`${ms.text}  ${prog}`, G.cx, below, 0.75, '#9ad7ff');
+    ptxt(`${ms.text}  ${prog}`, G.cx, below + 2, 1, '#9ad7ff');
   }
   if (G.banners.length) {
     const bn = G.banners[G.banners.length - 1];
     if (!(bn.age > 1.2 && Math.floor(bn.age * 12) % 2)) ptxt(bn.text, G.cx, G.hudH + 10.5, 1, bn.color);
   }
   for (const p of G.pops) {
-    const x = laneCX(p.lane);
-    const y = G.floorY - 22 - Math.round(p.age * 14);
-    if (p.age > 0.4 && Math.floor(p.age * 24) % 2) continue;
-    const big = p.age < 0.1 ? 0.5 : 0;                 // ④ 튀어오름
-    ptxt(GRADE_TXT[p.grade], x, y, (p.grade === 'perfect' ? 1 : 0.75) + big, GRADE_COL[p.grade]);
-    if (p.early !== null && p.early !== undefined) ptxt(p.early ? '빨라요' : '늦어요', x, y + 9, 0.75, p.early ? '#6fd3ff' : '#ff9a3c');   // ③
+    const pl = p.lane?.length === 2;
+    if (p.age > 0.42 && Math.floor(p.age * 24) % 2) continue;
+    const lvl = (p.grade === 'perfect' ? 1.7 : p.grade === 'empty' ? 1.1 : 1.45) + (p.age < 0.08 ? 0.35 : 0);   // 쾅 하고 커졌다가
+    const txt = GRADE_TXT[p.grade] || '';
+    const half = (txt.length * lvl * 16 * G.dpr * 0.36) / G.S;
+    let x = pl ? laneCX(p.lane) : (p.lane === 'L' ? G.xL : G.xR) + G.laneW / 2;
+    x = Math.max(half + 2, Math.min(G.W - half - 2, x));
+    const y = G.floorY - 30 - Math.round(p.age * 26);
+    neon(txt, x, y, lvl, NEON_COL[p.grade] || '#ffffff');
+    if (p.early !== null && p.early !== undefined) ptxt(p.early ? '빨라요' : '늦어요', x, y + fontPx(1.6) / G.S, 1, p.early ? '#6fd3ff' : '#ff9a3c');
   }
   /* 단추 글자 — 프리텐다드 블랙, 단추 한가운데 큼직하게 */
   drawPianoTexts();
@@ -1467,13 +1598,11 @@ function drawTexts() {
   }
   if (G.phase === 'ready' && G.readyBox) {
     const rb = G.readyBox;
-    ptxt(G.title, G.cx, rb.y + 11, 1, '#ffd23f');
-    ptxt(G.sub, G.cx, rb.y + 23, 0.75, '#c9b8ff', 'center', false);
     const tempo = G.tempo;
     const bpms = tempo.map((x) => x.bpm);
-    ptxt(`${G.jumpOnly ? '한 손' : '두 손(로프+점프)'} · ${DIFFS[G.diff].label} · BPM ${Math.min(...bpms)}~${Math.max(...bpms)}`, G.cx, rb.y + 35, 0.75, '#ffffff', 'center', false);
-    ptxt(G.jumpOnly ? '점프 3칸 — 타일을 눌러요' : '왼쪽 3칸 로프 · 오른쪽 3칸 점프', G.cx, rb.y + 48, 0.75, '#9be36f', 'center', false);
-    ptxt(G.surv ? `하트 ${SURVIVAL.hearts}개 · 마지막 1명 우승` : '긴 타일은 길게 · 띠는 손가락으로 따라가기', G.cx, rb.y + 59, 0.75, '#ffffff', 'center', false);
+    const lh = fontPx(1) / G.S * 1.4, y0 = rb.y + lh * 0.95;   // 줄 간격 = 글자 크기 (대표님 «글씨가 너무 작다 · 통일»)
+    [[G.title, 1.25, '#ffd23f'], [G.sub, 1, '#c9b8ff'], [`${G.jumpOnly ? '한 손' : '두 손(로프+점프)'} · ${DIFFS[G.diff].label} · BPM ${Math.min(...bpms)}~${Math.max(...bpms)}`, 1, '#ffffff'], [G.jumpOnly ? '점프 3칸 — 타일을 눌러요' : '왼쪽 3칸 로프 · 오른쪽 3칸 점프', 1, '#9be36f'], [G.surv ? `하트 ${SURVIVAL.hearts}개 · 마지막 1명 우승` : '긴 타일은 길게 · 띠는 손가락으로 따라가기', 1, '#ffffff']]
+      .forEach(([t, l, col], i) => ptxt(t, G.cx, y0 + i * lh, l, col, 'center', i === 0));
     if (G.surv) ptxt(G.startMs ? `곧 시작! ${Math.max(0, Math.ceil((G.startMs - performance.now()) / 1000))}` : '시작 시각 맞추는 중…', G.cx, rb.y + rb.h - 11, 1, '#ffd23f');
     else if (Math.floor(G.t * 2.2) % 2 === 0) ptxt('아무 단추나 누르면 시작!', G.cx, rb.y + rb.h - 11, 1, '#ffffff');
   } else if (G.phase === 'play' && G.songT < 0) {
@@ -1645,6 +1774,7 @@ export function _debug() {
 }
 
 const CSS = `
+@font-face { font-family: 'Galmuri11'; src: url('https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11-Bold.woff2') format('woff2'); font-display: swap; }
 @font-face { font-family: 'PretendardV'; src: url('https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2'); font-weight: 45 920; font-display: swap; }
 .rb-host { position: relative; width: 100%; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #0a0618; }
 .rb-canvas { display: block; touch-action: none; image-rendering: pixelated; }
@@ -1662,24 +1792,24 @@ const CSS = `
 .rb-star.on { animation: rbStar .4s steps(4) both; }
 @keyframes rbStar { 0% { transform: scale(0.25); opacity: 0 } 60% { transform: scale(1.3) } 100% { transform: scale(1) } }
 .rb-score { font-family: 'PretendardV', sans-serif; font-weight: 900; font-size: 26px; color: #fff; text-shadow: 2px 2px 0 #1b0f0a; }
-.rb-acc { font-size: 13px; color: #c9b8ff; }
+.rb-acc { font-size: 16px; color: #c9b8ff; }
 .rb-best { text-align: center; color: #ff8fd1; font-size: 16px; animation: rbBlink 0.5s steps(2) infinite; }
 @keyframes rbBlink { 50% { opacity: 0.35 } }
 .rb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .rb-cell { background: #150c28; padding: 5px 2px; text-align: center; box-shadow: inset 0 0 0 2px #3d2766; }
 .rb-cell.p .rb-v { color: #ffd23f; } .rb-cell.g .rb-v { color: #6fe3ff; } .rb-cell.o .rb-v { color: #9be36f; } .rb-cell.m .rb-v { color: #ff7a7a; }
-.rb-k { font-size: 10px; color: #c9b8ff; }
-.rb-v { font-size: 17px; }
+.rb-k { font-size: 13px; color: #c9b8ff; }
+.rb-v { font-size: 20px; }
 .rb-reward { display: flex; justify-content: center; gap: 14px; font-size: 16px; }
 .rb-rw.candy { color: #ffb3de; }
 .rb-up { text-align: center; color: #7cf09a; font-size: 18px; animation: rbBlink 0.4s steps(2) infinite; }
 .rb-got { background: #3a2a10; padding: 6px; box-shadow: inset 0 0 0 2px #ffd23f; }
-.rb-got-h { color: #ffd23f; text-align: center; font-size: 14px; margin-bottom: 3px; }
-.rb-got-i { font-size: 13px; text-align: center; }
+.rb-got-h { color: #ffd23f; text-align: center; font-size: 17px; margin-bottom: 3px; }
+.rb-got-i { font-size: 16px; text-align: center; }
 .rb-row { display: flex; gap: 8px; }
 .rb-row > * { flex: 1; }
 .rb-card .pbtn { font-size: 16px; padding: 9px 8px; }
-.rb-spec { position: absolute; left: 6px; right: 6px; top: 46px; background: rgba(20,10,40,0.82); padding: 6px; pointer-events: none; color: #fff4d6; font-size: 12px; box-shadow: 0 0 0 2px #ffdd8e, 0 0 0 4px #600f09; }
+.rb-spec { position: absolute; left: 6px; right: 6px; top: 46px; background: rgba(20,10,40,0.82); padding: 6px; pointer-events: none; color: #fff4d6; font-size: 14px; box-shadow: 0 0 0 2px #ffdd8e, 0 0 0 4px #600f09; }
 .rb-spec-h { text-align: center; color: #ff9a9a; font-size: 13px; margin-bottom: 4px; }
 .rb-rk-list { display: flex; flex-direction: column; gap: 2px; }
 .rb-rk { display: grid; grid-template-columns: 22px 1fr auto 64px; gap: 6px; align-items: center; padding: 2px 4px; background: #150c28; opacity: 0.6; }

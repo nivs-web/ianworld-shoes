@@ -229,6 +229,7 @@ export const S = {
   /* 5번째 게임 줄넘기 챔피언 (2026-11-07) — 나머지 문구는 줄넘기 화면 안에 있다 */
   jumpTitle: '줄넘기 챔피언',
   pianoTitle: '점프 피아노',
+  pianoCardLine: (best, jumps) => `무한 피아노 최고 ${best | 0}개 · 총 ${Number(jumps || 0).toLocaleString('en-US')}번 점프`,
   jumpCardLine: (best, jumps) => `무한 줄넘기 최고 ${best | 0}개 · 총 ${Number(jumps || 0).toLocaleString('en-US')}번 넘음`,
   catch3dLoading: '3D 경기장을 불러오는 중...',
   catch3dLoadFailed: '3D캐치볼을 불러오지 못했습니다. 잠시 후 다시 시도해주세요',
