@@ -27,6 +27,7 @@ import * as Scene from '../core/scene.js';
 import * as Presence from '../services/presence.js';
 import * as Room from '../services/multiplayer.js';
 import { currentUser } from '../services/auth.js';
+import { tunes } from '../services/tuning.js';
 
 /**
  * ★ **게임 코드는 누를 때 받는다.** 신발게임만 하는 사람에게 드래곤 본체를
@@ -188,6 +189,8 @@ export default function DragonGame(nav, opt = {}) {
         m.mount(host, {
           mode,
           difficulty: p.dragonDifficulty || 'normal',
+          /* 운영자 난이도 배율 (2026-11-07) — 적 속도·공격 · 체력 · 출현. 판을 띄울 때의 캐시 값 */
+          tune: tunes('dragon'),
           character: p.dragonCharacter | 0,
           /* 산 아이템의 효과. 게임은 도감을 몰라도 되게 합쳐놓은 수치만 받는다 */
           /* 산 아이템의 효과 + 계단으로 올린 초기 보유량 */

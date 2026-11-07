@@ -11,6 +11,10 @@
 import S from '../config/strings.ko.js';
 import { el, button, backButton, screen, title } from './ui.js';
 import * as Stats from '../services/stats.js';
+import { lazyScreen } from './lazyScreen.js';
+
+/** 운영자 난이도 설정 (2026-11-07, 권반장 지시) — 이 화면이 운영자에게만 보이므로 여기서만 들어간다 */
+const AdminTuning = lazyScreen(() => import('./AdminTuning.js'), S.adminTuningTitle);
 
 /** 'YYYYMMDD' → 'M/D' */
 const md = (k) => `${Number(k.slice(4, 6))}/${Number(k.slice(6, 8))}`;
@@ -25,6 +29,7 @@ export default function AdminStats(nav) {
     Stats.readStats(7).then((d) => { if (!live) return; data = d; nav.refresh(); });
   }
   load();
+  const tuningBtn = () => button(S.adminTuningTitle, () => nav.push(AdminTuning), { primary: true });
 
   return {
     onLeave() { live = false; },
@@ -33,7 +38,7 @@ export default function AdminStats(nav) {
       if (data === undefined) return screen(title(S.adminStatsTitle), el('div.hint', S.loading),
         el('div.spacer'), backButton(S.back, () => nav.back()));
       if (!data) return screen(title(S.adminStatsTitle), el('div.warn', S.adminStatsFailed),
-        button(S.refreshList, load), el('div.spacer'), backButton(S.back, () => nav.back()));
+        button(S.refreshList, load), tuningBtn(), el('div.spacer'), backButton(S.back, () => nav.back()));
 
       const today = data.days[0] ?? { n: 0, peak: 0 };
       const max = Math.max(1, ...data.days.map((d) => d.n));
@@ -53,6 +58,7 @@ export default function AdminStats(nav) {
           ]))),
         el('div.hint', S.adminStatsHint),
         button(S.refreshList, load),
+        tuningBtn(),
         el('div.spacer'),
         backButton(S.back, () => nav.back())
       );

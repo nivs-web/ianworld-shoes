@@ -22,7 +22,9 @@
   const room = Math.random().toString(36).slice(2, 8);
   const extra = (q.get('auto') ? '&auto=1' : '') + (q.get('hit') ? '&hit=' + q.get('hit') : '') + (q.get('diff') ? '&diff=' + q.get('diff') : '');
   const w3d = q.get('w3d') || '';
-  for (const k of ['a', 'b']) document.getElementById(k).src = `_catch-harness.html?mode=duel&side=${k}&room=${room}${extra}${w3d.includes(k) ? '&w3d=1' : ''}`;
+  /* 운영자 난이도 단계를 기기마다 다르게 (&tunea=1&tuneb=99) — 캐시가 서로 달라도 판이 안 깨지는지 */
+  const tuneOf = (k) => (q.get('tune' + k) ? '&tune=' + q.get('tune' + k) : '');
+  for (const k of ['a', 'b']) document.getElementById(k).src = `_catch-harness.html?mode=duel&side=${k}&room=${room}${extra}${tuneOf(k)}${w3d.includes(k) ? '&w3d=1' : ''}`;
   setInterval(() => {
     for (const k of ['a', 'b']) {
       try { document.getElementById('l' + k).textContent = document.getElementById(k).contentDocument.body.dataset.state || ''; } catch (e) {}

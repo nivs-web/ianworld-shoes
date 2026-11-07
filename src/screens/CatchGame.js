@@ -37,15 +37,20 @@ import * as Scene from '../core/scene.js';
 import * as Presence from '../services/presence.js';
 import * as Room from '../services/multiplayer.js';
 import { currentUser } from '../services/auth.js';
+import { tunes } from '../services/tuning.js';
 import { MULTI } from '../config/balance.js';
 import { lazyScreen } from './lazyScreen.js';
 
 const CatchMultiMenu = lazyScreen(() => import('./multi/CatchMultiMenu.js'), S.catchDuelTitle);
 const CatchRanking = lazyScreen(() => import('./CatchRanking.js'), S.catchRankTitle);
 
-/** 혼자 하기 · 대결 공통 — 꾸미기 · 성장 · 선물 (3D캐치볼도 같은 캐릭터라 이것을 쓴다) */
+/**
+ * 혼자 하기 · 대결 공통 — 꾸미기 · 성장 · 선물 (3D캐치볼도 같은 캐릭터라 이것을 쓴다)
+ * + 운영자 난이도 배율 `tune` (2026-11-07) — 던지기 · 받기 · 스피드. 판을 띄울 때의 캐시 값이다(`services/tuning.js`).
+ */
 export function lookOpts(p) {
   return {
+    tune: tunes('catch'),
     team: p.catchTeam || 'red',
     look: p.catchLook || null,
     progress: catchProgress(p),

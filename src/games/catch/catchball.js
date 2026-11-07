@@ -145,8 +145,15 @@ function createGame(host, opts) {
   const PARTNER_Z = 11;
   const GLOVE_Z = 0.35;
   const BALL_R = Art.BALL_R;
+  /**
+   * ★ 운영자 난이도 배율 (2026-11-07, 권반장 지시) — 화면이 `services/tuning.js` 의 `tunes('catch')` 를 넣어 준다.
+   * 1 = 지금 그대로(운영자 화면 50), 1보다 크면 어렵게. 아래 DIFFS 쉬움 · 보통 · 어려움 **셋 모두에 같은 배율**이 걸린다(`tuneDiff`).
+   * 대결은 기기마다 자기 값을 쓴다 — 오가는 것은 도착점 · 비행시간(ms) · 판정 글자뿐이라 값이 달라도 판이 안 깨진다.
+   */
+  const tk = (v) => { v = Number(v); return Number.isFinite(v) && v > 0 ? clamp(v, 0.25, 4) : 1; };
+  const TK = { throw: tk(opts.tune?.throw), catch: tk(opts.tune?.catch), speed: tk(opts.tune?.speed) };
   let EARLY = 0.24;          // 난이도가 넓히고 좁힌다 (applyDiff)
-  const LATE = 0.075;
+  const LATE = 0.075 / TK.catch;
   const REACH_X = 1.82, REACH_YMAX = 2.62, REACH_YMIN = -0.02;
   const reachable = (x, y) => Math.abs(x) <= REACH_X && y <= REACH_YMAX && y >= REACH_YMIN;
   const HOLD_LIMIT = 12;
@@ -166,6 +173,27 @@ function createGame(host, opts) {
     normal: { label: '보통',   T: 1.0,  R: 1.0,  early: 1.0,  spread: 1.0,  typeGap: 1.0, minT: 0.48, per: 10, dirG: 0.2, dirO: 0.6, sweep: 0.55, relTol: 0.14, sideG: 0.08, sideO: 0.22, vMin: 0.6, strikeX: 0.3,  wind: [0.5, 5], windK: 0.5 },
     hard:   { label: '어려움', T: 0.82, R: 0.84, early: 0.78, spread: 1.15, typeGap: 0.6, minT: 0.4,  per: 7,  dirG: 0.15, dirO: 0.52, sweep: 0.42, relTol: 0.1, sideG: 0.06, sideO: 0.17, vMin: 0.75, strikeX: 0.22, wind: [2, 7.5], windK: 1 },
   };
+  /**
+   * 운영자 배율을 한 난이도에 건다. 판정 창(넓을수록 쉽다)은 나누고, 어려워지는 값은 곱한다.
+   *   던지기(throw): 초록 · 주황 폭 dirG/dirO · 흰 줄 폭 relTol · 옆 휨 폭 sideG/sideO ÷ · 실책 빠르기 vMin ×
+   *   받기(catch)  : 글러브 반경 R · 미리 눌러도 되는 시간 early(+ LATE) · 새 구종 간격 typeGap ÷ · 공 오는 폭 spread ×
+   *   스피드(speed): 공 비행시간 T · minT · 화살표 왕복 sweep ÷ (= 빨라진다)
+   * 넓히는 쪽은 그림이 깨지지 않게 자른다 — 주황 · 빨강이 0 이 되거나 흰 줄 폭이 '너무 일찍' 칸(0.45)을 덮지 않게.
+   */
+  function tuneDiff(d) {
+    const t = TK.throw, c = TK.catch, s = TK.speed;
+    const dirO = Math.min(0.97, d.dirO / t), sideO = Math.min(0.8, d.sideO / t);
+    return {
+      ...d,
+      dirO, dirG: Math.min(d.dirG / t, dirO * 0.8),
+      relTol: Math.min(0.45, d.relTol / t),
+      sideO, sideG: Math.min(d.sideG / t, sideO * 0.8),
+      vMin: d.vMin * t,
+      R: d.R / c, early: d.early / c, typeGap: d.typeGap / c, spread: d.spread * c,
+      T: d.T / s, minT: Math.max(0.22, d.minT / s), sweep: Math.max(0.15, d.sweep / s),
+    };
+  }
+  const DIFFS_T = Object.fromEntries(Object.entries(DIFFS).map(([k, d]) => [k, tuneDiff(d)]));
   /** 공 빠르기 — 0 느린 볼 · 1 중간 볼 · 2 빠른 볼. bandK = 흰 줄에서 봐주는 폭(빠를수록 좁다) · sweepK = 화살표 빠르기(작을수록 빠르다) */
   const SPEEDS = [
     { label: '느린 볼', T: 1.35, bandK: 1.15, sweepK: 1.12, calls: ['느린 볼~', '살살 간다~'] },
@@ -424,7 +452,7 @@ function createGame(host, opts) {
   G.diff = DIFFS[wantDiff] ? wantDiff : 'normal';
   G.speed = clamp(local.get('speed', 1) | 0, 0, 2);
   G.pitch = clamp(local.get('pitch', 0) | 0, 0, 3);
-  const DF = () => DIFFS[G.diff];
+  const DF = () => DIFFS_T[G.diff];
   function applyDiff() { EARLY = 0.24 * DF().early; G.best = BESTS[G.diff] | 0; }
   applyDiff();
 
@@ -2713,7 +2741,7 @@ function createGame(host, opts) {
     requestPause,
     remote,
     oppLook(look) { if (D && look) { FRIEND = asLook(look); if (W3) W3.setLooks(null, FRIEND); } },
-    dbg: { G, P, B, M, A, D, WIND, tryCatch, doThrow, catchR, throwBand, flickGeom, confirmDir, releaseOf, releaseThrow, dirZone, setSpeed, setPitch, PR },
+    dbg: { G, P, B, M, A, D, WIND, DF, TK, early: () => EARLY, late: LATE, tryCatch, doThrow, catchR, throwBand, flickGeom, confirmDir, releaseOf, releaseThrow, dirZone, setSpeed, setPitch, PR },
     destroy() {
       dead = true;
       cancelAnimationFrame(raf); cancelAnimationFrame(sheetRaf);

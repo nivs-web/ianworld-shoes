@@ -323,6 +323,53 @@ console.log('\n9) 접속 표시 · 쪽지함 (2026-08-19 11차)');
   }
 }
 
+console.log('\n10) 운영자 난이도 설정 config/tuning (2026-11-07)');
+{
+  /**
+   * 게임이 `tune(game, key)` 로 부르는 키(`src/services/tuning.js` 의 TUNING)와 규칙의 칸이 같아야 한다.
+   * 규칙에 없는 키는 `$other: false` 로 **조용히** 저장이 거부된다 — 운영자 화면에 «저장 실패» 만 뜬다.
+   * 두 규칙 파일(이 문서 · `docs/rtdb-rules.json`)도 같은 것을 들고 있어야 한다(게시는 json 을 붙인다).
+   */
+  const T = rules.config?.tuning;
+  const tsrc = readFileSync('src/services/tuning.js', 'utf8');
+  const tbl = /export const TUNING = \{([\s\S]*?)\n\};/.exec(tsrc)?.[1] ?? '';
+  const want = {};
+  let g = null;
+  for (const ln of tbl.split(/\r?\n/)) {
+    const gm = /^\s{2}(\w+): \[/.exec(ln);
+    if (gm) { g = gm[1]; want[g] = []; continue; }
+    const km = /key: '(\w+)'/.exec(ln);
+    if (g && km) want[g].push(km[1]);
+  }
+  if (!T) bad('config/tuning 규칙이 없다 — 운영자 난이도 설정이 저장도 읽기도 안 된다');
+  else if (!Object.keys(want).length) bad('tuning.js 의 TUNING 표를 못 읽었다');
+  else {
+    if ((T['.read'] ?? '').includes('auth != null')) ok('난이도 읽기 — 로그인하면 읽는다');
+    else bad('난이도 읽기가 막혀 있다 — 모두 50 으로만 돈다');
+    if ((T['.write'] ?? '').includes("root.child('admins').child(auth.uid).val() == true")) ok('난이도 쓰기 — 운영자만');
+    else bad('난이도 쓰기가 운영자로 막혀 있지 않다');
+    if (T.$other?.['.validate'] === false) ok('모르는 게임은 거부');
+    else bad('모르는 게임 칸을 아무나 만들 수 있다');
+    for (const [game, keys] of Object.entries(want)) {
+      const G = T[game];
+      if (!G) { bad(`난이도.${game} — 규칙에 없다`); continue; }
+      if (G.$other?.['.validate'] === false) ok(`난이도.${game} — 모르는 키는 거부`);
+      else bad(`난이도.${game} — 모르는 키가 통과한다`);
+      for (const k of keys) {
+        const v = G[k]?.['.validate'] ?? '';
+        if (v.includes('isNumber') && v.includes('>= 1') && v.includes('<= 99') && v.includes('% 1 == 0')) ok(`난이도.${game}.${k} — 정수 1~99`);
+        else bad(`난이도.${game}.${k} — 규칙에 없거나 1~99 정수 검사가 없다`);
+      }
+      for (const k of Object.keys(G).filter((x) => !x.startsWith('.') && x !== '$other')) {
+        if (!keys.includes(k)) bad(`난이도.${game}.${k} — 규칙에만 있다 (tuning.js 에 없음)`);
+      }
+    }
+    const jr = JSON.parse(readFileSync('docs/rtdb-rules.json', 'utf8')).rules.config;
+    if (JSON.stringify(jr) === JSON.stringify(rules.config)) ok('두 규칙 파일의 config 가 같다');
+    else bad('FIREBASE_RULES.md 와 rtdb-rules.json 의 config 가 다르다');
+  }
+}
+
 console.log('');
 if (fails) { console.error(`규칙 검사 실패 — ${fails}건`); process.exit(1); }
 console.log('규칙과 클라이언트가 일치한다');

@@ -199,6 +199,8 @@ async function boot() {
     import('./services/presence.js').then((P) => P.startLater(() => {
       // 쪽지함은 **붙은 뒤에** 구독한다 — 먼저 부르면 RTDB 청크를 앞당겨 받는다
       import('./screens/inboxPopups.js').then((I) => I.start(nav)).catch(() => {});
+      // 운영자 난이도 설정 — 붙은 뒤 한 번만 읽어 캐시한다(구독 안 함). 게임은 캐시를 읽는다 (2026-11-07)
+      import('./services/tuning.js').then((T) => T.loadTuning()).catch(() => {});
     })).catch(() => {});
   };
 

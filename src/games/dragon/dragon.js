@@ -12733,13 +12733,28 @@ const DIFFS = {
      쉬움·보통은 그대로다 — 어려움을 고른 사람에게만 더 얹는다 */
   hard:   { count: 1.28, speed: 1.18, hp: 1.30, atk: 1.30, boss: 1.44, coin: 1.4, pace: 1.00 },
 };
+/**
+ * ★ **운영자 난이도 배율** (2026-11-07, 권반장 지시 — *"드래곤 스트라이커는 너무 쉽고"*).
+ * 화면이 `services/tuning.js` 의 `tunes('dragon')` 를 `opts.tune` 으로 넣어 준다(`mount`).
+ * 1 = 지금 그대로(운영자 화면 50), 1보다 크면 어렵게. 위 DIFFS 쉬움 · 보통 · 어려움 **셋 모두에 같은 배율**을 곱한다:
+ *   enemy : 적 속도(speed — 날개좀비 · 화살) × · 적의 한 방(atk) ×
+ *   hp    : 잡몹 맷집(hp) × · 중간보스 · 보스 맷집(boss) ×
+ *   spawn : 물결 한 번에 나오는 수(count) × · 물결이 오는 빈도(pace — 결투에는 원래 안 쓴다) ×
+ * 금화 배수(coin)는 건드리지 않는다 — 난이도를 고른 사람의 보상이지 운영자 손잡이가 아니다.
+ * 결투는 기기마다 자기 값을 쓴다 — 각자 따로 뛰고 점수만 오가므로 값이 달라도 판이 안 깨진다.
+ */
+const TUNE = { enemy: 1, hp: 1, spawn: 1 };
+function setTuning(t){
+  const f = (v) => { v = Number(v); return Number.isFinite(v) && v > 0 ? clamp(v, 0.25, 4) : 1; };
+  TUNE.enemy = f(t && t.enemy); TUNE.hp = f(t && t.hp); TUNE.spawn = f(t && t.spawn);
+}
 function diffOf() { return DIFFS[DG.difficulty] || DIFFS.normal; }
-function diffScale() { return diffOf().count; }
-function diffSpeed() { return diffOf().speed; }
-function diffHp() { return diffOf().hp; }
-function diffAtk() { return diffOf().atk; }     // 적의 공격력
-function diffBoss() { return diffOf().boss; }   // 보스 체력
-function diffPace() { return diffOf().pace; }   // 물결이 오는 빈도(시각표를 재는 속도)
+function diffScale() { return diffOf().count * TUNE.spawn; }
+function diffSpeed() { return diffOf().speed * TUNE.enemy; }
+function diffHp() { return diffOf().hp * TUNE.hp; }
+function diffAtk() { return diffOf().atk * TUNE.enemy; }     // 적의 공격력
+function diffBoss() { return diffOf().boss * TUNE.hp; }      // 보스 체력
+function diffPace() { return diffOf().pace * TUNE.spawn; }   // 물결이 오는 빈도(시각표를 재는 속도)
 /**
  * ★ **어려울수록 금화를 더 준다.** (2026-08-26)
  *
@@ -12946,6 +12961,7 @@ export function mount(host, opts = {}) {
 
   /* 결투는 둘이 같은 조건이어야 겨루기가 된다 — 난이도를 고른 값으로 두면 안 된다 */
   DG.difficulty = opts.mode === 'duel' ? DUEL.DIFFICULTY : (opts.difficulty || 'normal');
+  setTuning(opts.tune);                // 운영자 난이도 배율 — 없으면 1 (지금 그대로)
   DG.onFinish = opts.onFinish || (() => {});
   DG.onExit = opts.onExit || (() => {});
   DG.onCharacter = opts.onCharacter || (() => {});
@@ -13291,6 +13307,11 @@ export const __test = {
   get scene() { return scenes && scenes.current ? scenes.current.constructor.name : null; },
   get stage() { return scenes && scenes.current ? scenes.current.stage : null; },
   get difficulty() { return DG.difficulty; },
+  /* 검사용 — 운영자 배율까지 곱한 지금 난이도 값 (tools/_rm/tuning-run.mjs) */
+  get diff() {
+    return { count: diffScale(), speed: diffSpeed(), hp: diffHp(), atk: diffAtk(), boss: diffBoss(), pace: diffPace(),
+             tune: { ...TUNE }, zombieHp: enemyHp(46), midBossHp: midBossHpOf(1, 1) };
+  },
   get coins() { return RUN.coins; },
   get boundCount() { return bound.length; },
   /* 검사용 — 그 스테이지의 보스를 하나 만들어 준다 (열 마리가 정말 다른지 보려면 필요하다) */

@@ -34,6 +34,9 @@ const PORT = server.address().port;
 const args = process.argv.slice(2);
 const THREE = args.includes('--3d');
 const ROUNDS = Number(args.find((a) => /^\d+$/.test(a)) || 3);
+/* --tune 1,99 — 왼쪽 기기는 운영자 난이도 1, 오른쪽은 99 (캐시가 서로 달라도 판이 안 깨지는지, 2026-11-07) */
+const TUNE = args.includes('--tune') ? String(args[args.indexOf('--tune') + 1] || '').split(',') : null;
+const tuneQ = TUNE ? `&tunea=${TUNE[0] || 50}&tuneb=${TUNE[1] || 50}` : '';
 const exe = process.env.CHROME_PATH;
 /* 플레이우라이트 전용 브라우저가 없으면 PC 에 깔린 크롬·엣지로 돈다 */
 const browser = await chromium.launch(exe ? { executablePath: exe } : {})
@@ -49,7 +52,7 @@ for (let round = 1; round <= ROUNDS; round++) {
   const diff = ['easy', 'normal', 'hard'][(round - 1) % 3];
   /* 3D: 홀수 판은 둘 다 3D, 짝수 판은 왼쪽만 3D */
   const w3d = THREE ? (round % 2 ? 'ab' : 'a') : '';
-  await page.goto(`http://127.0.0.1:${PORT}/tools/_catch-duel.html?auto=1&hit=${hit}&diff=${diff}${w3d ? '&w3d=' + w3d : ''}`);
+  await page.goto(`http://127.0.0.1:${PORT}/tools/_catch-duel.html?auto=1&hit=${hit}&diff=${diff}${w3d ? '&w3d=' + w3d : ''}${tuneQ}`);
 
   const read = () => page.evaluate(() => ['a', 'b'].map((k) => {
     const d = document.getElementById(k).contentDocument;
@@ -74,6 +77,10 @@ for (let round = 1; round <= ROUNDS; round++) {
     if (!a.st.ended || !b.st.ended) problems.push(`안 끝났다 (a:${a.st.phase} b:${b.st.phase})`);
     if (a.st.win === b.st.win) problems.push(`승패가 겹친다 (a:${a.st.win} b:${b.st.win})`);
     if (a.st.diff !== diff || b.st.diff !== diff) problems.push(`난이도가 안 들어갔다 (a:${a.st.diff} b:${b.st.diff})`);
+    if (TUNE) {
+      const f = (lv) => Math.pow(1.015, Number(lv || 50) - 50);
+      if (Math.abs(a.st.tk - f(TUNE[0])) > 1e-6 || Math.abs(b.st.tk - f(TUNE[1])) > 1e-6) problems.push(`운영자 배율이 안 들어갔다 (a:${a.st.tk} b:${b.st.tk})`);
+    }
     if (a.st.score !== b.st.oppScore || b.st.score !== a.st.oppScore) problems.push(`점수가 어긋난다 a:${a.st.score}/${b.st.oppScore} b:${b.st.score}/${a.st.oppScore}`);
     if (a.st.lives !== b.st.oppLives || b.st.lives !== a.st.oppLives) problems.push(`공 수가 어긋난다 a:${a.st.lives}/${b.st.oppLives} b:${b.st.lives}/${a.st.oppLives}`);
     const loser = a.st.win ? b : a;

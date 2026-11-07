@@ -133,6 +133,7 @@ function clone(v) { return v === undefined ? undefined : JSON.parse(JSON.stringi
 function allow(db, uid, path, newValue) {
   const parts = FakeDb.parts(path);
   if (parts[0] === 'stats') return statsOk(db, uid, parts, newValue);
+  if (parts[0] === 'config') return configOk(db, uid, parts, newValue);
   if (parts[0] !== 'rooms') return true;
   const code = parts[1];
   const room = db.read(`rooms/${code}`);
@@ -228,6 +229,24 @@ function statsOk(db, uid, parts, v) {
   if (leaf === 'n') return typeof val === 'number' && val === (Number(old) || 0) + 1;
   if (leaf === 'peak') return typeof val === 'number' && val > (Number(old) || 0) && val <= (Number(db.read('stats/live')) || 0);
   return false;
+}
+
+/**
+ * ★ **운영자 난이도 설정 칸 규칙 흉내** (2026-11-07, `docs/rtdb-rules.json` 의 `config/tuning`).
+ * 쓰기 = `admins/{uid} == true` 만 · 값 = 정수 1~99 · 정해진 게임/키 밖은 거부. 지우기(null)는 운영자면 된다.
+ * 키 표는 `src/services/tuning.js` 의 TUNING 과 같다(`tools/_rules-qa.mjs` 가 규칙 ↔ TUNING 을 대조한다).
+ */
+const TUNING_KEYS = { catch: ['throw', 'catch', 'speed'], dragon: ['enemy', 'hp', 'spawn'], jump: ['timing', 'density', 'speed', 'damage'] };
+function configOk(db, uid, parts, v) {
+  if (parts[1] !== 'tuning' || db.read(`admins/${uid}`) !== true) return false;
+  const lv = (x) => x === null || x === undefined || (typeof x === 'number' && Number.isInteger(x) && x >= 1 && x <= 99);
+  const game = (g, o) => TUNING_KEYS[g] && (o === null || o === undefined
+    || (typeof o === 'object' && Object.entries(o).every(([k, x]) => TUNING_KEYS[g].includes(k) && lv(x))));
+  const [, , g, k, extra] = parts;
+  if (extra !== undefined) return false;
+  if (k !== undefined) return !!TUNING_KEYS[g]?.includes(k) && lv(v);
+  if (g !== undefined) return !!game(g, v);
+  return v === null || (typeof v === 'object' && Object.entries(v).every(([gg, o]) => game(gg, o)));
 }
 
 export function makeFb(db, uid) {

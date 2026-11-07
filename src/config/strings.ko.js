@@ -731,6 +731,17 @@ export const S = {
   adminTodayPeak: (n) => `오늘 최대 동시접속  ${n.toLocaleString('en-US')}명`,
   adminLast7: '최근 7일',
   adminDayRow: (n, peak) => `${n.toLocaleString('en-US')}명 · 최대 ${peak.toLocaleString('en-US')}`,
+  /* 운영자 난이도 설정 (2026-11-07, 권반장 지시) — 게임별 손잡이 1~99, 50 = 지금 그대로 */
+  adminTuningTitle: '난이도 설정',
+  adminTuningHint: '50 = 지금 그대로 · 1칸 = 1.5%',
+  adminTuningHint2: '다른 사람은 다음 접속부터 바뀝니다',
+  adminTuningReset: '50으로 되돌리기',
+  adminTuningSaving: '저장 중...',
+  adminTuningSaved: '저장됨',
+  adminTuningFailed: '저장 실패 — 운영자 계정·서버 규칙 확인',
+  adminTuningMid: '기본',
+  adminTuningHarder: (x) => `어렵게 ×${x.toFixed(2)}`,
+  adminTuningEasier: (x) => `쉽게 ×${x.toFixed(2)}`,
   /* 친구 (2026-11-04) — 현재접속자 대신 내 친구만 */
   friendsTitle: '친구',
   friendsCount: (on, all) => `접속 중 ${on}명 · 친구 ${all}명`,

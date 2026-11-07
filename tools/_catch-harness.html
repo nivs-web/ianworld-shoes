@@ -5,6 +5,7 @@
     ?mode=duel&side=a|b           대결 한쪽 — _catch-duel.html 이 둘을 띄워 BroadcastChannel 로 잇는다
     &auto=1                       자동 플레이 (잡기 성공률 &hit=0.8)
     &w3d=1                        3D 화면으로 (3D캐치볼 — world3d.js · three.js 를 node_modules 에서 읽는다)
+    &tune=1~99                    운영자 난이도 단계(던지기 · 받기 · 스피드 셋 다) — 대결 두 기기 값이 달라도 되는지 볼 때
   저장소 루트에서 정적 서버로 띄운다:  python -m http.server 8766
 -->
 <html lang="ko">
@@ -31,7 +32,10 @@ const side = q.get('side') || 'a';
 const auto = q.get('auto') === '1';
 const hit = Number(q.get('hit') ?? 0.85);
 const w3d = q.get('w3d') === '1' ? (await import('/src/games/catch/world3d.js')).createWorld3D : null;
-const view = w3d ? { world3d: w3d } : {};
+/* 운영자 난이도 단계 → 배율 (services/tuning.js 와 같은 식: 1.015^(단계-50)) */
+const tuneLv = q.get('tune');
+const tf = tuneLv ? Math.pow(1.015, Number(tuneLv) - 50) : null;
+const view = { ...(w3d ? { world3d: w3d } : {}), ...(tf ? { tune: { throw: tf, catch: tf, speed: tf } } : {}) };
 window.CB = CB;
 window.__log = [];
 const host = document.getElementById('host');
@@ -84,7 +88,7 @@ if (auto) {
     const D = d.D;
     document.body.dataset.state = JSON.stringify({
       w3d: !!document.querySelector('.cb-root.cb-3d'),
-      phase: G.phase, score: G.score, lives: G.lives, diff: G.diff,
+      phase: G.phase, score: G.score, lives: G.lives, diff: G.diff, tk: d.TK ? d.TK.throw : null,
       ...(D ? { seq: D.seq, mySeq: D.mySeq, rally: D.rally, oppLives: D.opp.lives, oppScore: D.opp.score, ended: D.ended, win: D.win, reason: D.reason } : {}),
     });
   }, 8);

@@ -2647,3 +2647,24 @@
 .admin-day-k { opacity: .8; }
 .admin-day-bar { display: block; height: 10px; min-width: 2px; background: #e8a33a; }
 .admin-day-v { white-space: nowrap; font-size: 12px; }
+
+/* ── 운영자 난이도 설정 (2026-11-07) — 게임별 묶음 · 항목마다 [-] 숫자 [+] ── */
+.tune-status { min-height: 18px; text-align: center; font-size: 14px; font-weight: bold; color: var(--c-panel-dark); }
+.tune-status.saved { color: var(--c-good); }
+.tune-status.failed { color: #ff6b5e; }
+.tune-game { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 2px solid var(--c-line); background: rgba(255, 255, 255, .03); }
+.tune-game-name { font-size: 20px; font-weight: bold; color: var(--c-panel); text-align: center; letter-spacing: 1px; }
+.tune-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px dashed rgba(245, 217, 160, .18); }
+.tune-label { flex: 1; min-width: 0; }
+.tune-name { font-size: 18px; font-weight: bold; color: var(--c-text-light); }
+.tune-desc { font-size: 11px; color: var(--c-panel-dark); line-height: 1.35; word-break: keep-all; }
+.tune-x { font-size: 13px; font-weight: bold; color: var(--c-panel-dark); margin-top: 2px; }
+.tune-row.harder .tune-x { color: #ff8a5c; }
+.tune-row.easier .tune-x { color: #8fd3ff; }
+.tune-ctrl { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+/* 길게 누르는 단추 — 누르는 동안 화면이 끌려 올라가거나 글자가 선택되면 안 된다 */
+.pbtn.tune-btn { width: 48px; height: 48px; padding: 0; font-size: 28px; line-height: 1; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.tune-val { width: 54px; text-align: center; font-size: 30px; font-weight: bold; color: #ffd86b; font-variant-numeric: tabular-nums; }
+.tune-row.harder .tune-val { color: #ff8a5c; }
+.tune-row.easier .tune-val { color: #8fd3ff; }
+.pbtn.tune-reset { font-size: 15px; padding: 8px 12px; }
