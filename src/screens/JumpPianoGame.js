@@ -39,7 +39,7 @@ export default function JumpPianoGame(nav, params = {}) {
         const st = pianoLoad(), j = J.jr();
         const bk = `${st.ctrl}:${st.diff}:${mode === 'endless' ? 'endless' : stageNo}`;
         m.mount(host, {
-          mode, stageNo, diff: st.diff, ctrl: st.ctrl, tune: tunes('jump'),
+          mode, stageNo, diff: st.diff, ctrl: st.ctrl, tune: tunes('piano'),
           look: J.look(j), rope: J.rope(j), items: {}, opts: j.opts,
           best: st.best[bk] | 0, comboRec: 0, hasNext: false,
           onFinish: (r) => {

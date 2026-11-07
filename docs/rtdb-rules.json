@@ -334,6 +334,14 @@
           },
           "$other": { ".validate": false }
         },
+        "piano": {
+          "timing": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "density": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "damage": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "scroll": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "$other": { ".validate": false }
+        },
         "$other": { ".validate": false }
       }
     },

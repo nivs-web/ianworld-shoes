@@ -60,6 +60,14 @@ export const TUNING = {
     { key: 'damage', name: '피해', desc: '걸렸을 때 깎이는 양' },
     { key: 'scroll', name: '내려오는 속도 · 간격', desc: '동그라미가 떨어지는 빠르기 — 빠를수록 동그라미 사이 간격도 넓어짐' },
   ],
+  /* 점프 피아노 (2026-11-07) — 줄넘기 챔피언과 따로 맞춘다 */
+  piano: [
+    { key: 'timing', name: '판정', desc: '박자 판정 엄격함' },
+    { key: 'density', name: '타일 촘촘함', desc: '타일과 타일 사이 간격' },
+    { key: 'speed', name: '곡 빠르기', desc: '곡 · 타일 빠르기' },
+    { key: 'damage', name: '피해', desc: '놓쳤을 때 깎이는 양' },
+    { key: 'scroll', name: '내려오는 속도 · 간격', desc: '타일이 떨어지는 빠르기 — 빠를수록 타일 사이 간격도 넓어짐' },
+  ],
 };
 
 /** 운영자 화면에 묶어 보여 줄 순서와 이름 */
@@ -67,6 +75,7 @@ export const TUNING_GAMES = [
   { id: 'catch', name: '캐치볼' },
   { id: 'dragon', name: '드래곤 스트라이커' },
   { id: 'jump', name: '줄넘기 챔피언' },
+  { id: 'piano', name: '점프 피아노' },
 ];
 
 const ROOT = 'config/tuning';

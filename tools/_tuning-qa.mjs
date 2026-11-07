@@ -41,7 +41,7 @@ console.log('1) 배율 · 기본값');
   ok('아무것도 없으면 50', T.level('catch', 'throw') === 50 && T.tune('dragon', 'hp') === 1);
   const t = T.tunes('catch');
   ok('tunes(catch) = 세 키 모두 1', Object.keys(t).join() === 'throw,catch,speed' && Object.values(t).every((v) => v === 1));
-  ok('키 표 — catch 3 · dragon 3 · jump 5(내려오는 속도 포함)', T.TUNING.catch.length === 3 && T.TUNING.dragon.length === 3 && T.TUNING.jump.length === 5);
+  ok('키 표 — catch 3 · dragon 3 · jump 5 · piano 5', T.TUNING.catch.length === 3 && T.TUNING.dragon.length === 3 && T.TUNING.jump.length === 5 && T.TUNING.piano?.length === 5);
   ok('로그인 전 loadTuning → 캐시(전부 50), 실패해도 안 터진다', (await T.loadTuning()) && T.level('jump', 'speed') === 50);
 }
 

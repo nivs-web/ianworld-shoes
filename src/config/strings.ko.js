@@ -725,7 +725,7 @@ export const S = {
   stateShortIdle: '대기중',
   onlineCount: (n) => `현재 ${n}명 접속중`,
   /* 운영자 통계 (2026-11-04) — 현재접속자 목록 대신 숫자만 */
-  adminStatsTitle: '통계',
+  adminStatsTitle: '관리자페이지',   // 2026-11-07 대표님 «[통계] → 관리자페이지»
   adminStatsFailed: '통계를 읽지 못했습니다 (운영자 계정·서버 규칙을 확인하세요)',
   adminTodayVisitors: (n) => `오늘 접속자  ${n.toLocaleString('en-US')}명`,
   adminLiveNow: (n) => `지금 동시접속  ${n.toLocaleString('en-US')}명`,
