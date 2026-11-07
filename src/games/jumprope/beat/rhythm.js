@@ -71,7 +71,7 @@ export function mount(host, opts) {
   const jumpOnly = (surv ? opts.room?.ctrl : opts.ctrl) !== 'both';
   const ctrl = jumpOnly ? 'jump' : 'both';
   /* 운영자 난이도(services/tuning — 1~99, 50 = 1배). 서바이벌은 모두 같은 채보여야 하므로 촘촘함 · 빠르기는 끈다 */
-  const T = { timing: 1, density: 1, speed: 1, damage: 1, ...(opts.tune || {}) };
+  const T = { timing: 1, density: 1, speed: 1, damage: 1, scroll: 1, ...(opts.tune || {}) };
   if (surv) { T.density = 1; T.speed = 1; }
   const chart = surv
     ? buildChart('endless', diff, { seed: (opts.seed | 0) || 1, bars: SURVIVAL.bars, tempo: survTempo, ctrl })      // 방 seed — 모두 같은 줄
@@ -102,7 +102,7 @@ export function mount(host, opts) {
 
   G = {
     host, cv, ctx: cv.getContext('2d'), buf, b: buf.getContext('2d'), kidCv, k: kidCv.getContext('2d'), kidBack, kb: kidBack.getContext('2d'),
-    opts, diff, stage, chart, judge, music, comic, jumpOnly, winScale, apPtr: 0, lastLift: 0, lastTheta: Math.PI,
+    opts, diff, stage, chart, judge, music, comic, jumpOnly, winScale, apPtr: 0, lastLift: 0, lastTheta: Math.PI, scrollK: T.scroll, pxPerBeat: 60,
     tempo: chart.tempo || (surv ? survTempo : [{ bar: 0, bpm: 120 }]),   // 채보와 같은 지도(운영자 빠르기 배율 포함)
     title: surv ? `멀티 서바이벌 · ${DIFFS[diff].en}` : opts.mode === 'endless' ? `${ENDLESS.name} · ${DIFFS[diff].en}` : opts.mode === 'test' ? `${opts.custom?.name || '내 스테이지'} (시험)` : `${stage.no}. ${stage.name}`,
     sub: surv ? `♪ ${songTitle(survSong(opts.seed))}` : opts.mode === 'endless' ? `♪ ${songTitle(endlessSong(opts.song))}` : stage ? `${stage.en} · ${stage.song.title}` : 'CUSTOM',
@@ -632,8 +632,12 @@ function resize() {
   G.btnL = { x: 3, y: G.btnTop + 4, w: bw, h: btnArea - 8 };
   G.btnR = G.jumpOnly ? { x: 3, y: G.btnTop + 4, w: G.W - 6, h: btnArea - 8 } : { x: G.W - 3 - bw, y: G.btnTop + 4, w: bw, h: btnArea - 8 };
   G.pauseBox = { x: G.W - 17, y: 3, w: 14, h: 14 };
+  /* 내려오는 속도 (2026-11-07 대표님 «느리고 다닥다닥 → 빠르게, 간격 넓게»): 레인에 보이는 박 수로 정한다.
+     빠를수록(운영자 «내려오는 속도» ↑) 한 박이 차지하는 길이가 길어져 줄 사이 간격도 저절로 넓어진다 */
+  const beatsVisible = ({ easy: 3.5, normal: 3, hard: 2.6 }[G.diff] || 3) / Math.max(0.4, Math.min(2.5, G.scrollK || 1));   // 2026-11-07 2차: 더 빠르게 · 동그라미 간격 넓게
+  G.pxPerBeat = Math.max(16, (G.floorY - G.hudH) / beatsVisible);
   /* 노트가 판정선까지 떨어지는 칸 수 → 대략의 초(첫 BPM 기준) — 기술 이름 띠를 그만큼 먼저 띄운다 */
-  const stepsVisible = (G.floorY - G.hudH) / (DIFFS[G.diff].pxPerBeat / 4);
+  const stepsVisible = (G.floorY - G.hudH) / (G.pxPerBeat / 4);
   G.leadSec = Math.min(1.8, Math.max(0.6, (stepsVisible / 4) * (60 / (G.tempo?.[0]?.bpm || 120)) * 0.7));
 }
 
@@ -654,11 +658,11 @@ function render() {
   blitKid(G.kidCv);                // 몸 + 앞쪽 줄은 레인 위에 — 줄이 늘 또렷하게
   drawNotes();                     // 노트는 맨 위
   drawTargets();
-  drawApproach();                  // 반투명 다가오는 원 — 판정 원 위에
+  /* 다가오는 원은 끔(2026-11-07 대표님 — 동그라미 버튼이 점선 원에 딱 겹칠 때가 신호) */
   for (const rg of G.fun.rings) {   // ⑤ PERFECT 충격파 고리
     const cx = (rg.lane === 'L' ? G.xL : G.xR) + G.laneW / 2 - 0.5;
-    b.save(); b.globalAlpha = Math.max(0, 1 - rg.age / 0.35);
-    pring(b, cx, G.floorY, Math.round(G.laneW / 2 + 3 + rg.age * 60), 2, '#ffffff');
+    b.save(); b.globalAlpha = Math.max(0, 0.4 - rg.age);
+    pring(b, cx, G.floorY, Math.round(G.laneW / 2 + 3 + rg.age * 60), 1, '#ffffff');
     b.restore();
   }
   G.comic.drawFront(b);             // 비 · 눈 · 번개 · 새 · 의성어 · 줄 바닥 «탁!» · 착지 «퍽»
@@ -687,7 +691,7 @@ function currentEnergy() {
 }
 
 function nowStep() { return stepAtTime(G.chart.steps, G.songT); }
-function pxPerStep() { return DIFFS[G.diff].pxPerBeat / 4; }
+function pxPerStep() { return G.pxPerBeat / 4; }
 
 function drawLanes() {
   const b = G.b;
@@ -744,14 +748,13 @@ function drawApproach() {
     b.save();
     /* 안쪽 원 — 노트가 가까울수록 차오른다 */
     const ri = Math.round((R - 4) * (1 - p));
-    if (ri > 0) { b.globalAlpha = 0.3 + 0.3 * (1 - p); pring(b, cx, cy, ri, 99, fillC); }
+    if (ri > 0) { b.globalAlpha = 0.12 + 0.16 * (1 - p); pring(b, cx, cy, ri, 99, fillC); }
     /* 바깥 고리 — 크게 시작해 판정 원으로 줄어든다 */
     const rr = R + Math.round(p * Math.min(12, w * 0.5));                 // 가장자리 여백(edge) 안에 들어갈 만큼
-    b.globalAlpha = 0.45 + 0.45 * (1 - p);
-    pring(b, cx, cy, rr + 1, 4, OUT);
-    pring(b, cx, cy, rr, 2, ringC);
+    b.globalAlpha = 0.12 + 0.2 * (1 - p);              // 대표님 «하얀 동그라미는 거의 투명하게»
+    pring(b, cx, cy, rr, 1, ringC);
     /* 지금! — PERFECT 창 안 */
-    if (Math.abs(dt) <= perfect) { b.globalAlpha = 0.9; pring(b, cx, cy, R + 3, 2, '#ffffff'); }
+    if (Math.abs(dt) <= perfect) { b.globalAlpha = 0.35; pring(b, cx, cy, R + 3, 1, '#ffffff'); }
     b.restore();
   }
 }
@@ -771,16 +774,83 @@ function drawNotes() {
     if (n.done || (judged && judged.has?.(n.id))) { if (n.kind !== 'hold' || endS < ns) continue; }
     const y = Math.round(G.floorY - (n.step - ns) * pps);
     const holdPx = n.kind === 'hold' ? Math.round((endS - n.step) * pps) : 0;
-    if (n.lane === 'B') BA.drawNote(b, 'B', n.kind, G.xL, y, G.xR + G.laneW - G.xL, { holdPx, t: G.t, laneW: G.laneW });
-    else BA.drawNote(b, n.lane, n.kind, n.lane === 'L' ? G.xL : G.xR, y, G.laneW, { holdPx, t: G.t, hit: n.holding });
+    if (n.lane === 'B') { drawBall(b, 'B', G.xL, y, holdPx, false); drawBall(b, 'B', G.xR, y, holdPx, false); }
+    else drawBall(b, n.lane, n.lane === 'L' ? G.xL : G.xR, y, holdPx, n.holding);
     if (n.gold) drawGold(b, (n.lane === 'L' ? G.xL : G.xR) + G.laneW / 2 - 0.5, y);
   }
+}
+
+/* ---------- 동그라미 버튼 노트 · 점선 판정 원 (2026-11-07 대표님) ----------
+ * «내려오는 걸 원형 버튼으로 — 원 안에 줄넘기 모양이 있고, 그게 투명한 점선에 딱 맞으면 그때 딱 맞춰 누르게.»
+ * 노트 원과 점선 원은 **반지름이 같다**(ballR) — 노트가 점선 원에 꼭 겹치는 순간이 판정 시각(PERFECT). */
+const BALL = {
+  R: { d: '#a83a0c', m: '#ff7a1a', l: '#ffb35c', w: '#fff3dc' },   // JUMP — 주황
+  L: { d: '#173a8f', m: '#3a7be8', l: '#8fbaff', w: '#eaf3ff' },   // ROPE — 파랑
+  B: { d: '#8a5e00', m: '#ffc21a', l: '#ffe27a', w: '#fffbe6' },   // 같이 — 금
+};
+const ballR = () => Math.round(G.laneW / 2 + 2);
+function drawBall(b, lane, x, y, holdPx, hit) {
+  const P = BALL[lane] || BALL.R;
+  const cx = x + G.laneW / 2 - 0.5, R = ballR();
+  /* 꾹 노트 꼬리 — 위로 이어지는 띠 */
+  if (holdPx > 0) {
+    const tw = 10, tx = Math.round(cx - tw / 2);
+    rect(b, tx - 1, y - holdPx, tw + 2, holdPx, OUT);
+    rect(b, tx, y - holdPx, tw, holdPx, hit ? P.l : P.m);
+    rect(b, tx, y - holdPx, 2, holdPx, P.l);
+    rect(b, tx + tw - 2, y - holdPx, 2, holdPx, P.d);
+    pring(b, cx, y - holdPx, Math.round(tw / 2) + 1, 99, OUT); pring(b, cx, y - holdPx, Math.round(tw / 2), 99, P.m);
+  }
+  /* 버튼 몸통 — 외곽선 · 아래 그늘 · 윗빛 */
+  pring(b, cx, y, R + 1, 99, OUT);
+  pring(b, cx, y, R, 99, P.d);
+  pring(b, cx, y - 1, R - 1, 99, hit ? P.l : P.m);
+  pring(b, cx, y - 1, R - 3, 1, P.l);
+  rect(b, Math.round(cx - R + 4), Math.round(y - R + 3), 3, 2, P.w);
+  rect(b, Math.round(cx - R + 3), Math.round(y - R + 5), 2, 2, P.w);
+  /* 안의 줄넘기 그림 — 두 손잡이 + 줄(JUMP 는 아래로 처진 줄, ROPE 는 머리 위 고리, 같이는 X) */
+  const ix = Math.round(cx), iy = Math.round(y - 1);
+  const handle = (hx, hy) => { rect(b, hx - 1, hy - 1, 4, 8, OUT); rect(b, hx, hy, 2, 6, P.w); rect(b, hx, hy + 2, 2, 2, P.d); };
+  if (lane === 'B') {
+    for (let i = -5; i <= 5; i++) { rect(b, ix + i - 1, iy + i - 1, 3, 3, OUT); rect(b, ix + i - 1, iy - i - 1, 3, 3, OUT); }
+    for (let i = -5; i <= 5; i++) { rect(b, ix + i, iy + i, 1, 1, P.w); rect(b, ix + i, iy - i, 1, 1, P.w); }
+    return;
+  }
+  handle(ix - 8, iy - 5);
+  handle(ix + 7, iy - 5);
+  const sag = lane === 'L' ? -1 : 1;                       // ROPE 는 위로 둥근 고리
+  const y0 = lane === 'L' ? iy - 4 : iy + 1;
+  for (let i = -6; i <= 6; i++) {
+    const yy = y0 + sag * Math.round(4 * (1 - (i / 6) ** 2));
+    rect(b, ix + i - 0, yy - 1, 1, 4, OUT);
+  }
+  for (let i = -6; i <= 6; i++) {
+    const yy = y0 + sag * Math.round(4 * (1 - (i / 6) ** 2));
+    rect(b, ix + i, yy, 1, 2, i % 2 ? P.w : P.l);
+  }
+}
+/** 판정 원 — 거의 투명, 점선만. 누르면 또렷해진다 */
+function drawDotRing(b, lane) {
+  const x = lane === 'L' ? G.xL : G.xR;
+  const cx = x + G.laneW / 2 - 0.5, cy = G.floorY, R = ballR();
+  const fl = G.flash[lane] || 0, down = G.down[lane];
+  const n = Math.max(16, Math.round((Math.PI * 2 * R) / 3));
+  b.save();
+  b.globalAlpha = down || fl > 0.2 ? 0.95 : 0.6;
+  b.fillStyle = fl > 0.2 ? '#ffffff' : lane === 'L' ? '#cfe2ff' : '#fff1d6';
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    b.fillRect(Math.round(cx + Math.cos(a) * R), Math.round(cy + Math.sin(a) * R), 1, 1);
+  }
+  /* 가운데 십자 점 — 겹침을 맞추는 눈금 */
+  b.fillRect(Math.round(cx), cy - 1, 1, 3); b.fillRect(Math.round(cx) - 1, cy, 3, 1);
+  b.restore();
 }
 
 /** ② 황금 줄 — 금빛 테 + 반짝 별 */
 function drawGold(b, cx, y) {
   const tw = Math.floor(G.t * 10) % 4;
-  pring(b, cx, y, Math.round(G.laneW / 2) + 1, 1, tw < 2 ? '#ffd23f' : '#fff6a8');
+  pring(b, cx, y, ballR() + 2, 1, tw < 2 ? '#ffd23f' : '#fff6a8');
   const sx = Math.round(cx + G.laneW / 2 - 2), sy = y - 7;
   rect(b, sx - 1, sy, 3, 1, '#fff6a8'); rect(b, sx, sy - 1, 1, 3, '#fff6a8');
   if (tw === 0) { rect(b, sx - 2, sy, 5, 1, '#ffd23f'); rect(b, sx, sy - 2, 1, 5, '#ffd23f'); }
@@ -835,7 +905,7 @@ function missionDone() {
 
 function drawTargets() {
   const b = G.b;
-  for (const l of G.jumpOnly ? ['R'] : ['L', 'R']) BA.drawTarget(b, l, l === 'L' ? G.xL : G.xR, G.floorY, G.laneW, { pressed: G.down[l], flash: G.flash[l] });
+  for (const l of G.jumpOnly ? ['R'] : ['L', 'R']) drawDotRing(b, l);
   for (const h of G.hits) BA.drawHit(b, (h.lane === 'L' ? G.xL : G.xR) + G.laneW / 2, G.floorY, h.grade, h.age);
 }
 

@@ -58,6 +58,7 @@ export const TUNING = {
     { key: 'density', name: '줄 촘촘함', desc: '줄과 줄 사이 간격' },
     { key: 'speed', name: '곡 빠르기', desc: '곡 · 줄 빠르기' },
     { key: 'damage', name: '피해', desc: '걸렸을 때 깎이는 양' },
+    { key: 'scroll', name: '내려오는 속도 · 간격', desc: '동그라미가 떨어지는 빠르기 — 빠를수록 동그라미 사이 간격도 넓어짐' },
   ],
 };
 

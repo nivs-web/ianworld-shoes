@@ -247,7 +247,7 @@ service cloud.firestore {
 > 아래 칸들만 얹어 게시 → 21,394자, 다시 읽어 `docs/rtdb-rules.json` 과 구조 해시까지 같음. 바뀐 곳:
 > `rooms/$code/game` 에 `'jump'` · `rooms/$code/ctrl`(방식 `'jump'`|`'both'`) · `maxPlayers` 는 jump 방만 8까지 · `players/$uid/jc`(콤보 0~99999) · `players/$uid/jl`(모습 ≤40자) · `presence/$uid/game` 에 `'jump'`.
 > `docs/rtdb-rules.json` 에도 같이 넣었다. 게시할 때는 콘솔 게시본을 받아 이 여섯 군데만 얹는다. 게시 전에는 멀티 서바이벌 방 만들기가 거부되어 «서버 준비 중» 안내가 뜬다.
-> + 같은 날 **운영자 난이도 설정 `config/tuning`** 도 함께 게시했다: 읽기 = 로그인한 사람 · 쓰기 = 운영자(`admins/{uid}: true`)만 · 값 = 정수 1~99 · 게임 `catch`(throw·catch·speed) · `dragon`(enemy·hp·spawn) · `jump`(timing·density·speed·damage) 밖의 키는 거부(`$other`). `docs/rtdb-rules.json` 에도 같이 넣었다.
+> + 같은 날 **운영자 난이도 설정 `config/tuning`** 도 함께 게시했다: 읽기 = 로그인한 사람 · 쓰기 = 운영자(`admins/{uid}: true`)만 · 값 = 정수 1~99 · 게임 `catch`(throw·catch·speed) · `dragon`(enemy·hp·spawn) · `jump`(timing·density·speed·damage) — ⏳ `jump.scroll`(내려오는 속도 · 간격, 2026-11-07 추가)만 **아직 게시 전**(콘솔 게시를 자동 권한 검사가 막음 — 대표님 승인 뒤 이 한 칸만 얹는다. 게시 전엔 그 항목 저장만 «저장 실패», 게임은 50 으로 정상) 밖의 키는 거부(`$other`). `docs/rtdb-rules.json` 에도 같이 넣었다.
 
 콘솔 → Realtime Database → **규칙** 탭 → 전체 교체 → 게시
 
@@ -656,6 +656,9 @@ service cloud.firestore {
           "density": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
           "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
           "damage": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "scroll": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
           "$other": { ".validate": false }
         },
         "$other": { ".validate": false }
