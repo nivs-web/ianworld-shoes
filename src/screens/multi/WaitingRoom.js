@@ -71,8 +71,8 @@ const DIFFS = [
 ];
 /** 줄넘기 방식 — 점프만(JUMP 하나) · 로프+점프(두 버튼) */
 const JUMP_CTRLS = [
-  { value: 'jump', label: '점프만' },
-  { value: 'both', label: '로프+점프' },
+  { value: 'jump', label: '한 손' },
+  { value: 'both', label: '두 손' },
 ];
 
 export default function WaitingRoom(nav, params = {}) {
@@ -488,7 +488,7 @@ export default function WaitingRoom(nav, params = {}) {
         game === 'jump'
           ? (isHost
             ? segmented(JUMP_CTRLS, room.ctrl === 'both' ? 'both' : 'jump', (v) => Room.setRoomCtrl(code, v))
-            : el('div.hint', `${room.ctrl === 'both' ? '로프+점프' : '점프만'} · 방장이 골라요`))
+            : el('div.hint', `${room.ctrl === 'both' ? '두 손' : '한 손'} · 방장이 골라요`))
           : null,
 
         /* 캐치볼도 방장이 난이도를 고른다 (2026-10-28) — 문구만 캐치볼 것으로 */

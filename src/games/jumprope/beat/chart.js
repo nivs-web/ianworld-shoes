@@ -247,7 +247,12 @@ function buildRopeKeys(notes, steps) {
     // JUMP 꾹 끝 = 착지(줄이 마지막으로 발밑을 지난 순간). ROPE 꾹(릴리스) 끝은 키를 두지 않는다 — 놓은 줄이 공중에서 천천히 돈다
     if (n.kind === 'hold' && n.lane === 'R') ev.push({ s: n.endStep, up: false, pri: 1 });
   }
-  ev.sort((a, b) => a.s - b.s || b.pri - a.pri);
+  return ropeKeysFrom(ev, steps);
+}
+
+/** 줄 사건 [{s(칸 · 소수 가능), up(머리 위?), pri}] → 줄 각도 키. 같은 종류가 연달아 오면 가운데에 반대를 끼운다 */
+export function ropeKeysFrom(ev, steps) {
+  ev = [...ev].sort((a, b) => a.s - b.s || b.pri - a.pri);
   const E = [];
   for (const e of ev) if (!E.length || E[E.length - 1].s !== e.s) E.push(e);  // 같은 칸은 탭이 이긴다
   if (!E.length) return [];
@@ -379,6 +384,130 @@ export function jumpOnly(chart, density = 1) {
     firstT: notes.length ? notes[0].t : 0, lastT: notes.length ? Math.max(...notes.map((n) => n.endT ?? n.t)) : 0,
     /* 별 목표는 노트 수에 맞춰 줄인다(judge.goalsFor 가 0.3~1 로 자른다) */
     goalScale: Math.max(0.5, (chart.goalScale ?? 1) * (chart.total ? notes.length / chart.total : 1)),
+  };
+}
+
+/* ---------- 한 손 타일 채보 (2026-11-07 대표님 «JUMP ROPE RHYTHM» 기획) ----------
+ * 조작은 네 가지뿐: 짧게(TAP) · 길게(HOLD) · 왼쪽 밀기(LEFT) · 오른쪽 밀기(RIGHT). 한 손으로 화면 어디든.
+ * JUMP 하나 채보(시각 · 간격이 이미 정리됨)의 노트에 «동작»을 입힌다 — 같은 채보 seed 면 늘 같은 결과(멀티 공정).
+ * 레벨(대회 1~5 · 무한은 시간이 갈수록): 1 TAP / 2 + HOLD(이중 뛰기) · 번갈아 / 3 + 좌우 밀기(스키어 · 복서)
+ * / 4 + 좌우 연속(왕복 · 지그재그 · 달리며) / 5 + 복합(밀고 이중 뛰기 · 스키어+점프)
+ * 노트: { act: 'tap'|'hold'|'left'|'right', label?: '한국어 / ENGLISH' (그 동작 묶음의 첫 노트 — 모션 가이드) } */
+export const TILE_SKILL = {
+  basic: '양발 모아 뛰기 / BASIC BOUNCE',
+  alt: '번갈아 뛰기 / ALTERNATE STEP',
+  boxer: '복서 스텝 / BOXER STEP',
+  run: '달리며 뛰기 / RUNNING STEP',
+  double: '이중 뛰기 / DOUBLE UNDER',
+  speedDouble: '고속 이중 뛰기 / SPEED DOUBLE',
+  skiL: '왼쪽 점프 / SKI LEFT',
+  skiR: '오른쪽 점프 / SKI RIGHT',
+  skier: '스키어 / SKIER',
+  side: '좌우 왕복 / SIDE TO SIDE',
+  zigzag: '지그재그 / ZIGZAG',
+  sideStep: '좌우 이동 콤보 / SIDE STEP',
+  moveDouble: '이동 이중 뛰기 / MOVING DOUBLE',
+  skierJump: '스키어 + 점프 / SKIER JUMP',
+  skierDouble: '스키어 + 이중 / SKIER DOUBLE',
+};
+const TILE_MOTIFS = [
+  { lv: 3, seq: ['left'], name: 'skiL' }, { lv: 3, seq: ['right'], name: 'skiR' },
+  { lv: 3, seq: ['left', 'right'], name: 'skier' }, { lv: 3, seq: ['right', 'left'], name: 'skier' },
+  { lv: 4, seq: ['left', 'right', 'left', 'right'], name: 'side' }, { lv: 4, seq: ['right', 'left', 'right', 'left'], name: 'side' },
+  { lv: 4, seq: ['left', 'left', 'right', 'right'], name: 'sideStep' },
+  { lv: 5, seq: ['left', 'hold'], name: 'moveDouble' }, { lv: 5, seq: ['right', 'hold'], name: 'moveDouble' },
+  { lv: 5, seq: ['left', 'right', 'tap'], name: 'skierJump' }, { lv: 5, seq: ['left', 'right', 'hold'], name: 'skierDouble' },
+];
+const SWIPE_GAP = 0.28;         // 밀기와 밀기 사이 최소(초) — 손가락이 돌아올 시간
+const HOLD_AFTER = 0.34;        // 길게 누르기를 뗀 뒤 다음 노트까지 최소(초)
+
+/**
+ * @param chart jumpOnly 결과(레인 R · tap/hold)
+ * @param level 1~5 또는 'auto'(무한 · 서바이벌: 12마디마다 한 단계)
+ */
+export function tileChart(chart, level = 3, seed = 1) {
+  const rand = seeded(((seed | 0) * 131 + 977) >>> 0);
+  const steps = chart.steps;
+  const adj = chart.diff === 'hard' ? 1 : chart.diff === 'easy' ? -1 : 0;
+  const lvAt = (n) => Math.max(1, Math.min(5, (level === 'auto' ? 1 + Math.floor(n.step / STEPS_PER_BAR / 12) : (level | 0) || 3) + adj));
+  const notes = chart.notes.map((n) => ({ ...n, act: n.kind === 'hold' ? 'hold' : 'tap', label: null }));
+  const N = notes.length;
+  const endT = (n) => n.endT ?? n.t;
+  const gapAfter = (i) => (i + 1 < N ? notes[i + 1].t - endT(notes[i]) : 9);
+  const makeHold = (i, force) => {
+    const n = notes[i];
+    if (n.act !== 'tap' && !force) return false;
+    const next = notes[i + 1];
+    const nextS = next ? next.step : n.step + 16;
+    const room = nextS - n.step;
+    let len = Math.max(4, Math.min(8, Math.floor(room * 0.55)));
+    while (len >= 3 && next && next.t - timeAtStep(steps, n.step + len) < HOLD_AFTER) len--;
+    if (len < 3 || (next && next.t - timeAtStep(steps, n.step + len) < HOLD_AFTER)) return false;
+    n.act = 'hold'; n.kind = 'hold'; n.endStep = n.step + len; n.endT = timeAtStep(steps, n.endStep);
+    return true;
+  };
+  /* ① 좌우 밀기 묶음 */
+  for (let i = 0; i < N;) {
+    const n = notes[i], lv = lvAt(n);
+    const p = lv >= 5 ? 0.55 : lv >= 4 ? 0.45 : lv >= 3 ? 0.33 : 0;
+    if (n.act !== 'tap' || rand() >= p) { i++; continue; }
+    const pool = TILE_MOTIFS.filter((m) => m.lv <= lv);
+    const m = pool[Math.floor(rand() * pool.length)];
+    const k = m.seq.length;
+    let ok = i + k <= N;
+    for (let j = 0; ok && j < k; j++) {
+      const q = notes[i + j];
+      if (q.act !== 'tap') ok = false;
+      else if (j < k - 1 && gapAfter(i + j) < SWIPE_GAP) ok = false;
+    }
+    if (ok && m.seq[k - 1] === 'hold' && gapAfter(i + k - 1) < 0.75) ok = false;
+    if (!ok) { i++; continue; }
+    m.seq.forEach((a, j) => { if (a === 'hold') makeHold(i + j, true) || (notes[i + j].act = 'tap'); else notes[i + j].act = a; });
+    /* 4개짜리 빠른 왕복은 지그재그 */
+    let name = m.name;
+    if (name === 'side' && [0, 1, 2].every((j) => gapAfter(i + j) <= 0.36)) name = 'zigzag';
+    notes[i].label = TILE_SKILL[name];
+    i += k + 1;                       // 묶음 뒤 한 칸은 숨 돌리기
+  }
+  /* ② 길게(이중 뛰기) — 다음 노트까지 넉넉하면 */
+  for (let i = 0; i < N; i++) {
+    const n = notes[i], lv = lvAt(n);
+    if (n.act !== 'tap' || lv < 2) continue;
+    if (gapAfter(i) >= 0.95 && rand() < (lv >= 4 ? 0.6 : 0.45)) makeHold(i, false);
+  }
+  /* ③ 이름표 — 길게 · 짧게 묶음(번갈아 · 복서 · 달리며) · 첫 노트 */
+  for (let i = 0; i < N; i++) {
+    const n = notes[i];
+    if (n.act === 'hold' && !n.label) n.label = n.endT - n.t >= 1.25 ? TILE_SKILL.speedDouble : TILE_SKILL.double;
+  }
+  for (let i = 0; i < N;) {
+    if (notes[i].act !== 'tap' || notes[i].label) { i++; continue; }
+    let j = i;
+    while (j + 1 < N && notes[j + 1].act === 'tap' && !notes[j + 1].label && notes[j + 1].t - notes[j].t <= 0.62) j++;
+    const len = j - i + 1;
+    if (len >= 2) {
+      const fast = (notes[j].t - notes[i].t) / (len - 1) <= 0.36;
+      const lv = lvAt(notes[i]);
+      notes[i].label = len >= 4 && fast && lv >= 4 ? TILE_SKILL.run : len === 3 && lv >= 3 ? TILE_SKILL.boxer : lv >= 2 ? TILE_SKILL.alt : null;
+    }
+    i = j + 1;
+  }
+  if (N && !notes[0].label) notes[0].label = TILE_SKILL.basic;
+  /* 줄: 노트마다 한 번 발밑, 길게(이중 뛰기)는 한 번 뛰는 동안 두 바퀴 */
+  const ev = [];
+  for (const n of notes) {
+    ev.push({ s: n.step, up: false, pri: 2 });
+    if (n.act === 'hold') { const mid = (n.step + n.endStep) / 2; ev.push({ s: mid, up: false, pri: 1 }, { s: n.endStep, up: false, pri: 1 }); }
+  }
+  /* 기술 이름 띠 — 이름이 그 곡에서 처음 나올 때만 */
+  const seen = new Set();
+  const cues = chart.cues.filter((c) => c.kind !== 'tech');
+  for (const n of notes) if (n.label && !seen.has(n.label)) { seen.add(n.label); cues.push({ t: n.t, text: n.label, kind: 'tech', name: n.label, first: true }); }
+  cues.sort((a, b) => a.t - b.t);
+  for (const n of notes) n.tech = -1;
+  return {
+    ...chart, ctrl: 'tile', notes, techs: [], cues, ropeKeys: ropeKeysFrom(ev, steps), total: notes.length,
+    lastT: notes.length ? Math.max(...notes.map((n) => n.endT ?? n.t)) : 0,
   };
 }
 
@@ -557,7 +686,13 @@ function customChart(stage, diff, seed, opts) {
 export function buildChart(stage, diff = 'normal', opts = {}) {
   opts = opts || {};
   /* opts.ctrl: 'jump'(점프만 · 기본) | 'both'(로프+점프). 안 주면 두 버튼 채보 그대로(시험 도구들) */
-  if (opts.ctrl === 'jump') return jumpOnly(buildChart(stage, diff, { ...opts, ctrl: 'both' }), opts.density || 1);
+  if (opts.ctrl === 'jump') {
+    const base = jumpOnly(buildChart(stage, diff, { ...opts, ctrl: 'both' }), opts.density || 1);
+    if (opts.tiles === false) return base;
+    const lv = opts.level ?? (stage === 'endless' || stage?.id === 'endless' ? 'auto' : typeof stage === 'number' ? stage
+      : (STAGES.find((s) => s.id === stage || s.no === stage?.no)?.no ?? 3));
+    return tileChart(base, lv, (opts.seed | 0) || 1);
+  }
   diff = DIFFS[diff] ? diff : 'normal';
   /* opts.bpmScale — 운영자 난이도(곡 빠르기) 배율. 템포 지도의 BPM 을 곱한다(곡 · 채보 · 판정이 같은 지도를 쓴다) */
   const bs = Math.max(0.5, Math.min(2.5, +opts.bpmScale || 1));

@@ -102,7 +102,7 @@ export function mount(host, opts) {
 
   G = {
     host, cv, ctx: cv.getContext('2d'), buf, b: buf.getContext('2d'), kidCv, k: kidCv.getContext('2d'), kidBack, kb: kidBack.getContext('2d'),
-    opts, diff, stage, chart, judge, music, comic, jumpOnly, winScale, apPtr: 0, lastLift: 0, lastTheta: Math.PI, scrollK: T.scroll, pxPerBeat: 60,
+    opts, diff, stage, chart, judge, music, comic, jumpOnly, winScale, apPtr: 0, tilePtr: 0, shiftX: 0, shiftTo: 0, shiftAt: -9, swipeFx: null, padDown: -9, lastLift: 0, lastTheta: Math.PI, scrollK: T.scroll, pxPerBeat: 60,
     tempo: chart.tempo || (surv ? survTempo : [{ bar: 0, bpm: 120 }]),   // 채보와 같은 지도(운영자 빠르기 배율 포함)
     title: surv ? `멀티 서바이벌 · ${DIFFS[diff].en}` : opts.mode === 'endless' ? `${ENDLESS.name} · ${DIFFS[diff].en}` : opts.mode === 'test' ? `${opts.custom?.name || '내 스테이지'} (시험)` : `${stage.no}. ${stage.name}`,
     sub: surv ? `♪ ${songTitle(survSong(opts.seed))}` : opts.mode === 'endless' ? `♪ ${songTitle(endlessSong(opts.song))}` : stage ? `${stage.en} · ${stage.song.title}` : 'CUSTOM',
@@ -145,18 +145,58 @@ export function mount(host, opts) {
     const r = cv.getBoundingClientRect();
     return { x: ((e.clientX - r.left) * G.dpr) / G.S, y: ((e.clientY - r.top) * G.dpr) / G.S };
   };
+  /* 한 손 타일(2026-11-07): 누른 시각이 판정 시각. 가까운 노트가 «밀기»면 손가락이 좌우로 움직이는지 잠깐(0.24초) 보고 방향을 정한다 */
+  const gest = new Map();
+  const decide = (id, act, tUp) => {
+    const g = gest.get(id);
+    if (!g || g.done) return;
+    g.done = true;
+    clearTimeout(g.timer);
+    if (act === 'tap') { doPress('R', g.t0, 'tap'); g.pressed = true; if (tUp != null) { doRelease('R', tUp); g.pressed = false; } }
+    else { doPress('R', g.t0, act); doRelease('R', g.t0 + 0.04); G.swipeFx = { dir: act, age: 0 }; }
+  };
   const pdown = (e) => {
     if (G.overlay) return;
     e.preventDefault();
     const p = toNative(e);
     const pb = G.pauseBox;
     if (p.x >= pb.x - 4 && p.x <= pb.x + pb.w + 4 && p.y >= pb.y - 4 && p.y <= pb.y + pb.h + 4) { G.music.init(); requestPause(); return; }
+    if (G.jumpOnly) {
+      begin();
+      if (G.phase !== 'play' || G.out || G.down.R) return;
+      try { cv.setPointerCapture(e.pointerId); } catch { /* */ }
+      const t0 = evT(e);
+      if (swipeNear(t0)) {
+        const g = { x0: p.x, t0, done: false, pressed: false };
+        g.timer = setTimeout(() => decide(e.pointerId, 'tap'), 240);
+        gest.set(e.pointerId, g);
+        G.padDown = G.t;
+      } else {
+        gest.set(e.pointerId, { x0: p.x, t0, done: true, pressed: true });
+        doPress('R', t0, 'tap');
+      }
+      return;
+    }
     const lane = G.jumpOnly || p.x >= G.W / 2 ? 'R' : 'L';           // 점프만: 화면 어디든 JUMP
     G.pointers.set(e.pointerId, lane);
     try { cv.setPointerCapture(e.pointerId); } catch { /* */ }
     pressLane(lane, e);
   };
+  const pmove = (e) => {
+    const g = gest.get(e.pointerId);
+    if (!g || g.done) return;
+    const dx = toNative(e).x - g.x0;
+    if (Math.abs(dx) >= 5) decide(e.pointerId, dx < 0 ? 'left' : 'right');
+  };
   const pup = (e) => {
+    const g = gest.get(e.pointerId);
+    if (g) {
+      gest.delete(e.pointerId);
+      const tUp = G.phase === 'play' ? evT(e) : G.songT;
+      if (!g.done) { gest.set(e.pointerId, g); decide(e.pointerId, 'tap', tUp); gest.delete(e.pointerId); }
+      else if (g.pressed && G.down.R) doRelease('R', tUp);
+      return;
+    }
     const lane = G.pointers.get(e.pointerId);
     if (!lane) return;
     G.pointers.delete(e.pointerId);
@@ -164,11 +204,23 @@ export function mount(host, opts) {
   };
   cv.addEventListener('pointerdown', pdown);
   cv.addEventListener('pointerup', pup);
+  cv.addEventListener('pointermove', pmove);
   cv.addEventListener('pointercancel', pup);
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
   const keyLane = (code) => (R_KEYS.has(code) || (G.jumpOnly && L_KEYS.has(code)) ? 'R' : L_KEYS.has(code) ? 'L' : null);
   const kd = (e) => {
     if (e.code === 'Escape' || e.code === 'KeyP') { if (!e.repeat) requestPause(); return; }
+    /* 한 손 타일 — ← · A = 왼쪽 밀기, → · D = 오른쪽 밀기, 스페이스 · 엔터 = 짧게/길게 */
+    const sw = G.jumpOnly ? (['ArrowLeft', 'KeyA'].includes(e.code) ? 'left' : ['ArrowRight', 'KeyD'].includes(e.code) ? 'right' : null) : null;
+    if (sw) {
+      e.preventDefault();
+      if (e.repeat || G.overlay) return;
+      begin();
+      if (G.phase !== 'play' || G.out) return;
+      const t = evT(e);
+      doPress('R', t, sw); doRelease('R', t + 0.04); G.swipeFx = { dir: sw, age: 0 };
+      return;
+    }
     const lane = keyLane(e.code);
     if (!lane) return;
     e.preventDefault();
@@ -247,6 +299,18 @@ export function requestPause() {
 /* ---------- 진행 ---------- */
 function setPhase(p) { G.phase = p; G.phaseT = 0; }
 
+/** 한 손 타일 — t 근처(GOOD 창 안)의 가장 이른 미판정 노트가 «밀기»인가 */
+function swipeNear(t) {
+  const notes = G.chart.notes, good = DIFFS[G.diff].win.good * G.winScale;
+  while (G.tilePtr < notes.length && (notes[G.tilePtr].done || notes[G.tilePtr].t < t - good - 0.1)) G.tilePtr++;
+  for (let j = G.tilePtr; j < notes.length && j < G.tilePtr + 8; j++) {
+    const n = notes[j];
+    if (n.done || n.t < t - good) continue;
+    return n.t - t <= good && (n.act === 'left' || n.act === 'right');
+  }
+  return false;
+}
+
 function startSong(msUntil) {
   const m = G.music;
   m.init();
@@ -262,15 +326,16 @@ function resume() {
   setPhase('resume');          // 1.2초 «3 · 2 · 1» 뒤에 음악을 다시 튼다(멈춘 바로 그 자리부터)
 }
 
-function doPress(lane, t) {
+function doPress(lane, t, act) {
   G.down[lane] = true;
+  if (act === 'left' || act === 'right') { G.shiftTo = act === 'left' ? -12 : 12; G.shiftAt = G.t; }
   G.pressAt[lane] = G.t;
   G.music.hit(lane === 'L' ? (G.down.R && G.t - G.pressAt.R < 0.06 ? 'both' : 'rope') : (G.down.L && G.t - G.pressAt.L < 0.06 ? 'both' : 'jump'));
   if (lane === 'R') { G.jumpAt = G.t; G.jumpHold = true; } else G.ropeAt = G.t;
   if (G.down.L && G.down.R && Math.abs(G.pressAt.L - G.pressAt.R) < 0.08) G.bothAt = G.t;
   if (G.jumpOnly && lane === 'R') { G.ropeAt = G.t; G.bothAt = G.t; }   // JUMP 하나: 기술 동작(옆 · 엇걸기)은 JUMP 로 저절로
   if (G.opts.opts?.vib !== false) try { navigator.vibrate?.(8); } catch { /* */ }   // ⑤ 누를 때 톡
-  const res = G.judge.press(lane, t);
+  const res = G.judge.press(lane, t, act);
   if (res) handle([res.kind ? res : { kind: 'hit', ...res, lane }]);
 }
 
@@ -413,6 +478,9 @@ function update(dt) {
   } catch (e) { if (!G.comicErr) { G.comicErr = true; console.warn('[ROPE BEAT] 코믹 연출 오류', e); } }
   for (const l of ['L', 'R']) G.flash[l] = Math.max(0, G.flash[l] - dt * 5);
   G.shake = Math.max(0, G.shake - dt);
+  if (G.t - G.shiftAt > 0.55) G.shiftTo = 0;
+  G.shiftX += (G.shiftTo - G.shiftX) * Math.min(1, dt * 14);
+  if (G.swipeFx) { G.swipeFx.age += dt; if (G.swipeFx.age > 0.35) G.swipeFx = null; }
   for (const a of [G.hits, G.pops, G.banners, G.parts, G.fun.rings]) for (const p of a) p.age += dt;
   G.fun.rings = G.fun.rings.filter((p) => p.age < 0.35);
   G.fun.edge = Math.max(0, G.fun.edge - dt * 2.5);
@@ -448,7 +516,8 @@ function autoPlay() {
     for (const l of lanes) {
       G.pressAt[l] = G.t;
       if (l === 'R') { G.jumpAt = G.t; G.jumpHold = n.kind === 'hold'; } else G.ropeAt = G.t;
-      handle([G.judge.press(l, t)]);
+      if (n.act === 'left' || n.act === 'right') { G.shiftTo = n.act === 'left' ? -12 : 12; G.shiftAt = G.t; G.swipeFx = { dir: n.act, age: 0 }; }
+      handle([G.judge.press(l, t, n.act === 'left' || n.act === 'right' ? n.act : undefined)]);
       if (n.kind === 'hold') { G.down[l] = true; G.autoHolds.push({ lane: l, endT: n.endT, done: false }); }
       else handle([G.judge.release?.(l, t + 0.05)]);
     }
@@ -619,9 +688,10 @@ function resize() {
   const edge = 12;                   // 판정 원 · 다가오는 원이 화면 밖으로 잘리지 않게 가장자리를 띄운다
   if (G.jumpOnly) {
     /* 점프만: 레인 하나는 오른쪽, 선수는 레인과 겹치지 않게 조금 왼쪽으로 */
-    G.xR = Math.min(G.W - G.laneW - edge, G.cx + Math.max(34 * G.K, 40));
+    G.laneW = Math.max(36, Math.min(60, Math.floor(G.W * 0.27)));     // 한 손 타일 — 넓고 깔끔한 한 줄
+    G.xR = G.W - G.laneW - 8;
     G.xL = G.xR;
-    G.kx = Math.min(G.cx, G.xR - 4 - 20 * G.K);
+    G.kx = Math.min(G.cx, G.xR - 6 - 20 * G.K);
   } else {
     const gap = Math.min(Math.floor(G.W / 2) - G.laneW - edge, Math.max(34 * G.K, 40));
     G.xL = G.cx - gap - G.laneW;
@@ -700,7 +770,8 @@ function drawLanes() {
   /* 박마다 눈금 — 빨라지면 눈금이 빨리 내려온다(템포가 눈에 보인다) */
   const ns = nowStep(), pps = pxPerStep(), ticks = [];
   for (let s = Math.ceil(ns / 4) * 4; ; s += 4) { const y = Math.round(G.floorY - (s - ns) * pps); if (y < G.hudH) break; ticks.push(y); }
-  if (!G.jumpOnly) BA.drawLane(b, 'L', G.xL, G.hudH, G.floorY + 6, G.laneW, G.t, { pulse: Math.max(pulse * 0.5, G.flash.L), ticks });
+  if (G.jumpOnly) { drawTileLane(b, ticks, pulse); return; }
+  BA.drawLane(b, 'L', G.xL, G.hudH, G.floorY + 6, G.laneW, G.t, { pulse: Math.max(pulse * 0.5, G.flash.L), ticks });
   BA.drawLane(b, 'R', G.xR, G.hudH, G.floorY + 6, G.laneW, G.t, { pulse: Math.max(pulse * 0.5, G.flash.R), ticks });
 }
 
@@ -774,6 +845,7 @@ function drawNotes() {
     if (n.done || (judged && judged.has?.(n.id))) { if (n.kind !== 'hold' || endS < ns) continue; }
     const y = Math.round(G.floorY - (n.step - ns) * pps);
     const holdPx = n.kind === 'hold' ? Math.round((endS - n.step) * pps) : 0;
+    if (G.jumpOnly) { drawTile(b, n, y, holdPx); continue; }
     if (n.lane === 'B') { drawBall(b, 'B', G.xL, y, holdPx, false); drawBall(b, 'B', G.xR, y, holdPx, false); }
     else drawBall(b, n.lane, n.lane === 'L' ? G.xL : G.xR, y, holdPx, n.holding);
     if (n.gold) drawGold(b, (n.lane === 'L' ? G.xL : G.xR) + G.laneW / 2 - 0.5, y);
@@ -847,6 +919,89 @@ function drawDotRing(b, lane) {
   b.restore();
 }
 
+/* ---------- 한 손 타일 그림 (2026-11-07 대표님 — 깔끔하게, 타일만 보고 동작을 알게) ----------
+ * 짧게 ● 흰 · 길게 Ⅱ 하늘(실제로 길다) · 왼쪽 ← 민트 · 오른쪽 → 분홍. 동작 이름(모션 가이드)이 타일 옆을 따라 내려온다 */
+const TILE_C = {
+  tap: { f: '#f6f8ff', s: '#b8c4e2', k: '#33405e' },
+  hold: { f: '#9ee6ff', s: '#3aa8dc', k: '#0d4766' },
+  left: { f: '#9df3cf', s: '#35b482', k: '#0e5539' },
+  right: { f: '#ffb0dc', s: '#e2589f', k: '#6b1844' },
+};
+function drawTileLane(b, ticks, pulse) {
+  const x = G.xR, w = G.laneW, top = G.hudH, bot = G.floorY + 18;
+  b.save();
+  b.globalAlpha = 0.5; rect(b, x, top, w, bot - top, '#0c0a22'); b.globalAlpha = 1;
+  b.globalAlpha = 0.35 + pulse * 0.25; rect(b, x - 1, top, 1, bot - top, '#ffffff'); rect(b, x + w, top, 1, bot - top, '#ffffff');
+  b.globalAlpha = 0.13; for (const y of ticks) rect(b, x, y, w, 1, '#ffffff');
+  b.restore();
+}
+function drawArrow(b, cx, cy, dir, col) {
+  const s = dir === 'left' ? -1 : 1;
+  rect(b, cx - 5, cy - 1, 10, 3, col);
+  for (let i = 0; i <= 4; i++) rect(b, cx + s * (6 - i) - (s < 0 ? 0 : 0), cy - i, 1, 2 * i + 1, col);
+}
+function drawTile(b, n, y, holdPx) {
+  const C = TILE_C[n.act] || TILE_C.tap;
+  const x = G.xR + 3, w = G.laneW - 6, h = 14;
+  const cx = Math.round(x + w / 2);
+  if (n.act === 'hold') {
+    const top = Math.round(y - holdPx - h / 2), H = Math.round(holdPx + h);
+    rbox(b, x - 1, top - 1, w + 2, H + 2, OUT, 3);
+    rbox(b, x, top, w, H, n.holding ? '#ffffff' : C.s, 3);
+    rbox(b, x + 2, top + 2, w - 4, H - 4, C.f, 2);
+    rect(b, cx - 1, top + 4, 2, Math.max(0, H - 8 - h), C.s);          // 꼬리 가운데 줄
+    rect(b, cx - 4, Math.round(y - 4), 2, 8, C.k); rect(b, cx + 2, Math.round(y - 4), 2, 8, C.k);   // Ⅱ
+    return;
+  }
+  const ty = Math.round(y - h / 2);
+  rbox(b, x - 1, ty - 1, w + 2, h + 2, OUT, 3);
+  rbox(b, x, ty, w, h, C.s, 3);
+  rbox(b, x, ty, w, h - 2, C.f, 3);
+  rect(b, x + 3, ty + 1, w - 6, 1, '#ffffff');
+  if (n.act === 'left' || n.act === 'right') drawArrow(b, cx, Math.round(y - 1), n.act, C.k);
+  else { rect(b, cx - 2, Math.round(y - 3), 4, 4, C.k); rect(b, cx - 1, Math.round(y - 4), 2, 6, C.k); rect(b, cx - 3, Math.round(y - 2), 6, 2, C.k); }   // ●
+}
+/** 판정선 — 레인을 가로지르는 밝은 줄 + 은은한 빛 */
+function drawJudgeLine(b) {
+  const x = G.xR - 3, w = G.laneW + 6, y = G.floorY;
+  const fl = G.flash.R || 0;
+  b.save();
+  b.globalAlpha = 0.18 + fl * 0.3; rect(b, x, y - 5, w, 10, '#ffffff');
+  b.globalAlpha = 0.9; rect(b, x, y - 1, w, 2, fl > 0.2 ? '#ffffff' : '#fff1c4');
+  rect(b, x - 3, y - 3, 3, 6, '#ffd23f'); rect(b, x + w, y - 3, 3, 6, '#ffd23f');
+  b.restore();
+}
+/** 아래 패드 — 한 손 조작 안내(누르면 밝아짐 · 밀면 화살표가 번쩍) */
+function drawPad(b) {
+  const bt = G.btnR;
+  const down = G.down.R || G.t - G.padDown < 0.15;
+  rbox(b, bt.x - 1, bt.y - 1, bt.w + 2, bt.h + 2, OUT, 4);
+  rbox(b, bt.x, bt.y, bt.w, bt.h, down ? '#3a2f6a' : '#251d48', 4);
+  rect(b, bt.x + 4, bt.y + 1, bt.w - 8, 1, '#5a4c9a');
+  const fx = G.swipeFx;
+  if (fx) {
+    b.save(); b.globalAlpha = Math.max(0, 1 - fx.age / 0.35);
+    const cx = Math.round(bt.x + bt.w / 2 + (fx.dir === 'left' ? -1 : 1) * fx.age * 60);
+    drawArrow(b, cx, Math.round(bt.y + bt.h / 2), fx.dir, fx.dir === 'left' ? TILE_C.left.f : TILE_C.right.f);
+    b.restore();
+  }
+}
+/** 패드 글자 · 모션 가이드(타일 옆을 따라 내려오는 동작 이름) */
+function drawTileTexts() {
+  const bt = G.btnR;
+  ptxt('탭 · 꾹 · ← 밀기 · 밀기 →', bt.x + bt.w / 2, bt.y + bt.h / 2, 1, '#e6ddff');
+  const ns = nowStep(), pps = pxPerStep();
+  const topStep = ns + (G.floorY - G.hudH) / pps;
+  for (const n of G.chart.notes) {
+    if (n.step > topStep) break;
+    if (!n.label || n.done || n.step < ns - 1) continue;
+    const y = G.floorY - (n.step - ns) * pps;
+    if (y < G.hudH + 8) continue;
+    const C = TILE_C[n.act] || TILE_C.tap;
+    ptxt(n.label.split(' / ')[0], G.xR - 4, y, 0.75, C.f, 'right');
+  }
+}
+
 /** ② 황금 줄 — 금빛 테 + 반짝 별 */
 function drawGold(b, cx, y) {
   const tw = Math.floor(G.t * 10) % 4;
@@ -905,7 +1060,7 @@ function missionDone() {
 
 function drawTargets() {
   const b = G.b;
-  for (const l of G.jumpOnly ? ['R'] : ['L', 'R']) drawDotRing(b, l);
+  if (G.jumpOnly) drawJudgeLine(b); else for (const l of ['L', 'R']) drawDotRing(b, l);
   for (const h of G.hits) BA.drawHit(b, (h.lane === 'L' ? G.xL : G.xR) + G.laneW / 2, G.floorY, h.grade, h.age);
 }
 
@@ -940,7 +1095,7 @@ function currentTech() {
 function blitKid(cvs) {
   const K = G.K;
   const bb = G.comic.bob?.() || { dx: 0, dy: 0 };   // 고개 까딱(박자)
-  G.b.drawImage(cvs, 0, 0, KID_W, KID_H, G.kx - (KID_W / 2) * K + (bb.dx | 0), G.floorY - KID_FOOT * K + (bb.dy | 0), KID_W * K, KID_H * K);
+  G.b.drawImage(cvs, 0, 0, KID_W, KID_H, G.kx - (KID_W / 2) * K + (bb.dx | 0) + Math.round(G.shiftX), G.floorY - KID_FOOT * K + (bb.dy | 0), KID_W * K, KID_H * K);
 }
 function drawKidBig() {
   const k = G.k, kb = G.kb;
@@ -1026,7 +1181,8 @@ function drawButtons() {
     if (down) for (let i = 0; i < bt.w; i += 2) { rect(b, bt.x + i, y - 3, 1, 1, '#ffffff'); }
     bt.labelY = y + bt.h / 2;
   };
-  if (!G.jumpOnly) draw(G.btnL, 'L');
+  if (G.jumpOnly) { drawPad(b); return; }
+  draw(G.btnL, 'L');
   draw(G.btnR, 'R');
 }
 
@@ -1118,7 +1274,8 @@ function drawTexts() {
     if (p.early !== null && p.early !== undefined) ptxt(p.early ? '빨라요' : '늦어요', x, y + 9, 0.75, p.early ? '#6fd3ff' : '#ff9a3c');   // ③
   }
   /* 단추 글자 — 프리텐다드 블랙, 단추 한가운데 큼직하게 */
-  for (const [bt, label] of G.jumpOnly ? [[G.btnR, 'JUMP']] : [[G.btnL, 'ROPE'], [G.btnR, 'JUMP']]) {
+  if (G.jumpOnly) drawTileTexts();
+  for (const [bt, label] of G.jumpOnly ? [] : [[G.btnL, 'ROPE'], [G.btnR, 'JUMP']]) {
     const lv = Math.max(1.6, Math.min(3, (bt.h * G.S) / (16 * G.dpr) * 0.5));
     ptxt(label, bt.x + bt.w / 2, bt.labelY ?? (bt.y + bt.h / 2), lv, '#ffffff', 'center', true, PRET, 900);
   }
@@ -1128,9 +1285,9 @@ function drawTexts() {
     ptxt(G.sub, G.cx, rb.y + 23, 0.75, '#c9b8ff', 'center', false);
     const tempo = G.tempo;
     const bpms = tempo.map((x) => x.bpm);
-    ptxt(`${G.jumpOnly ? '점프만' : '로프+점프'} · ${DIFFS[G.diff].label} · BPM ${Math.min(...bpms)}~${Math.max(...bpms)}`, G.cx, rb.y + 35, 0.75, '#ffffff', 'center', false);
-    ptxt(G.jumpOnly ? 'JUMP 하나 — 화면 어디든 눌러요' : '왼쪽 ROPE  ·  오른쪽 JUMP', G.cx, rb.y + 48, 0.75, '#9be36f', 'center', false);
-    ptxt(G.surv ? `하트 ${SURVIVAL.hearts}개 · 마지막 1명 우승` : '줄이 원에 쏙 들어올 때!', G.cx, rb.y + 59, 0.75, '#ffffff', 'center', false);
+    ptxt(`${G.jumpOnly ? '한 손' : '두 손(로프+점프)'} · ${DIFFS[G.diff].label} · BPM ${Math.min(...bpms)}~${Math.max(...bpms)}`, G.cx, rb.y + 35, 0.75, '#ffffff', 'center', false);
+    ptxt(G.jumpOnly ? '탭 · 꾹 · ← 밀기 · 밀기 →' : '왼쪽 ROPE  ·  오른쪽 JUMP', G.cx, rb.y + 48, 0.75, '#9be36f', 'center', false);
+    ptxt(G.surv ? `하트 ${SURVIVAL.hearts}개 · 마지막 1명 우승` : G.jumpOnly ? '타일이 판정선에 닿을 때!' : '줄이 원에 쏙 들어올 때!', G.cx, rb.y + 59, 0.75, '#ffffff', 'center', false);
     if (G.surv) ptxt(G.startMs ? `곧 시작! ${Math.max(0, Math.ceil((G.startMs - performance.now()) / 1000))}` : '시작 시각 맞추는 중…', G.cx, rb.y + rb.h - 11, 1, '#ffd23f');
     else if (Math.floor(G.t * 2.2) % 2 === 0) ptxt('아무 단추나 누르면 시작!', G.cx, rb.y + rb.h - 11, 1, '#ffffff');
   } else if (G.phase === 'play' && G.songT < 0) {
@@ -1296,6 +1453,7 @@ export function _debug() {
     result: G.result, W: G.W, H: G.H, S: G.S, K: G.K, hearts: G.hearts, out: G.out, surv: G.surv, status: G.status ? { aliveCount: G.status.aliveCount, total: G.status.total, over: G.status.over, ranking: G.status.ranking.map((x) => x.uid) } : null,
     setAuto(m) { G.auto = m || null; },
     next() { const n = G.chart.notes.find((m) => !m.done && m.lane !== 'L' && m.t >= G.songT - 0.08); return n ? n.t - G.songT : null; },
+    nextNote() { const n = G.chart.notes.find((m) => !m.done && m.lane !== 'L' && m.t >= G.songT - 0.08); return n ? { dt: n.t - G.songT, act: n.act || 'tap', id: n.id } : null; },
     start() { G.music.init(); if (G.phase === 'ready') startSong(); },
   };
 }

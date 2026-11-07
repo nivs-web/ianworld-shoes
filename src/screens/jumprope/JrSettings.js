@@ -28,10 +28,10 @@ export default function JrSettings(nav) {
         button(`타이밍 맞추기 (지금 ${(o.offset | 0) > 0 ? '+' : ''}${o.offset | 0}ms)`, () => nav.push(JrCalibrate)),
         el('div.jr-preview', null, [figureCanvas(J.look(j), J.rope(j), 2, { w: 44, h: 68, theta: 2 * Math.PI })]),
         box('하는 법', [
-          '줄이 동그란 원에 쏙 들어올 때 눌러요.',
-          '원 둘레 고리가 줄어들어 딱 겹치면 PERFECT!',
-          '점프만 — JUMP 하나, 화면 어디든 눌러요.',
-          '로프+점프 — 왼쪽 ROPE · 오른쪽 JUMP.',
+          '타일이 판정선에 닿을 때 해요 — 화면 어디든.',
+          '● 짧게 탭 · Ⅱ 꾹 누르기(이중 뛰기) · ← → 밀기(스키어).',
+          '타일 옆 이름이 그 동작이에요(스키어 · 복서 스텝 …).',
+          '두 손 — 왼쪽 ROPE · 오른쪽 JUMP(동그라미가 점선에 겹칠 때).',
         ]),
         box('게임 모드', [
           '챔피언십 — 대회 5개를 차례로 깨요.',
