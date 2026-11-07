@@ -22,7 +22,7 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const BW = 792, BH = 336, Z = 3;
-const KIDS = [[40, 58, 'girl'], [224, 58, 'boy']];          // 아이 자리(도트): 머리 가운데 X, Y — 캐치볼 두 선수 자리
+const KIDS = [[40, 44, 'boy'], [224, 44, 'girl']];          // 아이 자리(도트): 머리 가운데 X, Y — 캐치볼 두 선수 자리
 
 /* =====================================================================
  * 1. 캐치볼 배너를 바탕판으로 — 가운데 내용만 지우고 우주 배경을 이어 채운다
@@ -172,26 +172,22 @@ const out = await page.evaluate(async ({ WT, THIN, KIDS }) => {
     }
   };
 
-  /* 가운데(트로피 자리): 작은 건반 + 떨어지는 파란 타일 3칸 + 치는 순간 번쩍 */
-  B.rays(c, W / 2, 80, 20);
-  const NK = 7, KW = 9, KX = Math.round(W / 2 - (NK * KW) / 2), KY = 86, KH = 16;
-  const hit = new Set([1, 3, 5]);
-  globe(W / 2, KY - 1, 38, 10, '#8fc8ff', 0.16); globe(W / 2, KY - 1, 26, 6, '#ffffff', 0.16);
+  /* 큰 건반 — 왼쪽 동전 더미부터 오른쪽 동전 더미까지 쫙 (흰 건반 20) + 가운데로 떨어지는 파란 타일 3칸 · 치는 순간 번쩍 */
+  B.rays(c, W / 2, 74, 20);
+  const NK = 20, KW = 11, KX = Math.round(W / 2 - (NK * KW) / 2), KY = 86, KH = 19;
+  const keyOf = (x) => Math.floor((x - KX) / KW);
+  const hit = new Set([8, 10, 12, keyOf(KIDS[0][0]) , keyOf(KIDS[1][0])]);
+  globe(W / 2, KY - 1, 60, 10, '#8fc8ff', 0.16); globe(W / 2, KY - 1, 34, 6, '#ffffff', 0.16);
   keys(KX, KY, NK, KW, KH, hit);
   R(KX - 2, KY - 2, NK * KW + 3, 1, '#ffffff');                // 판정선
-  const pill = (cx, y) => { R(cx - 4, y - 1, 9, 6, '#0c2a5c'); R(cx - 3, y, 7, 4, '#4f93e6'); R(cx - 3, y, 7, 1, '#bfe0ff'); R(cx - 3, y + 3, 7, 1, '#2f6cc4'); };
-  const cols = [...hit].map((i) => KX + i * KW + 4);
-  for (const cx of cols) { pill(cx, 68); pill(cx, 76); }
+  const pill = (cx, y) => { R(cx - 5, y - 1, 11, 7, '#0c2a5c'); R(cx - 4, y, 9, 5, '#4f93e6'); R(cx - 4, y, 9, 1, '#bfe0ff'); R(cx - 4, y + 4, 9, 1, '#2f6cc4'); };
+  const cols = [8, 10, 12].map((i) => KX + i * KW + 5);
+  for (const cx of cols) { pill(cx, 66); pill(cx, 75); }
   for (const cx of cols) {
-    globe(cx, KY - 2, 7, 3, '#ffffff', 0.4);
-    for (const [dx, dy] of [[-6, -2], [-4, -4], [-2, -6], [0, -7], [2, -5], [4, -4], [6, -2]]) R(cx + dx, KY + dy, 1, 1, '#ffffff');
+    globe(cx, KY - 2, 8, 3, '#ffffff', 0.4);
+    for (const [dx, dy] of [[-7, -2], [-5, -4], [-2, -6], [0, -7], [2, -5], [5, -4], [7, -2]]) R(cx + dx, KY + dy, 1, 1, '#ffffff');
   }
 
-  /* 양쪽 아이 — 건반 위에 서서 줄넘기 (발밑 건반이 눌려 파랗게) */
-  for (const [X, Y, kind] of KIDS) {
-    const n = 5, kw = 8, x0 = Math.round(X - (n * kw) / 2);
-    keys(x0, Y + 40, n, kw, 8, new Set([1, 3]));
-  }
   /* 왼쪽: 최종보스 가면(콤보 300 선물)을 쓴 아이 — 보라 왕실 옷 · 금빛 줄. 오른쪽: 줄 없이 두 손 번쩍 · 분홍 머리 · 헤드폰 · 민트 옷 */
   const [[LX, LY], [RX, RY]] = KIDS;
   window.BM(c, 7, LX, LY, 'behind');
@@ -217,8 +213,8 @@ const out = await page.evaluate(async ({ WT, THIN, KIDS }) => {
     R(x + 1, y + 7, 1, 1, hi);
   };
   /* 음표: 왼쪽 3 · 오른쪽 3 (별 반짝이는 줄이고 깨끗한 하늘) */
-  for (const [x, y, col, hi] of [[74, 58, '#ffd25a', '#fff6c8'], [86, 68, '#7fe0ff', '#e0f8ff'], [76, 80, '#ff9ad0', '#ffe0f0'],
-    [170, 56, '#7fe0ff', '#e0f8ff'], [182, 68, '#ffd25a', '#fff6c8'], [172, 80, '#ff9ad0', '#ffe0f0']]) noteShape(x, y, col, hi);
+  for (const [x, y, col, hi] of [[76, 54, '#ffd25a', '#fff6c8'], [90, 64, '#7fe0ff', '#e0f8ff'], [78, 72, '#ff9ad0', '#ffe0f0'],
+    [168, 54, '#7fe0ff', '#e0f8ff'], [182, 64, '#ffd25a', '#fff6c8'], [170, 72, '#ff9ad0', '#ffe0f0']]) noteShape(x, y, col, hi);
 
   /* ===== 로비 로고 (투명) — 폭 180칸 ===== */
   const ltw = l1.w + GAP + l2.w, LW = 180, LH = 4 + Math.max(l1.h, l2.h) + 2 + 5 + sub.h + 3;
