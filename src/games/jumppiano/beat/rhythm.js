@@ -1186,11 +1186,11 @@ function timeAtStepLocal(st) {
   const i = Math.floor(st);
   return S[i] + (st - i) * (S[i + 1] - S[i]);
 }
-/** 맨 아래 도트 피아노 건반 — 칸마다 흰 건반 여러 개, 누르면 2칸 내려가고 칸 색(오른손 파랑 · 왼손 빨강)으로 */
+/** 맨 아래 도트 피아노 건반 — 칸 하나에 흰 건반 하나(검은 건반 없음), 누르면 2칸 내려가고 칸 색(오른손 파랑 · 왼손 빨강)으로 */
 function drawKeyboard(b) {
   const top = G.floorY + 1, h = G.H - top;
   rect(b, 0, top - 1, G.W, h + 1, '#0c0a26');
-  const per = G.jumpOnly ? 3 : 2, n = G.nCols * per, kw = G.W / n;
+  const per = 1, n = G.nCols, kw = G.W / n;                 // 대표님: 3칸 = 건반 3개 · 6칸 = 건반 6개 (칸 하나 = 건반 하나)
   const onCol = (col) => { const ln = laneOfCol(col); return G.down[ln] || (G.pianoFlash?.[ln] || 0) > 0.35; };
   for (let i = 0; i < n; i++) {
     const col = Math.floor(i / per), ln = laneOfCol(col), on = onCol(col), C = PCOL[ln[0]];
@@ -1201,14 +1201,6 @@ function drawKeyboard(b) {
     if (on) { rect(b, x0, top, w - 1, dy, '#05030f'); rect(b, x0 + 2, top + dy + 3, 2, Math.max(0, h - dy - 12), C.l); }
     else rect(b, x0 + 1, G.H - 9, w - 3, 3, '#e3e6f2');
     rect(b, x1 - 1, top, 1, h, '#5a5f7a');
-  }
-  const bh = Math.round(h * 0.58), bw = Math.max(4, Math.round(kw * 0.56));
-  for (let i = 0; i < n - 1; i++) {
-    if (i % 7 === 2 || i % 7 === 6) continue;                     // 미-파 · 시-도 사이엔 검은 건반이 없다
-    const x = Math.round((i + 1) * kw - bw / 2) - 1, on = onCol(Math.floor(i / per)) && onCol(Math.floor((i + 1) / per));
-    const dy = on ? 2 : 0;
-    rect(b, x - 1, top, bw + 2, bh + 1 + dy, '#05030f'); rect(b, x, top + dy, bw, bh, '#1e2033');
-    rect(b, x + 1, top + dy + 1, 1, bh - 5, '#4a4e6e'); rect(b, x, top + dy + bh - 3, bw, 3, '#0e0f1a');
   }
   rect(b, 0, top, G.W, 1, '#c8304a');                                  // 건반 위 빨간 천(피아노)
   b.save(); b.globalAlpha = 0.35; rect(b, 0, top - 4, G.W, 3, '#ffffff'); b.restore();
