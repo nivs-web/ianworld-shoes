@@ -38,6 +38,9 @@ export function normJr(raw) {
     jumps: n0(r.jumps),
     perfects: n0(r.perfects),
     bestCombo: n0(r.bestCombo, 99999),
+    /* 멀티 서바이벌 — 판 수 · 우승 수 (줄지 않는 값) */
+    mPlays: n0(r.mPlays, 100000),
+    mWins: n0(r.mWins, 100000),
     endless: per(r.endless, 99999),
     stars: perArr(r.stars, 3),
     scores: perArr(r.scores, 9999999),
@@ -52,6 +55,10 @@ export function normJr(raw) {
       ring: ['auto', 'on', 'off'].includes(opts.ring) ? opts.ring : 'auto',
       /* 리듬 판정 보정(ms) — 설정 «타이밍 맞추기». + = 늦게 누르는 버릇 */
       offset: Math.max(-150, Math.min(150, Math.round(Number(opts.offset) || 0))),
+      /* 모드 설명 팝업을 본 것(비트: 1 챔피언십 · 2 무한 · 4 멀티) — 처음 누를 때 한 번만 띄운다 */
+      guide: n0(opts.guide, 7),
+      /* 조작 — 'jump' = JUMP 하나(기본) · 'both' = ROPE+JUMP 하드 모드(Lv.20 해금) */
+      ctrl: opts.ctrl === 'both' ? 'both' : 'jump',
     },
   };
 }
@@ -70,6 +77,8 @@ export function mergeJr(localRaw, remoteRaw) {
     jumps: Math.max(a.jumps, b.jumps),
     perfects: Math.max(a.perfects, b.perfects),
     bestCombo: Math.max(a.bestCombo, b.bestCombo),
+    mPlays: Math.max(a.mPlays, b.mPlays),
+    mWins: Math.max(a.mWins, b.mWins),
     endless: Object.fromEntries(DK.map((k) => [k, Math.max(a.endless[k], b.endless[k])])),
     stars: Object.fromEntries(DK.map((k) => [k, maxArr(a.stars[k], b.stars[k])])),
     scores: Object.fromEntries(DK.map((k) => [k, maxArr(a.scores[k], b.scores[k])])),
@@ -78,6 +87,7 @@ export function mergeJr(localRaw, remoteRaw) {
     rope: b.rope || a.rope,
     look: b.look || a.look,
     diff: remoteRaw.diff ? b.diff : a.diff,
-    opts: remoteRaw.opts ? b.opts : a.opts,
+    /* 고른 설정은 원격을 따르되, 본 설명 팝업은 두 기기 것을 합친다(다시 뜨지 않게) */
+    opts: { ...(remoteRaw.opts ? b.opts : a.opts), guide: a.opts.guide | b.opts.guide },
   };
 }

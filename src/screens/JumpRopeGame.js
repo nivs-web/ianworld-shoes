@@ -9,7 +9,11 @@
  * RTDB 규칙의 `game` 칸이 아직 'jump' 를 모른다(shoes · dragon · catch 만). 모르는 값을 쓰면
  * **접속 표시 쓰기 전체가 거부**되므로, 규칙이 게시되기 전까지는 접속 표시를 건드리지 않는다.
  *
- * @param {{mode:'stage'|'endless'|'test', stageNo?:number, stage?:object, itemSel?:object}} params
+ * ## 멀티 서바이벌 (`mode: 'survival'`, 2026-11-07)
+ * 게임 모듈은 Firebase 를 모른다. 여기서 방을 구독해 `setRoom` 으로 넣고, 게임이 `publish` 로 주는
+ * 내 칸(하트 · 점수 · 콤보 · 생존)을 `Room.publishJump` 로 쓴다. 5초마다 생존 신호. 시작 시각은 방의 startAt.
+ *
+ * @param {{mode:'stage'|'endless'|'test'|'survival', stageNo?:number, stage?:object, itemSel?:object, code?:string, room?:object}} params
  */
 
 import { el, toast } from './ui.js';
@@ -17,6 +21,9 @@ import { setGameGuard } from './router.js';
 import { stopLoop, startLoop, isRunning } from '../core/loop.js';
 import * as Scene from '../core/scene.js';
 import * as J from '../services/jumprope.js';
+import * as Room from '../services/multiplayer.js';
+import { currentUser } from '../services/auth.js';
+import { MULTI } from '../config/balance.js';
 
 export const PRESENCE_GAME = null;
 
@@ -31,12 +38,30 @@ export default function JumpRopeGame(nav, params = {}) {
   let stoppedArcadeLoop = false;
   const mode = params.mode || 'stage';
   /* 아이템은 판을 시작할 때 쓴다 — 화면이 다시 만들어져도 두 번 빠지지 않게 이 판의 params 에 적어 둔다 */
-  if (!params._used) params._used = mode === 'test' ? {} : J.useItems(params.itemSel || {});
+  if (!params._used) params._used = mode === 'test' || mode === 'survival' ? {} : J.useItems(params.itemSel || {});
   const used = params._used;
+  /* 서바이벌 — 방 */
+  const code = mode === 'survival' ? params.code : null;
+  let unsubRoom = null, beat = null, left = false, keepSeat = false;
+  const leaveRoom = () => { if (!code || left || keepSeat) return; left = true; Room.leaveRoom(code).catch(() => {}); };
+  async function rematch() {
+    const r = await Room.resetRoom(code).catch(() => false);
+    if (!live) return;
+    if (r === 'ok') {
+      keepSeat = true;
+      const { default: WaitingRoom } = await import('./multi/WaitingRoom.js');
+      if (live) nav.replace(WaitingRoom, { code, game: Room.GAME_JUMP });
+      return;
+    }
+    toast('다시 시작을 준비하지 못했어요. 잠시 뒤 다시 눌러 주세요.', 2400);
+  }
 
   return {
     onLeave() {
       live = false;
+      unsubRoom?.(); unsubRoom = null;
+      clearInterval(beat);
+      leaveRoom();
       setGameGuard(null);
       if (mod) mod.unmount();
       if (stoppedArcadeLoop) { startLoop(Scene.updateCurrent, Scene.renderAll); stoppedArcadeLoop = false; }
@@ -49,11 +74,36 @@ export default function JumpRopeGame(nav, params = {}) {
         setGameGuard(() => m.requestPause());
         const j = J.jr();
         const stageNo = Math.max(1, Math.min(J.CHAMP_STAGES, params.stageNo | 0 || 1));
+        if (mode === 'survival') {
+          const room = params.room || {};
+          m.mount(host, {
+            mode, diff: room.difficulty || 'normal', seed: room.seed | 0, room,
+            myUid: currentUser()?.uid,
+            look: J.look(j), rope: J.rope(j), items: {}, opts: j.opts,
+            msUntil: () => Room.msUntilStart(Number(room.startAt) || Date.now() + 3000),
+            serverNow: () => Date.now() + Room.serverOffsetSync(),
+            publish: (f) => { if (live) Room.publishJump(code, f).catch(() => {}); },
+            onRoundOver: () => Room.endJumpRound(code).catch(() => {}),
+            onFinish: (r) => J.finishSurvival(r),
+            onSound: (on) => J.setOpt('sound', on),
+            onExit(kind) {
+              if (!live) return;
+              if (kind === 'rematch') { rematch(); return; }
+              leaveRoom();
+              nav.back();
+            },
+          });
+          unsubRoom = Room.subscribeRoom(code, (r) => { if (live) m.setRoom(r); });
+          Room.heartbeat(code).catch(() => {});
+          beat = setInterval(() => Room.heartbeat(code).catch(() => {}), MULTI.heartbeatMs);
+          return;
+        }
         m.mount(host, {
           mode,
           stageNo,
           custom: mode === 'test' ? params.stage : null,
           diff: j.diff,
+          ctrl: J.ctrlMode(j),
           look: J.look(j),
           rope: J.rope(j),
           items: used,

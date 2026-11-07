@@ -266,8 +266,10 @@ export function finishBeat(r) {
   j.jumps += count;
   j.perfects += perfect;
   j.bestCombo = Math.max(j.bestCombo, maxCombo);
-  /* 리듬판은 한 곡에 노트가 200~350개라 판정 경험치를 낮춘다(1곡에 레벨이 몇 칸씩 뛰지 않게) */
-  let xp = Math.round(perfect * 1 + great * 0.6 + good * 0.3);
+  /* 리듬판은 한 곡에 노트가 200~350개라 판정 경험치를 낮춘다(1곡에 레벨이 몇 칸씩 뛰지 않게).
+     JUMP 하나 모드는 노트가 절반쯤이라 한 노트 경험치를 1.6배로 — 한 곡에 버는 양이 비슷하게 */
+  const noteK = r.ctrl === 'jump' ? 1.6 : 1;
+  let xp = Math.round((perfect * 1 + great * 0.6 + good * 0.3) * noteK);
   let candy = 0, stars = 0, prevStars = 0, newBest = false, firstClear = false;
   if (r.mode === 'stage') {
     const i = Math.max(0, Math.min(CHAMP_STAGES - 1, (r.stageNo | 0) - 1));
@@ -292,6 +294,7 @@ export function finishBeat(r) {
   }
   xp = Math.round(xp * XP_MULT[diff]);
   candy = Math.round(candy * D.reward) * (r.used?.candy2 ? 2 : 1);
+  if (r.ctrl === 'both') candy = Math.round(candy * 1.5);   // ROPE+JUMP 하드 모드 — 별사탕 1.5배
   j.xp += xp;
   j.candy += candy;
   j.candyTotal += candy;
@@ -303,7 +306,45 @@ export function finishBeat(r) {
   syncSoon();
   return { xp, candy, stars, prevStars, newBest, firstClear, lvBefore, lvAfter, newRopes, newParts, level: levelOf(j) };
 }
+/**
+ * ★ 멀티 서바이벌 한 판 끝 — 판 수 · 우승 수 · 경험치(판정 절반) · 별사탕(참가 5 + 순위 보너스).
+ * @param {{rank:number, total:number, won:boolean, perfect:number, great:number, good:number, count:number, maxCombo:number, diff:string}} r
+ */
+export function finishSurvival(r) {
+  const before = jr();
+  const diff = DIFFS[r?.diff] ? r.diff : 'normal';
+  const ropesBefore = new Set(ownedRopes(before).map((x) => x.id));
+  const lvBefore = levelOf(before).level;
+  const j = { ...before };
+  j.plays += 1;
+  j.mPlays += 1;
+  if (r.won) j.mWins += 1;
+  j.jumps += ci(r.count);
+  j.perfects += ci(r.perfect);
+  j.bestCombo = Math.max(j.bestCombo, ci(r.maxCombo));
+  const total = Math.max(1, r.total | 0), rank = Math.max(1, r.rank | 0);
+  const xp = Math.round((ci(r.perfect) * 1 + ci(r.great) * 0.6 + ci(r.good) * 0.3) * 0.5 + (r.won ? 60 : 15) * XP_MULT[diff]);
+  const candy = Math.round((5 + Math.max(0, total - rank) * 6 + (r.won ? 20 : 0)) * DIFFS[diff].reward);
+  j.xp += xp;
+  j.candy += candy;
+  j.candyTotal += candy;
+  save(j);
+  const lvAfter = levelOf(j).level;
+  const newRopes = ownedRopes(j).filter((x) => !ropesBefore.has(x.id));
+  const newParts = [];
+  for (let lv = lvBefore + 1; lv <= lvAfter; lv++) for (const it of rewardsAt(lv)) if (it.kind === 'part') newParts.push(it);
+  syncSoon();
+  return { xp, candy, lvBefore, lvAfter, newRopes, newParts, level: levelOf(j) };
+}
+
 /** 대회 n 이 열렸나 — 앞 대회를 완주(별 1개+)해야 열린다 */
+/* ---------- 조작: JUMP 하나(기본) · ROPE+JUMP 하드 모드(Lv.20 해금) (2026-11-07) ----------
+ * 권반장: «처음에는 점프만 해. 레벨 끝까지 가면 로프와 점프를 같이 할 수 있는 기능이 해금되는 거야.» */
+export const HARD_LV = 20;
+export const ctrlUnlocked = (j = jr()) => levelOf(j).level >= HARD_LV;
+/** 이번 판 조작 — 하드 모드를 골랐어도 아직 Lv.20 이 아니면 JUMP 하나 */
+export const ctrlMode = (j = jr()) => (j.opts.ctrl === 'both' && ctrlUnlocked(j) ? 'both' : 'jump');
+
 export const champUnlocked = (no, diff, j = jr()) => no <= 1 || (j.stars[diff]?.[no - 2] | 0) > 0;
 export const champStars = (j, diff) => (j.stars[diff] || []).slice(0, CHAMP_STAGES).reduce((a, b) => a + b, 0);
 

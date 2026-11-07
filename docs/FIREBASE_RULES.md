@@ -239,6 +239,10 @@ service cloud.firestore {
 
 ## Realtime Database (멀티플레이, M7)
 
+> ⏳ **2026-11-07 줄넘기 멀티 서바이벌 — 아직 콘솔에 게시 전이다(사용자 승인 뒤).** 바뀐 곳은 다섯 군데뿐이다:
+> `rooms/$code/game` 에 `'jump'` · `maxPlayers` 는 jump 방만 8까지 · `players/$uid/jc`(콤보 0~99999) · `players/$uid/jl`(모습 ≤40자) · `presence/$uid/game` 에 `'jump'`.
+> `docs/rtdb-rules.json` 에도 같이 넣었다. 게시할 때는 콘솔 게시본을 받아 이 다섯 군데만 얹는다. 게시 전에는 멀티 서바이벌 방 만들기가 거부되어 «서버 준비 중» 안내가 뜬다.
+
 콘솔 → Realtime Database → **규칙** 탭 → 전체 교체 → 게시
 
 > ### ★ 2026-08-16 전면 교체 — 예전 규칙은 두 군데가 근본적으로 틀렸다
@@ -391,7 +395,7 @@ service cloud.firestore {
           ".validate": "newData.val() == 'waiting' || newData.val() == 'countdown' || newData.val() == 'playing' || newData.val() == 'finished'"
         },
         "maxPlayers": {
-          ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 4"
+          ".validate": "newData.isNumber() && newData.val() >= 2 && (newData.val() <= 4 || (newData.val() <= 8 && newData.parent().child('game').val() == 'jump'))"
         },
         "createdAt": {
           ".validate": "newData.isNumber() && (!data.exists() || newData.val() == data.val())"
@@ -467,6 +471,12 @@ service cloud.firestore {
             },
             "ct": {
               ".validate": "newData.isString() && newData.val().length <= 24 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "jc": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99999 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "jl": {
+              ".validate": "newData.isString() && newData.val().length <= 40 && ($uid == auth.uid || newData.val() == data.val())"
             },
             "lives": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20 && ($uid == auth.uid || newData.val() == data.val())"
@@ -582,7 +592,7 @@ service cloud.firestore {
           }
         },
         "game": {
-          ".validate": "(newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch') && (!data.exists() || newData.val() == data.val())"
+          ".validate": "(newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump') && (!data.exists() || newData.val() == data.val())"
         },
         "$other": {
           ".validate": false
@@ -646,7 +656,7 @@ service cloud.firestore {
           ".validate": "newData.val() == now"
         },
         "game": {
-          ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch')"
+          ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump')"
         },
         "coins": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"

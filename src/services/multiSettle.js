@@ -164,7 +164,7 @@ async function settleOnce(code, room = null) {
    * 진 사람에게서 신발을 걷는다. 친선 대결인 캐치볼 방이 여기로 들어오면 **진 사람이
    * 신발을 잃는다.** 볼일이 끝난 방으로 돌려줘서 기록만 치우게 한다.
    */
-  if (r && Room.gameOf(r) === Room.GAME_CATCH) return { rank: 0, won: false, paid: [], took: [], pending: 0, lost: 0 };
+  if (r && Room.isFriendlyGame(r)) return { rank: 0, won: false, paid: [], took: [], pending: 0, lost: 0 };
   /**
    * ★ **끝날 수 있는 판이면 여기서 끝낸다.** (2026-08-19)
    *

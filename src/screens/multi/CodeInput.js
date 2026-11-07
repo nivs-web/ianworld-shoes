@@ -15,7 +15,7 @@ import WaitingRoom from './WaitingRoom.js';
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '←', '0', '↵'];
 
 export default function CodeInput(nav, params = {}) {
-  const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : 'shoes';
+  const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : params.game === 'jump' ? 'jump' : 'shoes';
   /** 3D캐치볼에서 왔다 — 방은 같은 'catch' 방이고 대결 화면만 3D 로 그린다 */
   const view3d = game === 'catch' && !!params.view3d;
   let code = '';

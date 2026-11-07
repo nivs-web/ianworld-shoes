@@ -6,7 +6,8 @@
  * > (줄넘기 몇 개까지 했는지 · 레벨 · 줄넘기를 얼마나 획득했는지), 명예의 전당, 아이템 구매 …
  * > 줄넘기도 다양하게 고르게 하고 난이도도 쉬움 · 보통 · 어려움.»
  *
- * 2026-11-07 리듬게임판(ROPE BEAT): 시작 단추 = «챔피언십»(5대회 · 곡마다 60초) · «무한 줄넘기».
+ * 2026-11-07 리듬게임판(ROPE BEAT): 시작 단추 = «챔피언십»(5대회 · 곡마다 60초) · «무한 줄넘기» · «멀티 서바이벌».
+ * 처음 누르면 모드 설명 팝업이 한 번 뜬다(권반장 «뭔지 모르겠어»).
  * 그래서 드래곤 로비(`DragonLobby.js`)와 **같은 순서**다:
  *   제목 / 로비유저상태창(캐릭터 + 기록) / 난이도 / 꾸미기 · 줄넘기 / 상점 · 명예의 전당 /
  *   만들기 · 설정 / 시작(스테이지 · 무한 줄넘기) / 오락실 복귀
@@ -14,7 +15,7 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, backButton, segmented, screen } from './ui.js';
+import { el, button, backButton, segmented, screen, toast } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
 import { PAL } from '../game/palette.js';
 import { pixelText } from './pixelText.js';
@@ -23,7 +24,7 @@ import { lazyScreen } from './lazyScreen.js';
 import * as J from '../services/jumprope.js';
 import { DIFFS, DIFF_KEYS, ROPES } from '../games/jumprope/data.js';
 import { animFigure } from '../games/jumprope/art.js';
-import { ensureJrStyle, jrLogo, lvBar } from './jumprope/jrui.js';
+import { ensureJrStyle, jrLogo, lvBar, modeGuide } from './jumprope/jrui.js';
 
 const JrStages = lazyScreen(() => import('./jumprope/JrStages.js'), '세계 줄넘기 챔피언십');
 const JrReady = lazyScreen(() => import('./jumprope/JrReady.js'), '무한 줄넘기');
@@ -33,6 +34,7 @@ const JrShop = lazyScreen(() => import('./jumprope/JrShop.js'), '상점');
 const JrRanking = lazyScreen(() => import('./jumprope/JrRanking.js'), '명예의 전당');
 const JrEditor = lazyScreen(() => import('./jumprope/JrEditor.js'), '스테이지 만들기');
 const JrSettings = lazyScreen(() => import('./jumprope/JrSettings.js'), '설정 · 하는 법');
+const JumpMultiMenu = lazyScreen(() => import('./multi/JumpMultiMenu.js'), '멀티 서바이벌');
 
 const SEG = DIFF_KEYS.map((k) => ({ value: k, label: DIFFS[k].label }));
 const STAT_SCALE = 2;
@@ -56,6 +58,14 @@ export default function JumpRopeLobby(nav) {
   const stopAnim = () => { anim?.stop(); anim = null; };
   /* 하위 화면은 한가할 때 미리 받아 둔다 */
   setTimeout(() => { for (const f of [JrStages, JrReady, JrCloset, JrRopes, JrShop, JrRanking]) f.prefetch?.(); }, 1200);
+
+  /* 시작 단추 — 처음 누르면 모드 설명 팝업(jrui.modeGuide), 본 뒤로는 바로 간다 */
+  let guiding = false;
+  const guided = (kind, go) => {
+    if (guiding) return;
+    guiding = true;
+    modeGuide(kind).then((ok) => { guiding = false; if (ok) go(); });
+  };
 
   return {
     onLeave() { stopAnim(); },
@@ -87,6 +97,16 @@ export default function JumpRopeLobby(nav) {
 
         el('div.diff-title', '난이도 (챔피언십 · 무한 줄넘기)'),
         segmented(SEG, diff, (v) => { J.setDiff(v); nav.refresh(); }),
+        /* 조작 — JUMP 하나(기본) · ROPE+JUMP 하드 모드(Lv.20 해금) */
+        el('div.diff-title', J.ctrlUnlocked(j) ? '조작' : `조작 · 하드 모드는 Lv.${J.HARD_LV}에 열려요 (지금 Lv.${L.level})`),
+        segmented([
+          { value: 'jump', label: 'JUMP 하나' },
+          { value: 'both', label: J.ctrlUnlocked(j) ? 'ROPE+JUMP 하드' : `🔒 ROPE+JUMP` },
+        ], J.ctrlMode(j), (v) => {
+          if (v === 'both' && !J.ctrlUnlocked(j)) { toast(`레벨 ${J.HARD_LV}이 되면 ROPE+JUMP 하드 모드가 열려요!`, 2200); return; }
+          J.setOpt('ctrl', v);
+          nav.refresh();
+        }),
 
         el('div.row', null, [
           button('캐릭터 꾸미기', () => nav.push(JrCloset)),
@@ -103,9 +123,12 @@ export default function JumpRopeLobby(nav) {
 
         /* 시작 버튼은 맨 아래 — 오락실 기계의 큰 버튼 자리 (드래곤 로비와 같다) */
         el('div.row', null, [
-          button('챔피언십', () => nav.push(JrStages), { primary: true }),
-          button('무한 줄넘기', () => nav.push(JrReady, { mode: 'endless' }), { primary: true }),
+          button('챔피언십', () => guided('champ', () => nav.push(JrStages)), { primary: true }),
+          button('무한 줄넘기', () => guided('endless', () => nav.push(JrReady, { mode: 'endless' })), { primary: true }),
         ]),
+
+        /* 멀티 서바이벌 — 2~8명, 마지막까지 안 걸린 사람이 우승 (2026-11-07) */
+        button(`멀티 서바이벌${j.mPlays ? ` · ${j.mWins}승/${j.mPlays}판` : ''}`, () => guided('multi', () => nav.push(JumpMultiMenu)), { primary: true }),
 
         el('div.spacer'),
         backButton(S.backToPortal, () => nav.reset(Portal)),

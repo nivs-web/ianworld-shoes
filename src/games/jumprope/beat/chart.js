@@ -339,6 +339,47 @@ function finalize(ctx, meta, sections, extraCues = []) {
   };
 }
 
+/* ---------- JUMP 하나 모드 (기본, 2026-11-07) ----------
+ * 권반장: «너무 어려워. 점프만이 기본이고 로프 + 점프를 어려움으로 하자. 처음에는 점프만 해.»
+ * 두 버튼 채보에서 ROPE 노트를 빼고(어려움은 ROPE 박도 JUMP 로 바꾼다), B(같이)는 JUMP 로, 꾹은 어려움에서만 남긴다.
+ * 남은 JUMP 사이 간격을 난이도만큼 벌린다(한 손가락으로 편하게). 줄은 JUMP 사이에 저절로 머리 위를 지난다
+ * (buildRopeKeys 의 «같은 종류가 연달아 → 가운데에 반대»). ROPE+JUMP 두 버튼은 Lv.20 해금 «하드 모드». */
+export const JUMP_GAP = { easy: { steps: 4, sec: 0.42 }, normal: { steps: 2, sec: 0.27 }, hard: { steps: 2, sec: 0.25 } };
+
+export function jumpOnly(chart) {
+  const gap = JUMP_GAP[chart.diff] || JUMP_GAP.normal;
+  const hard = chart.diff === 'hard', keepHold = hard;
+  const notes = [];
+  let endS = -1e9, endT = -1e9;
+  for (const n of chart.notes) {
+    if (n.lane === 'L' && !hard) continue;                             // 어려움은 ROPE 박도 JUMP 로 — 더 촘촘하게
+    if (n.step - endS < gap.steps || n.t - endT < gap.sec) continue;
+    const hold = keepHold && n.kind === 'hold';
+    const m = { id: notes.length, lane: 'R', kind: hold ? 'hold' : 'tap', step: n.step, t: n.t, tech: n.tech, move: n.move };
+    if (hold) { m.endStep = n.endStep; m.endT = n.endT; }
+    notes.push(m);
+    endS = hold ? m.endStep : m.step;
+    endT = hold ? m.endT : m.t;
+  }
+  /* 기술: 노트가 남은 것만, 번호를 다시 */
+  const remap = new Map(), techs = [];
+  chart.techs.forEach((x) => {
+    const ns = notes.filter((n) => n.tech === x.i);
+    if (!ns.length) return;
+    const i = techs.length;
+    remap.set(x.i, i);
+    techs.push({ ...x, i, t0: ns[0].t, t1: Math.max(...ns.map((n) => n.endT ?? n.t)), noteIds: ns.map((n) => n.id) });
+  });
+  for (const n of notes) n.tech = remap.has(n.tech) ? remap.get(n.tech) : -1;
+  const cues = chart.cues.filter((c) => c.kind !== 'tech' || remap.has(c.tech)).map((c) => (c.kind === 'tech' ? { ...c, tech: remap.get(c.tech) } : c));
+  return {
+    ...chart, ctrl: 'jump', notes, techs, cues, ropeKeys: buildRopeKeys(notes, chart.steps), total: notes.length,
+    firstT: notes.length ? notes[0].t : 0, lastT: notes.length ? Math.max(...notes.map((n) => n.endT ?? n.t)) : 0,
+    /* 별 목표는 노트 수에 맞춰 줄인다(judge.goalsFor 가 0.3~1 로 자른다) */
+    goalScale: Math.max(0.5, (chart.goalScale ?? 1) * (chart.total ? notes.length / chart.total : 1)),
+  };
+}
+
 /* ---------- 대회 채보 ---------- */
 
 /** 대회 k 까지 나온 기술(기본·피날레 빼고) */
@@ -385,7 +426,9 @@ function stageChart(st, diff, seed, opts) {
  */
 function endlessChart(diff, seed, bars, opts) {
   bars = Math.max(8, Math.round(bars));
-  const tempo = ENDLESS.tempoUntil(bars);
+  /* 멀티 서바이벌은 자기 템포(라운드마다 +20)를 넘긴다 — 그때는 16마디 «SPEED UP» 예고를 빼고 본체가 라운드 띠를 띄운다 */
+  const ownTempo = Array.isArray(opts?.tempo) && opts.tempo.length ? opts.tempo : null;
+  const tempo = ownTempo || ENDLESS.tempoUntil(bars);
   const ctx = makeCtx(tempo, bars, diff);
   const rand = seeded(seed * 104729 + 31);
   const sections = [{ from: 0, to: 2, label: 'intro', energy: 0 }];
@@ -418,7 +461,7 @@ function endlessChart(diff, seed, bars, opts) {
     const dens = Math.min(0.85, 0.3 + 0.07 * p);                     // 기술 비율
     const fill = Math.min(1, 0.25 + 0.15 * p);                         // 기본 뛰기가 8분으로 꽉 차는 비율 (밀도)
     sections.push({ from: bar, to: Math.min(last, bar + 16), label: `LEVEL ${p + 1}`, energy: Math.min(3, 1 + (p >> 1)) });
-    if (p > 0 && bpmAt(tempo, bar) < ENDLESS.maxBpm) cues.push({ s: (bar - 1) * STEPS_PER_BAR, text: CUE_TEXT['SPEED UP'], kind: 'tempo', cue: 'SPEED UP' });
+    if (!ownTempo && p > 0 && bpmAt(tempo, bar) < ENDLESS.maxBpm) cues.push({ s: (bar - 1) * STEPS_PER_BAR, text: CUE_TEXT['SPEED UP'], kind: 'tempo', cue: 'SPEED UP' });
     for (let ph = 0; ph < 4; ph++) {
       const A = makeBar(open, dens, newest, fill), B = makeBar(open, dens, newest, fill), F = makeBar(open, Math.min(0.95, dens + 0.15), newest, fill);
       const four = [A, B, A, F];
@@ -505,13 +548,15 @@ function customChart(stage, diff, seed, opts) {
 /**
  * @param stage 1~5 | 'training'… | STAGES 항목 | 'endless' | 내 스테이지 객체 {name, segs:[…], judge?, theme?}
  * @param diff 'easy' | 'normal' | 'hard'
- * @param opts { seed=0, bars=400(무한), techs(내 스테이지 r 조각이 섞을 기술) }
+ * @param opts { seed=0, bars=400(무한), techs(내 스테이지 r 조각이 섞을 기술), ctrl('jump' = JUMP 하나 모드) }
  * @returns { kind, stage, id, name, diff, seed, tempo, bars, steps, duration, sections, notes, techs, ropeKeys, cues, total,
  *            firstT, lastT, dropped, goalScale }
  */
 export function buildChart(stage, diff = 'normal', opts = {}) {
-  diff = DIFFS[diff] ? diff : 'normal';
   opts = opts || {};
+  /* opts.ctrl: 'jump'(기본 · JUMP 하나) | 'both'(ROPE+JUMP 하드 모드). 안 주면 두 버튼 채보 그대로(시험 도구들) */
+  if (opts.ctrl === 'jump') return jumpOnly(buildChart(stage, diff, { ...opts, ctrl: 'both' }));
+  diff = DIFFS[diff] ? diff : 'normal';
   const seed = Math.abs(Math.floor(+opts.seed || 0));
   if (stage === 'endless' || stage?.id === 'endless') return endlessChart(diff, seed, opts.bars ?? 400, opts);
   if (stage && typeof stage === 'object' && Array.isArray(stage.segs)) return customChart(stage, diff, seed, opts);

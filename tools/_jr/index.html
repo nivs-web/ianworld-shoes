@@ -32,6 +32,13 @@ if (new URLSearchParams(location.search).has('all')) {
   p.jr = { ...(p.jr || {}), xp: Math.max(p.jr?.xp || 0, 1950), candy: Math.max(p.jr?.candy || 0, 5000), stars: { easy: one, normal: one, hard: one } };
   localStorage.setItem('sf_profile', JSON.stringify(p));
 }
+/* ?max — 시험용: 레벨 20(ROPE+JUMP 하드 모드 해금) */
+if (new URLSearchParams(location.search).has('max')) {
+  const p = JSON.parse(localStorage.getItem('sf_profile') || '{}');
+  p.nickname = p.nickname || '권반장';
+  p.jr = { ...(p.jr || {}), xp: Math.max(p.jr?.xp || 0, 6300) };
+  localStorage.setItem('sf_profile', JSON.stringify(p));
+}
 window.__screens = { JumpRopeLobby, Portal };
 nav.reset(new URLSearchParams(location.search).get('start') === 'portal' ? Portal : JumpRopeLobby);
 window.__ready = true;

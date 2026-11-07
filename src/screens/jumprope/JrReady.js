@@ -39,7 +39,7 @@ export default function JrReady(nav, params = {}) {
         const bpms = st.tempo.map((x) => x.bpm);
         const story = st.sections.filter((x) => x.cue).map((x) => (x.cue === 'SLOW DOWN' ? '▼느려짐' : '▲빨라짐')).join(' ');
         let gl = st.goals, notes = 0;
-        try { const ch = buildChart(no, diff, { seed: 7 + no * 31 }); notes = ch.total; gl = goalsFor(st.goals, diff, ch.goalScale, ch.total) || st.goals; } catch { /* 표의 목표 그대로 */ }
+        try { const ch = buildChart(no, diff, { seed: 7 + no * 31, ctrl: J.ctrlMode(j) }); notes = ch.total; gl = goalsFor(st.goals, diff, ch.goalScale, ch.total) || st.goals; } catch { /* 표의 목표 그대로 */ }
         info = [
           title(`${no}. ${st.name}`),
           el('div.jr-preview', null, [arenaThumb(st.arena, 150, 75, 2)]),
@@ -57,7 +57,7 @@ export default function JrReady(nav, params = {}) {
           el('div.jr-preview', null, [figureCanvas(J.look(j), J.rope(j), 3, { w: 44, h: 68 })]),
           el('div.jr-box', null, [
             el('h4', `♪ ${ENDLESS.song.title} — BPM ${ENDLESS.startBpm}에서 8마디마다 +${ENDLESS.stepBpm}`),
-            el('div', '줄에 걸리면(JUMP 놓침) 바로 끝! ROPE 를 세 번 놓쳐도 끝.'),
+            el('div', J.ctrlMode(j) === 'both' ? '하드 모드: 줄에 걸리면(JUMP 놓침) 바로 끝! ROPE 를 세 번 놓쳐도 끝.' : '줄에 걸리면(JUMP 놓침) 체력이 줄어요 — 네 번 걸리면 끝! 잘 뛰면 체력이 다시 차올라요.'),
             el('div', `난이도 ${D.label} · 내 최고 ${j.endless[diff]}번 · 명예의 전당에 올라가요`),
           ]),
         ];

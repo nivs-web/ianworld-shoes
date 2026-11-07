@@ -23,7 +23,7 @@ import WaitingRoom from './WaitingRoom.js';
 import Lobby from '../Lobby.js';
 
 export default function RoomList(nav, params = {}) {
-  const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : 'shoes';
+  const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : params.game === 'jump' ? 'jump' : 'shoes';
   /** 3D캐치볼에서 왔다 — 방은 같은 'catch' 방이고 대결 화면만 3D 로 그린다 */
   const view3d = game === 'catch' && !!params.view3d;
   let rooms = null;      // null = 아직 못 받음
@@ -68,7 +68,7 @@ export default function RoomList(nav, params = {}) {
                 el('div.room-state', 상태),
                 el('div.room-name', S.roomRow(r.code, r.hostName, r.count, r.max)),
                 // 방장의 보유신발 — 대기방 참가자 카드와 같은 배지 (§11, 2026-08-19)
-                game === 'catch'
+                game === 'catch' || game === 'jump'
                   ? el('div.player-shoes')
                   : el('div.player-shoes', null, [
                       el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),

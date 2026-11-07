@@ -57,6 +57,10 @@ try {
   console.log('1) 로비 · 챔피언십 · 준비');
   await shot('01-lobby');
   await page.getByRole('button', { name: '챔피언십', exact: true }).click();
+  await sleep(500);
+  check((await page.locator('.jr-guide').count()) === 1, '처음 누르면 모드 설명 팝업');
+  await shot('01b-guide');
+  await page.getByRole('button', { name: '대회 고르기' }).click();
   await sleep(700);
   await shot('02-stages');
   check((await page.locator('.jr-stage').count()) === 5, '대회 5개');
@@ -74,14 +78,18 @@ try {
   check(r1 && r1.cleared && r1.miss === 0 && r1.perfect === d.notes, `완주 · PERFECT ${r1?.perfect}/${d?.notes} · MISS ${r1?.miss}`);
   check(r1?.rank === 'S' && r1?.stars === 3, `등급 ${r1?.rank} · 별 ${r1?.stars}`);
   check(r1 && r1.maxCombo === r1.perfect, `콤보 = PERFECT 수 (${r1?.maxCombo})`);
+  check(d?.ctrl === 'jump' && r1?.ctrl === 'jump', `기본은 JUMP 하나 모드 (${d?.ctrl})`);
   const j1 = await jr();
   check(j1 && j1.stars.normal[0] === 3 && j1.xp > 0 && j1.candy > 0, `저장: 별 ${j1?.stars?.normal?.[0]} · 경험치 ${j1?.xp} · 별사탕 ${j1?.candy}`);
 
-  console.log('3) ROPE 를 안 치면 — ROPE MISS 로 탈락');
+  console.log('3) 하드 모드(Lv.20 · ROPE+JUMP) — ROPE 를 안 치면 ROPE MISS 로 탈락');
+  await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('sf_profile')); p.jr.xp = 6300; p.jr.opts = { ...(p.jr.opts || {}), ctrl: 'both' }; localStorage.setItem('sf_profile', JSON.stringify(p)); });
   d = await play({ mode: 'stage', stageNo: 1 }, 'ropeless', { timeout: 90000 });
+  check(d?.ctrl === 'both', `Lv.20 + 하드 선택 → ROPE+JUMP (${d?.ctrl})`);
   check(d?.result?.r && !d.result.r.cleared && d.result.r.miss > 0, `ROPE 없이 JUMP 만 → 실패 (MISS ${d?.result?.r?.miss})`);
   await sleep(1500);
   await shot('07-fail');
+  await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('sf_profile')); p.jr.opts.ctrl = 'jump'; localStorage.setItem('sf_profile', JSON.stringify(p)); });
 
   console.log('4) 일시정지 → 계속');
   await play({ mode: 'stage', stageNo: 2 }, 'perfect', { until: 'never', timeout: 9000 });

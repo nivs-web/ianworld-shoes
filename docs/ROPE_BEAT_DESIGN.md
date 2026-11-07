@@ -179,3 +179,19 @@ art.js drawKid pose.state: 'cross' | 'side' | 'spin'(pose.spin 0~1) | 'release' 
 - PHASE 2 (지금): 5대회 · 3난이도 · 기술 패턴 · 결과 · 별 · 기록 저장 · 무한.
 - PHASE 3 (지금): 기술 포즈 · 대회장 5종 · 효과음 · 피버.
 - PHASE 4 (다음): 멀티 서바이벌 (규칙 게시 후 실제 네트워크 시험).
+
+## 2026-11-07 개편 — «너무 어려워» (권반장 플레이 후)
+
+- **조작: JUMP 하나가 기본.** ROPE 버튼은 잠김(회색 · 자물쇠 · «Lv.20 해금»), 왼쪽 레인은 어둡게.
+  채보는 `chart.jumpOnly` 로 바꾼다 — ROPE 노트 빼기 · B(같이) → JUMP · 꾹은 어려움만 · JUMP 사이 최소 간격
+  (쉬움 1박 · 0.42초 / 보통 반 박 · 0.27초 / 어려움 반 박 · 0.25초, 어려움은 ROPE 박도 JUMP 로 바꿔 촘촘하게).
+  판정 창 ×1.25 · 걸림 피해 9(두 버튼 14) · PERFECT 회복 2 · 무한은 네 번 걸리면 끝(두 버튼은 바로 끝).
+- **ROPE+JUMP 두 버튼 = 하드 모드, Lv.20(최고 레벨) 해금.** 로비 «조작»에서 고른다. 별사탕 ×1.5.
+  멀티 서바이벌은 모두 같은 노트로 겨루게 늘 JUMP 하나.
+- **다가오는 원**(rhythm.js `drawApproach`): 다음 노트 1.6박 전부터 판정 원 둘레의 반투명 고리가 줄어들고
+  안쪽이 노랗게 차오른다. 둘 다 노트가 원 한가운데 닿는 순간 판정 원과 겹치고, PERFECT 창 안에서는 흰 고리가 번쩍.
+- **모드 설명 팝업**(jrui `modeGuide`): 챔피언십 · 무한 줄넘기 · 멀티 서바이벌을 처음 누를 때 한 번. 설정에서 다시 보기.
+- **멀티 서바이벌**(2~8명): `survival.js` · `JumpMultiMenu` · 대기방 · RTDB 규칙 초안(게시 전 — FIREBASE_RULES.md 머리말).
+  시뮬 `node --import ./tools/_sim-loader.mjs tools/_jump-survival-sim.mjs` (3명 · 8명 · 한 판 더).
+- 배너 · 로고 다시 그림(`tools/build-jumprope-banner.mjs` + `tools/_banner-art.mjs`): 굵은 고딕 블록 제목 · 빨간 영문 ·
+  배너 전용 큰 아이 둘 · 진짜 동전 더미 · 트로피.

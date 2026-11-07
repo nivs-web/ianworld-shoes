@@ -76,7 +76,7 @@ export default function WaitingRoom(nav, params = {}) {
    * 대기방 화면은 두 게임이 그대로 나눠 쓴다 — 사람이 모이고 레디를 누르는 일은
    * 게임이 달라도 똑같기 때문이다. 갈리는 것은 **시작할 때 어느 다리로 가느냐** 뿐이다.
    */
-  const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : 'shoes';
+  const game = params.game === 'dragon' ? 'dragon' : params.game === 'catch' ? 'catch' : params.game === 'jump' ? 'jump' : 'shoes';
   /** 3D캐치볼에서 온 캐치볼 방 — 방은 2D 와 같고, 시작하면 내 대결 화면만 3D 로 그린다 */
   const view3d = game === 'catch' && !!params.view3d;
   const code = params.code;
@@ -107,7 +107,18 @@ export default function WaitingRoom(nav, params = {}) {
    * 그 경로를 아예 만들지 않는다. 방을 나가면 다음 화면이 뜨면서 `router.mount` 가
    * 다시 '대기중' 으로 되돌린다.
    */
-  Presence.setState('playing', game);
+  /* 줄넘기 방은 접속 표시를 건드리지 않는다 — RTDB 규칙의 game 칸이 아직 'jump' 를 모른다(쓰기 전체가 거부됨) */
+  if (game !== 'jump') Presence.setState('playing', game);
+  /**
+   * ★ **줄넘기 서바이벌 방 (2026-11-07).** 내 모습(꾸미기|줄넘기)을 방에 올리고, 얼굴을 그릴 도트 그림을 받아 둔다.
+   */
+  let jrArt = null;
+  if (game === 'jump') {
+    Promise.all([import('../../services/jumprope.js'), import('../../games/jumprope/beat/survival.js')])
+      .then(([J, SV]) => Room.publishJump(code, { jl: SV.lookLine(J.jr().look, J.rope().id), lives: SV.SURVIVAL.hearts, alive: true }))
+      .catch(() => {});
+    import('../../games/jumprope/art.js').then((m) => { jrArt = m; if (!left && !launched) nav.refresh(); }).catch(() => {});
+  }
   const myUid = currentUser()?.uid;
   let room = null;
   let unsub = () => {};
@@ -286,6 +297,8 @@ export default function WaitingRoom(nav, params = {}) {
         ? import('../startDuel.js').then((m) => m.startDuel(nav, { code, room: r }))
         : game === 'catch'
         ? import('../startCatchDuel.js').then((m) => m.startCatchDuel(nav, { code, room: r, view3d }))
+        : game === 'jump'
+        ? import('../startJumpSurvival.js').then((m) => m.startJumpSurvival(nav, { code, room: r }))
         : startMultiGame(nav, { code, room: r });
       /* 드래곤: 판돈을 못 걸었다(`startDuel` 이 false) — 멈춘 대기방에 남기지 않고 드래곤 로비로 */
       bridge.then((ok) => {
@@ -336,7 +349,7 @@ export default function WaitingRoom(nav, params = {}) {
     release();
     if (alsoLeaveRoom && !left) { left = true; Room.leaveRoom(code).catch(() => {}); }
     /* 캐치볼 방은 캐치볼로 돌아간다 — 신발 로비로 튕기면 다른 게임이 된다 */
-    if (game === 'catch') { nav.back(); return; }
+    if (game === 'catch' || game === 'jump') { nav.back(); return; }
     /**
      * ★ **드래곤 방은 드래곤 로비로.** (2026-11-04, 권반장 전달 — "한 판 뒤 로비로 튕김" 재확인)
      * 예전에는 여기가 무조건 신발 로비(`Lobby`)였다. 결투 한 판 뒤 대기방에서 방이
@@ -395,7 +408,7 @@ export default function WaitingRoom(nav, params = {}) {
       const allReady = enough && inRound.every((p) => p.ready || p.uid === room.hostUid);
 
       return screen(
-        title(game === 'dragon' ? S.duelRoomTitle(code) : game === 'catch' ? (view3d ? S.catch3dRoomTitle(code) : S.catchRoomTitle(code)) : S.multiRoomTitle(code)),
+        title(game === 'jump' ? `줄넘기 서바이벌 · ${code}번 방` : game === 'dragon' ? S.duelRoomTitle(code) : game === 'catch' ? (view3d ? S.catch3dRoomTitle(code) : S.catchRoomTitle(code)) : S.multiRoomTitle(code)),
 
         // 비밀방은 코드가 커야 한다 — 친구한테 불러 줘야 하니까
         room.isPrivate
@@ -425,7 +438,9 @@ export default function WaitingRoom(nav, params = {}) {
               style: { background: SLOT_COLORS[slot] ?? SLOT_COLORS[0], color: slot === 1 ? '#3A1F0C' : '#FFF4D6' },
             }),
             /* 드래곤 방이면 드래곤 얼굴, 신발 방이면 신발 캐릭터 */
-            game === 'dragon'
+            game === 'jump'
+              ? el('div.rank-face', null, [jrArt ? jrArt.headIcon(String(p.jl || '').split('|')[0], 1.5) : null].filter(Boolean))
+              : game === 'dragon'
               ? el('div.rank-face', null,
                   [dragonMod ? dragonMod.dragonPortrait(p.dragon | 0, 2) : null].filter(Boolean))
               : (ch ? el('img.rank-face', { src: characterSprite(ch.id, 'front'), alt: ch.ko })
@@ -442,7 +457,7 @@ export default function WaitingRoom(nav, params = {}) {
                   el('span', S.walletCoins(p.wallet ?? 0)),
                 ])
               /* 캐치볼은 걸린 것이 없다 — 자리만 지켜 표 칸을 맞춘다 */
-              : game === 'catch'
+              : game === 'catch' || game === 'jump'
               ? el('div.player-shoes')
               : el('div.player-shoes', null, [
                   el('img', { src: '/assets/shoes/shoe_icon.png', alt: '' }),
@@ -462,9 +477,10 @@ export default function WaitingRoom(nav, params = {}) {
         /* 무엇을 걸고 무엇을 겨루는지 — 시작을 누르기 전에 알아야 한다 */
         game === 'dragon' ? el('div.hint.duel-rule', S.duelRoomRule(DUEL_STAKE)) : null,
         game === 'catch' ? el('div.hint.duel-rule', S.catchRoomRule) : null,
+        game === 'jump' ? el('div.hint.duel-rule', '최대 8명 · 하트 3개 · 줄에 걸리면(JUMP 놓침) 하트 −1 · 8마디마다 빨라져요 · 마지막까지 남는 사람이 우승 · 걸린 것은 없어요') : null,
 
         /* 캐치볼도 방장이 난이도를 고른다 (2026-10-28) — 문구만 캐치볼 것으로 */
-        el('div.diff-title', game === 'catch' ? S.catchDiffTitle : S.difficultyTitle),
+        el('div.diff-title', game === 'catch' ? S.catchDiffTitle : game === 'jump' ? '난이도 (판정 · 노트 밀도) — 방장이 골라요' : S.difficultyTitle),
         isHost
           ? segmented(DIFFS, room.difficulty, (v) => Room.setRoomDifficulty(code, v))
           : el('div.hint', `${DIFFS.find((d) => d.value === room.difficulty)?.label ?? ''} · ${S.hostOnlyDifficulty}`),

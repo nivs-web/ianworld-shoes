@@ -28,7 +28,8 @@ export function comboMult(combo) {
   return 1;
 }
 /** 체력 (§5 · §8). MISS 피해는 × 난이도 dmg(무한의 ROPE MISS 34 는 그대로) */
-export const HP = { max: 100, perfect: 1.5, great: 0.7, good: 0, ropeMiss: 6, jumpMiss: 14, endlessRopeMiss: 34 };
+/* endlessTrip: 무한에서 줄에 걸렸을 때 — 두 버튼(하드)은 100(바로 끝), JUMP 하나 모드는 본체가 25 로 낮춘다(네 번까지) */
+export const HP = { max: 100, perfect: 1.5, great: 0.7, good: 0, ropeMiss: 6, jumpMiss: 14, endlessRopeMiss: 34, endlessTrip: 100 };
 export const FEVER_AT = 50, LEGEND_AT = 100;
 export const TECH_BONUS = 50;                                          // × 기술 레벨
 export const RANKS = [['S', 95], ['A', 90], ['B', 80], ['C', 70], ['D', 0]];
@@ -38,11 +39,13 @@ const WORSE = { perfect: 0, great: 1, good: 2 };
 /**
  * @param chart buildChart 결과
  * @param diff  'easy' | 'normal' | 'hard' — 판정 창 · 피해 배율
- * @param opts  { endless = chart.kind === 'endless', hp: HP 일부 덮어쓰기(조율용) }
+ * @param opts  { endless = chart.kind === 'endless', hp: HP 일부 덮어쓰기(조율용), winScale: 판정 창 배율 }
  */
 export function createJudge(chart, diff = 'normal', opts = {}) {
   const D = DIFFS[diff] || DIFFS.normal;
-  const W = D.win, GOOD = W.good;
+  /* opts.winScale — JUMP 하나 모드는 판정 창을 넓힌다(권반장 «너무 어려워») */
+  const ws = Math.max(0.5, Math.min(2, +opts.winScale || 1));
+  const W = { perfect: D.win.perfect * ws, great: D.win.great * ws, good: D.win.good * ws }, GOOD = W.good;
   const endless = opts.endless ?? chart.kind === 'endless';
   const hpT = { ...HP, ...(opts.hp || {}) };
   const notes = chart.notes, N = notes.length;
@@ -79,7 +82,7 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
   /** trip = 줄에 걸림(JUMP 를 놓침). 무한은 걸리면 바로 끝 */
   function damage(trip) {
     if (trip) state.trips++;
-    if (endless) state.hp = trip ? 0 : state.hp - hpT.endlessRopeMiss;
+    if (endless) state.hp -= trip ? hpT.endlessTrip : hpT.endlessRopeMiss;
     else state.hp -= (trip ? hpT.jumpMiss : hpT.ropeMiss) * D.dmg;
     if (state.hp <= 0) { state.hp = 0; state.alive = false; }
   }
