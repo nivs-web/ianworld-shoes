@@ -1537,6 +1537,7 @@ export function createComic(opts = {}) {
       if (S.recent.includes(k)) continue;
       if (S.T - (S.lastRun[k] ?? -99) < (d.cool ?? 9)) continue;
       if (d.cat === 'weather' && S.T - S.weatherEnd < 3) continue;
+      if (d.cat === 'weather' && k !== 'fireworks' && k !== 'rainbow') continue;   // 2026-11-07 날씨(비 · 눈 · 번개 · 바람 · 해) 끔
       if (k === 'dizzy') continue;                                 // 넘어졌을 때만
       const w = (CAT_W[d.cat] / nCat[d.cat]) * (d.w ?? 1) * boost(k);
       if (w <= 0) continue;
@@ -1555,7 +1556,7 @@ export function createComic(opts = {}) {
     const side = S.impN % 2 ? 1 : -1;
     const big = S.combo >= 50 || (strong && S.combo >= 20);
     const sc = Math.min(3, S.A + (big ? 1 : 0));
-    const txt = S.impN % 2 ? '탁' : '착';
+    const txt = '';                                     // 2026-11-07 «탁/착» 글자는 뺌 — 먼지만
     const col = S.combo >= 30 ? '#ff9a3a' : S.combo >= 10 ? '#ffe14d' : '#ffffff';
     const w = hgW(txt) * sc;
     const tx = S.freeX(L.kx + side * 13 * L.K - w / 2, w + 3 * sc);
@@ -1662,7 +1663,7 @@ export function createComic(opts = {}) {
       else if (S.prevLift > 0) onLand();
       S.prevLift = lift;
       /* 스케줄러 — 평균 1초에 하나 */
-      if (S.T >= S.next) { spawnRandom(); S.next = S.T + 0.6 + S.rand() * 0.8; }
+      if (S.T >= S.next) { spawnRandom(); S.next = S.T + 2.2 + S.rand() * 1.6; }   // 2026-11-07 덜 북적이게(1초 → 2~4초)
       /* 끝난 연출 정리 */
       let j = 0, ended = null;
       for (let i = 0; i < S.acts.length; i++) {
@@ -1728,7 +1729,7 @@ export function createComic(opts = {}) {
       case 'slowdown': spawn('sigh', true); break;
       case 'start': spawn('roar', true); S.next = T + 1.2; break;
       case 'clear': S.endWin = true; spawn('fireworks', true); spawn('confetti', true) || spawn('roar', true); spawn('heartEyes', true); break;
-      case 'fail': S.endWin = false; spawn('rain', true); spawn('gloom', true); spawn('groan', true); break;
+      case 'fail': S.endWin = false; spawn('gloom', true); spawn('groan', true); break;
       default: break;
     }
   }

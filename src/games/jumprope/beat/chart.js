@@ -511,6 +511,92 @@ export function tileChart(chart, level = 3, seed = 1) {
   };
 }
 
+/* ---------- 피아노 칸 채보 (2026-11-07 대표님) ----------
+ * 점프 3칸 J0 왼쪽 점프 · J1 양발 · J2 오른쪽 점프 / (두 손) 로프 3칸 P0~P2 — 로프는 가운데 P1 위주.
+ * 짧은 타일 = 짧게, 긴 타일 = 길게(점프: 이중 뛰기 · 로프: 천천히 돌리기), 로프 두 번 연달아 = 이중 뛰기,
+ * 슬라이더 = 칸을 가로지르는 띠(점프: 스키어 · 지그재그 / 로프: 줄 휘두르기) — 손가락으로 따라간다.
+ * 슬라이더는 판정에선 «긴 타일» 과 같고(시작 칸에서 누르고 끝까지), 본체가 손가락이 띠를 벗어나면 뗀 것으로 친다.
+ * 노트: { lane, kind:'tap'|'hold', slide?: [{s,t,c}], label? } */
+const PAT1 = [[1, 1, 1, 1], [1, 0, 1, 2], [1, 2, 1, 0], [0, 1, 2, 1]];
+const PAT2 = [[0, 2, 0, 2], [2, 1, 0, 1], [0, 0, 2, 2], [1, 0, 2, 1]];
+export function pianoChart(base, mode, level = 3, seed = 1) {
+  const rand = seeded(((seed | 0) * 151 + 313) >>> 0);
+  const steps = base.steps;
+  const adj = base.diff === 'hard' ? 1 : base.diff === 'easy' ? -1 : 0;
+  const lvAt = (n) => Math.max(1, Math.min(5, (level === 'auto' ? 1 + Math.floor(n.step / STEPS_PER_BAR / 12) : (level | 0) || 3) + adj));
+  const J = [], P = [];
+  for (const n of base.notes) {
+    if (mode === 'one' || n.lane === 'R') J.push(n);
+    else if (n.lane === 'L') P.push(n);
+    else { J.push(n); P.push({ ...n, kind: 'tap' }); }
+  }
+  const out = [];
+  const hold = (n, i, list, label) => {
+    const next = list[i + 1];
+    const room = (next ? next.step : n.step + 16) - n.step;
+    let len = Math.max(4, Math.min(8, Math.floor(room * 0.55)));
+    while (len >= 3 && next && next.t - timeAtStep(steps, n.step + len) < 0.34) len--;
+    if (len < 3) return null;
+    return { kind: 'hold', endStep: n.step + len, endT: timeAtStep(steps, n.step + len), label };
+  };
+  const slideFrom = (list, i, k, side, cA, cB, label) => {
+    const grp = list.slice(i, i + k);
+    if (grp.length < k || grp.some((q) => q.kind !== 'tap')) return null;
+    for (let j = 1; j < k; j++) { const g = grp[j].t - grp[j - 1].t; if (g < 0.18 || g > 0.7) return null; }
+    const path = grp.map((q, j) => ({ s: q.step, t: q.t, c: j % 2 ? cB : cA }));
+    return { lane: side + cA, kind: 'hold', slide: path, step: grp[0].step, t: grp[0].t, endStep: grp[k - 1].step, endT: grp[k - 1].t, label };
+  };
+  /* 점프 칸 */
+  let pat = [];
+  for (let i = 0; i < J.length;) {
+    const n = J[i], lv = lvAt(n);
+    if (lv >= 3 && n.kind === 'tap' && rand() < (lv >= 5 ? 0.3 : lv >= 4 ? 0.24 : 0.18)) {
+      const k = lv >= 4 && rand() < 0.5 ? 4 : 3;
+      const c0 = rand() < 0.5 ? 0 : 2;
+      const sl = slideFrom(J, i, k, 'J', c0, 2 - c0, k >= 4 ? '지그재그 / ZIGZAG' : '스키어 / SKIER');
+      if (sl) { out.push(sl); i += k; continue; }
+    }
+    if (!pat.length) { const pool = lv >= 2 ? PAT1.concat(PAT2) : PAT1; pat = [...pool[Math.floor(rand() * pool.length)]]; }
+    const c = pat.shift();
+    let extra = n.kind === 'hold' ? { kind: 'hold', endStep: n.endStep, endT: n.endT, label: '이중 뛰기 / DOUBLE UNDER' } : null;
+    if (!extra && lv >= 2 && (J[i + 1] ? J[i + 1].t - n.t : 9) >= 0.95 && rand() < 0.4) extra = hold(n, i, J, '이중 뛰기 / DOUBLE UNDER');
+    out.push({ lane: 'J' + c, kind: 'tap', step: n.step, t: n.t, ...(extra || {}) });
+    i++;
+  }
+  /* 로프 칸 (두 손) */
+  for (let i = 0; i < P.length;) {
+    const n = P[i], lv = lvAt(n);
+    if (lv >= 3 && n.kind === 'tap' && rand() < 0.16) {
+      const sl = slideFrom(P, i, 3, 'P', 0, 2, '줄 휘두르기 / SIDE SWING');
+      if (sl) { out.push(sl); i += 3; continue; }
+    }
+    if (n.kind === 'hold') { out.push({ lane: 'P1', kind: 'hold', step: n.step, t: n.t, endStep: n.endStep, endT: n.endT, label: '천천히 돌리기 / SLOW TURN' }); i++; continue; }
+    const nx = P[i + 1];
+    const dbl = nx && nx.kind === 'tap' && nx.t - n.t <= 0.24;
+    out.push({ lane: 'P1', kind: 'tap', step: n.step, t: n.t, label: dbl ? '이중 뛰기 / DOUBLE UNDER' : null });
+    if (dbl) { out.push({ lane: 'P1', kind: 'tap', step: nx.step, t: nx.t }); i += 2; } else i++;
+  }
+  out.sort((a, b) => a.step - b.step || (a.lane < b.lane ? -1 : 1));
+  out.forEach((n, id) => { n.id = id; n.tech = -1; });
+  if (out.length && !out.some((n) => n.label)) out[0].label = '양발 모아 뛰기 / BASIC BOUNCE';
+  /* 줄: 한 손 = 점프마다 발밑(긴 타일은 두 바퀴 · 슬라이더는 점마다), 두 손 = 원래 채보(로프 · 점프 박자) 그대로 */
+  let ropeKeys = base.ropeKeys;
+  if (mode === 'one') {
+    const ev = [];
+    for (const n of out) {
+      if (n.slide) for (const q of n.slide) ev.push({ s: q.s, up: false, pri: 2 });
+      else { ev.push({ s: n.step, up: false, pri: 2 }); if (n.kind === 'hold') ev.push({ s: (n.step + n.endStep) / 2, up: false, pri: 1 }, { s: n.endStep, up: false, pri: 1 }); }
+    }
+    ropeKeys = ropeKeysFrom(ev, steps);
+  }
+  const seen = new Set();
+  const cues = base.cues.filter((c) => c.kind !== 'tech');
+  for (const n of out) if (n.label && !seen.has(n.label)) { seen.add(n.label); cues.push({ t: n.t, text: n.label, kind: 'tech', name: n.label, first: true }); }
+  cues.sort((a, b) => a.t - b.t);
+  return { ...base, ctrl: mode === 'one' ? 'piano1' : 'piano2', notes: out, techs: [], cues, ropeKeys, total: out.length,
+    firstT: out.length ? out[0].t : 0, lastT: out.length ? Math.max(...out.map((n) => n.endT ?? n.t)) : 0 };
+}
+
 /* ---------- 대회 채보 ---------- */
 
 /** 대회 k 까지 나온 기술(기본·피날레 빼고) */
@@ -686,12 +772,14 @@ function customChart(stage, diff, seed, opts) {
 export function buildChart(stage, diff = 'normal', opts = {}) {
   opts = opts || {};
   /* opts.ctrl: 'jump'(점프만 · 기본) | 'both'(로프+점프). 안 주면 두 버튼 채보 그대로(시험 도구들) */
-  if (opts.ctrl === 'jump') {
-    const base = jumpOnly(buildChart(stage, diff, { ...opts, ctrl: 'both' }), opts.density || 1);
-    if (opts.tiles === false) return base;
+  if (opts.ctrl === 'jump' || opts.ctrl === 'both') {
+    /* 피아노 칸(2026-11-07): 한 손 = 점프 3칸, 두 손 = 로프 3칸 + 점프 3칸. opts.raw = 예전 두 버튼 채보 그대로(시험) */
+    const raw = buildChart(stage, diff, { ...opts, ctrl: undefined });
+    if (opts.raw) return opts.ctrl === 'jump' ? jumpOnly(raw, opts.density || 1) : raw;
     const lv = opts.level ?? (stage === 'endless' || stage?.id === 'endless' ? 'auto' : typeof stage === 'number' ? stage
       : (STAGES.find((s) => s.id === stage || s.no === stage?.no)?.no ?? 3));
-    return tileChart(base, lv, (opts.seed | 0) || 1);
+    return opts.ctrl === 'jump' ? pianoChart(jumpOnly(raw, opts.density || 1), 'one', lv, (opts.seed | 0) || 1)
+      : pianoChart(raw, 'two', lv, (opts.seed | 0) || 1);
   }
   diff = DIFFS[diff] ? diff : 'normal';
   /* opts.bpmScale — 운영자 난이도(곡 빠르기) 배율. 템포 지도의 BPM 을 곱한다(곡 · 채보 · 판정이 같은 지도를 쓴다) */

@@ -52,10 +52,9 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
   for (const n of notes) { n.done = false; n.holding = false; }        // 같은 채보로 다시 하기
   // 노트별 판정 상태 — res: 0 아직 · 1 성공(끝) · 2 MISS · 3 꾹 누르는 중
   const S = notes.map(() => ({ res: 0, pL: null, pR: null, grade: null, add: 0, heal: 0 }));
-  const lane = { L: [], R: [] };
-  for (const n of notes) { if (n.lane !== 'R') lane.L.push(n.id); if (n.lane !== 'L') lane.R.push(n.id); }
-  const ptr = { L: 0, R: 0 };
-  const active = { L: -1, R: -1 };                                     // 꾹 누르는 중인 노트 번호
+  /* 칸: 예전 L · R(B 는 둘 다) + 피아노 칸 J0~J2 · P0~P2 (2026-11-07) */
+  const lane = { L: [], R: [] }, ptr = { L: 0, R: 0 }, active = { L: -1, R: -1 };   // active = 꾹 누르는 중인 노트 번호
+  for (const n of notes) for (const k of n.lane === 'B' ? ['L', 'R'] : [n.lane]) { (lane[k] ??= []).push(n.id); ptr[k] ??= 0; if (active[k] === undefined) active[k] = -1; }
   let missPtr = 0, resolved = 0;
   const techLeft = chart.techs.map((x) => x.noteIds.length), techFail = chart.techs.map(() => false);
 
@@ -129,7 +128,7 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
     const s = S[n.id];
     state.miss++;
     comboBreak();
-    const trip = n.lane === 'R' || (n.lane === 'B' && !s.pR);           // B 는 R 이 빠졌으면 줄에 걸림
+    const trip = n.lane === 'R' || n.lane?.[0] === 'J' || (n.lane === 'B' && !s.pR);           // B 는 R 이 빠졌으면 줄에 걸림
     damage(trip);
     const r = { kind: 'miss', note: n, lane: n.lane, grade: 'miss', delta: null, scoreAdd: 0, combo: 0, trip };
     finish(n, false, r, n.t);
@@ -145,7 +144,7 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
 
   /* act — 한 손 타일(2026-11-07): 'tap' | 'left' | 'right'. 밀기 노트는 방향이 맞아야 한다(틀리면 MISS). 짧게 · 길게 노트는 아무 입력이나 받는다 */
   function press(l, t, act) {
-    if (!state.alive || (l !== 'L' && l !== 'R') || active[l] >= 0) return null;  // 꾹 누르는 중인 버튼은 또 못 누른다
+    if (!state.alive || !lane[l] || active[l] >= 0) return null;  // 꾹 누르는 중인 버튼은 또 못 누른다
     const list = lane[l];
     while (ptr[l] < list.length && doneFor(list[ptr[l]], l)) ptr[l]++;
     for (let j = ptr[l]; j < list.length; j++) {
@@ -168,7 +167,7 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
 
   function release(l, t) {
     const id = active[l];
-    if (id < 0 || !state.alive) return null;
+    if (!(id >= 0) || !state.alive) return null;
     const n = notes[id], s = S[id];
     if (t >= n.endT - GOOD) return holdOk(n, t);
     // BREAK — 그 노트를 MISS 로 바꿔 센다(점수 · 회복도 되돌림). JUMP 꾹 = 줄에 걸림, ROPE 꾹(릴리스) = ROPE MISS 피해
@@ -177,7 +176,7 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
     state.score -= s.add;
     state.hp -= s.heal;
     comboBreak();
-    const trip = n.lane === 'R';
+    const trip = n.lane === 'R' || n.lane?.[0] === 'J';
     damage(trip);
     const r = { kind: 'break', note: n, lane: l, grade: 'miss', delta: t - n.endT, scoreAdd: -s.add, combo: 0, trip };
     finish(n, false, r, t);
@@ -187,7 +186,7 @@ export function createJudge(chart, diff = 'normal', opts = {}) {
   function update(t) {
     if (!state.alive) return [];
     const out = [];
-    for (const l of ['L', 'R']) {
+    for (const l of Object.keys(active)) {
       const id = active[l];
       if (id >= 0 && t >= notes[id].endT - GOOD) out.push(holdOk(notes[id], t));
     }

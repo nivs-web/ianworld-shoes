@@ -102,7 +102,7 @@ export function mount(host, opts) {
 
   G = {
     host, cv, ctx: cv.getContext('2d'), buf, b: buf.getContext('2d'), kidCv, k: kidCv.getContext('2d'), kidBack, kb: kidBack.getContext('2d'),
-    opts, diff, stage, chart, judge, music, comic, jumpOnly, winScale, apPtr: 0, tilePtr: 0, shiftX: 0, shiftTo: 0, shiftAt: -9, swipeFx: null, padDown: -9, lastLift: 0, lastTheta: Math.PI, scrollK: T.scroll, pxPerBeat: 60,
+    opts, diff, stage, chart, judge, music, comic, jumpOnly, winScale, apPtr: 0, tilePtr: 0, fingers: new Map(), nCols: jumpOnly ? 3 : 6, colW: 40, slideOff: 0, shiftX: 0, shiftTo: 0, shiftAt: -9, swipeFx: null, padDown: -9, lastLift: 0, lastTheta: Math.PI, scrollK: T.scroll, pxPerBeat: 60,
     tempo: chart.tempo || (surv ? survTempo : [{ bar: 0, bpm: 120 }]),   // 채보와 같은 지도(운영자 빠르기 배율 포함)
     title: surv ? `멀티 서바이벌 · ${DIFFS[diff].en}` : opts.mode === 'endless' ? `${ENDLESS.name} · ${DIFFS[diff].en}` : opts.mode === 'test' ? `${opts.custom?.name || '내 스테이지'} (시험)` : `${stage.no}. ${stage.name}`,
     sub: surv ? `♪ ${songTitle(survSong(opts.seed))}` : opts.mode === 'endless' ? `♪ ${songTitle(endlessSong(opts.song))}` : stage ? `${stage.en} · ${stage.song.title}` : 'CUSTOM',
@@ -161,10 +161,18 @@ export function mount(host, opts) {
     const p = toNative(e);
     const pb = G.pauseBox;
     if (p.x >= pb.x - 4 && p.x <= pb.x + pb.w + 4 && p.y >= pb.y - 4 && p.y <= pb.y + pb.h + 4) { G.music.init(); requestPause(); return; }
-    if (G.jumpOnly) {
+    {
       begin();
-      if (G.phase !== 'play' || G.out || G.down.R) return;
+      if (G.phase !== 'play' || G.out) return;
+      const ln = laneAtX(p.x);
+      if (G.down[ln]) return;
       try { cv.setPointerCapture(e.pointerId); } catch { /* */ }
+      G.pointers.set(e.pointerId, ln);
+      G.fingers.set(ln, p.x);
+      doPress(ln, evT(e));
+      return;
+    }
+    if (G.jumpOnly) {
       const t0 = evT(e);
       if (swipeNear(t0)) {
         const g = { x0: p.x, t0, done: false, pressed: false };
@@ -183,6 +191,8 @@ export function mount(host, opts) {
     pressLane(lane, e);
   };
   const pmove = (e) => {
+    const ln = G.pointers.get(e.pointerId);
+    if (ln) G.fingers.set(ln, toNative(e).x);
     const g = gest.get(e.pointerId);
     if (!g || g.done) return;
     const dx = toNative(e).x - g.x0;
@@ -200,6 +210,7 @@ export function mount(host, opts) {
     const lane = G.pointers.get(e.pointerId);
     if (!lane) return;
     G.pointers.delete(e.pointerId);
+    G.fingers.delete(lane);
     if (![...G.pointers.values()].includes(lane)) releaseLane(lane, e);
   };
   cv.addEventListener('pointerdown', pdown);
@@ -210,8 +221,17 @@ export function mount(host, opts) {
   const keyLane = (code) => (R_KEYS.has(code) || (G.jumpOnly && L_KEYS.has(code)) ? 'R' : L_KEYS.has(code) ? 'L' : null);
   const kd = (e) => {
     if (e.code === 'Escape' || e.code === 'KeyP') { if (!e.repeat) requestPause(); return; }
-    /* 한 손 타일 — ← · A = 왼쪽 밀기, → · D = 오른쪽 밀기, 스페이스 · 엔터 = 짧게/길게 */
-    const sw = G.jumpOnly ? (['ArrowLeft', 'KeyA'].includes(e.code) ? 'left' : ['ArrowRight', 'KeyD'].includes(e.code) ? 'right' : null) : null;
+    /* 피아노 칸 키: 점프 J · K · L (← ↓ → · 스페이스 = 가운데), 로프 A · S · D */
+    const KEYMAP = { KeyJ: 'J0', KeyK: 'J1', KeyL: 'J2', ArrowLeft: 'J0', ArrowDown: 'J1', ArrowRight: 'J2', Space: 'J1', Enter: 'J1', KeyA: 'P0', KeyS: 'P1', KeyD: 'P2' };
+    const kl = KEYMAP[e.code];
+    if (kl && (kl[0] === 'J' || !G.jumpOnly)) {
+      e.preventDefault();
+      if (e.repeat || G.overlay) return;
+      begin();
+      if (G.phase === 'play' && !G.out && !G.down[kl]) { G.keyLane = G.keyLane || {}; G.keyLane[e.code] = kl; doPress(kl, evT(e)); }
+      return;
+    }
+    const sw = null;
     if (sw) {
       e.preventDefault();
       if (e.repeat || G.overlay) return;
@@ -228,6 +248,8 @@ export function mount(host, opts) {
     pressLane(lane, e);
   };
   const ku = (e) => {
+    const kl = G.keyLane?.[e.code];
+    if (kl) { delete G.keyLane[e.code]; if (G.down[kl]) doRelease(kl, G.phase === 'play' ? evT(e) : G.songT); return; }
     const lane = keyLane(e.code);
     if (lane) releaseLane(lane, e);
   };
@@ -299,6 +321,26 @@ export function requestPause() {
 /* ---------- 진행 ---------- */
 function setPhase(p) { G.phase = p; G.phaseT = 0; }
 
+/* ---------- 피아노 칸 (2026-11-07) — 한 손 3칸(J) · 두 손 6칸(P 로프 3 + J 점프 3), 화면 가득 ---------- */
+const sideOf = (l) => (l === 'L' || l?.[0] === 'P' ? 'L' : 'R');
+function colIdx(l) { const c = +l[1] || 0; return l[0] === 'P' ? c : G.jumpOnly ? c : 3 + c; }
+const colX = (i) => Math.round(i * G.colW);
+const laneCX = (l) => (l === 'L' || l === 'R' || !l ? G.cx : colX(colIdx(l)) + G.colW / 2);
+function laneAtX(x) {
+  const i = Math.max(0, Math.min(G.nCols - 1, Math.floor(x / G.colW)));
+  return G.jumpOnly ? 'J' + i : i < 3 ? 'P' + i : 'J' + (i - 3);
+}
+/** 슬라이더 띠의 가운데(도트 x) — 곡 시각 t 에서 */
+function slideX(n, t) {
+  const P = n.slide;
+  let a = P[0], b = P[P.length - 1];
+  for (let i = 0; i < P.length - 1; i++) if (t >= P[i].t && t <= P[i + 1].t) { a = P[i]; b = P[i + 1]; break; }
+  const k = b.t > a.t ? Math.max(0, Math.min(1, (t - a.t) / (b.t - a.t))) : 0;
+  const side = n.lane[0];
+  const cx = (c) => colX(side === 'P' ? c : G.jumpOnly ? c : 3 + c) + G.colW / 2;
+  return cx(a.c) + (cx(b.c) - cx(a.c)) * k;
+}
+
 /** 한 손 타일 — t 근처(GOOD 창 안)의 가장 이른 미판정 노트가 «밀기»인가 */
 function swipeNear(t) {
   const notes = G.chart.notes, good = DIFFS[G.diff].win.good * G.winScale;
@@ -327,6 +369,21 @@ function resume() {
 }
 
 function doPress(lane, t, act) {
+  const side = sideOf(lane);
+  if (lane !== side) {
+    G.down[lane] = true;
+    if (side === 'R') { const c = +lane[1]; G.shiftTo = (c - 1) * (G.jumpOnly ? 16 : 7); G.shiftAt = G.t; }
+    G.pianoFlash = G.pianoFlash || {}; G.pianoFlash[lane] = 1;
+    lane = side;
+    G.down[side] = true;
+    G.pressAt[side] = G.t;
+    G.music.hit(side === 'L' ? 'rope' : 'jump');
+    if (side === 'R') { G.jumpAt = G.t; G.jumpHold = true; } else G.ropeAt = G.t;
+    if (G.opts.opts?.vib !== false) try { navigator.vibrate?.(8); } catch { /* */ }
+    const res = G.judge.press(G.lastPianoLane = arguments[0], t);
+    if (res) handle([res.kind ? res : { kind: 'hit', ...res, lane: arguments[0] }]);
+    return;
+  }
   G.down[lane] = true;
   if (act === 'left' || act === 'right') { G.shiftTo = act === 'left' ? -12 : 12; G.shiftAt = G.t; }
   G.pressAt[lane] = G.t;
@@ -340,6 +397,15 @@ function doPress(lane, t, act) {
 }
 
 function doRelease(lane, t) {
+  const side = sideOf(lane);
+  if (lane !== side) {
+    G.down[lane] = false;
+    const any = Object.keys(G.down).some((k) => k.length === 2 && sideOf(k) === side && G.down[k]);
+    if (!any) { G.down[side] = false; if (side === 'R') G.jumpHold = false; }
+    const res = G.judge.release?.(lane, t);
+    if (res) handle([res]);
+    return;
+  }
   G.down[lane] = false;
   if (lane === 'R') G.jumpHold = false;
   const res = G.judge.release?.(lane, t);
@@ -352,7 +418,7 @@ function handle(list) {
   for (const r of list || []) {
     if (!r) continue;
     const lane = r.lane || (r.note?.lane === 'L' ? 'L' : 'R');
-    const lanes = r.note?.lane === 'B' ? ['L', 'R'] : [lane === 'B' ? 'R' : lane];
+    const lanes = r.note?.lane === 'B' ? ['L', 'R'] : [lane === 'B' ? 'R' : r.note?.lane || lane];
     if (r.kind === 'miss' || r.kind === 'break' || r.grade === 'miss') {
       const jumpMiss = r.trip ?? (r.note?.lane !== 'L' || r.kind === 'break');
       if (jumpMiss && G.shield) {
@@ -476,7 +542,9 @@ function update(dt) {
       jumpOnly: G.jumpOnly, combo: stc.combo | 0, hp: stc.hp ?? 100, fever: !!(stc.fever || G.feverOn), lift: G.lastLift, theta: G.lastTheta,
     });
   } catch (e) { if (!G.comicErr) { G.comicErr = true; console.warn('[ROPE BEAT] 코믹 연출 오류', e); } }
-  for (const l of ['L', 'R']) G.flash[l] = Math.max(0, G.flash[l] - dt * 5);
+  for (const l of Object.keys(G.flash)) G.flash[l] = Math.max(0, (G.flash[l] || 0) - dt * 5);
+  if (G.pianoFlash) for (const l of Object.keys(G.pianoFlash)) G.pianoFlash[l] = Math.max(0, G.pianoFlash[l] - dt * 4);
+  pianoSlides(dt);
   G.shake = Math.max(0, G.shake - dt);
   if (G.t - G.shiftAt > 0.55) G.shiftTo = 0;
   G.shiftX += (G.shiftTo - G.shiftX) * Math.min(1, dt * 14);
@@ -503,22 +571,23 @@ function autoPlay() {
   for (const h of G.autoHolds) {
     if (h.done || G.songT < h.endT) continue;
     h.done = true;
-    G.down[h.lane] = false;
+    G.down[h.lane] = false; G.down[sideOf(h.lane)] = false;
     if (h.lane === 'R') G.jumpHold = false;
     handle([G.judge.release?.(h.lane, h.endT)]);
   }
   while (G.autoIdx < notes.length && notes[G.autoIdx].t <= G.songT) {
     const n = notes[G.autoIdx++];
-    if (A === 'ropeless' && n.lane === 'L') continue;
+    if (A === 'ropeless' && (n.lane === 'L' || n.lane[0] === 'P')) continue;
     const jit = A === 'sloppy' ? (((n.id * 7919) % 9) - 4) * 0.01 : 0;
     const t = n.t + jit;
     const lanes = n.lane === 'B' ? ['L', 'R'] : [n.lane];
     for (const l of lanes) {
       G.pressAt[l] = G.t;
-      if (l === 'R') { G.jumpAt = G.t; G.jumpHold = n.kind === 'hold'; } else G.ropeAt = G.t;
+      if (sideOf(l) === 'R') { G.jumpAt = G.t; G.jumpHold = n.kind === 'hold'; if (l.length === 2) { G.shiftTo = (+l[1] - 1) * (G.jumpOnly ? 16 : 7); G.shiftAt = G.t; } } else G.ropeAt = G.t;
+      if (l.length === 2) { G.pianoFlash = G.pianoFlash || {}; G.pianoFlash[l] = 1; }
       if (n.act === 'left' || n.act === 'right') { G.shiftTo = n.act === 'left' ? -12 : 12; G.shiftAt = G.t; G.swipeFx = { dir: n.act, age: 0 }; }
       handle([G.judge.press(l, t, n.act === 'left' || n.act === 'right' ? n.act : undefined)]);
-      if (n.kind === 'hold') { G.down[l] = true; G.autoHolds.push({ lane: l, endT: n.endT, done: false }); }
+      if (n.kind === 'hold') { G.down[l] = true; G.down[sideOf(l)] = true; G.autoHolds.push({ lane: l, endT: n.endT, done: false }); }
       else handle([G.judge.release?.(l, t + 0.05)]);
     }
     if (n.lane === 'B' || G.jumpOnly) G.bothAt = G.t;
@@ -679,19 +748,20 @@ function resize() {
   G.buf.width = G.W; G.buf.height = G.H;
   G.b = G.buf.getContext('2d');
   G.cx = Math.floor(G.W / 2);
-  const btnArea = Math.max(40, Math.min(64, Math.round(G.H * 0.17)));
-  G.btnTop = G.H - btnArea;
-  G.floorY = G.btnTop - 26;          // 판정 원(반지름 ~16) 아래와 단추 사이를 넉넉히 띄운다
+  G.btnTop = G.H - 2;                 // 피아노 칸: 단추 없음(칸을 직접 누른다)
+  const btnArea = 48;                 // (옛 단추 자리 계산이 쓰던 값 — 단추는 그리지 않는다)
+  G.floorY = G.H - Math.max(46, Math.round(G.H * 0.16));
   G.hudH = 36;
   G.K = Math.max(1, Math.min(3, Math.floor((G.floorY - 22) / 52)));
   G.laneW = Math.max(20, Math.min(26, Math.floor(G.W * 0.17)));
   const edge = 12;                   // 판정 원 · 다가오는 원이 화면 밖으로 잘리지 않게 가장자리를 띄운다
+  G.colW = G.W / G.nCols;
+  G.kx = G.cx;
   if (G.jumpOnly) {
     /* 점프만: 레인 하나는 오른쪽, 선수는 레인과 겹치지 않게 조금 왼쪽으로 */
     G.laneW = Math.max(36, Math.min(60, Math.floor(G.W * 0.27)));     // 한 손 타일 — 넓고 깔끔한 한 줄
     G.xR = G.W - G.laneW - 8;
     G.xL = G.xR;
-    G.kx = Math.min(G.cx, G.xR - 6 - 20 * G.K);
   } else {
     const gap = Math.min(Math.floor(G.W / 2) - G.laneW - edge, Math.max(34 * G.K, 40));
     G.xL = G.cx - gap - G.laneW;
@@ -720,8 +790,7 @@ function render() {
   b.translate(0, sh);
   const st = G.judge.state;
   const fever = !!(st.fever || G.feverOn);
-  BA.drawArena(b, G.stage ? G.stage.arena : 4, G.W, G.H, G.floorY, G.t, { fever, energy: currentEnergy(), beat: G.phase === 'play' ? nowStep() / 4 : G.t * 2 });
-  G.comic.drawBack(b);              // 하늘 · 날씨 · 관중 소동 · 선수 뒤 동물/꼬마
+  drawSimpleBack(b, fever);         // 피아노 칸: 관중 · 하늘 · 날씨 없이 단색 배경 (2026-11-07 대표님 «심플하게»)
   if (fever) BA.drawFeverAura(b, G.kx, G.floorY, G.K, G.t);
   drawKidBig();                    // 두 겹을 만들고 뒤쪽 줄만 먼저 깐다
   drawLanes();
@@ -753,6 +822,16 @@ function render() {
   drawTexts();
 }
 
+/** 단순 배경 — 어두운 세로 띠 그라데이션 + 박마다 아주 옅게 깜빡이는 바닥 */
+function drawSimpleBack(b, fever) {
+  const bands = fever ? ['#2a0f2e', '#3a1238', '#4a1540', '#5a1848'] : ['#0b0f24', '#10152f', '#151a38', '#1a2042'];
+  const hh = G.floorY, n = bands.length;
+  for (let i = 0; i < n; i++) rect(b, 0, Math.floor(hh * i / n), G.W, Math.ceil(hh / n) + 1, bands[i]);
+  const ph = ((nowStep() % 4) + 4) % 4 / 4;
+  rect(b, 0, G.floorY, G.W, G.H - G.floorY, '#0a0d1e');
+  if (G.phase === 'play') { b.save(); b.globalAlpha = Math.max(0, 0.16 - ph * 0.3); rect(b, 0, G.floorY, G.W, G.H - G.floorY, '#ffffff'); b.restore(); }
+}
+
 function currentEnergy() {
   const secs = G.stage?.sections;
   if (!secs) return 2;
@@ -763,7 +842,8 @@ function currentEnergy() {
 function nowStep() { return stepAtTime(G.chart.steps, G.songT); }
 function pxPerStep() { return G.pxPerBeat / 4; }
 
-function drawLanes() {
+function drawLanes() { drawPianoLanes(); }
+function drawLanesOld() {
   const b = G.b;
   const beatPhase = ((nowStep() % 4) + 4) % 4 / 4;
   const pulse = Math.max(0, 1 - beatPhase * 3);
@@ -830,7 +910,8 @@ function drawApproach() {
   }
 }
 
-function drawNotes() {
+function drawNotes() { drawPianoNotes(); }
+function drawNotesOld() {
   const b = G.b;
   const ns = nowStep();
   const pps = pxPerStep();
@@ -1002,6 +1083,109 @@ function drawTileTexts() {
   }
 }
 
+/* ---------- 피아노 칸 그리기 · 슬라이더 따라가기 ---------- */
+const PIANO = {
+  J: { f: '#3fc3ff', h: '#e2f8ff', on: '#ffffff' },          // 점프 타일 — 밝은 하늘색
+  P: { f: '#ffb43a', h: '#fff0c2', on: '#ffffff' },          // 로프 타일 — 밝은 주황
+  slideJ: ['#ff4f8b', '#ffa13a'], slideP: ['#5fd3ff', '#7c6bff'],
+};
+function tileH() { return Math.max(18, Math.min(34, Math.round(pxPerStep() * 6))); }
+function drawPianoLanes() {
+  const b = G.b, top = G.hudH, bot = G.H;
+  b.save();
+  for (let i = 0; i < G.nCols; i++) {
+    const x = colX(i), w = colX(i + 1) - x;
+    b.globalAlpha = 0.16; rect(b, x, top, w, bot - top, i % 2 ? '#ffffff' : '#dfe8ff');
+    if (!G.jumpOnly && i < 3) { b.globalAlpha = 0.12; rect(b, x, top, w, bot - top, '#b07cff'); }
+    b.globalAlpha = 0.35; rect(b, x, top, 1, bot - top, '#ffffff');
+    const fl = G.pianoFlash?.[G.jumpOnly ? 'J' + i : i < 3 ? 'P' + i : 'J' + (i - 3)] || 0;
+    if (fl > 0) { b.globalAlpha = fl * 0.35; rect(b, x, G.floorY - 40, w, 40, '#ffffff'); }
+  }
+  b.restore();
+}
+function drawPianoNotes() {
+  const b = G.b, ns = nowStep(), pps = pxPerStep(), th = tileH();
+  const topStep = ns + (G.floorY - G.hudH) / pps;
+  const notes = G.chart.notes;
+  const yAt = (st) => Math.round(G.floorY - (st - ns) * pps);
+  for (let i = notes.length - 1; i >= 0; i--) {
+    const n = notes[i];
+    if (n.step > topStep + 6) continue;
+    const endS = n.kind === 'hold' ? n.endStep : n.step;
+    if (endS < ns - 3) break;
+    if (n.done && !n.holding) continue;
+    const side = n.lane[0], C = PIANO[side] || PIANO.J;
+    if (n.slide) {               // 슬라이더 — 칸을 가로지르는 띠(행마다 가운데를 옮겨 그린다)
+      const [c1, c2] = side === 'P' ? PIANO.slideP : PIANO.slideJ;
+      const y0 = yAt(n.step), y1 = yAt(n.endStep) - th;
+      const bw = Math.round(G.colW - 6);
+      for (let y = Math.max(G.hudH, y1); y <= Math.min(G.H, y0); y++) {
+        const st = ns + (G.floorY - y) / pps;
+        const t = timeAtStepLocal(st);
+        const x = Math.round(slideX(n, t) - bw / 2);
+        rect(b, x - 1, y, bw + 2, 1, OUT);
+        rect(b, x, y, bw, 1, (y0 - y) / Math.max(1, y0 - y1) < 0.5 ? c1 : c2);
+      }
+      for (const q of n.slide) { const y = yAt(q.s); const x = Math.round(slideX(n, q.t)); if (y > G.hudH && y < G.H) rect(b, x - 1, y - 1, 3, 3, '#ffffff'); }
+      continue;
+    }
+    const x = colX(colIdx(n.lane)) + 2, w = colX(colIdx(n.lane) + 1) - colX(colIdx(n.lane)) - 4;
+    const yb = yAt(n.step), yt = n.kind === 'hold' ? yAt(n.endStep) - th : yb - th;
+    const top = Math.max(G.hudH, yt), hgt = yb - top;
+    if (hgt <= 0) continue;
+    rect(b, x - 1, top - 1, w + 2, hgt + 2, OUT);
+    rect(b, x, top, w, hgt, C.f);
+    rect(b, x, top, w, 1, C.h);
+    if (n.kind === 'hold') {
+      rect(b, x + Math.floor(w / 2) - 1, top + 3, 2, Math.max(0, hgt - 6), '#ffffff');
+      if (n.holding) { const fy = Math.max(top, G.floorY - 2); rect(b, x, fy, w, Math.max(0, yb - fy), C.on); }
+    }
+  }
+}
+/** 칸(소수) → 곡 시각 — 슬라이더 띠를 행마다 그릴 때 */
+function timeAtStepLocal(st) {
+  const S = G.chart.steps, n = S.length - 1;
+  if (st <= 0) return st * (S[1] - S[0]);
+  if (st >= n) return S[n] + (st - n) * (S[n] - S[n - 1]);
+  const i = Math.floor(st);
+  return S[i] + (st - i) * (S[i + 1] - S[i]);
+}
+function drawPianoLine(b) {
+  b.save();
+  b.globalAlpha = 0.22; rect(b, 0, G.floorY - 4, G.W, 8, '#ffffff');
+  b.globalAlpha = 0.95; rect(b, 0, G.floorY - 1, G.W, 2, '#fff3cf');
+  b.restore();
+}
+function drawPianoTexts() {
+  const ns = nowStep(), pps = pxPerStep(), th = tileH();
+  const topStep = ns + (G.floorY - G.hudH) / pps;
+  for (const n of G.chart.notes) {
+    if (n.step > topStep) break;
+    if (!n.label || n.done || n.step < ns - 1) continue;
+    const y = G.floorY - (n.step - ns) * pps - th / 2;
+    if (y < G.hudH + 8) continue;
+    const x = n.slide ? slideX(n, n.t) : laneCX(n.lane);
+    ptxt(n.label.split(' / ')[0], x, y, 0.75, '#ffffff');
+  }
+}
+/** 슬라이더를 누르고 있는 동안: 손가락이 띠를 벗어나면(0.15초) 뗀 것으로 · 점프 띠는 몸이 손가락을 따라간다 · 로프 띠는 줄 휘두르기 */
+function pianoSlides(dt) {
+  G.swingOn = false;
+  if (G.phase !== 'play') return;
+  const J = G.judge;
+  for (const n of G.chart.notes) {
+    if (!n.slide || !n.holding) continue;
+    const want = slideX(n, G.songT);
+    if (n.lane[0] === 'P') G.swingOn = true;
+    else { G.shiftTo = Math.round(((want - G.cx) / (G.W / 2)) * (G.jumpOnly ? 22 : 8)); G.shiftAt = G.t; }
+    const fx = G.fingers.get(n.lane);
+    if (fx === undefined) { G.slideOff = 0; continue; }          // 키보드 · 자동 연주는 따라간 것으로
+    if (Math.abs(fx - want) > G.colW * 0.9) { G.slideOff += dt; if (G.slideOff > 0.15) { G.slideOff = 0; doRelease(n.lane, G.songT); } }
+    else G.slideOff = 0;
+  }
+  void J;
+}
+
 /** ② 황금 줄 — 금빛 테 + 반짝 별 */
 function drawGold(b, cx, y) {
   const tw = Math.floor(G.t * 10) % 4;
@@ -1060,8 +1244,8 @@ function missionDone() {
 
 function drawTargets() {
   const b = G.b;
-  if (G.jumpOnly) drawJudgeLine(b); else for (const l of ['L', 'R']) drawDotRing(b, l);
-  for (const h of G.hits) BA.drawHit(b, (h.lane === 'L' ? G.xL : G.xR) + G.laneW / 2, G.floorY, h.grade, h.age);
+  drawPianoLine(b);
+  for (const h of G.hits) BA.drawHit(b, laneCX(h.lane), G.floorY, h.grade, h.age);
 }
 
 /** 선수 포즈 — 지금 기술 · 마지막 입력 · 넘어짐으로 고른다 */
@@ -1070,6 +1254,7 @@ function kidPose(theta) {
   const st = G.judge.state;
   if (G.phase === 'end') return { state: G.result?.r?.cleared ? 'cheer' : 'sit', lift: G.result?.r?.cleared ? Math.round(Math.abs(Math.sin(G.phaseT * 7)) * 6) : 0, theta, t: T };
   if (T - G.tripAt < 0.55) return { state: 'trip', theta, t: T };
+  if (G.swingOn) return { state: 'side', lift: 0, theta, t: T };    // 로프 슬라이더 = 줄 휘두르기
   const tech = currentTech();
   const since = T - G.jumpAt;
   let lift = 0, tuck = 0, state = 'stand';
@@ -1166,6 +1351,7 @@ function drawHudPixels() {
 
 /** 큰 단추 둘 — 눌리면 3칸 내려가고 그림자가 사라진다(누르는 맛) */
 function drawButtons() {
+  return;                            // 피아노 칸 — 단추 없음
   const b = G.b;
   const draw = (bt, lane) => {
     const down = G.down[lane];
@@ -1266,7 +1452,7 @@ function drawTexts() {
     if (!(bn.age > 1.2 && Math.floor(bn.age * 12) % 2)) ptxt(bn.text, G.cx, G.hudH + 10.5, 1, bn.color);
   }
   for (const p of G.pops) {
-    const x = (p.lane === 'L' ? G.xL : G.xR) + G.laneW / 2;
+    const x = laneCX(p.lane);
     const y = G.floorY - 22 - Math.round(p.age * 14);
     if (p.age > 0.4 && Math.floor(p.age * 24) % 2) continue;
     const big = p.age < 0.1 ? 0.5 : 0;                 // ④ 튀어오름
@@ -1274,8 +1460,8 @@ function drawTexts() {
     if (p.early !== null && p.early !== undefined) ptxt(p.early ? '빨라요' : '늦어요', x, y + 9, 0.75, p.early ? '#6fd3ff' : '#ff9a3c');   // ③
   }
   /* 단추 글자 — 프리텐다드 블랙, 단추 한가운데 큼직하게 */
-  if (G.jumpOnly) drawTileTexts();
-  for (const [bt, label] of G.jumpOnly ? [] : [[G.btnL, 'ROPE'], [G.btnR, 'JUMP']]) {
+  drawPianoTexts();
+  for (const [bt, label] of []) {
     const lv = Math.max(1.6, Math.min(3, (bt.h * G.S) / (16 * G.dpr) * 0.5));
     ptxt(label, bt.x + bt.w / 2, bt.labelY ?? (bt.y + bt.h / 2), lv, '#ffffff', 'center', true, PRET, 900);
   }
@@ -1286,8 +1472,8 @@ function drawTexts() {
     const tempo = G.tempo;
     const bpms = tempo.map((x) => x.bpm);
     ptxt(`${G.jumpOnly ? '한 손' : '두 손(로프+점프)'} · ${DIFFS[G.diff].label} · BPM ${Math.min(...bpms)}~${Math.max(...bpms)}`, G.cx, rb.y + 35, 0.75, '#ffffff', 'center', false);
-    ptxt(G.jumpOnly ? '탭 · 꾹 · ← 밀기 · 밀기 →' : '왼쪽 ROPE  ·  오른쪽 JUMP', G.cx, rb.y + 48, 0.75, '#9be36f', 'center', false);
-    ptxt(G.surv ? `하트 ${SURVIVAL.hearts}개 · 마지막 1명 우승` : G.jumpOnly ? '타일이 판정선에 닿을 때!' : '줄이 원에 쏙 들어올 때!', G.cx, rb.y + 59, 0.75, '#ffffff', 'center', false);
+    ptxt(G.jumpOnly ? '점프 3칸 — 타일을 눌러요' : '왼쪽 3칸 로프 · 오른쪽 3칸 점프', G.cx, rb.y + 48, 0.75, '#9be36f', 'center', false);
+    ptxt(G.surv ? `하트 ${SURVIVAL.hearts}개 · 마지막 1명 우승` : '긴 타일은 길게 · 띠는 손가락으로 따라가기', G.cx, rb.y + 59, 0.75, '#ffffff', 'center', false);
     if (G.surv) ptxt(G.startMs ? `곧 시작! ${Math.max(0, Math.ceil((G.startMs - performance.now()) / 1000))}` : '시작 시각 맞추는 중…', G.cx, rb.y + rb.h - 11, 1, '#ffd23f');
     else if (Math.floor(G.t * 2.2) % 2 === 0) ptxt('아무 단추나 누르면 시작!', G.cx, rb.y + rb.h - 11, 1, '#ffffff');
   } else if (G.phase === 'play' && G.songT < 0) {
