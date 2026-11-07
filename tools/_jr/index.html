@@ -1,0 +1,39 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>줄넘기 챔피언 시험대</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<link rel="stylesheet" href="/src/styles/arcade.css">
+</head>
+<body>
+<!-- 진짜 줄넘기 화면들을 그대로 띄운다 (로그인 없이 — 저장은 이 브라우저의 로컬에만). 라우터만 작은 대역이다 -->
+<div id="ui" class="active"></div>
+<script type="module">
+import JumpRopeLobby from '/src/screens/JumpRopeLobby.js';
+import Portal from '/src/screens/Portal.js';
+const root = document.getElementById('ui');
+const stack = [];
+let live = null;
+function mount() { live?.onLeave?.(); const top = stack[stack.length - 1]; live = top.factory(nav, top.params); nav.refresh(); }
+const nav = {
+  push(f, p = {}) { stack.push({ factory: f, params: p }); mount(); },
+  replace(f, p = {}) { stack.pop(); stack.push({ factory: f, params: p }); mount(); },
+  reset(f, p = {}) { stack.length = 0; stack.push({ factory: f, params: p }); mount(); },
+  back() { if (stack.length > 1) { stack.pop(); mount(); } },
+  refresh() { if (!live) return; root.innerHTML = ''; root.append(live.render()); },
+};
+window.__nav = nav;
+/* ?all — 시험용: 스테이지 전부 열기 · 별사탕 5000 · 레벨 10 (이 브라우저에만) */
+if (new URLSearchParams(location.search).has('all')) {
+  const p = JSON.parse(localStorage.getItem('sf_profile') || '{}');
+  const one = Array(10).fill(1);
+  p.nickname = p.nickname || '권반장';
+  p.jr = { ...(p.jr || {}), xp: Math.max(p.jr?.xp || 0, 1950), candy: Math.max(p.jr?.candy || 0, 5000), stars: { easy: one, normal: one, hard: one } };
+  localStorage.setItem('sf_profile', JSON.stringify(p));
+}
+window.__screens = { JumpRopeLobby, Portal };
+nav.reset(new URLSearchParams(location.search).get('start') === 'portal' ? Portal : JumpRopeLobby);
+window.__ready = true;
+</script>
+</body></html>

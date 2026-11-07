@@ -226,6 +226,9 @@ export const S = {
   catchRematchFailed: '다시 대결을 준비하지 못했습니다. 잠시 후 다시 눌러주세요',
   catchRankTitle: '캐치볼 명예의 전당',
   catch3dTitle: '3D캐치볼',
+  /* 5번째 게임 줄넘기 챔피언 (2026-11-07) — 나머지 문구는 줄넘기 화면 안에 있다 */
+  jumpTitle: '줄넘기 챔피언',
+  jumpCardLine: (best, jumps) => `무한 줄넘기 최고 ${best | 0}개 · 총 ${Number(jumps || 0).toLocaleString('en-US')}번 넘음`,
   catch3dLoading: '3D 경기장을 불러오는 중...',
   catch3dLoadFailed: '3D캐치볼을 불러오지 못했습니다. 잠시 후 다시 시도해주세요',
   catch3dDuelTitle: '3D캐치볼 1:1 대결',

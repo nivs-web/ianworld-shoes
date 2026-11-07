@@ -39,6 +39,9 @@ let adminFor = { uid: null, yes: false };
 const CatchGame = lazyScreen(() => import('./CatchGame.js'), S.catchTitle);
 /** 4번째 게임 3D캐치볼 (2026-10-29) — three.js 를 쓰므로 더더욱 누를 때 받는다 */
 const Catch3DGame = lazyScreen(() => import('./Catch3DGame.js'), S.catch3dTitle);
+/** 5번째 게임 줄넘기 챔피언 (2026-11-07) — 드래곤처럼 **로비**로 들어간다(권반장 지시: 캐치볼처럼 바로 게임 X) */
+const JumpRopeLobby = lazyScreen(() => import('./JumpRopeLobby.js'), S.jumpTitle);
+const jrBest = (p) => { const e = p.jr?.endless || {}; return Math.max(e.easy | 0, e.normal | 0, e.hard | 0); };
 
 /**
  * 게임 카드.  `sub` 는 카드 제목 아래 한 줄 — 게임마다 자랑할 숫자가 다르다
@@ -49,6 +52,7 @@ const CARDS = [
   { id: 'dragon_striker', banner: '/assets/ui/banner_dragon_striker.webp', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
   { id: 'catchball', banner: '/assets/ui/banner_catchball.webp', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
   { id: 'catchball3d', banner: '/assets/ui/banner_catchball3d.webp', title: S.catch3dTitle, sub: (p) => S.catchBestLine(p.catch3dBestEasy | 0, p.catch3dBestNormal | 0, p.catch3dBestHard | 0), screen: () => Catch3DGame, ready: true },
+  { id: 'jumprope', banner: '/assets/ui/banner_jumprope.webp', title: S.jumpTitle, sub: (p) => S.jumpCardLine(jrBest(p), p.jr?.jumps), screen: () => JumpRopeLobby, ready: true },
 ];
 
 export default function Portal(nav) {
@@ -152,8 +156,8 @@ export default function Portal(nav) {
             el('div.gc-sub', c.sub(p)),
           ])
         ),
-        /* 5번째 자리 — 준비 중 */
-        el('div.gc-soon', null, ['5번째 게임 준비 중', el('span.dots', null, [el('i', '.'), el('i', '.'), el('i', '.')])]),
+        /* 6번째 자리 — 준비 중 (5번째 줄넘기 챔피언가 들어왔다, 2026-11-07) */
+        el('div.gc-soon', null, ['6번째 게임 준비 중',el('span.dots', null, [el('i', '.'), el('i', '.'), el('i', '.')])]),
         el('div.spacer'),
         // 이미 홈 화면 앱으로 돌고 있으면 바로가기가 무의미하므로 감춘다
         !isStandalone() ? button(S.installShortcut, onInstall) : null,

@@ -23,6 +23,10 @@ Firebase 콘솔에 **그대로 붙여넣는** 규칙이다. 프로덕션/잠금 
 > 게시는 사용자 승인 뒤에 한다. 게시할 때도 위와 같이 **콘솔 게시본을 받아** 캐치볼 블록(`cbInt` ~ `cbNotDown`)만 이 문서 것으로 바꿔 올린다.
 > 게시 전에는 클라이언트가 3D 칸을 뺀 문서로 다시 써서 2D 순위는 그대로 돌고, 3D 탭만 빈다.
 
+> ⏳ **2026-11-07 줄넘기 챔피언 `jumpPlayers` 칸 — 아직 콘솔에 게시 전이다.** 게시는 사용자 승인 뒤에 한다.
+> 게시할 때도 **콘솔 게시본을 받아** 아래 `jpInt` ~ `match /jumpPlayers` 블록만 얹어 올린다.
+> 게시 전에는 명예의 전당이 «여는 중» 안내만 띄우고, 기록은 계정(`users/{uid}.jr`)에 그대로 쌓인다(게시 뒤 다음 판에 저절로 올라간다).
+
 ---
 
 ## Firestore
@@ -188,6 +192,37 @@ service cloud.firestore {
       // 같은 값도 통과시킨다 — 닉네임 · 꾸미기만 고치는 갱신이 지나가야 한다
       allow update: if signedIn() && cbValid(uid, request.resource.data)
                     && cbNotDown(request.resource.data, resource.data);
+      allow delete: if false;
+    }
+
+    // ── 줄넘기 챔피언 명예의 전당 (2026-11-07) ─────────────────────
+    //
+    // 계정당 한 장(`jumpPlayers/{uid}`). 순위에 보일 값만 담은 공개 문서 — 캐치볼과 같은 방식.
+    // ★ 색인이 필요 없다(필드 하나로만 정렬). ★ 기록은 내려가지 않는다 · 상한을 여기서 강제한다.
+    function jpInt(v, maxV) { return v is int && v >= 0 && v <= maxV; }
+    function jpValid(uid, d) {
+      return d.uid == uid && d.uid == request.auth.uid
+          && d.keys().hasOnly(['uid', 'nickname', 'look', 'rope', 'level', 'xp', 'bestEasy', 'bestNormal', 'bestHard',
+                               'ropes', 'stars', 'jumps', 'at'])
+          && d.nickname is string && d.nickname.size() <= 24
+          && d.look is string && d.look.size() <= 32
+          && d.rope is string && d.rope.size() <= 24
+          && d.level is int && d.level >= 1 && d.level <= 20
+          && jpInt(d.xp, 10000000) && jpInt(d.bestEasy, 99999) && jpInt(d.bestNormal, 99999) && jpInt(d.bestHard, 99999)
+          && jpInt(d.ropes, 100) && jpInt(d.stars, 90) && jpInt(d.jumps, 100000000)
+          && d.at is int;
+    }
+    function jpNotDown(n, o) {
+      return n.xp >= o.xp && n.level >= o.level
+          && n.bestEasy >= o.bestEasy && n.bestNormal >= o.bestNormal && n.bestHard >= o.bestHard
+          && n.ropes >= o.ropes && n.stars >= o.stars && n.jumps >= o.jumps;
+    }
+
+    match /jumpPlayers/{uid} {
+      allow read: if true;
+      allow create: if signedIn() && jpValid(uid, request.resource.data);
+      allow update: if signedIn() && jpValid(uid, request.resource.data)
+                    && jpNotDown(request.resource.data, resource.data);
       allow delete: if false;
     }
 

@@ -1,0 +1,917 @@
+/**
+ * 줄넘기 챔피언 — 그림. **픽셀아트(도트) 전용.** (2026-11-07, 권반장 지시로 전면 다시 그림)
+ *
+ * > «픽셀 아트 느낌 클래식 아케이드 게임처럼 픽셀아트 스타일로 정밀하게»
+ * > «무조건 신발을 찾아서 혹은 드래곤 스트라이커 같은 픽셀아트 느낌으로»
+ *
+ * ## 규칙
+ * · 모든 그림은 **저해상도 버퍼에 정수 좌표 한 칸 단위**로 찍는다(fillRect 만). 곡선 · 그라데이션 · 반투명 없음.
+ * · 화면에는 nearest(번짐 없음)로 키운다 — 게임은 `imageSmoothingEnabled = false`, DOM 그림은 `image-rendering: pixelated`.
+ * · 외곽선 1칸(진한 갈색) + 윗면 밝은 줄 + 아랫면 그늘 — 신발을 찾아서 · 드래곤 스트라이커와 같은 도트 문법.
+ * · 하늘 색 띠는 계단식 + 경계 두 줄 바둑판 디더링.
+ *
+ * 아이 키 ≈ 44칸(발 바닥 = footY). 줄 각도 θ: 발밑 π · 머리 위 2π · sin θ < 0 이면 아이 뒤.
+ * 가져올 때는 브라우저 객체를 건드리지 않는다 — document 는 함수 안에서만.
+ */
+
+import { SKINS, HAIR_COLORS, SHIRTS, PANTS, SHOES, HATS, decodeLook, DEFAULT_LOOK } from './data.js';
+
+export const OUT = '#1b0f0a';
+const TAU = Math.PI * 2;
+const ro = Math.round;
+
+export function canvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, ro(w));
+  c.height = Math.max(1, ro(h));
+  return c;
+}
+
+/* ---------- 도트 도구 ---------- */
+export function rect(c, x, y, w, h, col) {
+  w = ro(w); h = ro(h);
+  if (w <= 0 || h <= 0) return;
+  c.fillStyle = col;
+  c.fillRect(ro(x), ro(y), w, h);
+}
+export const px = (c, x, y, col) => rect(c, x, y, 1, 1, col);
+/** 타원 — 중심이 반 칸이어도 좌우가 대칭이 되게 줄마다 끝을 반올림한다 */
+export function oval(c, cx, cy, rx, ry, col, maxRow = Infinity, minRow = -Infinity) {
+  const y0 = Math.floor(cy - ry), y1 = Math.ceil(cy + ry);
+  for (let y = y0; y <= y1; y++) {
+    if (y > maxRow || y < minRow) continue;
+    const dy = (y + 0.5 - cy) / ry;
+    if (Math.abs(dy) > 1) continue;
+    const hw = rx * Math.sqrt(1 - dy * dy);
+    const a = ro(cx - hw), b = ro(cx + hw);
+    if (b > a) rect(c, a, y, b - a, 1, col);
+  }
+}
+/** 모서리를 cut 칸 깎은 상자 */
+export function rbox(c, x, y, w, h, col, cut = 1) {
+  for (let i = 0; i < h; i++) {
+    const ins = Math.max(0, cut - Math.min(i, h - 1 - i));
+    rect(c, x + ins, y + i, w - ins * 2, 1, col);
+  }
+}
+/** 외곽선 + 면 + 윗줄 빛 + 아랫줄 그늘 */
+export function obox(c, x, y, w, h, col, cut = 1, hi = true) {
+  rbox(c, x - 1, y - 1, w + 2, h + 2, OUT, cut + 1);
+  rbox(c, x, y, w, h, col, cut);
+  if (hi && h > 2) {
+    rect(c, x + cut, y, w - cut * 2, 1, tone(col, 0.35));
+    rect(c, x + cut, y + h - 1, w - cut * 2, 1, tone(col, -0.28));
+  }
+}
+/** 굵은 선(붓 b칸) */
+export function line(c, x0, y0, x1, y1, b, col) {
+  const n = Math.max(1, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))));
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    rect(c, Math.floor(x0 + (x1 - x0) * t - (b - 1) / 2), Math.floor(y0 + (y1 - y0) * t - (b - 1) / 2), b, b, col);
+  }
+}
+/** 색 밝게(+) · 어둡게(−) — 언제나 #rrggbb */
+const toneCache = new Map();
+export function tone(hex, k) {
+  const key = hex + k;
+  if (toneCache.has(key)) return toneCache.get(key);
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v) => Math.max(0, Math.min(255, ro(k < 0 ? v * (1 + k) : v + (255 - v) * k)));
+  const out = '#' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => f(v).toString(16).padStart(2, '0')).join('');
+  toneCache.set(key, out);
+  return out;
+}
+/** 문자열 도트 그림: '.' 빈칸, 나머지는 pal[글자] */
+export function sprite(c, x, y, rows, pal, sc = 1) {
+  for (let j = 0; j < rows.length; j++) {
+    const r = rows[j];
+    for (let i = 0; i < r.length; i++) {
+      const ch = r[i];
+      if (ch !== '.' && pal[ch]) rect(c, x + i * sc, y + j * sc, sc, sc, pal[ch]);
+    }
+  }
+}
+/** 먼 언덕 — 두 겹, 꼭대기는 바둑판으로 섞는다 (하늘을 채운다) */
+function hills(c, W, gy, top, col, amp, seed) {
+  for (let x = 0; x < W; x++) {
+    const h = Math.round(top + Math.sin(x * 0.035 + seed) * amp + Math.sin(x * 0.09 + seed * 2) * amp * 0.35);
+    rect(c, x, gy - h, 1, h, col);
+    if (x % 2 === 0) px(c, x, gy - h - 1, col);
+    px(c, x, gy - h, tone(col, 0.18));
+  }
+}
+
+/* ---------- 작은 도트 그림 ---------- */
+export const SPR = {
+  heart: ['.oo.oo.', 'orrorro', 'orwrrro', 'orrrrro', '.orrro.', '..oro..', '...o...'],
+  heartE: ['.oo.oo.', 'o..o..o', 'o.....o', 'o.....o', '.o...o.', '..o.o..', '...o...'],
+  star5: ['..o..', '.oyo.', 'oyyyo', '.oyo.', 'o.o.o'],
+  starS: ['..y..', '.yyy.', 'yyyyy', '.yyy.', 'y...y'],
+  spark: ['.w.', 'www', '.w.'],
+  sparkL: ['...w...', '...w...', '..www..', 'wwwwwww', '..www..', '...w...', '...w...'],
+  heartS: ['rr.rr', 'rrrrr', '.rrr.', '..r..'],
+  note: ['..oo', '..o.', '..o.', 'ooo.', 'oo..'],
+  coin: ['..ooooo..', '.oyyyyyo.', 'oyywwyyyo', 'oywyyyyyo', 'oyyyyyydo', 'oyyyyyydo', 'oyyyyyydo', '.oyyyddo.', '..ooooo..'],
+};
+
+/* ---------- 아이 ---------- */
+function kidPal(look) {
+  const sk = SKINS[look.skin] || SKINS[0];
+  const hc = (HAIR_COLORS[look.hairColor] || HAIR_COLORS[0]).c;
+  const sh = SHIRTS[look.shirt] || SHIRTS[0];
+  const pa = PANTS[look.pants] || PANTS[0];
+  const so = SHOES[look.shoes] || SHOES[0];
+  const ha = HATS[look.hat] || HATS[0];
+  return {
+    skin: sk.c, skinS: sk.s, hair: hc, hairS: tone(hc, -0.35), hairL: tone(hc, 0.3),
+    shirt: sh.c, shirtS: tone(sh.c, -0.3), shirtL: tone(sh.c, 0.35), shirt2: sh.c2 || '#ffffff', shirtP: sh.p,
+    pants: pa.c, pantsS: tone(pa.c, -0.3), pants2: pa.c2, pantsP: pa.p,
+    shoe: so.c, shoeS: so.s, shoeFx: so.fx, hat: ha.c || '#e8423a',
+  };
+}
+
+/** 손 위치(아이 기준) — 줄 각도에 맞춰 작은 원을 그린다 */
+function handOff(theta, drop, st, t) {
+  if (st === 'cheer') { const w = (Math.floor(t * 8) % 2); return { l: { x: -12 - w, y: -42 + drop }, r: { x: 11 + w, y: -42 + drop } }; }
+  if (st === 'trip' || st === 'sit') return { l: { x: -11, y: -6 }, r: { x: 10, y: -6 } };
+  const dy = ro(-Math.cos(theta) * 2), dx = ro(Math.sin(theta));
+  return { l: { x: -12 - dx, y: -14 + drop + dy }, r: { x: 11 + dx, y: -14 + drop + dy } };
+}
+/** 그리기 전에 손 위치만 (줄을 아이 뒤에 먼저 그리려고) */
+export function kidHands(theta, x, footY, lift = 0, crouch = 0, state = 'stand', t = 0) {
+  const sit = state === 'trip' || state === 'sit';
+  const drop = sit ? 8 : crouch > 0.5 ? 2 : 0;
+  const h = handOff(theta, drop, state, t);
+  const fy = ro(footY - lift);
+  const X = ro(x);
+  return { l: { x: X + h.l.x, y: fy + h.l.y }, r: { x: X + h.r.x, y: fy + h.r.y } };
+}
+
+/**
+ * 아이 한 명 (배율 없음 — 버퍼 한 칸 = 도트 한 칸)
+ * @param {{lift?:number, crouch?:number, tuck?:number, state?:string, theta?:number, t?:number, mouth?:string}} pose
+ */
+export function drawKid(c, xIn, footY, lookIn, pose = {}) {
+  const look = lookIn || DEFAULT_LOOK;
+  const P = kidPal(look);
+  const st = pose.state || 'stand';
+  const t = pose.t || 0;
+  const x = ro(xIn);
+  const fy = ro(footY - (pose.lift || 0));
+  const sit = st === 'trip' || st === 'sit';
+  const drop = sit ? 8 : (pose.crouch || 0) > 0.5 ? 2 : 0;
+  const tuck = !sit && (pose.tuck || 0) > 0.3;
+  const theta = pose.theta ?? Math.PI;
+  const cy = fy - 31 + drop;          // 머리 가운데 줄
+  const cx = x - 0.5;
+
+  /* 로켓 운동화 불꽃 */
+  if (P.shoeFx === 'rocket' && (pose.lift || 0) > 2) {
+    const f = Math.floor(t * 20) % 2;
+    for (const sx of [-6, 4]) { rect(c, x + sx, fy - (tuck ? 2 : 0), 3, 3 + f, '#ff9a1a'); rect(c, x + sx + 1, fy - (tuck ? 2 : 0), 1, 2 + f, '#fff3a0'); }
+  }
+
+  drawHairBack(c, look.hair, P, x, cy, t, pose.lift || 0);
+
+  /* 다리 · 신발 */
+  const legC = P.pantsP === 'long' ? P.pants : P.skin;
+  const legS = P.pantsP === 'long' ? P.pantsS : P.skinS;
+  if (sit) {
+    for (const s of [-1, 1]) {
+      const lx = s < 0 ? x - 14 : x + 6;
+      rect(c, lx - 1, fy - 5, 10, 5, OUT);
+      rect(c, lx, fy - 4, 8, 3, legC);
+      rect(c, lx, fy - 2, 8, 1, legS);
+      const shx = s < 0 ? x - 19 : x + 14;
+      obox(c, shx, fy - 6, 5, 5, P.shoe, 1);
+      rect(c, shx, fy - 2, 5, 1, P.shoeS);
+    }
+  } else {
+    const up = tuck ? 3 : 0;
+    const legH = tuck ? 3 : 5 - drop;
+    for (const s of [-1, 1]) {
+      const lx = s < 0 ? x - 6 - (tuck ? 1 : 0) : x + 3 + (tuck ? 1 : 0);
+      rect(c, lx - 1, fy - 4 - legH - up, 5, legH + 1, OUT);
+      rect(c, lx, fy - 4 - legH - up + 0, 3, legH, legC);
+      rect(c, lx + (s < 0 ? 2 : 0), fy - 4 - legH - up, 1, legH, legS);
+      if (P.pantsP === 'long' && P.pants2) rect(c, lx + 1, fy - 4 - legH - up, 1, legH, P.pants2);
+      const sx = s < 0 ? x - 9 - (tuck ? 1 : 0) : x + 1 + (tuck ? 1 : 0);
+      rbox(c, sx, fy - 4 - up, 8, 4, OUT, 1);
+      rect(c, sx + 1, fy - 3 - up, 6, 2, P.shoe);
+      rect(c, sx + (s < 0 ? 1 : 4), fy - 3 - up, 2, 1, tone(P.shoe, 0.45));
+      rect(c, sx + 1, fy - 2 - up, 6, 1, P.shoeS);
+      if (P.shoeFx === 'star') px(c, sx + 3, fy - 3 - up, '#ffe066');
+      if (P.shoeFx === 'spark' && (Math.floor(t * 5) + s) % 3 === 0) px(c, sx + (s < 0 ? 0 : 7), fy - 5 - up, '#ffffff');
+    }
+  }
+
+  /* 아래옷 */
+  const hy = fy - 13 + drop;
+  if (P.pantsP === 'skirt' || P.pantsP === 'rainbow') {
+    const RB = ['#ff4d4d', '#ffa64d', '#ffe14d', '#4dd27a', '#4d9cff', '#a64dff'];
+    for (let i = 0; i < 6; i++) {
+      const w = 14 + Math.floor(i * 0.8) * 2;
+      rect(c, x - w / 2 - 1, hy + i, w + 2, 1, OUT);
+    }
+    for (let i = 0; i < 5; i++) {
+      const w = 14 + Math.floor(i * 0.8) * 2;
+      if (P.pantsP === 'rainbow') { for (let k = 0; k < w; k++) px(c, x - w / 2 + k, hy + i, RB[Math.floor((k / w) * 6)]); }
+      else rect(c, x - w / 2, hy + i, w, 1, i === 4 ? P.pantsS : P.pants);
+    }
+  } else {
+    obox(c, x - 7, hy, 14, P.pantsP === 'long' ? 3 : 4, P.pants, 1, false);
+    rect(c, x - 7, hy + (P.pantsP === 'long' ? 2 : 3), 14, 1, P.pantsS);
+    rect(c, x - 1, hy + 2, 1, 2, OUT);
+  }
+
+  /* 몸통 */
+  const by = fy - 22 + drop;
+  rbox(c, x - 8, by, 16, 11, OUT, 2);
+  rbox(c, x - 7, by + 1, 14, 9, P.shirt, 1);
+  rect(c, x - 5, by + 1, 9, 1, P.shirtL);
+  rect(c, x + 5, by + 2, 1, 7, P.shirtS);
+  rect(c, x - 7, by + 9, 14, 1, P.shirtS);
+  shirtPattern(c, P, x, by);
+
+  /* 팔 */
+  const H = handOff(theta, drop, st, t);
+  for (const s of [-1, 1]) {
+    const h = s < 0 ? H.l : H.r;
+    const sx = s < 0 ? x - 8 : x + 7, sy = by + 2;
+    const hx = x + h.x, hyy = fy + h.y;
+    line(c, sx, sy, hx, hyy, 4, OUT);
+  }
+  for (const s of [-1, 1]) {
+    const h = s < 0 ? H.l : H.r;
+    const sx = s < 0 ? x - 8 : x + 7, sy = by + 2;
+    const hx = x + h.x, hyy = fy + h.y;
+    const mx = sx + (hx - sx) * 0.45, my = sy + (hyy - sy) * 0.45;
+    line(c, sx, sy, mx, my, 2, P.shirt);
+    line(c, mx, my, hx, hyy, 2, P.skin);
+    rect(c, hx - 1, hyy - 1, 3, 3, OUT);
+    rect(c, hx, hyy, 2, 2, P.skin);
+  }
+
+  /* 머리 */
+  oval(c, cx, cy, 11, 10, OUT);
+  oval(c, cx, cy, 10, 9, P.skinS);
+  oval(c, cx, cy - 0.7, 9.6, 8.4, P.skin);
+  rect(c, x - 9, cy + 3, 2, 1, '#ff8fa3');
+  rect(c, x + 7, cy + 3, 2, 1, '#ff8fa3');
+  drawFace(c, look.eyes, x, cy, st, pose.mouth, t, pose.lift || 0);
+  drawHairFront(c, look.hair, P, x, cy);
+  drawHat(c, look.hat, P, x, cy, t);
+
+  if (st === 'trip') {
+    for (let i = 0; i < 3; i++) {
+      const a = t * 5 + (i * TAU) / 3;
+      sprite(c, ro(x + Math.cos(a) * 12) - 2, ro(cy - 14 + Math.sin(a) * 3) - 2, SPR.star5, { o: OUT, y: '#ffe066' });
+    }
+  }
+  return { l: { x: x + H.l.x, y: fy + H.l.y }, r: { x: x + H.r.x, y: fy + H.r.y } };
+}
+
+function shirtPattern(c, P, x, by) {
+  const c2 = P.shirt2;
+  switch (P.shirtP) {
+    case 'stripe': rect(c, x - 7, by + 3, 14, 1, c2); rect(c, x - 7, by + 6, 14, 1, c2); break;
+    case 'star': sprite(c, x - 3, by + 2, ['..y..', '.yyy.', 'yyyyy', '.yyy.', 'y...y'], { y: c2 }); break;
+    case 'heart': sprite(c, x - 3, by + 3, ['rr.rr', 'rrrrr', '.rrr.', '..r..'], { r: c2 }); break;
+    case 'sport': rect(c, x - 7, by + 1, 1, 8, c2); rect(c, x + 6, by + 1, 1, 8, c2); rect(c, x - 2, by + 1, 4, 1, c2); break;
+    case 'number': sprite(c, x - 2, by + 2, ['www', '..w', '.w.', '.w.', '.w.'], { w: c2 }); break;
+    default: break;
+  }
+}
+
+function drawFace(c, eyes, x, cy, st, mouth, t, lift) {
+  const E = '#1b0f0a', W = '#ffffff';
+  const ey = cy - 2;
+  const blink = st !== 'trip' && (t % 3.4) < 0.12;
+  const dot = (ex, big) => {
+    if (blink) { rect(c, ex, ey + 1, 2, 1, E); return; }
+    if (big) { rect(c, ex - 1, ey - 1, 3, 4, E); px(c, ex + 1, ey - 1, W); px(c, ex - 1, ey + 1, W); }
+    else { rect(c, ex, ey, 2, 3, E); px(c, ex + 1, ey, W); }
+  };
+  const arc = (ex) => { px(c, ex - 1, ey + 2, E); rect(c, ex, ey + 1, 2, 1, E); px(c, ex + 2, ey + 2, E); };
+  if (st === 'trip') {
+    for (const ex of [x - 6, x + 4]) { px(c, ex - 1, ey, E); px(c, ex + 1, ey, E); px(c, ex, ey + 1, E); px(c, ex - 1, ey + 2, E); px(c, ex + 1, ey + 2, E); }
+  } else if (eyes === 1 || st === 'cheer') { arc(x - 6); arc(x + 4); }
+  else if (eyes === 2) { dot(x - 6); arc(x + 4); }
+  else if (eyes === 3) { dot(x - 6, true); dot(x + 5, true); }
+  else { dot(x - 6); dot(x + 4); }
+  const m = mouth || (st === 'trip' ? 'sad' : st === 'cheer' ? 'grin' : lift > 10 ? 'o' : 'smile');
+  const my = cy + 4;
+  const M = '#7a2a1a';
+  if (m === 'o') { rect(c, x - 1, my, 2, 2, M); }
+  else if (m === 'sad') { rect(c, x - 1, my, 2, 1, M); px(c, x - 2, my + 1, M); px(c, x + 1, my + 1, M); }
+  else if (m === 'grin') { rect(c, x - 3, my, 6, 1, M); rect(c, x - 2, my + 1, 4, 1, '#d9485a'); rect(c, x - 2, my, 4, 1, W); }
+  else { px(c, x - 2, my, M); px(c, x + 1, my, M); rect(c, x - 1, my + 1, 2, 1, M); }
+}
+
+function drawHairBack(c, style, P, x, cy, t, lift) {
+  if (style === 1) { // 단발 — 얼굴 뒤로 내려온다
+    rbox(c, x - 12, cy - 9, 23, 17, OUT, 3);
+    rbox(c, x - 11, cy - 8, 21, 15, P.hair, 3);
+    rect(c, x - 11, cy + 5, 21, 1, P.hairS);
+  } else if (style === 2) { // 양갈래
+    const sw = (Math.floor(t * 6) % 2) + Math.min(2, Math.floor(lift / 6));
+    for (const s of [-1, 1]) {
+      const px0 = s < 0 ? x - 15 : x + 10;
+      oval(c, px0 + 2.5, cy + 2 - sw, 4, 5, OUT);
+      oval(c, px0 + 2.5, cy + 2 - sw, 3, 4, P.hair);
+      rect(c, px0 + 1, cy - 1 - sw, 2, 1, P.hairL);
+      rect(c, s < 0 ? x - 12 : x + 10, cy - 4, 2, 2, '#ff4f8b');
+    }
+  } else if (style === 3) { // 포니테일
+    const sw = (Math.floor(t * 5) % 2) - Math.min(3, Math.floor(lift / 5));
+    rbox(c, x + 7, cy - 7 + sw, 7, 15, OUT, 2);
+    rbox(c, x + 8, cy - 6 + sw, 5, 13, P.hair, 2);
+    rect(c, x + 12, cy - 4 + sw, 1, 9, P.hairS);
+    rect(c, x + 7, cy - 6, 2, 2, '#3a7be8');
+  }
+}
+
+function drawHairFront(c, style, P, x, cy) {
+  const cx = x - 0.5;
+  if (style === 5) { // 뾰족
+    const spikes = [[-10, 5], [-6, 8], [-1, 9], [4, 8], [8, 5]];
+    for (const [sx, h] of spikes) {
+      for (let i = 0; i < h; i++) { const w = Math.max(1, Math.round((h - i) * 0.7)); rect(c, x + sx - w / 2 - 1, cy - 8 - i, w + 2, 1, OUT); }
+    }
+    for (const [sx, h] of spikes) {
+      for (let i = 0; i < h - 1; i++) { const w = Math.max(1, Math.round((h - i) * 0.7) - 1); rect(c, x + sx - w / 2, cy - 8 - i, w, 1, P.hair); }
+    }
+  }
+  /* 정수리 덮개 */
+  oval(c, cx, cy - 1, 11.5, 10.5, OUT, cy - 4);
+  oval(c, cx, cy - 1, 10.5, 9.5, P.hair, cy - 5);
+  oval(c, cx - 2, cy - 5, 5, 3, P.hairL, cy - 7, cy - 9);
+  if (style === 4) { // 곱슬 — 정수리에 동글동글
+    for (let i = 0; i < 7; i++) {
+      const a = Math.PI + 0.25 + (i * (Math.PI - 0.5)) / 6;
+      const bx = cx + Math.cos(a) * 10, byy = cy - 3 + Math.sin(a) * 9;
+      oval(c, bx, byy, 3.4, 3.4, OUT); oval(c, bx, byy, 2.4, 2.4, P.hair);
+      px(c, ro(bx) - 1, ro(byy) - 1, P.hairL);
+    }
+  }
+  /* 앞머리 — 들쭉날쭉한 끝 */
+  const fr = [1, 2, 2, 1, 3, 2, 1, 2, 3, 2, 1, 2, 2, 1, 2, 3, 2, 1];
+  for (let i = 0; i < 18; i++) {
+    const col = x - 9 + i;
+    const d = fr[i] + (style === 1 ? 1 : 0);
+    rect(c, col, cy - 5, 1, d + 1, OUT);
+    rect(c, col, cy - 5, 1, d, P.hair);
+  }
+  /* 옆머리 */
+  const side = style === 1 ? 9 : 4;
+  for (const s of [-1, 1]) {
+    const sx = s < 0 ? x - 11 : x + 9;
+    rect(c, sx, cy - 5, 2, side + 1, OUT);
+    rect(c, sx + (s < 0 ? 1 : 0), cy - 5, 1, side, P.hair);
+  }
+}
+
+function drawHat(c, idx, P, x, cy, t) {
+  if (!idx) return;
+  const h = P.hat, hS = tone(h, -0.3), hL = tone(h, 0.35);
+  const cx = x - 0.5;
+  switch (idx) {
+    case 1: { // 야구 모자 — 둥근 머리 + 오른쪽 챙
+      oval(c, cx, cy - 4, 12, 9, OUT, cy - 4);
+      oval(c, cx, cy - 4, 11, 8, h, cy - 5);
+      oval(c, cx - 3, cy - 8, 4, 2, hL, cy - 8, cy - 10);
+      rect(c, x - 11, cy - 5, 22, 2, OUT);
+      rect(c, x - 10, cy - 5, 20, 1, hS);
+      rbox(c, x + 6, cy - 6, 10, 4, OUT, 1);
+      rect(c, x + 7, cy - 5, 8, 2, hS);
+      rect(c, x - 1, cy - 13, 2, 1, '#ffffff');
+      break;
+    }
+    case 2: // 헤드밴드
+      rect(c, x - 11, cy - 7, 22, 4, OUT);
+      rect(c, x - 10, cy - 6, 20, 2, h);
+      rect(c, x - 10, cy - 5, 20, 1, '#e8423a');
+      break;
+    case 3: // 리본
+      sprite(c, x + 3, cy - 13, ['oo...oo', 'orro.oro'.slice(0, 7), 'orrrorrro'.slice(0, 7), 'orrrorr', 'oro.oro', 'oo...oo'], { o: OUT, r: h });
+      sprite(c, x + 3, cy - 13, ['oo...oo', 'orroorro', 'orrrrrro', 'orroorro', 'oo..oo..'], { o: OUT, r: h });
+      px(c, x + 6, cy - 11, hS); px(c, x + 7, cy - 11, hS);
+      break;
+    case 4: // 비니
+      oval(c, cx, cy - 4, 12, 11, OUT, cy - 3);
+      oval(c, cx, cy - 4, 11, 10, h, cy - 4);
+      for (let k = x - 9; k < x + 9; k += 3) rect(c, k, cy - 12, 1, 6, hS);
+      rect(c, x - 12, cy - 6, 24, 4, OUT);
+      rect(c, x - 11, cy - 5, 22, 2, hS);
+      oval(c, cx, cy - 15, 3, 3, OUT); oval(c, cx, cy - 15, 2, 2, '#ffffff');
+      break;
+    case 5: // 꽃핀
+      sprite(c, x - 11, cy - 10, ['.oyo.', 'oyyyo', 'yyryy', 'oyyyo', '.oyo.'], { o: OUT, y: h, r: '#ff7f50' });
+      break;
+    case 6: // 고양이 귀
+    case 7: { // 토끼 귀
+      for (const s of [-1, 1]) {
+        if (idx === 6) {
+          const ex = s < 0 ? x - 10 : x + 4;
+          sprite(c, ex, cy - 15, s < 0
+            ? ['o.....', 'oo....', 'opo...', 'oppo..', 'opppo.', 'oooooo']
+            : ['.....o', '....oo', '...opo', '..oppo', '.opppo', 'oooooo'], { o: OUT, p: '#ffb3c6' });
+          for (let i = 1; i < 5; i++) { const w = i; rect(c, s < 0 ? ex + 1 : ex + 5 - w, cy - 15 + i, w, 1, h); }
+          rect(c, s < 0 ? ex + 1 : ex + 3, cy - 12, 2, 2, '#ffb3c6');
+        } else {
+          const ex = s < 0 ? x - 6 : x + 2;
+          oval(c, ex + 1.5, cy - 15, 3, 7, OUT);
+          oval(c, ex + 1.5, cy - 15, 2, 6, h);
+          rect(c, ex + 1, cy - 19, 1, 7, '#ffb3c6');
+        }
+      }
+      break;
+    }
+    case 8: // 왕관
+      sprite(c, x - 8, cy - 16, [
+        'o.....o.....o..', 'oo...ooo...oo..', 'oyo.oyyyo.oyo..', 'oyyoyyyyyoyyo..', 'oyyyyrybyyggyo.', 'oyyyyyyyyyyyyo.', 'oooooooooooooo.',
+      ], { o: OUT, y: h, r: '#e8423a', b: '#3a7be8', g: '#3fbf5a' });
+      break;
+    default: break;
+  }
+}
+
+/* ---------- 줄 ---------- */
+/**
+ * 줄의 모양. 손은 아이와 같이 움직이지만 **줄의 맨 아래는 땅에 붙어 있다** —
+ * 그래야 뛰어올랐을 때 발밑으로 줄이 지나가는 게 보인다.
+ */
+export function ropeGeom(hands, x, groundY, theta) {
+  const topY = groundY - 62, botY = groundY + 1;
+  const midY = (topY + botY) / 2, R = (botY - topY) / 2;
+  const apex = { x: x - 0.5 + Math.sin(theta) * 1.5, y: midY - R * Math.cos(theta) };
+  const p0 = { x: hands.l.x + 0.5, y: hands.l.y + 1 }, p2 = { x: hands.r.x + 1.5, y: hands.r.y + 1 };
+  /* 3차 곡선 — 줄이 위·아래로 뻗었을 때 손보다 바깥으로 불룩한 고리가 된다(진짜 줄넘기 모양) */
+  const B = 15 * Math.abs(Math.cos(theta));
+  const cy = (8 * apex.y - p0.y - p2.y) / 6;
+  const c1 = { x: p0.x - B, y: cy }, c2 = { x: p2.x + B, y: cy };
+  return { p0, p2, apex, c1, c2, depth: Math.sin(theta) };
+}
+
+/** 곡선 위의 칸들 (빈틈 없이) */
+function ropePts(g) {
+  const pts = [];
+  let last = null;
+  const N = 140;
+  for (let i = 0; i <= N; i++) {
+    const u = i / N;
+    let x, y;
+    if (g.c1) {
+      const a = (1 - u) ** 3, b = 3 * u * (1 - u) ** 2, e = 3 * u * u * (1 - u), d = u ** 3;
+      x = Math.floor(a * g.p0.x + b * g.c1.x + e * g.c2.x + d * g.p2.x);
+      y = Math.floor(a * g.p0.y + b * g.c1.y + e * g.c2.y + d * g.p2.y);
+    } else {
+      const a = (1 - u) * (1 - u), b = 2 * u * (1 - u), d = u * u;
+      x = Math.floor(a * g.p0.x + b * g.c.x + d * g.p2.x);
+      y = Math.floor(a * g.p0.y + b * g.c.y + d * g.p2.y);
+    }
+    if (last && last.x === x && last.y === y) continue;
+    pts.push({ x, y });
+    last = { x, y };
+  }
+  return pts;
+}
+const RAINBOW = ['#ff4d4d', '#ff9a1a', '#ffe14d', '#4dd27a', '#4dc3ff', '#5a6dff', '#c45cff'];
+function ropeColor(rope, i, n, t) {
+  switch (rope.pattern) {
+    case 'stripe': return Math.floor((i + t * 24) / 3) % 2 ? rope.c2 : rope.c1;
+    case 'dots': return (i + Math.floor(t * 16)) % 5 === 0 ? rope.c2 : rope.c1;
+    case 'rainbow': return RAINBOW[Math.floor((i + t * 18) / 3) % 7];
+    case 'gradient': { const k = Math.abs(i / Math.max(1, n - 1) - 0.5) * 2; return k < 0.35 ? rope.c2 : k < 0.7 ? tone(rope.c1, 0.25) : rope.c1; }
+    case 'beads': { const pal = [rope.c1, rope.c2, '#ffe066', '#ffffff']; return pal[Math.floor(i / 2) % 4]; }
+    default: return rope.c1;
+  }
+}
+/**
+ * 줄 한 가닥. 앞쪽(아이 앞)은 굵게(2칸 + 외곽선), 뒤쪽은 가늘게(1칸).
+ * ghost = 잔상 — 반투명 대신 한 칸 걸러 찍는다(도트 문법).
+ */
+export function drawRope(c, rope, g, t, ghost = false) {
+  const pts = ropePts(g);
+  const n = pts.length;
+  const front = g.depth >= 0;
+  const edge = rope.pattern === 'glow' || rope.glow ? rope.c2 : OUT;
+  if (ghost) {
+    for (let i = 0; i < n; i += 2) px(c, pts[i].x, pts[i].y, tone(rope.c1, -0.2));
+    return;
+  }
+  if (front) {
+    for (const p of pts) rect(c, p.x - 1, p.y - 1, 4, 4, edge);
+    for (let i = 0; i < n; i++) {
+      const col = ropeColor(rope, i, n, t);
+      rect(c, pts[i].x, pts[i].y, 2, 1, col);
+      rect(c, pts[i].x, pts[i].y + 1, 2, 1, tone(col, -0.22));
+    }
+  } else {
+    for (const p of pts) rect(c, p.x - 1, p.y - 1, 3, 3, edge === OUT ? OUT : tone(edge, -0.3));
+    for (let i = 0; i < n; i++) px(c, pts[i].x, pts[i].y, tone(ropeColor(rope, i, n, t), -0.25));
+  }
+}
+
+/** 손잡이 — 손 위에 (세로 막대) */
+export function drawHandles(c, rope, hands) {
+  for (const h of [hands.l, hands.r]) {
+    rect(c, h.x - 1, h.y - 4, 4, 8, OUT);
+    rect(c, h.x, h.y - 3, 2, 6, rope.handle);
+    rect(c, h.x, h.y - 3, 1, 6, tone(rope.handle, 0.35));
+    rect(c, h.x, h.y + 2, 2, 1, tone(rope.handle, -0.3));
+  }
+}
+
+/* ---------- 꼬리 효과 알갱이 (도트) ---------- */
+const P_COL = { spark: '#fff6b0', star: '#ffe066', heart: '#ff6fa8', fire: '#ff8a1a', bubble: '#bff0ff', snow: '#ffffff', note: '#ffffff', leaf: '#6fcf6a', thunder: '#ffe14d', candy: '#ffb3de', dust: '#f4ead8', confetti: '#ff4d4d' };
+export function drawParticle(c, p) {
+  if (p.age / p.life > 0.85 && Math.floor(p.age * 30) % 2) return;   // 사라질 때 깜빡
+  const x = ro(p.x), y = ro(p.y);
+  const col = p.color || P_COL[p.kind] || '#fff';
+  switch (p.kind) {
+    case 'spark': sprite(c, x - 1, y - 1, SPR.spark, { w: col }); break;
+    case 'star': case 'candy': sprite(c, x - 2, y - 2, SPR.starS, { y: col }); break;
+    case 'heart': sprite(c, x - 2, y - 2, SPR.heartS, { r: col }); break;
+    case 'fire': rect(c, x - 1, y - 1, 2, 3, col); px(c, x, y, '#fff3a0'); break;
+    case 'bubble': px(c, x - 1, y, col); px(c, x + 1, y, col); px(c, x, y - 1, col); px(c, x, y + 1, col); break;
+    case 'snow': px(c, x, y, col); px(c, x - 1, y, '#dff4ff'); px(c, x + 1, y, '#dff4ff'); px(c, x, y - 1, '#dff4ff'); px(c, x, y + 1, '#dff4ff'); break;
+    case 'note': sprite(c, x - 2, y - 2, SPR.note, { o: col }); break;
+    case 'leaf': rect(c, x - 1, y, 3, 1, col); px(c, x, y - 1, tone(col, 0.3)); break;
+    case 'thunder': px(c, x, y - 2, col); px(c, x - 1, y - 1, col); px(c, x, y, col); px(c, x + 1, y, col); px(c, x, y + 1, col); break;
+    case 'dust': rect(c, x, y, 2, 1, col); break;
+    default: rect(c, x, y, 2, 2, col);
+  }
+}
+
+/* ---------- 배경 10 (도트) ---------- */
+const bgCache = new Map();
+/** 움직이는 것(구름 · 비 · 눈 · 별 · 물결 · 조명)만 매 프레임 그리고 나머지는 구워 둔다 */
+export function drawBg(c, theme, W, H, gy, t) {
+  const key = `${theme}:${W}x${H}:${gy}`;
+  let base = bgCache.get(key);
+  if (!base) {
+    if (bgCache.size > 16) bgCache.clear();
+    base = canvas(W, H);
+    paintStatic(base.getContext('2d'), theme, W, H, gy);
+    bgCache.set(key, base);
+  }
+  c.drawImage(base, 0, 0);
+  paintMoving(c, theme, W, H, gy, t);
+}
+
+function rng(seed) { let a = seed | 0 || 1; return () => { a = (a * 16807) % 2147483647; return (a - 1) / 2147483646; }; }
+/** 계단식 하늘 — 띠 사이 두 줄은 바둑판으로 섞는다 */
+function bands(c, W, y0, y1, cols) {
+  const n = cols.length, h = (y1 - y0) / n;
+  for (let i = 0; i < n; i++) rect(c, 0, y0 + ro(i * h), W, ro((i + 1) * h) - ro(i * h), cols[i]);
+  for (let i = 1; i < n; i++) {
+    const y = y0 + ro(i * h);
+    for (let x = 0; x < W; x++) { if (x % 2 === 0) px(c, x, y - 1, cols[i]); if (x % 2 === 1) px(c, x, y, cols[i - 1]); }
+  }
+}
+function cloud(c, x, y, w) {
+  const h = 4 + Math.floor(w / 8);
+  rbox(c, x, y + 2, w, h, '#ffffff', 2);
+  rbox(c, x + ro(w * 0.2), y, ro(w * 0.45), h, '#ffffff', 2);
+  rbox(c, x + ro(w * 0.5), y - 2, ro(w * 0.35), h, '#ffffff', 2);
+  rect(c, x + 2, y + h + 1, w - 4, 1, '#cfe6f5');
+}
+function tree(c, x, gy, r, col) {
+  rect(c, x - 2, gy - r - 3, 4, r + 3, OUT); rect(c, x - 1, gy - r - 2, 2, r + 2, '#7a4a24');
+  oval(c, x, gy - r * 2, r + 1, r + 1, OUT);
+  oval(c, x, gy - r * 2, r, r, col);
+  oval(c, x - r * 0.3, gy - r * 2 - r * 0.3, r * 0.5, r * 0.45, tone(col, 0.25));
+  oval(c, x + r * 0.35, gy - r * 1.7, r * 0.4, r * 0.3, tone(col, -0.25));
+}
+function house(c, x, gy, w, h, wall, roof, snow, lit = '#ffe9a8') {
+  obox(c, x, gy - h, w, h, wall, 0, false);
+  for (let i = 0; i <= ro(w / 2) + 2; i++) {
+    const rw = w + 4 - i * 2;
+    if (rw <= 0) break;
+    rect(c, x - 2 + i, gy - h - 1 - i, rw, 1, i === 0 ? OUT : (snow && i < 3 ? '#ffffff' : roof));
+    px(c, x - 2 + i, gy - h - 1 - i, OUT); px(c, x - 2 + i + rw - 1, gy - h - 1 - i, OUT);
+  }
+  const ww = Math.max(2, ro(w * 0.22));
+  obox(c, x + ro(w * 0.18), gy - ro(h * 0.7), ww, ww, lit, 0, false);
+  obox(c, x + w - ro(w * 0.18) - ww, gy - ro(h * 0.7), ww, ww, lit, 0, false);
+  obox(c, x + ro(w / 2) - 2, gy - ro(h * 0.45), 4, ro(h * 0.45), tone(wall, -0.4), 0, false);
+}
+function groundTex(c, W, H, gy, base, top, dot) {
+  rect(c, 0, gy, W, H - gy, base);
+  rect(c, 0, gy, W, 1, top);
+  rect(c, 0, gy + 1, W, 1, tone(base, -0.15));
+  const R = rng(gy * 7 + W);
+  for (let i = 0; i < (W * (H - gy)) / 40; i++) rect(c, ro(R() * W), gy + 3 + ro(R() * (H - gy - 3)), 2, 1, dot);
+}
+
+function paintStatic(c, theme, W, H, gy) {
+  const R = rng(theme * 131 + 17);
+  const cx = Math.floor(W / 2);
+  switch (theme) {
+    case 0: { // 동네 운동장
+      bands(c, W, 0, gy, ['#5fb4f5', '#78c3f8', '#95d2fa', '#b4e1fc', '#d2eefe']);
+      oval(c, W - 24, 60, 10, 10, '#fff3a0'); oval(c, W - 24, 60, 7, 7, '#fffbe0');
+      hills(c, W, gy - 20, 30, '#8fcf8a', 9, 1);
+      hills(c, W, gy - 20, 18, '#6fbf6a', 6, 4);
+      for (let x = -6; x < W; x += 26) house(c, x + ro(R() * 6), gy - 22, 18 + ro(R() * 6), 12 + ro(R() * 10), ['#f2c6a0', '#c9d8f0', '#f0e0b0', '#e8b8b8'][ro(R() * 3)], ['#c8402e', '#3a6fd8', '#8a5a2a'][ro(R() * 2)], false);
+      rect(c, 0, gy - 22, W, 1, '#4b5560');
+      for (let x = 0; x < W; x += 4) { px(c, x, gy - 21 + (x % 8 === 0 ? 0 : 1), '#7d8894'); for (let y = gy - 20; y < gy; y += 4) { px(c, x + 1, y, '#9aa5b0'); px(c, x + 3, y + 2, '#9aa5b0'); } }
+      for (let x = 0; x < W; x += 20) rect(c, x, gy - 22, 1, 22, '#4b5560');
+      groundTex(c, W, H, gy, '#5cb85c', '#8ee08e', '#4a9d4a');
+      oval(c, cx, gy + 7, Math.min(W / 2 - 4, 60), 6, '#c9a26b'); oval(c, cx, gy + 7, Math.min(W / 2 - 6, 56), 4, '#d8b47c');
+      break;
+    }
+    case 1: { // 놀이터
+      bands(c, W, 0, gy, ['#7cc6ff', '#97d3ff', '#b2e0ff', '#cdecff']);
+      hills(c, W, gy - 6, 40, '#9ad49a', 10, 2);
+      hills(c, W, gy - 6, 24, '#7cc47c', 7, 5);
+      for (let x = 6; x < W; x += 34) tree(c, x + ro(R() * 10), gy - 8, 9 + ro(R() * 3), '#4caf50');
+      const sx = cx - 60;
+      for (const xx of [sx, sx + 16]) { rect(c, xx - 1, gy - 46, 4, 46, OUT); rect(c, xx, gy - 45, 2, 45, '#ffd23f'); }
+      for (let y = gy - 40; y < gy; y += 8) { rect(c, sx, y, 18, 2, OUT); rect(c, sx + 1, y, 16, 1, '#ffd23f'); }
+      obox(c, sx - 2, gy - 50, 22, 4, '#e8423a', 0);
+      for (let i = 0; i < 40; i++) { rect(c, sx + 18 + i, gy - 48 + i, 6, 2, i % 6 < 3 ? '#e8423a' : '#ff6b5c'); px(c, sx + 18 + i, gy - 49 + i, OUT); }
+      const wx = cx + 34;
+      line(c, wx, gy, wx + 8, gy - 48, 3, OUT); line(c, wx + 42, gy, wx + 34, gy - 48, 3, OUT);
+      line(c, wx, gy, wx + 8, gy - 48, 1, '#3a7be8'); line(c, wx + 42, gy, wx + 34, gy - 48, 1, '#3a7be8');
+      rect(c, wx + 6, gy - 50, 31, 3, OUT); rect(c, wx + 7, gy - 49, 29, 1, '#3a7be8');
+      for (const ox of [12, 26]) { rect(c, wx + ox, gy - 47, 1, 30, '#555'); obox(c, wx + ox - 3, gy - 17, 7, 2, '#c8402e', 0, false); }
+      groundTex(c, W, H, gy, '#f0d9a0', '#fff0c8', '#d9bf84');
+      break;
+    }
+    case 2: { // 학교 체육관
+      rect(c, 0, 0, W, gy, '#f0dcb4');
+      for (let y = 0; y < gy - 34; y += 6) rect(c, 0, y, W, 1, '#e4cda2');
+      for (let x = 8; x < W; x += 34) { obox(c, x, 14, 22, 26, '#9fd8ff', 0, false); rect(c, x + 10, 14, 2, 26, '#ffffff'); rect(c, x, 26, 22, 2, '#ffffff'); rect(c, x + 2, 16, 4, 4, '#d4f0ff'); }
+      rect(c, 0, gy - 34, W, 34, '#c49a62'); for (let x = 0; x < W; x += 10) rect(c, x, gy - 34, 1, 34, '#a8814e');
+      rect(c, 0, gy - 35, W, 2, OUT);
+      obox(c, W - 40, 50, 28, 18, '#ffffff', 0, false); rect(c, W - 32, 57, 12, 8, '#e8423a'); rect(c, W - 31, 58, 10, 6, '#ffffff');
+      rect(c, W - 33, 69, 14, 2, '#ff7a1a'); for (let k = 0; k < 5; k++) px(c, W - 32 + k * 3, 71 + (k % 2), '#ffffff');
+      obox(c, 10, 52, 36, 16, '#222222', 0, false);
+      for (const [dx, col] of [[4, '#ff4d4d'], [20, '#ff4d4d']]) rect(c, 10 + dx, 56, 10, 8, '#3a0a0a'), rect(c, 10 + dx + 2, 58, 6, 4, col);
+      groundTex(c, W, H, gy, '#d9a35f', '#f0c080', '#c48c4a');
+      for (let y = gy + 6; y < H; y += 6) rect(c, 0, y, W, 1, '#c48c4a');
+      oval(c, cx, gy + 14, 40, 7, '#ffffff'); oval(c, cx, gy + 14, 38, 5, '#d9a35f');
+      break;
+    }
+    case 3: { // 분수 공원
+      bands(c, W, 0, gy, ['#62bdf7', '#7fcbfa', '#9cd8fc', '#c0e8ff']);
+      for (let x = 0; x < W; x += 22) { const h = 40 + ((x * 7) % 26); rect(c, x, gy - 10 - h, 18, h, '#b9d7ee'); for (let yy = gy - 6 - h; yy < gy - 14; yy += 5) for (let xx = x + 2; xx < x + 16; xx += 4) px(c, xx, yy, '#e6f3fc'); }
+      hills(c, W, gy - 10, 16, '#7fbf7a', 5, 3);
+      for (let x = 4; x < W; x += 28) tree(c, x + ro(R() * 8), gy - 10, 10 + ro(R() * 4), R() < 0.5 ? '#3f9b4a' : '#57b85e');
+      obox(c, cx - 30, gy - 14, 60, 8, '#b8b8c8', 0); rect(c, cx - 28, gy - 14, 56, 2, '#7fd0ff');
+      obox(c, cx - 4, gy - 30, 8, 16, '#9a9aac', 0);
+      obox(c, cx - 12, gy - 32, 24, 3, '#b8b8c8', 0);
+      groundTex(c, W, H, gy, '#c8c8d0', '#e4e4ec', '#a8a8b4');
+      for (let x = 0; x < W; x += 12) rect(c, x, gy + 2, 1, H - gy, '#b4b4c0');
+      for (let i = 0; i < 18; i++) sprite(c, ro(R() * W), gy - 3 - ro(R() * 2), ['.p.', 'pyp', '.g.'], { p: ['#ff6fb1', '#ffe066', '#ffffff'][i % 3], y: '#ffd23f', g: '#2e8b3a' });
+      break;
+    }
+    case 4: { // 여름 바닷가
+      bands(c, W, 0, gy - 24, ['#3fb2ff', '#5cc0ff', '#7ccdff', '#a2dcff']);
+      oval(c, 24, 24, 11, 11, '#ffd23f'); oval(c, 24, 24, 8, 8, '#fff3a0');
+      bands(c, W, gy - 24, gy, ['#1e7fd8', '#2a90e6', '#3aa0f0']);
+      groundTex(c, W, H, gy, '#f7dc9a', '#fff0c0', '#e0c27c');
+      const px0 = cx - 56;
+      rect(c, px0, gy - 36, 2, 38, '#7a4a24');
+      for (let i = 0; i < 12; i++) { const w = 4 + i * 3; rect(c, px0 + 1 - w / 2, gy - 48 + i, w, 1, Math.floor((i + 0) / 1) % 2 ? '#e8423a' : '#e8423a'); }
+      for (let i = 0; i < 12; i++) { const w = 4 + i * 3; for (let k = 0; k < w; k++) if (Math.floor((k / w) * 6) % 2) px(c, px0 + 1 - w / 2 + k, gy - 48 + i, '#ffffff'); }
+      rect(c, px0 - 18, gy - 37, 38, 1, OUT);
+      const tx = cx + 58;
+      for (let i = 0; i < 46; i++) { const bx = tx + ro(Math.sin(i / 14) * 4); rect(c, bx - 2, gy - i, 5, 1, OUT); rect(c, bx - 1, gy - i, 3, 1, i % 5 === 0 ? '#6b3f1d' : '#8d5a3b'); }
+      for (let a = 0; a < 5; a++) { const ang = -2.8 + a * 0.95; for (let k = 0; k < 16; k++) { const lx = tx + ro(Math.cos(ang) * k), ly = gy - 46 + ro(Math.sin(ang) * k * 0.55 + k * k * 0.03); rect(c, lx - 1, ly - 1, 3, 3, OUT); rect(c, lx, ly, 2, 1, '#2e9b46'); } }
+      break;
+    }
+    case 5: { // 노을 옥상
+      bands(c, W, 0, gy, ['#3b1e5c', '#6b2a6b', '#a83d6e', '#e0566b', '#ff8a4d', '#ffb35c']);
+      oval(c, cx + 30, gy - 40, 14, 14, '#ffd27a'); oval(c, cx + 30, gy - 40, 11, 11, '#fff0b0');
+      for (let x = -4; x < W;) {
+        const w = 14 + ro(R() * 12), h = 30 + ro(R() * 60);
+        rect(c, x, gy - 18 - h, w, h + 18, '#33204a');
+        rect(c, x, gy - 18 - h, w, 1, '#4a3166');
+        for (let yy = gy - 14 - h; yy < gy - 22; yy += 5) for (let xx = x + 2; xx < x + w - 2; xx += 4) if (R() < 0.4) rect(c, xx, yy, 2, 2, '#ffcf6b');
+        x += w + 1 + ro(R() * 3);
+      }
+      rect(c, 0, gy - 10, W, 10, '#6e6e7e'); rect(c, 0, gy - 10, W, 1, '#8e8e9e');
+      rect(c, 0, gy - 20, W, 2, OUT); rect(c, 0, gy - 20, W, 1, '#5a5a68');
+      for (let x = 0; x < W; x += 10) rect(c, x, gy - 20, 1, 10, '#4a4a58');
+      groundTex(c, W, H, gy, '#8a8a98', '#a8a8b8', '#76768a');
+      break;
+    }
+    case 6: { // 비 오는 날
+      bands(c, W, 0, gy, ['#4e5a68', '#5d6a79', '#6d7a89', '#7f8c9a']);
+      for (let x = -4; x < W;) { const w = 16 + ro(R() * 14), h = 26 + ro(R() * 40); rect(c, x, gy - h, w, h, '#5a6674'); rect(c, x, gy - h, w, 1, '#6c7886'); for (let yy = gy - h + 4; yy < gy - 4; yy += 6) for (let xx = x + 2; xx < x + w - 2; xx += 5) if (R() < 0.3) rect(c, xx, yy, 2, 2, '#c8d4a0'); x += w + 2; }
+      for (let i = 0; i < 5; i++) { const x = ro(R() * W), y = 10 + ro(R() * 20); rbox(c, x - 22, y, 44, 10, '#3e4855', 4); rbox(c, x - 12, y - 5, 26, 10, '#3e4855', 4); }
+      groundTex(c, W, H, gy, '#47525e', '#5f6b78', '#3a444f');
+      for (let i = 0; i < 4; i++) { const x = ro(R() * W); oval(c, x, gy + 8 + ro(R() * 14), 14, 2, '#6f8296'); }
+      break;
+    }
+    case 7: { // 별빛 밤하늘
+      bands(c, W, 0, gy, ['#070a24', '#0d1236', '#141b48', '#1c255a', '#26306b']);
+      oval(c, W - 26, 30, 10, 10, '#fff6c8'); oval(c, W - 22, 27, 8, 8, '#0d1236');
+      const hill = [];
+      for (let x = 0; x < W; x++) hill.push(gy - 10 - ro(Math.sin(x * 0.045) * 7 + Math.sin(x * 0.11) * 3));
+      for (let x = 0; x < W; x++) { rect(c, x, hill[x], 1, gy - hill[x], '#141f48'); px(c, x, hill[x], '#26336e'); }
+      groundTex(c, W, H, gy, '#1d3a2a', '#2f5a40', '#16301f');
+      break;
+    }
+    case 8: { // 눈 오는 마을
+      bands(c, W, 0, gy, ['#8aa3c6', '#9fb6d6', '#b6c9e3', '#ccdaee', '#e0e9f6']);
+      for (let x = -8; x < W; x += 30) house(c, x + ro(R() * 6), gy - 4, 20 + ro(R() * 6), 14 + ro(R() * 8), ['#c86b4a', '#8a6fb8', '#5b8db8'][ro(R() * 2)], '#6b3f1d', true);
+      for (let i = 0; i < 5; i++) {
+        const x = ro(R() * W), h = 16 + ro(R() * 8);
+        for (let k = 0; k < h; k++) { const w = 2 + Math.floor(k * 0.6) * 2; rect(c, x - w / 2 - 1, gy - 4 - h + k, w + 2, 1, OUT); rect(c, x - w / 2, gy - 4 - h + k, w, 1, k % 5 < 1 ? '#ffffff' : '#2f6b3f'); }
+        rect(c, x - 1, gy - 4, 2, 4, '#6b3f1d');
+      }
+      groundTex(c, W, H, gy, '#f4f8fc', '#ffffff', '#dce6f0');
+      break;
+    }
+    case 9: { // 줄넘기 대회
+      bands(c, W, 0, gy, ['#140a26', '#1d1036', '#2a1748', '#3a2060']);
+      for (let row = 0; row < 3; row++) for (let x = (row % 2) * 4; x < W; x += 8) { const y = gy - 34 + row * 9; oval(c, x + 0.5, y, 3, 3.5, ['#2b1a45', '#34204f', '#3e2660'][row]); rect(c, x - 3, y + 3, 7, 4, ['#2b1a45', '#34204f', '#3e2660'][row]); }
+      obox(c, cx - 50, 26, 100, 16, '#d7263d', 0);
+      rect(c, cx - 50, 26, 100, 1, '#ffd700'); rect(c, cx - 50, 41, 100, 1, '#ffd700');
+      for (let k = 0; k < 9; k++) sprite(c, cx - 46 + k * 11, 31, ['..y..', '.yyy.', 'yyyyy', '.yyy.', 'y...y'], { y: '#ffd700' });
+      groundTex(c, W, H, gy, '#a0522d', '#c87040', '#86421f');
+      for (let x = 0; x < W; x += 14) rect(c, x, gy + 2, 1, H - gy, '#7a3c1e');
+      break;
+    }
+    default: bands(c, W, 0, gy, ['#87ceeb', '#b0e0f0']); groundTex(c, W, H, gy, '#5cb85c', '#8ee08e', '#4a9d4a');
+  }
+}
+
+function paintMoving(c, theme, W, H, gy, t) {
+  const cx = Math.floor(W / 2);
+  if (theme === 0 || theme === 1 || theme === 3 || theme === 4) {
+    for (let i = 0; i < 3; i++) {
+      const w = 22 + i * 6;
+      const x = ro(((t * (3 + i) + i * 70) % (W + 60)) - 40);
+      cloud(c, x, 46 + i * 17, w);
+    }
+  }
+  if (theme === 3) { // 분수 물
+    const f = Math.floor(t * 8) % 3;
+    for (let i = -2; i <= 2; i++) {
+      for (let k = 0; k < 12; k++) {
+        const u = k / 11, xx = cx + ro(i * 9 * u), yy = gy - 33 - ro(Math.sin(u * Math.PI) * (14 - Math.abs(i) * 2)) + ro(u * 18);
+        if ((k + f) % 3 !== 0) px(c, xx, yy, k % 2 ? '#bfe8ff' : '#ffffff');
+      }
+    }
+  }
+  if (theme === 4) { // 물결
+    for (let row = 0; row < 3; row++) for (let x = 0; x < W; x += 9) { const xx = ro((x + t * (6 + row * 3)) % (W + 9)) - 4; rect(c, xx, gy - 20 + row * 7, 4, 1, '#ffffff'); }
+  }
+  if (theme === 6) { // 비
+    for (let i = 0; i < 60; i++) {
+      const x = ro((i * 37.7 + t * 30) % (W + 20)) - 10, y = ro((i * 61.3 + t * 190) % H);
+      px(c, x, y, '#b9cbe0'); px(c, x - 1, y + 1, '#b9cbe0'); px(c, x - 1, y + 2, '#8fa3ba');
+    }
+  }
+  if (theme === 7) { // 별 · 반딧불
+    for (let i = 0; i < 40; i++) {
+      const x = (i * 53) % W, y = (i * 29) % Math.max(1, gy - 30);
+      const on = (Math.floor(t * 2 + i * 0.7) % 4) !== 0;
+      if (on) px(c, x, y, i % 5 ? '#fffbe0' : '#bfe8ff');
+      if (i % 9 === 0 && on) { px(c, x - 1, y, '#8a92c8'); px(c, x + 1, y, '#8a92c8'); px(c, x, y - 1, '#8a92c8'); px(c, x, y + 1, '#8a92c8'); }
+    }
+    for (let i = 0; i < 6; i++) {
+      const x = ro((i * 41 + Math.sin(t * 0.6 + i) * 12 + W) % W), y = gy - 6 - ro((i * 13 + t * 4) % 28);
+      if (Math.floor(t * 3 + i) % 3) px(c, x, y, '#d8ff7a');
+    }
+  }
+  if (theme === 8) { // 눈
+    for (let i = 0; i < 50; i++) {
+      const x = ro((i * 47.1 + Math.sin(t + i) * 6 + W) % W), y = ro((i * 33.7 + t * (12 + (i % 4) * 4)) % H);
+      if (i % 3) px(c, x, y, '#ffffff'); else rect(c, x, y, 2, 2, '#ffffff');
+    }
+  }
+  if (theme === 9) { // 조명 — 디더링 빛 기둥
+    for (let i = 0; i < 3; i++) {
+      const ox = ro(W * (0.2 + i * 0.3) + Math.sin(t * 0.8 + i * 2) * 20);
+      for (let y = 44; y < gy; y += 1) {
+        const w = 4 + ro((y - 44) * 0.35);
+        for (let x = -w; x <= w; x++) if ((x + y) % 3 === 0) px(c, ox + x, y, '#fff6c0');
+      }
+    }
+  }
+}
+
+/* ---------- 화면용 작은 도트 그림 (CSS 로 정수배 확대 · pixelated) ---------- */
+function finish(cv, scale, cls) {
+  cv.style.width = `${cv.width * scale}px`;
+  cv.style.height = `${cv.height * scale}px`;
+  cv.style.imageRendering = 'pixelated';
+  if (cls) cv.className = cls;
+  return cv;
+}
+
+/** 서 있는 아이 + 줄 (도트 W x H, CSS 로 scale 배) */
+export function figureCanvas(lookIn, rope, scale = 2, opt = {}) {
+  const look = typeof lookIn === 'string' ? decodeLook(lookIn) : lookIn;
+  const W = opt.w || 40, Hh = opt.h || 50;
+  const cv = canvas(W, Hh);
+  const c = cv.getContext('2d');
+  /* focus: 'head' = 얼굴·모자만, 'body' = 몸·다리·신발만 (꾸미기 칸) */
+  const gy = opt.focus === 'head' ? Hh + 19 : opt.focus === 'body' ? Hh - 1 : Hh - 2;
+  const x = Math.floor(W / 2);
+  const theta = opt.theta ?? 1.6 * Math.PI;
+  const pre = kidHands(theta, x, gy, 0, 0, opt.state || 'stand', 1);
+  if (rope) { const g = ropeGeom(pre, x, gy, theta); if (g.depth < 0) drawRope(c, rope, g, 0); }
+  const hh = drawKid(c, x, gy, look, { theta, t: 1, state: opt.state, mouth: opt.mouth });
+  if (rope) { const g = ropeGeom(hh, x, gy, theta); if (g.depth >= 0) drawRope(c, rope, g, 0); drawHandles(c, rope, hh); }
+  return finish(cv, scale);
+}
+
+/** 로비에서 혼자 줄넘기하는 아이 — 일정한 박자로 계속 뛴다. 반드시 stop() */
+export function animFigure(lookIn, rope, scale = 2, w = 44, h = 70) {
+  const look = typeof lookIn === 'string' ? decodeLook(lookIn) : lookIn;
+  const cv = finish(canvas(w, h), scale);
+  const c = cv.getContext('2d');
+  const gy = h - 3;
+  const x = Math.floor(w / 2);
+  const PERIOD = 0.8;
+  let raf = 0, t0 = 0, alive = true, lastF = -1;
+  const frame = (now) => {
+    if (!alive) return;
+    if (!t0) t0 = now;
+    const t = (now - t0) / 1000;
+    const f = Math.floor(t * 24);                    // 도트 애니메이션 — 초당 24장이면 충분
+    if (f !== lastF) {
+      lastF = f;
+      const ph = (t % PERIOD) / PERIOD;
+      const theta = Math.PI + ph * TAU;
+      const jp = ((t + 0.2) % PERIOD) / 0.4;
+      const lift = jp < 1 ? ro(Math.sin(jp * Math.PI) * 9) : 0;
+      c.clearRect(0, 0, w, h);
+      rect(c, x - 9 + Math.floor(lift / 3), gy, 18 - Math.floor(lift / 3) * 2, 2, 'rgba(0,0,0,0.3)');
+      const pre = kidHands(theta, x, gy, lift);
+      const g0 = ropeGeom(pre, x, gy, theta);
+      if (g0.depth < 0 && rope) drawRope(c, rope, g0, t);
+      const hh = drawKid(c, x, gy, look, { theta, lift, tuck: lift > 3 ? 1 : 0, t });
+      if (rope) { const g = ropeGeom(hh, x, gy, theta); if (g.depth >= 0) drawRope(c, rope, g, t); drawHandles(c, rope, hh); }
+    }
+    raf = requestAnimationFrame(frame);
+  };
+  raf = requestAnimationFrame(frame);
+  return { cv, stop() { alive = false; cancelAnimationFrame(raf); } };
+}
+
+/** 얼굴(모자 포함) — 명예의 전당 줄 (도트 24x24) */
+export function headIcon(lookIn, scale = 2) {
+  const look = typeof lookIn === 'string' ? decodeLook(lookIn) : lookIn;
+  const cv = canvas(24, 20);
+  const c = cv.getContext('2d');
+  drawKid(c, 12, 20 + 22, look, { t: 1 });
+  return finish(cv, scale);
+}
+
+/** 줄넘기 한 개 — 고리 + 손잡이 둘 (도트 22x22) */
+export function ropeIcon(rope, scale = 2) {
+  const cv = canvas(22, 22);
+  const c = cv.getContext('2d');
+  const g = { p0: { x: 5, y: 7 }, p2: { x: 16, y: 7 }, c: { x: 10.5, y: 36 }, depth: 1 };
+  drawRope(c, rope, g, 0);
+  for (const hx of [4, 15]) { rect(c, hx - 1, 1, 4, 9, OUT); rect(c, hx, 2, 2, 7, rope.handle); rect(c, hx, 2, 1, 7, tone(rope.handle, 0.35)); }
+  if (rope.trail) drawParticle(c, { kind: rope.trail, x: 18, y: 17, age: 0, life: 1, color: rope.trail === 'note' ? '#333333' : undefined });
+  return finish(cv, scale);
+}
+
+/** 별사탕(돈) — 도트 8x8 */
+export function candyIcon(scale = 2) {
+  const cv = canvas(8, 8);
+  sprite(cv.getContext('2d'), 0, 0, [
+    '...oo...', '..opqo..', 'oopppqoo', 'opwppppo', '.oppppo.', '.opqqpo.', 'opqoopqo', 'ooo..ooo',
+  ], { o: '#7a2a52', p: '#ff9ad5', q: '#e0609e', w: '#ffffff' });
+  return finish(cv, scale, 'jr-candy-ic');
+}
+
+/** 아이템 — 도트 16x16 */
+export function itemIcon(id, scale = 2) {
+  const cv = canvas(16, 16);
+  const c = cv.getContext('2d');
+  if (id === 'shield') sprite(c, 1, 0, [
+    '.ooooooooooooo.', 'obbbbbbbbbbbbbo', 'obllbbbbbbbbbbo', 'oblbbbbwbbbbbbo', 'obbbbbwwwbbbbbo', 'obbbbwwwwwbbbbo', 'obbbbbwwwbbbbbo', 'obbbbbwbwbbbbbo',
+    '.obbbbbbbbbbbo.', '.obbbbbbbbbbdo.', '..obbbbbbbbdo..', '...obbbbbbdo...', '....obbbbdo....', '.....obbdo.....', '......ooo......',
+  ], { o: OUT, b: '#4d9cff', l: '#b8dcff', w: '#ffffff', d: '#2a64c8' });
+  else if (id === 'heart') sprite(c, 0, 1, [
+    '..ooo....ooo....', '.orrro..orrro...', 'orwrrroorrrrro..', 'orwrrrrrrrrrro..', 'orrrrrrrrrrrro..', 'orrrrrrrrwwrro..', '.orrrrrrwwwwro..', '..orrrrrrwwro...',
+    '...orrrrrrro....', '....orrrrro.....', '.....orrro......', '......oro.......', '.......o........',
+  ], { o: OUT, r: '#ff4d6d', w: '#ffffff' });
+  else sprite(c, 0, 0, [
+    '.......oo.......', '......oppo......', '......oppo......', '.....oppppo.....', 'ooooooppwpoooooo', 'oppppppwwppppppo', '.oppppppppppppo.', '..oppppppppppo..',
+    '...oppppppppo...', '...opppqqpppo...', '..oppppoopppo...', '..opppo..oppo...', '.oppqo....oqppo.', '.oqqo......oqqo.', '.ooo........ooo.',
+  ], { o: '#7a2a52', p: '#ff9ad5', q: '#e0609e', w: '#ffffff' });
+  return finish(cv, scale);
+}
+
+/** 스테이지 고르기 칸 그림 (도트 W x H) */
+export function stageThumb(theme, w = 120, h = 66, scale = 1) {
+  const cv = canvas(w, h);
+  const c = cv.getContext('2d');
+  const gy = h - 14;
+  paintStatic(c, theme, w, h, gy);
+  paintMoving(c, theme, w, h, gy, 3);
+  return finish(cv, scale);
+}
