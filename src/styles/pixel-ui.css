@@ -47,10 +47,18 @@
 #ui {
   position: fixed;
   inset: 0;
+  /* 2026-11-07 대표님 «스크롤이 게임 옆에 딱 붙지 말고 창 맨 오른쪽에»: 화면(#ui)은 창 전체 폭으로 펼치고
+     내용은 안쪽 여백으로 가운데 450 안에 둔다. (100% = body 폭 450 · 폰에서는 0) */
+  left: calc((100% - 100vw) / 2);
+  right: calc((100% - 100vw) / 2);
+  padding-inline: calc((100vw - 100%) / 2);
   display: none;
   flex-direction: column;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* 어두운 금빛 스크롤 (파이어폭스) */
+  scrollbar-color: #d4a72c #0d0a08;
+  scrollbar-width: thin;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -58,6 +66,16 @@
 #ui.active {
   display: flex;
 }
+
+/* 어두운 금빛 세로 스크롤 (크롬 · 엣지 · 사파리) — 2026-11-07 대표님 */
+#ui::-webkit-scrollbar { width: 12px; }
+#ui::-webkit-scrollbar-track { background: #0d0a08; border-left: 1px solid #2a2010; }
+#ui::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #8a6a12, #ffd86b 45%, #c9971f);
+  border: 2px solid #0d0a08; border-radius: 6px; box-shadow: inset 0 0 0 1px #5a4108;
+}
+#ui::-webkit-scrollbar-thumb:hover { background: linear-gradient(90deg, #a07c18, #ffe590 45%, #e0ab2a); }
+#ui::-webkit-scrollbar-corner { background: #0d0a08; }
 
 body.ui-mode #stage {
   display: none;

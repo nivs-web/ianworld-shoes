@@ -163,7 +163,7 @@ export default function Portal(nav) {
           ])
         ),
         /* 6번째 자리 — 준비 중 (5번째 줄넘기 챔피언가 들어왔다, 2026-11-07) */
-        el('div.gc-soon', null, ['6번째 게임 준비 중',el('span.dots', null, [el('i', '.'), el('i', '.'), el('i', '.')])]),
+        el('div.gc-soon', null, ['7번째 게임 준비 중',el('span.dots', null, [el('i', '.'), el('i', '.'), el('i', '.')])]),
         el('div.spacer'),
         // 이미 홈 화면 앱으로 돌고 있으면 바로가기가 무의미하므로 감춘다
         !isStandalone() ? button(S.installShortcut, onInstall) : null,

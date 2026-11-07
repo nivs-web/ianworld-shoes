@@ -2,7 +2,7 @@
 
 /* ── 첫 화면: 배경판(900×1031) — 폰 화면 절반보다 조금 넓게 ── */
 .oh { position: relative; margin: -12px -12px 0; overflow: hidden; flex-shrink: 0; }
-.oh-sc { position: relative; width: min(100%, calc(56vh * 900 / 1031)); margin-inline: auto; aspect-ratio: 900 / 1031; /* 11/6 대표님 «상단 그림이 잘려» → 높이를 56vh 로 자르던 것 대신 폭을 줄여 그림 전체를 보인다 */ background: #07060f url(/assets/ui/arcade/plate.webp) center top / cover no-repeat; overflow: hidden; }
+.oh-sc { position: relative; width: 100%; /* 11/7 대표님 «PC 에서 좌우 여백 — PLAYER 박스만큼 꽉» → 폭 100%(그림 전체 · 높이는 비율대로) */ margin-inline: auto; aspect-ratio: 900 / 1031; /* 11/6 대표님 «상단 그림이 잘려» → 높이를 56vh 로 자르던 것 대신 폭을 줄여 그림 전체를 보인다 */ background: #07060f url(/assets/ui/arcade/plate.webp) center top / cover no-repeat; overflow: hidden; }
 .oh-sc > * { position: absolute; pointer-events: none; }
 /* 11/4 2차: 아래가 흐려지며 끝나는 그라데이션 없앰 → 또렷한 금색 선으로 끝 */
 .oh::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, #FFC93C 20%, #FFC93C 80%, transparent); opacity: .7; pointer-events: none; }
