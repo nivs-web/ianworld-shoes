@@ -239,9 +239,9 @@ service cloud.firestore {
 
 ## Realtime Database (멀티플레이, M7)
 
-> ⏳ **2026-11-07 줄넘기 멀티 서바이벌 — 아직 콘솔에 게시 전이다(사용자 승인 뒤).** 바뀐 곳은 다섯 군데뿐이다:
-> `rooms/$code/game` 에 `'jump'` · `maxPlayers` 는 jump 방만 8까지 · `players/$uid/jc`(콤보 0~99999) · `players/$uid/jl`(모습 ≤40자) · `presence/$uid/game` 에 `'jump'`.
-> `docs/rtdb-rules.json` 에도 같이 넣었다. 게시할 때는 콘솔 게시본을 받아 이 다섯 군데만 얹는다. 게시 전에는 멀티 서바이벌 방 만들기가 거부되어 «서버 준비 중» 안내가 뜬다.
+> ⏳ **2026-11-07 줄넘기 멀티 서바이벌 — 아직 콘솔에 게시 전이다(사용자 승인 뒤).** 바뀐 곳은 여섯 군데뿐이다:
+> `rooms/$code/game` 에 `'jump'` · `rooms/$code/ctrl`(방식 `'jump'`|`'both'`) · `maxPlayers` 는 jump 방만 8까지 · `players/$uid/jc`(콤보 0~99999) · `players/$uid/jl`(모습 ≤40자) · `presence/$uid/game` 에 `'jump'`.
+> `docs/rtdb-rules.json` 에도 같이 넣었다. 게시할 때는 콘솔 게시본을 받아 이 여섯 군데만 얹는다. 게시 전에는 멀티 서바이벌 방 만들기가 거부되어 «서버 준비 중» 안내가 뜬다.
 
 콘솔 → Realtime Database → **규칙** 탭 → 전체 교체 → 게시
 
@@ -390,6 +390,9 @@ service cloud.firestore {
         },
         "difficulty": {
           ".validate": "newData.val() == 'easy' || newData.val() == 'normal' || newData.val() == 'hard'"
+        },
+        "ctrl": {
+          ".validate": "newData.val() == 'jump' || newData.val() == 'both'"
         },
         "state": {
           ".validate": "newData.val() == 'waiting' || newData.val() == 'countdown' || newData.val() == 'playing' || newData.val() == 'finished'"

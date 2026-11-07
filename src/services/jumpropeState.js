@@ -57,7 +57,7 @@ export function normJr(raw) {
       offset: Math.max(-150, Math.min(150, Math.round(Number(opts.offset) || 0))),
       /* 모드 설명 팝업을 본 것(비트: 1 챔피언십 · 2 무한 · 4 멀티) — 처음 누를 때 한 번만 띄운다 */
       guide: n0(opts.guide, 7),
-      /* 조작 — 'jump' = JUMP 하나(기본) · 'both' = ROPE+JUMP 하드 모드(Lv.20 해금) */
+      /* 방식 — 'jump' = 점프만(JUMP 하나 · 기본) · 'both' = 로프+점프(두 버튼). 로비에서 고른다 */
       ctrl: opts.ctrl === 'both' ? 'both' : 'jump',
     },
   };

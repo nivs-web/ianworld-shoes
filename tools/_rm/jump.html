@@ -1,0 +1,12 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>줄넘기 서바이벌 세 창</title>
+<style>html,body{margin:0;background:#222;color:#ddd;font:12px monospace}.wrap{display:flex;gap:6px;padding:6px}
+iframe{width:360px;height:740px;border:0;background:#000}</style></head>
+<body><div class="wrap"><iframe id="A"></iframe><iframe id="B"></iframe><iframe id="C"></iframe></div>
+<script type="module">
+import { FakeDb, makeFb, clock } from '/tools/_sim/rtdb.mjs';
+window.__SIM = { db: new FakeDb(), makeFb, code: null };
+/* 가짜 서버 시계를 실제 시간과 함께 흐르게 — 안 그러면 seenAt 이 멈춰 25초 뒤 모두 «끊김»으로 보인다 */
+const t0 = performance.now();
+setInterval(() => { clock.skew = performance.now() - t0; }, 50);
+for (const k of ['A', 'B', 'C']) document.getElementById(k).src = `/tools/_rm/jump-side.html?uid=${k}`;
+</script></body></html>

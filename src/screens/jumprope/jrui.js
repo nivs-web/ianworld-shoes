@@ -36,41 +36,18 @@ export function jrLogo() {
  */
 export const MODE_GUIDE = {
   champ: {
-    bit: 1, tag: '혼자 하기', title: '챔피언십',
-    lead: '동네 예선부터 세계 선수권까지, 대회 5개를 차례로 깨는 «이야기 모드»예요.',
-    lines: [
-      '동네 예선 → 지역 대회 → 전국 대회 → 아시아 대회 → 세계 선수권',
-      '대회마다 정해진 곡이 1분쯤 나와요. 곡 끝까지 버티면 클리어!',
-      '잘할수록 별 ★1~3개. 별을 하나라도 받으면 다음 대회가 열려요.',
-      '난이도(쉬움 · 보통 · 어려움)마다 별을 따로 모아요 — 난이도마다 15개.',
-    ],
-    go: '대회 고르기',
+    bit: 1, tag: '혼자', title: '챔피언십',
+    lines: ['대회 5개를 차례로 깨요.', '곡 하나 1분 · 끝까지 버티면 클리어!', '별 ★1~3 · 별을 받으면 다음 대회가 열려요.'],
   },
   endless: {
-    bit: 2, tag: '혼자 하기', title: '무한 줄넘기',
-    lead: '끝이 없는 곡에 맞춰 «몇 개까지 넘나» 기록에 도전하는 모드예요.',
-    lines: [
-      '곡이 끝나지 않아요. 8마디마다 조금씩 빨라져요 (BPM 100 → 200).',
-      '줄에 걸리면 체력이 줄고, 체력이 0 이 되면 그 판이 끝나요.',
-      '한 판에 넘은 개수가 내 최고 기록 — 명예의 전당에 올라가요.',
-    ],
-    go: '바로 시작',
+    bit: 2, tag: '혼자', title: '무한 줄넘기',
+    lines: ['끝나지 않는 곡 · 점점 빨라져요.', '체력이 다 떨어지면 끝.', '몇 개까지 넘나 기록 도전!'],
   },
   multi: {
-    bit: 4, tag: '여럿이 하기 · 2~8명', title: '멀티 서바이벌',
-    lead: '친구들과 같은 곡 · 같은 줄로 동시에 뛰어, 마지막까지 살아남는 사람이 이기는 모드예요.',
-    lines: [
-      '2명부터 최대 8명까지 한 방에서 같이 뛰어요.',
-      '하트 3개 — 줄에 걸릴 때마다 하나씩 잃고, 다 잃으면 탈락 → 남은 사람 구경.',
-      '8마디(라운드)마다 빨라져요. 마지막 1명이 우승!',
-      '빠른 입장 = 아무나와 · 비밀방 = 방 번호를 친구에게 알려 주고 같이.',
-    ],
-    go: '방 찾기',
+    bit: 4, tag: '2~8명', title: '멀티 서바이벌',
+    lines: ['같은 곡 · 같은 줄로 동시에 뛰어요.', '하트 3개 · 줄에 걸리면 하나씩 잃어요.', '마지막까지 남은 1명이 우승!'],
   },
 };
-
-/** 모든 모드에 같이 붙는 조작 안내 한 줄 */
-const CTRL_LINE = '처음엔 JUMP 버튼 하나만! 레벨 20이 되면 ROPE+JUMP 두 버튼 «하드 모드»가 열려요.';
 
 /**
  * 모드 설명 팝업. 처음이면 띄우고 `true`(시작) / `false`(닫기)를, 이미 봤으면 바로 `true` 를 준다.
@@ -95,12 +72,10 @@ export function modeGuide(kind, opt = {}) {
       el('div.dialog.jr-guide', null, [
         el('div.jr-guide-tag', g.tag),
         el('div.jr-guide-title', g.title),
-        el('div.jr-guide-lead', g.lead),
         el('ul.jr-guide-list', null, g.lines.map((l) => el('li', l))),
-        el('div.jr-guide-ctrl', CTRL_LINE),
         el('div.row', null, [
           button('닫기', () => pick(false), { sfx: 'sfx_menu_back' }),
-          button(opt.force ? '알겠어요' : g.go, () => pick(!opt.force), { primary: true }),
+          button(opt.force ? '확인' : '시작하기', () => pick(!opt.force), { primary: true }),
         ]),
       ]),
     ]);
@@ -122,13 +97,13 @@ export function lvBar(L) {
 const CSS = `
 .rb-cal-pad { display: block; width: 100%; height: 120px; font-family: 'PretendardV', 'Arial Black', sans-serif; font-weight: 900; font-size: 44px; color: #fff; text-shadow: 3px 3px 0 #1b0f0a; background: #ff7a1a; border: 0; cursor: pointer; box-shadow: 0 -3px 0 0 #600f09, 0 3px 0 0 #600f09, -3px 0 0 0 #600f09, 3px 0 0 0 #600f09, inset 0 4px 0 0 #ffd08a, inset 0 -5px 0 0 #8a2a00; }
 .rb-cal-pad:active { transform: translateY(3px); background: #d9561a; }
-.dialog.jr-guide { max-width: 340px; gap: 8px; text-align: left; }
-.jr-guide-tag { align-self: center; padding: 2px 8px; font-size: 11px; color: #fff; background: #4a2380; }
-.jr-guide-title { text-align: center; font-size: 22px; color: #c2410c; text-shadow: 2px 2px 0 rgba(0,0,0,0.12); }
-.jr-guide-lead { font-size: 13px; line-height: 1.5; text-align: center; }
-.jr-guide-list { margin: 0; padding: 0 0 0 16px; font-size: 12px; line-height: 1.55; }
-.jr-guide-list li { margin: 2px 0; }
-.jr-guide-ctrl { font-size: 11px; line-height: 1.45; padding: 6px; background: rgba(74,35,128,0.12); border: 2px dashed rgba(74,35,128,0.45); }
+.dialog.jr-guide { max-width: 320px; gap: 10px; text-align: left; }
+.jr-guide-tag { align-self: center; padding: 2px 10px; font-size: 13px; color: #fff; background: #4a2380; }
+.jr-guide-title { text-align: center; font-size: 26px; color: #c2410c; }
+.jr-guide-list { margin: 0; padding: 0 0 0 18px; font-size: 16px; line-height: 1.6; letter-spacing: 0; word-break: keep-all; }
+.jr-guide-list li { margin: 3px 0; }
+/* 한국어는 낱말 중간에서 줄을 바꾸지 않는다(«차례/로» 같은 끊김 금지) · 설명 글자는 16px */
+.jr-box, .jr-next, .jr-item-desc, .jr-stage-sub, .diff-title { word-break: keep-all; }
 .jr-logo-img { display: block; width: min(100%, 360px); height: auto; margin: 4px auto 0; image-rendering: pixelated; }
 .jr-logo { text-align: center; padding: 6px 0 2px; }
 .jr-logo-main { font-size: 40px; line-height: 1.1; letter-spacing: 2px; filter: drop-shadow(3px 3px 0 #2a0f3a); }
@@ -144,7 +119,8 @@ const CSS = `
 .jr-lvbar { height: 6px; background: rgba(255,255,255,0.15); margin-top: 1px; }
 .jr-lvbar-fill { height: 100%; background: linear-gradient(90deg, #7cf09a, #3fbf5a); }
 .jr-tabs { display: flex; gap: 6px; }
-.jr-tabs .pbtn { font-size: 14px; padding: 8px 4px; }
+.jr-seg5 .pbtn { font-size: 14px; padding-left: 2px; padding-right: 2px; white-space: nowrap; letter-spacing: 0; min-width: 0; }
+.jr-tabs .pbtn { font-size: 14px; padding: 8px 2px; white-space: nowrap; letter-spacing: 0; min-width: 0; }
 .jr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 7px; }
 .jr-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 4px 6px; background: rgba(245,217,160,0.1); border: 2px solid var(--c-line); color: var(--c-text-light); font-family: inherit; cursor: pointer; }
 .jr-card:active { transform: translateY(1px); }
@@ -171,8 +147,8 @@ const CSS = `
 .jr-stars { font-size: 16px; letter-spacing: 1px; color: rgba(255,255,255,0.2); white-space: nowrap; }
 .jr-stars b { color: #ffd23f; font-weight: normal; }
 .jr-list { display: flex; flex-direction: column; gap: 6px; }
-.jr-box { padding: 8px; background: rgba(245,217,160,0.08); border: 2px solid var(--c-line); color: var(--c-text-light); font-size: 13px; line-height: 1.5; }
-.jr-box h4 { margin: 0 0 4px; font-size: 14px; color: #ffd23f; font-weight: normal; }
+.jr-box { padding: 10px 12px; background: rgba(245,217,160,0.08); border: 2px solid var(--c-line); color: var(--c-text-light); font-size: 16px; line-height: 1.6; letter-spacing: 0; }
+.jr-box h4 { margin: 0 0 6px; font-size: 17px; color: #ffd23f; font-weight: normal; }
 .jr-item { display: flex; align-items: center; gap: 8px; padding: 6px; background: rgba(245,217,160,0.08); border: 2px solid var(--c-line); color: var(--c-text-light); }
 .jr-item canvas { flex: 0 0 auto; }
 .jr-item-body { flex: 1 1 auto; min-width: 0; }

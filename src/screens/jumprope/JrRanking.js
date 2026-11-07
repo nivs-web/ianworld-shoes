@@ -95,7 +95,7 @@ export default function JrRanking(nav) {
     render() {
       return screen(
         title('명예의 전당'),
-        segmented(BOARDS, board, (v) => { board = v; load(); nav.refresh(); }),
+        el('div.jr-seg5', null, [segmented(BOARDS, board, (v) => { board = v; load(); nav.refresh(); })]),
         el('div.hint', NOTE[board]),
         body(),
         mine(),

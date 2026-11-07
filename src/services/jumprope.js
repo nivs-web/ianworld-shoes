@@ -294,7 +294,7 @@ export function finishBeat(r) {
   }
   xp = Math.round(xp * XP_MULT[diff]);
   candy = Math.round(candy * D.reward) * (r.used?.candy2 ? 2 : 1);
-  if (r.ctrl === 'both') candy = Math.round(candy * 1.5);   // ROPE+JUMP 하드 모드 — 별사탕 1.5배
+  if (r.ctrl === 'both') candy = Math.round(candy * 1.5);   // 로프+점프(두 버튼) — 별사탕 1.5배
   j.xp += xp;
   j.candy += candy;
   j.candyTotal += candy;
@@ -338,12 +338,9 @@ export function finishSurvival(r) {
 }
 
 /** 대회 n 이 열렸나 — 앞 대회를 완주(별 1개+)해야 열린다 */
-/* ---------- 조작: JUMP 하나(기본) · ROPE+JUMP 하드 모드(Lv.20 해금) (2026-11-07) ----------
- * 권반장: «처음에는 점프만 해. 레벨 끝까지 가면 로프와 점프를 같이 할 수 있는 기능이 해금되는 거야.» */
-export const HARD_LV = 20;
-export const ctrlUnlocked = (j = jr()) => levelOf(j).level >= HARD_LV;
-/** 이번 판 조작 — 하드 모드를 골랐어도 아직 Lv.20 이 아니면 JUMP 하나 */
-export const ctrlMode = (j = jr()) => (j.opts.ctrl === 'both' && ctrlUnlocked(j) ? 'both' : 'jump');
+/* ---------- 방식: «점프만»(JUMP 하나 · 기본) · «로프+점프»(두 버튼) (2026-11-07) ----------
+ * 권반장: «해금은 취소. 처음부터 로프와 점프를 쓸 수도 있고 점프만 할 수도 있게 골라서 하는 걸로.» */
+export const ctrlMode = (j = jr()) => (j.opts.ctrl === 'both' ? 'both' : 'jump');
 
 export const champUnlocked = (no, diff, j = jr()) => no <= 1 || (j.stars[diff]?.[no - 2] | 0) > 0;
 export const champStars = (j, diff) => (j.stars[diff] || []).slice(0, CHAMP_STAGES).reduce((a, b) => a + b, 0);

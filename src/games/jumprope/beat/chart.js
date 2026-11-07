@@ -343,7 +343,7 @@ function finalize(ctx, meta, sections, extraCues = []) {
  * 권반장: «너무 어려워. 점프만이 기본이고 로프 + 점프를 어려움으로 하자. 처음에는 점프만 해.»
  * 두 버튼 채보에서 ROPE 노트를 빼고(어려움은 ROPE 박도 JUMP 로 바꾼다), B(같이)는 JUMP 로, 꾹은 어려움에서만 남긴다.
  * 남은 JUMP 사이 간격을 난이도만큼 벌린다(한 손가락으로 편하게). 줄은 JUMP 사이에 저절로 머리 위를 지난다
- * (buildRopeKeys 의 «같은 종류가 연달아 → 가운데에 반대»). ROPE+JUMP 두 버튼은 Lv.20 해금 «하드 모드». */
+ * (buildRopeKeys 의 «같은 종류가 연달아 → 가운데에 반대»). «로프+점프»(두 버튼)는 로비에서 자유롭게 고른다. */
 export const JUMP_GAP = { easy: { steps: 4, sec: 0.42 }, normal: { steps: 2, sec: 0.27 }, hard: { steps: 2, sec: 0.25 } };
 
 export function jumpOnly(chart) {
@@ -554,7 +554,7 @@ function customChart(stage, diff, seed, opts) {
  */
 export function buildChart(stage, diff = 'normal', opts = {}) {
   opts = opts || {};
-  /* opts.ctrl: 'jump'(기본 · JUMP 하나) | 'both'(ROPE+JUMP 하드 모드). 안 주면 두 버튼 채보 그대로(시험 도구들) */
+  /* opts.ctrl: 'jump'(점프만 · 기본) | 'both'(로프+점프). 안 주면 두 버튼 채보 그대로(시험 도구들) */
   if (opts.ctrl === 'jump') return jumpOnly(buildChart(stage, diff, { ...opts, ctrl: 'both' }));
   diff = DIFFS[diff] ? diff : 'normal';
   const seed = Math.abs(Math.floor(+opts.seed || 0));

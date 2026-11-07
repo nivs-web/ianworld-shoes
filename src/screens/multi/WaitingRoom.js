@@ -69,6 +69,11 @@ const DIFFS = [
   { value: 'normal', label: S.difficultyNormal },
   { value: 'hard', label: S.difficultyHard },
 ];
+/** 줄넘기 방식 — 점프만(JUMP 하나) · 로프+점프(두 버튼) */
+const JUMP_CTRLS = [
+  { value: 'jump', label: '점프만' },
+  { value: 'both', label: '로프+점프' },
+];
 
 export default function WaitingRoom(nav, params = {}) {
   /**
@@ -205,7 +210,7 @@ export default function WaitingRoom(nav, params = {}) {
       .map(([uid, p]) => [uid, p?.nickname ?? '', p?.characterId ?? '', p?.shoesOwned ?? 0,
         p?.multiWins ?? 0, p?.multiLosses ?? 0, p?.ready ? 1 : 0, p?.waiting ? 1 : 0].join(':'))
       .join('|');
-    return [r.state, r.hostUid, r.difficulty, r.maxPlayers, r.isPrivate ? 1 : 0, ps].join('/');
+    return [r.state, r.hostUid, r.difficulty, r.ctrl ?? '', r.maxPlayers, r.isPrivate ? 1 : 0, ps].join('/');
   }
   let lastView = null;
   /**
@@ -408,7 +413,7 @@ export default function WaitingRoom(nav, params = {}) {
       const allReady = enough && inRound.every((p) => p.ready || p.uid === room.hostUid);
 
       return screen(
-        title(game === 'jump' ? `줄넘기 서바이벌 · ${code}번 방` : game === 'dragon' ? S.duelRoomTitle(code) : game === 'catch' ? (view3d ? S.catch3dRoomTitle(code) : S.catchRoomTitle(code)) : S.multiRoomTitle(code)),
+        title(game === 'jump' ? `줄넘기 · ${code}번 방` : game === 'dragon' ? S.duelRoomTitle(code) : game === 'catch' ? (view3d ? S.catch3dRoomTitle(code) : S.catchRoomTitle(code)) : S.multiRoomTitle(code)),
 
         // 비밀방은 코드가 커야 한다 — 친구한테 불러 줘야 하니까
         room.isPrivate
@@ -477,10 +482,17 @@ export default function WaitingRoom(nav, params = {}) {
         /* 무엇을 걸고 무엇을 겨루는지 — 시작을 누르기 전에 알아야 한다 */
         game === 'dragon' ? el('div.hint.duel-rule', S.duelRoomRule(DUEL_STAKE)) : null,
         game === 'catch' ? el('div.hint.duel-rule', S.catchRoomRule) : null,
-        game === 'jump' ? el('div.hint.duel-rule', '최대 8명 · 하트 3개 · 줄에 걸리면(JUMP 놓침) 하트 −1 · 8마디마다 빨라져요 · 마지막까지 남는 사람이 우승 · 걸린 것은 없어요') : null,
+        game === 'jump' ? el('div.hint.duel-rule', '하트 3개 · 줄에 걸리면 −1 · 마지막 1명 우승') : null,
+        /* 줄넘기 — 방식도 난이도처럼 방장이 고른다 (2026-11-07) */
+        game === 'jump' ? el('div.diff-title', '방식') : null,
+        game === 'jump'
+          ? (isHost
+            ? segmented(JUMP_CTRLS, room.ctrl === 'both' ? 'both' : 'jump', (v) => Room.setRoomCtrl(code, v))
+            : el('div.hint', `${room.ctrl === 'both' ? '로프+점프' : '점프만'} · 방장이 골라요`))
+          : null,
 
         /* 캐치볼도 방장이 난이도를 고른다 (2026-10-28) — 문구만 캐치볼 것으로 */
-        el('div.diff-title', game === 'catch' ? S.catchDiffTitle : game === 'jump' ? '난이도 (판정 · 노트 밀도) — 방장이 골라요' : S.difficultyTitle),
+        el('div.diff-title', game === 'catch' ? S.catchDiffTitle : game === 'jump' ? '난이도' : S.difficultyTitle),
         isHost
           ? segmented(DIFFS, room.difficulty, (v) => Room.setRoomDifficulty(code, v))
           : el('div.hint', `${DIFFS.find((d) => d.value === room.difficulty)?.label ?? ''} · ${S.hostOnlyDifficulty}`),

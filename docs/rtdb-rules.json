@@ -22,6 +22,9 @@
         "difficulty": {
           ".validate": "newData.val() == 'easy' || newData.val() == 'normal' || newData.val() == 'hard'"
         },
+        "ctrl": {
+          ".validate": "newData.val() == 'jump' || newData.val() == 'both'"
+        },
         "state": {
           ".validate": "newData.val() == 'waiting' || newData.val() == 'countdown' || newData.val() == 'playing' || newData.val() == 'finished'"
         },

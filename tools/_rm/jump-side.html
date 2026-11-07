@@ -1,0 +1,34 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>side</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/src/styles/reset.css"><link rel="stylesheet" href="/src/styles/pixel-ui.css"><link rel="stylesheet" href="/src/styles/screens.css"><link rel="stylesheet" href="/src/styles/arcade.css">
+<script>
+  /* 창마다 따로 쓰는 localStorage. 줄넘기는 소리 시계(AudioContext)로 판정하므로 소리는 끄지 않는다 */
+  (function () {
+    const uid = new URLSearchParams(location.search).get('uid');
+    const real = window.localStorage, pre = 'rmj_' + uid + ':';
+    const shim = {
+      getItem: (k) => real.getItem(pre + k), setItem: (k, v) => real.setItem(pre + k, String(v)),
+      removeItem: (k) => real.removeItem(pre + k), clear: () => {},
+      key: () => null, get length() { return 0; },
+    };
+    Object.defineProperty(window, 'localStorage', { value: shim, configurable: true });
+  })();
+</script></head>
+<body class="ui-mode"><div id="app"><canvas id="game" width="180" height="320"></canvas></div><div id="ui" class="active"></div>
+<script type="module">
+const uid = new URLSearchParams(location.search).get('uid');
+const L = await import('/src/services/storageLocal.js');
+L.resetAll(); L.loadProfile();
+L.patchProfile({ nickname: '선수' + uid, uid, jr: { look: '', rope: uid === 'A' ? 'red' : uid === 'B' ? 'blue' : 'green', opts: { sound: false } } });
+const { nav } = await import('/src/screens/router.js');
+const Room = await import('/src/services/multiplayer.js');
+const WaitingRoom = (await import('/src/screens/multi/WaitingRoom.js')).default;
+window.__rm = { nav, Room, L, uid };
+let code;
+if (uid === 'A') { code = await Room.createRoom({ game: 'jump', maxPlayers: 8, difficulty: 'normal', ctrl: 'jump' }); parent.__SIM.code = code; }
+else { while (!parent.__SIM.code) await new Promise((r) => setTimeout(r, 100)); code = parent.__SIM.code;
+  const j = await Room.joinRoom(code, undefined, 'jump'); window.__join = j; }
+window.__code = code;
+nav.reset(WaitingRoom, { code, game: 'jump' });
+window.__ready = true;
+</script></body></html>

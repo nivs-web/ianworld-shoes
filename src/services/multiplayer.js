@@ -184,7 +184,7 @@ export const GAME_JUMP = 'jump';
 export const isFriendlyGame = (room) => gameOf(room) === GAME_CATCH || gameOf(room) === GAME_JUMP;
 export const gameOf = (room) => (room && room.game) || GAME_SHOES;
 
-export async function createRoom({ isPrivate = false, difficulty, game = GAME_SHOES, maxPlayers } = {}) {
+export async function createRoom({ isPrivate = false, difficulty, game = GAME_SHOES, maxPlayers, ctrl } = {}) {
   const fb = await rt();
   if (!fb) return null;
   const p = L.loadProfile();
@@ -203,6 +203,8 @@ export async function createRoom({ isPrivate = false, difficulty, game = GAME_SH
         hostUid: fb.uid,
         state: 'waiting',
         difficulty: difficulty ?? p.difficulty ?? 'normal',
+        /* 줄넘기 방만 — 방식: 'jump'(점프만) · 'both'(로프+점프). 난이도처럼 방장이 고른다 */
+        ...(game === GAME_JUMP ? { ctrl: ctrl === 'both' ? 'both' : 'jump' } : {}),
         seed: Math.floor(Math.random() * 0x7fffffff),
         maxPlayers: maxPlayers ?? MULTI.maxPlayers,
         createdAt: nowOn(fb, offset),
@@ -1054,7 +1056,7 @@ async function scanOpenRooms(fb, game) {
  * 내 방을 접고 그쪽으로 옮긴다. 판정 기준이 (생성시각, 코드)로 결정적이라
  * 양쪽이 같은 답을 내고 **정확히 한 명만** 움직인다.
  */
-export async function quickJoin({ difficulty, game = GAME_SHOES, maxPlayers } = {}) {
+export async function quickJoin({ difficulty, game = GAME_SHOES, maxPlayers, ctrl } = {}) {
   const fb = await rt();
   if (!fb) return null;
   await waitConnected(fb);
@@ -1102,7 +1104,7 @@ export async function quickJoin({ difficulty, game = GAME_SHOES, maxPlayers } = 
     if (got) return got;
   } catch { /* 못 찾으면 새로 판다 */ }
 
-  const mine = await createRoom({ isPrivate: false, difficulty, game, maxPlayers });
+  const mine = await createRoom({ isPrivate: false, difficulty, game, maxPlayers, ctrl });
   if (!mine) return null;
 
   // 같은 순간에 만들어진 방이 있으면 한쪽만 옮겨 간다 (동시 입장 해소)
@@ -1175,6 +1177,13 @@ export async function refreshMyWallet(code, wallet) {
     fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid, 'wallet')),
       Math.max(0, Math.round(Number(wallet) || 0))),
     undefined, '지갑 갱신').catch(() => {});
+}
+
+/** 줄넘기 방식(점프만 · 로프+점프)도 방장만 바꾼다 (2026-11-07) */
+export async function setRoomCtrl(code, ctrl) {
+  const fb = await rt();
+  if (!fb) return;
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { ctrl: ctrl === 'both' ? 'both' : 'jump' }), undefined, '방식').catch(() => {});
 }
 
 /** 난이도는 방장만 바꾼다 (기획서 §5-9 — 승자 기록이 이 난이도 랭킹으로 간다) */

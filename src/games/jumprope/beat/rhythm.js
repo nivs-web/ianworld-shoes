@@ -21,7 +21,7 @@ import * as BA from './beatArt.js';
 import { SURVIVAL, survivalTempo, survivalStatus, roundAt, roundBpm } from './survival.js';
 import { drawKid, kidHands, poseHands, ropeGeom, drawRope, drawHandles, rect, rbox, sprite, tone, OUT, SPR } from '../art.js';
 
-const SHORT_SIDE = 128;
+const SHORT_SIDE = 192;   // 2026-11-07 128 → 192: 도트를 잘게 — 선수가 화면에서 1/3 작아지고 타이밍이 더 또렷하다
 const NEO = "'Neo둥근모', 'Courier New', monospace";
 const PRET = "'PretendardV', 'Pretendard', 'Arial Black', sans-serif";
 const KID_W = 80, KID_H = 76, KID_FOOT = 72;   // 선수 1배 캔버스 (줄 고리까지 들어가는 크기)
@@ -53,9 +53,9 @@ export function mount(host, opts) {
   const surv = opts.mode === 'survival';
   const chartSrc = opts.mode === 'endless' || surv ? 'endless' : opts.mode === 'test' ? opts.custom : stage.no;
   const survTempo = surv ? survivalTempo(SURVIVAL.bars) : null;
-  /* 조작 (2026-11-07 권반장 «너무 어려워 — 점프만이 기본»): 기본은 JUMP 하나. ROPE+JUMP 두 버튼은 Lv.20 해금 하드 모드.
-     서바이벌은 모두 같은 노트로 겨루게 늘 JUMP 하나 */
-  const jumpOnly = surv || opts.ctrl !== 'both';
+  /* 방식 (2026-11-07 권반장): «점프만»(JUMP 하나 · 기본) · «로프+점프»(두 버튼) 중 로비에서 고른다(해금 없음).
+     서바이벌은 방장이 고른 방식(방의 ctrl) — 한 방은 모두 같은 노트 */
+  const jumpOnly = (surv ? opts.room?.ctrl : opts.ctrl) !== 'both';
   const ctrl = jumpOnly ? 'jump' : 'both';
   const chart = surv
     ? buildChart('endless', diff, { seed: (opts.seed | 0) || 1, bars: SURVIVAL.bars, tempo: survTempo, ctrl })      // 방 seed — 모두 같은 줄
@@ -65,7 +65,7 @@ export function mount(host, opts) {
      서바이벌은 체력 대신 하트 3개(본체가 센다) — 판정의 체력 피해 · 회복은 끈다 */
   const winScale = jumpOnly ? 1.25 : 1;
   const judge = createJudge(chart, diff, surv
-    ? { winScale, hp: { ropeMiss: 0, jumpMiss: 0, perfect: 0, great: 0 } }
+    ? { winScale, endless: false, hp: { ropeMiss: 0, jumpMiss: 0, perfect: 0, great: 0 } }   // 채보는 무한 것이지만 «걸리면 바로 끝» 규칙은 끈다 — 하트는 본체가 센다
     : { winScale, endless: opts.mode === 'endless', hp: jumpOnly ? { jumpMiss: 9, endlessTrip: 25, perfect: 2, great: 1 } : diff === 'easy' ? { ropeMiss: 10 } : undefined });
   const music = createMusic();
   music.setEnabled?.(opts.opts?.sound !== false);
@@ -79,7 +79,7 @@ export function mount(host, opts) {
 
   G = {
     host, cv, ctx: cv.getContext('2d'), buf, b: buf.getContext('2d'), kidCv, k: kidCv.getContext('2d'), kidBack, kb: kidBack.getContext('2d'),
-    opts, diff, stage, chart, judge, music, jumpOnly, winScale, lockAt: -9, apPtr: 0,
+    opts, diff, stage, chart, judge, music, jumpOnly, winScale, apPtr: 0,
     tempo: surv ? survTempo : opts.mode === 'endless' ? ENDLESS.tempoUntil(400) : stage ? stage.tempo : (chart.tempo || [{ bar: 0, bpm: 120 }]),
     title: surv ? `멀티 서바이벌 · ${DIFFS[diff].en}` : opts.mode === 'endless' ? `${ENDLESS.name} · ${DIFFS[diff].en}` : opts.mode === 'test' ? `${opts.custom?.name || '내 스테이지'} (시험)` : `${stage.no}. ${stage.name}`,
     sub: surv ? '마지막까지 줄에 안 걸리면 우승!' : opts.mode === 'endless' ? ENDLESS.song.title : stage ? `${stage.en} · ${stage.song.title}` : 'CUSTOM',
@@ -108,7 +108,6 @@ export function mount(host, opts) {
   const pressLane = (lane, e) => {
     if (G.overlay) return;
     begin();
-    if (G.jumpOnly && lane === 'L') { G.lockAt = G.t; return; }        // ROPE 는 잠김(Lv.20 하드 모드) — 시작만 된다
     if (G.phase !== 'play' || G.down[lane] || G.out) return;
     doPress(lane, evT(e));
   };
@@ -126,7 +125,7 @@ export function mount(host, opts) {
     const p = toNative(e);
     const pb = G.pauseBox;
     if (p.x >= pb.x - 4 && p.x <= pb.x + pb.w + 4 && p.y >= pb.y - 4 && p.y <= pb.y + pb.h + 4) { G.music.init(); requestPause(); return; }
-    const lane = p.x < G.W / 2 ? 'L' : 'R';
+    const lane = G.jumpOnly || p.x >= G.W / 2 ? 'R' : 'L';           // 점프만: 화면 어디든 JUMP
     G.pointers.set(e.pointerId, lane);
     try { cv.setPointerCapture(e.pointerId); } catch { /* */ }
     pressLane(lane, e);
@@ -141,16 +140,17 @@ export function mount(host, opts) {
   cv.addEventListener('pointerup', pup);
   cv.addEventListener('pointercancel', pup);
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  const keyLane = (code) => (R_KEYS.has(code) || (G.jumpOnly && L_KEYS.has(code)) ? 'R' : L_KEYS.has(code) ? 'L' : null);
   const kd = (e) => {
     if (e.code === 'Escape' || e.code === 'KeyP') { if (!e.repeat) requestPause(); return; }
-    const lane = L_KEYS.has(e.code) ? 'L' : R_KEYS.has(e.code) ? 'R' : null;
+    const lane = keyLane(e.code);
     if (!lane) return;
     e.preventDefault();
     if (e.repeat) return;
     pressLane(lane, e);
   };
   const ku = (e) => {
-    const lane = L_KEYS.has(e.code) ? 'L' : R_KEYS.has(e.code) ? 'R' : null;
+    const lane = keyLane(e.code);
     if (lane) releaseLane(lane, e);
   };
   window.addEventListener('keydown', kd);
@@ -530,7 +530,7 @@ function resize() {
   const cw = Math.round(w * G.dpr), ch = Math.round(h * G.dpr);
   G.cv.width = cw; G.cv.height = ch;
   G.cv.style.width = `${w}px`; G.cv.style.height = `${h}px`;
-  G.S = Math.max(1, Math.floor(Math.min(cw, ch) / SHORT_SIDE));
+  G.S = Math.max(1, Math.round(Math.min(cw, ch) / SHORT_SIDE));   // 반올림 — 짧은 변이 늘 150~250 칸 사이(작은 창에서 너무 잘아지지 않게)
   G.W = Math.ceil(cw / G.S);
   G.H = Math.ceil(ch / G.S);
   G.buf.width = G.W; G.buf.height = G.H;
@@ -538,16 +538,25 @@ function resize() {
   G.cx = Math.floor(G.W / 2);
   const btnArea = Math.max(40, Math.min(64, Math.round(G.H * 0.17)));
   G.btnTop = G.H - btnArea;
-  G.floorY = G.btnTop - 10;
+  G.floorY = G.btnTop - 26;          // 판정 원(반지름 ~16) 아래와 단추 사이를 넉넉히 띄운다
   G.hudH = 36;
   G.K = Math.max(1, Math.min(3, Math.floor((G.floorY - 22) / 52)));
-  G.laneW = Math.max(20, Math.min(28, Math.floor(G.W * 0.19)));
-  const gap = Math.min(Math.floor(G.W / 2) - G.laneW - 3, Math.max(34 * G.K, 40));
-  G.xL = G.cx - gap - G.laneW;
-  G.xR = G.cx + gap;
+  G.laneW = Math.max(20, Math.min(26, Math.floor(G.W * 0.17)));
+  const edge = 12;                   // 판정 원 · 다가오는 원이 화면 밖으로 잘리지 않게 가장자리를 띄운다
+  if (G.jumpOnly) {
+    /* 점프만: 레인 하나는 오른쪽, 선수는 레인과 겹치지 않게 조금 왼쪽으로 */
+    G.xR = Math.min(G.W - G.laneW - edge, G.cx + Math.max(34 * G.K, 40));
+    G.xL = G.xR;
+    G.kx = Math.min(G.cx, G.xR - 4 - 20 * G.K);
+  } else {
+    const gap = Math.min(Math.floor(G.W / 2) - G.laneW - edge, Math.max(34 * G.K, 40));
+    G.xL = G.cx - gap - G.laneW;
+    G.xR = G.cx + gap;
+    G.kx = G.cx;
+  }
   const bw = Math.floor((G.W - 9) / 2);
   G.btnL = { x: 3, y: G.btnTop + 4, w: bw, h: btnArea - 8 };
-  G.btnR = { x: G.W - 3 - bw, y: G.btnTop + 4, w: bw, h: btnArea - 8 };
+  G.btnR = G.jumpOnly ? { x: 3, y: G.btnTop + 4, w: G.W - 6, h: btnArea - 8 } : { x: G.W - 3 - bw, y: G.btnTop + 4, w: bw, h: btnArea - 8 };
   G.pauseBox = { x: G.W - 17, y: 3, w: 14, h: 14 };
   /* 노트가 판정선까지 떨어지는 칸 수 → 대략의 초(첫 BPM 기준) — 기술 이름 띠를 그만큼 먼저 띄운다 */
   const stepsVisible = (G.floorY - G.hudH) / (DIFFS[G.diff].pxPerBeat / 4);
@@ -564,7 +573,7 @@ function render() {
   const st = G.judge.state;
   const fever = !!(st.fever || G.feverOn);
   BA.drawArena(b, G.stage ? G.stage.arena : 4, G.W, G.H, G.floorY, G.t, { fever, energy: currentEnergy(), beat: G.phase === 'play' ? nowStep() / 4 : G.t * 2 });
-  if (fever) BA.drawFeverAura(b, G.cx, G.floorY, G.K, G.t);
+  if (fever) BA.drawFeverAura(b, G.kx, G.floorY, G.K, G.t);
   drawKidBig();                    // 두 겹을 만들고 뒤쪽 줄만 먼저 깐다
   drawLanes();
   blitKid(G.kidCv);                // 몸 + 앞쪽 줄은 레인 위에 — 줄이 늘 또렷하게
@@ -599,20 +608,8 @@ function drawLanes() {
   /* 박마다 눈금 — 빨라지면 눈금이 빨리 내려온다(템포가 눈에 보인다) */
   const ns = nowStep(), pps = pxPerStep(), ticks = [];
   for (let s = Math.ceil(ns / 4) * 4; ; s += 4) { const y = Math.round(G.floorY - (s - ns) * pps); if (y < G.hudH) break; ticks.push(y); }
-  BA.drawLane(b, 'L', G.xL, G.hudH, G.floorY + 6, G.laneW, G.t, { pulse: G.jumpOnly ? 0 : Math.max(pulse * 0.5, G.flash.L), ticks });
+  if (!G.jumpOnly) BA.drawLane(b, 'L', G.xL, G.hudH, G.floorY + 6, G.laneW, G.t, { pulse: Math.max(pulse * 0.5, G.flash.L), ticks });
   BA.drawLane(b, 'R', G.xR, G.hudH, G.floorY + 6, G.laneW, G.t, { pulse: Math.max(pulse * 0.5, G.flash.R), ticks });
-  if (G.jumpOnly) {
-    /* 잠긴 ROPE 레인 — 바둑판으로 어둡게 + 자물쇠 (Lv.20 하드 모드에서 열린다) */
-    for (let y = G.hudH; y < G.floorY + 16; y++) for (let x = G.xL - 3 + (y % 2); x < G.xL + G.laneW + 3; x += 2) rect(b, x, y, 1, 1, 'rgba(10,6,24,0.75)');
-    drawLock(b, G.xL + Math.floor(G.laneW / 2) - 4, Math.floor((G.hudH + G.floorY) / 2) - 5);
-  }
-}
-
-/** 자물쇠 9×11 도트 */
-function drawLock(c, x, y) {
-  rect(c, x + 1, y, 7, 6, OUT); rect(c, x + 2, y + 1, 5, 5, '#c9c2dc'); rect(c, x + 3, y + 2, 3, 4, OUT);
-  rect(c, x, y + 4, 9, 7, OUT); rect(c, x + 1, y + 5, 7, 5, '#ffd23f'); rect(c, x + 1, y + 5, 7, 1, '#fff2a8'); rect(c, x + 1, y + 9, 7, 1, '#c98a14');
-  rect(c, x + 4, y + 6, 1, 2, OUT);
 }
 
 /* ---------- 다가오는 원 (2026-11-07) ----------
@@ -661,7 +658,7 @@ function drawApproach() {
     const ri = Math.round((R - 4) * (1 - p));
     if (ri > 0) { b.globalAlpha = 0.3 + 0.3 * (1 - p); pring(b, cx, cy, ri, 99, fillC); }
     /* 바깥 고리 — 크게 시작해 판정 원으로 줄어든다 */
-    const rr = R + Math.round(p * Math.min(16, w * 0.6));                 // 레인이 화면 끝에 붙어 있어도 잘리지 않을 만큼
+    const rr = R + Math.round(p * Math.min(12, w * 0.5));                 // 가장자리 여백(edge) 안에 들어갈 만큼
     b.globalAlpha = 0.45 + 0.45 * (1 - p);
     pring(b, cx, cy, rr + 1, 4, OUT);
     pring(b, cx, cy, rr, 2, ringC);
@@ -693,7 +690,7 @@ function drawNotes() {
 
 function drawTargets() {
   const b = G.b;
-  for (const l of ['L', 'R']) BA.drawTarget(b, l, l === 'L' ? G.xL : G.xR, G.floorY, G.laneW, { pressed: G.down[l], flash: G.flash[l] });
+  for (const l of G.jumpOnly ? ['R'] : ['L', 'R']) BA.drawTarget(b, l, l === 'L' ? G.xL : G.xR, G.floorY, G.laneW, { pressed: G.down[l], flash: G.flash[l] });
   for (const h of G.hits) BA.drawHit(b, (h.lane === 'L' ? G.xL : G.xR) + G.laneW / 2, G.floorY, h.grade, h.age);
 }
 
@@ -727,7 +724,7 @@ function currentTech() {
 
 function blitKid(cvs) {
   const K = G.K;
-  G.b.drawImage(cvs, 0, 0, KID_W, KID_H, G.cx - (KID_W / 2) * K, G.floorY - KID_FOOT * K, KID_W * K, KID_H * K);
+  G.b.drawImage(cvs, 0, 0, KID_W, KID_H, G.kx - (KID_W / 2) * K, G.floorY - KID_FOOT * K, KID_W * K, KID_H * K);
 }
 function drawKidBig() {
   const k = G.k, kb = G.kb;
@@ -790,11 +787,10 @@ function drawHudPixels() {
 function drawButtons() {
   const b = G.b;
   const draw = (bt, lane) => {
-    const locked = lane === 'L' && G.jumpOnly;                         // 잠긴 ROPE — 회색 · 눌리지 않는다
-    const down = !locked && G.down[lane];
-    const face = locked ? '#4a4560' : lane === 'L' ? (down ? '#2a5fc8' : '#3a7be8') : (down ? '#d9561a' : '#ff7a1a');
-    const hi = locked ? '#6e6888' : lane === 'L' ? '#9cc4ff' : '#ffd08a';
-    const lo = locked ? '#2a2638' : lane === 'L' ? '#1a3a7a' : '#8a2a00';
+    const down = G.down[lane];
+    const face = lane === 'L' ? (down ? '#2a5fc8' : '#3a7be8') : (down ? '#d9561a' : '#ff7a1a');
+    const hi = lane === 'L' ? '#9cc4ff' : '#ffd08a';
+    const lo = lane === 'L' ? '#1a3a7a' : '#8a2a00';
     const y = bt.y + (down ? 3 : 0);
     if (!down) rbox(b, bt.x, bt.y + 4, bt.w, bt.h, 'rgba(0,0,0,0.55)', 4);
     rbox(b, bt.x - 1, y - 1, bt.w + 2, bt.h + 2, OUT, 4);
@@ -803,9 +799,8 @@ function drawButtons() {
     rect(b, bt.x + 4, y + bt.h - 3, bt.w - 8, 2, lo);
     if (down) for (let i = 0; i < bt.w; i += 2) { rect(b, bt.x + i, y - 3, 1, 1, '#ffffff'); }
     bt.labelY = y + bt.h / 2;
-    if (locked) drawLock(b, bt.x + 5, y + bt.h - 15);
   };
-  draw(G.btnL, 'L');
+  if (!G.jumpOnly) draw(G.btnL, 'L');
   draw(G.btnR, 'R');
 }
 
@@ -868,16 +863,9 @@ function drawTexts() {
     ptxt(GRADE_TXT[p.grade], x, y, p.grade === 'perfect' ? 1 : 0.75, GRADE_COL[p.grade]);
   }
   /* 단추 글자 — 프리텐다드 블랙, 단추 한가운데 큼직하게 */
-  for (const [bt, label] of [[G.btnL, 'ROPE'], [G.btnR, 'JUMP']]) {
+  for (const [bt, label] of G.jumpOnly ? [[G.btnR, 'JUMP']] : [[G.btnL, 'ROPE'], [G.btnR, 'JUMP']]) {
     const lv = Math.max(1.6, Math.min(3, (bt.h * G.S) / (16 * G.dpr) * 0.5));
-    const locked = bt === G.btnL && G.jumpOnly;
-    const ly = bt.labelY ?? (bt.y + bt.h / 2);
-    ptxt(label, bt.x + bt.w / 2, ly - (locked ? 5 : 0), lv, locked ? '#8f89a8' : '#ffffff', 'center', true, PRET, 900);
-    if (locked) ptxt('Lv.20 해금', bt.x + bt.w / 2 + 5, ly + bt.h / 2 - 7, 0.75, '#c9c2dc', 'center', true);
-  }
-  /* 잠긴 ROPE 를 눌렀다 — 잠깐 안내 */
-  if (G.jumpOnly && G.t - G.lockAt < 1.1 && !(G.t - G.lockAt > 0.8 && Math.floor(G.t * 12) % 2)) {
-    ptxt('JUMP 만 누르면 돼요!', G.cx, G.btnTop - 8, 0.75, '#ffd23f');
+    ptxt(label, bt.x + bt.w / 2, bt.labelY ?? (bt.y + bt.h / 2), lv, '#ffffff', 'center', true, PRET, 900);
   }
   if (G.phase === 'ready' && G.readyBox) {
     const rb = G.readyBox;
@@ -885,9 +873,9 @@ function drawTexts() {
     ptxt(G.sub, G.cx, rb.y + 23, 0.75, '#c9b8ff', 'center', false);
     const tempo = G.tempo;
     const bpms = tempo.map((x) => x.bpm);
-    ptxt(`BPM ${Math.min(...bpms)}~${Math.max(...bpms)} · ${DIFFS[G.diff].label}${G.jumpOnly ? '' : ' · 하드 모드'}`, G.cx, rb.y + 35, 0.75, '#ffffff', 'center', false);
-    ptxt(G.jumpOnly ? '오른쪽 JUMP 버튼 하나만!' : '왼쪽 ROPE  ·  오른쪽 JUMP', G.cx, rb.y + 48, 0.75, '#9be36f', 'center', false);
-    ptxt(G.surv ? `하트 ${SURVIVAL.hearts}개 · 8마디마다 빨라져요` : G.jumpOnly ? '줄이 동그란 원에 쏙 들어올 때!' : '박 = JUMP · 엇박 = ROPE', G.cx, rb.y + 59, 0.75, '#ffffff', 'center', false);
+    ptxt(`${G.jumpOnly ? '점프만' : '로프+점프'} · ${DIFFS[G.diff].label} · BPM ${Math.min(...bpms)}~${Math.max(...bpms)}`, G.cx, rb.y + 35, 0.75, '#ffffff', 'center', false);
+    ptxt(G.jumpOnly ? 'JUMP 하나 — 화면 어디든 눌러요' : '왼쪽 ROPE  ·  오른쪽 JUMP', G.cx, rb.y + 48, 0.75, '#9be36f', 'center', false);
+    ptxt(G.surv ? `하트 ${SURVIVAL.hearts}개 · 마지막 1명 우승` : '줄이 원에 쏙 들어올 때!', G.cx, rb.y + 59, 0.75, '#ffffff', 'center', false);
     if (G.surv) ptxt(G.startMs ? `곧 시작! ${Math.max(0, Math.ceil((G.startMs - performance.now()) / 1000))}` : '시작 시각 맞추는 중…', G.cx, rb.y + rb.h - 11, 1, '#ffd23f');
     else if (Math.floor(G.t * 2.2) % 2 === 0) ptxt('아무 단추나 누르면 시작!', G.cx, rb.y + rb.h - 11, 1, '#ffffff');
   } else if (G.phase === 'play' && G.songT < 0) {

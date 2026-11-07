@@ -183,7 +183,7 @@ export const LOOK_PARTS = [
   { key: 'pants', name: '아래옷', list: PANTS },
   { key: 'shoes', name: '신발', list: SHOES },
   { key: 'hat', name: '모자', list: HATS },
-  { key: 'emoji', name: '표정 이모티콘', list: EMOJIS.map((e) => ({ name: e })) },
+  { key: 'emoji', name: '표정', list: EMOJIS.map((e) => ({ name: e })) },
 ];
 export const DEFAULT_LOOK = { skin: 0, hair: 0, hairColor: 0, eyes: 0, shirt: 0, pants: 0, shoes: 0, hat: 1, emoji: 0 };
 

@@ -48,21 +48,21 @@ export default function JumpMultiMenu(nav) {
     render() {
       const j = J.jr();
       const diff = DIFFS[j.diff] ? j.diff : 'normal';
+      const ctrl = J.ctrlMode(j);
       return screen(
         title('멀티 서바이벌'),
         el('div.jr-box', null, [
-          el('h4', '마지막까지 줄에 안 걸리는 사람이 우승!'),
-          el('div', `최대 ${JUMP_SEATS}명 · 모두 같은 곡 · 같은 줄 · 같은 순간에 시작해요.`),
-          el('div', `하트 ${SURVIVAL.hearts}개 — 줄에 걸리면(JUMP 놓침) 하나씩 잃고, 다 잃으면 탈락 · 관전.`),
-          el('div', `8마디마다 빨라져요: BPM ${SURVIVAL.bpms.join(' → ')}`),
-          el('div', `모두 JUMP 하나로 같은 줄을 넘어요 · 걸린 것은 없어요 · 새 방 난이도: ${DIFFS[diff].label}`),
+          el('h4', '마지막까지 안 걸리면 우승!'),
+          el('div', `2~${JUMP_SEATS}명 · 같은 곡 · 동시에 시작`),
+          el('div', `하트 ${SURVIVAL.hearts}개 · 걸리면 하나씩 잃어요`),
+          el('div', `방식 · 난이도는 방장이 골라요 (새 방: ${ctrl === 'both' ? '로프+점프' : '점프만'} · ${DIFFS[diff].label})`),
         ]),
         button(busy ? S.loading : '빠른 입장',
-          () => guard(() => Room.quickJoin({ game: GAME, maxPlayers: JUMP_SEATS, difficulty: diff })),
+          () => guard(() => Room.quickJoin({ game: GAME, maxPlayers: JUMP_SEATS, difficulty: diff, ctrl })),
           { primary: true, disabled: busy }),
         button(S.roomListTitle, () => nav.push(RoomList, { game: GAME }), { disabled: busy }),
         button(S.createPrivateRoom,
-          () => guard(() => Room.createRoom({ isPrivate: true, game: GAME, maxPlayers: JUMP_SEATS, difficulty: diff })),
+          () => guard(() => Room.createRoom({ isPrivate: true, game: GAME, maxPlayers: JUMP_SEATS, difficulty: diff, ctrl })),
           { disabled: busy }),
         button(S.enterByCode, () => nav.push(CodeInput, { game: GAME }), { disabled: busy }),
         el('div.spacer'),

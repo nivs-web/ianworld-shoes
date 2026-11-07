@@ -71,7 +71,7 @@ export default function JrEditor(nav, params = {}) {
       el('div.hint', `박자 조각을 쌓아 나만의 스테이지를 만들고, 코드 한 줄로 친구에게 보내요. (${mine.length}/${J.MY_MAX})`),
       el('div.row', null, [
         button('새로 만들기', () => create(null), { primary: true }),
-        button('기본 스테이지 고치기', () => { view = 'copy'; nav.refresh(); }),
+        button('대회 고치기', () => { view = 'copy'; nav.refresh(); }),
       ]),
       el('div.jr-list', null, mine.length ? mine.map((st) => el('button.jr-stage', { type: 'button', onclick: () => open(st) }, [
         stageThumb(st.theme, 96, 54, 1),

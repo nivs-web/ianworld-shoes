@@ -15,7 +15,7 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, backButton, segmented, screen, toast } from './ui.js';
+import { el, button, backButton, segmented, screen } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
 import { PAL } from '../game/palette.js';
 import { pixelText } from './pixelText.js';
@@ -37,6 +37,7 @@ const JrSettings = lazyScreen(() => import('./jumprope/JrSettings.js'), '설정 
 const JumpMultiMenu = lazyScreen(() => import('./multi/JumpMultiMenu.js'), '멀티 서바이벌');
 
 const SEG = DIFF_KEYS.map((k) => ({ value: k, label: DIFFS[k].label }));
+const CTRL_SEG = [{ value: 'jump', label: '점프만' }, { value: 'both', label: '로프+점프' }];
 const STAT_SCALE = 2;
 
 /** `라벨 1,234 단위` 한 줄 — 숫자만 도트 글꼴 (DragonLobby 의 statLine 과 같은 방식) */
@@ -95,18 +96,10 @@ export default function JumpRopeLobby(nav) {
         ]),
         nr ? el('div.jr-next', `다음 레벨 보상 · Lv.${nr.lv} ${nr.list.map((x) => x.name).join(', ')}`) : el('div.jr-next', '모든 레벨 보상을 받았어요!'),
 
-        el('div.diff-title', '난이도 (챔피언십 · 무한 줄넘기)'),
+        /* 방식(점프만 · 로프+점프) 과 난이도 — 처음부터 자유롭게 고른다 (2026-11-07) */
+        el('div.diff-title', '방식 · 난이도'),
+        segmented(CTRL_SEG, J.ctrlMode(j), (v) => { J.setOpt('ctrl', v); nav.refresh(); }),
         segmented(SEG, diff, (v) => { J.setDiff(v); nav.refresh(); }),
-        /* 조작 — JUMP 하나(기본) · ROPE+JUMP 하드 모드(Lv.20 해금) */
-        el('div.diff-title', J.ctrlUnlocked(j) ? '조작' : `조작 · 하드 모드는 Lv.${J.HARD_LV}에 열려요 (지금 Lv.${L.level})`),
-        segmented([
-          { value: 'jump', label: 'JUMP 하나' },
-          { value: 'both', label: J.ctrlUnlocked(j) ? 'ROPE+JUMP 하드' : `🔒 ROPE+JUMP` },
-        ], J.ctrlMode(j), (v) => {
-          if (v === 'both' && !J.ctrlUnlocked(j)) { toast(`레벨 ${J.HARD_LV}이 되면 ROPE+JUMP 하드 모드가 열려요!`, 2200); return; }
-          J.setOpt('ctrl', v);
-          nav.refresh();
-        }),
 
         el('div.row', null, [
           button('캐릭터 꾸미기', () => nav.push(JrCloset)),

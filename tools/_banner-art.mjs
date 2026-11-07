@@ -20,7 +20,7 @@ export function reseed(s) { seed = s; }
  * 글자 — 가면 만들기 · 입체 제목
  * ===================================================================== */
 /** 글꼴로 찍어 문턱 128 로 도트 가면을 만든다. gap = 글자 사이 칸(음수면 붙인다) */
-export function mask(text, font, size, weight = 900, gap = 0) {
+export function mask(text, font, size, weight = 900, gap = 0, thin = 0) {
   const c = document.createElement('canvas');
   c.width = Math.ceil(size * text.length * 1.2) + 16; c.height = Math.ceil(size * 1.6) + 8;
   const x = c.getContext('2d');
@@ -28,7 +28,21 @@ export function mask(text, font, size, weight = 900, gap = 0) {
   let cx = 4;
   for (const ch of text) { x.fillText(ch, cx, 4); cx += Math.round(x.measureText(ch).width) + gap; }
   const d = x.getImageData(0, 0, c.width, c.height).data;
-  const on = (i, j) => d[(j * c.width + i) * 4 + 3] >= 128;
+  const CW = c.width, CH = c.height;
+  let bm = new Uint8Array(CW * CH);
+  for (let k = 0; k < CW * CH; k++) bm[k] = d[k * 4 + 3] >= 128 ? 1 : 0;
+  /* 획 깎기: 오른쪽이나 아래가 빈 칸인 가장자리 칸을 thin 번 지운다 → 획이 1칸 가늘어지고 획 사이 틈이 1칸 넓어진다(모양은 그대로) */
+  for (let t = 0; t < thin; t++) {
+    const nb = bm.slice();
+    for (let j = 1; j < CH - 1; j++) for (let i = 1; i < CW - 1; i++) {
+      const k = j * CW + i;
+      if (!bm[k]) continue;
+      const r = bm[k + 1], b = bm[k + CW], l = bm[k - 1], u = bm[k - CW];
+      if ((!r || !b) && (l || u) && (r || b || l)) nb[k] = 0;   // 외톨이 칸(가는 꼬리)은 남긴다
+    }
+    bm = nb;
+  }
+  const on = (i, j) => bm[j * CW + i] === 1;
   let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
   for (let j = 0; j < c.height; j++) for (let i = 0; i < c.width; i++) if (on(i, j)) { x0 = Math.min(x0, i); y0 = Math.min(y0, j); x1 = Math.max(x1, i); y1 = Math.max(y1, j); }
   const w = x1 - x0 + 1, h = y1 - y0 + 1, m = new Uint8Array(w * h);
@@ -67,7 +81,8 @@ export function pixelMask(text, gap = 1) {
  */
 export function title(ctx, M, x0, y0, o) {
   const { w, h, m } = M;
-  const { bands, depth = 3, side = '#5a1a00', edges = [[OUT, 2]], glow = '#6a3cc8' } = o;
+  const { bands, depth = 3, side = '#5a1a00', edges = [[OUT, 2]], glow = '#6a3cc8', flat = false } = o;
+  const colAt = (ec, i, j) => (typeof ec === 'function' ? ec(x0 + i - pad, y0 + j - pad) : ec);
   const pad = depth + 8, PW = w + pad * 2, PH = h + pad * 2;
   const G = new Uint8Array(PW * PH);                       // 0 빈칸 · 1 면 · 2 두께
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (m[j * w + i]) G[(j + pad) * PW + i + pad] = 1;
@@ -84,10 +99,25 @@ export function title(ctx, M, x0, y0, o) {
   const solid = (i, j) => i >= 0 && j >= 0 && i < PW && j < PH && G[j * PW + i] > 0;
   const near = (i, j, r) => { const rr = (r + 0.5) * (r + 0.5); for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= rr && solid(i + dx, j + dy)) return true; return false; };
   const maxR = edges[edges.length - 1][1];
+  /* 바깥 = 판 가장자리에서 빈 칸으로 이어지는 곳 (속 구멍은 바깥이 아니다) */
+  const outside = new Uint8Array(PW * PH), Q = [];
+  for (let i = 0; i < PW; i++) { Q.push(i, (PH - 1) * PW + i); }
+  for (let j = 0; j < PH; j++) { Q.push(j * PW, j * PW + PW - 1); }
+  for (const k of Q) outside[k] = 1;
+  while (Q.length) {
+    const k = Q.pop(), i = k % PW, j = (k - i) / PW;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= PW || jj >= PH) continue;
+      const kk = jj * PW + ii;
+      if (outside[kk] || G[kk]) continue;
+      outside[kk] = 1; Q.push(kk);
+    }
+  }
   for (let j = 0; j < PH; j++) for (let i = 0; i < PW; i++) {
     if (solid(i, j)) continue;
     let col = null;
-    for (const [ec, r] of edges) if (near(i, j, r)) { col = ec; break; }
+    for (const [ec, r] of edges) if (near(i, j, r)) { col = colAt(outside[j * PW + i] ? ec : edges[0][0], i, j); break; }
     if (col) px(ctx, x0 + i - pad, y0 + j - pad, col);
     else if (glow && near(i, j, maxR + 1) && (i + j) % 2 === 0) px(ctx, x0 + i - pad, y0 + j - pad, glow);
   }
@@ -103,7 +133,7 @@ export function title(ctx, M, x0, y0, o) {
       if (!m[j * w + i]) continue;
       const top = !(j > 0 && m[(j - 1) * w + i]), left = !(i > 0 && m[j * w + i - 1]);
       const bot = !(j < h - 1 && m[(j + 1) * w + i]);
-      px(ctx, x0 + i, y0 + j, top ? tone(col, 0.55) : left ? tone(col, 0.3) : bot ? tone(col, -0.12) : col);
+      px(ctx, x0 + i, y0 + j, flat ? col : top ? tone(col, 0.55) : left ? tone(col, 0.3) : bot ? tone(col, -0.12) : col);
     }
   }
   return { w: w, h: h + depth };
@@ -307,6 +337,23 @@ export function trophy(c, cx, top) {
   /* 반짝 */
   px(c, cx - 8, top + 4, G.w); px(c, cx - 7, top + 3, G.w); px(c, cx - 7, top + 5, G.w); px(c, cx - 6, top + 4, G.w);
 }
+/** 시상대 — 가운데 1등(금) · 왼쪽 2등(은) · 오른쪽 3등(동). (cx, top) = 1등 단 윗면 가운데 */
+export function podium(c, cx, top, bottom) {
+  cx = ro(cx);
+  const NUM = { 1: ['.##.', '###.', '.##.', '.##.', '.##.', '####'], 2: ['###.', '...#', '.##.', '#...', '#...', '####'], 3: ['###.', '...#', '.##.', '...#', '...#', '###.'] };
+  const hh = bottom - top;
+  for (const [dx, dy, w, col, n] of [[-17, ro(hh * 0.3), 14, '#c8d0e0', 2], [17, ro(hh * 0.43), 14, '#e09a5a', 3], [0, 0, 20, '#ffcc2e', 1]]) {
+    const x = cx + dx - Math.floor(w / 2), y = top + dy, h = bottom - y;
+    rect(c, x - 1, y - 1, w + 2, h + 1, OUT);
+    rect(c, x, y, w, h, col);
+    rect(c, x, y, w, 2, tone(col, 0.45));                 // 윗면
+    rect(c, x, y + 2, 1, h - 2, tone(col, 0.25));
+    rect(c, x + w - 2, y + 2, 2, h - 2, tone(col, -0.25));
+    rect(c, x, y + 2, w, 1, tone(col, -0.15));
+    sprite(c, x + Math.floor(w / 2) - 2, y + 2, NUM[n], { '#': tone(col, -0.45) });
+  }
+}
+
 /** 트로피 뒤 빛 — 둥근 빛무리(디더링 두 겹) + 가는 빛살 8가닥 */
 export function rays(c, cx, cy, r) {
   for (let y = ro(cy - r); y <= ro(cy + r); y++) for (let x = ro(cx - r * 1.3); x <= ro(cx + r * 1.3); x++) {
@@ -329,15 +376,16 @@ const EYE = ['.ooo.', 'ooooo', 'owwoo', 'owwio', 'oiiio', 'oiiwo', '.ooo.'];
 const EYE_R = EYE.map((r) => r.split('').reverse().join('').replace('wi', 'iw'));
 const MOUTH = ['oooooo', 'owwwwo', 'orrrro', '.orpo.', '..oo..'];
 /* 양갈래 — 뛰어오르는 순간 양옆 위로 날린다(머리에서 바깥으로 세 덩이) */
-const PIG = [[15, -3, 5, 5.5], [19, -5, 4, 4.5], [22, -7, 2.6, 3]];
-export function bigKid(c, X, Y, o) {
+const PIG = [[15, -3, 5, 5.5], [18, -5, 4, 4.5], [20, -7, 2.6, 3]];
+export function bigKid(c, X, Y, o = {}) {
+  const uDepth = o.uDepth ?? 54;
   const girl = o.kind === 'girl';
   const P = girl
     ? { sk: '#ffe0c6', skS: '#f2b28c', skL: '#fff2e4', hr: '#8a4a22', hrL: '#c8823e', hrS: '#5a2a10', iris: '#8a4a22', sh: '#ff86c4', shS: '#e0509a', shL: '#ffc4e2', bt: '#9b5de5', btS: '#6a34b8', btL: '#c39cff', shoe: '#ff4d6a', shoeS: '#b81e3a', rope: '#ff4fd8', ropeL: '#ffb8f0', ropeD: '#a8188a', hand: '#ffffff', handS: '#ffc0e8' }
     : { sk: '#f8cc9c', skS: '#d99a6a', skL: '#ffe6c8', hr: '#2a1a12', hrL: '#5a3a26', hrS: '#120a06', iris: '#3a5ad8', sh: '#e8423a', shS: '#a82018', shL: '#ff8a7a', bt: '#2f5fb3', btS: '#1a3a7a', btL: '#6a96e8', shoe: '#3a7be8', shoeS: '#1d3f8a', rope: '#3fd0ff', ropeL: '#c8f4ff', ropeD: '#1a78b8', hand: '#ffd23f', handS: '#c88a10', cap: '#e8423a', capS: '#a82018', capL: '#ff8a7a' };
   const SO = OUT;
   /* 땅 그림자 — 높이 떴으니 멀리 아래에 작게 */
-  for (let dx = -12; dx <= 12; dx++) for (let dy = 0; dy < 3; dy++) if ((dx + dy) % 2 === 0 && Math.abs(dx) < 12 - dy * 3) px(c, X + dx, Y + 49 + dy, '#05030f');
+  if (!o.noShadow) for (let dx = -12; dx <= 12; dx++) for (let dy = 0; dy < 3; dy++) if ((dx + dy) % 2 === 0 && Math.abs(dx) < 12 - dy * 3) px(c, X + dx, Y + 49 + dy, '#05030f');
   /* 머리 위로 돌아온 줄의 잔상 — 굵기가 다른 호 세 겹(바둑판) */
   const ecx = X - 0.5, ecy = Y + 15;
   for (const [rx, ry, a0, a1, col, step] of [[31, 41, 3.55, 5.87, P.ropeL, 1], [28, 38, 3.75, 5.67, P.rope, 2], [25, 35, 3.95, 5.47, P.ropeD, 2]]) {
@@ -461,7 +509,7 @@ export function bigKid(c, X, Y, o) {
   /* ---- 줄: 발밑을 지나는 굵은 U (지금 줄) ---- */
   const [L, Rr] = hands;
   const p0 = [L[0], L[1] + 6], p3 = [Rr[0] + 1, Rr[1] + 6];
-  const c1 = [L[0] - 8, Y + 54], c2 = [Rr[0] + 9, Y + 54];
+  const c1 = [L[0] - 8, Y + uDepth], c2 = [Rr[0] + 9, Y + uDepth];
   const pts = [];
   for (let i = 0; i <= 160; i++) {
     const u = i / 160, a = (1 - u) ** 3, b = 3 * u * (1 - u) ** 2, e = 3 * u * u * (1 - u), d = u ** 3;
@@ -476,5 +524,5 @@ export function bigKid(c, X, Y, o) {
     for (let t = 0; t < 6 - k; t++) px(c, ro(ecx + Math.cos(a + s * t * 0.02) * rr), ro(ecy + Math.sin(a + s * t * 0.02) * (rr + 9)), '#ffffff');
   }
   /* 뛰어오른 표시 — 발밑 세로 줄 */
-  for (const dx of [-9, -3, 3, 9]) rect(c, X + dx, Y + 45 + (Math.abs(dx) > 5 ? 1 : 0), 1, 2, '#cfe0ff');
+  if (!o.noShadow) for (const dx of [-9, -3, 3, 9]) rect(c, X + dx, Y + 45 + (Math.abs(dx) > 5 ? 1 : 0), 1, 2, '#cfe0ff');
 }
