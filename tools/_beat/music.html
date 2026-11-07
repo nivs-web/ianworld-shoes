@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ROPE BEAT 곡 오디션</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { color-scheme: light dark; --bg: #f4f1ea; --fg: #222; --card: #fff; --line: #d8d2c4; --acc: #2f7d4f; --rope: #2f6fd6; --jump: #e8742a; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #16181c; --fg: #e8e6e1; --card: #22252b; --line: #3a3e46; --acc: #5cc28a; --rope: #5b95f0; --jump: #f39550; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 15px/1.4 system-ui, sans-serif; max-width: 860px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.note { margin: 0 0 14px; opacity: .75; font-size: 13px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  h2 { font-size: 14px; margin: 0 0 8px; opacity: .8; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  button { font: inherit; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; touch-action: manipulation; }
+  button:active { transform: translateY(1px); }
+  button.on { background: var(--acc); color: #fff; border-color: var(--acc); }
+  button.song { text-align: left; min-width: 190px; }
+  button.song small { display: block; opacity: .7; font-size: 12px; }
+  label { font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+  .readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .readout div { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .readout b { display: block; font: 600 20px/1.2 ui-monospace, monospace; }
+  .readout span { font-size: 12px; opacity: .7; }
+  .lamps { display: flex; gap: 10px; margin-top: 10px; }
+  .lamp { flex: 1; height: 54px; border-radius: 10px; border: 2px solid var(--line); display: grid; place-items: center; font: 800 18px/1 system-ui; opacity: .35; transition: opacity .06s; }
+  .lamp.r { border-color: var(--rope); color: var(--rope); }
+  .lamp.j { border-color: var(--jump); color: var(--jump); }
+  .lamp.lit { opacity: 1; }
+  #diag { font: 12px/1.5 ui-monospace, monospace; opacity: .8; white-space: pre-wrap; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<h1>ROPE BEAT 곡 오디션</h1>
+<p class="note">곡을 고르고 «시작». 리드인 4박 카운트 뒤 곡이 나온다. 키보드 A·F·← = ROPE, D·J·→·Space = JUMP 로 같이 쳐 볼 수 있다.</p>
+
+<section>
+  <h2>곡</h2>
+  <div class="row" id="songs"></div>
+</section>
+
+<section>
+  <h2>재생</h2>
+  <div class="row">
+    <button id="start">▶ 시작</button>
+    <button id="stop">■ 정지</button>
+    <button id="pause">❚❚ 일시정지</button>
+    <button id="resume">▶ 이어하기</button>
+    <button id="fever">피버</button>
+    <button id="enable">소리 끄기</button>
+    <button id="metro">메트로놈 120 · 8박</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <label>음악 <input id="mv" type="range" min="0" max="1" step="0.05" value="1"></label>
+    <label>효과음 <input id="sv" type="range" min="0" max="1" step="0.05" value="1"></label>
+  </div>
+  <div class="readout" style="margin-top:10px">
+    <div><span>곡 시각</span><b id="rt">-</b></div>
+    <div><span>마디 . 박 . 칸</span><b id="rb">-</b></div>
+    <div><span>BPM</span><b id="rbpm">-</b></div>
+    <div><span>구간 (세기)</span><b id="rsec">-</b></div>
+    <div><span>곡 길이</span><b id="rdur">-</b></div>
+  </div>
+  <div class="lamps"><div class="lamp r" id="lr">ROPE · 엇박</div><div class="lamp j" id="lj">JUMP · 박</div></div>
+  <p id="diag"></p>
+</section>
+
+<section>
+  <h2>효과음 (누르는 즉시)</h2>
+  <div class="row" id="sfx"></div>
+</section>
+
+<script type="module">
+import { createMusic, SONG_IDS, songInfo, planSong, barInfo } from '/src/games/jumprope/beat/music.js';
+import { STAGES, ENDLESS } from '/src/games/jumprope/beat/stages.js';
+import { stepAtTime, bpmAt } from '/src/games/jumprope/beat/timing.js';
+
+const mu = createMusic();
+const $ = (id) => document.getElementById(id);
+const ENDLESS_BARS = 400;
+
+// 곡마다 stages.js 그대로의 tempo · bars (무한은 호출자처럼 tempoUntil(bars))
+function optsOf(id) {
+  if (id === 'endless') return { tempo: ENDLESS.tempoUntil(ENDLESS_BARS), bars: ENDLESS_BARS };
+  const st = STAGES.find((s) => s.id === id);
+  return { tempo: st.tempo, bars: st.bars };
+}
+
+let songId = 'training', plan = null, prep = null, mode = 'idle', fever = false, enabled = true;
+const songBtns = {};
+for (const id of SONG_IDS) {
+  const info = songInfo(id), o = optsOf(id), p = planSong(id, o);
+  const bpms = o.tempo.map((x) => x.bpm);
+  const b = document.createElement('button');
+  b.className = 'song';
+  b.innerHTML = `${info.title}<small>${id} · ${info.style} · ${info.key} ${info.mode === 'major' ? '장조' : '단조'} · ${Math.min(...bpms)}~${Math.max(...bpms)} BPM · ${id === 'endless' ? '무한' : p.duration.toFixed(1) + '초'}</small>`;
+  b.addEventListener('click', () => { mu.init(); mu.hit('ui'); pick(id); });
+  $('songs').appendChild(b);
+  songBtns[id] = b;
+}
+function pick(id) {
+  songId = id;
+  plan = planSong(id, optsOf(id));
+  prep = mu.prepare(id, optsOf(id));
+  mode = 'idle';
+  Object.entries(songBtns).forEach(([k, b]) => b.classList.toggle('on', k === id));
+  $('rdur').textContent = id === 'endless' ? `${prep.duration.toFixed(0)}초+` : `${prep.duration.toFixed(2)}초`;
+}
+pick('training');
+
+$('start').addEventListener('click', () => { mu.init(); if (!plan || mode === 'metro') pick(songId); mu.start(); mode = 'song'; });
+$('stop').addEventListener('click', () => { mu.stop(); mode = 'idle'; });
+$('pause').addEventListener('click', () => mu.pause());
+$('resume').addEventListener('click', () => { mu.init(); mu.resume(); });
+$('fever').addEventListener('click', () => { fever = !fever; mu.setFever(fever); $('fever').classList.toggle('on', fever); if (fever) mu.hit('fever'); });
+$('enable').addEventListener('click', () => { enabled = !enabled; mu.setEnabled(enabled); $('enable').textContent = enabled ? '소리 끄기' : '소리 켜기'; $('enable').classList.toggle('on', !enabled); });
+$('metro').addEventListener('click', () => { mu.init(); mu.metronome(120, 8); mode = 'metro'; });
+$('mv').addEventListener('input', (e) => mu.setMusicVolume(Number(e.target.value)));
+$('sv').addEventListener('input', (e) => mu.setSfxVolume(Number(e.target.value)));
+
+const SFX = [
+  ['rope', 'ROPE 딱'], ['jump', 'JUMP 쿵'], ['both', '둘 다'], ['hold', '꾹(휘익)'],
+  ['perfect', 'PERFECT'], ['great', 'GREAT'], ['good', 'GOOD'], ['miss', 'MISS'], ['trip', '걸려 넘어짐'],
+  ['combo10', '콤보 10'], ['combo50', '콤보 50'], ['combo100', '콤보 100'], ['fever', 'FEVER'], ['tech', '기술 CLEAR'],
+  ['count3', '카운트 3'], ['count1', '카운트 1'], ['go', 'GO'], ['clear', '승리'], ['fail', '실패'], ['ui', '단추'],
+];
+for (const [name, label] of SFX) {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.addEventListener('pointerdown', () => { mu.init(); mu.hit(name); });
+  $('sfx').appendChild(b);
+}
+
+// 키보드로 같이 쳐 보기 — 입력 시각을 곡 시각으로 바꿔 박과의 어긋남을 보여 준다
+let lastHitInfo = '';
+window.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  const k = e.key.toLowerCase();
+  const rope = k === 'a' || k === 'f' || e.key === 'ArrowLeft';
+  const jump = k === 'd' || k === 'j' || e.key === 'ArrowRight' || e.key === ' ';
+  if (!rope && !jump) return;
+  e.preventDefault();
+  mu.init();
+  mu.hit(rope ? 'rope' : 'jump');
+  if (mode === 'song' && plan) {
+    const t = mu.eventSongTime(e.timeStamp);
+    const st = stepAtTime(plan.steps, t);
+    const target = rope ? Math.round((st - 2) / 4) * 4 + 2 : Math.round(st / 4) * 4; // 가장 가까운 엇박 / 박
+    const ms = (t - plan.steps[Math.max(0, Math.min(plan.n, target))]) * 1000;
+    lastHitInfo = `${rope ? 'ROPE' : 'JUMP'} ${ms >= 0 ? '+' : ''}${ms.toFixed(0)}ms`;
+  }
+});
+
+// 화면 갱신
+function frame() {
+  const ctx = mu.ctx;
+  if (ctx && plan && (mode === 'song' || mode === 'metro')) {
+    const t = mu.songTime();
+    $('rt').textContent = t.toFixed(2);
+    if (mode === 'song') {
+      const st = stepAtTime(plan.steps, t);
+      if (t >= 0) {
+        const s = Math.floor(st), bar = Math.floor(s / 16);
+        $('rb').textContent = `${bar + 1} . ${Math.floor((s % 16) / 4) + 1} . ${(s % 4) + 1}`;
+        $('rbpm').textContent = bpmAt(plan.tempo, st / 16).toFixed(1);
+        const B = barInfo(plan, bar);
+        $('rsec').textContent = s >= plan.n && !plan.endless ? '끝' : `${B.label} (${B.E})`;
+        const frac = st - Math.floor(st / 2) * 2, half = Math.floor(st / 2) % 2;
+        $('lj').classList.toggle('lit', half === 0 && frac < 0.9);
+        $('lr').classList.toggle('lit', half === 1 && frac < 0.9);
+      } else {
+        $('rb').textContent = `카운트 ${Math.ceil(-t / (60 / bpmAt(plan.tempo, 0)))}`;
+        $('rbpm').textContent = bpmAt(plan.tempo, 0).toFixed(1);
+        $('rsec').textContent = '리드인';
+      }
+    }
+    const ts = ctx.getOutputTimestamp ? ctx.getOutputTimestamp() : {};
+    const dEv = (mu.eventSongTime(performance.now()) - t) * 1000;
+    $('diag').textContent =
+      `ctx ${ctx.state} · ${ctx.sampleRate}Hz · outputLatency ${((ctx.outputLatency || 0) * 1000).toFixed(1)}ms · baseLatency ${((ctx.baseLatency || 0) * 1000).toFixed(1)}ms\n` +
+      `eventSongTime(now) − songTime = ${dEv.toFixed(1)}ms · getOutputTimestamp ${ts.contextTime != null ? ts.contextTime.toFixed(3) : '-'} @ ${ts.performanceTime != null ? ts.performanceTime.toFixed(0) : '-'}\n` +
+      `${lastHitInfo ? '마지막 입력 ' + lastHitInfo : '키보드로 박에 맞춰 쳐 보면 어긋남(ms)이 여기 뜬다'}`;
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+window.__music = mu;
+window.__pick = pick;
+window.__plan = () => plan;
+window.__optsOf = optsOf;
+</script>
+</body>
+</html>

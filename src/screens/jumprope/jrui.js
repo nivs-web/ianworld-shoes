@@ -37,6 +37,8 @@ export function lvBar(L) {
 }
 
 const CSS = `
+.rb-cal-pad { display: block; width: 100%; height: 120px; font-family: 'PretendardV', 'Arial Black', sans-serif; font-weight: 900; font-size: 44px; color: #fff; text-shadow: 3px 3px 0 #1b0f0a; background: #ff7a1a; border: 0; cursor: pointer; box-shadow: 0 -3px 0 0 #600f09, 0 3px 0 0 #600f09, -3px 0 0 0 #600f09, 3px 0 0 0 #600f09, inset 0 4px 0 0 #ffd08a, inset 0 -5px 0 0 #8a2a00; }
+.rb-cal-pad:active { transform: translateY(3px); background: #d9561a; }
 .jr-logo-img { display: block; width: min(100%, 360px); height: auto; margin: 4px auto 0; image-rendering: pixelated; }
 .jr-logo { text-align: center; padding: 6px 0 2px; }
 .jr-logo-main { font-size: 40px; line-height: 1.1; letter-spacing: 2px; filter: drop-shadow(3px 3px 0 #2a0f3a); }

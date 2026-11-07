@@ -31,13 +31,15 @@ export const SPEED_MIN = 1, SPEED_MAX = 10;
 export const MAX_LEVEL = 20;
 
 /** 조각 종류 — 코드(k) · 이름 · 박자가 바뀔 때 미리 띄우는 글자 */
+/* 2026-11-07 리듬판(ROPE BEAT)에서는 내 스테이지 조각이 «기술 · 템포 구간»이 된다 — n = 박 수, 빠르기 v → BPM 90+(v−1)×10 */
 export const SEG_KINDS = {
-  s: { name: '같은 박자', cue: '같은 박자로!' },
-  r: { name: '랜덤 박자', cue: '박자가 흔들려요!' },
+  s: { name: '기본 뛰기', cue: '같은 박자로!' },
+  r: { name: '기술 섞기', cue: '박자가 흔들려요!' },
   u: { name: '빨라지기·느려지기', cue: null },     // a<b 면 «빨라져요!», 아니면 «느려져요!»
-  f: { name: '멈칫', cue: '멈칫! 기다렸다 뛰어요' },
-  d: { name: '2단 뛰기', cue: '2단 뛰기! 꾹 눌러요' },
+  f: { name: '쉼(멈칫)', cue: '멈칫! 기다렸다 뛰어요' },
+  d: { name: '이단 뛰기', cue: '2단 뛰기! 꾹 눌러요' },
 };
+export const segBpm = (v) => 90 + (Math.max(SPEED_MIN, Math.min(SPEED_MAX, +v || 1)) - 1) * 10;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const int = (v, d) => (Number.isFinite(+v) ? Math.round(+v) : d);

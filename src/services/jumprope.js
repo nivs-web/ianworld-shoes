@@ -28,7 +28,9 @@ const save = (next) => patch({ jr: next });
 export const levelOf = (j = jr()) => levelFromXp(j.xp);
 export const starsIn = (j, diff) => (j.stars[diff] || []).reduce((a, b) => a + b, 0);
 export const bestStars = (j) => Math.max(...DIFF_KEYS.map((d) => starsIn(j, d)));
-export const stage10Cleared = (j) => DIFF_KEYS.some((d) => (j.stars[d][9] | 0) > 0);
+/* 리듬판(ROPE BEAT): 대회 5개 — 세계 선수권 = 다섯 번째 칸 */
+export const CHAMP_STAGES = 5;
+export const stage10Cleared = (j) => DIFF_KEYS.some((d) => (j.stars[d][CHAMP_STAGES - 1] | 0) > 0);
 export const bestEndless = (j) => Math.max(j.endless.easy, j.endless.normal, j.endless.hard);
 
 export function hasRope(id, j = jr()) {
@@ -40,7 +42,7 @@ export function hasRope(id, j = jr()) {
   if (g.price) return j.owned.includes('rope:' + id);
   if (g.stage10) return stage10Cleared(j);
   if (g.endless100) return bestEndless(j) >= 100;
-  if (g.stars30) return bestStars(j) >= 30;
+  if (g.stars30) return bestStars(j) >= CHAMP_STAGES * 3;
   return false;
 }
 export const ownedRopes = (j = jr()) => ROPES.filter((r) => hasRope(r.id, j));
@@ -244,6 +246,66 @@ export function finishRun(r) {
   syncSoon();
   return { xp, candy, stars, prevStars, newBest, firstClear, lvBefore, lvAfter, newRopes, newParts, level: levelOf(j) };
 }
+
+/* ---------- 리듬판(ROPE BEAT) 한 판 끝 ---------- */
+/**
+ * @param {{mode:'stage'|'endless'|'test', diff:string, stageNo?:number, cleared:boolean, stars?:number, score:number,
+ *          perfect:number, great:number, good:number, miss:number, maxCombo:number, accuracy:number, rank:string,
+ *          techCleared:number, count:number, used?:{candy2?:boolean}}} r
+ */
+export function finishBeat(r) {
+  const before = jr();
+  const diff = DIFFS[r?.diff] ? r.diff : 'normal';
+  const D = DIFFS[diff];
+  const perfect = ci(r.perfect), great = ci(r.great), good = ci(r.good);
+  const count = ci(r.count), maxCombo = ci(r.maxCombo);
+  const ropesBefore = new Set(ownedRopes(before).map((x) => x.id));
+  const lvBefore = levelOf(before).level;
+  const j = { ...before, endless: { ...before.endless }, stars: { ...before.stars }, scores: { ...before.scores } };
+  j.plays += 1;
+  j.jumps += count;
+  j.perfects += perfect;
+  j.bestCombo = Math.max(j.bestCombo, maxCombo);
+  /* 리듬판은 한 곡에 노트가 200~350개라 판정 경험치를 낮춘다(1곡에 레벨이 몇 칸씩 뛰지 않게) */
+  let xp = Math.round(perfect * 1 + great * 0.6 + good * 0.3);
+  let candy = 0, stars = 0, prevStars = 0, newBest = false, firstClear = false;
+  if (r.mode === 'stage') {
+    const i = Math.max(0, Math.min(CHAMP_STAGES - 1, (r.stageNo | 0) - 1));
+    const no = i + 1;
+    prevStars = before.stars[diff][i] | 0;
+    stars = r.cleared ? Math.max(1, Math.min(3, r.stars | 0)) : 0;
+    firstClear = !!r.cleared && prevStars === 0;
+    if (r.cleared) xp += 30 + no * 25 + (firstClear ? 50 : 0);
+    candy = r.cleared ? 10 + no * 6 + Math.floor(perfect / 5) : Math.floor(perfect / 10);
+    if (firstClear) candy += 25;
+    if (stars === 3 && prevStars < 3) candy += 20;
+    const sc = [...j.stars[diff]]; sc[i] = Math.max(sc[i], stars); j.stars[diff] = sc;
+    const bs = [...j.scores[diff]];
+    if (ci(r.score, 9999999) > bs[i]) { bs[i] = ci(r.score, 9999999); newBest = true; }
+    j.scores[diff] = bs;
+  } else if (r.mode === 'endless') {
+    xp += Math.floor(count / 10) * 4;
+    candy = Math.floor(count / 4);
+    if (count > j.endless[diff]) { j.endless[diff] = count; newBest = true; }
+  } else {
+    xp = Math.floor(xp / 2);      // 내 스테이지 — 판정 경험치 절반, 별사탕 없음
+  }
+  xp = Math.round(xp * XP_MULT[diff]);
+  candy = Math.round(candy * D.reward) * (r.used?.candy2 ? 2 : 1);
+  j.xp += xp;
+  j.candy += candy;
+  j.candyTotal += candy;
+  save(j);
+  const lvAfter = levelOf(j).level;
+  const newRopes = ownedRopes(j).filter((x) => !ropesBefore.has(x.id));
+  const newParts = [];
+  for (let lv = lvBefore + 1; lv <= lvAfter; lv++) for (const it of rewardsAt(lv)) if (it.kind === 'part') newParts.push(it);
+  syncSoon();
+  return { xp, candy, stars, prevStars, newBest, firstClear, lvBefore, lvAfter, newRopes, newParts, level: levelOf(j) };
+}
+/** 대회 n 이 열렸나 — 앞 대회를 완주(별 1개+)해야 열린다 */
+export const champUnlocked = (no, diff, j = jr()) => no <= 1 || (j.stars[diff]?.[no - 2] | 0) > 0;
+export const champStars = (j, diff) => (j.stars[diff] || []).slice(0, CHAMP_STAGES).reduce((a, b) => a + b, 0);
 
 function syncSoon(ms) { syncJumpPlayerSoon(derive, ms); }
 

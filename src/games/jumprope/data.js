@@ -107,9 +107,9 @@ export function ropeHow(r) {
   if (g.start) return '처음부터';
   if (g.lv) return `레벨 ${g.lv} 보상`;
   if (g.price) return `상점 · 별사탕 ${g.price}`;
-  if (g.stage10) return '스테이지 10 «줄넘기 대회» 클리어';
+  if (g.stage10) return '세계 선수권(대회 5) 완주';
   if (g.endless100) return '무한 줄넘기 100개 넘기';
-  if (g.stars30) return '한 난이도에서 별 30개 모으기';
+  if (g.stars30) return '한 난이도에서 별 15개 모으기';
   return '';
 }
 

@@ -50,6 +50,8 @@ export function normJr(raw) {
       sound: opts.sound !== false,
       vib: opts.vib !== false,
       ring: ['auto', 'on', 'off'].includes(opts.ring) ? opts.ring : 'auto',
+      /* 리듬 판정 보정(ms) — 설정 «타이밍 맞추기». + = 늦게 누르는 버릇 */
+      offset: Math.max(-150, Math.min(150, Math.round(Number(opts.offset) || 0))),
     },
   };
 }

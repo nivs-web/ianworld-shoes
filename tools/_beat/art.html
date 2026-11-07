@@ -1,0 +1,240 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ROPE BEAT 그림 미리보기</title>
+<style>
+  html, body { margin: 0; background: #0d0a14; color: #f4ead8; font: 14px/1.4 sans-serif; }
+  #cv { display: block; image-rendering: pixelated; }
+  #bar { position: fixed; right: 8px; top: 8px; background: #000a; padding: 4px 8px; }
+</style>
+</head>
+<body>
+<!--
+  줄넘기 챔피언 · ROPE BEAT — beatArt.js · art.js 새 포즈 미리보기 (픽셀 아티스트, 2026-11-07)
+  1배 도트 버퍼 한 장에 전부 그리고 CSS 로 4배(번짐 없이) 키운다.  ?still = 멈춘 장면(캡처용) · 없으면 움직인다.
+  window.__sections = 구역 이름과 1배 좌표 (캡처 스크립트가 잘라 본다)
+-->
+<div id="bar"></div>
+<canvas id="cv"></canvas>
+<script type="module">
+import { drawKid, poseHands, ropeGeom, drawRope, drawHandles, canvas, rect, BEAT_POSES, OUT } from '/src/games/jumprope/art.js';
+import { ROPE_BY_ID, DEFAULT_LOOK } from '/src/games/jumprope/data.js';
+import { drawArena, drawLane, drawNote, drawTarget, drawHit, drawFeverAura, ptext } from '/src/games/jumprope/beat/beatArt.js';
+
+const ZOOM = 4;
+const still = new URLSearchParams(location.search).has('still');
+const W0 = 1400, H0 = 2090;
+const cv = document.getElementById('cv');
+cv.width = W0; cv.height = H0;
+cv.style.width = `${W0 * ZOOM}px`; cv.style.height = `${H0 * ZOOM}px`;
+const b = cv.getContext('2d');
+b.imageSmoothingEnabled = false;
+const sections = [];
+const LOOKS = [
+  { ...DEFAULT_LOOK },                                                                      // 짧은 머리 + 야구 모자
+  { skin: 1, hair: 3, hairColor: 1, eyes: 0, shirt: 6, pants: 2, shoes: 1, hat: 0, emoji: 0 }, // 포니테일
+  { skin: 2, hair: 2, hairColor: 2, eyes: 3, shirt: 8, pants: 0, shoes: 2, hat: 3, emoji: 0 }, // 양갈래 + 리본
+  { skin: 3, hair: 5, hairColor: 0, eyes: 1, shirt: 7, pants: 4, shoes: 3, hat: 2, emoji: 0 }, // 뾰족 + 헤드밴드
+  { skin: 0, hair: 1, hairColor: 3, eyes: 0, shirt: 4, pants: 5, shoes: 5, hat: 4, emoji: 0 }, // 단발 + 비니
+  { skin: 1, hair: 4, hairColor: 5, eyes: 2, shirt: 9, pants: 3, shoes: 4, hat: 8, emoji: 0 }, // 곱슬 + 왕관
+];
+
+/** 아이 + 줄을 작은 캔버스에 1배로 (총괄이 게임에서 하는 방식 그대로) */
+function kidCanvas(look, rope, pose, w = 64, h = 84) {
+  const kc = canvas(w, h);
+  const k = kc.getContext('2d');
+  const x = Math.floor(w / 2), gy = h - 6;
+  const theta = pose.theta ?? Math.PI;
+  const pre = poseHands(x, gy, pose);
+  const g0 = ropeGeom(pre, x, gy, theta);
+  if (g0.depth < 0) drawRope(k, rope, g0, pose.t || 0);
+  const hands = drawKid(k, x, gy, look, pose);
+  /* 손 위치 검사 — drawKid 와 kidHands(poseHands) 가 다르면 빨간 점 */
+  if (hands.l.x !== pre.l.x || hands.l.y !== pre.l.y || hands.r.x !== pre.r.x || hands.r.y !== pre.r.y) { rect(k, 0, 0, 4, 4, '#ff0000'); window.__handMismatch = (window.__handMismatch || 0) + 1; }
+  const g1 = ropeGeom(hands, x, gy, theta);
+  if (g1.depth >= 0) drawRope(k, rope, g1, pose.t || 0);
+  drawHandles(k, rope, hands);
+  return { kc, footX: x, footY: gy };
+}
+function label(s, x, y, col = '#f4ead8') { ptext(b, s.toUpperCase(), x, y, col, 'shadow'); }
+
+/** 폰 세로 게임 화면 흉내 (130x282) — 대회장 · 레인 · 노트 · 표적 · 폭발 · 선수 3배 */
+function phone(ox, oy, a, fever, t) {
+  const W = 130, H = 282, fy = H - 62;
+  const s = canvas(W, H), c = s.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  drawArena(c, a, W, H, fy, t, { fever, energy: fever ? 3 : [1, 1, 2, 2, 2][a], beat: t * 2.2 });
+  if (fever) drawFeverAura(c, W / 2, fy, 3, t);
+  const pose = fever ? { state: ['cross', 'high', 'release', 'side', 'spin'][a], theta: Math.PI * 1.6 + a, t, lift: [10, 14, 0, 0, 0][a], spin: 0.3 } : { state: 'ready', theta: Math.PI * (1.5 + a * 0.3), t };
+  const { kc, footX, footY } = kidCanvas(LOOKS[a], ROPE_BY_ID[fever ? 'rainbow' : ['red', 'blue', 'green', 'neon', 'gold'][a]], pose, 64, 84);
+  c.drawImage(kc, Math.round(W / 2 - footX * 3), fy - footY * 3, kc.width * 3, kc.height * 3);
+  drawLane(c, 'L', 2, 36, fy, 24, t, { pulse: fever ? 0.8 : a === 1 ? 0.5 : 0 });
+  drawLane(c, 'R', W - 26, 36, fy, 24, t, { pulse: fever ? 0.4 : 0 });
+  drawNote(c, 'B', 'tap', 2, 82, W - 4, { t });
+  drawNote(c, 'R', 'tap', W - 26, 110, 24, { t });
+  drawNote(c, 'L', 'tap', 2, 134, 24, { t });
+  drawNote(c, 'R', 'tap', W - 26, 158, 24, { t });
+  drawNote(c, 'L', 'hold', 2, 190, 24, { holdPx: 44, t });
+  drawNote(c, 'R', fever ? 'hold' : 'tap', W - 26, fever ? fy : 196, 24, { holdPx: 36, hit: fever, t });
+  drawTarget(c, 'L', 2, fy, 24, { pressed: fever });
+  drawTarget(c, 'R', W - 26, fy, 24, { flash: fever ? 0 : 0.8 });
+  if (!fever) drawHit(c, W - 14, fy, 'perfect', 0.06);
+  else drawHit(c, 14, fy, 'great', 0.1);
+  /* 판정선 아래 = 총괄이 단추를 그리는 자리 (흉내) */
+  for (const [bx, col] of [[6, '#3a8cff'], [W / 2 + 3, '#ff8a1a']]) { rect(c, bx - 1, fy + 15, 58, 30, OUT); rect(c, bx, fy + 16, 56, 28, col); rect(c, bx, fy + 16, 56, 2, '#ffffff'); }
+  b.drawImage(s, ox, oy);
+}
+
+/** 가로 화면 (300x160) — 선수는 2배 */
+function land(ox, oy, a, fever, t) {
+  const W = 300, H = 160, fy = H - 40;
+  const s = canvas(W, H), c = s.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  drawArena(c, a, W, H, fy, t, { fever, energy: fever ? 3 : 2, beat: t * 2.2 });
+  if (fever) drawFeverAura(c, W / 2, fy, 2, t);
+  const { kc, footX, footY } = kidCanvas(LOOKS[a], ROPE_BY_ID[fever ? 'legend' : 'red'], { state: fever ? 'high' : 'stand', theta: Math.PI * 1.7, t, lift: fever ? 8 : 0 }, 64, 84);
+  c.drawImage(kc, Math.round(W / 2 - footX * 2), fy - footY * 2, kc.width * 2, kc.height * 2);
+  drawLane(c, 'L', 2, 18, fy, 24, t, {});
+  drawLane(c, 'R', W - 26, 18, fy, 24, t, {});
+  drawNote(c, 'L', 'tap', 2, 60, 24, { t });
+  drawNote(c, 'R', 'tap', W - 26, 84, 24, { t });
+  drawTarget(c, 'L', 2, fy, 24, {});
+  drawTarget(c, 'R', W - 26, fy, 24, {});
+  b.drawImage(s, ox, oy);
+}
+
+function render(t) {
+  sections.length = 0;
+  rect(b, 0, 0, W0, H0, '#0d0a14');
+  let y = 4;
+  /* 1. 폰 세로 — 대회장 5종 (피버 끔 · 켬) */
+  label('PHONE 130X282  ARENA 0-4  FEVER OFF', 4, y); label('FEVER ON', 4 + 5 * 136, y, '#ffd23f');
+  y += 9;
+  for (let a = 0; a < 5; a++) { phone(4 + a * 136, y, a, false, t); phone(4 + (5 + a) * 136, y, a, true, t); }
+  sections.push({ name: 'phone', x: 0, y: y - 9, w: 1370, h: 282 + 12 });
+  y += 290;
+  /* 2. 가로 300x160 */
+  label('LANDSCAPE 300X160  OFF / ON', 4, y); y += 9;
+  const ly = y;
+  for (let a = 0; a < 5; a++) {
+    const col = a % 2, row = Math.floor(a / 2);
+    land(4 + col * 612, y + row * 166, a, false, t);
+    land(4 + col * 612 + 304, y + row * 166, a, true, t);
+  }
+  sections.push({ name: 'land', x: 0, y: ly - 9, w: 1230, h: 3 * 166 + 10 });
+  y += 3 * 166 + 6;
+  /* 3. 부품 — 레인 · 노트 · 표적 · 폭발 · 오라 */
+  label('LANE  NOTE  TARGET  HIT  AURA', 4, y); y += 9;
+  const py = y;
+  rect(b, 0, py, 1000, 196, '#241a2e');
+  let x = 6;
+  for (const [ln, pu] of [['L', 0], ['L', 0.5], ['L', 1], ['R', 0], ['R', 0.5], ['R', 1]]) {
+    drawLane(b, ln, x, py + 4, py + 186, 24, t, { pulse: pu, ticks: pu === 0.5 ? [py + 40, py + 80, py + 120, py + 160] : null });
+    x += 30;
+  }
+  /* 노트 4종 + 꾹 + 맞는 중 */
+  const nx = 196;
+  drawNote(b, 'R', 'tap', nx, py + 20, 24, { t });
+  drawNote(b, 'L', 'tap', nx + 30, py + 20, 24, { t });
+  drawNote(b, 'R', 'hold', nx, py + 100, 24, { holdPx: 50, t });
+  drawNote(b, 'L', 'hold', nx + 30, py + 100, 24, { holdPx: 50, t });
+  drawNote(b, 'R', 'hold', nx + 60, py + 100, 24, { holdPx: 50, hit: true, t });
+  drawNote(b, 'R', 'tap', nx + 60, py + 20, 24, { hit: true, t });
+  drawNote(b, 'L', 'tap', nx + 90, py + 20, 24, { hit: true, t });
+  drawNote(b, 'B', 'tap', nx, py + 130, 140, { t });
+  drawNote(b, 'B', 'tap', nx, py + 160, 140, { hit: true, t });
+  /* 표적 보통 · 눌림 · 번쩍(0.5 · 1) */
+  const tx = 360;
+  ['L', 'R'].forEach((ln, i) => {
+    drawTarget(b, ln, tx, py + 22 + i * 34, 24, {});
+    drawTarget(b, ln, tx + 32, py + 22 + i * 34, 24, { pressed: true });
+    drawTarget(b, ln, tx + 64, py + 22 + i * 34, 24, { flash: 0.5 });
+    drawTarget(b, ln, tx + 96, py + 22 + i * 34, 24, { flash: 1 });
+    drawTarget(b, ln, tx + 140, py + 22 + i * 34, 32, {});
+  });
+  /* 폭발 4종 × 6시점 */
+  const hx = 360, hy = py + 100;
+  ['perfect', 'great', 'good', 'miss'].forEach((g, i) => {
+    for (let k = 0; k < 7; k++) drawHit(b, hx + k * 34 + 14, hy + i * 23, g, k * 0.055);
+  });
+  /* 피버 오라 + 선수 */
+  {
+    const ax = 700, afy = py + 186;
+    rect(b, 620, py, 380, 196, '#1a1030');
+    drawFeverAura(b, ax, afy, 3, t);
+    const { kc, footX, footY } = kidCanvas(LOOKS[0], ROPE_BY_ID.rainbow, { state: 'stand', theta: Math.PI * 1.8, t }, 64, 84);
+    b.drawImage(kc, Math.round(ax - footX * 3), afy - footY * 3, kc.width * 3, kc.height * 3);
+    const ax2 = 900;
+    drawFeverAura(b, ax2, afy, 2, t);
+    const k2 = kidCanvas(LOOKS[2], ROPE_BY_ID.rainbow, { state: 'cross', theta: Math.PI * 1.6, t }, 64, 84);
+    b.drawImage(k2.kc, Math.round(ax2 - k2.footX * 2), afy - k2.footY * 2, k2.kc.width * 2, k2.kc.height * 2);
+  }
+  sections.push({ name: 'parts', x: 0, y: py - 9, w: 1000, h: 206 });
+  y += 200;
+  /* 4. 새 포즈 1배 — 포즈마다 · 모습(머리 모양) 6가지 */
+  label('POSES 1X  (STAND FOR REFERENCE)', 4, y); y += 9;
+  const POSES = [
+    { state: 'stand' }, { state: 'ready' }, { state: 'cross' }, { state: 'side' }, { state: 'high', lift: 6 }, { state: 'release' },
+    { state: 'spin', spin: 0.1 }, { state: 'spin', spin: 0.3 }, { state: 'spin', spin: 0.6 }, { state: 'spin', spin: 0.8 },
+  ];
+  const p1y = y;
+  rect(b, 0, p1y, W0, 6 * 86 + 4, '#3a4a6a');
+  LOOKS.forEach((look, li) => {
+    POSES.forEach((p, i) => {
+      const { kc } = kidCanvas(look, ROPE_BY_ID[['red', 'blue', 'pink', 'gold', 'rainbow', 'neon'][li]], { theta: Math.PI * 1.55, t, ...p }, 64, 84);
+      b.drawImage(kc, 4 + i * 66, p1y + 2 + li * 86);
+    });
+  });
+  /* 같은 포즈 줄 각도 4가지 (줄이 손에서 나오는지) */
+  const THETAS = [Math.PI, Math.PI * 1.5, Math.PI * 2, Math.PI * 2.5];
+  ['cross', 'side', 'high', 'release'].forEach((st, i) => THETAS.forEach((th, k) => {
+    const { kc } = kidCanvas(LOOKS[0], ROPE_BY_ID.red, { state: st, theta: th, t, lift: st === 'high' ? 6 : 0 }, 64, 84);
+    b.drawImage(kc, 680 + k * 66, p1y + 2 + i * 86);
+  }));
+  sections.push({ name: 'poses1x', x: 0, y: p1y - 9, w: 1000, h: 6 * 86 + 14 });
+  y += 6 * 86 + 8;
+  /* 5. 새 포즈 3배 */
+  label('POSES 3X', 4, y); y += 9;
+  const p3y = y;
+  rect(b, 0, p3y, W0, 2 * 250, '#5fb4f5');
+  POSES.forEach((p, i) => {
+    const { kc } = kidCanvas(LOOKS[i % 2 ? 1 : 0], ROPE_BY_ID.red, { theta: Math.PI * 1.55, t, ...p }, 64, 84);
+    b.drawImage(kc, 4 + (i % 5) * 196, p3y + 2 + Math.floor(i / 5) * 250, kc.width * 3, kc.height * 3);
+  });
+  sections.push({ name: 'poses3x', x: 0, y: p3y - 9, w: 990, h: 2 * 250 + 10 });
+  y += 2 * 250 + 4;
+  window.__sections = sections;
+  window.__usedH = y;
+}
+
+const bar = document.getElementById('bar');
+/** 한 프레임 비용 — 대회장(피버 켬) + 레인 둘 + 노트 6 + 표적 둘, 폰 버퍼 130x282 */
+function perf() {
+  const W = 130, H = 282, fy = H - 62, s = canvas(W, H), c = s.getContext('2d');
+  const out = [];
+  for (let a = 0; a < 5; a++) {
+    drawArena(c, a, W, H, fy, 0, { fever: true, energy: 3 });            // 굽기(첫 프레임)는 빼고 잰다
+    const t0 = performance.now(), N = 300;
+    for (let i = 0; i < N; i++) {
+      const t = i / 60;
+      drawArena(c, a, W, H, fy, t, { fever: true, energy: 3, beat: t * 2.2 });
+      drawLane(c, 'L', 2, 36, fy, 24, t, {}); drawLane(c, 'R', W - 26, 36, fy, 24, t, {});
+      for (let k = 0; k < 3; k++) { drawNote(c, 'L', 'tap', 2, 60 + k * 50, 24, { t }); drawNote(c, 'R', 'tap', W - 26, 80 + k * 50, 24, { t }); }
+      drawTarget(c, 'L', 2, fy, 24, {}); drawTarget(c, 'R', W - 26, fy, 24, {});
+      drawFeverAura(c, W / 2, fy, 3, t);
+    }
+    out.push(+((performance.now() - t0) / N).toFixed(3));
+  }
+  return out;
+}
+if (still) {
+  window.__perf = perf();
+  render(1.37);
+  bar.textContent = `still · 손 불일치 ${window.__handMismatch || 0}`;
+  window.__ready = true;
+} else {
+  const loop = (now) => { render(now / 1000); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  window.__ready = true;
+}
+</script>
+</body></html>

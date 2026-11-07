@@ -1,25 +1,28 @@
 /**
- * 줄넘기 챔피언 — 스테이지 고르기 (10개). 난이도마다 별 · 최고 점수 · 잠금이 따로다.
- * 앞 스테이지를 깨면(별 1개 이상) 다음이 열린다.
+ * 줄넘기 챔피언 · ROPE BEAT — 세계 줄넘기 챔피언십 5대회 고르기.
+ * 난이도마다 별 · 최고 점수 · 잠금이 따로다. 앞 대회를 완주(별 1개+)하면 다음이 열린다.
+ * 칸 그림은 그 대회장(도트) — 게임과 같은 그림 코드(beatArt.drawArena).
  */
 
 import { el, backButton, screen, title, segmented, toast } from '../ui.js';
 import * as J from '../../services/jumprope.js';
-import { STAGES, DIFFS, DIFF_KEYS } from '../../games/jumprope/data.js';
-import { stageCount } from '../../games/jumprope/engine.js';
-import { stageThumb } from '../../games/jumprope/art.js';
+import { DIFFS as DIFF_INFO, DIFF_KEYS } from '../../games/jumprope/data.js';
+import { STAGES } from '../../games/jumprope/beat/stages.js';
+import * as BA from '../../games/jumprope/beat/beatArt.js';
 import { ensureJrStyle } from './jrui.js';
 import JrReady from './JrReady.js';
 
-const SEG = DIFF_KEYS.map((k) => ({ value: k, label: DIFFS[k].label }));
-const thumbs = new Map();
-const thumb = (theme) => {
-  if (!thumbs.has(theme)) thumbs.set(theme, stageThumb(theme, 96, 54, 1));
-  const c = thumbs.get(theme);
-  const copy = c.cloneNode(false);
-  copy.getContext('2d').drawImage(c, 0, 0);
-  return copy;
-};
+const SEG = DIFF_KEYS.map((k) => ({ value: k, label: DIFF_INFO[k].label }));
+export function arenaThumb(arena, w = 96, h = 54, scale = 1) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  try { BA.drawArena(c.getContext('2d'), arena, w, h, h - 10, 2.2, { energy: 2 }); } catch { /* 그림이 없으면 빈 칸 */ }
+  c.style.width = `${w * scale}px`;
+  c.style.height = `${h * scale}px`;
+  c.style.imageRendering = 'pixelated';
+  return c;
+}
+const bpmRange = (st) => { const b = st.tempo.map((x) => x.bpm); return `${Math.min(...b)}~${Math.max(...b)}`; };
 
 export default function JrStages(nav) {
   ensureJrStyle();
@@ -29,25 +32,26 @@ export default function JrStages(nav) {
       const diff = j.diff;
       const stars = (n) => el('span.jr-stars', null, [el('b', '★'.repeat(n)), '★'.repeat(3 - n)]);
       return screen(
-        title('스테이지'),
+        title('세계 줄넘기 챔피언십'),
         segmented(SEG, diff, (v) => { J.setDiff(v); nav.refresh(); }),
-        el('div.hint', `${DIFFS[diff].label} — 별 ${J.starsIn(j, diff)}/30`),
+        el('div.hint', `${DIFF_INFO[diff].label} — 별 ${J.champStars(j, diff)}/${J.CHAMP_STAGES * 3} · 곡 하나 = 한 판 약 60초`),
         el('div.jr-list', null, STAGES.map((st) => {
-          const open = J.stageUnlocked(st.no, diff, j);
+          const open = J.champUnlocked(st.no, diff, j);
           const n = j.stars[diff][st.no - 1] | 0;
           const best = j.scores[diff][st.no - 1] | 0;
           return el('button.jr-stage', {
             type: 'button',
             class: open ? '' : 'locked',
             onclick: () => {
-              if (!open) { toast('앞 스테이지를 먼저 깨 주세요!', 1800); return; }
+              if (!open) { toast('앞 대회를 먼저 완주해 주세요!', 1800); return; }
               nav.push(JrReady, { mode: 'stage', stageNo: st.no });
             },
           }, [
-            thumb(st.theme),
+            arenaThumb(st.arena),
             el('div.jr-stage-body', null, [
               el('div.jr-stage-name', `${st.no}. ${open ? st.name : '???'}`),
-              el('div.jr-stage-sub', open ? `${stageCount(st)}번 넘기${best ? ` · 최고 ${best.toLocaleString('en-US')}점` : ''}` : '잠겨 있어요'),
+              el('div.jr-stage-sub', open ? `${st.en} · BPM ${bpmRange(st)}` : '잠겨 있어요'),
+              el('div.jr-stage-sub', open ? `♪ ${st.song.title}${best ? ` · 최고 ${best.toLocaleString('en-US')}점` : ''}` : ''),
             ]),
             stars(n),
           ]);
@@ -58,4 +62,3 @@ export default function JrStages(nav) {
     },
   };
 }
-

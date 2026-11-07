@@ -11,8 +11,9 @@ import { el, button, backButton, screen, title, segmented, confirmDialog, toast 
 import * as Sfx from '../../audio/sfx.js';
 import * as J from '../../services/jumprope.js';
 import { STAGES, THEMES } from '../../games/jumprope/data.js';
-import { SEG_KINDS, LIMITS, JUDGE_LABEL, stageCount, buildBeats, encodeStage, decodeStage, sanitizeStage, SPEED_MIN, SPEED_MAX } from '../../games/jumprope/engine.js';
+import { SEG_KINDS, LIMITS, JUDGE_LABEL, stageCount, buildBeats, encodeStage, decodeStage, sanitizeStage, SPEED_MIN, SPEED_MAX, segBpm } from '../../games/jumprope/engine.js';
 import { stageThumb } from '../../games/jumprope/art.js';
+import { buildChart } from '../../games/jumprope/beat/chart.js';
 import { ensureJrStyle } from './jrui.js';
 import { lazyScreen } from '../lazyScreen.js';
 
@@ -22,10 +23,9 @@ const JUDGE_OPTS = Object.entries(JUDGE_LABEL).map(([k, v]) => ({ value: k, labe
 
 function segText(g) {
   const name = SEG_KINDS[g.k]?.name || '';
-  if (g.k === 'r') return `${name} · ${g.n}번 · 빠르기 ${g.a}~${g.b}`;
-  if (g.k === 'u') return `${g.b >= g.a ? '빨라지기' : '느려지기'} · ${g.n}번 · 빠르기 ${g.a}→${g.b}`;
-  if (g.k === 'd') return `${name} · ${g.n}번(줄 ${g.n * 2}번) · 빠르기 ${g.v}`;
-  return `${name} · ${g.n}번 · 빠르기 ${g.v}`;
+  if (g.k === 'r') return `${name} · ${g.n}박 · BPM ${segBpm(g.a)}~${segBpm(g.b)}`;
+  if (g.k === 'u') return `${g.b >= g.a ? '빨라지기' : '느려지기'} · ${g.n}박 · BPM ${segBpm(g.a)}→${segBpm(g.b)}`;
+  return `${name} · ${g.n}박 · BPM ${segBpm(g.v)}`;
 }
 function newSeg(k, from) {
   const v = from?.v ?? from?.b ?? 3;
@@ -118,8 +118,8 @@ export default function JrEditor(nav, params = {}) {
     const segs = d.segs;
     sel = Math.max(0, Math.min(segs.length - 1, sel));
     const g = segs[sel];
-    const beats = buildBeats(d, 1);
-    const secs = beats.length ? Math.round(beats[beats.length - 1].t) : 0;
+    let secs = 0, notes = 0;
+    try { const ch = buildChart(sanitizeStage(d), 'normal', { seed: 1 }); secs = Math.round(ch.duration); notes = ch.notes.length; } catch { /* 채보를 못 만들면 0 */ }
     const stepper = (label, val, lo, hi, set) => el('div.jr-field', null, [
       el('span', label),
       el('div.jr-step', null, [
@@ -135,13 +135,13 @@ export default function JrEditor(nav, params = {}) {
         type: 'button', class: o.value === g.k ? 'on' : '',
         onclick: () => change(() => { segs[sel] = { ...newSeg(o.value, g), n: g.n }; }),
       }, [el('span', o.label)]))),
-      stepper('횟수', g.n, 1, LIMITS.n, (v) => { g.n = v; }),
+      stepper('박 수', g.n, 1, LIMITS.n, (v) => { g.n = v; }),
       g.k === 'r' || g.k === 'u'
         ? el('div', null, [
-          stepper(g.k === 'u' ? '시작 빠르기' : '느린 쪽', g.a, SPEED_MIN, SPEED_MAX, (v) => { g.a = v; }),
-          stepper(g.k === 'u' ? '끝 빠르기' : '빠른 쪽', g.b, SPEED_MIN, SPEED_MAX, (v) => { g.b = v; }),
+          stepper(`${g.k === 'u' ? '시작' : '느린 쪽'} ${segBpm(g.a)}`, g.a, SPEED_MIN, SPEED_MAX, (v) => { g.a = v; }),
+          stepper(`${g.k === 'u' ? '끝' : '빠른 쪽'} ${segBpm(g.b)}`, g.b, SPEED_MIN, SPEED_MAX, (v) => { g.b = v; }),
         ])
-        : stepper('빠르기', g.v, SPEED_MIN, SPEED_MAX, (v) => { g.v = v; }),
+        : stepper(`BPM ${segBpm(g.v)}`, g.v, SPEED_MIN, SPEED_MAX, (v) => { g.v = v; }),
       el('div.row', null, [
         button('▲ 위로', () => change(() => { if (sel > 0) { [segs[sel - 1], segs[sel]] = [segs[sel], segs[sel - 1]]; sel -= 1; } }), { sfx: 'sfx_menu_move' }),
         button('▼ 아래로', () => change(() => { if (sel < segs.length - 1) { [segs[sel + 1], segs[sel]] = [segs[sel], segs[sel + 1]]; sel += 1; } }), { sfx: 'sfx_menu_move' }),
@@ -162,7 +162,7 @@ export default function JrEditor(nav, params = {}) {
       stepper('하트', d.hearts, 1, 5, (v) => { d.hearts = v; }),
       el('div.jr-field', null, [el('span', '판정'), segmented(JUDGE_OPTS, d.judge, (v) => change(() => { d.judge = v; }))]),
       el('div.jr-field', null, [el('span', '도우미 링'), segmented([{ value: 'on', label: '켜기' }, { value: 'off', label: '끄기' }], d.ring ? 'on' : 'off', (v) => change(() => { d.ring = v === 'on'; }))]),
-      el('div.diff-title', `박자 조각 (${segs.length}/${LIMITS.segs}) · 총 ${stageCount(d)}번 · 약 ${secs}초`),
+      el('div.diff-title', `조각 (${segs.length}/${LIMITS.segs}) · ${stageCount(d)}박 · 노트 ${notes} · 약 ${secs}초`),
       el('div.jr-list', null, segs.map((s, i) => el('button.jr-seg-row', {
         type: 'button', class: i === sel ? 'on' : '',
         style: i === sel ? 'border-color:#ffd23f' : '',

@@ -138,8 +138,9 @@ function handOff(theta, drop, st, t) {
   const dy = ro(-Math.cos(theta) * 2), dx = ro(Math.sin(theta));
   return { l: { x: -12 - dx, y: -14 + drop + dy }, r: { x: 11 + dx, y: -14 + drop + dy } };
 }
-/** 그리기 전에 손 위치만 (줄을 아이 뒤에 먼저 그리려고) */
-export function kidHands(theta, x, footY, lift = 0, crouch = 0, state = 'stand', t = 0) {
+/** 그리기 전에 손 위치만 (줄을 아이 뒤에 먼저 그리려고) — spin 은 'spin' 포즈에만 쓴다(ROPE BEAT 추가) */
+export function kidHands(theta, x, footY, lift = 0, crouch = 0, state = 'stand', t = 0, spin = 0) {
+  if (BEAT_SET.has(state)) return beatHands(theta, x, footY, lift, state, t, spin);
   const sit = state === 'trip' || state === 'sit';
   const drop = sit ? 8 : crouch > 0.5 ? 2 : 0;
   const h = handOff(theta, drop, state, t);
@@ -153,6 +154,7 @@ export function kidHands(theta, x, footY, lift = 0, crouch = 0, state = 'stand',
  * @param {{lift?:number, crouch?:number, tuck?:number, state?:string, theta?:number, t?:number, mouth?:string}} pose
  */
 export function drawKid(c, xIn, footY, lookIn, pose = {}) {
+  if (BEAT_SET.has(pose.state)) return drawKidBeat(c, xIn, footY, lookIn, pose);   // ROPE BEAT 기술 포즈 (아래 따로)
   const look = lookIn || DEFAULT_LOOK;
   const P = kidPal(look);
   const st = pose.state || 'stand';
@@ -435,6 +437,351 @@ function drawHat(c, idx, P, x, cy, t) {
       break;
     default: break;
   }
+}
+
+/* ---------- ROPE BEAT 기술 포즈 (2026-11-07 추가) ---------- */
+/**
+ * 'ready' 무릎 살짝 · 'cross' 팔 X · 'side' 두 손 오른쪽 옆구리 · 'high' 무릎 바짝 + 팔 높이 ·
+ * 'release' 한 손 번쩍 + 손잡이가 공중 · 'spin' pose.spin(0~1) → 정면 · 옆(오른쪽 봄) · 뒤 · 옆(왼쪽 봄)
+ * 기존 stand · trip · sit · cheer 는 위 drawKid 가 그대로 그린다(여기 오지 않는다).
+ * 손 위치는 beatHandOff 한 곳에서만 정한다 — kidHands 와 drawKid 가 같은 값을 돌려줘야 줄이 손에서 나온다.
+ */
+export const BEAT_POSES = ['ready', 'cross', 'side', 'high', 'release', 'spin'];
+const BEAT_SET = new Set(BEAT_POSES);
+
+/** spin 0~1 → 0 정면 · 1 옆(오른쪽 봄) · 2 뒤 · 3 옆(왼쪽 봄) */
+export function spinView(spin = 0) {
+  const u = ((spin % 1) + 1) % 1;
+  return Math.floor(u * 4) % 4;
+}
+
+/** 손 위치(아이 발 기준 오프셋). 아이 가운데는 x − 0.5 라 좌우 대칭은 +a ↔ −a−1 */
+function beatHandOff(st, theta, t, spin) {
+  const dy = ro(-Math.cos(theta) * 2), dx = ro(Math.sin(theta));
+  switch (st) {
+    case 'ready': return { l: { x: -12 - dx, y: -12 + dy }, r: { x: 11 + dx, y: -12 + dy } };
+    /* 손목이 배 앞에서 엇갈린다 — 왼손(l)이 오른쪽, 오른손(r)이 왼쪽 */
+    case 'cross': return { l: { x: 8 + dx, y: -11 + dy }, r: { x: -9 - dx, y: -12 + dy } };
+    /* 두 손을 오른쪽 옆구리에 모아 줄을 옆으로 — 손이 작은 원을 크게 그린다 */
+    case 'side': { const sx = ro(Math.sin(theta) * 2); return { l: { x: 9 + sx, y: -13 + dy }, r: { x: 12 + sx, y: -14 + dy } }; }
+    case 'high': return { l: { x: -14 - dx, y: -20 + dy }, r: { x: 13 + dx, y: -20 + dy } };
+    /* 놓은 손잡이(r)는 번쩍 든 손 위에서 원을 그리며 돈다 — r 이 곧 손잡이 자리 */
+    case 'release': { const a = theta * 2; return { l: { x: -12 - dx, y: -14 + dy }, r: { x: 18 + ro(Math.cos(a) * 5), y: -49 + ro(Math.sin(a) * 4) } }; }
+    case 'spin': {
+      const v = spinView(spin);
+      if (v === 1) return { l: { x: 6, y: -14 + dy }, r: { x: 10, y: -15 + dy } };
+      if (v === 3) return { l: { x: -7, y: -14 + dy }, r: { x: -11, y: -15 + dy } };
+      return { l: { x: -12 - dx, y: -14 + dy }, r: { x: 11 + dx, y: -14 + dy } };
+    }
+    default: return { l: { x: -12, y: -14 }, r: { x: 11, y: -14 } };
+  }
+}
+function beatHands(theta, x, footY, lift, state, t, spin) {
+  const h = beatHandOff(state, theta, t, spin);
+  const fy = ro(footY - lift), X = ro(x);
+  return { l: { x: X + h.l.x, y: fy + h.l.y }, r: { x: X + h.r.x, y: fy + h.r.y } };
+}
+/** drawKid 에 넘길 pose 를 그대로 넣으면 손 위치 — kidHands 를 pose 하나로 부르는 편의 함수 */
+export function poseHands(x, footY, pose = {}) {
+  return kidHands(pose.theta ?? Math.PI, x, footY, pose.lift || 0, pose.crouch || 0, pose.state || 'stand', pose.t || 0, pose.spin || 0);
+}
+
+/** 팔 하나 — 소매(윗옷) 45% + 살. ol=false 면 외곽선을 따로 먼저 그린 경우 */
+function beatArm(c, P, sx, sy, hx, hy, shade = false, ol = true) {
+  if (ol) line(c, sx, sy, hx, hy, 4, OUT);
+  const mx = sx + (hx - sx) * 0.45, my = sy + (hy - sy) * 0.45;
+  line(c, sx, sy, mx, my, 2, shade ? P.shirtS : P.shirt);
+  line(c, mx, my, hx, hy, 2, shade ? P.skinS : P.skin);
+  rect(c, hx - 1, hy - 1, 3, 3, OUT);
+  rect(c, hx, hy, 2, 2, shade ? P.skinS : P.skin);
+}
+/** 신발 한 짝 (정면) — drawKid 와 같은 모양 */
+function beatShoe(c, P, sx, sy, s, t) {
+  rbox(c, sx, sy, 8, 4, OUT, 1);
+  rect(c, sx + 1, sy + 1, 6, 2, P.shoe);
+  rect(c, sx + (s < 0 ? 1 : 4), sy + 1, 2, 1, tone(P.shoe, 0.45));
+  rect(c, sx + 1, sy + 2, 6, 1, P.shoeS);
+  if (P.shoeFx === 'star') px(c, sx + 3, sy + 1, '#ffe066');
+  if (P.shoeFx === 'spark' && (Math.floor(t * 5) + s) % 3 === 0) px(c, sx + (s < 0 ? 0 : 7), sy - 1, '#ffffff');
+}
+
+function beatLegs(c, P, x, fy, mode, d, t, drop) {
+  const legC = P.pantsP === 'long' ? P.pants : P.skin;
+  const legS = P.pantsP === 'long' ? P.pantsS : P.skinS;
+  const stripe = P.pantsP === 'long' && P.pants2;
+  if (mode === 'high') {
+    /* 무릎을 양옆으로 벌려 바짝 접는다(개구리 뛰기) — 허벅지는 엉덩이에서 바깥 위로, 정강이는 무릎에서 안쪽 아래로 */
+    for (const s of [-1, 1]) {
+      const M = (k) => (s < 0 ? x - 1 - k : x + k);      // 오른쪽 기준 칸 k → 양쪽 대칭
+      const hx = M(3), kx = M(10), ax = M(6);
+      const hy0 = fy - 9, ky = fy - 11, ay = fy - 6;
+      line(c, hx, hy0, kx, ky, 5, OUT); line(c, kx, ky, ax, ay, 5, OUT);
+      line(c, hx, hy0, kx, ky, 3, legC); line(c, kx, ky, ax, ay, 3, legS);
+      if (stripe) line(c, hx, hy0 - 1, kx, ky - 1, 1, P.pants2);
+      rect(c, kx - 1, ky - 1, 2, 1, tone(legC, 0.35));                // 무릎 빛
+      const sx = s < 0 ? ax - 5 : ax - 2;
+      rbox(c, sx, ay, 8, 4, OUT, 1);
+      rect(c, sx + 1, ay + 1, 6, 1, P.shoe);
+      rect(c, sx + (s < 0 ? 1 : 4), ay + 1, 2, 1, tone(P.shoe, 0.45));
+      rect(c, sx + 1, ay + 2, 6, 1, '#f4ead8');                      // 밑창이 보인다
+      px(c, sx + 2, ay + 2, '#c9b89a'); px(c, sx + 5, ay + 2, '#c9b89a');
+    }
+    return;
+  }
+  if (mode === 'profile') {
+    /* 옆모습 — 다리 둘이 겹치고 신발 앞코가 보는 쪽(d)을 향한다. 먼 쪽 다리는 그늘색 */
+    const legs = d > 0 ? [[x - 3, true], [x, false]] : [[x, true], [x - 3, false]];
+    for (const [lx, far] of legs) {
+      rect(c, lx - 1, fy - 10, 5, 7, OUT);
+      rect(c, lx, fy - 9, 3, 5, far ? legS : legC);
+      if (stripe && !far) rect(c, lx + 1, fy - 9, 1, 5, P.pants2);
+    }
+    const shoes = d > 0 ? [[x - 4, true], [x - 1, false]] : [[x - 5, true], [x - 8, false]];
+    for (const [sx, far] of shoes) {
+      rbox(c, sx, fy - 4, 9, 4, OUT, 1);
+      rect(c, sx + 1, fy - 3, 7, 2, far ? P.shoeS : P.shoe);
+      rect(c, d > 0 ? sx + 5 : sx + 1, fy - 3, 3, 1, tone(far ? P.shoeS : P.shoe, 0.4));   // 앞코 빛
+      rect(c, sx + 1, fy - 2, 7, 1, far ? tone(P.shoeS, -0.2) : P.shoeS);
+    }
+    return;
+  }
+  const tuck = mode === 'tuck';
+  const up = tuck ? 3 : 0;
+  const legH = tuck ? 3 : 5 - drop;
+  for (const s of [-1, 1]) {
+    const lx = s < 0 ? x - 6 - (tuck ? 1 : 0) : x + 3 + (tuck ? 1 : 0);
+    const top = fy - 4 - legH - up;
+    if (mode === 'ready') {
+      /* 무릎 살짝 굽힘 — 다리를 어깨보다 넓게(A 자) — 아래 칸이 바깥으로 한 칸, 신발도 한 칸 바깥. 몸은 2칸 낮다 */
+      const ox = s < 0 ? -1 : 1;
+      rect(c, lx - 1, top, 5, 2, OUT);
+      rect(c, lx - 1 + ox, top + 1, 5, legH, OUT);
+      rect(c, lx, top, 3, 1, legC);
+      rect(c, lx + ox, top + 1, 3, legH - 1, legC);
+      rect(c, lx + (s < 0 ? 2 : 0), top, 1, 1, legS);
+      rect(c, lx + ox + (s < 0 ? 2 : 0), top + 1, 1, legH - 1, legS);
+      if (stripe) { px(c, lx + 1, top, P.pants2); rect(c, lx + 1 + ox, top + 1, 1, legH - 1, P.pants2); }
+    } else {
+      rect(c, lx - 1, top, 5, legH + 1, OUT);
+      rect(c, lx, top, 3, legH, legC);
+      rect(c, lx + (s < 0 ? 2 : 0), top, 1, legH, legS);
+      if (stripe) rect(c, lx + 1, top, 1, legH, P.pants2);
+    }
+    const sx = (s < 0 ? x - 9 - (tuck ? 1 : 0) : x + 1 + (tuck ? 1 : 0)) + (mode === 'ready' ? s : 0);
+    beatShoe(c, P, sx, fy - 4 - up, s, t);
+  }
+}
+
+function beatPants(c, P, x, hy, d) {
+  if (d) { // 옆모습은 폭이 좁다
+    obox(c, x - 5, hy, 10, P.pantsP === 'long' ? 3 : 4, P.pantsP === 'rainbow' ? '#ff4d4d' : P.pants, 1, false);
+    rect(c, x - 5, hy + (P.pantsP === 'long' ? 2 : 3), 10, 1, P.pantsS);
+    return;
+  }
+  if (P.pantsP === 'skirt' || P.pantsP === 'rainbow') {
+    const RB = ['#ff4d4d', '#ffa64d', '#ffe14d', '#4dd27a', '#4d9cff', '#a64dff'];
+    for (let i = 0; i < 6; i++) { const w = 14 + Math.floor(i * 0.8) * 2; rect(c, x - w / 2 - 1, hy + i, w + 2, 1, OUT); }
+    for (let i = 0; i < 5; i++) {
+      const w = 14 + Math.floor(i * 0.8) * 2;
+      if (P.pantsP === 'rainbow') { for (let k = 0; k < w; k++) px(c, x - w / 2 + k, hy + i, RB[Math.floor((k / w) * 6)]); }
+      else rect(c, x - w / 2, hy + i, w, 1, i === 4 ? P.pantsS : P.pants);
+    }
+  } else {
+    obox(c, x - 7, hy, 14, P.pantsP === 'long' ? 3 : 4, P.pants, 1, false);
+    rect(c, x - 7, hy + (P.pantsP === 'long' ? 2 : 3), 14, 1, P.pantsS);
+    rect(c, x - 1, hy + 2, 1, 2, OUT);
+  }
+}
+
+function beatBody(c, P, x, by, d, back) {
+  if (d) {
+    rbox(c, x - 6, by, 12, 11, OUT, 2);
+    rbox(c, x - 5, by + 1, 10, 9, P.shirt, 1);
+    rect(c, x - 3, by + 1, 6, 1, P.shirtL);
+    rect(c, d > 0 ? x - 5 : x + 4, by + 2, 1, 7, P.shirtS);           // 등 쪽 그늘
+    rect(c, x - 5, by + 9, 10, 1, P.shirtS);
+    return;
+  }
+  rbox(c, x - 8, by, 16, 11, OUT, 2);
+  rbox(c, x - 7, by + 1, 14, 9, P.shirt, 1);
+  rect(c, x - 5, by + 1, 9, 1, P.shirtL);
+  rect(c, x + 5, by + 2, 1, 7, P.shirtS);
+  rect(c, x - 7, by + 9, 14, 1, P.shirtS);
+  /* 뒤에서는 등번호 · 줄무늬 · 체육복 선만 보인다(별 · 하트는 앞판) */
+  if (!back || P.shirtP === 'stripe' || P.shirtP === 'sport' || P.shirtP === 'number') shirtPattern(c, P, x, by);
+}
+
+/** 정면 머리 — drawKid 와 똑같이 */
+function beatHeadFront(c, look, P, x, cy, st, mouth, t, lift) {
+  const cx = x - 0.5;
+  oval(c, cx, cy, 11, 10, OUT);
+  oval(c, cx, cy, 10, 9, P.skinS);
+  oval(c, cx, cy - 0.7, 9.6, 8.4, P.skin);
+  rect(c, x - 9, cy + 3, 2, 1, '#ff8fa3');
+  rect(c, x + 7, cy + 3, 2, 1, '#ff8fa3');
+  drawFace(c, look.eyes, x, cy, st, mouth, t, lift);
+  drawHairFront(c, look.hair, P, x, cy);
+  drawHat(c, look.hat, P, x, cy, t);
+}
+
+/** 옆모습 머리 — 눈 하나 · 뒤통수는 머리카락 · 귀 · 코끝 한 칸. d = 1 오른쪽을 봄, −1 왼쪽 */
+function beatHeadSide(c, look, P, x, cy, d, mouth, t, lift) {
+  const cx = x - 0.5;
+  const M = (k) => (d > 0 ? x + k : x - 1 - k);       // 오른쪽 기준 칸 k 를 보는 방향으로 뒤집는다
+  const sw = Math.floor(t * 5) % 2;
+  /* 뒤로 늘어진 머리 */
+  if (look.hair === 1) { const x0 = d > 0 ? x - 13 : x - 2; rbox(c, x0, cy - 8, 15, 17, OUT, 3); rbox(c, x0 + 1, cy - 7, 13, 15, P.hair, 3); rect(c, x0 + 1, cy + 6, 13, 1, P.hairS); }
+  else if (look.hair === 2) { const p0 = d > 0 ? x - 15 : x + 10; oval(c, p0 + 2.5, cy + 2 - sw, 4, 5, OUT); oval(c, p0 + 2.5, cy + 2 - sw, 3, 4, P.hair); rect(c, p0 + 1, cy - 1 - sw, 2, 1, P.hairL); }
+  else if (look.hair === 3) { const tx = d > 0 ? x - 16 : x + 9; rbox(c, tx, cy - 6 + sw, 7, 15, OUT, 2); rbox(c, tx + 1, cy - 5 + sw, 5, 13, P.hair, 2); rect(c, d > 0 ? tx + 1 : tx + 5, cy - 3 + sw, 1, 9, P.hairS); }
+  oval(c, cx, cy, 11, 10, OUT);
+  oval(c, cx, cy, 10, 9, P.skinS);
+  oval(c, cx, cy - 0.7, 9.6, 8.4, P.skin);
+  px(c, M(11), cy + 1, OUT); px(c, M(10), cy + 1, P.skin);   // 코끝
+  /* 뒤통수 절반은 머리카락 (머리 둘레를 따라) */
+  for (let yy = cy - 6; yy <= cy + 5; yy++) {
+    const k = (yy + 0.5 - cy) / 9;
+    if (Math.abs(k) > 1) continue;
+    const hw = 10 * Math.sqrt(1 - k * k);
+    if (d > 0) { const a = ro(cx - hw); rect(c, a, yy, x - 1 - a, 1, yy >= cy + 4 ? P.hairS : P.hair); }
+    else { const b = ro(cx + hw); rect(c, x, yy, b - x, 1, yy >= cy + 4 ? P.hairS : P.hair); }
+  }
+  /* 정수리 덮개 + 빛 */
+  oval(c, cx, cy - 1, 11.5, 10.5, OUT, cy - 4);
+  oval(c, cx, cy - 1, 10.5, 9.5, P.hair, cy - 5);
+  oval(c, cx - 2 * d, cy - 5, 5, 3, P.hairL, cy - 7, cy - 9);
+  if (look.hair === 5) for (const [k, h] of [[-9, 5], [-5, 7], [-1, 8], [3, 6]]) { const kx = d > 0 ? x + k : x - 1 - k; for (let i = 0; i < h; i++) { const w = Math.max(1, ro((h - i) * 0.6)); rect(c, kx - ro(w / 2) - 1, cy - 8 - i, w + 2, 1, OUT); } for (let i = 0; i < h - 1; i++) { const w = Math.max(1, ro((h - i) * 0.6) - 1); rect(c, kx - ro(w / 2), cy - 8 - i, w, 1, P.hair); } }
+  if (look.hair === 4) for (let i = 0; i < 5; i++) { const a = Math.PI + 0.2 + i * 0.62, bx = cx + Math.cos(a) * 10 * -d * -1, byy = cy - 3 + Math.sin(a) * 9; oval(c, bx, byy, 3.4, 3.4, OUT); oval(c, bx, byy, 2.4, 2.4, P.hair); }
+  /* 앞머리 — 얼굴 쪽으로 들쭉날쭉 */
+  const fr = [3, 2, 3, 2, 1, 2, 3, 2, 1, 1];
+  for (let i = 0; i < 10; i++) { const col = d > 0 ? x + i : x - 1 - i; rect(c, col, cy - 5, 1, fr[i] + 1, OUT); rect(c, col, cy - 5, 1, fr[i], P.hair); }
+  /* 귀 */
+  const ex = d > 0 ? x - 4 : x;
+  sprite(c, ex, cy - 2, d > 0 ? ['.oo.', 'osso', 'osho', 'osho', '.oo.'] : ['.oo.', 'osso', 'ohso', 'ohso', '.oo.'], { o: OUT, s: P.skin, h: P.skinS });
+  /* 눈 · 볼 · 입 */
+  const E = OUT, W = '#ffffff';
+  const blink = (t % 3.4) < 0.12;
+  const eyx = d > 0 ? x + 5 : x - 7;
+  if (blink || look.eyes === 1) rect(c, eyx, cy, 2, 1, E);
+  else if (look.eyes === 3) { rect(c, eyx - (d > 0 ? 0 : 1), cy - 3, 3, 4, E); px(c, eyx + (d > 0 ? 1 : 0), cy - 3, W); }
+  else { rect(c, eyx, cy - 2, 2, 3, E); px(c, eyx + (d > 0 ? 1 : 0), cy - 2, W); }
+  rect(c, d > 0 ? x + 6 : x - 8, cy + 3, 2, 1, '#ff8fa3');
+  const m = mouth || (lift > 10 ? 'o' : 'smile');
+  const mx = d > 0 ? x + 7 : x - 9, my = cy + 4, MC = '#7a2a1a';
+  if (m === 'o') rect(c, mx, my, 2, 2, MC);
+  else if (m === 'grin') { rect(c, mx - (d > 0 ? 1 : 0), my, 3, 1, W); rect(c, mx - (d > 0 ? 1 : 0), my + 1, 3, 1, '#d9485a'); }
+  else if (m === 'sad') { rect(c, mx, my, 2, 1, MC); px(c, d > 0 ? mx - 1 : mx + 2, my + 1, MC); }
+  else { px(c, d > 0 ? mx - 1 : mx + 2, my, MC); rect(c, mx, my + 1, 2, 1, MC); }
+  /* 모자 — 야구 모자는 챙이 보는 쪽으로, 헤드밴드는 띠, 나머지는 정면 그림 그대로 */
+  const hat = look.hat;
+  if (hat === 1) {
+    const h = P.hat, hS = tone(h, -0.3), hL = tone(h, 0.35);
+    oval(c, cx, cy - 4, 12, 9, OUT, cy - 4); oval(c, cx, cy - 4, 11, 8, h, cy - 5);
+    oval(c, cx - 3 * d, cy - 8, 4, 2, hL, cy - 8, cy - 10);
+    rect(c, x - 11, cy - 5, 22, 2, OUT); rect(c, x - 10, cy - 5, 20, 1, hS);
+    const bx = d > 0 ? x + 6 : x - 16;
+    rbox(c, bx, cy - 6, 10, 4, OUT, 1); rect(c, bx + 1, cy - 5, 8, 2, hS);
+  } else if (hat === 2) { rect(c, x - 11, cy - 7, 22, 4, OUT); rect(c, x - 10, cy - 6, 20, 2, P.hat); rect(c, x - 10, cy - 5, 20, 1, '#e8423a'); }
+  else if (hat) drawHat(c, hat, P, x, cy, t);
+}
+
+/** 뒷모습 머리 — 얼굴 없이 머리카락이 다 덮는다. 가마 · 목덜미 · 귀 끝 */
+function beatHeadBack(c, look, P, x, cy, t) {
+  const cx = x - 0.5;
+  /* 귀 끝이 머리 양옆으로 살짝 */
+  for (const s of [-1, 1]) { const ex = s < 0 ? x - 13 : x + 9; rect(c, ex, cy - 1, 4, 5, OUT); rect(c, ex + 1, cy, 2, 3, P.skin); }
+  oval(c, cx, cy, 11, 10, OUT);
+  oval(c, cx, cy, 10, 9, P.hairS);
+  oval(c, cx, cy - 0.8, 9.6, 8.6, P.hair);
+  oval(c, cx - 3, cy - 5, 5, 3, P.hairL, cy - 6, cy - 9);
+  /* 머리결 — 아래쪽 세로 그늘 줄 */
+  for (let k = -6; k <= 5; k += 3) rect(c, x + k, cy + 2, 1, 4, P.hairS);
+  px(c, x, cy - 6, P.hairS); px(c, x + 1, cy - 5, P.hairS); px(c, x - 1, cy - 5, P.hairL);   // 가마
+  if (look.hair === 0 || look.hair === 4 || look.hair === 5) { rect(c, x - 4, cy + 8, 7, 2, OUT); rect(c, x - 3, cy + 8, 5, 1, P.skinS); }   // 목덜미
+  if (look.hair === 1) { rbox(c, x - 12, cy - 2, 23, 11, OUT, 2); rbox(c, x - 11, cy - 1, 21, 9, P.hair, 2); for (let k = -8; k <= 7; k += 3) rect(c, x + k, cy + 2, 1, 6, P.hairS); rect(c, x - 11, cy + 7, 21, 1, P.hairS); }
+  if (look.hair === 3) { const sw = Math.floor(t * 5) % 2; rbox(c, x - 3, cy + 1, 6, 13 + sw, OUT, 2); rbox(c, x - 2, cy + 2, 4, 11 + sw, P.hair, 1); rect(c, x + 1, cy + 3, 1, 9, P.hairS); rect(c, x - 2, cy - 1, 4, 2, '#3a7be8'); }
+  if (look.hair === 5) for (const [k, h] of [[-9, 5], [-5, 7], [-1, 8], [3, 7], [7, 5]]) { for (let i = 0; i < h; i++) { const w = Math.max(1, ro((h - i) * 0.7)); rect(c, x + k - ro(w / 2) - 1, cy - 8 - i, w + 2, 1, OUT); } for (let i = 0; i < h - 1; i++) { const w = Math.max(1, ro((h - i) * 0.7) - 1); rect(c, x + k - ro(w / 2), cy - 8 - i, w, 1, P.hair); } }
+  if (look.hair === 4) for (let i = 0; i < 9; i++) { const a = Math.PI * 0.9 + (i * Math.PI * 1.2) / 8, bx = cx + Math.cos(a) * 9, byy = cy - 1 + Math.sin(a) * 8; oval(c, bx, byy, 3.2, 3.2, OUT); oval(c, bx, byy, 2.2, 2.2, P.hair); px(c, ro(bx) - 1, ro(byy) - 1, P.hairL); }
+  /* 모자 뒷모습 — 야구 모자는 둥근 머리 + 뒤 조임 구멍, 나머지는 정면 그림 */
+  const hat = look.hat;
+  if (hat === 1) {
+    const h = P.hat, hS = tone(h, -0.3), hL = tone(h, 0.35);
+    oval(c, cx, cy - 4, 12, 9, OUT, cy - 3); oval(c, cx, cy - 4, 11, 8, h, cy - 4);
+    oval(c, cx - 3, cy - 8, 4, 2, hL, cy - 8, cy - 10);
+    rbox(c, x - 3, cy - 5, 6, 3, OUT, 1); rect(c, x - 2, cy - 4, 4, 1, P.hair);   // 뒤 조임 구멍
+    rect(c, x - 10, cy - 3, 20, 1, hS);
+  } else if (hat === 2) { rect(c, x - 11, cy - 7, 22, 4, OUT); rect(c, x - 10, cy - 6, 20, 2, P.hat); rect(c, x - 10, cy - 5, 20, 1, '#e8423a'); rect(c, x - 2, cy - 7, 3, 5, OUT); rect(c, x - 1, cy - 6, 1, 3, P.hat); }
+  else if (hat) drawHat(c, hat, P, x, cy, t);
+}
+
+/** 번쩍 든 손바닥(손가락 셋 + 엄지) — 줄 손잡이를 막 놓은 손 */
+const PALM = ['.o.o.o.', 'osososo', 'osososo', 'ossssso', 'oosssso', '.osssso', '..oooo.'];
+
+function drawKidBeat(c, xIn, footY, lookIn, pose) {
+  const look = lookIn || DEFAULT_LOOK;
+  const P = kidPal(look);
+  const st = pose.state;
+  const t = pose.t || 0;
+  const x = ro(xIn);
+  const lift = pose.lift || 0;
+  const fy = ro(footY - lift);
+  const theta = pose.theta ?? Math.PI;
+  const v = st === 'spin' ? spinView(pose.spin || 0) : 0;
+  const d = v === 1 ? 1 : v === 3 ? -1 : 0;            // 옆모습 방향 (0 = 정면 · 뒤)
+  const back = v === 2;
+  const drop = st === 'ready' ? 2 : 0;
+  const cy = fy - 31 + drop, by = fy - 22 + drop, hy = fy - 13 + drop;
+  const H = beatHandOff(st, theta, t, pose.spin || 0);
+  const legMode = st === 'high' ? 'high' : st === 'ready' ? 'ready' : d ? 'profile' : (pose.tuck || 0) > 0.3 ? 'tuck' : 'stand';
+  const mouth = pose.mouth || (st === 'release' ? 'grin' : st === 'high' && lift > 4 ? 'o' : undefined);
+
+  /* 로켓 운동화 불꽃 */
+  if (P.shoeFx === 'rocket' && lift > 2) {
+    const f = Math.floor(t * 20) % 2, up = legMode === 'high' ? 4 : legMode === 'tuck' ? 2 : 0;
+    for (const sx of [-6, 4]) { rect(c, x + sx, fy - up, 3, 3 + f, '#ff9a1a'); rect(c, x + sx + 1, fy - up, 1, 2 + f, '#fff3a0'); }
+  }
+  if (!d && !back) drawHairBack(c, look.hair, P, x, cy, t, lift);
+  if (back && look.hair === 2) drawHairBack(c, 2, P, x, cy, t, lift);   // 양갈래는 뒤에서도 양옆에
+
+  beatLegs(c, P, x, fy, legMode, d, t, drop);
+  beatPants(c, P, x, hy, d);
+
+  const lh = { x: x + H.l.x, y: fy + H.l.y }, rh = { x: x + H.r.x, y: fy + H.r.y };
+  if (d) {
+    /* 옆모습: 먼 팔은 몸 뒤(그늘색), 가까운 팔은 몸 앞 */
+    beatArm(c, P, x + d, by + 2, rh.x, rh.y, true);
+    beatBody(c, P, x, by, d, false);
+    beatArm(c, P, x - d, by + 3, lh.x, lh.y, false);
+  } else {
+    beatBody(c, P, x, by, 0, back);
+    const ls = { x: x - 8, y: by + 2 }, rs = { x: x + 7, y: by + 2 };
+    if (st === 'cross') {
+      /* 팔 X — 하나씩 따로 그려 위에 올라간 팔의 외곽선이 살아 있게 */
+      beatArm(c, P, rs.x, rs.y, rh.x, rh.y);
+      beatArm(c, P, ls.x, ls.y, lh.x, lh.y);
+    } else if (st === 'release') {
+      beatArm(c, P, ls.x, ls.y, lh.x, lh.y);
+    } else {
+      line(c, ls.x, ls.y, lh.x, lh.y, 4, OUT);
+      line(c, rs.x, rs.y, rh.x, rh.y, 4, OUT);
+      beatArm(c, P, ls.x, ls.y, lh.x, lh.y, false, false);
+      beatArm(c, P, rs.x, rs.y, rh.x, rh.y, false, false);
+    }
+  }
+
+  if (d) beatHeadSide(c, look, P, x, cy, d, mouth, t, lift);
+  else if (back) beatHeadBack(c, look, P, x, cy, t);
+  else beatHeadFront(c, look, P, x, cy, st, mouth, t, lift);
+
+  if (st === 'release') {
+    /* 오른팔을 머리 옆으로 쭉 — 머리 위에 겹쳐 그려야 팔이 보인다 */
+    const sx = x + 7, sy = by + 2, hx = x + 15, hyy = fy - 38 + drop;
+    line(c, sx, sy, hx, hyy, 4, OUT);
+    const mx = sx + (hx - sx) * 0.4, my = sy + (hyy - sy) * 0.4;
+    line(c, sx, sy, mx, my, 2, P.shirt);
+    line(c, mx, my, hx, hyy, 2, P.skin);
+    sprite(c, hx - 3, hyy - 6, PALM, { o: OUT, s: P.skin });
+  }
+  return { l: lh, r: rh };
 }
 
 /* ---------- 줄 ---------- */
