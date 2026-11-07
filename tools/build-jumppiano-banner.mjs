@@ -99,7 +99,7 @@ for (let by = 0; by < BH; by += Z) for (let bx = 0; bx < BW; bx += Z) {
  * 2. 우리 그림(투명 도트 264x112 + 로고) — 브라우저에서 찍는다
  * ===================================================================== */
 const bundle = await build({
-  stdin: { contents: "import * as B from './tools/_banner-art.mjs'; window.B = B;", resolveDir: root, loader: 'js' },
+  stdin: { contents: "import * as B from './tools/_banner-art.mjs'; import { bannerMask } from './src/games/jumprope/art.js'; window.B = B; window.BM = bannerMask;", resolveDir: root, loader: 'js' },
   bundle: true, write: false, format: 'iife',
 });
 /* 제목 글꼴 — 노토 산스 KR ExtraBold(800): 드래곤 · 캐치볼 제목처럼 획 굵기가 고른 굵은 고딕. 테두리는 얇게(진한 남색 1칸 + 바깥 무지개 1칸).
@@ -192,7 +192,16 @@ const out = await page.evaluate(async ({ WT, THIN, KIDS }) => {
     const n = 5, kw = 8, x0 = Math.round(X - (n * kw) / 2);
     keys(x0, Y + 40, n, kw, 8, new Set([1, 3]));
   }
-  for (const [X, Y, kind] of KIDS) B.bigKid(c, X, Y, { kind, noShadow: true, uDepth: 50 });
+  /* 왼쪽: 최종보스 가면(콤보 300 선물)을 쓴 아이 — 보라 왕실 옷 · 금빛 줄. 오른쪽: 줄 없이 두 손 번쩍 · 분홍 머리 · 헤드폰 · 민트 옷 */
+  const [[LX, LY], [RX, RY]] = KIDS;
+  window.BM(c, 7, LX, LY, 'behind');
+  B.bigKid(c, LX, LY, { kind: 'boy', noCap: true, emblem: 'crown', noShadow: true, uDepth: 50, pal: {
+    sh: '#6a2fc8', shS: '#3e1488', shL: '#a878ff', bt: '#241838', btS: '#120a1e', btL: '#4a3a66',
+    shoe: '#ffc23a', shoeS: '#a87010', rope: '#ffd23f', ropeL: '#fff3a0', ropeD: '#c88a10', hand: '#c050ff', handS: '#7a22c9' } });
+  window.BM(c, 7, LX, LY, 'front');
+  B.bigKid(c, RX, RY, { kind: 'girl', noRope: true, headphones: true, emblem: 'note', noShadow: true, pal: {
+    hr: '#ff7ab8', hrL: '#ffc0de', hrS: '#c8408a', iris: '#2fa8c8', sh: '#2fd2b0', shS: '#13917a', shL: '#a8ffe8',
+    bt: '#ffd23f', btS: '#d09a10', btL: '#fff3a0', shoe: '#7a5cff', shoeS: '#4a2ab8' } });
 
   drawTitle(c, titleX, titleY, t1, t2);
   B.title(c, sub, Math.round((W - sub.w) / 2), subY, subO);

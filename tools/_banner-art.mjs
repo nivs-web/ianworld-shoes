@@ -380,15 +380,17 @@ const PIG = [[15, -3, 5, 5.5], [18, -5, 4, 4.5], [20, -7, 2.6, 3]];
 export function bigKid(c, X, Y, o = {}) {
   const uDepth = o.uDepth ?? 54;
   const girl = o.kind === 'girl';
-  const P = girl
+  const P0 = girl
     ? { sk: '#ffe0c6', skS: '#f2b28c', skL: '#fff2e4', hr: '#8a4a22', hrL: '#c8823e', hrS: '#5a2a10', iris: '#8a4a22', sh: '#ff86c4', shS: '#e0509a', shL: '#ffc4e2', bt: '#9b5de5', btS: '#6a34b8', btL: '#c39cff', shoe: '#ff4d6a', shoeS: '#b81e3a', rope: '#ff4fd8', ropeL: '#ffb8f0', ropeD: '#a8188a', hand: '#ffffff', handS: '#ffc0e8' }
     : { sk: '#f8cc9c', skS: '#d99a6a', skL: '#ffe6c8', hr: '#2a1a12', hrL: '#5a3a26', hrS: '#120a06', iris: '#3a5ad8', sh: '#e8423a', shS: '#a82018', shL: '#ff8a7a', bt: '#2f5fb3', btS: '#1a3a7a', btL: '#6a96e8', shoe: '#3a7be8', shoeS: '#1d3f8a', rope: '#3fd0ff', ropeL: '#c8f4ff', ropeD: '#1a78b8', hand: '#ffd23f', handS: '#c88a10', cap: '#e8423a', capS: '#a82018', capL: '#ff8a7a' };
+  /* o.pal 로 색 바꾸기 · o.noRope 줄 없이(두 손 번쩍) · o.noCap 모자 대신 머리 · o.headphones 헤드폰 · o.emblem 'note'|'crown' 가슴 무늬 (점프 피아노 배너) */
+  const P = { ...P0, ...(o.pal || {}) };
   const SO = OUT;
   /* 땅 그림자 — 높이 떴으니 멀리 아래에 작게 */
   if (!o.noShadow) for (let dx = -12; dx <= 12; dx++) for (let dy = 0; dy < 3; dy++) if ((dx + dy) % 2 === 0 && Math.abs(dx) < 12 - dy * 3) px(c, X + dx, Y + 49 + dy, '#05030f');
   /* 머리 위로 돌아온 줄의 잔상 — 굵기가 다른 호 세 겹(바둑판) */
   const ecx = X - 0.5, ecy = Y + 15;
-  for (const [rx, ry, a0, a1, col, step] of [[31, 41, 3.55, 5.87, P.ropeL, 1], [28, 38, 3.75, 5.67, P.rope, 2], [25, 35, 3.95, 5.47, P.ropeD, 2]]) {
+  if (!o.noRope) for (const [rx, ry, a0, a1, col, step] of [[31, 41, 3.55, 5.87, P.ropeL, 1], [28, 38, 3.75, 5.67, P.rope, 2], [25, 35, 3.95, 5.47, P.ropeD, 2]]) {
     for (let a = a0; a < a1; a += 0.012) {
       const x = ro(ecx + Math.cos(a) * rx), y = ro(ecy + Math.sin(a) * ry);
       if (step === 1 || (x + y) % 2 === 0) px(c, x, y, col);
@@ -442,13 +444,15 @@ export function bigKid(c, X, Y, o = {}) {
   line(c, X - 6, Y + 18, X - 4, Y + 20, 1, P.shS); line(c, X + 5, Y + 15, X + 3, Y + 18, 1, P.shS);   // 옷 주름
   if (girl) {
     rect(c, X - 4, Y + 11, 8, 2, '#ffffff'); px(c, X - 1, Y + 13, '#ffffff'); px(c, X, Y + 13, '#ffffff');   // 흰 칼라
-    sprite(c, X - 3, Y + 15, ['rr.rr', 'rwrrr', 'rrrrr', '.rrr.', '..r..'], { r: '#ff3d6e', w: '#ffffff' });
+    if (o.emblem === 'note') sprite(c, X - 2, Y + 14, ['..ww', '..w.', '..w.', 'www.', 'ww..'], { w: '#ffffff' });
+    else sprite(c, X - 3, Y + 15, ['rr.rr', 'rwrrr', 'rrrrr', '.rrr.', '..r..'], { r: '#ff3d6e', w: '#ffffff' });
   } else {
     rect(c, X - 3, Y + 11, 6, 1, '#ffffff'); px(c, X - 2, Y + 12, '#ffffff'); px(c, X + 1, Y + 12, '#ffffff'); px(c, X - 1, Y + 13, '#ffffff'); px(c, X, Y + 13, '#ffffff');
-    sprite(c, X - 2, Y + 15, ['oooo', 'wwww', '..ww', '.ww.', '.ww.', '.ww.'].slice(1), { w: '#ffffff' });
+    if (o.emblem === 'crown') sprite(c, X - 3, Y + 15, ['y.y.y', 'yyyyy', 'yryby', 'yyyyy'], { y: '#ffd23f', r: '#ff3d6e', b: '#3fc4ff' });
+    else sprite(c, X - 2, Y + 15, ['oooo', 'wwww', '..ww', '.ww.', '.ww.', '.ww.'].slice(1), { w: '#ffffff' });
   }
   /* ---- 팔 · 손잡이 (팔을 벌려 줄을 돌린다) ---- */
-  const hands = [[X - 20, Y + 17], [X + 19, Y + 17]];
+  const hands = o.noRope ? [[X - 18, Y + 2], [X + 17, Y + 2]] : [[X - 20, Y + 17], [X + 19, Y + 17]];
   [[-1, hands[0]], [1, hands[1]]].forEach(([s, [hx, hy]]) => {
     const sx = X + s * 8 - (s > 0 ? 1 : 0), sy = Y + 13;
     line(c, sx, sy, hx, hy, 6, SO);
@@ -459,8 +463,8 @@ export function bigKid(c, X, Y, o = {}) {
     line(c, sx, sy, mx, my, 4, P.sh); line(c, sx, sy - 1, mx, my - 1, 1, P.shL);
     line(c, mx, my, hx, hy, 4, P.sk); line(c, mx, my - 1, hx, hy - 1, 1, P.skL);
     /* 손잡이: 세로(살짝 바깥으로 기움) 3x11 */
-    for (let j = -6; j <= 5; j++) { const xx = hx + ro(j * -0.15 * s) - 1; rect(c, xx - 1, hy + j, 5, 1, SO); }
-    for (let j = -5; j <= 4; j++) { const xx = hx + ro(j * -0.15 * s) - 1; rect(c, xx, hy + j, 3, 1, P.hand); px(c, xx, hy + j, '#ffffff'); px(c, xx + 2, hy + j, P.handS); }
+    if (!o.noRope) for (let j = -6; j <= 5; j++) { const xx = hx + ro(j * -0.15 * s) - 1; rect(c, xx - 1, hy + j, 5, 1, SO); }
+    if (!o.noRope) for (let j = -5; j <= 4; j++) { const xx = hx + ro(j * -0.15 * s) - 1; rect(c, xx, hy + j, 3, 1, P.hand); px(c, xx, hy + j, '#ffffff'); px(c, xx + 2, hy + j, P.handS); }
     /* 주먹 */
     rbox(c, hx - 3, hy - 3, 7, 6, SO, 1); rbox(c, hx - 2, hy - 2, 5, 4, P.sk, 1); rect(c, hx - 2, hy - 2, 3, 1, P.skL);
     px(c, hx + (s < 0 ? 1 : -1), hy, P.skS); px(c, hx + (s < 0 ? 1 : -1), hy + 1, P.skS);
@@ -486,12 +490,13 @@ export function bigKid(c, X, Y, o = {}) {
     for (let i = 0; i < 24; i++) { const col = X - 12 + i; rect(c, col, Y - 4, 1, fr[i] + 1, SO); rect(c, col, Y - 4, 1, fr[i], P.hr); if (fr[i] >= 4) px(c, col, Y - 3, P.hrL); }
     for (const s of [-1, 1]) { const sx = s < 0 ? X - 15 : X + 13; rect(c, sx, Y - 4, 3, 11, SO); rect(c, sx + (s < 0 ? 1 : 0), Y - 4, 2, 10, P.hr); px(c, sx + (s < 0 ? 1 : 0), Y - 3, P.hrL); }
     /* 리본 둘 */
-    for (const s of [-1, 1]) sprite(c, X + s * 13 - 3, Y - 13, ['oo...oo', 'olpopPo', 'oppkppo', 'oPpopPo', 'oo...oo'], { o: SO, p: '#ff4f8b', P: '#c8205a', l: '#ffd0e0', k: '#a8104a' });
+    if (!o.headphones) for (const s of [-1, 1]) sprite(c, X + s * 13 - 3, Y - 13, ['oo...oo', 'olpopPo', 'oppkppo', 'oPpopPo', 'oo...oo'], { o: SO, p: '#ff4f8b', P: '#c8205a', l: '#ffd0e0', k: '#a8104a' });
   } else {
     /* 옆머리 · 구레나룻 */
     for (const s of [-1, 1]) { const sx = s < 0 ? X - 15 : X + 13; rect(c, sx, Y - 5, 3, 8, SO); rect(c, sx + (s < 0 ? 1 : 0), Y - 5, 2, 7, P.hr); }
     const fr = [2, 3, 2, 4, 3, 2, 3, 4, 2, 3, 2, 3, 4, 2, 3, 2, 3, 4, 3, 2, 3, 2];
     for (let i = 0; i < 22; i++) { const col = X - 11 + i; rect(c, col, Y - 5, 1, fr[i] + 1, SO); rect(c, col, Y - 5, 1, fr[i], P.hr); }
+    if (o.noCap) { oval(c, X - 0.5, Y - 2.5, 15.5, 13, SO, Y - 4); oval(c, X - 0.5, Y - 2.5, 14.5, 12, P.hr, Y - 4); oval(c, X - 4, Y - 9, 6, 2.5, P.hrL, Y - 8, Y - 12); } else {
     /* 야구 모자 — 둥근 정수리 + 앞 챙(가운데가 살짝 내려온다) + 흰 별 */
     oval(c, X - 0.5, Y - 5, 16, 12, SO, Y - 4);
     oval(c, X - 0.5, Y - 5, 15, 11, P.cap, Y - 5);
@@ -505,7 +510,15 @@ export function bigKid(c, X, Y, o = {}) {
       rect(c, X + i, Y - 5 + dy, 1, 2, i < -8 ? P.capL : P.capS);
     }
     rect(c, X - 12, Y - 2, 24, 1, P.skS);                                 // 챙 그늘
+    }
   }
+  if (o.headphones) {                                                  // 헤드폰 — 머리 위 띠 + 양쪽 귀 덮개
+    const hc = o.headphones === true ? ['#ff4f8b', '#ffd0e0', '#a8104a'] : o.headphones;
+    for (let a = Math.PI * 1.04; a <= Math.PI * 1.96; a += 0.01) { const x = ro(X - 0.5 + Math.cos(a) * 16), y = ro(Y - 1 + Math.sin(a) * 15); rect(c, x - 1, y - 1, 3, 3, SO); }
+    for (let a = Math.PI * 1.04; a <= Math.PI * 1.96; a += 0.01) { const x = ro(X - 0.5 + Math.cos(a) * 16), y = ro(Y - 1 + Math.sin(a) * 15); px(c, x, y, hc[0]); }
+    for (const s of [-1, 1]) { const cx = s < 0 ? X - 19 : X + 14; rbox(c, cx - 1, Y - 6, 7, 11, SO, 2); rbox(c, cx, Y - 5, 5, 9, hc[0], 1); rect(c, cx + 1, Y - 4, 1, 6, hc[1]); rect(c, cx + 3, Y - 4, 1, 7, hc[2]); }
+  }
+  if (!o.noRope) {
   /* ---- 줄: 발밑을 지나는 굵은 U (지금 줄) ---- */
   const [L, Rr] = hands;
   const p0 = [L[0], L[1] + 6], p3 = [Rr[0] + 1, Rr[1] + 6];
@@ -522,6 +535,7 @@ export function bigKid(c, X, Y, o = {}) {
     const a = Math.PI * (s < 0 ? 0.62 + k * 0.06 : 0.38 - k * 0.06);
     const rr = 33 + k * 2;
     for (let t = 0; t < 6 - k; t++) px(c, ro(ecx + Math.cos(a + s * t * 0.02) * rr), ro(ecy + Math.sin(a + s * t * 0.02) * (rr + 9)), '#ffffff');
+  }
   }
   /* 뛰어오른 표시 — 발밑 세로 줄 */
   if (!o.noShadow) for (const dx of [-9, -3, 3, 9]) rect(c, X + dx, Y + 45 + (Math.abs(dx) > 5 ? 1 : 0), 1, 2, '#cfe0ff');

@@ -1822,3 +1822,9 @@ export function stageThumb(theme, w = 120, h = 66, scale = 1) {
   paintMoving(c, theme, w, h, gy, 3);
   return finish(cv, scale);
 }
+
+/** 배너 굽기 전용(tools/build-jumppiano-banner.mjs) — 가면을 정면으로 그린다. layer 'behind' = 머리 뒤(오라 · 끈), 그 밖 = 얼굴 위 · 왕관. 게임에서는 쓰지 않는다 */
+export function bannerMask(c, m, x, cy, layer, t = 0.4) {
+  if (layer === 'behind') maskBehind(c, m, x, cy, t, 'f', 1);
+  else { maskFace(c, m, x, cy, t, 'stand', 'f', 1); maskTop(c, m, x, cy, t, 'f', 1); }
+}
