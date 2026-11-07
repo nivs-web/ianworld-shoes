@@ -346,8 +346,10 @@ function finalize(ctx, meta, sections, extraCues = []) {
  * (buildRopeKeys 의 «같은 종류가 연달아 → 가운데에 반대»). «로프+점프»(두 버튼)는 로비에서 자유롭게 고른다. */
 export const JUMP_GAP = { easy: { steps: 4, sec: 0.42 }, normal: { steps: 2, sec: 0.27 }, hard: { steps: 2, sec: 0.25 } };
 
-export function jumpOnly(chart) {
-  const gap = JUMP_GAP[chart.diff] || JUMP_GAP.normal;
+export function jumpOnly(chart, density = 1) {
+  /* density — 운영자 난이도(줄 촘촘함) 배율: 1보다 크면 최소 간격(초)이 줄어 줄이 촘촘해진다 */
+  const g0 = JUMP_GAP[chart.diff] || JUMP_GAP.normal;
+  const gap = { steps: g0.steps, sec: g0.sec / Math.max(0.3, Math.min(3, +density || 1)) };
   const hard = chart.diff === 'hard', keepHold = hard;
   const notes = [];
   let endS = -1e9, endT = -1e9;
@@ -555,14 +557,21 @@ function customChart(stage, diff, seed, opts) {
 export function buildChart(stage, diff = 'normal', opts = {}) {
   opts = opts || {};
   /* opts.ctrl: 'jump'(점프만 · 기본) | 'both'(로프+점프). 안 주면 두 버튼 채보 그대로(시험 도구들) */
-  if (opts.ctrl === 'jump') return jumpOnly(buildChart(stage, diff, { ...opts, ctrl: 'both' }));
+  if (opts.ctrl === 'jump') return jumpOnly(buildChart(stage, diff, { ...opts, ctrl: 'both' }), opts.density || 1);
   diff = DIFFS[diff] ? diff : 'normal';
+  /* opts.bpmScale — 운영자 난이도(곡 빠르기) 배율. 템포 지도의 BPM 을 곱한다(곡 · 채보 · 판정이 같은 지도를 쓴다) */
+  const bs = Math.max(0.5, Math.min(2.5, +opts.bpmScale || 1));
+  const scaleTempo = (t) => t.map((x) => ({ ...x, bpm: Math.max(40, Math.round(x.bpm * bs)) }));
   const seed = Math.abs(Math.floor(+opts.seed || 0));
-  if (stage === 'endless' || stage?.id === 'endless') return endlessChart(diff, seed, opts.bars ?? 400, opts);
+  if (stage === 'endless' || stage?.id === 'endless') {
+    const bars = opts.bars ?? 400;
+    const o2 = bs !== 1 ? { ...opts, tempo: scaleTempo(opts.tempo?.length ? opts.tempo : ENDLESS.tempoUntil(bars)) } : opts;
+    return endlessChart(diff, seed, bars, o2);
+  }
   if (stage && typeof stage === 'object' && Array.isArray(stage.segs)) return customChart(stage, diff, seed, opts);
   const st = typeof stage === 'number' ? STAGES[stage - 1]
     : typeof stage === 'string' ? STAGES.find((s) => s.id === stage || String(s.no) === stage)
       : STAGES.find((s) => s.no === stage?.no);
   if (!st) throw new Error(`모르는 대회: ${stage}`);
-  return stageChart(st, diff, seed, opts);
+  return stageChart(bs !== 1 ? { ...st, tempo: scaleTempo(st.tempo) } : st, diff, seed, opts);
 }

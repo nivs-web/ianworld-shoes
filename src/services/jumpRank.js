@@ -41,6 +41,7 @@ export function jumpDoc(uid, p, derived, at = Date.now()) {
     ropes: ci(derived?.ropes, 0, 100),
     stars: ci(derived?.stars, 0, 90),
     jumps: ci(jr.jumps, 0, 1e8),
+    combo: ci(jr.comboRec, 0, 99999),
     at: Math.round(at),
   };
 }
@@ -65,9 +66,9 @@ export async function syncJumpPlayer(derive) {
   return true;
 }
 
-export const BOARD_FIELD = { easy: 'bestEasy', normal: 'bestNormal', hard: 'bestHard', level: 'xp', ropes: 'ropes' };
+export const BOARD_FIELD = { easy: 'bestEasy', normal: 'bestNormal', hard: 'bestHard', level: 'xp', ropes: 'ropes', combo: 'combo' };
 
-/** 순위표 한 장 — @param {'easy'|'normal'|'hard'|'level'|'ropes'} board */
+/** 순위표 한 장 — @param {'easy'|'normal'|'hard'|'level'|'ropes'|'combo'} board */
 export async function fetchJumpBoard(board) {
   if (!configured()) return { ok: false, reason: 'offline' };
   if (!currentUser()) return { ok: false, reason: 'auth' };

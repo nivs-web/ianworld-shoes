@@ -1,0 +1,259 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ROPE BEAT 코믹 연출 미리보기</title>
+<style>
+  html, body { margin: 0; background: #0d0a14; color: #f4ead8; font: 13px/1.4 sans-serif; }
+  canvas { display: block; image-rendering: pixelated; }
+  #ui { position: fixed; right: 6px; top: 6px; width: 330px; max-height: 96vh; overflow: auto; background: #000c; padding: 6px; }
+  #ui button { margin: 2px; padding: 3px 6px; background: #2a2040; color: #fff; border: 1px solid #5a4a80; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  #ui button:hover { background: #4a3a70; }
+  #ui .g { color: #ffd23f; margin-top: 6px; }
+</style>
+</head>
+<body>
+<!--
+  줄넘기 챔피언 · ROPE BEAT — comic.js 미리보기 (코믹 연출 도트 아티스트, 2026-11-07)
+  ?still  = 캡처용 한 장 (연출마다 폰 화면 한 칸 + 얼굴 확대 표) — window.__sections 에 구역 좌표
+  (없으면) = 살아 움직이는 폰 화면 · 오른쪽 단추로 연출을 하나씩 부른다 · ?arena=0~4 · ?land · ?jump(점프만)
+-->
+<div id="ui"></div>
+<canvas id="cv"></canvas>
+<script type="module">
+import { drawKid, poseHands, ropeGeom, drawRope, drawHandles, canvas, rect, OUT } from '/src/games/jumprope/art.js';
+import { ROPE_BY_ID, DEFAULT_LOOK } from '/src/games/jumprope/data.js';
+import { drawArena, drawLane, drawNote, drawTarget, drawFeverAura, ptext } from '/src/games/jumprope/beat/beatArt.js';
+import { createComic } from '/src/games/jumprope/beat/comic.js';
+
+const Q = new URLSearchParams(location.search);
+const still = Q.has('still');
+const TAU = Math.PI * 2;
+const LOOKS = [
+  { ...DEFAULT_LOOK },
+  { skin: 1, hair: 3, hairColor: 1, eyes: 0, shirt: 6, pants: 2, shoes: 1, hat: 0, emoji: 0 },
+  { skin: 2, hair: 2, hairColor: 2, eyes: 3, shirt: 8, pants: 0, shoes: 2, hat: 3, emoji: 0 },
+  { skin: 3, hair: 5, hairColor: 0, eyes: 1, shirt: 7, pants: 4, shoes: 3, hat: 2, emoji: 0 },
+  { skin: 0, hair: 1, hairColor: 3, eyes: 0, shirt: 4, pants: 5, shoes: 5, hat: 4, emoji: 0 },
+];
+/* 본체(rhythm.js resize)와 같은 배치 */
+function layoutFor(W, H, jumpOnly) {
+  const btnArea = Math.max(40, Math.min(64, Math.round(H * 0.17)));
+  const floorY = H - btnArea - 26, K = Math.max(1, Math.min(3, Math.floor((floorY - 22) / 52)));
+  const laneW = Math.max(20, Math.min(26, Math.floor(W * 0.17))), cx = Math.floor(W / 2), edge = 12;
+  let xL, xR, kx;
+  if (jumpOnly) { xR = Math.min(W - laneW - edge, cx + Math.max(34 * K, 40)); xL = xR; kx = Math.min(cx, xR - 4 - 20 * K); }
+  else { const gap = Math.min(Math.floor(W / 2) - laneW - edge, Math.max(34 * K, 40)); xL = cx - gap - laneW; xR = cx + gap; kx = cx; }
+  return { W, H, hudH: 36, floorY, K, laneW, xL, xR, kx, jumpOnly, btnTop: H - btnArea };
+}
+const PHONE = layoutFor(195, 422, false), PHONE1 = layoutFor(195, 422, true), LAND = layoutFor(350, 225, false);
+
+function makeSim(o = {}) {
+  const lay = o.land ? LAND : o.jump ? PHONE1 : PHONE;
+  const arena = o.arena ?? 0;
+  return { comic: createComic({ seed: o.seed ?? 7, arena }), lay, arena, t: o.t0 ?? 0, combo: o.combo ?? 12, hp: o.hp ?? 80, fever: !!o.fever, look: o.look || LOOKS[0], jumps: o.jumps ?? true, phase: 'play' };
+}
+function ctxOf(s) {
+  const t = s.t, beat = t * 2;
+  const theta = Math.PI + beat * TAU;                 // 박마다 줄이 발밑을 지난다
+  const nb = Math.round(beat), since = t - (nb / 2 - 0.15);
+  const lift = s.jumps && since >= 0 && since < 0.3 ? Math.round(Math.sin((since / 0.3) * Math.PI) * 10) : 0;
+  return { t, songT: t, beat, bpm: 120, phase: s.phase, ...s.lay, combo: s.combo, hp: s.hp, fever: s.fever, lift, theta };
+}
+function step(s, sec) { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { s.t += 1 / 60; s.comic.update(1 / 60, ctxOf(s)); } }
+
+const kidCv = canvas(80, 76), kk = kidCv.getContext('2d');
+function drawScene(c, s, ox = 0, oy = 0) {
+  const L = s.lay, x = ctxOf(s);
+  const sc = canvas(L.W, L.H), b = sc.getContext('2d');
+  b.imageSmoothingEnabled = false;
+  drawArena(b, s.arena, L.W, L.H, L.floorY, s.t, { fever: s.fever, energy: 2, beat: x.beat });
+  s.comic.drawBack(b);
+  if (s.fever) drawFeverAura(b, L.kx, L.floorY, L.K, s.t);
+  /* 선수 */
+  kk.clearRect(0, 0, 80, 76);
+  const pose = { state: x.lift > 0 ? 'stand' : 'stand', lift: x.lift, tuck: x.lift > 3 ? 1 : 0, theta: x.theta, t: s.t };
+  for (let dx = -10; dx <= 10; dx += 2) rect(kk, 40 + dx, 72, 1, 1, 'rgba(0,0,0,0.5)');
+  const hands = drawKid(kk, 40, 72, s.look, pose);
+  s.comic.drawFace(kk, 40, 72, pose);
+  const g1 = ropeGeom(hands, 40, 72, x.theta);
+  drawRope(kk, ROPE_BY_ID.red, g1, s.t);
+  drawHandles(kk, ROPE_BY_ID.red, hands);
+  const bob = s.comic.bob();
+  if (!L.jumpOnly) drawLane(b, 'L', L.xL, L.hudH, L.floorY + 6, L.laneW, s.t, {});
+  drawLane(b, 'R', L.xR, L.hudH, L.floorY + 6, L.laneW, s.t, {});
+  b.drawImage(kidCv, 0, 0, 80, 76, L.kx - 40 * L.K + bob.dx, L.floorY - 72 * L.K + bob.dy, 80 * L.K, 76 * L.K);
+  drawNote(b, 'R', 'tap', L.xR, L.floorY - 90, L.laneW, { t: s.t });
+  if (!L.jumpOnly) drawNote(b, 'L', 'tap', L.xL, L.floorY - 150, L.laneW, { t: s.t });
+  if (!L.jumpOnly) drawTarget(b, 'L', L.xL, L.floorY, L.laneW, {});
+  drawTarget(b, 'R', L.xR, L.floorY, L.laneW, {});
+  s.comic.drawFront(b);
+  /* HUD · 단추 자리 흉내 */
+  rect(b, 0, 0, L.W, L.hudH, '#1a1030'); rect(b, 4, 4, L.W - 28, 5, '#e8501f');
+  rect(b, 0, L.btnTop, L.W, L.H - L.btnTop, '#20182e');
+  const sh = s.comic.shake();
+  c.drawImage(sc, ox, oy + sh);
+}
+
+/* ---------- 캡처용 한 장 ---------- */
+const AGES = {
+  birdPass: [2.0], flock: [2.2], plane: [3.2], hotair: [3.6], balloon: [1.4], ufo: [2.4], meteor: [0.55], wire: [3.0], cloudFace: [2.6],
+  rain: [3.0], snow: [4.6], thunder: [0.33, 1.9], wind: [2.0], sun: [2.6], rainbow: [2.5], fireworks: [1.3],
+  cat: [1.2, 2.4], dog: [2.3], mimic: [1.3, 3.4, 4.6], squirrel: [2.0], snail: [4.0], mole: [1.2], cheer: [2.0], ball: [1.15], frog: [2.0],
+  wave: [1.2], roar: [0.7], groan: [0.6], flash: [0.6], pickets: [2.0], bigflag: [1.8], confetti: [1.6], clap: [1.0],
+  birdDive: [1.1, 1.5], butterfly: [1.2, 3.0, 3.75], birdHead: [2.6], bubbles: [2.0], fly: [1.4],
+};
+function stillSheet() {
+  const types = makeSim().comic.types();
+  const scenes = [];
+  for (const ty of types) for (const age of AGES[ty] || [1.0]) scenes.push([ty, age]);
+  scenes.push(['IMPACT', 0.03], ['IMPACT', 0.12], ['LAND', 0.06], ['LAND', 0.16]);
+  const COLS = 8, PW = PHONE.W, PH = PHONE.H;
+  const rows = Math.ceil(scenes.length / COLS);
+  const faceY = rows * (PH + 12) + 10;
+  const crowdY = faceY + 8 * (46 * 5 + 14) + 30;
+  const landY = crowdY + 3 * 124 + 20;
+  const W0 = COLS * (PW + 4) + 4, H0 = landY + 2 * (LAND.H + 14) + PHONE1.H + 40;
+  const cv = document.getElementById('cv');
+  cv.width = W0; cv.height = H0;
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  rect(c, 0, 0, W0, H0, '#0d0a14');
+  const sections = [];
+  const t0 = performance.now();
+  scenes.forEach(([ty, age], i) => {
+    const col = i % COLS, row = Math.floor(i / COLS);
+    const ox = 4 + col * (PW + 4), oy = 10 + row * (PH + 12);
+    const arena = i % 5;
+    const s = makeSim({ arena, seed: 11 + i, look: LOOKS[i % 5], combo: 34, jumps: ty === 'IMPACT' || ty === 'LAND' || ['dog', 'mimic', 'cheer', 'frog', 'birdHead', 'wire'].includes(ty), fever: ty === 'rainbow' && false });
+    s.comic.state.next = 1e9;           // 저절로 나오는 연출 끄기 (하나만 본다)
+    s.comic.state.base = { id: 'normal', t0: 0, dur: 1e9 };
+    s.comic.state.blinkAt = 1e9;
+    step(s, 1.0);
+    if (ty === 'IMPACT') { s.comic.event('perfect'); /* 다음 줄 바닥(정수 박) 직후 */ const b = Math.ceil(s.t * 2 + 0.01); step(s, b / 2 - s.t + age); }
+    else if (ty === 'LAND') { const b = Math.ceil(s.t * 2 + 0.01); step(s, b / 2 + 0.15 - s.t + age); }
+    else { s.comic.force(ty); step(s, age); }
+    drawScene(c, s, ox, oy);
+    ptext(c, `${ty} ${age}`.toUpperCase(), ox, oy - 8, '#ffd23f', 'shadow');
+    sections.push({ name: `s${String(i).padStart(2, '0')}-${ty}`, x: ox, y: oy - 9, w: PW, h: PH + 9 });
+  });
+  const tScenes = performance.now() - t0;
+  /* 얼굴 확대 표 — 표정 순환 · 점프 얼굴 · 이벤트 얼굴 (선수 1배 캔버스를 4배로) */
+  const faceList = [];
+  const probe = makeSim().comic;
+  for (const id of probe.baseFaces()) faceList.push(['base', id]);
+  for (let j = 0; j < 5; j++) faceList.push(['jump', j]);
+  faceList.push(['land', 0]);
+  for (const ty of ['sweat', 'steam', 'red', 'angry', 'gloom', 'sigh', 'shock', 'sneeze', 'laugh', 'proud', 'starEyes', 'heartEyes', 'dizzy', 'cry', 'thunder', 'snow', 'rain', 'wind', 'butterfly']) faceList.push(['event', ty]);
+  faceList.push(['hp', 20]);
+  const FZ = 5, FW = 48 * FZ, FH = 46 * FZ, FC = Math.floor(W0 / (FW + 6));
+  faceList.forEach(([kind, id], i) => {
+    const col = i % FC, row = Math.floor(i / FC);
+    const ox = 4 + col * (FW + 6), oy = faceY + 10 + row * (FH + 14);
+    const s = makeSim({ arena: 1, seed: 3 + i, look: LOOKS[i % 5], jumps: false, hp: kind === 'hp' ? id : 80 });
+    const S = s.comic.state;
+    S.next = 1e9; S.blinkAt = 1e9; S.base = { id: 'normal', t0: 0, dur: 1e9 };
+    step(s, 0.5);
+    let lift = 0, age = 1.0;
+    if (kind === 'base') { s.comic.setBase(id, 1e9); step(s, id === 'yawn' ? 0.5 : id === 'drool' ? 1.4 : id === 'sleepy' ? 1.6 : 0.6); S.base.dur = 1e9; if (id === 'yawn') { S.base.t0 = S.T - 1.5; S.base.dur = 3.6; } }
+    else if (kind === 'jump') { S.jumpN = id; S.prevLift = 8; lift = 8; }
+    else if (kind === 'land') { S.landAt = S.T - 0.02; }
+    else if (kind === 'event') { s.comic.force(id); const AG = { sneeze: 1.0, thunder: id === 'thunder' ? 1.9 : 1, snow: 2, rain: 1.0, wind: 1, butterfly: 3.0, sigh: 0.5 }; age = AG[id] ?? 1.0; step(s, age); }
+    /* 얼굴 한 번 더 짜기 (lift 반영) */
+    const x = { ...ctxOf(s), lift };
+    if (kind === 'land') S.landAt = S.T - 0.02;
+    s.comic.update(0, x);
+    rect(c, ox, oy, FW, FH, kind === 'event' ? '#3a4a6a' : kind === 'base' ? '#4a5a7a' : '#5a4a6a');
+    kk.clearRect(0, 0, 80, 76);
+    const pose = { state: 'stand', lift, tuck: lift > 3 ? 1 : 0, theta: Math.PI * 1.5, t: 1.0 };
+    drawKid(kk, 40, 72, s.look, pose);
+    s.comic.drawFace(kk, 40, 72, pose);
+    c.drawImage(kidCv, 16, 6, 48, 46, ox, oy, FW, FH);
+    ptext(c, `${kind} ${id}`.toUpperCase(), ox + 2, oy + 2, '#ffffff', 'shadow');
+    sections.push({ name: `f${String(i).padStart(2, '0')}-${kind}-${id}`, x: ox, y: oy, w: FW, h: FH, face: true });
+  });
+  /* 응원하는 관중 확대 — 대회장 0 · 2 · 4 × (평소 박자 위 · 박자 사이 · 환호 · «아~» · 파도 · 박수) */
+  const MOODS = [['BEAT ON', 0.1, {}], ['BEAT OFF', 0.6, {}], ['CHEER', 0.1, { cheer: 1 }], ['GROAN', 0.1, { groan: 1 }], ['WAVE', 0.1, { wave: PHONE.W * 0.5 }], ['CLAP', 0.1, { clap: 1 }], ['STAND', 0.6, { stand: 0.8 }], ['FEVER', 0.3, {}]];
+  [0, 2, 4].forEach((ar, r) => MOODS.forEach(([nm, ph, m], i) => {
+    const ox = 4 + i * (PW + 4), oy = crowdY + r * 124;
+    const sc = canvas(PHONE.W, PHONE.H), b = sc.getContext('2d');
+    drawArena(b, ar, PHONE.W, PHONE.H, PHONE.floorY, 3.3 + ph * 0.5, { fever: nm === 'FEVER', energy: 2, beat: 6 + ph, crowd: { cheer: 0, groan: 0, wave: -1e9, clap: 0, stand: 0, ...m } });
+    c.drawImage(sc, 0, PHONE.floorY - 112, PHONE.W, 114, ox, oy + 8, PHONE.W, 114);
+    ptext(c, `A${ar} ${nm}`, ox, oy, '#ffd23f', 'shadow');
+    sections.push({ name: `c${r}${i}-${ar}-${nm}`, x: ox, y: oy, w: PW, h: 122, crowd: true });
+  }));
+  /* 가로 화면 · 점프만(레인 하나) — 연출이 레인을 피하고 빈 곳에 서는지 */
+  const LS = [['rain', 2.2, 'dog', 2.2, 'birdPass', 2.0], ['sun', 2.6, 'cat', 2.4, 'birdDive', 1.1], ['thunder', 0.33, 'mimic', 1.4, 'roar', 0.6], ['snow', 4.5, 'cheer', 2, 'butterfly', 3]];
+  LS.forEach((list, i) => {
+    const ox = 4 + (i % 2) * (LAND.W + 8), oy = landY + Math.floor(i / 2) * (LAND.H + 14);
+    const s = makeSim({ land: true, arena: [4, 0, 2, 1][i], seed: 40 + i, jumps: true, look: LOOKS[i] });
+    s.comic.state.next = 1e9; s.comic.state.blinkAt = 1e9;
+    step(s, 1);
+    const mx = Math.max(list[1], list[3], list[5]);
+    for (let k = 0; k < 6; k += 2) { const ty = list[k], ag = list[k + 1]; step(s, (mx - ag) / 3); s.comic.force(ty); }
+    step(s, mx - (mx - Math.min(list[1], list[3], list[5])) / 1.5);
+    drawScene(c, s, ox, oy + 8);
+    ptext(c, `LAND ${list.filter((v, j) => j % 2 === 0).join(' ')}`.toUpperCase(), ox, oy, '#ffd23f', 'shadow');
+    sections.push({ name: `l${i}`, x: ox, y: oy, w: LAND.W, h: LAND.H + 8, land: true });
+  });
+  ['dog', 'mimic', 'cat'].forEach((ty, i) => {
+    const ox = 4 + 2 * (LAND.W + 8) + 8 + i * (PHONE1.W + 6), oy = landY;
+    const s = makeSim({ jump: true, arena: i + 1, seed: 70 + i, jumps: true, look: LOOKS[i + 1] });
+    s.comic.state.next = 1e9; s.comic.state.blinkAt = 1e9;
+    step(s, 1); s.comic.force(ty); s.comic.force('birdPass'); s.comic.force('wave'); step(s, 2.1);
+    drawScene(c, s, ox, oy + 8);
+    ptext(c, `JUMP ONLY ${ty}`.toUpperCase(), ox, oy, '#ffd23f', 'shadow');
+    sections.push({ name: `j${i}`, x: ox, y: oy, w: PHONE1.W, h: PHONE1.H + 8, land: true });
+  });
+  /* 성능 — 연출 여러 개 겹친 폰 화면 한 프레임 */
+  const s = makeSim({ arena: 4, seed: 99 });
+  step(s, 1);
+  for (const ty of ['rain', 'birdPass', 'plane', 'cat', 'dog', 'roar', 'butterfly', 'angry']) s.comic.force(ty);
+  step(s, 1.2);
+  const tmp = canvas(PHONE.W, PHONE.H);
+  const tq = performance.now();
+  for (let i = 0; i < 60; i++) { step(s, 1 / 60); drawScene(tmp.getContext('2d'), s); }
+  const perf = (performance.now() - tq) / 60;
+  /* 코믹만 (update + drawBack + drawFront + drawFace) */
+  const tc = performance.now(), g = tmp.getContext('2d');
+  for (let i = 0; i < 120; i++) { s.t += 1 / 60; s.comic.update(1 / 60, ctxOf(s)); s.comic.drawBack(g); s.comic.drawFront(g); kk.clearRect(0, 0, 80, 76); s.comic.drawFace(kk, 40, 72, { state: 'stand', lift: 0, t: s.t }); }
+  window.__comicMs = (performance.now() - tc) / 120;
+  window.__sections = sections;
+  window.__perf = { scenes: scenes.length, sceneMs: tScenes, frameMs: perf, comicMs: window.__comicMs, acts: s.comic.state.acts.map((a) => a.type).join(',') };
+  window.__ready = true;
+}
+
+/* ---------- 살아 움직이는 화면 ---------- */
+function live() {
+  const s = makeSim({ arena: +(Q.get('arena') ?? 4), land: Q.has('land'), jump: Q.has('jump'), seed: 5 });
+  const L = s.lay, Z = 2;
+  const cv = document.getElementById('cv');
+  cv.width = L.W; cv.height = L.H;
+  cv.style.width = `${L.W * Z}px`; cv.style.height = `${L.H * Z}px`;
+  const c = cv.getContext('2d');
+  const ui = document.getElementById('ui');
+  const add = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; ui.append(b); };
+  const grp = (t) => { const d = document.createElement('div'); d.className = 'g'; d.textContent = t; ui.append(d); };
+  grp('게임 신호');
+  for (const ev of ['perfect', 'miss', 'trip', 'speedup', 'slowdown', 'fever', 'start', 'clear', 'fail']) add(ev, () => { if (ev === 'fever') s.fever = !s.fever; s.comic.event(ev); });
+  add('combo+10', () => { s.combo += 10; s.comic.event('combo', { n: s.combo }); });
+  add('hp 20/80', () => { s.hp = s.hp > 50 ? 20 : 80; });
+  add('대회장', () => { s.arena = (s.arena + 1) % 5; });
+  const cats = {};
+  for (const ty of s.comic.types()) { const d = ty; (cats[d] = 1); }
+  grp('연출 (누르면 바로)');
+  for (const ty of s.comic.types()) add(ty, () => s.comic.force(ty));
+  grp('표정 순환');
+  for (const id of s.comic.baseFaces()) add(id, () => s.comic.setBase(id, 3));
+  let last = performance.now();
+  const loop = (now) => {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    s.t += dt; s.comic.update(dt, ctxOf(s));
+    drawScene(c, s);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+
+try { if (still) stillSheet(); else live(); }
+catch (e) { window.__err = String(e && e.stack || e); console.error(e); window.__ready = true; }
+</script>
+</body></html>

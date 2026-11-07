@@ -15,7 +15,8 @@ import { ensureJrStyle, candyTag } from './jrui.js';
 const TABS = [
   { value: 'item', label: '아이템' },
   { value: 'rope', label: '줄넘기' },
-  { value: 'wear', label: '옷 · 모자' },
+  { value: 'wear', label: '옷·모자' },
+  { value: 'mask', label: '가면' },
 ];
 
 export default function JrShop(nav, params = {}) {
@@ -60,6 +61,36 @@ export default function JrShop(nav, params = {}) {
               done(r.name);
             }, { primary: j.candy >= r.get.price }),
           ]);
+        });
+      } else if (tab === 'mask') {
+        /* 콤보 선물 가면 — 상점에서 팔지 않는다. 보통 · 어려움에서 콤보 기록을 세우면 선물 (2026-11-07) */
+        const look = J.look(j);
+        const part = LOOK_PARTS.find((p) => p.key === 'mask');
+        const rec = J.comboOf(j);
+        list = [el('div.jr-box.jr-mask-head', null, [
+          el('h4', '🎭 콤보 선물 가면'),
+          el('div', '돈으로 못 사요! 콤보 기록으로만 받아요.'),
+          el('div', `보통 · 어려움에서 세운 내 최고 콤보: ${rec}`),
+        ])];
+        (part?.list || []).forEach((it, i) => {
+          if (i === 0) return;
+          const need = J.maskNeed(i);
+          const have = J.hasPart('mask', i, j);
+          const on = look.mask === i;
+          const pct = Math.min(100, Math.round((rec / need) * 100));
+          list.push(el('div.jr-mask', { class: [have ? 'have' : 'lock', i >= 6 ? 'rare' : ''].filter(Boolean).join(' ') }, [
+            el('div.jr-mask-pic', null, [figureCanvas({ ...look, mask: i }, null, 3, { w: i >= 6 ? 40 : 30, h: i >= 6 ? 40 : 30, focus: 'head', t: 0.6 })]),   // 무지개 · 보스는 왕관 · 뿔 · 오라까지 보이게
+            el('div.jr-mask-body', null, [
+              el('div.jr-mask-name', `${it.name}`),
+              el('div.jr-mask-need', `콤보 ${need} 선물`),
+              el('div.jr-mask-desc', it.desc || ''),
+              have ? null : el('div.jr-lvbar', null, [el('div.jr-lvbar-fill', { style: `width:${pct}%` })]),
+              have ? null : el('div.jr-mask-left', `${rec} / ${need} — ${need - rec} 콤보 더!`),
+            ]),
+            have
+              ? button(on ? '쓰는 중' : '쓰기', () => { J.setLook({ ...J.look(), mask: on ? 0 : i }); Sfx.play('sfx_menu_select'); nav.refresh(); }, { primary: !on })
+              : el('div.jr-mask-lock', '🔒'),
+          ]));
         });
       } else {
         const look = J.look(j);

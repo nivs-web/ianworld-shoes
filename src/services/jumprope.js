@@ -47,10 +47,20 @@ export function hasRope(id, j = jr()) {
 }
 export const ownedRopes = (j = jr()) => ROPES.filter((r) => hasRope(r.id, j));
 
+/* ---------- 콤보 선물 가면 (2026-11-07) ----------
+ * 권반장: «콤보 기록이 크면 가면을 선물로. 상점에서 팔지 않고 콤보 기록에 따라 준다. 너무 쉽게 획득 못하게.»
+ * 보통 기준 한 곡 최대 콤보: 점프만 73~112 · 로프+점프 174~283 · 무한은 1분에 약 107 —
+ * 그래서 30 · 60 · 90 은 대회에서, 150 부터는 무한 줄넘기(또는 로프+점프) 끝장 승부에서 나온다.
+ * 기록은 보통 · 어려움에서 세운 것만(쉬움 · 내 스테이지 제외). 가면 번호 i(1~7) = COMBO_GIFTS[i−1]. */
+export const COMBO_GIFTS = [30, 60, 90, 150, 200, 250, 300];
+export const maskNeed = (idx) => COMBO_GIFTS[idx - 1] ?? Infinity;
+export const comboOf = (j = jr()) => j.comboRec | 0;
+
 export function hasPart(key, idx, j = jr()) {
   const part = LOOK_PARTS.find((p) => p.key === key);
   const it = part?.list[idx];
   if (!it) return false;
+  if (key === 'mask') return idx === 0 || comboOf(j) >= maskNeed(idx);
   const g = it.get;
   if (!g) return true;
   if (g.lv) return levelOf(j).level >= g.lv;
@@ -266,6 +276,8 @@ export function finishBeat(r) {
   j.jumps += count;
   j.perfects += perfect;
   j.bestCombo = Math.max(j.bestCombo, maxCombo);
+  const masksBefore = comboOf(before);
+  if (r.mode !== 'test' && diff !== 'easy') j.comboRec = Math.max(j.comboRec | 0, maxCombo);
   /* 리듬판은 한 곡에 노트가 200~350개라 판정 경험치를 낮춘다(1곡에 레벨이 몇 칸씩 뛰지 않게).
      JUMP 하나 모드는 노트가 절반쯤이라 한 노트 경험치를 1.6배로 — 한 곡에 버는 양이 비슷하게 */
   const noteK = r.ctrl === 'jump' ? 1.6 : 1;
@@ -295,6 +307,7 @@ export function finishBeat(r) {
   xp = Math.round(xp * XP_MULT[diff]);
   candy = Math.round(candy * D.reward) * (r.used?.candy2 ? 2 : 1);
   if (r.ctrl === 'both') candy = Math.round(candy * 1.5);   // 로프+점프(두 버튼) — 별사탕 1.5배
+  candy += ci(r.gold) * 2 + ci(r.missions) * 5;              // 황금 줄 · 미션 성공
   j.xp += xp;
   j.candy += candy;
   j.candyTotal += candy;
@@ -304,7 +317,7 @@ export function finishBeat(r) {
   const newParts = [];
   for (let lv = lvBefore + 1; lv <= lvAfter; lv++) for (const it of rewardsAt(lv)) if (it.kind === 'part') newParts.push(it);
   syncSoon();
-  return { xp, candy, stars, prevStars, newBest, firstClear, lvBefore, lvAfter, newRopes, newParts, level: levelOf(j) };
+  return { xp, candy, stars, prevStars, newBest, firstClear, lvBefore, lvAfter, newRopes, newParts, newMasks: newMasksBetween(masksBefore, comboOf(j)), level: levelOf(j) };
 }
 /**
  * ★ 멀티 서바이벌 한 판 끝 — 판 수 · 우승 수 · 경험치(판정 절반) · 별사탕(참가 5 + 순위 보너스).
@@ -322,6 +335,8 @@ export function finishSurvival(r) {
   j.jumps += ci(r.count);
   j.perfects += ci(r.perfect);
   j.bestCombo = Math.max(j.bestCombo, ci(r.maxCombo));
+  const masksBefore = comboOf(before);
+  if (diff !== 'easy') j.comboRec = Math.max(j.comboRec | 0, ci(r.maxCombo));
   const total = Math.max(1, r.total | 0), rank = Math.max(1, r.rank | 0);
   const xp = Math.round((ci(r.perfect) * 1 + ci(r.great) * 0.6 + ci(r.good) * 0.3) * 0.5 + (r.won ? 60 : 15) * XP_MULT[diff]);
   const candy = Math.round((5 + Math.max(0, total - rank) * 6 + (r.won ? 20 : 0)) * DIFFS[diff].reward);
@@ -334,7 +349,15 @@ export function finishSurvival(r) {
   const newParts = [];
   for (let lv = lvBefore + 1; lv <= lvAfter; lv++) for (const it of rewardsAt(lv)) if (it.kind === 'part') newParts.push(it);
   syncSoon();
-  return { xp, candy, lvBefore, lvAfter, newRopes, newParts, level: levelOf(j) };
+  return { xp, candy, lvBefore, lvAfter, newRopes, newParts, newMasks: newMasksBetween(masksBefore, comboOf(j)), level: levelOf(j) };
+}
+
+/** 콤보 기록이 a → b 로 오르며 새로 받은 가면들 */
+export function newMasksBetween(a, b) {
+  const part = LOOK_PARTS.find((p) => p.key === 'mask');
+  const out = [];
+  COMBO_GIFTS.forEach((need, i) => { if (a < need && b >= need) out.push({ idx: i + 1, need, name: part?.list[i + 1]?.name || `가면 ${i + 1}` }); });
+  return out;
 }
 
 /** 대회 n 이 열렸나 — 앞 대회를 완주(별 1개+)해야 열린다 */

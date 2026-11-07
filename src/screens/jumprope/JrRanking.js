@@ -24,6 +24,7 @@ const BOARDS = [
   { value: 'hard', label: '어려움' },
   { value: 'level', label: '레벨' },
   { value: 'ropes', label: '줄넘기' },
+  { value: 'combo', label: '콤보' },
 ];
 const NOTE = {
   easy: '무한 줄넘기(쉬움) — 한 판에 넘은 최고 개수',
@@ -31,6 +32,7 @@ const NOTE = {
   hard: '무한 줄넘기(어려움) — 한 판에 넘은 최고 개수',
   level: '레벨 — 경험치가 많은 순서',
   ropes: `모은 줄넘기 수 (전부 ${ROPES.length}개)`,
+  combo: '역대 최고 콤보 — 보통 · 어려움에서 세운 기록',
 };
 
 export default function JrRanking(nav) {
@@ -52,7 +54,7 @@ export default function JrRanking(nav) {
   /* 내 줄이 최신이어야 순위를 보는 의미가 있다 — 먼저 올리고 읽는다 */
   syncJumpPlayer(J.derive).catch(() => false).then(() => { if (live) load(); });
 
-  const unit = () => (board === 'level' ? '' : board === 'ropes' ? '개' : '개');
+  const unit = () => (board === 'level' ? '' : board === 'combo' ? ' 콤보' : '개');
   function row(r, i) {
     const rank = i + 1;
     const look = decodeLook(r.look);

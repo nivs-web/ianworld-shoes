@@ -173,6 +173,23 @@ export const HATS = [
 ];
 export const EMOJIS = ['😀', '😎', '🤩', '😆', '🥳', '😺', '🐰', '🔥', '⭐', '💪'];
 
+/**
+ * 가면 — 상점에서 팔지 않는다. **최고 콤보 기록**이 combo 에 닿으면 선물로 받는다(2026-11-07 권반장).
+ * 뒤로 갈수록 화려하다: 천(1~3) → 광택 검정 · 박쥐 귀(4) → 금속(5) → 흐르는 무지개(6) → 뿔 · 왕관 · 오라(7).
+ * 실존 영웅 디자인 · 로고는 쓰지 않는다 — 전부 이안오락실 오리지널.
+ * get.combo 는 hasPart 가 모르는 조건이라 기본은 «잠김» — 콤보 기록으로 여는 건 총괄이 붙인다.
+ */
+export const MASKS = [
+  { id: 'none', name: '없음', combo: 0 },
+  { id: 'eye', name: '눈복면', combo: 30, get: { combo: 30 }, desc: '눈만 쏙 가린 빨간 천 복면 — 끈이 바람에 펄럭!' },
+  { id: 'mask', name: '마스크', combo: 60, get: { combo: 60 }, desc: '상어 이빨이 씨익 웃는 남색 천 마스크' },
+  { id: 'ninja', name: '얼굴복면', combo: 90, get: { combo: 90 }, desc: '눈만 빼고 꽁꽁 — 빨간 머리띠가 길게 휘날리는 닌자 복면' },
+  { id: 'bat', name: '박쥐 가면', combo: 150, get: { combo: 150 }, desc: '반짝반짝 검은 광택에 뾰족한 박쥐 귀, 하얗게 빛나는 눈' },
+  { id: 'steel', name: '강철 가면', combo: 200, get: { combo: 200 }, desc: '빨강·금 강철 얼굴판, 눈에서 파란 빛이 번쩍' },
+  { id: 'rainbow', name: '무지개 가면', combo: 250, get: { combo: 250 }, desc: '무지개가 쉬지 않고 흐르는 날개 가면' },
+  { id: 'boss', name: '최종보스 가면', combo: 300, get: { combo: 300 }, desc: '뿔 · 왕관 · 보석에 보랏빛 불꽃 오라 — 콤보 300의 최종 보스!' },
+];
+
 /** 꾸미기 칸 — 순서가 곧 모습 한 줄의 글자 순서다(바꾸면 예전 모습이 틀어진다) */
 export const LOOK_PARTS = [
   { key: 'skin', name: '피부', list: SKINS },
@@ -184,8 +201,9 @@ export const LOOK_PARTS = [
   { key: 'shoes', name: '신발', list: SHOES },
   { key: 'hat', name: '모자', list: HATS },
   { key: 'emoji', name: '표정', list: EMOJIS.map((e) => ({ name: e })) },
+  { key: 'mask', name: '가면', list: MASKS },     // 맨 끝 — 예전 모습 한 줄(가면 글자 없음)은 0 으로 읽힌다
 ];
-export const DEFAULT_LOOK = { skin: 0, hair: 0, hairColor: 0, eyes: 0, shirt: 0, pants: 0, shoes: 0, hat: 1, emoji: 0 };
+export const DEFAULT_LOOK = { skin: 0, hair: 0, hairColor: 0, eyes: 0, shirt: 0, pants: 0, shoes: 0, hat: 1, emoji: 0, mask: 0 };
 
 export function encodeLook(look) {
   const L = { ...DEFAULT_LOOK, ...(look || {}) };

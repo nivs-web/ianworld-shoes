@@ -38,8 +38,17 @@
 <p class="note">곡을 고르고 «시작». 리드인 4박 카운트 뒤 곡이 나온다. 키보드 A·F·← = ROPE, D·J·→·Space = JUMP 로 같이 쳐 볼 수 있다.</p>
 
 <section>
-  <h2>곡</h2>
+  <h2>곡 (SONG_LIST · 10곡)</h2>
   <div class="row" id="songs"></div>
+  <div class="row" style="margin-top:8px">
+    <label>템포 <select id="tempo">
+      <option value="auto">기본 (대회 곡 = 대회 템포 · 그 밖 = 무한 100→200)</option>
+      <option value="ramp">무한 100→200 BPM (400마디 · 모든 곡 바퀴 편곡)</option>
+      <option value="100">고정 100 BPM</option>
+      <option value="150">고정 150 BPM</option>
+      <option value="200">고정 200 BPM</option>
+    </select></label>
+  </div>
 </section>
 
 <section>
@@ -74,7 +83,7 @@
 </section>
 
 <script type="module">
-import { createMusic, SONG_IDS, songInfo, planSong, barInfo } from '/src/games/jumprope/beat/music.js';
+import { createMusic, SONG_LIST, songInfo, planSong, barInfo } from '/src/games/jumprope/beat/music.js';
 import { STAGES, ENDLESS } from '/src/games/jumprope/beat/stages.js';
 import { stepAtTime, bpmAt } from '/src/games/jumprope/beat/timing.js';
 
@@ -82,21 +91,26 @@ const mu = createMusic();
 const $ = (id) => document.getElementById(id);
 const ENDLESS_BARS = 400;
 
-// 곡마다 stages.js 그대로의 tempo · bars (무한은 호출자처럼 tempoUntil(bars))
+// 템포 고르기: 기본 = 대회 곡은 stages.js 그대로, 무한 · 고르기 곡은 호출자처럼 ENDLESS.tempoUntil(400) · 400마디
 function optsOf(id) {
-  if (id === 'endless') return { tempo: ENDLESS.tempoUntil(ENDLESS_BARS), bars: ENDLESS_BARS };
+  const tm = $('tempo').value;
   const st = STAGES.find((s) => s.id === id);
-  return { tempo: st.tempo, bars: st.bars };
+  if (tm === 'auto' && st) return { tempo: st.tempo, bars: st.bars };
+  if (tm === 'auto' || tm === 'ramp') return { tempo: ENDLESS.tempoUntil(ENDLESS_BARS), bars: ENDLESS_BARS };
+  return { tempo: [{ bar: 0, bpm: Number(tm) }], bars: ENDLESS_BARS };
 }
 
 let songId = 'training', plan = null, prep = null, mode = 'idle', fever = false, enabled = true;
 const songBtns = {};
-for (const id of SONG_IDS) {
+function label(id) {
   const info = songInfo(id), o = optsOf(id), p = planSong(id, o);
   const bpms = o.tempo.map((x) => x.bpm);
+  return `${info.title}<small>${info.mood}</small><small>${id} · ${info.style} · ${info.key} ${info.mode === 'major' ? '장조' : '단조'} · ${Math.min(...bpms)}~${Math.max(...bpms)} BPM · ${p.endless ? '무한(바퀴)' : p.duration.toFixed(1) + '초'}</small>`;
+}
+for (const { id } of SONG_LIST) {
   const b = document.createElement('button');
   b.className = 'song';
-  b.innerHTML = `${info.title}<small>${id} · ${info.style} · ${info.key} ${info.mode === 'major' ? '장조' : '단조'} · ${Math.min(...bpms)}~${Math.max(...bpms)} BPM · ${id === 'endless' ? '무한' : p.duration.toFixed(1) + '초'}</small>`;
+  b.innerHTML = label(id);
   b.addEventListener('click', () => { mu.init(); mu.hit('ui'); pick(id); });
   $('songs').appendChild(b);
   songBtns[id] = b;
@@ -107,8 +121,9 @@ function pick(id) {
   prep = mu.prepare(id, optsOf(id));
   mode = 'idle';
   Object.entries(songBtns).forEach(([k, b]) => b.classList.toggle('on', k === id));
-  $('rdur').textContent = id === 'endless' ? `${prep.duration.toFixed(0)}초+` : `${prep.duration.toFixed(2)}초`;
+  $('rdur').textContent = plan.endless ? `${prep.duration.toFixed(0)}초+` : `${prep.duration.toFixed(2)}초`;
 }
+$('tempo').addEventListener('change', () => { mu.stop(); for (const { id } of SONG_LIST) songBtns[id].innerHTML = label(id); pick(songId); });
 pick('training');
 
 $('start').addEventListener('click', () => { mu.init(); if (!plan || mode === 'metro') pick(songId); mu.start(); mode = 'song'; });
@@ -167,7 +182,7 @@ function frame() {
         $('rb').textContent = `${bar + 1} . ${Math.floor((s % 16) / 4) + 1} . ${(s % 4) + 1}`;
         $('rbpm').textContent = bpmAt(plan.tempo, st / 16).toFixed(1);
         const B = barInfo(plan, bar);
-        $('rsec').textContent = s >= plan.n && !plan.endless ? '끝' : `${B.label} (${B.E})`;
+        $('rsec').textContent = s >= plan.n && !plan.endless ? '끝' : `${B.label} (${B.E})${B.tr ? ` ${B.tr > 0 ? '+' : ''}${B.tr}` : ''}`;
         const frac = st - Math.floor(st / 2) * 2, half = Math.floor(st / 2) % 2;
         $('lj').classList.toggle('lit', half === 0 && frac < 0.9);
         $('lr').classList.toggle('lit', half === 1 && frac < 0.9);

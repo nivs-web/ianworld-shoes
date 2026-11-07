@@ -13,8 +13,9 @@
  */
 
 import { buildChart, ropeAngleAt, TECHS } from './chart.js';
-import { createJudge, starsFor } from './judge.js';
-import { createMusic } from './music.js';
+import { createJudge, starsFor, comboMult } from './judge.js';
+import { createMusic, SONG_IDS, SONG_LIST } from './music.js';
+import { createComic } from './comic.js';
 import { STAGES, ENDLESS, DIFFS } from './stages.js';
 import { stepAtTime, bpmAt } from './timing.js';
 import * as BA from './beatArt.js';
@@ -27,6 +28,18 @@ const PRET = "'PretendardV', 'Pretendard', 'Arial Black', sans-serif";
 const KID_W = 80, KID_H = 76, KID_FOOT = 72;   // 선수 1배 캔버스 (줄 고리까지 들어가는 크기)
 const GRADE_COL = { perfect: '#ffd23f', great: '#6fe3ff', good: '#9be36f', miss: '#ff6b6b' };
 const GRADE_TXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
+/* ---------- 재미 요소 (2026-11-07 기획 회의 12개 — 권반장 «게임이 재밌어야 함») ----------
+ * ① 콤보 이정표 도장 ② 황금 줄(보너스) ③ 빨라요/늦어요 ④ 판정 글자 튀어오름 ⑤ 타격감(충격파 고리 · 진동)
+ * ⑥ MISS 빨간 테두리 ⑦ 판 중 신기록 알림 ⑧ 미니 미션 ⑨ 콤보 줄 잔상 ⑩ 콤보 배율 표시 ⑪ GO! ⑫ 결과 점수 촤라락 */
+const MILESTONES = { 10: '좋아!', 25: '멋져!', 50: '대단해!', 100: '굉장해!!', 150: '전설이야!', 200: '신이야?!', 250: '말도 안 돼!', 300: '줄넘기 왕!!', 400: '우주 최강!!', 500: '???!!!' };
+const MASK_COMBOS = [30, 60, 90, 150, 200, 250, 300];   // 콤보 선물 가면 (services/jumprope.COMBO_GIFTS 와 같다)
+const MISSIONS = [
+  { kind: 'perfect', n: 5, text: '도전! PERFECT 5연속' },
+  { kind: 'perfect', n: 8, text: '도전! PERFECT 8연속' },
+  { kind: 'clean', n: 12, text: '도전! 12번 연속 성공' },
+  { kind: 'nomiss', sec: 10, text: '도전! 10초 동안 MISS 없이' },
+];
+const GOLD_BONUS = { perfect: 300, great: 150, good: 50 };
 const L_KEYS = new Set(['KeyA', 'ArrowLeft', 'KeyF', 'KeyS']);
 const R_KEYS = new Set(['KeyD', 'ArrowRight', 'KeyJ', 'KeyK', 'Space', 'Enter']);
 
@@ -57,17 +70,27 @@ export function mount(host, opts) {
      서바이벌은 방장이 고른 방식(방의 ctrl) — 한 방은 모두 같은 노트 */
   const jumpOnly = (surv ? opts.room?.ctrl : opts.ctrl) !== 'both';
   const ctrl = jumpOnly ? 'jump' : 'both';
+  /* 운영자 난이도(services/tuning — 1~99, 50 = 1배). 서바이벌은 모두 같은 채보여야 하므로 촘촘함 · 빠르기는 끈다 */
+  const T = { timing: 1, density: 1, speed: 1, damage: 1, ...(opts.tune || {}) };
+  if (surv) { T.density = 1; T.speed = 1; }
   const chart = surv
     ? buildChart('endless', diff, { seed: (opts.seed | 0) || 1, bars: SURVIVAL.bars, tempo: survTempo, ctrl })      // 방 seed — 모두 같은 줄
-    : buildChart(chartSrc, diff, { seed: 7 + (opts.stageNo | 0) * 31, bars: opts.mode === 'endless' ? 400 : undefined, ctrl });
+    : buildChart(chartSrc, diff, { seed: 7 + (opts.stageNo | 0) * 31, bars: opts.mode === 'endless' ? 400 : undefined, ctrl, density: T.density, bpmScale: T.speed });
   /* JUMP 하나: 판정 창 ×1.25 · 걸려도 덜 아프고 잘 뛰면 더 차오른다.
      두 버튼: 쉬움도 ROPE 를 계속 놓치면 탈락한다(«ROPE 없이 JUMP 만은 줄넘기가 아니다») — 쉬움 ROPE MISS = 10 × 0.6
      서바이벌은 체력 대신 하트 3개(본체가 센다) — 판정의 체력 피해 · 회복은 끈다 */
-  const winScale = jumpOnly ? 1.25 : 1;
+  const winScale = (jumpOnly ? 1.25 : 1) / T.timing;
+  const hp0 = jumpOnly ? { jumpMiss: 9, endlessTrip: 25, perfect: 2, great: 1 } : diff === 'easy' ? { ropeMiss: 10 } : {};
+  const hp = { ...hp0, jumpMiss: (hp0.jumpMiss ?? 14) * T.damage, ropeMiss: (hp0.ropeMiss ?? 6) * T.damage,
+    endlessTrip: (hp0.endlessTrip ?? 100) * T.damage, endlessRopeMiss: 34 * T.damage };
   const judge = createJudge(chart, diff, surv
     ? { winScale, endless: false, hp: { ropeMiss: 0, jumpMiss: 0, perfect: 0, great: 0 } }   // 채보는 무한 것이지만 «걸리면 바로 끝» 규칙은 끈다 — 하트는 본체가 센다
-    : { winScale, endless: opts.mode === 'endless', hp: jumpOnly ? { jumpMiss: 9, endlessTrip: 25, perfect: 2, great: 1 } : diff === 'easy' ? { ropeMiss: 10 } : undefined });
+    : { winScale, endless: opts.mode === 'endless', hp });
+  /* ② 황금 줄 — 짧은 노트 중 약 6% (채보 번호로 정하므로 같은 방이면 모두 같은 자리) */
+  for (const n of chart.notes) n.gold = n.kind === 'tap' && n.lane !== 'L' && (n.id * 7 + 3) % 17 === 0 && n.id > 6;
   const music = createMusic();
+  /* 코믹 연출 30+ (comic.js) — 1초에 하나씩 여기저기서 · 표정 순환 · 줄 바닥 «탁!» */
+  const comic = createComic({ seed: (opts.seed | 0) || 7 + (opts.stageNo | 0) * 31, arena: stage ? stage.arena : 4, look: opts.look });
   music.setEnabled?.(opts.opts?.sound !== false);
 
   const kidCv = document.createElement('canvas');
@@ -79,10 +102,12 @@ export function mount(host, opts) {
 
   G = {
     host, cv, ctx: cv.getContext('2d'), buf, b: buf.getContext('2d'), kidCv, k: kidCv.getContext('2d'), kidBack, kb: kidBack.getContext('2d'),
-    opts, diff, stage, chart, judge, music, jumpOnly, winScale, apPtr: 0,
-    tempo: surv ? survTempo : opts.mode === 'endless' ? ENDLESS.tempoUntil(400) : stage ? stage.tempo : (chart.tempo || [{ bar: 0, bpm: 120 }]),
+    opts, diff, stage, chart, judge, music, comic, jumpOnly, winScale, apPtr: 0, lastLift: 0, lastTheta: Math.PI,
+    tempo: chart.tempo || (surv ? survTempo : [{ bar: 0, bpm: 120 }]),   // 채보와 같은 지도(운영자 빠르기 배율 포함)
     title: surv ? `멀티 서바이벌 · ${DIFFS[diff].en}` : opts.mode === 'endless' ? `${ENDLESS.name} · ${DIFFS[diff].en}` : opts.mode === 'test' ? `${opts.custom?.name || '내 스테이지'} (시험)` : `${stage.no}. ${stage.name}`,
-    sub: surv ? '마지막까지 줄에 안 걸리면 우승!' : opts.mode === 'endless' ? ENDLESS.song.title : stage ? `${stage.en} · ${stage.song.title}` : 'CUSTOM',
+    sub: surv ? `♪ ${songTitle(survSong(opts.seed))}` : opts.mode === 'endless' ? `♪ ${songTitle(endlessSong(opts.song))}` : stage ? `${stage.en} · ${stage.song.title}` : 'CUSTOM',
+    /* 곡: 대회 = 그 대회 곡 · 무한 = 고른 곡(10곡) · 서바이벌 = 방 seed 로 정해진 곡(모두 같은 곡) */
+    songId: surv ? survSong(opts.seed) : opts.mode === 'endless' ? endlessSong(opts.song) : stage ? stage.id : 'endless',
     surv, hearts: SURVIVAL.hearts, out: false, room: opts.room || null, status: null, statusAt: -9, pubAt: -9, lastPub: '',
     round: -1, seenAlive: new Set(), roundOverSent: false, startMs: null,
     W: 128, H: 280, S: 1, dpr: 1, K: 3,
@@ -92,6 +117,7 @@ export function mount(host, opts) {
     jumpAt: -9, jumpHold: false, ropeAt: -9, tripAt: -9, bothAt: -9,
     hits: [], pops: [], banners: [], parts: [], cueIdx: 0, shake: 0,
     feverOn: false, lastComboMilestone: 0,
+    fun: { stamp: null, edge: 0, rings: [], gold: 0, mission: null, missionAt: 9, missionsDone: 0, run: 0, recCombo: false, recScore: false, maskSeen: new Set(), shownMilestone: 0 },
     shield: !surv && !!opts.items?.shield, revive: !surv && !!opts.items?.heart,
     result: null, overlay: null, auto: null, autoIdx: 0, autoHolds: [],
     pointers: new Map(),
@@ -183,6 +209,10 @@ export function mount(host, opts) {
   }
 }
 
+const endlessSong = (id) => (SONG_IDS.includes(id) ? id : 'endless');
+const survSong = (seed) => SONG_IDS[(Math.abs(seed | 0) >>> 0) % SONG_IDS.length];
+const songTitle = (id) => SONG_LIST.find((x) => x.id === id)?.title || id;
+
 /** 서바이벌 — 방 기록이 바뀔 때마다 래퍼가 넣어 준다 */
 export function setRoom(room) {
   if (!G) return;
@@ -220,9 +250,10 @@ function setPhase(p) { G.phase = p; G.phaseT = 0; }
 function startSong(msUntil) {
   const m = G.music;
   m.init();
-  m.prepare(G.opts.mode === 'endless' || G.surv || G.opts.mode === 'test' ? 'endless' : G.stage ? G.stage.id : 'training', { tempo: G.tempo, bars: G.chart.bars });
+  m.prepare(G.songId, { tempo: G.tempo, bars: G.chart.bars });
   /* 서바이벌: 곡 0칸이 방 시작 시각에 오도록 리드인을 늘린다(4박 카운트는 그 끝에) */
   G.T0 = m.start(G.surv ? Math.max(1.6, (msUntil || 0) / 1000) : 1.6);
+  G.comic.event('start');
   setPhase('play');
 }
 
@@ -238,7 +269,7 @@ function doPress(lane, t) {
   if (lane === 'R') { G.jumpAt = G.t; G.jumpHold = true; } else G.ropeAt = G.t;
   if (G.down.L && G.down.R && Math.abs(G.pressAt.L - G.pressAt.R) < 0.08) G.bothAt = G.t;
   if (G.jumpOnly && lane === 'R') { G.ropeAt = G.t; G.bothAt = G.t; }   // JUMP 하나: 기술 동작(옆 · 엇걸기)은 JUMP 로 저절로
-  if (G.opts.opts?.vib !== false) try { navigator.vibrate?.(8); } catch { /* */ }
+  if (G.opts.opts?.vib !== false) try { navigator.vibrate?.(8); } catch { /* */ }   // ⑤ 누를 때 톡
   const res = G.judge.press(lane, t);
   if (res) handle([res.kind ? res : { kind: 'hit', ...res, lane }]);
 }
@@ -267,7 +298,9 @@ function handle(list) {
         continue;
       }
       G.music.hit(jumpMiss ? 'trip' : 'miss');
-      if (jumpMiss) { G.tripAt = G.t; G.shake = 0.25; }
+      G.comic.event(jumpMiss ? 'trip' : 'miss');
+      if (jumpMiss) { G.tripAt = G.t; G.shake = 0.25; G.fun.edge = 1; if (G.opts.opts?.vib !== false) try { navigator.vibrate?.([30, 40, 30]); } catch { /* */ } }
+      missionTick('miss');
       if (jumpMiss && G.surv && !G.out) loseHeart();
       for (const l of lanes) { pop(l, 'miss'); hit(l, 'miss'); }
       continue;
@@ -276,19 +309,46 @@ function handle(list) {
     const g = r.grade;
     if (!g) continue;
     G.music.hit(g);
-    for (const l of lanes) { pop(l, g); hit(l, g); G.flash[l] = 1; }
+    G.comic.event(g);
+    for (const l of lanes) { pop(l, g, r.delta); hit(l, g); G.flash[l] = 1; if (g === 'perfect') G.fun.rings.push({ lane: l, age: 0 }); }
+    if (r.note?.gold) {
+      const add = GOLD_BONUS[g] || 0;
+      G.judge.state.score += add;
+      G.fun.gold++;
+      G.music.hit('tech');
+      banner(`황금 줄! +${add}`, '#ffd23f');
+      burst((r.note.lane === 'L' ? G.xL : G.xR) + G.laneW / 2, G.floorY, ['#ffd23f', '#fff6a8', '#ffb000'], 16);
+    }
+    missionTick(g);
     if (g === 'perfect' && lanes.includes('R')) G.shake = Math.max(G.shake, 0.08);
     if (r.techClear) { G.music.hit('tech'); banner(`${r.techClear.name || ''} CLEAR! +${r.techClear.bonus || 0}`, '#ffd23f'); }
-    if (r.feverStart && !G.feverOn) { G.feverOn = true; G.music.setFever?.(true); G.music.hit('fever'); banner('FEVER!!', '#ff7fd1'); }
+    if (r.feverStart && !G.feverOn) { G.feverOn = true; G.music.setFever?.(true); G.music.hit('fever'); banner('FEVER!!', '#ff7fd1'); G.comic.event('fever'); }
     const c = G.judge.state.combo | 0;
-    if (c >= 10 && Math.floor(c / 10) > G.lastComboMilestone) { G.lastComboMilestone = Math.floor(c / 10); G.music.hit('combo', { n: c }); }
+    if (c >= 10 && Math.floor(c / 10) > G.lastComboMilestone) { G.lastComboMilestone = Math.floor(c / 10); G.music.hit('combo', { n: c }); G.comic.event('combo', { n: c }); }
+    /* ① 콤보 이정표 도장 */
+    if (MILESTONES[c] && c > G.fun.shownMilestone) {
+      G.fun.shownMilestone = c;
+      G.fun.stamp = { text: MILESTONES[c], sub: `${c} COMBO`, age: 0, color: c >= 100 ? '#ff7fd1' : c >= 50 ? '#ffd23f' : '#9be36f' };
+      burst(G.cx, G.hudH + 40, ['#ff4d4d', '#ffd23f', '#4dd27a', '#4d9cff', '#ff7fbf', '#b36bff'], c >= 100 ? 40 : 24);
+    }
+    if (c < 10) G.fun.shownMilestone = 0;
+    /* 가면 선물 콤보 — 보통 · 어려움에서만 기록된다 */
+    if (MASK_COMBOS.includes(c) && !G.fun.maskSeen.has(c) && G.opts.mode !== 'test' && G.diff !== 'easy') {
+      G.fun.maskSeen.add(c);
+      banner(`가면 선물 콤보 ${c} 달성!`, '#ff9af0');
+    }
+    /* ⑦ 판 중 신기록 */
+    const rec = G.opts.comboRec | 0;
+    if (!G.fun.recCombo && rec >= 10 && c > rec && G.diff !== 'easy' && G.opts.mode !== 'test') { G.fun.recCombo = true; banner('콤보 신기록!', '#7cf09a'); G.music.hit('tech'); }
+    const bestScore = G.opts.mode === 'stage' ? (G.opts.best | 0) : 0;
+    if (!G.fun.recScore && bestScore > 0 && (G.judge.state.score | 0) > bestScore) { G.fun.recScore = true; banner('점수 신기록!', '#7cf09a'); }
     if (c < 10) G.lastComboMilestone = 0;
   }
   if (G.feverOn && (G.judge.state.combo | 0) < 50) { G.feverOn = false; G.music.setFever?.(false); }
 }
 
-function pop(lane, grade) {
-  G.pops.push({ lane, grade, age: 0 });
+function pop(lane, grade, delta) {
+  G.pops.push({ lane, grade, age: 0, early: grade !== 'perfect' && grade !== 'miss' && typeof delta === 'number' ? delta < 0 : null });
   if (G.pops.length > 6) G.pops.shift();
 }
 function hit(lane, grade) { G.hits.push({ lane, grade, age: 0 }); }
@@ -323,6 +383,7 @@ function update(dt) {
       const cu = cues[G.cueIdx++];
       if (cu.kind === 'tech' && !cu.first) continue;      // 기술 이름은 그 곡에서 처음 나올 때만 크게
       if (cu.kind === 'section') continue;
+      if (cu.kind === 'tempo') G.comic.event(cu.cue === 'SLOW DOWN' ? 'slowdown' : 'speedup');
       const col = cu.kind === 'speed' ? '#ff9a3c' : cu.kind === 'slow' ? '#6fc8ff' : cu.kind === 'tech' ? '#ffe14d' : '#ffffff';
       banner(cu.kind === 'speed' ? `▲ ${cu.text}!` : cu.kind === 'slow' ? `▼ ${cu.text}…` : cu.text, col);
     }
@@ -342,9 +403,21 @@ function update(dt) {
     } else if (G.opts.mode !== 'endless' && G.songT >= G.chart.duration + 0.6) finish(true);
   }
   if (G.phase === 'end' && G.phaseT >= 1.8 && !G.overlay) showResult();
+  try {
+    const stc = G.judge.state;
+    G.comic.update(dt, {
+      t: G.t, songT: G.songT, beat: G.phase === 'play' ? nowStep() / 4 : G.t * 2, bpm: bpmAt(G.tempo, Math.max(0, stepAtTime(G.chart.steps, Math.max(0, G.songT))) / 16),
+      phase: G.phase, W: G.W, H: G.H, hudH: G.hudH, floorY: G.floorY, kx: G.kx, K: G.K, xL: G.jumpOnly ? -999 : G.xL, xR: G.xR, laneW: G.laneW,
+      jumpOnly: G.jumpOnly, combo: stc.combo | 0, hp: stc.hp ?? 100, fever: !!(stc.fever || G.feverOn), lift: G.lastLift, theta: G.lastTheta,
+    });
+  } catch (e) { if (!G.comicErr) { G.comicErr = true; console.warn('[ROPE BEAT] 코믹 연출 오류', e); } }
   for (const l of ['L', 'R']) G.flash[l] = Math.max(0, G.flash[l] - dt * 5);
   G.shake = Math.max(0, G.shake - dt);
-  for (const a of [G.hits, G.pops, G.banners, G.parts]) for (const p of a) p.age += dt;
+  for (const a of [G.hits, G.pops, G.banners, G.parts, G.fun.rings]) for (const p of a) p.age += dt;
+  G.fun.rings = G.fun.rings.filter((p) => p.age < 0.35);
+  G.fun.edge = Math.max(0, G.fun.edge - dt * 2.5);
+  if (G.fun.stamp) { G.fun.stamp.age += dt; if (G.fun.stamp.age > 1.6) G.fun.stamp = null; }
+  if (G.phase === 'play' && G.songT > 0 && !G.out) missionUpdate(dt);
   G.hits = G.hits.filter((p) => p.age < 0.4);
   G.pops = G.pops.filter((p) => p.age < 0.55);
   G.banners = G.banners.filter((p) => p.age < 1.5);
@@ -387,6 +460,7 @@ function autoPlay() {
 function finish(cleared) {
   if (G.phase === 'end' || G.phase === 'result') return;
   setPhase('end');
+  G.comic.event(cleared ? 'clear' : 'fail');
   try { G.music.stop(); } catch { /* */ }
   G.music.hit(cleared ? 'clear' : 'fail');
   const res = { ...G.judge.result(), cleared };
@@ -399,7 +473,7 @@ function finish(cleared) {
     techCleared: res.techCleared | 0, techTotal: res.techTotal | 0,
     count: (res.perfect | 0) + (res.great | 0) + (res.good | 0),
     bpm: Math.round(bpmAt(G.tempo, stepAtTime(G.chart.steps, Math.max(0, G.songT)) / 16)),
-    used: G.opts.items || {}, ctrl: G.jumpOnly ? 'jump' : 'both',
+    used: G.opts.items || {}, ctrl: G.jumpOnly ? 'jump' : 'both', gold: G.fun.gold, missions: G.fun.missionsDone,
   };
   try { G.result = { r, sum: G.opts.onFinish?.(r) || null }; } catch (e) { console.warn('[ROPE BEAT] 결과 저장 실패', e); G.result = { r, sum: null }; }
 }
@@ -567,12 +641,13 @@ function resize() {
 function render() {
   const { ctx, b } = G;
   b.imageSmoothingEnabled = false;
-  const sh = G.shake > 0 ? (Math.floor(G.t * 50) % 2 ? 1 : -1) * (G.shake > 0.15 ? 2 : 1) : 0;
+  const sh = (G.shake > 0 ? (Math.floor(G.t * 50) % 2 ? 1 : -1) * (G.shake > 0.15 ? 2 : 1) : 0) + (G.comic.shake?.() | 0);
   b.save();
   b.translate(0, sh);
   const st = G.judge.state;
   const fever = !!(st.fever || G.feverOn);
   BA.drawArena(b, G.stage ? G.stage.arena : 4, G.W, G.H, G.floorY, G.t, { fever, energy: currentEnergy(), beat: G.phase === 'play' ? nowStep() / 4 : G.t * 2 });
+  G.comic.drawBack(b);              // 하늘 · 날씨 · 관중 소동 · 선수 뒤 동물/꼬마
   if (fever) BA.drawFeverAura(b, G.kx, G.floorY, G.K, G.t);
   drawKidBig();                    // 두 겹을 만들고 뒤쪽 줄만 먼저 깐다
   drawLanes();
@@ -580,8 +655,21 @@ function render() {
   drawNotes();                     // 노트는 맨 위
   drawTargets();
   drawApproach();                  // 반투명 다가오는 원 — 판정 원 위에
+  for (const rg of G.fun.rings) {   // ⑤ PERFECT 충격파 고리
+    const cx = (rg.lane === 'L' ? G.xL : G.xR) + G.laneW / 2 - 0.5;
+    b.save(); b.globalAlpha = Math.max(0, 1 - rg.age / 0.35);
+    pring(b, cx, G.floorY, Math.round(G.laneW / 2 + 3 + rg.age * 60), 2, '#ffffff');
+    b.restore();
+  }
+  G.comic.drawFront(b);             // 비 · 눈 · 번개 · 새 · 의성어 · 줄 바닥 «탁!» · 착지 «퍽»
   b.restore();
   drawHudPixels();
+  if (G.fun.edge > 0) {             // ⑥ 줄에 걸리면 화면 테두리가 빨갛게 번쩍
+    b.save(); b.globalAlpha = G.fun.edge * 0.7;
+    const t = 4;
+    rect(b, 0, 0, G.W, t, '#ff2a2a'); rect(b, 0, G.H - t, G.W, t, '#ff2a2a'); rect(b, 0, 0, t, G.H, '#ff2a2a'); rect(b, G.W - t, 0, t, G.H, '#ff2a2a');
+    b.restore();
+  }
   drawButtons();
   if (G.phase === 'ready') drawReadyPanel();
   for (const p of G.parts) rect(b, p.x, p.y, 2, 2, p.color);
@@ -685,7 +773,64 @@ function drawNotes() {
     const holdPx = n.kind === 'hold' ? Math.round((endS - n.step) * pps) : 0;
     if (n.lane === 'B') BA.drawNote(b, 'B', n.kind, G.xL, y, G.xR + G.laneW - G.xL, { holdPx, t: G.t, laneW: G.laneW });
     else BA.drawNote(b, n.lane, n.kind, n.lane === 'L' ? G.xL : G.xR, y, G.laneW, { holdPx, t: G.t, hit: n.holding });
+    if (n.gold) drawGold(b, (n.lane === 'L' ? G.xL : G.xR) + G.laneW / 2 - 0.5, y);
   }
+}
+
+/** ② 황금 줄 — 금빛 테 + 반짝 별 */
+function drawGold(b, cx, y) {
+  const tw = Math.floor(G.t * 10) % 4;
+  pring(b, cx, y, Math.round(G.laneW / 2) + 1, 1, tw < 2 ? '#ffd23f' : '#fff6a8');
+  const sx = Math.round(cx + G.laneW / 2 - 2), sy = y - 7;
+  rect(b, sx - 1, sy, 3, 1, '#fff6a8'); rect(b, sx, sy - 1, 1, 3, '#fff6a8');
+  if (tw === 0) { rect(b, sx - 2, sy, 5, 1, '#ffd23f'); rect(b, sx, sy - 2, 1, 5, '#ffd23f'); }
+}
+
+/** 꽃가루 · 파편 한 번에 */
+function burst(x, y, cols, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = 30 + Math.random() * 60;
+    G.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, g: 90, age: 0, life: 0.9 + Math.random() * 0.6, color: cols[i % cols.length] });
+  }
+}
+
+/* ⑧ 미니 미션 — 판 중 몇 초마다 «도전!» 띠. 성공하면 +500 · 결과에서 별사탕 */
+function missionUpdate(dt) {
+  const F = G.fun;
+  if (!F.mission) {
+    F.missionAt -= dt;
+    if (F.missionAt <= 0) {
+      const m = MISSIONS[(F.missionsDone + Math.floor(G.songT)) % MISSIONS.length];
+      F.mission = { ...m, got: 0, left: 12, sec: m.sec || 0 };
+      F.run = 0;
+      banner(m.text, '#9ad7ff');
+    }
+    return;
+  }
+  const m = F.mission;
+  m.left -= dt;
+  if (m.kind === 'nomiss') { m.sec -= dt; if (m.sec <= 0) missionDone(); return; }
+  if (m.left <= 0) { F.mission = null; F.missionAt = 14; banner('도전 실패… 다음엔!', '#c9b8ff'); }
+}
+function missionTick(g) {
+  const m = G.fun.mission;
+  if (!m) return;
+  if (g === 'miss') {
+    if (m.kind === 'nomiss') { G.fun.mission = null; G.fun.missionAt = 14; banner('도전 실패… 다음엔!', '#c9b8ff'); return; }
+    m.got = 0; return;
+  }
+  if (m.kind === 'perfect') m.got = g === 'perfect' ? m.got + 1 : 0;
+  else if (m.kind === 'clean') m.got += 1;
+  if ((m.kind === 'perfect' || m.kind === 'clean') && m.got >= m.n) missionDone();
+}
+function missionDone() {
+  G.fun.mission = null;
+  G.fun.missionsDone++;
+  G.fun.missionAt = 16;
+  G.judge.state.score += 500;
+  G.music.hit('tech');
+  banner('미션 성공! +500', '#7cf09a');
+  burst(G.cx, G.hudH + 20, ['#7cf09a', '#ffffff', '#ffd23f'], 20);
 }
 
 function drawTargets() {
@@ -704,8 +849,8 @@ function kidPose(theta) {
   const since = T - G.jumpAt;
   let lift = 0, tuck = 0, state = 'stand';
   const high = G.jumpHold && G.down.R && since > 0.12;
-  if (high) { lift = 14; tuck = 1; state = 'high'; }
-  else if (since >= 0 && since < 0.3) { lift = Math.round(Math.sin((since / 0.3) * Math.PI) * 10); tuck = lift > 3 ? 1 : 0; }
+  if (high) { lift = 18; tuck = 1; state = 'high'; }
+  else if (since >= 0 && since < 0.32) { lift = Math.round(Math.sin((since / 0.32) * Math.PI) * 14); tuck = lift > 3 ? 1 : 0; }   // 2026-11-07 10 → 14칸
   if (tech) {
     const pose = TECHS[tech.id]?.pose;
     if (pose === 'cross' && T - G.bothAt < 0.35) state = 'cross';
@@ -724,7 +869,8 @@ function currentTech() {
 
 function blitKid(cvs) {
   const K = G.K;
-  G.b.drawImage(cvs, 0, 0, KID_W, KID_H, G.kx - (KID_W / 2) * K, G.floorY - KID_FOOT * K, KID_W * K, KID_H * K);
+  const bb = G.comic.bob?.() || { dx: 0, dy: 0 };   // 고개 까딱(박자)
+  G.b.drawImage(cvs, 0, 0, KID_W, KID_H, G.kx - (KID_W / 2) * K + (bb.dx | 0), G.floorY - KID_FOOT * K + (bb.dy | 0), KID_W * K, KID_H * K);
 }
 function drawKidBig() {
   const k = G.k, kb = G.kb;
@@ -732,6 +878,7 @@ function drawKidBig() {
   kb.clearRect(0, 0, KID_W, KID_H);
   const theta = G.phase === 'play' || G.phase === 'pause' || G.phase === 'resume' ? ropeAngleAt(G.chart, G.songT) : Math.PI;
   const pose = kidPose(theta);
+  G.lastLift = pose.lift || 0; G.lastTheta = theta;
   const x = KID_W / 2, fy = KID_FOOT;
   const rope = G.opts.rope;
   /* 그림자 — 바둑판 */
@@ -742,6 +889,15 @@ function drawKidBig() {
   const g0 = ropeGeom(pre, x, fy, theta);
   if (!tangled && g0.depth < 0) drawRope(kb, rope, g0, G.t);
   const hands = drawKid(k, x, fy, G.opts.look, pose);
+  try { G.comic.drawFace(k, x, fy, pose); } catch { /* 표정 연출 실패는 넘어간다 */ }
+  /* ⑨ 콤보 20+ · 피버면 줄에 잔상 두 겹(빠르게 도는 느낌) */
+  if (!tangled && G.phase === 'play' && ((G.judge.state.combo | 0) >= 20 || G.feverOn)) {
+    for (const [d, a] of [[0.9, 0.16], [0.45, 0.32]]) {
+      const gg = ropeGeom(hands, x, fy, theta - d);
+      const cc = gg.depth >= 0 ? k : kb;
+      cc.save(); cc.globalAlpha = a; drawRope(cc, rope, gg, G.t); cc.restore();
+    }
+  }
   const g1 = ropeGeom(hands, x, fy, theta);
   if (tangled) { g1.c1 = { x: g1.p0.x - 3, y: fy + 6 }; g1.c2 = { x: g1.p2.x + 3, y: fy + 6 }; drawRope(k, rope, g1, G.t); }
   else if (g1.depth >= 0) drawRope(k, rope, g1, G.t);
@@ -818,6 +974,11 @@ function drawReadyPanel() {
 
 /* ---------- 글자 (Neo둥근모 16px 배수 · 단추만 프리텐다드) ---------- */
 function fontPx(level) { return 16 * Math.max(1, Math.round(level * G.dpr)); }
+/** 콤보 숫자 글자 크기(level) — 숫자 높이가 화면 높이의 약 9.6%(신발을 찾아서 콤보의 1.3배) */
+function comboLevel() {
+  const want = (G.cv.height * 0.096) / 0.72;          // Neo둥근모 숫자 ≈ 글자 크기의 72%
+  return Math.max(2.5, want / (16 * G.dpr));
+}
 function ptxt(text, nx, ny, level, color, align = 'center', outline = true, family = NEO, weight = '') {
   const ctx = G.ctx;
   const size = family === NEO ? fontPx(level) : Math.round(level * 16 * G.dpr);
@@ -846,11 +1007,33 @@ function drawTexts() {
   ptxt(`${(st.score | 0).toLocaleString('en-US')}`, W - 20, 17, 0.75, '#ffe9a8', 'right');
   ptxt(G.surv ? `R${Math.max(1, G.round + 1)} · BPM ${bpm}` : `BPM ${bpm}`, 4, 27, 0.75, bpm >= 150 ? '#ff9a3c' : '#c9e8ff', 'left');
   if (G.surv && G.status) ptxt(`생존 ${G.status.aliveCount}/${G.status.total}`, W - 20, 27, 0.75, G.out ? '#ff9a9a' : '#9be36f', 'right');
+  let below = G.hudH + 24;          // 콤보 아래 빈자리(미션 글자)
   if ((st.combo | 0) >= 2) {
+    /* 콤보 숫자 — 권반장 «신발을 찾아서 콤보보다 30% 크게»: 숫자 높이 ≈ 화면 높이의 9.6% */
     const c = st.combo | 0;
-    const bounce = G.pops.length && G.pops[G.pops.length - 1].age < 0.08 && G.pops[G.pops.length - 1].grade === 'perfect' ? 0.3 : 0;
-    ptxt(String(c), G.cx, 30 - bounce * 4, 2.5 + bounce, c >= 100 ? '#ff7fd1' : c >= 50 ? '#ffd23f' : '#ffffff');
-    ptxt('COMBO', G.cx, 41, 0.75, '#ffe9a8');
+    const bounce = G.pops.length && G.pops[G.pops.length - 1].age < 0.08 && G.pops[G.pops.length - 1].grade === 'perfect' ? 1 : 0;
+    const lv = comboLevel() + bounce * 0.5;
+    const half = (fontPx(lv) * 0.36) / G.S;           // 숫자 반 높이(도트)
+    const cy = G.hudH + 20 + half;                     // 예고 띠(hudH+4~17) 아래
+    ptxt(String(c), G.cx, cy, lv, c >= 100 ? '#ff7fd1' : c >= 50 ? '#ffd23f' : '#ffffff');
+    const mult = comboMult(c);
+    ptxt(mult > 1 ? `COMBO  ×${mult}` : 'COMBO', G.cx, cy + half + 7, 1, mult >= 2 ? '#ffd23f' : '#ffe9a8');   // ⑩ 배율
+    below = cy + half + 18;
+  }
+  /* ① 이정표 도장 — 쾅 하고 커졌다가 자리 잡는다 */
+  if (G.fun.stamp) {
+    const sp = G.fun.stamp;
+    const k = sp.age < 0.12 ? 3.5 : sp.age < 0.22 ? 2.5 : 3;
+    if (!(sp.age > 1.2 && Math.floor(sp.age * 12) % 2)) {
+      ptxt(sp.text, G.cx, G.floorY - 60 * G.K - 6, k, sp.color);
+      ptxt(sp.sub, G.cx, G.floorY - 60 * G.K + 12, 1, '#ffffff');
+    }
+  }
+  /* ⑧ 진행 중인 미션 */
+  const ms = G.fun.mission;
+  if (ms && G.phase === 'play') {
+    const prog = ms.kind === 'nomiss' ? `${Math.max(0, Math.ceil(ms.sec))}초` : `${ms.got}/${ms.n}`;
+    ptxt(`${ms.text}  ${prog}`, G.cx, below, 0.75, '#9ad7ff');
   }
   if (G.banners.length) {
     const bn = G.banners[G.banners.length - 1];
@@ -860,7 +1043,9 @@ function drawTexts() {
     const x = (p.lane === 'L' ? G.xL : G.xR) + G.laneW / 2;
     const y = G.floorY - 22 - Math.round(p.age * 14);
     if (p.age > 0.4 && Math.floor(p.age * 24) % 2) continue;
-    ptxt(GRADE_TXT[p.grade], x, y, p.grade === 'perfect' ? 1 : 0.75, GRADE_COL[p.grade]);
+    const big = p.age < 0.1 ? 0.5 : 0;                 // ④ 튀어오름
+    ptxt(GRADE_TXT[p.grade], x, y, (p.grade === 'perfect' ? 1 : 0.75) + big, GRADE_COL[p.grade]);
+    if (p.early !== null && p.early !== undefined) ptxt(p.early ? '빨라요' : '늦어요', x, y + 9, 0.75, p.early ? '#6fd3ff' : '#ff9a3c');   // ③
   }
   /* 단추 글자 — 프리텐다드 블랙, 단추 한가운데 큼직하게 */
   for (const [bt, label] of G.jumpOnly ? [[G.btnR, 'JUMP']] : [[G.btnL, 'ROPE'], [G.btnR, 'JUMP']]) {
@@ -882,6 +1067,8 @@ function drawTexts() {
     const beat = 60 / G.tempo[0].bpm;
     const n = Math.ceil(-G.songT / beat);
     if (n >= 1 && n <= 4) ptxt(String(n), G.cx, G.floorY - 60 * G.K / 1.4, 4, '#ffffff');
+  } else if (G.phase === 'play' && G.songT < 0.6 && !G.surv) {
+    if (Math.floor(G.songT * 10) % 2 === 0) ptxt('GO!', G.cx, G.floorY - 60 * G.K / 1.4, 4, '#ffd23f');   // ⑪
   } else if (G.phase === 'resume') {
     ptxt(String(Math.max(1, 3 - Math.floor(G.phaseT / 0.4))), G.cx, G.floorY - 80, 4, '#ffffff');
   } else if (G.phase === 'end') {
@@ -954,7 +1141,9 @@ function showResult() {
     }
     right.append(stars);
   }
-  right.append(div('rb-score', (r.score | 0).toLocaleString('en-US')), div("rb-acc", `정확도 ${Number(r.accuracy || 0).toFixed(1)}%`));
+  const scoreEl = div('rb-score', '0');
+  right.append(scoreEl, div("rb-acc", `정확도 ${Number(r.accuracy || 0).toFixed(1)}%`));
+  countUp(scoreEl, r.score | 0);   // ⑫
   top.append(right);
   card.append(top);
   if (sum?.newBest) card.append(div('rb-best', '★ NEW RECORD ★'));
@@ -969,7 +1158,8 @@ function showResult() {
     if (sum.candy) rw.append(div('rb-rw candy', `별사탕 +${sum.candy}`));
     card.append(rw);
     if (sum.lvAfter > sum.lvBefore) card.append(div('rb-up', `LEVEL UP! Lv.${sum.lvAfter}`));
-    const got = [...(sum.newRopes || []).map((x) => `새 줄넘기 · ${x.name}`), ...(sum.newParts || []).map((x) => `새 꾸미기 · ${x.name}`)];
+    if (r.gold || r.missions) card.append(div('rb-acc', `황금 줄 ${r.gold | 0}개 · 미션 성공 ${r.missions | 0}번`));
+    const got = [...(sum.newMasks || []).map((x) => `🎭 콤보 선물 가면 · ${x.name}`), ...(sum.newRopes || []).map((x) => `새 줄넘기 · ${x.name}`), ...(sum.newParts || []).map((x) => `새 꾸미기 · ${x.name}`)];
     if (got.length) {
       const g = div('rb-got');
       g.append(div('rb-got-h', '새로 얻었어요!'));
@@ -985,6 +1175,17 @@ function showResult() {
   o.append(card);
   G.host.append(o);
   G.overlay = o;
+}
+
+/** ⑫ 점수 숫자가 0 에서 촤라락 올라간다 */
+function countUp(elm, to) {
+  const t0 = performance.now(), dur = 900;
+  const step = () => {
+    const k = Math.min(1, (performance.now() - t0) / dur);
+    elm.textContent = Math.round(to * (1 - Math.pow(1 - k, 3))).toLocaleString('en-US');
+    if (k < 1 && elm.isConnected) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 /** 서바이벌 결과 — 순위표(방 기록이 바뀌면 그 자리에서 고쳐진다) · 보상 · 같은 방에서 한 판 더 */
@@ -1007,6 +1208,7 @@ function showSurvResult(r, sum) {
     if (sum.candy) rw.append(div('rb-rw candy', `별사탕 +${sum.candy}`));
     card.append(rw);
     if (sum.lvAfter > sum.lvBefore) card.append(div('rb-up', `LEVEL UP! Lv.${sum.lvAfter}`));
+    if (sum.newMasks?.length) { const g = div('rb-got'); g.append(div('rb-got-h', '콤보 선물!')); for (const x of sum.newMasks) g.append(div('rb-got-i', `🎭 ${x.name}`)); card.append(g); }
   }
   card.append(btn('같은 방에서 한 판 더', 'primary', () => G.opts.onExit('rematch')), btn('나가기', '', () => G.opts.onExit('lobby')));
   o.append(card);

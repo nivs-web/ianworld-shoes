@@ -24,6 +24,7 @@ import * as J from '../services/jumprope.js';
 import * as Room from '../services/multiplayer.js';
 import { currentUser } from '../services/auth.js';
 import { MULTI } from '../config/balance.js';
+import { tunes } from '../services/tuning.js';
 
 export const PRESENCE_GAME = null;
 
@@ -77,7 +78,7 @@ export default function JumpRopeGame(nav, params = {}) {
         if (mode === 'survival') {
           const room = params.room || {};
           m.mount(host, {
-            mode, diff: room.difficulty || 'normal', seed: room.seed | 0, room,
+            mode, diff: room.difficulty || 'normal', seed: room.seed | 0, room, comboRec: j.comboRec | 0, tune: tunes('jump'),
             myUid: currentUser()?.uid,
             look: J.look(j), rope: J.rope(j), items: {}, opts: j.opts,
             msUntil: () => Room.msUntilStart(Number(room.startAt) || Date.now() + 3000),
@@ -104,11 +105,14 @@ export default function JumpRopeGame(nav, params = {}) {
           custom: mode === 'test' ? params.stage : null,
           diff: j.diff,
           ctrl: J.ctrlMode(j),
+          song: j.opts.song,            // 무한 줄넘기 곡
+          tune: tunes('jump'),          // 운영자 난이도(판정 · 촘촘함 · 빠르기 · 피해)
           look: J.look(j),
           rope: J.rope(j),
           items: used,
           opts: j.opts,
           best: mode === 'endless' ? j.endless[j.diff] : j.scores[j.diff][stageNo - 1],
+          comboRec: j.comboRec | 0,
           hasNext: mode === 'stage' && stageNo < J.CHAMP_STAGES,
           onFinish: (r) => J.finishBeat(r),
           onSound: (on) => J.setOpt('sound', on),

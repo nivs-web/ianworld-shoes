@@ -558,8 +558,19 @@ export function drawArena(c, arena, W, H, floorY, t = 0, opt = {}) {
   }
   c.drawImage(base, 0, 0);
   const beat = opt.beat ?? t * 2;
-  moveArena(c, a, L, t, beat, energy, fever);
+  moveArena(c, a, L, t, beat, energy, fever, opt.crowd || liveMood());
 }
+
+/* ---------- 응원하는 관중 — 코믹 연출(comic.js)이 보내는 신호 ----------
+ * cheer 0~1 크게 환호(팔 번쩍 + 펄쩍) · groan 0~1 «아~»(머리 감싸고 털썩) · wave = 파도 앞머리 x(없으면 −1) ·
+ * clap 0~1 다 같이 박수(박에 맞춰) · stand 0~1 일어서서 응원(팔 흔들기 많아짐).
+ * comic 이 매 프레임 setCrowdMood 로 넣는다. drawArena(opt.crowd) 로 직접 줘도 된다(그게 먼저). */
+const MOOD0 = { cheer: 0, groan: 0, wave: -1e9, clap: 0, stand: 0 };
+let MOOD = MOOD0, MOOD_AT = -1e9;
+const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+export function setCrowdMood(m) { MOOD = m || MOOD0; MOOD_AT = nowMs(); }
+/** 신호는 0.5초 지나면 저절로 평소로 — 게임이 끝난 뒤 다른 화면(스테이지 고르기 등)에 환호가 남지 않게 */
+function liveMood() { return nowMs() - MOOD_AT < 500 ? MOOD : MOOD0; }
 
 /* ---------- 관중 ---------- */
 const SKIN = ['#ffe0c2', '#f5c99b', '#d69a6a', '#8d5a3b'];
@@ -575,12 +586,17 @@ function crowdSpec(a, L) {
   const n = clamp(Math.floor((bottom - top) / stride) + 1, 2, 30);
   return { rows: Array.from({ length: n }, (_, i) => bottom - (n - 1 - i) * stride), big: a !== 4, dark: 1 };
 }
-/** 관중 한 무리를 구워 둔다 — part 0/1(번갈아 들썩), arms 팔 번쩍 */
-function crowdLayer(a, L, part, arms) {
-  const key = `${a}:${L.W}x${L.H}:${L.fy}:${part}:${arms}`;
+/**
+ * 관중 한 무리를 구워 둔다 — part 0/1(바둑판으로 반씩) × 자세 pose
+ * pose 0 앉음(팔 내림) · 1 두 팔 번쩍 · 2 머리 위 박수(두 손 맞댐) · 3 오른팔 번쩍 · 4 오른팔 흔듦(바깥으로 기울임) · 5 «아~» 머리 감싸기
+ * 팔(막대)이 사람 칸 [x−1, x+6](작은 사람은 [x−1, x+4]) 밖으로 안 나가게 그린다 — 세로 띠로 잘라 그릴 때 한 사람이 둘로 갈리지 않게.
+ */
+const POSES_N = 6;
+function crowdLayer(a, L, part, pose) {
+  const key = `${a}:${L.W}x${L.H}:${L.fy}:${part}:${pose}`;
   let cv = crowdCache.get(key);
   if (cv) return cv;
-  if (crowdCache.size > 60) crowdCache.clear();
+  if (crowdCache.size > 80) crowdCache.clear();
   cv = canvas(L.W, L.H);
   const c = cv.getContext('2d');
   const S = crowdSpec(a, L);
@@ -588,7 +604,7 @@ function crowdLayer(a, L, part, arms) {
   const tintL = ['#4a5070', '#5a4040', '#26305e', '#3a1a5c', '#232c62'][a];
   S.rows.forEach((ry, r) => {
     const front = r >= S.rows.length - (S.dark ? 2 : 9);
-    const pw = S.big ? 5 : 4, step = S.big ? 6 : 5;
+    const step = S.big ? 6 : 5;
     const off = (r % 2) * Math.floor(step / 2);
     for (let px0 = -off, i = 0; px0 < L.W; px0 += step, i++) {
       const id = r * 997 + i * 31 + a * 7;
@@ -597,28 +613,140 @@ function crowdLayer(a, L, part, arms) {
       const sk = SKIN[Math.floor(hash(id + 1) * 4)], hr = HAIR[Math.floor(hash(id + 2) * 8)], sh = SHIRT[Math.floor(hash(id + 3) * 10)];
       const dk = S.dark ? 0 : Math.min(0.32, (S.rows.length - 1 - r) * 0.07);     // 뒷줄일수록 어둡게(깊이)
       const col = front && S.dark ? { sk, hr, sh, rim: null } : !S.dark ? { sk: dk ? tone(sk, -dk) : sk, hr: dk ? tone(hr, -dk) : hr, sh: dk ? tone(sh, -dk) : sh, rim: null } : { sk: tintL, hr: tint, sh: tone(tint, -0.2), rim: tintL };
-      person(c, px0, ry, S.big, col, arms && hash(id + 5) < 0.75, a === 3 && hash(id + 6) < 0.6 ? RAIN[Math.floor(hash(id + 7) * 7)] : null);
+      /* 팔 번쩍 자세에서도 넷 중 하나는 팔을 안 든다(덜 똑같아 보이게) — 박수 · «아~» 는 다 같이 */
+      const p = (pose === 1 || pose === 3 || pose === 4) && hash(id + 5) > 0.8 ? 0 : pose;
+      person(c, px0, ry, S.big, col, p, a === 3 && hash(id + 6) < 0.6 ? RAIN[Math.floor(hash(id + 7) * 7)] : null);
     }
   });
   crowdCache.set(key, cv);
   return cv;
 }
-/** 관중 한 명 — (x, y) = 머리 왼쪽 위. big 5칸 폭 / 작게 4칸 폭 */
-function person(c, x, y, big, col, arms, stick) {
+/** 관중 한 명 — (x, y) = 머리 왼쪽 위. big 5칸 폭 / 작게 4칸 폭. pose 는 crowdLayer 설명 */
+function person(c, x, y, big, col, pose, stick) {
+  const S = col.sh, K = col.sk;
   if (big) {
     rect(c, x + 1, y, 3, 1, col.hr);
     rect(c, x, y + 1, 5, 1, col.hr); rect(c, x + 1, y + 1, 3, 1, col.sk);
     rect(c, x + 1, y + 2, 3, 1, col.sk);
     rect(c, x, y + 3, 5, 3, col.sh);
     if (col.rim) rect(c, x + 1, y, 3, 1, col.rim);
-    else { px(c, x + 1, y + 1, col.hr); px(c, x + 3, y + 1, col.hr); px(c, x + 1, y + 2, '#3a2418'); px(c, x + 3, y + 2, '#3a2418'); }
-    if (arms) { rect(c, x - 1, y - 1, 1, 4, col.sh); rect(c, x + 5, y - 1, 1, 4, col.sh); px(c, x - 1, y - 2, col.sk); px(c, x + 5, y - 2, col.sk); if (stick) { rect(c, x - 1, y - 5, 1, 3, stick); rect(c, x + 5, y - 5, 1, 3, stick); } }
+    else {
+      px(c, x + 1, y + 1, col.hr); px(c, x + 3, y + 1, col.hr);
+      if (pose === 5) { px(c, x + 1, y + 2, '#3a2418'); px(c, x + 3, y + 2, '#3a2418'); px(c, x + 2, y + 2, '#3a2418'); }   // «아~» 일자 눈썹
+      else if (pose === 1 || pose === 2) { px(c, x + 1, y + 2, '#3a2418'); px(c, x + 3, y + 2, '#3a2418'); px(c, x + 2, y + 3, '#7a2a1a'); }   // 입 벌림
+      else { px(c, x + 1, y + 2, '#3a2418'); px(c, x + 3, y + 2, '#3a2418'); }
+    }
+    switch (pose) {
+      case 1: rect(c, x - 1, y - 1, 1, 4, S); rect(c, x + 5, y - 1, 1, 4, S); px(c, x - 1, y - 2, K); px(c, x + 5, y - 2, K); if (stick) { rect(c, x - 1, y - 5, 1, 3, stick); rect(c, x + 5, y - 5, 1, 3, stick); } break;
+      case 2: rect(c, x - 1, y + 1, 1, 2, S); rect(c, x + 5, y + 1, 1, 2, S); px(c, x - 1, y, K); px(c, x + 5, y, K); px(c, x, y - 1, K); px(c, x + 4, y - 1, K); rect(c, x + 1, y - 2, 3, 1, K); if (stick) rect(c, x + 2, y - 5, 1, 3, stick); break;
+      case 3: rect(c, x + 5, y - 1, 1, 4, S); px(c, x + 5, y - 2, K); if (stick) rect(c, x + 5, y - 5, 1, 3, stick); break;
+      case 4: rect(c, x + 5, y + 1, 1, 2, S); px(c, x + 6, y, S); px(c, x + 6, y - 1, K); if (stick) rect(c, x + 6, y - 4, 1, 3, stick); break;
+      case 5: rect(c, x - 1, y + 1, 1, 2, S); rect(c, x + 5, y + 1, 1, 2, S); px(c, x, y, K); px(c, x + 4, y, K); break;
+      default: break;
+    }
   } else {
     rect(c, x + 1, y, 2, 1, col.hr);
     rect(c, x + 1, y + 1, 2, 1, col.sk);
     rect(c, x, y + 2, 4, 3, col.sh);
     if (col.rim) px(c, x + 1, y, col.rim);
-    if (arms) { px(c, x - 1, y, col.sh); px(c, x + 4, y, col.sh); px(c, x - 1, y - 1, col.sk); px(c, x + 4, y - 1, col.sk); }
+    switch (pose) {
+      case 1: px(c, x - 1, y, S); px(c, x + 4, y, S); px(c, x - 1, y - 1, K); px(c, x + 4, y - 1, K); break;
+      case 2: px(c, x - 1, y + 1, S); px(c, x + 4, y + 1, S); px(c, x, y, K); px(c, x + 3, y, K); px(c, x + 1, y - 1, K); px(c, x + 2, y - 1, K); break;
+      case 3: px(c, x + 4, y + 1, S); px(c, x + 4, y, S); px(c, x + 4, y - 1, K); break;
+      case 4: px(c, x + 4, y + 1, S); px(c, x + 4, y, S); px(c, x + 3, y - 1, K); break;
+      case 5: px(c, x - 1, y + 2, S); px(c, x + 4, y + 2, S); px(c, x, y + 1, K); px(c, x + 3, y + 1, K); break;
+      default: break;
+    }
+  }
+}
+
+/**
+ * 관중을 세로 띠로 잘라 그린다 — 띠마다 자세 · 들썩(dy)이 달라 파도타기 · 손 흔들기 · 박수가 따로따로 산다.
+ * 띠 경계는 바둑판 한 무리(part) 안에서 사람이 없는 칸에 둔다(big 12칸 주기: part0 = 11, part1 = 5 · 작은 사람 10칸 주기: 9, 4).
+ * 띠 하나 = drawImage 한 번(폰 기준 한 프레임 30여 번) — fillRect 로 사람을 매번 그리지 않는다.
+ */
+const crowdWarm = [];
+function crowdPose(xc, part, a, t, beat, lvl, fever, M, out) {
+  const j = Math.floor(xc / 6) + part * 101;               // 띠 번호(같은 자리면 같은 성격)
+  const h = hash(j * 7 + a * 13 + 5), h2 = hash(j * 11 + 3);
+  const bi = Math.floor(beat), ph = beat - bi;
+  const on = ph < 0.3;
+  let pose = 0, dy = 0;
+  /* 평소 — 띠마다 성격: 박수꾼 · 손 흔들기 · 펄쩍 · 얌전. 기운(lvl)이 셀수록 움직이는 띠가 많다 */
+  const act = h2 < [0.4, 0.6, 0.78, 0.92, 1][Math.min(4, lvl)] + (M.stand || 0) * 0.4;
+  if (act) {
+    const style = Math.floor(h * 4);
+    if (style === 0) { pose = ph < 0.25 || (ph >= 0.5 && ph < 0.75 && lvl >= 3) ? 2 : 1; }        // 박수(머리 위)
+    else if (style === 1) { pose = (ph < 0.5) === ((bi + j) % 2 === 0) ? 3 : 4; dy = on && lvl >= 2 ? -1 : 0; }   // 손 흔들기
+    else if (style === 2) { pose = 1; dy = on ? (lvl >= 3 ? -2 : -1) : 0; }                    // 펄쩍
+    else { pose = (bi + j) % 4 === 0 ? 3 : 0; dy = on && (bi + part) % 2 === 0 ? -1 : 0; }      // 얌전 — 가끔 손
+  } else dy = lvl >= 1 && on && (bi % 2) === part ? -1 : 0;
+  /* 다 같이 박수 */
+  if ((M.clap || 0) > 0.5) { pose = ph < 0.22 || (ph >= 0.5 && ph < 0.72) ? 2 : 1; dy = 0; }
+  /* 크게 환호 — 띠마다 엇박으로 펄쩍펄쩍 */
+  const ch = Math.max(M.cheer || 0, fever ? 0.45 : 0);
+  if (ch > 0.2) {
+    const k = Math.abs(Math.sin(t * 13 + h * 6.28));
+    pose = Math.floor(t * 8 + h * 4) % 3 === 0 ? 2 : 1;
+    dy = -Math.round(k * (1 + ch * 2.2));
+  }
+  /* «아~» — 머리 감싸고 털썩 */
+  if ((M.groan || 0) > 0.3) { pose = h < 0.85 ? 5 : 0; dy = 1; }
+  /* 파도타기 — 앞머리 근처 띠가 일어나 팔 번쩍 */
+  if (M.wave != null && M.wave > -999) {
+    const d = Math.abs(xc - M.wave);
+    if (d < 9) { pose = 1; dy = -3; }
+    else if (d < 18) { pose = d < 13 ? 1 : 2; dy = -2; }
+    else if (d < 26) { dy = Math.min(dy, -1); }
+  }
+  out.pose = pose; out.dy = dy;
+  return out;
+}
+const poseOut = { pose: 0, dy: 0 };
+function drawCrowd(c, a, L, t, beat, lvl, fever, M) {
+  const S = crowdSpec(a, L);
+  const P = S.big ? 12 : 10;
+  const y0 = Math.max(0, S.rows[0] - 8), y1 = Math.min(L.H, L.wallBase + 1);
+  const hgt = y1 - y0;
+  for (let part = 0; part < 2; part++) {
+    const bnd = S.big ? (part ? 5 : 11) : (part ? 4 : 9);
+    for (let s0 = bnd - P; s0 < L.W; s0 += P) {
+      const x0 = Math.max(0, s0), x1 = Math.min(L.W, s0 + P);
+      if (x1 <= x0) continue;
+      crowdPose(s0 + P / 2, part, a, t, beat, lvl, fever, M, poseOut);
+      c.drawImage(crowdLayer(a, L, part, poseOut.pose), x0, y0, x1 - x0, hgt, x0, y0 + poseOut.dy, x1 - x0, hgt);
+    }
+  }
+  /* 아직 안 구운 자세는 한 프레임에 하나씩 미리 굽는다(처음 환호할 때 멈칫하지 않게) */
+  const wk = `${a}:${L.W}x${L.H}:${L.fy}`;
+  if (crowdWarm[0] !== wk) { crowdWarm.length = 0; crowdWarm.push(wk); for (let p = 0; p < POSES_N; p++) for (let part = 0; part < 2; part++) crowdWarm.push([part, p]); }
+  if (crowdWarm.length > 1) { const [part, p] = crowdWarm.pop(); crowdLayer(a, L, part, p); }
+  /* 앞줄 응원 깃발 — 몇 명이 작은 깃발을 박에 맞춰 흔든다 */
+  if (lvl >= 1 || (M.cheer || 0) > 0.2) {
+    const fr = S.rows.length;
+    const rr = [fr - 1, fr - 2];
+    const step = S.big ? 6 : 5;
+    for (const r of rr) {
+      if (r < 0) continue;
+      const ry = S.rows[r];
+      const off = (r % 2) * Math.floor(step / 2);
+      for (let px0 = -off, i = 0; px0 < L.W; px0 += step, i++) {
+        const id = r * 997 + i * 31 + a * 7;
+        if (hash(id + 9) > 0.1 || hash(id) < 0.06) continue;
+        const part = (i + r) % 2;
+        const bnd = S.big ? (part ? 5 : 11) : (part ? 4 : 9);
+        const s0 = bnd - P + Math.floor((px0 + 2 - (bnd - P)) / P) * P;
+        crowdPose(s0 + P / 2, part, a, t, beat, lvl, fever, M, poseOut);
+        const fx = px0 + (S.big ? 2 : 1), fy0 = ry + poseOut.dy - 8;
+        const fc = SHIRT[Math.floor(hash(id + 10) * 10)], fc2 = SHIRT[Math.floor(hash(id + 11) * 10)];
+        rect(c, fx, fy0, 1, 9, '#5a3a20');                   // 깃대
+        const wv = Math.floor(t * 6 + i) % 2;
+        rect(c, fx + 1, fy0 - 1 + wv, 5, 5, OUT);
+        rect(c, fx + 1, fy0 + wv, 4, 3, fc);
+        rect(c, fx + 1, fy0 + 1 + wv, 4, 1, fc2);
+        px(c, fx + 5, fy0 + (wv ? 0 : 2), fc);               // 펄럭 끝
+      }
+    }
   }
 }
 
@@ -911,10 +1039,10 @@ function paintArena(c, a, L, energy) {
 }
 
 /* ---------- 움직이는 그림 (매 프레임) ---------- */
-function moveArena(c, a, L, t, beat, energy, fever) {
+function moveArena(c, a, L, t, beat, energy, fever, M = MOOD0) {
   const { W, H, fy, cx, boardX, boardY, boardW, boardH, crowdTop, wallBase } = L;
   const ph = beat - Math.floor(beat);
-  const on = ph < 0.3, off = ph >= 0.5 && ph < 0.8;
+  const on = ph < 0.3;
   const lvl = fever ? 4 : energy;
   const cyc = Math.floor(t * 6);                           // 피버 색 돌기
   const fcol = (i) => RAIN[(cyc + i) % 7];
@@ -976,13 +1104,8 @@ function moveArena(c, a, L, t, beat, energy, fever) {
     }
   }
 
-  /* 관중 — 두 무리가 박에 맞춰 번갈아 들썩, 기운이 셀수록 크게 · 팔 번쩍 */
-  const amp = lvl >= 3 ? 2 : 1;
-  const bobA = lvl >= 1 && on ? -amp : 0;
-  const bobB = lvl >= 2 && off ? -amp : 0;
-  const armsA = lvl >= 3 && on, armsB = lvl >= 4 && off;
-  c.drawImage(crowdLayer(a, L, 0, armsA), 0, bobA);
-  c.drawImage(crowdLayer(a, L, 1, armsB), 0, bobB);
+  /* 관중 — 응원한다: 박수 · 손 흔들기 · 펄쩍 · 깃발 · 파도타기 (comic 신호 M 으로 크게 환호 · «아~») */
+  drawCrowd(c, a, L, t, beat, lvl, fever, M);
 
   /* 카메라 플래시 (아레나 · 세계) */
   if (a === 2 || a === 4) {

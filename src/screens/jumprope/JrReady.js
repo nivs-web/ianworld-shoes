@@ -10,6 +10,7 @@ import * as J from '../../services/jumprope.js';
 import { DIFFS, ITEMS } from '../../games/jumprope/data.js';
 import { STAGES, ENDLESS } from '../../games/jumprope/beat/stages.js';
 import { buildChart } from '../../games/jumprope/beat/chart.js';
+import { SONG_LIST } from '../../games/jumprope/beat/music.js';
 import { goalsFor } from '../../games/jumprope/beat/judge.js';
 import { itemIcon, figureCanvas } from '../../games/jumprope/art.js';
 import { ensureJrStyle, candyTag } from './jrui.js';
@@ -55,8 +56,13 @@ export default function JrReady(nav, params = {}) {
         info = [
           title('무한 줄넘기'),
           el('div.jr-preview', null, [figureCanvas(J.look(j), J.rope(j), 3, { w: 44, h: 68 })]),
+          el('div.diff-title', '곡 고르기'),
+          el('div.jr-songs', null, SONG_LIST.map((sg) => el('button.jr-song', {
+            type: 'button', class: (j.opts.song || 'endless') === sg.id ? 'on' : '',
+            onclick: () => { J.setOpt('song', sg.id); nav.refresh(); },
+          }, [el('b', sg.title), el('small', sg.mood)]))),
           el('div.jr-box', null, [
-            el('h4', `♪ ${ENDLESS.song.title}`),
+            el('h4', `♪ ${SONG_LIST.find((x) => x.id === (j.opts.song || 'endless'))?.title || ENDLESS.song.title}`),
             el('div', `${ctrlName} · ${D.label} · 점점 빨라져요`),
             el('div', J.ctrlMode(j) === 'both' ? '줄에 걸리면 바로 끝!' : '줄에 4번 걸리면 끝!'),
             el('div', `내 최고 ${j.endless[diff]}개`),

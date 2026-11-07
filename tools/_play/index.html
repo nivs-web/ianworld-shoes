@@ -1,0 +1,30 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>줄넘기 챔피언</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<link rel="stylesheet" href="/src/styles/arcade.css">
+<style>html,body{background:#120c08}</style>
+</head>
+<body>
+<!-- 원격 시험판: 줄넘기 챔피언 혼자 하기(로그인 · 서버 없이, 이 기기에만 저장). 라우터만 작은 대역 -->
+<div id="ui" class="active"></div>
+<script type="module">
+import JumpRopeLobby from '/src/screens/JumpRopeLobby.js';
+const root = document.getElementById('ui');
+const stack = [];
+let live = null;
+function mount() { live?.onLeave?.(); const top = stack[stack.length - 1]; live = top.factory(nav, top.params); nav.refresh(); }
+const nav = {
+  push(f, p = {}) { stack.push({ factory: f, params: p }); mount(); },
+  replace(f, p = {}) { stack.pop(); stack.push({ factory: f, params: p }); mount(); },
+  reset(f, p = {}) { stack.length = 0; stack.push({ factory: f, params: p }); mount(); },
+  back() { if (stack.length > 1) { stack.pop(); mount(); } else { stack.length = 0; nav.reset(JumpRopeLobby); } },
+  refresh() { if (!live) return; root.innerHTML = ''; root.append(live.render()); },
+};
+window.__nav = nav;
+try { const p = JSON.parse(localStorage.getItem('sf_profile') || '{}'); if (!p.nickname) { p.nickname = '권반장'; localStorage.setItem('sf_profile', JSON.stringify(p)); } } catch { /* */ }
+nav.reset(JumpRopeLobby);
+</script>
+</body></html>

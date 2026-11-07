@@ -120,6 +120,23 @@ const CSS = `
 .jr-lvbar-fill { height: 100%; background: linear-gradient(90deg, #7cf09a, #3fbf5a); }
 .jr-tabs { display: flex; gap: 6px; }
 .jr-seg5 .pbtn { font-size: 14px; padding-left: 2px; padding-right: 2px; white-space: nowrap; letter-spacing: 0; min-width: 0; }
+.jr-mask { display: flex; align-items: center; gap: 10px; padding: 8px; background: rgba(245,217,160,0.08); border: 2px solid var(--c-line); color: var(--c-text-light); }
+.jr-mask.have { border-color: #7cf09a; background: rgba(124,240,154,0.1); }
+.jr-mask.rare { border-color: #ff9af0; background: linear-gradient(90deg, rgba(255,90,200,0.14), rgba(120,90,255,0.14)); }
+.jr-mask-pic { flex: 0 0 auto; padding: 4px; background: #1d1430; border: 2px solid #2a1a10; }
+.jr-mask-pic canvas { display: block; }
+.jr-mask-body { flex: 1 1 auto; min-width: 0; word-break: keep-all; }
+.jr-mask-name { font-size: 18px; color: #ffd23f; }
+.jr-mask-need { font-size: 13px; color: #ff9af0; }
+.jr-mask-desc { font-size: 13px; line-height: 1.45; color: var(--c-text-light); margin: 2px 0 4px; }
+.jr-mask-left { font-size: 12px; color: #9be36f; margin-top: 2px; }
+.jr-mask-lock { flex: 0 0 auto; font-size: 22px; }
+.jr-mask .pbtn { width: auto; flex: 0 0 auto; font-size: 14px; padding: 8px 10px; }
+.jr-songs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.jr-song { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 7px 8px; text-align: left; font-family: inherit; color: var(--c-text-light); background: rgba(245,217,160,0.08); border: 2px solid var(--c-line); cursor: pointer; word-break: keep-all; }
+.jr-song b { font-weight: normal; font-size: 14px; color: #ffd23f; }
+.jr-song small { font-size: 11px; line-height: 1.35; color: var(--c-panel-dark); }
+.jr-song.on { border-color: #ffd23f; background: rgba(255,210,63,0.18); }
 .jr-tabs .pbtn { font-size: 14px; padding: 8px 2px; white-space: nowrap; letter-spacing: 0; min-width: 0; }
 .jr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 7px; }
 .jr-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 4px 6px; background: rgba(245,217,160,0.1); border: 2px solid var(--c-line); color: var(--c-text-light); font-family: inherit; cursor: pointer; }

@@ -38,6 +38,7 @@ export default function JrCloset(nav) {
           return;
         }
         const g = it.get || {};
+        if (g.combo) { Sfx.play('sfx_denied'); toast(`콤보 ${g.combo} 기록을 세우면 선물로 받아요 (보통 · 어려움)`, 2200); return; }
         if (g.lv) { Sfx.play('sfx_denied'); toast(`레벨 ${g.lv}이 되면 얻어요`, 1800); return; }
         if (g.price) {
           if (j.candy < g.price) { Sfx.play('sfx_denied'); toast(`별사탕이 ${g.price - j.candy}개 모자라요`, 2000); return; }
@@ -66,7 +67,7 @@ export default function JrCloset(nav) {
         }, [
           pic,
           part.key === 'emoji' ? null : el('span', it.name),
-          have ? null : el('small', g.lv ? `🔒 Lv.${g.lv}` : `🛒 ${g.price}`),
+          have ? null : el('small', g.combo ? `🔒 콤보 ${g.combo}` : g.lv ? `🔒 Lv.${g.lv}` : `🛒 ${g.price}`),
         ]);
       };
 

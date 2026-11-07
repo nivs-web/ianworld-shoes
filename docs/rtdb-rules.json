@@ -308,6 +308,32 @@
         }
       }
     },
+    "config": {
+      "tuning": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() == true",
+        "catch": {
+          "throw": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "catch": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "$other": { ".validate": false }
+        },
+        "dragon": {
+          "enemy": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "hp": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "spawn": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "$other": { ".validate": false }
+        },
+        "jump": {
+          "timing": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "density": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "damage": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "$other": { ".validate": false }
+        },
+        "$other": { ".validate": false }
+      }
+    },
     "presence": {
       ".read": "auth != null",
       ".indexOn": ["lastActive"],

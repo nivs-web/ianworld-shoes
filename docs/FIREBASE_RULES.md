@@ -23,7 +23,9 @@ Firebase 콘솔에 **그대로 붙여넣는** 규칙이다. 프로덕션/잠금 
 > 게시는 사용자 승인 뒤에 한다. 게시할 때도 위와 같이 **콘솔 게시본을 받아** 캐치볼 블록(`cbInt` ~ `cbNotDown`)만 이 문서 것으로 바꿔 올린다.
 > 게시 전에는 클라이언트가 3D 칸을 뺀 문서로 다시 써서 2D 순위는 그대로 돌고, 3D 탭만 빈다.
 
-> ⏳ **2026-11-07 줄넘기 챔피언 `jumpPlayers` 칸 — 아직 콘솔에 게시 전이다.** 게시는 사용자 승인 뒤에 한다.
+> ✅ **2026-11-07 줄넘기 챔피언 `jumpPlayers` 칸(+ `combo`) — 게시 완료(권반장 «규칙 게시해»).** 콘솔 게시본(6,984자, 캐치볼 3D 포함)에
+> 아래 `jpInt` ~ `match /jumpPlayers` 블록만 얹었다 → 8,652자, 다시 읽어 블록 · `combo` 확인.
+> (아래 옛 안내는 기록으로 둔다.)
 > 게시할 때도 **콘솔 게시본을 받아** 아래 `jpInt` ~ `match /jumpPlayers` 블록만 얹어 올린다.
 > 게시 전에는 명예의 전당이 «여는 중» 안내만 띄우고, 기록은 계정(`users/{uid}.jr`)에 그대로 쌓인다(게시 뒤 다음 판에 저절로 올라간다).
 
@@ -203,19 +205,21 @@ service cloud.firestore {
     function jpValid(uid, d) {
       return d.uid == uid && d.uid == request.auth.uid
           && d.keys().hasOnly(['uid', 'nickname', 'look', 'rope', 'level', 'xp', 'bestEasy', 'bestNormal', 'bestHard',
-                               'ropes', 'stars', 'jumps', 'at'])
+                               'ropes', 'stars', 'jumps', 'combo', 'at'])
           && d.nickname is string && d.nickname.size() <= 24
           && d.look is string && d.look.size() <= 32
           && d.rope is string && d.rope.size() <= 24
           && d.level is int && d.level >= 1 && d.level <= 20
           && jpInt(d.xp, 10000000) && jpInt(d.bestEasy, 99999) && jpInt(d.bestNormal, 99999) && jpInt(d.bestHard, 99999)
           && jpInt(d.ropes, 100) && jpInt(d.stars, 90) && jpInt(d.jumps, 100000000)
+          && jpInt(d.combo, 99999)
           && d.at is int;
     }
     function jpNotDown(n, o) {
       return n.xp >= o.xp && n.level >= o.level
           && n.bestEasy >= o.bestEasy && n.bestNormal >= o.bestNormal && n.bestHard >= o.bestHard
-          && n.ropes >= o.ropes && n.stars >= o.stars && n.jumps >= o.jumps;
+          && n.ropes >= o.ropes && n.stars >= o.stars && n.jumps >= o.jumps
+          && n.combo >= o.get('combo', 0);
     }
 
     match /jumpPlayers/{uid} {
@@ -239,9 +243,11 @@ service cloud.firestore {
 
 ## Realtime Database (멀티플레이, M7)
 
-> ⏳ **2026-11-07 줄넘기 멀티 서바이벌 — 아직 콘솔에 게시 전이다(사용자 승인 뒤).** 바뀐 곳은 여섯 군데뿐이다:
+> ✅ **2026-11-07 게시 완료(권반장 «규칙 게시해»)** — 콘솔 게시본(18,784자)이 저장소 0a7d082 판과 구조가 같음을 확인한 뒤(공백만 다름)
+> 아래 칸들만 얹어 게시 → 21,394자, 다시 읽어 `docs/rtdb-rules.json` 과 구조 해시까지 같음. 바뀐 곳:
 > `rooms/$code/game` 에 `'jump'` · `rooms/$code/ctrl`(방식 `'jump'`|`'both'`) · `maxPlayers` 는 jump 방만 8까지 · `players/$uid/jc`(콤보 0~99999) · `players/$uid/jl`(모습 ≤40자) · `presence/$uid/game` 에 `'jump'`.
 > `docs/rtdb-rules.json` 에도 같이 넣었다. 게시할 때는 콘솔 게시본을 받아 이 여섯 군데만 얹는다. 게시 전에는 멀티 서바이벌 방 만들기가 거부되어 «서버 준비 중» 안내가 뜬다.
+> + 같은 날 **운영자 난이도 설정 `config/tuning`** 도 함께 게시했다: 읽기 = 로그인한 사람 · 쓰기 = 운영자(`admins/{uid}: true`)만 · 값 = 정수 1~99 · 게임 `catch`(throw·catch·speed) · `dragon`(enemy·hp·spawn) · `jump`(timing·density·speed·damage) 밖의 키는 거부(`$other`). `docs/rtdb-rules.json` 에도 같이 넣었다.
 
 콘솔 → Realtime Database → **규칙** 탭 → 전체 교체 → 게시
 
@@ -627,6 +633,32 @@ service cloud.firestore {
             }
           }
         }
+      }
+    },
+    "config": {
+      "tuning": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() == true",
+        "catch": {
+          "throw": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "catch": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "$other": { ".validate": false }
+        },
+        "dragon": {
+          "enemy": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "hp": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "spawn": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "$other": { ".validate": false }
+        },
+        "jump": {
+          "timing": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "density": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "damage": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "$other": { ".validate": false }
+        },
+        "$other": { ".validate": false }
       }
     },
     "presence": {

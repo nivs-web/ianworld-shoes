@@ -8,7 +8,11 @@
  *   매 프레임 mu.songTime() → 노트 위치 · 입력은 mu.eventSongTime(e.timeStamp) → 판정
  *   mu.hit('jump') · mu.hit('combo', { n: 30 }) · mu.setFever(true) · mu.pause() / mu.resume()
  *
- * 오디오 파일 0개 — 전부 Web Audio 로 합성한 오리지널 칩튠 6곡.
+ * 오디오 파일 0개 — 전부 Web Audio 로 합성한 오리지널 10곡(대회 5 · 무한 1 · 고르기 4). 곡 고르기 화면은 SONG_LIST.
+ * ★ 어떤 템포 지도 · 길이를 줘도 돈다: 대회 곡이 제 길이(stages.js bars)면 그 대회 구간대로, 아니면(무한 · 서바이벌 ·
+ *   다른 곡으로 고른 판) «바퀴»로 — 인트로 한 번 뒤 구간 몇 개(한 바퀴)를 끝없이 돌며 바퀴마다 조 · 아르페지오가 바뀐다.
+ *   prepare(id, { tempo, bars, sections?, endless? }) — sections 를 주면 그 구간대로 편곡하고 bars 에서 마침 화음으로 끝난다.
+ *   endless 기본값 = «바퀴»면 true(곡이 bars 를 넘어도 계속), 구간이면 false.
  * ★ 모든 음표 시각 = T0 + steps[칸] (timing.js buildSteps). 채보와 **같은 시간표**라 템포가
  *   빨라지고 느려져도 음악은 노트에서 한 칸도 어긋나지 않는다. 프레임 · 타이머 오차와 무관하고,
  *   «다음 음 = 지난 음 + 간격» 식으로 더해 가지 않으니 오차가 쌓이지 않는다.
@@ -24,7 +28,7 @@
 import { buildSteps, timeAtStep, bpmAt } from './timing.js';
 import { STAGES, ENDLESS } from './stages.js';
 
-export const SONG_IDS = ['training', 'arena', 'cross', 'double', 'world', 'endless'];
+export const SONG_IDS = ['training', 'arena', 'cross', 'double', 'world', 'endless', 'sunny', 'funky', 'retro', 'festival'];
 
 /* ===================================================================== *
  * 악보 — 마디 = 16칸(16분음표). 'C5:4' = C5 를 4칸, 길이를 빼면 2칸, '.' = 쉼표.
@@ -34,7 +38,7 @@ export const SONG_IDS = ['training', 'arena', 'cross', 'double', 'world', 'endle
 const SONGS = {
   // 1. 동네 예선 — 통통 튀는 칩튠 팝(C장조). 베이스가 박 = 낮은 음, 엇박 = 옥타브 위 «쿵-짝».
   training: {
-    title: 'First Bounce', style: 'chiptune-pop', key: 'C', mode: 'major',
+    title: 'First Bounce', mood: '통통 튀는 밝은 칩튠 팝', style: 'chiptune-pop', key: 'C', mode: 'major',
     bass: 'bounce', bassVoice: 'tri', comp: 'stab', snare: 'snare', arpPat: [0, 1, 2, 3], echo: 0.12, vib: true, mix: 0.75,
     end: { ch: 'C', m: 'C6' },
     parts: {
@@ -80,7 +84,7 @@ const SONGS = {
 
   // 2. 지역 대회 — 펑크(A단조 · 도리안 D). 엇박 화음 «칙» · 16분 하이햇 · 고스트 스네어 · 당김 베이스.
   arena: {
-    title: 'Speed Arena', style: 'funk', key: 'A', mode: 'minor',
+    title: 'Speed Arena', mood: '칙칙 끊어 치는 화음의 펑크 리듬', style: 'funk', key: 'A', mode: 'minor',
     bass: 'funk', bassVoice: 'pulse', comp: 'stab', stab16: true, snare: 'snare', ghost: true, hat16: true,
     gate: 0.72, arpPat: [0, 2, 1, 3], echo: 0.06, mix: 1.25,
     end: { ch: 'Am', m: 'A5' },
@@ -136,7 +140,7 @@ const SONGS = {
 
   // 3. 전국 대회 — EDM(D단조). 박 = 킥, 엇박 = 베이스(«쿵-붕»), 패드가 박마다 펌핑한다.
   cross: {
-    title: 'Cross Fire', style: 'edm', key: 'D', mode: 'minor',
+    title: 'Cross Fire', mood: '쿵-붕 펌핑하는 신나는 EDM', style: 'edm', key: 'D', mode: 'minor',
     bass: 'offbeat', bassVoice: 'synth', comp: 'pad', pump: true, arpAt: 2, snare: 'clap', detune: true,
     arpPat: [0, 1, 2, 3], echo: 0.2, mix: 1.05,
     end: { ch: 'Dm', m: 'D6' },
@@ -188,7 +192,7 @@ const SONGS = {
 
   // 4. 아시아 대회 — 신스웨이브(E단조). 8분 톱니 베이스가 달리고, 비브라토 리드에 긴 메아리.
   double: {
-    title: 'Neon Double', style: 'synthwave', key: 'E', mode: 'minor',
+    title: 'Neon Double', mood: '네온빛 신스웨이브 질주', style: 'synthwave', key: 'E', mode: 'minor',
     bass: 'eighths', bassVoice: 'synth', comp: 'pad', arpAt: 2, snare: 'snare', bigSnare: true, vib: true,
     arpPat: [0, 1, 2, 3, 2, 1], echo: 0.3,
     end: { ch: 'Em', m: 'E6' },
@@ -252,7 +256,7 @@ const SONGS = {
   // 5. 세계 선수권 — 아케이드 일렉트로(F단조), 가장 웅장하게. 금관 화음 · 말발굽 베이스 · 3도 화성 리드 ·
   //    톰 필. 마지막 화음은 F장조(피카르디 3도) — 챔피언이 되는 순간 밝게 끝난다.
   world: {
-    title: 'Champion of the Rope', style: 'arcade-electro', key: 'F', mode: 'minor',
+    title: 'Champion of the Rope', mood: '금관이 울리는 웅장한 결승전', style: 'arcade-electro', key: 'F', mode: 'minor',
     bass: 'gallop', bassVoice: 'square', comp: 'brass', arpAt: 2, snare: 'snare', clapLayer: true, toms: true,
     harm: true, vib: true, arpPat: [0, 2, 1, 3], echo: 0.18,
     end: { ch: 'F', m: 'F6' },
@@ -317,8 +321,10 @@ const SONGS = {
 
   // 6. 무한 줄넘기 — 칩튠 드라이브(G단조). 8마디 한 바퀴를 돌 때마다 선율 · 세기 · 아르페지오 · 조가 바뀐다.
   endless: {
-    title: 'Infinite Loop', style: 'chiptune-drive', key: 'G', mode: 'minor',
-    bass: 'drive', bassVoice: 'tri', comp: 'arp', snare: 'snare', echo: 0.1, loop: 8, mix: 0.7,
+    title: 'Infinite Loop', mood: '돌수록 빨라지는 칩튠 드라이브', style: 'chiptune-drive', key: 'G', mode: 'minor',
+    bass: 'drive', bassVoice: 'tri', comp: 'arp', snare: 'snare', echo: 0.1, mix: 0.7,
+    // 첫 바퀴 = C(세기 1), 그 뒤 A2 · B3 · C2(끊어 치기) · B3 를 돌고, 네 바퀴(32마디)마다 조가 위로
+    loop: { pre: [['C', 1]], cycle: [['A', 2], ['B', 3], ['C', 2, 'stab'], ['B', 3]], keys: [0, 2, 3, 5] },
     parts: {
       A: {
         ch: 'Gm|Eb|Bb|F|Gm|Eb|Cm|D',
@@ -359,6 +365,226 @@ const SONGS = {
           'F#6:4 A6:4 D7:4 .:4',
         ],
       },
+    },
+  },
+
+  /* ---- 고르기 곡 4개 (2026-11-07 권반장 «음악 10개까지») — 인트로 2마디 뒤 8마디 구간 넷이 한 바퀴(32마디).
+   *      무한 채보의 16마디 단계(2 · 18 · 34 …마디)와 구간 경계가 맞는다. 바퀴마다 keys 만큼 조를 옮긴다
+   *      (가장 높은 선율 음 + 가장 큰 조 옮김 ≤ D7 — 리드가 옥타브로 꺾이지 않게). ---- */
+
+  // 7. 햇살 휘파람 팝(G장조). 휘파람 리드 · 우쿨렐레 «섬 리듬» 스트럼 · 점8분 «깡-총» 베이스 · 셰이커 · 박수.
+  sunny: {
+    title: 'Sunny Skip', mood: '햇살처럼 밝고 통통 튀는 휘파람 팝', style: 'whistle-pop', key: 'G', mode: 'major',
+    leadVoice: 'whistle', bass: 'skip', bassVoice: 'tri', comp: 'strum', snare: 'snare', clapLayer: true, perc16: 'shaker',
+    arpWave: 'triangle', vib: true, echo: 0.14, mix: 0.65,
+    loop: { pre: [['intro', 0]], cycle: [['A', 2], ['C', 3], ['B', 2], ['C', 3]], keys: [0, 2, 3, -2] },
+    end: { ch: 'G', m: 'G6' },
+    parts: {
+      intro: { ch: 'G|D', mel: ['.:16', '.:10 D5:2 E5:2 F#5:2'] },
+      A: {
+        ch: 'G|Bm|C|D|G|Bm|C D|G',
+        mel: [
+          'D5:2 G5:2 B5:4 A5:2 G5:2 D5:4',
+          'F#5:2 B5:2 D6:4 B5:2 A5:2 F#5:4',
+          'E5:2 G5:2 C6:4 B5:2 C6:2 E6:4',
+          'D6:3 C6:1 B5:2 A5:2 F#5:4 .:4',
+          'G5:2 B5:2 D6:2 G6:2 F#6:2 D6:2 B5:4',
+          'B5:2 D6:2 F#6:4 E6:2 D6:2 B5:4',
+          'C6:2 E6:2 G6:2 E6:2 D6:2 F#6:2 A6:4',
+          'G6:4 D6:2 B5:2 G5:6 .:2',
+        ],
+      },
+      B: {
+        ch: 'C|D|G|Em|C|D|Am|D',
+        mel: [
+          'E6:6 D6:2 C6:4 G5:4',
+          'F#6:6 E6:2 D6:4 A5:4',
+          'G6:4 F#6:2 D6:2 B5:4 D6:4',
+          'E6:6 B5:2 G5:8',
+          'C6:2 C6:2 E6:2 G6:2 E6:4 C6:4',
+          'D6:2 D6:2 F#6:2 A6:2 F#6:4 D6:4',
+          'E6:2 C6:2 A5:2 C6:2 E6:2 A6:2 G6:2 E6:2',
+          'F#6:4 E6:2 D6:2 C6:2 A5:2 F#5:4',
+        ],
+      },
+      C: {
+        ch: 'G|D|Em|C|G|D|C D|G',
+        mel: [
+          'B5:2 D6:2 G6:3 F#6:1 G6:2 D6:2 B5:4',
+          'A5:2 D6:2 F#6:3 E6:1 F#6:2 D6:2 A5:4',
+          'G5:2 B5:2 E6:3 D6:1 E6:2 G6:2 B6:4',
+          'A6:2 G6:2 E6:2 C6:2 E6:4 G6:4',
+          'B5:2 D6:2 G6:3 F#6:1 G6:2 A6:2 B6:4',
+          'A6:2 F#6:2 D6:2 A5:2 D6:4 F#6:4',
+          'C6:2 E6:2 G6:2 E6:2 D6:2 F#6:2 A6:2 F#6:2',
+          'B6:4 A6:2 F#6:2 G6:6 .:2',
+        ],
+      },
+      break: { ch: 'Em|C|Am|D', mel: ['B5:8 G5:8', 'C6:8 E6:8', 'E6:8 C6:8', 'D6:8 F#6:8'] },
+      outro: { ch: 'C D|G', mel: ['E6:4 C6:4 D6:4 F#6:4', 'G6:8 .:8'] },
+    },
+  },
+
+  // 8. 슬랩 펑크(E 믹솔리디안 · 딸림7화음). 엄지 «둥» · 검지 «팝» 슬랩 베이스(인트로부터) · 클라비 «칙» ·
+  //    브라스 스탭(«빠!») · 와우 리드 · 카우벨(엇박 = ROPE). 세기 3에서는 리드가 옥타브로 겹친다.
+  funky: {
+    title: 'Funky Hopper', mood: '슬랩 베이스와 브라스가 톡톡 튀는 펑키 그루브', style: 'slap-funk', key: 'E', mode: 'major',
+    leadVoice: 'wah', bass: 'slap', bassVoice: 'slap', grooveIntro: true, comp: 'clav', snare: 'snare', ghost: true, hat16: true,
+    cowbell: true, gate: 0.8, arpAt: 9, echo: 0.05, mix: 1,
+    loop: { pre: [['intro', 0]], cycle: [['A', 2], ['B', 3], ['C', 2], ['B', 3]], keys: [0, -2, 1, 3] },
+    end: { ch: 'E7', m: 'E6' },
+    parts: {
+      intro: { ch: 'E7|E7', mel: [] },
+      A: {
+        ch: 'E7|E7|A7|E7|E7|E7|A7|B7',
+        mel: [
+          'E5:1 .:1 G5:1 G#5:1 B5:2 .:2 D6:2 B5:1 .:1 G#5:2 E5:2',
+          '.:4 B5:1 .:1 B5:1 .:1 D6:2 C#6:2 B5:2 G#5:2',
+          'A5:1 .:1 C#6:1 .:1 E6:2 .:2 G6:2 E6:1 .:1 C#6:2 A5:2',
+          'B5:2 G#5:2 E5:4 .:4 G5:1 G#5:1 B5:2',
+          'E6:1 .:1 D6:1 .:1 B5:2 .:2 D6:1 .:1 E6:2 G6:2 E6:2',
+          'D6:2 B5:2 G#5:2 B5:1 .:5 E5:1 F#5:1 G#5:2',
+          'A5:2 C#6:2 E6:2 A6:2 G6:2 E6:2 C#6:2 A5:2',
+          'B5:2 D#6:2 F#6:2 A6:2 .:2 F#6:1 D#6:1 B5:4',
+        ],
+      },
+      B: {
+        ch: 'A7|A7|E7|C#m7|F#m7|B7|E7|B7',
+        mel: [
+          'E6:3 C#6:3 A5:2 .:2 G6:2 E6:2 C#6:2',
+          'D6:2 C#6:2 A5:2 G5:2 A5:8',
+          'B5:3 G#5:3 E5:2 .:2 D6:2 B5:2 G#5:2',
+          'B5:2 G#5:2 E5:2 C#5:2 E5:8',
+          'A5:2 C#6:2 E6:2 F#6:2 E6:2 C#6:2 A5:4',
+          'D#6:2 F#6:2 A6:4 F#6:2 D#6:2 B5:4',
+          'G#6:2 E6:2 D6:2 B5:2 E6:2 G#6:2 B6:4',
+          'A6:2 F#6:2 D#6:2 B5:2 .:2 B5:1 C#6:1 D#6:2 F#6:2',
+        ],
+      },
+      C: {
+        ch: 'E7|E7|G A|B7|E7|E7|G A|B7',
+        mel: [
+          'E5:2 E5:1 G5:1 .:2 E5:2 A5:2 .:1 G5:1 .:2 E5:2',
+          'B5:2 .:2 A5:2 G5:2 E5:2 D5:2 E5:4',
+          'G5:2 B5:2 D6:2 B5:2 A5:2 C#6:2 E6:2 C#6:2',
+          'B5:2 D#6:2 F#6:2 A6:2 B6:4 .:4',
+          'E6:2 E6:1 G6:1 .:2 E6:2 A6:2 .:1 G6:1 .:2 E6:2',
+          'B6:2 .:2 A6:2 G6:2 E6:2 D6:2 E6:4',
+          'D6:2 B5:2 G5:2 B5:2 E6:2 C#6:2 A5:2 C#6:2',
+          'D#6:2 F#6:2 B6:2 A6:2 F#6:2 D#6:2 B5:4',
+        ],
+      },
+      break: { ch: 'A7|E7|F#m7|B7', mel: ['G6:8 E6:8', 'G#6:8 D6:8', 'A6:8 E6:8', 'A6:8 F#6:8'] },
+      outro: { ch: 'A7 B7|E7', mel: ['C#6:4 E6:4 D#6:4 F#6:4', 'E6:8 .:8'] },
+    },
+  },
+
+  // 9. 8비트 레트로 오락실(A장조). 사각파 리드 + 점8분 뒤 메아리(두 번째 펄스 채널 흉내) · 두 옥타브를 오르내리는
+  //    16분 아르페지오 · 세모파 베이스 · 잡음 스네어. ♭VI-♭VII-I(F G A) 마침으로 «스테이지 클리어» 느낌.
+  retro: {
+    title: 'Pixel Dash', mood: '8비트 아르페지오가 쏟아지는 레트로 오락실', style: 'retro-8bit', key: 'A', mode: 'major',
+    leadVoice: 'square', bass: 'walk8', bassVoice: 'tri', comp: 'arp', snare: 'noise8', canon: 3, vib: true, echo: 0, mix: 0.7,
+    arpPat: [0, 1, 2, 3, 4, 5, 6, 7],
+    arpPats: [[0, 1, 2, 3, 4, 5, 6, 7], [0, 2, 4, 6, 7, 5, 3, 1], [7, 6, 5, 4, 3, 2, 1, 0], [0, 4, 1, 5, 2, 6, 3, 7]],
+    loop: { pre: [['intro', 0]], cycle: [['A', 2], ['B', 2], ['C', 3], ['B', 3]], keys: [0, 3, -2, 1] },
+    end: { ch: 'A', m: 'A6' },
+    parts: {
+      intro: { ch: 'A|E', mel: ['A4:1 C#5:1 E5:1 A5:1 C#6:1 E6:1 A6:2 .:8', '.:8 E5:2 G#5:2 B5:2 E6:2'] },
+      A: {
+        ch: 'A|E|F#m|D|A|E|F G|A',
+        mel: [
+          'A5:2 E5:2 A5:2 C#6:2 E6:3 C#6:1 A5:4',
+          'G#5:2 E5:2 G#5:2 B5:2 E6:3 B5:1 G#5:4',
+          'A5:2 F#5:2 A5:2 C#6:2 F#6:4 E6:2 C#6:2',
+          'D6:2 F#6:2 A6:2 F#6:2 E6:2 D6:2 C#6:2 B5:2',
+          'A5:1 C#6:1 E6:2 C#6:1 A5:1 E5:2 A5:1 C#6:1 E6:2 F#6:2 G#6:2',
+          'A6:4 G#6:2 E6:2 B5:4 E6:4',
+          'F6:2 A5:2 C6:2 F6:2 G6:2 B5:2 D6:2 G6:2',
+          'A6:6 E6:2 C#6:2 E6:2 A6:4',
+        ],
+      },
+      B: {
+        ch: 'D|E|C#m|F#m|Bm|E|A|E',
+        mel: [
+          'F#6:3 E6:3 D6:2 A5:4 D6:4',
+          'G#6:3 F#6:3 E6:2 B5:4 E6:4',
+          'E6:2 C#6:2 G#5:2 C#6:2 E6:2 G#6:2 E6:2 C#6:2',
+          'F#6:6 E6:2 C#6:4 A5:4',
+          'D6:2 F#6:2 B6:4 A6:2 F#6:2 D6:4',
+          'E6:2 G#6:2 B6:4 A6:2 G#6:2 E6:4',
+          'C#6:2 E6:2 A6:2 G#6:2 A6:2 E6:2 C#6:4',
+          'B5:2 C#6:2 D6:2 E6:2 F#6:2 G#6:2 B6:4',
+        ],
+      },
+      C: {
+        ch: 'F#m|D|A|E|F#m|D|E|E',
+        mel: [
+          'F#5:1 A5:1 C#6:1 F#6:1 A6:2 F#6:2 C#6:2 A5:2 C#6:2 F#6:2',
+          'D5:1 F#5:1 A5:1 D6:1 F#6:2 D6:2 A5:2 F#5:2 A5:2 D6:2',
+          'E5:1 A5:1 C#6:1 E6:1 A6:2 E6:2 C#6:2 A5:2 C#6:2 E6:2',
+          'E5:1 G#5:1 B5:1 E6:1 G#6:2 E6:2 B5:2 G#5:2 B5:2 E6:2',
+          'A6:2 G#6:2 F#6:2 C#6:2 F#6:4 A6:4',
+          'F#6:2 E6:2 D6:2 A5:2 D6:4 F#6:4',
+          'G#6:2 F#6:2 E6:2 B5:2 E6:2 G#6:2 B6:4',
+          'B6:2 A6:2 G#6:2 F#6:2 E6:2 D6:2 C#6:2 B5:2',
+        ],
+      },
+      break: { ch: 'F#m|D|E|E', mel: ['A5:8 C#6:8', 'F#6:8 D6:8', 'E6:8 B5:8', 'G#5:8 B5:8'] },
+      outro: { ch: 'F G|A', mel: ['F6:2 C6:2 A5:2 F6:2 G6:2 D6:2 B5:2 G6:2', 'A6:8 .:8'] },
+    },
+  },
+
+  // 10. 축제 행진(B♭장조). 트럼펫 리드 + 3도 아래 금관 화음 · 엇박 «빠-» 금관 화음(오-파) · 튜바 · 큰북(박 위) ·
+  //     박수(2 · 4박) · 아고고 방울(엇박 = ROPE) · 필 때 삼바 호루라기 «삑삑».
+  festival: {
+    title: 'Rope Parade', mood: '관악 · 북 · 박수가 어우러진 신나는 축제 행진', style: 'festival-march', key: 'Bb', mode: 'major',
+    leadVoice: 'horn', bass: 'march', bassVoice: 'tuba', comp: 'oompah', snare: 'snare', clapLayer: true, toms: true,
+    taiko: true, agogo: true, pfeif: true, harm: true, harmAt: 2, vib: true, arpWave: 'triangle', echo: 0.12, mix: 0.74,
+    loop: { pre: [['intro', 0]], cycle: [['A', 2], ['B', 2], ['C', 3], ['A', 3]], keys: [0, 2, -2, 1] },
+    end: { ch: 'Bb', m: 'Bb6' },
+    parts: {
+      intro: { ch: 'Bb|F', mel: ['F5:2 F5:1 F5:1 Bb5:4 .:2 D6:2 F6:4', '.:10 C5:2 D5:2 E5:2'] },
+      A: {
+        ch: 'Bb|F|Gm|Eb|Bb|F|Eb F|Bb',
+        mel: [
+          'F5:3 Bb5:1 D6:4 C6:2 Bb5:2 F5:4',
+          'F5:3 A5:1 C6:4 Bb5:2 A5:2 F5:4',
+          'G5:3 Bb5:1 D6:4 F6:2 D6:2 Bb5:4',
+          'G5:2 Bb5:2 Eb6:4 D6:2 C6:2 Bb5:4',
+          'D6:3 F6:1 Bb6:4 A6:2 G6:2 F6:4',
+          'C6:3 F6:1 A6:4 G6:2 F6:2 C6:4',
+          'Eb6:2 G6:2 Bb6:2 G6:2 F6:2 A6:2 C7:2 A6:2',
+          'Bb6:6 F6:2 D6:2 F6:2 Bb5:4',
+        ],
+      },
+      B: {
+        ch: 'Eb|F|Dm|Gm|Cm|F|Bb|F',
+        mel: [
+          'G6:4 F6:2 Eb6:2 Bb5:4 G5:4',
+          'A6:4 G6:2 F6:2 C6:4 A5:4',
+          'F6:2 F6:1 F6:1 D6:2 A5:2 F6:2 F6:1 F6:1 A6:4',
+          'G6:2 G6:1 G6:1 D6:2 Bb5:2 G6:2 A6:2 Bb6:4',
+          'G6:3 Eb6:1 C6:4 Eb6:2 G6:2 Bb6:4',
+          'A6:3 F6:1 C6:4 F6:2 G6:2 A6:4',
+          'Bb6:4 A6:2 G6:2 F6:2 D6:2 Bb5:4',
+          'C6:2 D6:2 Eb6:2 F6:2 G6:2 A6:2 C7:4',
+        ],
+      },
+      C: {
+        ch: 'Bb|Gm|Eb|F|Bb|Gm|Cm F|Bb',
+        mel: [
+          'D6:2 D6:1 D6:1 F6:2 D6:2 Bb5:2 D6:2 F6:4',
+          'D6:2 D6:1 D6:1 G6:2 D6:2 Bb5:2 D6:2 G6:4',
+          'Eb6:2 Eb6:1 Eb6:1 G6:2 Eb6:2 Bb5:2 Eb6:2 G6:4',
+          'F6:4 A6:4 C7:4 A6:4',
+          'Bb6:3 A6:1 Bb6:2 F6:2 D6:2 F6:2 Bb6:4',
+          'Bb6:3 A6:1 G6:2 D6:2 Bb5:2 D6:2 G6:4',
+          'G6:2 Eb6:2 C6:2 Eb6:2 F6:2 A6:2 C7:4',
+          'Bb6:4 F6:2 D6:2 Bb5:8',
+        ],
+      },
+      break: { ch: 'Eb|Bb|Cm|F', mel: ['G5:8 Bb5:8', 'F5:8 D6:8', 'Eb6:8 C6:8', 'C6:8 A5:8'] },
+      outro: { ch: 'Eb F|Bb', mel: ['G6:4 Eb6:4 A6:4 F6:4', 'Bb6:8 .:8'] },
     },
   },
 };
@@ -414,20 +640,28 @@ function parseSong(id, S) {
     });
     parts[key] = { key, bars, comp: P.comp || null, arpPat: P.arpPat || null };
   }
+  if (S.loop) for (const [label] of [...(S.loop.pre || []), ...S.loop.cycle]) if (!parts[label]) PROBLEMS.push(`${id}.loop: 파트 «${label}» 없음`);
   return {
-    id, title: S.title, style: S.style, key: S.key, mode: S.mode, src: S, parts,
+    id, title: S.title, mood: S.mood, style: S.style, key: S.key, mode: S.mode, src: S, parts,
     end: S.end ? { c: chordOf(S.end.ch, `${id}.end`), m: midiOf(S.end.m, `${id}.end`) } : null,
   };
 }
 const PARSED = {};
 for (const id of Object.keys(SONGS)) PARSED[id] = parseSong(id, SONGS[id]);
+for (const id of SONG_IDS) if (!SONGS[id] || !SONGS[id].title || !SONGS[id].mood) PROBLEMS.push(`${id}: 곡 · 제목 · 분위기 없음`);
+
+/**
+ * 곡 고르기 화면용 목록 (10곡) — { id, title(영문 곡 이름), mood(한국어 한 줄) }.
+ * 대회 5곡 · 무한 곡의 title 은 stages.js 의 song.title 과 같다. 고른 id 를 prepare(id, …) 에 그대로 넘긴다.
+ */
+export const SONG_LIST = Object.freeze(SONG_IDS.map((id) => Object.freeze({ id, title: SONGS[id].title, mood: SONGS[id].mood })));
 
 /** 악보 오류 목록 (점검용) — 비어 있어야 한다 */
 export function songProblems() { return PROBLEMS.slice(); }
 /** 곡 정보 (오디션 페이지 · 점검용) */
 export function songInfo(id) {
   const P = PARSED[id];
-  return P ? { id, title: P.title, style: P.style, key: P.key, mode: P.mode, parts: Object.keys(P.parts) } : null;
+  return P ? { id, title: P.title, mood: P.mood, style: P.style, key: P.key, mode: P.mode, parts: Object.keys(P.parts) } : null;
 }
 
 /* ---------- 음 고르기 ---------- */
@@ -467,38 +701,81 @@ function partFor(P, label, kind) {
   for (const k of chain) if (ps[k]) return ps[k];
   return null;
 }
-// 무한: 8마디 한 바퀴마다 변주 — 선율 A·B·C · 세기 · 아르페지오 모양 · 조 바꿈(4바퀴마다 위로)
-function loopSection(L) {
-  if (L <= 0) return { label: 'C', energy: 1, tr: 0, arpPat: ARP_PATS[0], comp: 'arp' };
-  const i = (L - 1) % 4;
+/* ---------- 바퀴(반복 편곡) — 무한 · 서바이벌 · 대회 길이가 아닌 판 ----------
+ * 앞 구간(pre)을 한 번 울린 뒤 한 바퀴(cycle = 구간 여러 개)를 끝없이 돈다. 구간 하나 = [파트, 세기, 화음 방식?].
+ * 바퀴 k 번째는 조를 keys[k % keys.length] 반음 옮기고, 구간마다 아르페지오 모양이 바뀐다 → 연속 두 구간이 같지 않다.
+ *   곡에 loop 가 있으면 그대로, 대회 곡이면 그 대회 구간에서 인트로는 맨 앞 한 번 · 아웃트로는 빼고 나머지가 한 바퀴. */
+function lapsFor(P, stage) {
+  const L = P.src.loop;
+  const seg = (label, energy, comp, len) => {
+    const kind = kindOf(label);
+    return { label, kind, energy: Math.max(0, Math.min(3, energy | 0)), comp: comp || null, len: Math.max(1, len || partFor(P, label, kind).bars.length) };
+  };
+  let pre = [], cycle = [], keys;
+  if (L) {
+    pre = (L.pre || []).map(([l, e, c]) => seg(l, e, c));
+    cycle = L.cycle.map(([l, e, c]) => seg(l, e, c));
+    keys = L.keys;
+  } else {
+    for (const x of (stage ? stage.sections : [])) {
+      const s = seg(x.label, x.energy, null, x.to - x.from);
+      if (s.kind === 'intro' && !cycle.length) pre.push(s);
+      else if (s.kind !== 'outro') cycle.push(s);
+    }
+    keys = [0, 2]; // 대회 곡은 선율이 높다 — 한 바퀴씩 온음 위 ↔ 제자리
+  }
+  if (!cycle.length) cycle = [seg('A', 2)];
+  const sum = (a) => a.reduce((t, x) => t + x.len, 0);
+  return { pre, cycle, keys: keys && keys.length ? keys : [0], preLen: sum(pre), cycLen: sum(cycle) };
+}
+function lapAt(plan, bar) {
+  const { pre, cycle, keys, preLen, cycLen } = plan.laps;
+  const X = plan.P.src;
+  let seg, nextSeg, L, k = -1, from;
+  if (bar < preLen) {
+    let j = 0;
+    from = 0;
+    while (j < pre.length - 1 && bar >= from + pre[j].len) from += pre[j++].len;
+    seg = pre[j]; nextSeg = pre[j + 1] || cycle[0]; L = j;
+  } else {
+    k = Math.floor((bar - preLen) / cycLen);
+    let j = 0;
+    from = preLen + k * cycLen;
+    while (j < cycle.length - 1 && bar >= from + cycle[j].len) from += cycle[j++].len;
+    seg = cycle[j]; nextSeg = cycle[(j + 1) % cycle.length]; L = pre.length + k * cycle.length + j;
+  }
+  const pats = X.arpPats || ARP_PATS;
   return {
-    label: ['A', 'B', 'C', 'B'][i],
-    energy: [2, 3, 2, 3][i],
-    tr: [0, 2, 3, 5][Math.floor((L - 1) / 4) % 4],
-    arpPat: ARP_PATS[L % ARP_PATS.length],
-    comp: i === 2 ? 'stab' : 'arp',
+    sec: { from, to: from + seg.len, label: seg.label, energy: seg.energy, kind: seg.kind },
+    next: { kind: nextSeg.kind, energy: nextSeg.energy },
+    tr: k >= 0 ? keys[k % keys.length] : 0,
+    arpPat: pats[L % pats.length],
+    comp: seg.comp,
   };
 }
 
 /**
  * 곡 계획 — 시간표(steps)와 구간을 정한다. AudioContext 가 없어도 된다(순수).
- * @param {string} id  training|arena|cross|double|world|endless
- * @param {{ tempo?, bars?, sections? }} o  tempo · bars 를 안 주면 stages.js 값
+ * @param {string} id  SONG_IDS 중 하나 (모르는 id 는 training)
+ * @param {{ tempo?, bars?, sections?, endless? }} o
+ *   tempo · bars 를 안 주면 stages.js 값(대회 곡) · ENDLESS.tempoUntil(bars)(그 밖).
+ *   편곡: sections 를 주면 그 구간대로 → 대회 곡이 제 길이(bars)면 그 대회 구간대로 → 아니면 바퀴(반복).
+ *   endless: 곡이 bars 에서 끝나지 않고 계속 가는지. 기본 = 바퀴면 true, 구간이면 false(bars 에서 마침 화음).
  */
 export function planSong(id, o = {}) {
   const P = PARSED[id] || PARSED.training;
-  const endless = P.id === 'endless';
   const stage = STAGES.find((x) => x.id === P.id) || null;
   const bars = Math.max(1, Math.round(o.bars || (stage ? stage.bars : 64)));
-  const tempo = o.tempo && o.tempo.length ? o.tempo : endless ? ENDLESS.tempoUntil(bars) : stage.tempo;
+  const tempo = o.tempo && o.tempo.length ? o.tempo : stage ? stage.tempo : ENDLESS.tempoUntil(bars);
   const steps = buildSteps(tempo, bars);
-  let secs = null;
-  if (!endless) {
-    const src = o.sections || (stage && stage.sections) || [{ from: 0, to: bars, label: 'A', energy: 2 }];
+  const src = o.sections && o.sections.length ? o.sections : !P.src.loop && stage && bars === stage.bars ? stage.sections : null;
+  let secs = null, laps = null;
+  if (src) {
     secs = src.map((x) => ({ from: x.from, to: x.to, label: x.label, energy: Math.max(0, Math.min(3, x.energy | 0)), kind: kindOf(x.label) }))
       .sort((a, b) => a.from - b.from);
-  }
-  return { id: P.id, P, tempo, bars, steps, n: steps.length - 1, duration: steps[steps.length - 1], endless, secs, cache: new Map() };
+  } else laps = lapsFor(P, stage);
+  const endless = o.endless != null ? !!o.endless : !!laps;
+  return { id: P.id, P, tempo, bars, steps, n: steps.length - 1, duration: steps[steps.length - 1], endless, secs, laps, cache: new Map() };
 }
 
 /** 마디 정보 (구간 · 파트 · 화음 · 선율) — 계획마다 기억해 둔다 */
@@ -507,13 +784,9 @@ export function barInfo(plan, bar) {
   if (b) return b;
   const P = plan.P;
   let sec, next = null, tr = 0, arpPat = null, comp = null;
-  if (plan.endless) {
-    const len = P.src.loop || 8;
-    const L = Math.floor(bar / len);
-    const ls = loopSection(L), ln = loopSection(L + 1);
-    sec = { from: L * len, to: (L + 1) * len, label: ls.label, energy: ls.energy, kind: 'main' };
-    next = { kind: 'main', energy: ln.energy };
-    tr = ls.tr; arpPat = ls.arpPat; comp = ls.comp;
+  if (plan.laps) {
+    const r = lapAt(plan, Math.max(0, bar));
+    sec = r.sec; next = r.next; tr = r.tr; arpPat = r.arpPat; comp = r.comp;
   } else {
     const S = plan.secs;
     let i = S.findIndex((x) => bar >= x.from && bar < x.to);
@@ -543,6 +816,16 @@ const FUNK_LITE = { 0: [0, 2.5], 6: [12, 1], 8: [0, 2], 10: [7, 1], 14: [12, 1] 
 const BRASS = { 0: [3, 1], 6: [2, 0.7], 10: [2, 0.7], 14: [1, 0.5] };
 const FILL = { 8: 0.45, 10: 0.55, 12: 0.65, 13: 0.72, 14: 0.82, 15: 0.95 };
 const TOMS = { 8: 'hi', 10: 'hi', 12: 'mid', 13: 'mid', 14: 'lo' };
+/* 고르기 곡 패턴 (칸 → 세기 · [반음, 길이, 세기] …) */
+const STRUM = { 0: 1, 4: 0.75, 6: 0.85, 10: 0.85, 12: 0.75, 14: 0.9 }; // 우쿨렐레 «섬 리듬» 내-내올-올내올
+const CLAV = { 2: 0.9, 3: 0.45, 6: 0.85, 9: 0.5, 10: 0.9, 12: 0.4, 14: 0.85 };
+const CLAV_LITE = { 2: 0.8, 6: 0.7, 10: 0.8, 14: 0.7 };
+const HORNS = { 0: [1, 1], 6: [0.8, 0.8], 11: [0.8, 0.75], 14: [2, 0.95] }; // «빠! · 빠 · 빠 · 빠아-»
+const SKIP = { 0: [0, 1.9, 1], 3: [12, 0.7, 0.6], 4: [7, 1.9, 0.85], 7: [12, 0.7, 0.6], 8: [0, 1.9, 1], 11: [12, 0.7, 0.6], 12: [7, 1.9, 0.85] };
+// 슬랩: [t=엄지 «둥» | p=검지 «팝», 반음, 길이]. 팝은 엇박(2 · 6 · 10 · 14) = ROPE
+const SLAP = { 0: ['t', 0, 1.6], 2: ['p', 12, 0.6], 3: ['t', 0, 0.5], 5: ['t', 10, 0.5], 6: ['p', 12, 0.6], 8: ['t', 0, 1.6], 10: ['p', 12, 0.6], 11: ['t', 7, 0.5], 13: ['t', 10, 0.5], 14: ['p', 12, 0.6] };
+const SLAP_LITE = { 0: ['t', 0, 2], 6: ['p', 12, 0.6], 8: ['t', 0, 1.6], 14: ['p', 12, 0.6] };
+const WALK8 = [0, 12, 7, 12, 0, 7, 12, 7]; // 8비트 세모파 베이스 (8분마다)
 
 /**
  * 한 칸(16분음표)에서 울릴 음 목록 — 순수 함수.
@@ -568,11 +851,16 @@ export function stepEvents(plan, s, opt = {}) {
     const m = capLead(n.m + tr);
     push({ v: 'lead', m, len: n.l, vel: (kind === 'break' ? 0.8 : E >= 2 ? 1 : 0.9) * fade });
     if (E >= 3 && kind !== 'break') push({ v: 'lead2', m: octUp(m), len: n.l, vel: kind === 'final' ? 1 : 0.8 });
-    if ((kind === 'final' || (X.harm && E >= 3)) && n.l >= 2) {
+    if ((kind === 'final' || (X.harm && E >= (X.harmAt ?? 3))) && n.l >= 2) {
       const h = harmBelow(m, ch, tr);
       if (h) push({ v: 'harm', m: h, len: n.l, vel: 1 });
     }
     if (opt.fever && !(E >= 3 && kind !== 'break')) push({ v: 'fever', m: octUp(m), len: n.l, vel: 1 });
+  }
+  // 메아리 리드(canon 칸 뒤 같은 음을 작게) — 옛 오락실 두 번째 펄스 채널 흉내. 지금 칸에서 «canon 칸 앞» 음을 읽으니 언제나 칸 위
+  if (X.canon && kind !== 'break' && s >= X.canon) {
+    const s2 = s - X.canon, B2 = barInfo(plan, Math.floor(s2 / 16)), n2 = B2.mel && B2.mel[s2 % 16];
+    if (n2 && B2.kind !== 'break') push({ v: 'canon', m: capLead(n2.m + B2.tr), len: Math.min(n2.l, 6), vel: (E >= 2 ? 1 : 0.8) * fade });
   }
 
   // 2) 화음 · 아르페지오 — 펄스 12.5% / 25%
@@ -588,6 +876,16 @@ export function stepEvents(plan, s, opt = {}) {
   } else if (comp === 'brass') {
     if (E >= 2) { const b = BRASS[pos]; if (b) push({ v: 'brass', ms: stabTones(ch, tr), len: b[0], vel: b[1] * cv }); }
     else if (pos === 0 || (pos === 8 && B.split)) push({ v: 'brass', ms: stabTones(ch, tr), len: 6, vel: 0.7 * cv });
+  } else if (comp === 'strum') { // 우쿨렐레
+    const k = STRUM[pos];
+    if (k && (E >= 1 || pos % 4 !== 0)) push({ v: 'uke', ms: stabTones(ch, tr), len: 1.5, vel: k * cv });
+  } else if (comp === 'clav') { // 클라비 «칙» + 세기 2부터 브라스 스탭(세기 2는 대답하는 홀수 마디만)
+    const k = (E >= 2 ? CLAV : CLAV_LITE)[pos];
+    if (k) push({ v: 'clav', ms: stabTones(ch, tr), len: 0.7, vel: k * cv });
+    const h = E >= 2 && (E >= 3 || B.bi % 2 === 1) ? HORNS[pos] : null;
+    if (h) push({ v: 'horn', ms: stabTones(ch, tr), len: h[0], vel: h[1] * cv });
+  } else if (comp === 'oompah') { // 오-파: 엇박마다 금관 화음 «빠»
+    if (off8) push({ v: 'horn', ms: stabTones(ch, tr), len: 1.2, vel: (pos === 14 ? 0.9 : 0.75) * cv });
   }
   const arpOn = kind !== 'break' && (comp === 'arp' || E >= (X.arpAt ?? 3) || (kind === 'intro' && comp === 'pad'));
   if (arpOn) {
@@ -604,7 +902,7 @@ export function stepEvents(plan, s, opt = {}) {
   const r = bassRoot(ch, tr);
   const bv = (E >= 2 ? 1 : 0.85) * fade;
   const bass = (m, len, vel) => push({ v: 'bass', m, len, vel });
-  if (kind === 'intro' || kind === 'break') { // 길게 이어 붙인다(레가토) — 가벼운 구간에서도 소리 바닥이 끊기지 않게
+  if ((kind === 'intro' && !X.grooveIntro) || kind === 'break') { // 길게 이어 붙인다(레가토) — 가벼운 구간에서도 소리 바닥이 끊기지 않게
     if (pos === 0) bass(r, B.split || kind === 'intro' ? 8.6 : 16.6, 0.75);
     else if (pos === 8 && (B.split || kind === 'intro')) bass(r, 8.6, 0.75);
   } else {
@@ -624,6 +922,25 @@ export function stepEvents(plan, s, opt = {}) {
         else if (pos % 4 === 3) bass(r, 0.9, bv * 0.8);
         break;
       case 'drive': if (pos % 2 === 0) bass(beat ? r : r + 12, 1.6, beat ? bv : bv * 0.85); break;
+      case 'skip': { // 점8분 «깡-총» — 박마다 근음/5도, 박 바로 앞 16분에 옥타브 «총»
+        const k = SKIP[pos];
+        if (k && (E >= 2 || beat)) bass(r + k[0], k[1], bv * k[2]);
+        else if (pos === 15 && E >= 2) { const nb = barInfo(plan, bar + 1); bass(bassRoot(nb.c0, nb.tr) - 1, 0.8, bv * 0.7); }
+        break;
+      }
+      case 'slap': { // 인트로 = 슬랩 베이스 독주(꽉 찬 패턴)
+        const k = (E >= 2 || kind === 'intro' ? SLAP : SLAP_LITE)[pos];
+        if (k) push({ v: 'bass', m: r + k[1], len: k[2], vel: bv * (k[0] === 'p' ? 0.85 : 1), k: k[0] });
+        break;
+      }
+      case 'walk8':
+        if (pos % 2 === 0) bass(r + WALK8[pos / 2], beat ? 1.3 : 1.1, beat ? bv : bv * 0.75);
+        else if (E >= 3 && pos % 4 === 3) bass(r + 12, 0.7, bv * 0.55);
+        break;
+      case 'march': // 튜바 «움-」 — 박마다 근음 · 5도, 세기 2부터 마디 끝에서 다음 근음으로 걸어 올라간다
+        if (beat) bass(r + (pos % 8 === 4 ? 7 : 0), 2.4, pos === 0 ? bv : bv * 0.88);
+        else if (pos === 14 && E >= 2) { const nb = barInfo(plan, bar + 1); bass(bassRoot(nb.c0, nb.tr) - 2, 1.6, bv * 0.75); }
+        break;
       default: if (beat) bass(r, 2, bv);
     }
   }
@@ -635,8 +952,8 @@ export function stepEvents(plan, s, opt = {}) {
     if (kv) push({ v: 'kick', vel: kv * fade });
   }
   if (off8) push({ v: 'ohat', vel: (kind === 'intro' ? 0.45 : kind === 'break' ? 0.5 : E >= 2 ? 0.85 : 0.7) * fade });
-  if (pos % 2 === 1 && E >= 2 && kind !== 'break' && kind !== 'intro') push({ v: 'hat', vel: X.hat16 ? 0.6 : 0.35 });
-  if (X.hat16 && E === 1 && kind === 'main' && pos % 2 === 1) push({ v: 'hat', vel: 0.3 });
+  if (pos % 2 === 1 && E >= 2 && kind !== 'break' && kind !== 'intro') push({ v: X.perc16 || 'hat', vel: X.hat16 ? 0.6 : 0.35 });
+  if (X.hat16 && ((E === 1 && kind === 'main') || (kind === 'intro' && X.grooveIntro)) && pos % 2 === 1) push({ v: 'hat', vel: 0.3 });
   // 백비트(2·4박) — 박 위라 JUMP 와 같은 편. 빌드 · 브레이크 · 인트로에는 없다
   if ((pos === 4 || pos === 12) && E >= 1 && kind !== 'intro' && kind !== 'break' && kind !== 'build' && !(fill && pos === 12)) {
     const sv = (E >= 2 ? 0.85 : 0.5) * fade;
@@ -646,11 +963,17 @@ export function stepEvents(plan, s, opt = {}) {
   if (X.ghost && E >= 2 && kind !== 'break' && (pos === 7 || pos === 9)) push({ v: 'snare', vel: 0.14 });
   // 크래시 — 구간 첫 박 · 세기 3 은 4마디마다
   if (pos === 0 && ((B.first && (E >= 2 || kind === 'break')) || (E >= 3 && !B.first && B.bi % 4 === 0))) push({ v: 'crash', vel: kind === 'break' ? 0.6 : B.first ? 1 : 0.6 });
+  // 고르기 곡 타악 — 방울은 엇박(= ROPE) 쪽, 큰북은 박(= JUMP) 위에만
+  const busy = E >= 2 && kind !== 'break' && kind !== 'intro';
+  if (X.cowbell && busy && off8) push({ v: 'bell', k: 'cow', vel: E >= 3 ? 0.8 : 0.55 });
+  if (X.agogo && busy) { if (off8) push({ v: 'bell', k: 'hi', vel: 0.75 }); else if (pos % 8 === 7) push({ v: 'bell', k: 'lo', vel: 0.5 }); }
+  if (X.taiko && beat && kind !== 'break' && (pos % 8 === 0 || (E >= 3 && kind !== 'intro'))) push({ v: 'taiko', vel: kind === 'intro' ? 0.55 : pos === 0 ? 1 : 0.75 });
   // 필 — 다음 구간으로 넘어가는 마지막 마디 후반
   if (fill && FILL[pos]) {
     if (X.toms && TOMS[pos]) push({ v: 'tom', k: TOMS[pos], vel: FILL[pos] });
     else push({ v: 'snare', vel: FILL[pos] });
   }
+  if (fill && X.pfeif && (pos === 8 || pos === 10)) push({ v: 'pfeif', vel: 0.8 }); // 삑-삑
   if (kind === 'intro' && B.last && (pos === 14 || pos === 15)) push({ v: 'snare', vel: pos === 14 ? 0.35 : 0.5 });
   // 빌드 — 4분 → 8분 → 16분으로 조여 드는 스네어
   if (kind === 'build') {
@@ -683,13 +1006,15 @@ export function stepEvents(plan, s, opt = {}) {
 function endEvents(plan, out) {
   const E = plan.P.end;
   if (!E) return;
+  const tr = plan.laps ? barInfo(plan, Math.max(0, plan.bars - 1)).tr : 0; // 바퀴 곡을 bars 에서 끝내면 그 바퀴의 조로
+  const m = capLead(E.m + tr);
   out.push(
     { v: 'kick', vel: 1 }, { v: 'crash', vel: 1 },
-    { v: 'brass', ms: stabTones(E.c, 0), len: 10, vel: 1 },
-    { v: 'pad', ms: padTones(E.c, 0), len: 16, vel: 1, slow: false, pump: false },
-    { v: 'lead', m: E.m, len: 12, vel: 1 },
-    { v: 'lead2', m: octUp(E.m), len: 12, vel: 0.7 },
-    { v: 'bass', m: bassRoot(E.c, 0), len: 14, vel: 1 },
+    { v: 'brass', ms: stabTones(E.c, tr), len: 10, vel: 1 },
+    { v: 'pad', ms: padTones(E.c, tr), len: 16, vel: 1, slow: false, pump: false },
+    { v: 'lead', m, len: 12, vel: 1 },
+    { v: 'lead2', m: octUp(m), len: 12, vel: 0.7 },
+    { v: 'bass', m: bassRoot(E.c, tr), len: 14, vel: 1 },
   );
 }
 
@@ -708,17 +1033,24 @@ const VOL = {
   lead: 0.13, lead2: 0.045, harm: 0.06, fever: 0.05, arp: 0.04, spark: 0.032, pad: 0.03, stab: 0.036, brass: 0.048,
   bassTri: 0.34, bassSynth: 0.1, bassPulse: 0.1, bassSq: 0.085,
   kick: 0.62, snare: 0.2, clap: 0.15, hat: 0.04, ohat: 0.075, crash: 0.06, riser: 0.045, tom: 0.32,
+  // 고르기 곡 목소리
+  whistle: 0.12, horn: 0.075, wah: 0.1, canon: 0.042, uke: 0.04, clav: 0.026, hornStab: 0.028,
+  slap: 0.17, pop: 0.12, tuba: 0.24, shaker: 0.09, bell: 0.045, taiko: 0.36, pfeif: 0.05,
 };
+// 필터 리드 — 트럼펫(톱니 둘 · 살짝 어긋나게) / 와우(펄스 + 공명 필터가 «와-」 하고 열렸다 닫힘)
+const HORN_LEAD = { q: 1.1, f0: 520, f1: 3400, f2: 1700, det: 6 };
+const WAH_LEAD = { q: 6, f0: 380, f1: 2600, f2: 850, det: 0 };
 
 const off = (n) => { try { n.disconnect(); } catch (e) { /* 이미 끊김 */ } };
 const quiet = (p) => { if (p && typeof p.then === 'function') p.then(null, () => {}); return p; };
-const VIB = [];
-// k번 흔들리는 비브라토 곡선(센트) — 노드 없이 detune 자동화로 건다
-function vibCurve(k) {
-  if (VIB[k]) return VIB[k];
+const VIB = {};
+// k번 흔들리는 비브라토 곡선(센트, 깊이 depth) — 노드 없이 detune 자동화로 건다
+function vibCurve(k, depth = 11) {
+  const key = k + ':' + depth;
+  if (VIB[key]) return VIB[key];
   const n = k * 16 + 1, c = new Float32Array(n);
-  for (let i = 0; i < n; i++) c[i] = 11 * Math.sin((2 * Math.PI * k * i) / (n - 1)) * Math.min(1, i / 20);
-  return (VIB[k] = c);
+  for (let i = 0; i < n; i++) c[i] = depth * Math.sin((2 * Math.PI * k * i) / (n - 1)) * Math.min(1, i / 20);
+  return (VIB[key] = c);
 }
 
 export function createMusic() {
@@ -918,16 +1250,105 @@ export function createMusic() {
     const os = ms.map((m) => { const o = oscOf(wave, hz(m), t, fin + 0.02); o.connect(g); return o; });
     os[0].onended = () => { os.forEach(off); off(g); off(lp); };
   }
+  function vibrato(o1, t, end, depth) {
+    if (end - t <= 0.32) return;
+    const t1 = t + 0.14, dur = end - t1, k = Math.max(1, Math.min(24, Math.round(dur * 5.5)));
+    o1.detune.setValueCurveAtTime(vibCurve(k, depth), t1, dur);
+  }
+  // 휘파람 — 사인파가 반음쯤 아래에서 미끄러져 올라 붙고(«휘-»), 길면 깊게 떤다
+  function whistle(t, d, m, v, o) {
+    const end = t + Math.max(0.03, d * (o.gate || 0.9));
+    const g = ctx.createGain();
+    const fin = adsr(g.gain, t, v, 0.012, Math.min(0.12, d * 0.4), 0.8, end, 0.06);
+    const f = hz(m);
+    const o1 = oscOf('sine', f * 0.955, t, fin + 0.02);
+    o1.frequency.exponentialRampToValueAtTime(f, t + 0.045);
+    vibrato(o1, t, end, 24);
+    o1.connect(g); g.connect(o.out);
+    if (o.echo) g.connect(o.echo);
+    o1.onended = () => { off(o1); off(g); };
+  }
+  // 필터 리드 — 음마다 필터가 확 열렸다(«빠/와») 반쯤 닫힌다. F = HORN_LEAD | WAH_LEAD
+  function filtLead(t, d, m, v, wave, o, F) {
+    const end = t + Math.max(0.03, d * (o.gate || 0.92));
+    const g = ctx.createGain();
+    const fin = adsr(g.gain, t, v, 0.008, Math.min(0.1, d * 0.4), 0.75, end, 0.05);
+    const f = hz(m);
+    const lp = filt('lowpass', F.f0, F.q, t);
+    lp.frequency.exponentialRampToValueAtTime(F.f1, t + 0.03);
+    lp.frequency.exponentialRampToValueAtTime(F.f2, t + Math.max(0.06, Math.min(0.3, end - t)));
+    const o1 = oscOf(wave, f, t, fin + 0.02), os = [o1];
+    if (F.det) { const o2 = oscOf(wave, f, t, fin + 0.02); o1.detune.value = -F.det; o2.detune.value = F.det; os.push(o2); }
+    else if (o.vib) vibrato(o1, t, end, 11);
+    for (const x of os) x.connect(lp);
+    lp.connect(g); g.connect(o.out);
+    if (o.echo) g.connect(o.echo);
+    o1.onended = () => { os.forEach(off); off(lp); off(g); };
+  }
+  // 곡의 리드 목소리로 한 음 (리드 · 화성 리드가 같은 악기 소리를 낸다). k = 리드 기준 세기
+  function leadTone(t, d, m, k, o) {
+    const X = plan.P.src;
+    switch (X.leadVoice) {
+      case 'whistle': return whistle(t, d, m, VOL.whistle * k, o);
+      case 'horn': return filtLead(t, d, m, VOL.horn * k, 'sawtooth', o, HORN_LEAD);
+      case 'wah': return filtLead(t, d, m, VOL.wah * k, W.p25, o, WAH_LEAD);
+      case 'square': return mel(t, d, m, VOL.lead * 0.85 * k, W.p50, o);
+      default: return mel(t, d, m, VOL.lead * k, W.p25, o);
+    }
+  }
+  // 금관 화음 «빠!» — 톱니파 화음, 필터가 열렸다 닫힌다
+  function hornChord(t, d, ms, v) {
+    const end = t + Math.max(0.03, Math.min(d * 0.85, 0.32));
+    const g = ctx.createGain();
+    const fin = adsr(g.gain, t, v, 0.006, 0.07, 0.55, end, 0.05);
+    const lp = filt('lowpass', 600, 1, t);
+    lp.frequency.exponentialRampToValueAtTime(2800, t + 0.025);
+    lp.frequency.exponentialRampToValueAtTime(1300, t + 0.14);
+    lp.connect(g); g.connect(cur.out);
+    const os = ms.map((m) => { const o = oscOf('sawtooth', hz(m), t, fin + 0.02); o.connect(lp); return o; });
+    os[0].onended = () => { os.forEach(off); off(lp); off(g); };
+  }
+  // 슬랩 베이스 — 엄지(t) «둥»: 사각파 + 빨리 닫히는 필터, 검지(p) «팝»: 밝은 펄스 + 손가락 «탁»
+  function slapBass(t, e, f, end) {
+    const pop = e.k === 'p';
+    const g = ctx.createGain();
+    adsr(g.gain, t, (pop ? VOL.pop : VOL.slap) * e.vel, 0.002, pop ? 0.04 : 0.07, pop ? 0.35 : 0.55, end, 0.03);
+    const lp = filt('lowpass', pop ? 3200 : 2200, 1.4, t);
+    lp.frequency.exponentialRampToValueAtTime(pop ? 1500 : 650, t + Math.min(0.12, end - t + 0.02));
+    const o = oscOf(pop ? W.p25 : W.p50, f, t, end + 0.05);
+    o.connect(lp); lp.connect(g); g.connect(cur.out);
+    noise(t, { f: pop ? 2600 : 1100, q: 1.2, dur: pop ? 0.012 : 0.018, a: 0.0006, vol: (pop ? 0.05 : 0.07) * e.vel, out: cur.out });
+    o.onended = () => { off(o); off(lp); off(g); };
+  }
+  // 튜바 — 세모파 + 둥근 사각파 한 겹, 살짝 늦게 부푸는 «붐」
+  function tubaBass(t, e, f, end) {
+    const g = ctx.createGain();
+    adsr(g.gain, t, VOL.tuba * e.vel, 0.014, 0.08, 0.75, end, 0.05);
+    const o1 = oscOf('triangle', f, t, end + 0.08), o2 = oscOf(W.p50, f, t, end + 0.08);
+    const lp = filt('lowpass', 650, 0.9, t), g2 = gainOf(0.25, g);
+    o1.connect(g); o2.connect(lp); lp.connect(g2); g.connect(cur.out);
+    o1.onended = () => { off(o1); off(o2); off(lp); off(g2); off(g); };
+  }
 
   const VOICE = {
     lead(t, d, e) {
       const X = plan.P.src;
-      mel(t, d, e.m, VOL.lead * e.vel, W.p25, { out: cur.out, echo: X.echo ? cur.echo : null, gate: X.gate, vib: X.vib, det: X.detune ? 9 : 0 });
+      leadTone(t, d, e.m, e.vel, { out: cur.out, echo: X.echo ? cur.echo : null, gate: X.gate, vib: X.vib, det: X.detune ? 9 : 0 });
     },
     lead2(t, d, e) { mel(t, d, e.m, VOL.lead2 * e.vel, W.p125, { out: cur.out, gate: plan.P.src.gate }); },
-    harm(t, d, e) { mel(t, d, e.m, VOL.harm * e.vel, W.p25, { out: cur.out, echo: cur.echo, gate: plan.P.src.gate, vib: true }); },
+    harm(t, d, e) {
+      const X = plan.P.src, o = { out: cur.out, echo: cur.echo, gate: X.gate, vib: true };
+      if (X.leadVoice) leadTone(t, d, e.m, e.vel * 0.5, o); else mel(t, d, e.m, VOL.harm * e.vel, W.p25, o);
+    },
+    canon(t, d, e) { mel(t, d, e.m, VOL.canon * e.vel, W.p25, { out: cur.out, gate: 0.7 }); },
     fever(t, d, e) { mel(t, d, e.m, VOL.fever * e.vel, W.p125, { out: cur.fev, gate: 0.8 }); },
-    arp(t, d, e) { blip(t, d, e.m, VOL.arp * e.vel, W.p125, cur.out); },
+    arp(t, d, e) {
+      if (plan.P.src.arpWave === 'triangle') blip(t, d, e.m, VOL.arp * 1.7 * e.vel, 'triangle', cur.out); // 글로켄슈필처럼
+      else blip(t, d, e.m, VOL.arp * e.vel, W.p125, cur.out);
+    },
+    uke(t, d, e) { chord(t, Math.min(d, 0.24), e.ms, VOL.uke * e.vel, W.p25, 0.002, 0.22, 2800, cur.out); },
+    clav(t, d, e) { chord(t, Math.min(d, 0.075), e.ms, VOL.clav * e.vel, W.p25, 0.001, 0.5, 3200, cur.out); },
+    horn(t, d, e) { hornChord(t, d, e.ms, VOL.hornStab * e.vel); },
     spark(t, d, e) { blip(t, d, e.m, VOL.spark * e.vel, 'triangle', cur.fev); },
     shine(t, d, e) { blip(t, d, e.m, VOL.spark * e.vel, 'triangle', cur.out); },
     stab(t, d, e) { chord(t, Math.min(d, 0.09), e.ms, VOL.stab * e.vel, W.p125, 0.002, 0.4, 3600, cur.out); },
@@ -959,6 +1380,8 @@ export function createMusic() {
     },
     bass(t, d, e) {
       const kind = plan.P.src.bassVoice, f = hz(e.m), end = t + Math.max(0.03, d * 0.9);
+      if (kind === 'slap') return slapBass(t, e, f, end);
+      if (kind === 'tuba') return tubaBass(t, e, f, end);
       const g = ctx.createGain();
       const os = [];
       let lp = null;
@@ -999,6 +1422,11 @@ export function createMusic() {
     },
     snare(t, d, e) {
       const v = VOL.snare * e.vel, big = plan.P.src.bigSnare;
+      if (plan.P.src.snare === 'noise8') { // 8비트 잡음 채널 «칙» — 몸통 없는 잡음만
+        noise(t, { f: 3000, q: 0.45, dur: 0.11, a: 0.0008, vol: v * 1.15, out: cur.out });
+        noise(t, { type: 'highpass', f: 7000, dur: 0.03, a: 0.0005, vol: v * 0.5, out: cur.out });
+        return;
+      }
       noise(t, { f: 1800, q: 0.8, dur: big ? 0.26 : 0.13, a: 0.001, vol: v, out: cur.out });
       tone(t, { type: 'triangle', f: 195, f2: 150, dur: 0.07, a: 0.001, vol: v * 0.9, out: cur.out });
       if (big) noise(t, { type: 'highpass', f: 3000, dur: 0.4, a: 0.002, vol: v * 0.22, out: cur.echo }); // 크게 울리는 꼬리
@@ -1029,6 +1457,26 @@ export function createMusic() {
       tone(t, { f, f2: f * 0.55, dur: 0.2, a: 0.002, vol: VOL.tom * e.vel, out: cur.out });
       noise(t, { type: 'lowpass', f: 1200, dur: 0.05, a: 0.001, vol: VOL.tom * 0.3 * e.vel, out: cur.out });
     },
+    shaker(t, d, e) { noise(t, { f: 6800, q: 1.1, dur: 0.06, a: 0.014, vol: VOL.shaker * e.vel, out: cur.out }); },
+    bell(t, d, e) {
+      const v = VOL.bell * e.vel;
+      if (e.k === 'cow') { // 카우벨 — 사각파 둘(540 · 800Hz)을 띠 필터로
+        const bp = filt('bandpass', 1000, 1.2, t), g = ctx.createGain();
+        env(g.gain, t, 0.001, v * 2.2, 0.01, 0.22);
+        const o1 = oscOf('square', 540, t, t + 0.25), o2 = oscOf('square', 800, t, t + 0.25);
+        o1.connect(bp); o2.connect(bp); bp.connect(g); g.connect(cur.out);
+        o1.onended = () => { off(o1); off(o2); off(bp); off(g); };
+      } else { // 아고고 방울 — 높은 «깡» / 낮은 «껑»
+        const f = e.k === 'lo' ? 620 : 930;
+        tone(t, { type: 'triangle', f, dur: 0.16, a: 0.001, vol: v, out: cur.out });
+        tone(t, { type: 'square', f: f * 2.4, dur: 0.035, a: 0.0008, vol: v * 0.18, out: cur.out });
+      }
+    },
+    taiko(t, d, e) { // 큰북 «둥» — 박 위에만
+      tone(t, { f: 105, f2: 56, glide: 0.24, dur: 0.36, a: 0.002, vol: VOL.taiko * e.vel, out: cur.out });
+      noise(t, { type: 'lowpass', f: 700, dur: 0.07, a: 0.001, vol: VOL.taiko * 0.35 * e.vel, out: cur.out });
+    },
+    pfeif(t, d, e) { tone(t, { f: 2950, f2: 2700, dur: 0.075, a: 0.003, hold: 0.04, vol: VOL.pfeif * e.vel, out: cur.out }); }, // 삼바 호루라기
     riser(t, d, e) { // 잡음이 솟아오르며 커진다 — 다음 구간이 터지기 직전
       const fl = filt('bandpass', 350, 1.4, t);
       fl.frequency.exponentialRampToValueAtTime(6500, t + d);

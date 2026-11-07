@@ -167,6 +167,7 @@ export function drawKid(c, xIn, footY, lookIn, pose = {}) {
   const theta = pose.theta ?? Math.PI;
   const cy = fy - 31 + drop;          // 머리 가운데 줄
   const cx = x - 0.5;
+  const mk = look.mask | 0;           // 가면 (콤보 선물) — 0 이면 아래 가면 줄은 하나도 안 탄다
 
   /* 로켓 운동화 불꽃 */
   if (P.shoeFx === 'rocket' && (pose.lift || 0) > 2) {
@@ -174,6 +175,7 @@ export function drawKid(c, xIn, footY, lookIn, pose = {}) {
     for (const sx of [-6, 4]) { rect(c, x + sx, fy - (tuck ? 2 : 0), 3, 3 + f, '#ff9a1a'); rect(c, x + sx + 1, fy - (tuck ? 2 : 0), 1, 2 + f, '#fff3a0'); }
   }
 
+  if (mk) maskBehind(c, mk, x, cy, t, 'f', 0);
   drawHairBack(c, look.hair, P, x, cy, t, pose.lift || 0);
 
   /* 다리 · 신발 */
@@ -262,8 +264,10 @@ export function drawKid(c, xIn, footY, lookIn, pose = {}) {
   rect(c, x - 9, cy + 3, 2, 1, '#ff8fa3');
   rect(c, x + 7, cy + 3, 2, 1, '#ff8fa3');
   drawFace(c, look.eyes, x, cy, st, pose.mouth, t, pose.lift || 0);
-  drawHairFront(c, look.hair, P, x, cy);
-  drawHat(c, look.hat, P, x, cy, t);
+  if (!(mk && MASK_COWL.has(mk))) drawHairFront(c, look.hair, P, x, cy);
+  if (mk) maskFace(c, mk, x, cy, t, st, 'f', 0);
+  if (!(mk && MASK_NOHAT.has(mk))) drawHat(c, look.hat, P, x, cy, t);
+  if (mk) maskTop(c, mk, x, cy, t, 'f', 0);
 
   if (st === 'trip') {
     for (let i = 0; i < 3; i++) {
@@ -436,6 +440,550 @@ function drawHat(c, idx, P, x, cy, t) {
       ], { o: OUT, y: h, r: '#e8423a', b: '#3a7be8', g: '#3fbf5a' });
       break;
     default: break;
+  }
+}
+
+/* ---------- 가면 — 콤보 기록 선물 (2026-11-07) ---------- */
+/**
+ * look.mask 1~7 = 눈복면 · 마스크 · 얼굴복면 · 박쥐 가면 · 강철 가면 · 무지개 가면 · 최종보스 가면 (data.js MASKS).
+ * 세 겹으로 그린다 —
+ *  · maskBehind : 아이보다 먼저(뒤) — 머리 뒤로 펄럭이는 끈 · 무지개 리본 · 최종보스 오라
+ *  · maskFace   : 얼굴 · 앞머리 위, 모자 아래 — 가면 본체. 눈구멍은 비워 둬서 원래 눈(깜빡 · 윙크 · 넘어짐 ×)이 그대로 보인다
+ *  · maskTop    : 모자 위 — 뿔 · 왕관 · 반짝이
+ * view 'f' 정면 · 's' 옆(d 1 = 오른쪽을 봄 · −1 = 왼쪽) · 'b' 뒤. 가면 0 이면 셋 다 부르지 않는다(예전 그림 그대로).
+ * 박쥐 가면은 머리를 덮는 두건이라 앞머리 · 모자를 그리지 않고, 최종보스 가면은 왕관이 모자 자리를 쓴다.
+ * 실존 영웅 디자인 · 로고는 쓰지 않는다 — 박쥐 귀 반가면 · 빨강 금 강철 얼굴판 모두 이안오락실 오리지널.
+ * 정면 그림의 칸: «머리 축» 대칭(sym mid) = 머리 가운데 칸 x−1 · «얼굴 축» 대칭(sym) = 두 눈 사이 x−½.
+ */
+const MASK_COWL = new Set([4]);
+const MASK_NOHAT = new Set([4, 7]);
+const MASK_RB = ['#ff4d4d', '#ffa64d', '#ffe14d', '#4dd27a', '#4d9cff', '#a64dff'];
+const mod = (a, n) => ((a % n) + n) % n;
+const step12 = (t) => Math.floor(t * 12) / 12;        // 도트 애니메이션 — 초당 12장으로 끊는다
+
+/** 문자열 도트 — pal 값이 함수면 (x, y) 로 색을 고른다(흐르는 무지개 · 반짝임). flip 이면 x0 에서 왼쪽으로 찍는다(옆모습 뒤집기) */
+function mspr(c, x0, y0, rows, pal, flip = false) {
+  for (let j = 0; j < rows.length; j++) {
+    const r = rows[j];
+    for (let i = 0; i < r.length; i++) {
+      const v = pal[r[i]];
+      if (!v) continue;
+      const xx = flip ? x0 - i : x0 + i, yy = y0 + j;
+      rect(c, xx, yy, 1, 1, typeof v === 'function' ? v(xx, yy) : v);
+    }
+  }
+}
+/** 왼쪽 반쪽 → 좌우 대칭 한 줄. mid 면 마지막 글자가 가운데 칸, 아니면 반쪽끼리 맞붙는다. sh: 오른쪽(그늘) 쪽 글자 바꾸기 */
+function sym(rows, mid, sh = {}) {
+  return rows.map((s) => s + [...(mid ? s.slice(0, -1) : s)].reverse().map((ch) => sh[ch] || ch).join(''));
+}
+/** 머리를 두르는 띠 (cy 기준 r0~r1 줄) — 머리보다 한 칸 굵게 감긴다. 정면 · 옆 · 뒤 모두 같은 모양 */
+function headBand(c, x, cy, r0, r1, col, hi, lo) {
+  const cx = x - 0.5;
+  oval(c, cx, cy, 12, 11, OUT, cy + r1 + 1, cy + r0 - 1);
+  oval(c, cx, cy, 11, 10, col, cy + r1, cy + r0);
+  if (hi) oval(c, cx, cy, 11, 10, hi, cy + r0, cy + r0);
+  if (lo && r1 > r0) oval(c, cx, cy, 11, 10, lo, cy + r1, cy + r1);
+}
+/** 머리를 덮는 두건 — 열마다 아랫단이 다르다. bot(k) = 그 열의 마지막 줄(cy 기준), K(xx) = 화면 칸 → 보는 쪽 기준 칸 */
+function hood(c, x, cy, bot, col, K) {
+  const cx = x - 0.5;
+  for (const [rx, ry, cc, ex] of [[11.5, 10.5, OUT, 1], [10.5, 9.5, col, 0]]) {
+    for (let y = cy - 12; y <= cy + 8; y++) {
+      const dy = (y + 0.5 - (cy - 1)) / ry;
+      if (Math.abs(dy) > 1) continue;
+      const hw = rx * Math.sqrt(1 - dy * dy);
+      for (let xx = ro(cx - hw), b = ro(cx + hw); xx < b; xx++) if (y - cy <= bot(K(xx)) + ex) px(c, xx, y, cc);
+    }
+  }
+}
+/** 펄럭이는 천 끈 — (x0, y0) 에서 dir 쪽으로 len 칸. 끝으로 갈수록 크게 흔들리고 droop 만큼 처진다. col 이 함수면 마디 번호로 색 */
+function clothTail(c, x0, y0, len, dir, ph, t, col, colD, droop = 0, th = 2) {
+  const f = step12(t);
+  const pts = [];
+  for (let i = 0; i <= len; i++) {
+    const k = i / len;
+    pts.push([x0 + dir * i, y0 + ro(Math.sin(f * 9 - i * 0.75 + ph) * 1.7 * k + droop * k * k), i >= len - 1 ? Math.max(1, th - 1) : th]);
+  }
+  for (const [xx, yy, w] of pts) rect(c, xx, yy - 1, 1, w + 2, OUT);
+  const [ex, ey, ew] = pts[len];
+  rect(c, ex + dir, ey, 1, ew, OUT);
+  pts.forEach(([xx, yy, w], i) => {
+    rect(c, xx, yy, 1, w, typeof col === 'function' ? col(i) : col);
+    if (w > 1) px(c, xx, yy + w - 1, typeof colD === 'function' ? colD(i) : colD);
+  });
+}
+/** 반짝이 하나 — ph 0~0.5 동안 점 → 십자 → 큰 별 → 십자 → 점, 나머지는 쉰다 */
+function twinkle(c, x, y, ph, col = '#ffffff') {
+  if (!(ph >= 0 && ph < 0.5)) return;
+  const s = ph < 0.1 || ph >= 0.4 ? 0 : ph < 0.2 || ph >= 0.3 ? 1 : 2;
+  if (s === 0) px(c, x, y, col);
+  else if (s === 1) sprite(c, x - 1, y - 1, SPR.spark, { w: col });
+  else sprite(c, x - 3, y - 3, SPR.sparkL, { w: col });
+}
+
+/* 팔레트 */
+const PM1 = { o: OUT, l: '#ff6b6b', r: '#d92b3a', d: '#8e1624' };                                    // 눈복면 — 빨간 천
+const PM2 = { o: OUT, l: '#5a78d8', n: '#2c3f8f', d: '#1a2660', w: '#ffffff', k: '#b0203a' };        // 마스크 — 남색 천 · 상어 이빨
+const PM3 = { o: OUT, c: '#30334a', L: '#4d5272', k: '#1d1f2e', B: '#ff6b6b', b: '#d7263d', p: '#8e1624' };   // 얼굴복면
+const PM4 = { o: OUT, k: '#24212f', d: '#14121c', m: '#3b3650', h: '#6c6590', j: '#57507a' };          // 박쥐 가면 — 광택 검정
+const PM4D = { o: OUT, k: '#14121c', d: '#0c0b12', m: '#24212f', h: '#3b3650', j: '#2e2a3d' };         // 먼 쪽 귀(그늘)
+const PM5 = { o: OUT, R: '#c8202e', r: '#7c101b', q: '#ff5a5a', Q: '#ffd6d6', G: '#ffc93c', g: '#b8860b', y: '#fff09a', n: '#0d3a4a' };   // 강철 가면
+const PM7 = { o: OUT, K: '#2a1533', k: '#170b1d', m: '#553070', n: '#7d4a9e', G: '#ffcf3f', g: '#b07a10', y: '#fff3a0', R: '#e0103a', r: '#ff8aa0', b: '#3a7bff', e: '#2fd27a', h: '#f6efe0', B: '#d8c6a3', s: '#9c8462' };
+
+/* ① 눈복면 — 정면 (x−12, cy−4) · 옆 (k −14, cy−4) */
+const M1F = [
+  '.ooooooooooooooooooooo.',
+  'ollllddddllllllddddlllo',
+  'orrrd....drrrrd....drro',
+  'ordrd....drlrrd....drdo',
+  'orrrd....drrrrd....drro',
+  'oddddddddddoodddddddddo',
+  '.oooooooooo..ooooooooo.',
+];
+const M1S = [
+  '..ooooooooooooooooooooooo.',
+  '..olllllllllllllll....llo.',
+  '..orrrrrrrrrrrrrrd....dro.',
+  '..ordrrrrrrrrrrrrd....dro.',
+  '..oddddddddddddddd....ddo.',
+  '..oooooooooooooooooooooo..',
+];
+const KNOT = ['.oo.', 'olro', 'orro', 'odro', 'oddo', '.oo.'];
+
+/* ② 마스크 — 정면 (x−11, cy) · 옆 (k −4, cy) */
+const M2F = [
+  '........ooooo........',
+  'ooooooooolllooooooooo',
+  'ollllllllnnnllllllllo',
+  'onnonnnnnnnnnnnnnonno',
+  '.onnooooooooooooonno.',
+  '.oonowkwkwkwkwkwonoo.',
+  '..oonowkwkwkwkwonoo..',
+  '...oonooooooooonoo...',
+  '.....ooddddddddoo....',
+];
+const M2S = [
+  '.ooo........ooo.',
+  '.nnnoooooooolllo',
+  '.oooolllllllno..',
+  '....onnnnnnnno..',
+  '....onnoooooo...',
+  '....onnowkwko...',
+  '....onnnowoo....',
+  '.....onnooo.....',
+  '.....odoo.......',
+];
+
+/* ③ 얼굴복면 — 정면 (x−12, cy−8) · 옆 (k −1, cy−3) */
+const M3F = [
+  '...ooooooooooooooooo...',
+  '..oBBBBBBBBBBBBBBBBBo..',
+  '.obbbbbbbbbbbbbbbbbbbo.',
+  '.opppppppppppppppppppo.',
+  '.ooooooooooooooooooooo.',
+  '.okkkkkkkkkkkkkkkkkkko.',
+  '.occk..............kco.',
+  '.occk..............kco.',
+  '.occck............kcco.',
+  '.occccccccccccccccccco.',
+  '.occcccccccLccccccccco.',
+  '.occkccccccccccccckcco.',
+  '..occkccccccccccckcco..',
+  '..oocckccccccccckccoo..',
+  '...oocckccccccckccoo...',
+  '....oocckccccckccoo....',
+  '......ookkkkkkkoo......',
+];
+const M3S = [
+  '.okkkkkkkko...',
+  '.ock......o...',
+  '.ock......o...',
+  '.occk.....o...',
+  '.occcccccccco.',
+  '.occccccLcco..',
+  '.ockcccccco...',
+  '.occkcccco....',
+  '..occkcco.....',
+  '...occko......',
+  '....oco.......',
+];
+
+/* ④ 박쥐 가면 — 정면 (x−13, cy−18), 머리 축 대칭 · 오른쪽은 그늘 */
+const M4F = sym([
+  '...o.........',
+  '...oo........',
+  '...ojo.......',
+  '...ojko......',
+  '...ojkko.....',
+  '...ojkkko....',
+  '...ojkkkko...',
+  '...ojkkkkkooo',
+  '...ojkkkkkkmm',
+  '...ojkkkkkkkk',
+  '...ohkkkkkkkk',
+  '...ohmkkkkkkk',
+  '..ohmkkkkkkkk',
+  '..ohkkkkkkkkk',
+  '.ohkkkkkkkkkk',
+  '.omkkkkkkkkkk',
+  '.okkkkkkkkkkk',
+  '.okkkkkkkkkkk',
+  '.okkkkkkkkkkk',
+  '.odkkkkkkkkkk',
+  '..odkkkkkkook',
+  '..okkkooko..o',
+  '...oko..o....',
+  '....o........',
+], true, { j: 'm', h: 'm', m: 'k' });
+const EAR4 = ['o......', 'oo.....', 'ojo....', 'ojko...', 'ojkko..', 'ojkkko.', 'ojkkkko', 'ojkkkkk', 'ojkkkkk'];
+
+/* ⑤ 강철 가면 — 정면 (x−13, cy−12) · 옆 (k −1, cy−11). v · V(눈빛)는 시간에 따라 깜빡 */
+const M5F = sym([
+  '............o',
+  '...........oy',
+  '...........oG',
+  '..........oyG',
+  '..........oyG',
+  '....oooooooyG',
+  '....oGGGGGGyG',
+  '...oQqRRRRRRR',
+  '..oqqRRRRRRRR',
+  '..ogGGGGGGGGG',
+  '..oGnvvVvvnGG',
+  '..oGnnvvvvvnG',
+  '..ogGGGGGGGGG',
+  '..oqRRRRRRRRq',
+  '..oqGGGRRRRRq',
+  '..oqRRRRRRRRq',
+  '...oGGGRRRRRq',
+  '...ooqRRooooo',
+  '....ooRRRRRRR',
+  '.....ooRRoooo',
+  '.......ooGGGy',
+], true, { Q: 'R', q: 'R', R: 'r', y: 'G', G: 'g' });
+const M5S = [
+  '.....o........',
+  '....oyo.......',
+  '...oyGGo......',
+  '...oyGGGo.....',
+  '..ooooooo.....',
+  '.oGGGGGGo.....',
+  '.oqRRRRRRo....',
+  '.oqRRRRRRRo...',
+  '.ogGGGGGGGo...',
+  '.oGGnvvVvvo...',
+  '.oGGGnvvvvo...',
+  '.ogGGGGGGGGo..',
+  '.oqRRRRRRRRRo.',
+  '.oqRRRRRRRRo..',
+  '.oqRRRRRRRo...',
+  '..oRRRoooo....',
+  '..oRRRRRo.....',
+  '...oRooo......',
+  '....oGGo......',
+];
+const BOLT5 = ['.oo.', 'oyGo', 'oGgo', '.oo.'];
+
+/* ⑥ 무지개 가면 — 정면 (x−16, cy−10), 얼굴 축 대칭 · 옆 (k −1, cy−10). X 칸은 흐르는 무지개 */
+const M6F = sym([
+  '.o..............',
+  '.oo.............',
+  '.oXo............',
+  '.oXXo...........',
+  '.oXXXooooo......',
+  '.oXXXXXXXXoooooo',
+  '..oXXXXXXooooXXX',
+  '..oXXXXXo....oXX',
+  '..oXXXXXo....oXX',
+  '...oXXXXo....oXX',
+  '....oXXXo....oXX',
+  '.....oXXXooooXoo',
+  '......oooooooo..',
+], false);
+const M6S = [
+  '...........o..',
+  '..........oo..',
+  '.........oXo..',
+  '........oXXo..',
+  '..oooooooXXo..',
+  '.oXXXXXXXXXXo.',
+  '.oXXXooooXXXo.',
+  '.oXXo....oXXo.',
+  '.oXXo....oXXo.',
+  '.oXXo....oXXo.',
+  '..oXo....oXo..',
+  '...oXooooXo...',
+  '....oooooo....',
+];
+const GEM6 = ['.oo.', 'oWpo', 'oppo', '.oo.'];
+const BOW6 = ['oo...oo', 'oXo.oXo', 'oXXoXXo', 'oXo.oXo', 'oo...oo'];
+
+/* ⑦ 최종보스 가면 — 정면 (x−13, cy−10) · 왕관 (x−8, cy−20) · 뿔 왼쪽 (x−16, cy−16) */
+const M7F = sym([
+  '............o',
+  '...........oG',
+  '.....ooooooGy',
+  '....ooyGGGGGG',
+  '...ooKnnKKKgR',
+  '...oKnKKKKgrR',
+  '..oGGGKKKKKgR',
+  '..oKKKGGGKKKg',
+  '..oKKKKKKGGKK',
+  '..oKKKKKKKKKK',
+  '..oKKKKKKKKKK',
+  '..oKKKKKKKKKK',
+  '..omKKKKKKKKK',
+  '..okKKKKKKKKK',
+  '...oGGGGGGGGG',
+  '...ooKKKKyKyK',
+  '....ooKKKyKKK',
+  '.....ookKKKKK',
+  '.......ookkkk',
+], true, { n: 'm', m: 'K', y: 'G', G: 'g', r: 'R' });
+const CROWN7 = [
+  '.o.....o.....o.',
+  '.oo...oyo...oo.',
+  '.oyo..oyo..oyo.',
+  'oyGo.oyGgo.oGgo',
+  'oyGGooyRgooGGgo',
+  'oyGGGGGRGGGGGgo',
+  'oyGbGGGGGGGeGgo',
+  'oyyyyyyyyyyyyyo',
+  'ooooooooooooooo',
+];
+const HORN7 = [
+  '.o......',
+  '.oo.....',
+  '.oho....',
+  'ohBo....',
+  'ohBo....',
+  'ohBso...',
+  'ohBBo...',
+  '.ohBso..',
+  '.ohBBso.',
+  '..ohBBGo',
+  '...oGGgo',
+  '....ooo.',
+];
+
+/* 최종보스 옆모습 (k −1, cy−8) */
+const M7S = [
+  '..ooooo.......',
+  '.oyGGGGo......',
+  '.oKnnKKRo.....',
+  '.oKnKKKKRo....',
+  '.oKKKKGGKKo...',
+  '.oKKKKKKGGo...',
+  '.oKKKKKKKKo...',
+  '.oKKKKKKKKo...',
+  '.oKKKKKKKKKo..',
+  '.oKKKKKKKKKKo.',
+  '.omKKKKKKKKo..',
+  '.okKKKKKKKo...',
+  '..oGGGGGGo....',
+  '..oKKyKyo.....',
+  '...oKKyo......',
+  '....okko......',
+  '.....oo.......',
+];
+
+/** 최종보스 오라 — 머리 둘레에서 보랏빛 불꽃이 일렁인다(머리 · 몸이 위에 덮는다) */
+function bossAura(c, x, cy, t) {
+  const f = step12(t);
+  const cx = x - 0.5, cyy = cy - 1;
+  const C = ['#3b0f5c', '#7a22c9', '#c050ff', '#ff9cf7'];
+  for (let yy = cy - 22; yy <= cy + 7; yy++) {
+    for (let xx = x - 18; xx <= x + 17; xx++) {
+      const dx = (xx + 0.5 - cx) / 12.5, dy = (yy + 0.5 - cyy) / 11.5;
+      const e = Math.sqrt(dx * dx + dy * dy);
+      if (e < 0.9) continue;                                   // 머리 안쪽은 어차피 덮인다
+      const up = Math.max(0, -dy / (e || 1));                  // 1 = 머리 꼭대기 쪽
+      const a = Math.atan2(dy, dx);
+      const tongue = Math.max(0, Math.sin(a * 9 + f * 11)) * 0.45 + Math.max(0, Math.sin(a * 5 - f * 7)) * 0.22;
+      const m = 0.15 + up * (0.15 + tongue);
+      const lim = 1 + m - (yy > cy + 3 ? (yy - cy - 3) * 0.06 : 0);
+      if (e >= lim) continue;
+      const depth = (lim - e) / Math.max(0.08, m);
+      px(c, xx, yy, C[depth < 0.22 ? 0 : depth < 0.5 ? 1 : depth < 0.8 ? 2 : 3]);
+    }
+  }
+  /* 위로 날아오르는 불티 */
+  for (let i = 0; i < 4; i++) {
+    const p = mod(f * 0.9 + i * 0.25, 1);
+    const ex = x - 0.5 + Math.sin(i * 2.3 + 1) * 11, ey = cy - 12 - p * 10;
+    if (p < 0.85) px(c, ro(ex + Math.sin(p * 9 + i) * 1.5), ro(ey), p < 0.5 ? '#ff9cf7' : '#c050ff');
+  }
+}
+
+function maskBehind(c, m, x, cy, t, view, d) {
+  if (m === 7) { bossAura(c, x, cy, t); return; }
+  if (view !== 'f') return;                 // 옆 · 뒤에서는 끈이 머리 앞쪽으로 보인다 — maskFace 에서 그린다
+  if (m === 1) { clothTail(c, x - 12, cy - 2, 7, -1, 0, t, PM1.r, PM1.d, 2); clothTail(c, x - 12, cy, 6, -1, 2, t, PM1.r, PM1.d, 4); }
+  else if (m === 2) { clothTail(c, x + 10, cy + 3, 5, 1, 0.6, t, PM2.n, PM2.d, 2); clothTail(c, x + 10, cy + 5, 4, 1, 2.4, t, PM2.n, PM2.d, 3); }
+  else if (m === 3) { clothTail(c, x + 10, cy - 7, 10, 1, 0.3, t, PM3.b, PM3.p, 3); clothTail(c, x + 10, cy - 5, 8, 1, 2.1, t, PM3.b, PM3.p, 6); }
+  else if (m === 6) {
+    const f = Math.floor(t * 10);
+    const rb = (i) => MASK_RB[mod(i + f, 6)], rbD = (i) => tone(MASK_RB[mod(i + f, 6)], -0.3);
+    clothTail(c, x - 15, cy - 3, 6, -1, 0.4, t, rb, rbD, 3);
+    clothTail(c, x + 14, cy - 3, 6, 1, 1.9, t, rb, rbD, 3);
+  }
+}
+
+function maskFace(c, m, x, cy, t, st, view, d) {
+  const f = step12(t);
+  const K = (k) => (d > 0 ? x + k : x - 1 - k);                       // 옆모습: 보는 쪽 기준 칸 k → 화면 칸
+  const kOf = (xx) => (d > 0 ? xx - x : x - 1 - xx);
+  const side = (k0, y0, rows, pal) => mspr(c, d > 0 ? x + k0 : x - 1 - k0, y0, rows, pal, d < 0);
+  const squint = st === 'trip' || (t % 3.4) < 0.12;                    // 렌즈 눈도 깜빡 · 넘어지면 질끈
+  const flow = (xx, yy) => MASK_RB[mod(Math.floor(((xx - x) + (yy - cy) - f * 16) / 2), 6)];
+  switch (m) {
+    case 1:
+      if (view === 'f') mspr(c, x - 12, cy - 4, M1F, PM1);
+      else if (view === 's') {
+        side(-14, cy - 4, M1S, PM1);
+        side(-15, cy - 4, KNOT, PM1);
+        clothTail(c, K(-16), cy - 2, 6, -d, 0, t, PM1.r, PM1.d, 2);
+        clothTail(c, K(-16), cy, 5, -d, 2, t, PM1.r, PM1.d, 4);
+      } else {
+        headBand(c, x, cy, -3, 0, PM1.r, PM1.l, PM1.d);
+        mspr(c, x - 3, cy - 4, KNOT, PM1);
+        clothTail(c, x - 4, cy - 2, 5, -1, 0, t, PM1.r, PM1.d, 4);
+        clothTail(c, x + 1, cy - 1, 5, 1, 1.6, t, PM1.r, PM1.d, 5);
+      }
+      break;
+    case 2:
+      if (view === 'f') mspr(c, x - 11, cy, M2F, PM2);
+      else if (view === 's') {
+        side(-4, cy, M2S, PM2);
+        side(-13, cy - 1, ['.oo.', 'onno', 'odno', '.oo.'], PM2);
+        clothTail(c, K(-14), cy, 4, -d, 0.6, t, PM2.n, PM2.d, 2);
+      } else {
+        headBand(c, x, cy, 1, 1, PM2.n);
+        mspr(c, x - 3, cy - 1, ['.oo.', 'onno', 'odno', '.oo.'], PM2);
+        clothTail(c, x - 4, cy + 1, 4, -1, 0.6, t, PM2.n, PM2.d, 3);
+        clothTail(c, x + 1, cy + 1, 4, 1, 2.0, t, PM2.n, PM2.d, 3);
+      }
+      break;
+    case 3:
+      if (view === 'f') mspr(c, x - 12, cy - 8, M3F, PM3);
+      else {
+        headBand(c, x, cy, -7, -5, PM3.b, PM3.B, PM3.p);
+        if (view === 's') {
+          side(-1, cy - 3, M3S, PM3);
+          side(-15, cy - 8, KNOT, { o: OUT, l: PM3.B, r: PM3.b, d: PM3.p });
+          clothTail(c, K(-16), cy - 7, 10, -d, 0.3, t, PM3.b, PM3.p, 3);
+          clothTail(c, K(-16), cy - 5, 8, -d, 2.1, t, PM3.b, PM3.p, 6);
+        } else {
+          mspr(c, x - 3, cy - 8, KNOT, { o: OUT, l: PM3.B, r: PM3.b, d: PM3.p });
+          clothTail(c, x - 4, cy - 6, 9, -1, 0.3, t, PM3.b, PM3.p, 6);
+          clothTail(c, x + 1, cy - 5, 9, 1, 2.1, t, PM3.b, PM3.p, 7);
+        }
+      }
+      break;
+    case 4: {
+      const lens = '#ffffff', lensB = '#a8dcff';
+      if (view === 'f') {
+        mspr(c, x - 13, cy - 18, M4F, PM4);
+        for (const s of [-1, 1]) {                                    // 하얀 렌즈 눈 — 머리 축 대칭(칸 k ↔ −2−k)
+          const L = (k, y, w, col) => rect(c, s < 0 ? x + k : x - 2 - k - (w - 1), y, w, 1, col);
+          if (squint) L(-8, cy - 1, 4, lens);
+          else { L(-8, cy - 2, 2, lens); L(-8, cy - 1, 4, lens); L(-7, cy, 4, lensB); }
+        }
+        px(c, x - 8, cy - 9, '#e8e4ff'); px(c, x - 7, cy - 10, '#e8e4ff');   // 광택 점
+      } else if (view === 's') {
+        side(-9, cy - 18, EAR4, PM4D);
+        hood(c, x, cy, (k) => (k <= -3 ? 5 : k <= 3 ? 3 : k === 6 ? 2 : k <= 8 ? 1 : 0), PM4.k, kOf);
+        side(-4, cy - 18, EAR4, PM4);
+        oval(c, x - 0.5 - 3 * d, cy - 6, 5, 3, PM4.m, cy - 6, cy - 9);
+        if (squint) side(4, cy - 1, ['wwww'], { w: lens });
+        else side(4, cy - 2, ['ww..', 'wwww', '.bbb'], { w: lens, b: lensB });
+      } else {
+        mspr(c, x - 10, cy - 18, EAR4, PM4);
+        mspr(c, x + 8, cy - 18, EAR4, PM4, true);
+        hood(c, x, cy, () => 5, PM4.k, (xx) => xx - x);
+        oval(c, x - 3.5, cy - 6, 5, 3, PM4.m, cy - 6, cy - 9);
+      }
+      break;
+    }
+    case 5: {
+      const glow = mod(f * 1.5, 1) < 0.5;
+      const pal = { ...PM5, v: glow ? '#9ffbff' : '#3fd8ea', V: '#ffffff' };
+      if (view === 'f') mspr(c, x - 13, cy - 12, M5F, pal);
+      else if (view === 's') { side(-1, cy - 11, M5S, pal); side(-4, cy - 2, BOLT5, pal); }
+      else {
+        headBand(c, x, cy, -2, -1, PM5.R, PM5.q, PM5.r);
+        mspr(c, x - 3, cy - 3, ['.oooo.', 'oyGGGo', 'oGGGgo', '.oooo.'], pal);
+        for (const s of [-1, 1]) px(c, s < 0 ? x - 9 : x + 7, cy - 2, PM5.y);
+      }
+      break;
+    }
+    case 6: {
+      const pal = { o: OUT, X: flow, W: '#ffffff', p: '#ff7ad9' };
+      if (view === 'f') { mspr(c, x - 16, cy - 10, M6F, pal); mspr(c, x - 2, cy - 9, GEM6, pal); }
+      else if (view === 's') {
+        for (let k = -11; k <= 0; k++) { px(c, K(k), cy - 4, OUT); px(c, K(k), cy - 3, flow(K(k), cy - 3)); px(c, K(k), cy - 2, OUT); }
+        side(-1, cy - 10, M6S, pal);
+        side(-16, cy - 5, BOW6, pal);
+        const fi = Math.floor(t * 10);
+        clothTail(c, K(-17), cy - 3, 6, -d, 0.4, t, (i) => MASK_RB[mod(i + fi, 6)], (i) => tone(MASK_RB[mod(i + fi, 6)], -0.3), 4);
+      } else {
+        headBand(c, x, cy, -3, -2, '#ffffff');
+        for (let xx = x - 12; xx <= x + 11; xx++) for (let yy = cy - 3; yy <= cy - 2; yy++) if (xx > x - 12 && xx < x + 10) px(c, xx, yy, flow(xx, yy));
+        mspr(c, x - 4, cy - 5, BOW6, pal);
+        const fi = Math.floor(t * 10);
+        clothTail(c, x - 4, cy - 2, 6, -1, 0.4, t, (i) => MASK_RB[mod(i + fi, 6)], (i) => tone(MASK_RB[mod(i + fi, 6)], -0.3), 6);
+        clothTail(c, x + 2, cy - 2, 6, 1, 1.9, t, (i) => MASK_RB[mod(i + fi + 3, 6)], (i) => tone(MASK_RB[mod(i + fi + 3, 6)], -0.3), 6);
+      }
+      break;
+    }
+    case 7: {
+      const hot = mod(f * 2, 1) < 0.5;
+      const E = hot ? '#ff6a7e' : '#ff2448', Ec = hot ? '#ffffff' : '#ffd0d8';
+      if (view === 'f') {
+        mspr(c, x - 13, cy - 10, M7F, PM7);
+        for (const s of [-1, 1]) {                                    // 붉게 빛나는 눈 — 머리 축 대칭
+          const L = (k, y, w, col) => rect(c, s < 0 ? x + k : x - 2 - k - (w - 1), y, w, 1, col);
+          if (squint) L(-9, cy - 1, 5, E);
+          else { L(-9, cy - 2, 4, E); L(-9, cy - 1, 5, E); L(-7, cy, 3, E); L(-7, cy - 1, 2, Ec); }
+        }
+      } else if (view === 's') {
+        headBand(c, x, cy, -3, -2, PM7.G, PM7.y, PM7.g);
+        side(-1, cy - 8, M7S, PM7);
+        if (!squint) side(4, cy - 2, ['EEE.', 'EeEE', '.EEE'], { E, e: Ec }); else side(4, cy - 1, ['EEEE'], { E });
+      } else headBand(c, x, cy, -3, -2, PM7.G, PM7.y, PM7.g);
+      break;
+    }
+    default: break;
+  }
+}
+
+function maskTop(c, m, x, cy, t, view, d) {
+  const f = step12(t);
+  if (m === 5 && view === 'f') {                                       // 금속 반짝 — 세 군데를 돌아가며
+    const i = Math.floor(f * 1.4) % 3, P = [[-8, -5], [3, -4], [-6, 5]][i];
+    twinkle(c, x + P[0], cy + P[1], mod(f * 1.4, 1));
+  } else if (m === 6) {
+    for (let i = 0; i < 4; i++) {
+      const P = [[-15, -11], [14, -11], [-12, 3], [11, 3]][i];
+      twinkle(c, x + P[0], cy + P[1], mod(f * 0.8 + i * 0.27, 1), i % 2 ? '#fff7a8' : '#ffffff');
+    }
+  } else if (m === 7) {
+    /* 뿔 · 왕관 */
+    if (view === 's') {
+      const side = (k0, y0, rows, pal) => mspr(c, d > 0 ? x + k0 : x - 1 - k0, y0, rows, pal, d < 0);
+      side(-6, cy - 16, HORN7, PM7);
+      side(-5, cy - 20, CROWN7.map((r) => r.slice(3, 12)), PM7);
+    } else {
+      mspr(c, x - 16, cy - 16, HORN7, PM7);
+      mspr(c, x + 14, cy - 16, HORN7, PM7, true);
+      mspr(c, x - 8, cy - 20, CROWN7, PM7);
+    }
+    for (let i = 0; i < 3; i++) {
+      const a = f * 1.3 + i * 2.094;
+      twinkle(c, ro(x - 0.5 + Math.cos(a) * 17), ro(cy - 5 + Math.sin(a) * 12), mod(f * 1.1 + i * 0.33, 1), i === 1 ? '#fff3a0' : '#ffffff');
+    }
+    twinkle(c, x - 1, cy - 20, mod(f * 0.7, 1), '#ffffff');
   }
 }
 
@@ -620,8 +1168,11 @@ function beatHeadFront(c, look, P, x, cy, st, mouth, t, lift) {
   rect(c, x - 9, cy + 3, 2, 1, '#ff8fa3');
   rect(c, x + 7, cy + 3, 2, 1, '#ff8fa3');
   drawFace(c, look.eyes, x, cy, st, mouth, t, lift);
-  drawHairFront(c, look.hair, P, x, cy);
-  drawHat(c, look.hat, P, x, cy, t);
+  const mk = look.mask | 0;
+  if (!(mk && MASK_COWL.has(mk))) drawHairFront(c, look.hair, P, x, cy);
+  if (mk) maskFace(c, mk, x, cy, t, st, 'f', 0);
+  if (!(mk && MASK_NOHAT.has(mk))) drawHat(c, look.hat, P, x, cy, t);
+  if (mk) maskTop(c, mk, x, cy, t, 'f', 0);
 }
 
 /** 옆모습 머리 — 눈 하나 · 뒤통수는 머리카락 · 귀 · 코끝 한 칸. d = 1 오른쪽을 봄, −1 왼쪽 */
@@ -629,6 +1180,7 @@ function beatHeadSide(c, look, P, x, cy, d, mouth, t, lift) {
   const cx = x - 0.5;
   const M = (k) => (d > 0 ? x + k : x - 1 - k);       // 오른쪽 기준 칸 k 를 보는 방향으로 뒤집는다
   const sw = Math.floor(t * 5) % 2;
+  const mk = look.mask | 0, cowl = mk && MASK_COWL.has(mk);   // 가면 — 두건(박쥐)은 뾰족 · 곱슬 머리를 덮는다
   /* 뒤로 늘어진 머리 */
   if (look.hair === 1) { const x0 = d > 0 ? x - 13 : x - 2; rbox(c, x0, cy - 8, 15, 17, OUT, 3); rbox(c, x0 + 1, cy - 7, 13, 15, P.hair, 3); rect(c, x0 + 1, cy + 6, 13, 1, P.hairS); }
   else if (look.hair === 2) { const p0 = d > 0 ? x - 15 : x + 10; oval(c, p0 + 2.5, cy + 2 - sw, 4, 5, OUT); oval(c, p0 + 2.5, cy + 2 - sw, 3, 4, P.hair); rect(c, p0 + 1, cy - 1 - sw, 2, 1, P.hairL); }
@@ -649,8 +1201,8 @@ function beatHeadSide(c, look, P, x, cy, d, mouth, t, lift) {
   oval(c, cx, cy - 1, 11.5, 10.5, OUT, cy - 4);
   oval(c, cx, cy - 1, 10.5, 9.5, P.hair, cy - 5);
   oval(c, cx - 2 * d, cy - 5, 5, 3, P.hairL, cy - 7, cy - 9);
-  if (look.hair === 5) for (const [k, h] of [[-9, 5], [-5, 7], [-1, 8], [3, 6]]) { const kx = d > 0 ? x + k : x - 1 - k; for (let i = 0; i < h; i++) { const w = Math.max(1, ro((h - i) * 0.6)); rect(c, kx - ro(w / 2) - 1, cy - 8 - i, w + 2, 1, OUT); } for (let i = 0; i < h - 1; i++) { const w = Math.max(1, ro((h - i) * 0.6) - 1); rect(c, kx - ro(w / 2), cy - 8 - i, w, 1, P.hair); } }
-  if (look.hair === 4) for (let i = 0; i < 5; i++) { const a = Math.PI + 0.2 + i * 0.62, bx = cx + Math.cos(a) * 10 * -d * -1, byy = cy - 3 + Math.sin(a) * 9; oval(c, bx, byy, 3.4, 3.4, OUT); oval(c, bx, byy, 2.4, 2.4, P.hair); }
+  if (look.hair === 5 && !cowl) for (const [k, h] of [[-9, 5], [-5, 7], [-1, 8], [3, 6]]) { const kx = d > 0 ? x + k : x - 1 - k; for (let i = 0; i < h; i++) { const w = Math.max(1, ro((h - i) * 0.6)); rect(c, kx - ro(w / 2) - 1, cy - 8 - i, w + 2, 1, OUT); } for (let i = 0; i < h - 1; i++) { const w = Math.max(1, ro((h - i) * 0.6) - 1); rect(c, kx - ro(w / 2), cy - 8 - i, w, 1, P.hair); } }
+  if (look.hair === 4 && !cowl) for (let i = 0; i < 5; i++) { const a = Math.PI + 0.2 + i * 0.62, bx = cx + Math.cos(a) * 10 * -d * -1, byy = cy - 3 + Math.sin(a) * 9; oval(c, bx, byy, 3.4, 3.4, OUT); oval(c, bx, byy, 2.4, 2.4, P.hair); }
   /* 앞머리 — 얼굴 쪽으로 들쭉날쭉 */
   const fr = [3, 2, 3, 2, 1, 2, 3, 2, 1, 1];
   for (let i = 0; i < 10; i++) { const col = d > 0 ? x + i : x - 1 - i; rect(c, col, cy - 5, 1, fr[i] + 1, OUT); rect(c, col, cy - 5, 1, fr[i], P.hair); }
@@ -671,8 +1223,9 @@ function beatHeadSide(c, look, P, x, cy, d, mouth, t, lift) {
   else if (m === 'grin') { rect(c, mx - (d > 0 ? 1 : 0), my, 3, 1, W); rect(c, mx - (d > 0 ? 1 : 0), my + 1, 3, 1, '#d9485a'); }
   else if (m === 'sad') { rect(c, mx, my, 2, 1, MC); px(c, d > 0 ? mx - 1 : mx + 2, my + 1, MC); }
   else { px(c, d > 0 ? mx - 1 : mx + 2, my, MC); rect(c, mx, my + 1, 2, 1, MC); }
+  if (mk) maskFace(c, mk, x, cy, t, 'spin', 's', d);
   /* 모자 — 야구 모자는 챙이 보는 쪽으로, 헤드밴드는 띠, 나머지는 정면 그림 그대로 */
-  const hat = look.hat;
+  const hat = mk && MASK_NOHAT.has(mk) ? 0 : look.hat;
   if (hat === 1) {
     const h = P.hat, hS = tone(h, -0.3), hL = tone(h, 0.35);
     oval(c, cx, cy - 4, 12, 9, OUT, cy - 4); oval(c, cx, cy - 4, 11, 8, h, cy - 5);
@@ -682,11 +1235,13 @@ function beatHeadSide(c, look, P, x, cy, d, mouth, t, lift) {
     rbox(c, bx, cy - 6, 10, 4, OUT, 1); rect(c, bx + 1, cy - 5, 8, 2, hS);
   } else if (hat === 2) { rect(c, x - 11, cy - 7, 22, 4, OUT); rect(c, x - 10, cy - 6, 20, 2, P.hat); rect(c, x - 10, cy - 5, 20, 1, '#e8423a'); }
   else if (hat) drawHat(c, hat, P, x, cy, t);
+  if (mk) maskTop(c, mk, x, cy, t, 's', d);
 }
 
 /** 뒷모습 머리 — 얼굴 없이 머리카락이 다 덮는다. 가마 · 목덜미 · 귀 끝 */
 function beatHeadBack(c, look, P, x, cy, t) {
   const cx = x - 0.5;
+  const mk = look.mask | 0, cowl = mk && MASK_COWL.has(mk);
   /* 귀 끝이 머리 양옆으로 살짝 */
   for (const s of [-1, 1]) { const ex = s < 0 ? x - 13 : x + 9; rect(c, ex, cy - 1, 4, 5, OUT); rect(c, ex + 1, cy, 2, 3, P.skin); }
   oval(c, cx, cy, 11, 10, OUT);
@@ -699,10 +1254,11 @@ function beatHeadBack(c, look, P, x, cy, t) {
   if (look.hair === 0 || look.hair === 4 || look.hair === 5) { rect(c, x - 4, cy + 8, 7, 2, OUT); rect(c, x - 3, cy + 8, 5, 1, P.skinS); }   // 목덜미
   if (look.hair === 1) { rbox(c, x - 12, cy - 2, 23, 11, OUT, 2); rbox(c, x - 11, cy - 1, 21, 9, P.hair, 2); for (let k = -8; k <= 7; k += 3) rect(c, x + k, cy + 2, 1, 6, P.hairS); rect(c, x - 11, cy + 7, 21, 1, P.hairS); }
   if (look.hair === 3) { const sw = Math.floor(t * 5) % 2; rbox(c, x - 3, cy + 1, 6, 13 + sw, OUT, 2); rbox(c, x - 2, cy + 2, 4, 11 + sw, P.hair, 1); rect(c, x + 1, cy + 3, 1, 9, P.hairS); rect(c, x - 2, cy - 1, 4, 2, '#3a7be8'); }
-  if (look.hair === 5) for (const [k, h] of [[-9, 5], [-5, 7], [-1, 8], [3, 7], [7, 5]]) { for (let i = 0; i < h; i++) { const w = Math.max(1, ro((h - i) * 0.7)); rect(c, x + k - ro(w / 2) - 1, cy - 8 - i, w + 2, 1, OUT); } for (let i = 0; i < h - 1; i++) { const w = Math.max(1, ro((h - i) * 0.7) - 1); rect(c, x + k - ro(w / 2), cy - 8 - i, w, 1, P.hair); } }
-  if (look.hair === 4) for (let i = 0; i < 9; i++) { const a = Math.PI * 0.9 + (i * Math.PI * 1.2) / 8, bx = cx + Math.cos(a) * 9, byy = cy - 1 + Math.sin(a) * 8; oval(c, bx, byy, 3.2, 3.2, OUT); oval(c, bx, byy, 2.2, 2.2, P.hair); px(c, ro(bx) - 1, ro(byy) - 1, P.hairL); }
+  if (look.hair === 5 && !cowl) for (const [k, h] of [[-9, 5], [-5, 7], [-1, 8], [3, 7], [7, 5]]) { for (let i = 0; i < h; i++) { const w = Math.max(1, ro((h - i) * 0.7)); rect(c, x + k - ro(w / 2) - 1, cy - 8 - i, w + 2, 1, OUT); } for (let i = 0; i < h - 1; i++) { const w = Math.max(1, ro((h - i) * 0.7) - 1); rect(c, x + k - ro(w / 2), cy - 8 - i, w, 1, P.hair); } }
+  if (look.hair === 4 && !cowl) for (let i = 0; i < 9; i++) { const a = Math.PI * 0.9 + (i * Math.PI * 1.2) / 8, bx = cx + Math.cos(a) * 9, byy = cy - 1 + Math.sin(a) * 8; oval(c, bx, byy, 3.2, 3.2, OUT); oval(c, bx, byy, 2.2, 2.2, P.hair); px(c, ro(bx) - 1, ro(byy) - 1, P.hairL); }
+  if (mk) maskFace(c, mk, x, cy, t, 'spin', 'b', 0);
   /* 모자 뒷모습 — 야구 모자는 둥근 머리 + 뒤 조임 구멍, 나머지는 정면 그림 */
-  const hat = look.hat;
+  const hat = mk && MASK_NOHAT.has(mk) ? 0 : look.hat;
   if (hat === 1) {
     const h = P.hat, hS = tone(h, -0.3), hL = tone(h, 0.35);
     oval(c, cx, cy - 4, 12, 9, OUT, cy - 3); oval(c, cx, cy - 4, 11, 8, h, cy - 4);
@@ -711,6 +1267,7 @@ function beatHeadBack(c, look, P, x, cy, t) {
     rect(c, x - 10, cy - 3, 20, 1, hS);
   } else if (hat === 2) { rect(c, x - 11, cy - 7, 22, 4, OUT); rect(c, x - 10, cy - 6, 20, 2, P.hat); rect(c, x - 10, cy - 5, 20, 1, '#e8423a'); rect(c, x - 2, cy - 7, 3, 5, OUT); rect(c, x - 1, cy - 6, 1, 3, P.hat); }
   else if (hat) drawHat(c, hat, P, x, cy, t);
+  if (mk) maskTop(c, mk, x, cy, t, 'b', 0);
 }
 
 /** 번쩍 든 손바닥(손가락 셋 + 엄지) — 줄 손잡이를 막 놓은 손 */
@@ -739,6 +1296,7 @@ function drawKidBeat(c, xIn, footY, lookIn, pose) {
     const f = Math.floor(t * 20) % 2, up = legMode === 'high' ? 4 : legMode === 'tuck' ? 2 : 0;
     for (const sx of [-6, 4]) { rect(c, x + sx, fy - up, 3, 3 + f, '#ff9a1a'); rect(c, x + sx + 1, fy - up, 1, 2 + f, '#fff3a0'); }
   }
+  if (look.mask | 0) maskBehind(c, look.mask | 0, x, cy, t, back ? 'b' : d ? 's' : 'f', d);
   if (!d && !back) drawHairBack(c, look.hair, P, x, cy, t, lift);
   if (back && look.hair === 2) drawHairBack(c, 2, P, x, cy, t, lift);   // 양갈래는 뒤에서도 양옆에
 
@@ -1164,9 +1722,11 @@ export function figureCanvas(lookIn, rope, scale = 2, opt = {}) {
   const gy = opt.focus === 'head' ? Hh + 19 : opt.focus === 'body' ? Hh - 1 : Hh - 2;
   const x = Math.floor(W / 2);
   const theta = opt.theta ?? 1.6 * Math.PI;
-  const pre = kidHands(theta, x, gy, 0, 0, opt.state || 'stand', 1);
+  /* lift · tuck · crouch · spin · t 는 미리보기용(가면 시트 등) — 안 주면 예전과 같다 */
+  const lift = opt.lift || 0, t = opt.t ?? 1;
+  const pre = kidHands(theta, x, gy, lift, opt.crouch || 0, opt.state || 'stand', t, opt.spin || 0);
   if (rope) { const g = ropeGeom(pre, x, gy, theta); if (g.depth < 0) drawRope(c, rope, g, 0); }
-  const hh = drawKid(c, x, gy, look, { theta, t: 1, state: opt.state, mouth: opt.mouth });
+  const hh = drawKid(c, x, gy, look, { theta, t, state: opt.state, mouth: opt.mouth, lift, tuck: opt.tuck, crouch: opt.crouch, spin: opt.spin });
   if (rope) { const g = ropeGeom(hh, x, gy, theta); if (g.depth >= 0) drawRope(c, rope, g, 0); drawHandles(c, rope, hh); }
   return finish(cv, scale);
 }

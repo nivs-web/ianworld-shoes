@@ -38,6 +38,8 @@ export function normJr(raw) {
     jumps: n0(r.jumps),
     perfects: n0(r.perfects),
     bestCombo: n0(r.bestCombo, 99999),
+    /* 콤보 기록(보통 · 어려움에서 세운 최고 콤보) — 콤보 순위 · 콤보 선물 가면 (2026-11-07) */
+    comboRec: n0(r.comboRec, 99999),
     /* 멀티 서바이벌 — 판 수 · 우승 수 (줄지 않는 값) */
     mPlays: n0(r.mPlays, 100000),
     mWins: n0(r.mWins, 100000),
@@ -59,6 +61,8 @@ export function normJr(raw) {
       guide: n0(opts.guide, 7),
       /* 방식 — 'jump' = 점프만(JUMP 하나 · 기본) · 'both' = 로프+점프(두 버튼). 로비에서 고른다 */
       ctrl: opts.ctrl === 'both' ? 'both' : 'jump',
+      /* 무한 줄넘기 곡 (music.SONG_IDS 중 하나, 2026-11-07 10곡) */
+      song: str(opts.song, 20, 'endless'),
     },
   };
 }
@@ -77,6 +81,7 @@ export function mergeJr(localRaw, remoteRaw) {
     jumps: Math.max(a.jumps, b.jumps),
     perfects: Math.max(a.perfects, b.perfects),
     bestCombo: Math.max(a.bestCombo, b.bestCombo),
+    comboRec: Math.max(a.comboRec, b.comboRec),
     mPlays: Math.max(a.mPlays, b.mPlays),
     mWins: Math.max(a.mWins, b.mWins),
     endless: Object.fromEntries(DK.map((k) => [k, Math.max(a.endless[k], b.endless[k])])),
