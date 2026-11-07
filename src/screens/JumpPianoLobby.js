@@ -1,5 +1,5 @@
 /**
- * 줄넘기 피아노 로비 (2026-11-07 대표님 «게임은 2개 — 줄넘기 챔피언 / 줄넘기 피아노»).
+ * 점프 피아노 로비 (2026-11-07 대표님 «게임은 2개 — 줄넘기 챔피언 / 점프 피아노»).
  * 줄넘기 챔피언(동그라미 리듬)과 저장 · 상점 · 순위를 섞지 않는다. 설정과 최고 점수는 이 기기에만 적는다.
  * 한 손 = 오른쪽 3칸(점프) · 두 손 = 왼쪽 3칸(로프)까지 6칸. 슬라이더 타일은 기술(스키어 · 지그재그 · 줄 휘두르기).
  */
@@ -23,7 +23,7 @@ export default function JumpPianoLobby(nav) {
       const go = (mode, stageNo) => nav.push(JumpPianoGame, { mode, stageNo });
       return screen(
         el('div.diff-title', S.pianoTitle),
-        el('div.jr-next', '타일을 두드려 줄넘기! 긴 타일은 꾹 · 슬라이더 타일은 밀면서 따라가요'),
+        el('div.jr-next', '타일을 두드려 점프! 긴 타일은 꾹 · 슬라이더 타일은 밀면서 따라가요'),
         el('div.diff-title', '방식 · 난이도'),
         segmented(CTRL_SEG, st.ctrl, (v) => { pianoSave({ ctrl: v }); nav.refresh(); }),
         segmented(SEG, st.diff, (v) => { pianoSave({ diff: v }); nav.refresh(); }),

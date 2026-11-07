@@ -41,7 +41,7 @@ const CatchGame = lazyScreen(() => import('./CatchGame.js'), S.catchTitle);
 const Catch3DGame = lazyScreen(() => import('./Catch3DGame.js'), S.catch3dTitle);
 /** 5번째 게임 줄넘기 챔피언 (2026-11-07) — 드래곤처럼 **로비**로 들어간다(권반장 지시: 캐치볼처럼 바로 게임 X) */
 const JumpRopeLobby = lazyScreen(() => import('./JumpRopeLobby.js'), S.jumpTitle);
-/** 6번째 게임 줄넘기 피아노 (2026-11-07) — 줄넘기 챔피언과 따로 가는 «타일 피아노» 줄넘기 */
+/** 6번째 게임 점프 피아노 (2026-11-07) — 줄넘기 챔피언과 따로 가는 «타일 피아노» 게임 */
 const JumpPianoLobby = lazyScreen(() => import('./JumpPianoLobby.js'), S.pianoTitle);
 const jrBest = (p) => { const e = p.jr?.endless || {}; return Math.max(e.easy | 0, e.normal | 0, e.hard | 0); };
 
@@ -55,7 +55,7 @@ const CARDS = [
   { id: 'catchball', banner: '/assets/ui/banner_catchball.webp', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
   { id: 'catchball3d', banner: '/assets/ui/banner_catchball3d.webp', title: S.catch3dTitle, sub: (p) => S.catchBestLine(p.catch3dBestEasy | 0, p.catch3dBestNormal | 0, p.catch3dBestHard | 0), screen: () => Catch3DGame, ready: true },
   { id: 'jumprope', banner: '/assets/ui/banner_jumprope.webp', title: S.jumpTitle, sub: (p) => S.jumpCardLine(jrBest(p), p.jr?.jumps), screen: () => JumpRopeLobby, ready: true },
-  { id: 'jumppiano', banner: '/assets/ui/banner_jumppiano.webp', title: S.pianoTitle, sub: () => '3줄 · 6줄 타일을 두드려 줄넘기', screen: () => JumpPianoLobby, ready: true },
+  { id: 'jumppiano', banner: '/assets/ui/banner_jumppiano.webp', title: S.pianoTitle, sub: () => '3칸 · 6칸 타일을 두드려 점프!', screen: () => JumpPianoLobby, ready: true },
 ];
 
 export default function Portal(nav) {

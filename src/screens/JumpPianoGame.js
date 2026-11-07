@@ -1,5 +1,5 @@
 /**
- * 줄넘기 피아노 — 게임 화면 래퍼 (줄넘기 챔피언의 JumpRopeGame 을 줄인 것: 멀티 · 아이템 · 서버 저장 없음).
+ * 점프 피아노 — 게임 화면 래퍼 (줄넘기 챔피언의 JumpRopeGame 을 줄인 것: 멀티 · 아이템 · 서버 저장 없음).
  * 설정과 최고 점수는 localStorage(`jp.v1`) 에만 둔다.
  */
 import { el, toast } from './ui.js';
@@ -54,7 +54,7 @@ export default function JumpPianoGame(nav, params = {}) {
           },
         });
       }).catch((e) => { console.warn('[PIANO] 게임을 받지 못했다', e); if (live) { toast('게임을 불러오지 못했어요. 잠시 뒤 다시 해 주세요.', 3200); nav.back(); } });
-      return el('div.dragon-stage', null, [el('div.dragon-loading', '줄넘기 피아노 준비 중…'), host]);
+      return el('div.dragon-stage', null, [el('div.dragon-loading', '점프 피아노 준비 중…'), host]);
     },
   };
 }
