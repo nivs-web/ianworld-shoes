@@ -11,7 +11,8 @@ import { D } from '../data/battleData.js';
 import { createBattleView, tagArt } from './battleView.js';
 import { createHud } from './hud.js';
 import { createBattleSound } from './battleSound.js';
-import { makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY } from './battleSetup.js';
+import { makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY, DIFF, diffFor } from './battleSetup.js';
+import { isOn } from '../../../services/switches.js';
 import { ECON } from '../data/econ.js';
 import { tunes } from '../../../services/tuning.js';
 
@@ -24,7 +25,9 @@ export async function startBattle(ctx, opts) {
   const tz = opts.net ? { hp: 1, atk: 1, ember: 1, base: 1 } : tunes('zd');   // 멀티는 두 기기 숫자가 같아야 해서 운영자 손잡이를 쓰지 않는다
   const pvp = !!opts.net?.pvp;   // 용 대결 (3차 M5)
   const base0 = pvp ? pvpStage() : stageByNo(opts.stageNo);
-  const stage = { ...base0, mag: base0.mag * tz.hp, atkMag: (base0.atkMag || base0.mag) * tz.atk };
+  /* 난이도 : 혼자 할 때만 (멀티는 두 기기 숫자가 같아야 해서 보통) */
+  const dk = opts.net ? 'normal' : diffFor(base0.g, opts.save, isOn('zdOpt', 'diff')), DF = DIFF[dk];
+  const stage = { ...base0, mag: base0.mag * tz.hp * DF.mag, atkMag: (base0.atkMag || base0.mag) * tz.atk * DF.mag, diff: dk };
   const { deck, skills, loads, speedMax } = makeLoads(stage, opts.save);
   loads[0].bonus = { ...loads[0].bonus, income: loads[0].bonus.income / tz.ember, baseHp: loads[0].bonus.baseHp / tz.base };
   /* 멀티 : 자리마다 같은 편성을 하나씩 (같이 깨기 = 모두 side 0) */
@@ -97,12 +100,23 @@ export async function startBattle(ctx, opts) {
       /* 같이 깨기 보상 : 끌어 주기(내 다음 차례 판 = 별 1개로 첫 클리어) · 내 차례보다 뒤 판 = 다시 깨기 코인만(진행 안 건너뜀) · 별 2·3개는 혼자만 · 우정 +10% */
       const ahead = coop && stage.g > (save.cleared || 0) + 1, pull = coop && stage.g === (save.cleared || 0) + 1;
       if (coop) info.stars = pull ? 1 : 0;
+      info.stars = Math.min(info.stars, DF.maxStar); info.diff = dk;
+      if (dk === 'hard') {   /* 어려움 : 붉은 별은 따로 · 진행 · 보통 별은 그대로 · 코인 ×1.5 · 첫 어려움 클리어 젬 +5 */
+        const hs = (save.hardStars || '').padEnd(stage.g, '0').split(''), hOld = Number(hs[stage.g - 1]) || 0;
+        hs[stage.g - 1] = String(Math.max(hOld, info.stars));
+        const base = ECON.coin(stage.g);
+        info.coins = Math.round(base * (hOld ? ECON.replay : 1) * DF.coin); info.gems = hOld ? 0 : 5; info.red = true;
+        const part = { hardStars: hs.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, stat };
+        try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
+        setTimeout(() => { if (gone) return; hud.showPanel('win', info); sound.stars(info.stars); }, 1600);
+        return;
+      }
       const stars = (save.stars || '').padEnd(stage.g, '0').split('');
       const old = Number(stars[stage.g - 1]) || 0, first = old === 0 && !ahead, newStars = Math.max(0, info.stars - old);
       stars[stage.g - 1] = String(Math.max(old, info.stars));
       /* 보상 (기획서 10장 ECON) : 첫 클리어 코인 · 다시 깨면 40% · 새 별 하나마다 +25% / 젬 : 새 별 5 · 중간 보스 20 · 월드 보스 50 (첫 클리어) */
       const base = ECON.coin(stage.g);
-      info.coins = Math.round((base * (first ? 1 : ECON.replay) + base * ECON.starBonus * newStars) * (coop ? 1.1 : 1));
+      info.coins = Math.round((base * (first ? 1 : ECON.replay) + base * ECON.starBonus * newStars) * (coop ? 1.1 : 1) * DF.coin);
       info.gems = newStars * ECON.gem.star + (first && stage.s === 5 ? ECON.gem.mid : 0) + (first && stage.s === 10 ? ECON.gem.boss : 0);
       /* 매일 첫 승리 : 젬 10 (한국 날짜) */
       const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);

@@ -773,6 +773,17 @@ service cloud.firestore {
           "mole": { ".validate": "newData.isBoolean()" },
           "$other": { ".validate": false }
         },
+        "zdOpt": {
+          "diff": {
+            ".validate": "newData.isBoolean()"
+          },
+          "zombieSfx": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
         "zdBgm": {
           "orchestra": {
             ".validate": "newData.isBoolean()"

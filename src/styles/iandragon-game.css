@@ -304,3 +304,11 @@ html.idg-wide body { width: 100%; }
 .pbtn.idg-back:active { filter: brightness(.82); }
 .idg-credits { max-height: 80vh; overflow-y: auto; } .idg-credits p { font-size: 11px; line-height: 1.5; margin: 4px 0; text-align: left; word-break: break-all; }
 .idg-credits-must { color: #ffe9b0 !important; } .idg-credits-list { border-top: 1px solid #c9963a66; margin-top: 6px; padding-top: 4px; }
+
+/* 난이도 (META 4장 · 운영자 스위치 zdOpt.diff) */
+.idg-diff-row { display: flex; gap: 6px; justify-content: center; margin: 4px 0 6px; }
+.idg-diff-btn { min-width: 76px; min-height: 36px; border-radius: 10px; border: 2px solid #c9963a; background: rgba(26, 14, 52, .85); color: #e8dcff; font: 700 13px 'Neo둥근모', monospace; }
+.idg-diff-btn.on.easy { background: #2f8a4a; color: #fff; } .idg-diff-btn.on.normal { background: #7a5cff; color: #fff; } .idg-diff-btn.on.hard { background: #c2262e; color: #fff; }
+.idg-diff-btn:disabled { opacity: .5; }
+.idg-stage-stars.red, .idg-stars.red span.on { color: #ff4d4d !important; text-shadow: 0 2px 0 #5a0000, 0 0 8px #ff2a2a !important; }
+.idg-diff { font-weight: 700; } .idg-diff.hard { color: #ff6a6a; } .idg-diff.easy { color: #7ee08f; }

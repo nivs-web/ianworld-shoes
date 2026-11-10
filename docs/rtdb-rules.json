@@ -604,6 +604,17 @@
             ".validate": false
           }
         },
+        "zdOpt": {
+          "diff": {
+            ".validate": "newData.isBoolean()"
+          },
+          "zombieSfx": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
         "zdBgm": {
           "orchestra": {
             ".validate": "newData.isBoolean()"

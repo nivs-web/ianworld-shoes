@@ -22,6 +22,8 @@ import { showHatch } from './idgHatch.js';
 import { showCodex } from './idgCodex.js';
 import { showLab } from './idgLab.js';
 import { showMulti } from './idgMulti.js';
+import { DIFF, hardOpen } from '../games/iandragon_game/render/battleSetup.js';
+import { isOn } from '../services/switches.js';
 import { MUST, SONGS } from '../games/iandragon_game/data/musicCredits.js';
 import { showQuests } from './idgQuests.js';
 import { claimable } from '../services/iandragonQuests.js';
@@ -61,19 +63,24 @@ function showStages(onPick) {
   Sfx.play('sfx_menu_select');
   const g = G.idg(), open = Math.min(100, g.cleared + 1);
   let w = Math.min(10, Math.floor((open - 1) / 10) + 1);
-  const grid = el('div.idg-stage-grid'), tabs = el('div.idg-world-tabs'), name = el('div.idg-world-name');
+  const grid = el('div.idg-stage-grid'), tabs = el('div.idg-world-tabs'), name = el('div.idg-world-name'), diffRow = el('div.idg-diff-row');
+  const diffOn = isOn('zdOpt', 'diff');
   function draw() {
     tabs.replaceChildren(...WORLD_NAMES.map((_, i) => el('button.idg-world-tab' + (i + 1 === w ? '.on' : ''), { type: 'button', disabled: i * 10 + 1 > open, onclick: () => { w = i + 1; draw(); } }, [String(i + 1)])));
     name.textContent = `월드 ${w} · ${WORLD_NAMES[w - 1]}`;
+    /* 난이도 (운영자 스위치 · 어려움은 이 월드를 다 깨야 열림) */
+    const cur = G.idg().diff, hOk = hardOpen(w * 10, g);
+    diffRow.replaceChildren(...(diffOn ? Object.entries(DIFF).map(([k, d]) => el('button.idg-diff-btn' + (cur === k ? '.on' : '') + '.' + k, { type: 'button', disabled: k === 'hard' && !hOk, title: k === 'hard' && !hOk ? '이 월드를 다 깨면 열려요' : '', onclick: () => { G.saveIdg({ diff: k }); draw(); } }, [d.name + (k === 'hard' && !hOk ? ' 🔒' : '')])) : []));
+    const hard = diffOn && cur === 'hard' && hOk;
     grid.replaceChildren(...Array.from({ length: 10 }, (_, k) => {
-      const no = (w - 1) * 10 + k + 1, st = Number(g.stars[no - 1]) || 0, locked = no > open;
+      const no = (w - 1) * 10 + k + 1, st = Number((hard ? g.hardStars : g.stars)[no - 1]) || 0, locked = no > open;
       return el('button.idg-stage-btn' + (locked ? '.locked' : '') + (k === 9 ? '.boss' : ''), { type: 'button', disabled: locked, onclick: () => { close(); onPick(no); } }, [
-        el('b', `${w}-${k + 1}`), el('span.idg-stage-stars', locked ? '🔒' : '★'.repeat(st) + '☆'.repeat(3 - st)),
+        el('b', `${w}-${k + 1}`), el('span.idg-stage-stars' + (hard ? '.red' : ''), locked ? '🔒' : '★'.repeat(st) + '☆'.repeat(3 - st)),
       ]);
     }));
   }
   draw();
-  const box = el('div.dialog.idg-stages', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '스테이지 고르기'), tabs, name, grid, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-stages', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '스테이지 고르기'), tabs, name, diffRow, grid, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }

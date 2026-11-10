@@ -94,6 +94,19 @@ export function makeLoads(stage, save) {
   };
 }
 
+/** 난이도 (META 4장) — 적 체력 · 공격 배율 · 코인 배율 · 별 상한. 어려움은 그 월드를 보통으로 다 깨면 열린다 */
+export const DIFF = {
+  easy: { name: '쉬움', mag: 0.75, coin: 0.7, maxStar: 2 },
+  normal: { name: '보통', mag: 1, coin: 1, maxStar: 3 },
+  hard: { name: '어려움', mag: 1.35, coin: 1.5, maxStar: 3 },
+};
+export const hardOpen = (g, save) => (save?.cleared || 0) >= Math.ceil(g / 10) * 10;
+/** 이 판에서 실제로 쓸 난이도 (운영자가 끄면 · 어려움이 아직 안 열렸으면 보통) */
+export function diffFor(g, save, enabled = true) {
+  const d = enabled ? save?.diff || 'normal' : 'normal';
+  return d === 'hard' && !hardOpen(g, save) ? 'normal' : DIFF[d] ? d : 'normal';
+}
+
 /** 용 대결 (3차 M5 · 멀티 기획 2.2) — 좀비 없음 · 길이 1000 · 180초 · 불꽃 타임 90초 · 모두 Lv20 · 덱 6칸 · 연구소/보물 미적용 */
 export const PVP_OPEN = 20;   // 2-10 을 깨면 열린다 (덱 6칸이 열릴 때)
 export const PVP_DAY = 5;     // 하루 보상 판 수

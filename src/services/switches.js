@@ -22,6 +22,8 @@ export const SWITCHES = {
   zdFun: { name: '좀비와 드래곤 · 재미 요소 (보이기)', def: true, keys: FUN.map(([key, name]) => ({ key, name })) },
   zdFunSound: { name: '좀비와 드래곤 · 재미 요소 (소리)', def: false, keys: FUN.map(([key, name]) => ({ key, name })) },
   /* 대표님 2026-11-11 «오락실 풍 / 오케스트라 풍을 토글로 켜고 끄며 해 보고 정하겠다» — 켜짐 = 오케스트라(공개 녹음) · 꺼짐 = 오락실(합성) */
+  /* 대표님 2026-11-11 «난이도를 관리자 페이지에서 켜고 끄게» — 꺼지면 모두 보통 · 고르기 단추 숨김 / 좀비 소리도 여기서 */
+  zdOpt: { name: '좀비와 드래곤 · 기능', def: true, keys: [{ key: 'diff', name: '난이도 고르기 (쉬움 · 보통 · 어려움)' }, { key: 'zombieSfx', name: '좀비 소리 (등장 · 중얼 · 쓰러짐)' }] },
   zdBgm: { name: '좀비와 드래곤 · 배경음악', def: true, keys: [{ key: 'orchestra', name: '오케스트라 풍 (끄면 오락실 풍)' }] },
 };
 
