@@ -59,6 +59,7 @@ export function createBattleSound(stage, me = 0) {
         if (!u.alive && u.killPurify && u.def.revive && !was.dead.has(u.id)) { was.dead.add(u.id); once('purify', 0.6, S.t); }
         if (u.corpseT > 0) was.corpse.add(u.id); else if (was.corpse.has(u.id)) { was.corpse.delete(u.id); Audio.play('ghost_revive'); }
       }
+      if (b && !b.alive && !was.bossDie) { was.bossDie = true; Audio.voice(`boss/${b.def._art}/die`); }   // 겜팀장 2차 : 보스마다 쓰러지는 대사
       if (b && !was.bossHalf && b.hp <= b.maxHp / 2) { was.bossHalf = true; Audio.voice(`boss/${b.def._art}/half`); }
       if (!was.fever && S.t >= S.feverAt) { was.fever = true; Audio.voice('fever'); }
       /* 무리 대사 (겜팀장) : 1.5초 안에 좀비 4마리 이상 = 큰 무리(20초에 한 번) · 정해진 무리 줄이 하나 남고 그것이 나오기 시작 = 마지막 무리(한 번) */
@@ -72,7 +73,7 @@ export function createBattleSound(stage, me = 0) {
       }
       if (S.over && !was.over) {
         was.over = true; Audio.stopBgm();
-        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) Audio.voice('bossdown'); later(() => { Audio.play(stage.g === 100 ? 'ending_sting' : 'win_fanfare'); Audio.voice(stage.g === 100 ? 'ending' : 'win'); if (stage.g === 100 && musicOn) later(() => Audio.bgm('ending'), 2800); }, 900); }   // 10-10 = 엔딩 대사
+        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) later(() => Audio.voice('bossdown'), was.bossDie ? 1600 : 0); later(() => { Audio.play(stage.g === 100 ? 'ending_sting' : 'win_fanfare'); Audio.voice(stage.g === 100 ? 'ending' : 'win'); if (stage.g === 100 && musicOn) later(() => Audio.bgm('ending'), 2800); }, 900); }   // 10-10 = 엔딩 대사
         else { Audio.play('lose_womp'); Audio.voice('lose'); }
       }
     },
