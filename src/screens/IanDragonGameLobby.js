@@ -48,10 +48,8 @@ export default function IanDragonGameLobby(nav) {
       const p = getProfile();
       const g = G.idg();
       return screen(
-        el('div.idg-logo', null, [
-          el('span.idg-logo-main', S.idgTitle),
-          el('span.idg-logo-sub', 'IAN DRAGON'),
-        ]),
+        /* 로고 그림(겜팀장 · 540×150 도트) — 좀비와 드래곤 / ZOMBIE & DRAGON */
+        el('div.idg-logo', null, [el('img.idg-logo-img', { src: '/assets/iandragon-logo.png', alt: `${S.idgTitle} ${S.idgTitleEn}` })]),
         el('div.panel.idg-panel', null, [
           el('div.idg-player', p.nickname || '???'),
           el('div.idg-stats', null, [

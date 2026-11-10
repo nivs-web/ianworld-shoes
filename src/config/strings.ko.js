@@ -229,13 +229,14 @@ export const S = {
   /* 5번째 게임 줄넘기 챔피언 (2026-11-07) — 나머지 문구는 줄넘기 화면 안에 있다 */
   jumpTitle: '줄넘기 챔피언',
   pianoTitle: '점프 피아노',
-  /* 7번째 게임 이안 드래곤 (2026-11-10 신작 등록 · 아직 제작 전이라 카드만 — 대표님 «신발을 찾아서 위쪽으로») */
-  idgTitle: '이안 드래곤',
+  /* 7번째 게임 좀비와 드래곤 (2026-11-10 신작 등록 · 이름 변경 «이안 드래곤» → «좀비와 드래곤», 오락실 메인 게임 — 코드 id 는 iandragon 그대로) */
+  idgTitle: '좀비와 드래곤',
+  idgTitleEn: 'ZOMBIE & DRAGON',
   idgSoonBadge: 'NEW',
   idgSoonTag: '제작 중',
   idgSoonLine: '아기 드래곤 vs 좀비 · 100스테이지 라인 배틀',
-  idgSoonToast: '이안 드래곤은 지금 만드는 중이에요. 조금만 기다려 주세요!',
-  /* 이안 드래곤 게임 — 로비(세로) · 게임(가로) (2026-11-10 제작 시작) */
+  idgSoonToast: '좀비와 드래곤은 지금 만드는 중이에요. 조금만 기다려 주세요!',
+  /* 좀비와 드래곤 — 로비(세로) · 게임(가로) (2026-11-10 제작 시작) */
   idgLobbyStart: '모험 시작',
   idgLobbyHow: '하는 법',
   idgLobbyHowText: '아기 드래곤을 내보내 좀비 탑을 무너뜨리세요! 불씨가 모이면 드래곤 버튼을 누르고, 화로를 올리면 불씨가 더 빨리 모여요. 게임은 휴대폰을 가로로 돌려서 해요.',
@@ -244,10 +245,10 @@ export const S = {
   idgStatStars: (n) => `모은 별 ${n}개`,
   idgStatCoins: (n) => `코인 ${n.toLocaleString('en-US')}`,
   idgStatGems: (n) => `젬 ${n.toLocaleString('en-US')}`,
-  idgLoading: '이안 드래곤 준비 중…',
-  idgLoadFailed: '이안 드래곤을 불러오지 못했어요. 잠시 뒤 다시 해 주세요.',
+  idgLoading: '좀비와 드래곤 준비 중…',
+  idgLoadFailed: '좀비와 드래곤을 불러오지 못했어요. 잠시 뒤 다시 해 주세요.',
   idgRotate: '휴대폰을 가로로 돌려 주세요',
-  idgRotateSub: '이안 드래곤 게임은 가로 화면 전용이에요',
+  idgRotateSub: '좀비와 드래곤은 가로 화면 전용이에요',
   idgExit: '나가기',
   pianoCardLine: (best, jumps) => `무한 피아노 최고 ${best | 0}개 · 총 ${Number(jumps || 0).toLocaleString('en-US')}번 점프`,
   jumpCardLine: (best, jumps) => `무한 줄넘기 최고 ${best | 0}개 · 총 ${Number(jumps || 0).toLocaleString('en-US')}번 넘음`,

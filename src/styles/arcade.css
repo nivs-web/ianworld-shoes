@@ -125,6 +125,9 @@
 .gc-new-tag { font-size: 12px; letter-spacing: 3px; color: #22E6FF; animation: ohCur 1.2s steps(1) infinite; }
 .gc-new-badge { position: absolute; top: 8px; left: 8px; padding: 2px 7px; border-radius: 6px; background: #FF3D6E; color: #fff;
   font-family: 'PretendardV', sans-serif; font-weight: 900; font-size: 11px; letter-spacing: 1px; }
+.gc-new-banner { padding: 0; }
+.gc-new-banner > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.gc-new-banner > .gc-new-badge { z-index: 1; top: 3px; left: 3px; padding: 1px 5px; font-size: 9px; }   /* 배너 제목을 덜 가리게 */
 .gc-new-play { font-size: 17px; color: rgba(255, 201, 60, .75); border-style: dashed; }
 .gc-soon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; min-height: 92px; border-radius: 16px; border: 1px dashed rgba(255, 255, 255, .25);
   background: rgba(255, 255, 255, .04); color: rgba(255, 255, 255, .55); font-size: 14px; letter-spacing: 1px; }

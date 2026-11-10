@@ -39,3 +39,6 @@ html.idg-wide body { width: 100%; }
 .idg-preview { text-align: center; font-size: 12px; color: #22E6FF; opacity: .85; margin: 4px 0; }
 .dialog.idg-how p { line-height: 1.6; margin: 8px 0 14px; }
 .idg-how-title { font-weight: 700; color: #FFC93C; }
+
+/* 로고 그림 (2026-11-10 좀비와 드래곤) */
+.idg-logo-img { display: block; width: min(100%, 360px); height: auto; margin: 0 auto; image-rendering: pixelated; }
