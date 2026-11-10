@@ -48,7 +48,7 @@ function showCredits() {
     el('div.idg-how-title', '음악 출처'),
     el('p.idg-credits-small', '배경음악은 저작권이 끝난 클래식 곡의 공개 녹음입니다.'),
     ...MUST.map((t) => el('p.idg-credits-must', t)),
-    el('div.idg-credits-list', null, SONGS.map((x) => el('p', ))),
+    el('div.idg-credits-list', null, SONGS.map((x) => el('p', `${x.k.split(' — ')[1] || x.k} · ${x.title} — ${x.by} · ${x.perf} · ${x.lic}`))),
     button('닫기', () => close(), { primary: true }),
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
