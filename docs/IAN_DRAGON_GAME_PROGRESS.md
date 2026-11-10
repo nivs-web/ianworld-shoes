@@ -58,3 +58,10 @@
 - ☐ (B0 에서 넘어온 것) 저장 묶음 서버 왕복 — 작업 폴더에 Firebase 설정(.env)이 없고 로그인을 대신 할 수 없어 **대표님 실기기 확인 지점 ①(B3 뒤)에서 함께 확인**
 
 **다음 : B2** — PixiJS 진짜 전장 (코어를 화면에 붙임 · 카메라 · HUD · 덱 · 화로 · 브레스 · 키보드), `render/demo.js` 삭제.
+
+## 겜팀장 소리 v2 — B3 에서 연결할 것 (2026-11-10 받음)
+
+- 약속 28개 id 그대로 (소리만 과장 · 코믹). 새 효과음 : 긴장 `heartbeat`(둥지 25% 아래 1초마다) · `alarm` · `groan`(좀비 물결 · 큰 좀비) · `rumble`(보스 걸음) · `stomp` / 코믹 `toot boing bonk slide_up slide_down fart sad_trombone crowd sparkle zap splash freeze fire_pop whoosh spit screech steam servo power_down coin_jingle thud organ`
+- 새 음성 : `boss/<보스id>/half` (보스 50%) · `boss/<보스id>/die` · `danger` (둥지 25% 첫 진입) · `bossdown`. 줄이 여럿이면 voice() 가 알아서 무작위.
+- 겜팀장 제안 (B3 판단) : 보스 등장 = 화면 살짝 어둡게 + `boss_warn` → 곡 `boss` / 둥지 위험 = 빨간 테두리 깜빡 + `heartbeat` / 보스 반피 = 화면 흔들림 + `boss/<id>/half`
+- 곡 : lobby 터키 행진곡 · battleA 캉캉 · battleB 왕벌의 비행(2차) · boss 산왕의 궁전 · win 환희의 송가 (저작권 끝난 곡 직접 합성)
