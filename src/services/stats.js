@@ -165,7 +165,7 @@ export async function readStats(days = 7) {
 
 /* ───────────────────────── 회원 · 접속 시간 · 게임 판 수 (2026-11-10 대표님 «신규 회원 가입 현황») ─────────────────────────
  *
- *   stats/members/{uid}          { nick, email, joined }   joined = 구글 계정으로 처음 가입한 시각(Firebase 로그인 기록)
+ *   stats/members/{uid}          { nick, email, name, joined }   name = 구글 계정 이름 · joined = 구글 계정으로 처음 가입한 시각(Firebase 로그인 기록)
  *   stats/act/{YYYYMMDD}/{uid}   { nick, sec, first, last, g: { shoes, dragon, catch, catch3d, jump, piano } }
  *
  * sec = 그날 사이트를 켜 둔 시간(화면을 보고 있을 때만, 30초마다 +30). first · last = 그날 처음 · 마지막 신호 시각.
@@ -195,7 +195,7 @@ export async function startActivity(fb) {
     try {
       const cur = await readVal(fb, path(STATS, 'members', fb.uid)).catch(() => null);
       await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(STATS, 'members', fb.uid)), {
-        nick: nickNow(), email: String(u?.email || '').slice(0, 100), joined: cur?.joined || u?.created || Date.now(),
+        nick: nickNow(), email: String(u?.email || '').slice(0, 100), name: String(u?.name || '').slice(0, 60), joined: cur?.joined || u?.created || Date.now(),
       }), undefined, '회원 기록');
       memberFor = fb.uid;
     } catch { /* 규칙 게시 전 — 다음 접속에 다시 */ }

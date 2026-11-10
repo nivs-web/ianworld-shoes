@@ -29,7 +29,7 @@ Firebase 콘솔에 **그대로 붙여넣는** 규칙이다. 프로덕션/잠금 
 > 게시할 때도 **콘솔 게시본을 받아** 아래 `jpInt` ~ `match /jumpPlayers` 블록만 얹어 올린다.
 > 게시 전에는 명예의 전당이 «여는 중» 안내만 띄우고, 기록은 계정(`users/{uid}.jr`)에 그대로 쌓인다(게시 뒤 다음 판에 저절로 올라간다).
 
-> ⏳ **2026-11-10 RTDB `stats/members` · `stats/act` (운영자 «신규 회원 가입 현황») — 초안, 게시 전.** 정본은 `docs/rtdb-rules.json` 의 `stats` 아래 두 칸. 게시 전에는 기록이 조용히 안 쌓이고 게임은 그대로.
+> ✅ **2026-11-10 RTDB `stats/members`(nick · email · name · joined) · `stats/act` (운영자 «신규 회원 가입 현황») — 게시 완료(대표님 «규칙 게시해»).** 콘솔 22,401 → 24,214자, 다시 읽어 확인. 정본은 `docs/rtdb-rules.json`.
 > ✅ **2026-11-07 점프 피아노 `pianoPlayers` 칸 — 게시 완료(대표님 «규칙 게시해»). 콘솔 8,652자 → 10,334자, 다시 읽어 블록 확인.**
 > ✅ 같은 날 RTDB `config/tuning/piano`(5칸) · `config/tuning/jump/scroll` 도 게시 완료(21,394 → 22,401자, 다시 읽어 확인).
 > (아래 옛 안내는 기록으로 둔다.)

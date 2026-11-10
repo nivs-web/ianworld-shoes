@@ -63,7 +63,7 @@ export default function AdminMembers(nav) {
         el('div.am-h', `최근 ${DAYS}일 신규 가입 ${fresh.length}명 · 전체 회원 ${Object.keys(M).length}명`),
         ...(fresh.length ? fresh.map(([uid, m]) => el('div.am-row', null, [
           el('div.am-name', null, [m.nick || '(이름 없음)', el('span.am-new', '신규')]),
-          el('div.am-sub', m.email || ''),
+          el('div.am-sub', [m.name, m.email].filter(Boolean).join(' · ')),
           el('div.am-sub', `가입 ${dateTime(m.joined)} · 접속 ${hms(tot[uid]?.sec)} · ${tot[uid]?.plays | 0}판 · ${tot[uid]?.days | 0}일 접속`),
         ])) : [el('div.am-sub', '아직 없어요')]),
       ]);
@@ -77,7 +77,7 @@ export default function AdminMembers(nav) {
             const isNew = M[uid]?.joined && Stats.dayKey(M[uid].joined) === d.day;
             return el('div.am-row', null, [
               el('div.am-name', null, [nameOf(uid, a), isNew ? el('span.am-new', '신규') : null]),
-              M[uid]?.email ? el('div.am-sub', M[uid].email) : null,
+              M[uid]?.email || M[uid]?.name ? el('div.am-sub', [M[uid].name, M[uid].email].filter(Boolean).join(' · ')) : null,
               el('div.am-sub', `접속 ${hms(a.sec)} · ${hm(a.first)} ~ ${hm(a.last)}`),
               el('div.am-games', gamesLine(a.g)),
             ]);

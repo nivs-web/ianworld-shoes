@@ -40,7 +40,7 @@ export function currentUser() {
 function adopt(u) {
   if (u) dropForeignData(u.uid);
   current = u
-    ? { uid: u.uid, nickname: loadProfile().nickname, email: u.email ?? '', guest: false, created: Date.parse(u.metadata?.creationTime || '') || 0 }
+    ? { uid: u.uid, nickname: loadProfile().nickname, email: u.email ?? '', guest: false, created: Date.parse(u.metadata?.creationTime || '') || 0, name: u.displayName || '' }
     : null;
   if (u) patchProfile({ uid: u.uid, email: u.email ?? '' });
   emit();

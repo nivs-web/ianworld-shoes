@@ -325,6 +325,9 @@
           "email": {
             ".validate": "newData.isString() && newData.val().length <= 100"
           },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 60"
+          },
           "joined": {
             ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
           },
