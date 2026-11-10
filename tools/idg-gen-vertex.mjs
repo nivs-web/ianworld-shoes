@@ -34,12 +34,17 @@ const parts = refs.map((f) => ({ inlineData: { mimeType: mime(f), data: fs.readF
 parts.push({ text: prompt });
 
 const url = `https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${MODEL}:generateContent`;
-const res = await fetch(url, {
+let res, body;
+for (let attempt = 0; attempt < 6; attempt++) {   // 429(너무 자주 부름) 이면 기다렸다 다시 — 거절된 호출은 요금 없음
+res = await fetch(url, {
   method: 'POST',
   headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
   body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { aspectRatio: process.env.IDG_ASPECT || '1:1', imageSize: SIZE } } }),
 });
-const body = await res.json();
+body = await res.json();
+if (res.status !== 429) break;
+const wait = 15000 * (attempt + 1); console.log('  … 429 — ' + wait / 1000 + '초 기다렸다 다시'); await new Promise((r) => setTimeout(r, wait));
+}
 if (!res.ok) { console.error('✘ 호출 실패', res.status, JSON.stringify(body).slice(0, 600)); process.exit(3); }
 
 const outs = (body.candidates?.[0]?.content?.parts || []).filter((p) => p.inlineData);

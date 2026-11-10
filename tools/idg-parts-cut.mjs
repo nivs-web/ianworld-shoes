@@ -45,12 +45,14 @@ for (let s = 0; s < W * H; s++) {
   }
   comps.push({ id, x0, y0, x1, y1, n });
 }
-const big = comps.filter((c) => c.n > (W * H) / 4000);
+const maxN = Math.max(...comps.map((c) => c.n));
+const big = comps.filter((c) => c.n > (W * H) / 4000 && c.n > maxN * 0.06);   // 침 · 불티 같은 작은 조각은 버린다
 /* 줄로 묶기 : 세로 가운데가 비슷한 것끼리 */
 big.sort((a, b) => (a.y0 + a.y1) / 2 - (b.y0 + b.y1) / 2);
 const rows = [];
 for (const c of big) { const cy = (c.y0 + c.y1) / 2, r = rows.find((r) => Math.abs(r.cy - cy) < H / 8); if (r) r.items.push(c); else rows.push({ cy, items: [c] }); }
 const ordered = rows.flatMap((r) => r.items.sort((a, b) => a.x0 - b.x0));
+if (process.env.IDG_DEBUG) console.log(ordered.map((c, k) => k + ':' + Math.round((c.x0 + c.x1) / 2) + ',' + Math.round((c.y0 + c.y1) / 2) + ' ' + (c.x1 - c.x0) + 'x' + (c.y1 - c.y0)).join('  '));
 if (ordered.length !== names.length) console.warn(`⚠ 덩어리 ${ordered.length}개 · 이름 ${names.length}개 — 순서를 확인하세요`);
 
 /* 3. 자르기 · 줄이기 */
@@ -64,13 +66,13 @@ async function emit(name, c, x0, x1) {
     data.copy(buf, t, s * 4, s * 4 + 4);
   }
   const ow = Math.max(1, Math.round(w * SCALE)), oh = Math.max(1, Math.round(h * SCALE));
-  await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).resize(ow, oh, { kernel: 'nearest' }).png().toFile(path.join(outDir, name + '.png'));
+  await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).resize(ow, oh, { kernel: process.env.IDG_KERNEL || 'nearest' }).png().toFile(path.join(outDir, name + '.png'));   // 매끈한 그림은 IDG_KERNEL=lanczos3
   meta.parts[name] = { w: ow, h: oh, src: { x: x0, y: c.y0, w, h } };
 }
 for (let k = 0; k < Math.min(ordered.length, names.length); k++) {
   const [name, mode] = names[k].split(':'), c = ordered[k];
   if (name === '-') continue;
-  if (mode === 'split') { const mid = Math.round((c.x0 + c.x1) / 2); await emit(name + '_a', c, c.x0, mid); await emit(name + '_b', c, mid + 1, c.x1); }
+  if (mode === 'split') { const mid = Math.round((c.x0 + c.x1) / 2), [na, nb] = name.includes('+') ? name.split('+') : [name + '_a', name + '_b']; await emit(na, c, c.x0, mid); await emit(nb, c, mid + 1, c.x1); }
   else await emit(name, c, c.x0, c.x1);
 }
 fs.writeFileSync(path.join(outDir, 'parts.json'), JSON.stringify(meta, null, 1));

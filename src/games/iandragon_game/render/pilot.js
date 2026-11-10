@@ -12,10 +12,16 @@ const GY = 440;                       // 배경 그림의 풀 높이(437) 에 �
 export async function startPilot(ctx, T) {
   const { app, view } = ctx;
   const nearest = (t) => { t.source.scaleMode = 'nearest'; return t; };
-  const [bgTex, nestTex, towerTex, kk, wk] = await Promise.all([
+  /* 월드 1 캐릭터 — 그림 공장에서 나온 것만 (아직 없는 것은 건너뜀) */
+  const tryRig = (id) => loadRig(id).catch(() => null);
+  const DRAGON_IDS = ['kkomul', 'doldeung', 'bulttong', 'twetwe', 'ssaeng', 'kkomul_2'];
+  const ZOMBIE_IDS = ['walker', 'cone', 'pup', 'archer', 'helmet', 'fart', 'gold'];
+  const [bgTex, nestTex, towerTex, dr, zr, giant, leaderRig] = await Promise.all([
     Assets.load(AI + 'bg/w01_panel.png').then(nearest), Assets.load(AI + 'castles/nest_hp0.png'), Assets.load(AI + 'castles/tower_hp0.png'),
-    loadRig('kkomul'), loadRig('walker'),
+    Promise.all(DRAGON_IDS.map(tryRig)), Promise.all(ZOMBIE_IDS.map(tryRig)), tryRig('bossGiant'), tryRig('novart'),
   ]);
+  const dragons = dr.filter(Boolean), zombies = zr.filter(Boolean);
+  let iD = 0, iZ = 0, bossDone = false, t = 0, next = 0, breathAt = 5;
   const FIELD = view.w + 300;
   const world = createWorld(ctx, T, { layers: [], front: [], lights: {} });   // 박쥐 · 유령 · 반딧불만
   const bg = new Sprite(bgTex); bg.scale.set(540 / bgTex.height);
@@ -31,14 +37,18 @@ export async function startPilot(ctx, T) {
   white.matrix = [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0];
   const live = [];
   const spawn = (side) => {
-    const R = side ? createRigged(wk, 1.0) : createRigged(kk, 1.25);
+    const boss = side && giant && !bossDone && t > 12;
+    if (boss) bossDone = true;
+    const R = boss ? createRigged(giant, 1, -1) : side ? createRigged(zombies[iZ++ % zombies.length], 1, -1) : createRigged(dragons[iD++ % dragons.length], 1, 1);
     R.speed = side ? 0.9 : 1.1;
-    const u = { R, side, x: side ? FIELD - 230 : 230, hp: side ? 3 : 4, kb: 0, cd: 0, flash: 0 };
+    const u = { R, side, x: side ? FIELD - 230 : 230, hp: boss ? 20 : side ? 3 : 4, kb: 0, cd: 0, flash: 0, boss };
     R.root.position.set(u.x, GY); units.addChild(R.root); live.push(u);
   };
   for (let k = 0; k < 3; k++) { spawn(0); spawn(1); live[live.length - 2].x -= k * 60; live[live.length - 1].x += k * 60; }
 
-  let t = 0, next = 0;
+  /* 성 위 리더 (불 뿜기) */
+  let leader = null;
+  if (leaderRig) { leader = createRigged(leaderRig, 1, 1); leader.set('idle'); leader.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChild(leader.root); }
   const tick = (ticker) => {
     const dt = Math.min(0.05, ticker.deltaMS / 1000); t += dt;
     const cam = window.__idgCamX ?? ((Math.sin(t * 0.22) + 1) / 2) * (FIELD - view.w);
@@ -63,6 +73,7 @@ export async function startPilot(ctx, T) {
     }
     for (let i = live.length - 1; i >= 0; i--) { const u = live[i]; if (u.dead || u.x < 170 || u.x > FIELD - 170) { u.R.root.destroy({ children: true }); live.splice(i, 1); } }
     units.children.sort((a, b) => a.x - b.x);
+    if (leader) { if ((breathAt -= dt) <= 0) { leader.set('hit'); breathAt = 6; } else if (leader.state === 'hit' && leader.st > 1.4) leader.set('idle'); leader.update(dt); }
   };
   app.ticker.add(tick);
   return { destroy() { app.ticker?.remove(tick); } };

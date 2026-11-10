@@ -15,13 +15,14 @@ const BASE = '/assets/iandragon_game/ai/';
 /** 캐릭터 하나의 부품 텍스처 + rig 를 받는다 */
 export async function loadRig(id) {
   const rig = await (await fetch(`${BASE}${id}/rig.json`)).json();
-  const names = new Set(rig.parts.flatMap((p) => [p.n, p.blink].filter(Boolean)));
+  const names = new Set(rig.parts.flatMap((p) => [p.n, p.blink, p.breath].filter(Boolean)));
   const tex = {};
   await Promise.all([...names].map(async (n) => { tex[n] = await Assets.load(`${BASE}${id}/${n}.png`); tex[n].source.scaleMode = 'nearest'; }));
   return { rig, tex };
 }
 
-export function createRigged({ rig, tex }, scale = 1) {
+/** want : 화면에서 바라볼 방향 (+1 오른쪽 = 용 · -1 왼쪽 = 좀비). 그림 방향과 다르면 통째로 뒤집는다 */
+export function createRigged({ rig, tex }, scale = 1, want = rig.face) {
   const root = new Container();
   const body = new Container(); root.addChild(body);
   const parts = rig.parts.map((d) => {
@@ -32,7 +33,7 @@ export function createRigged({ rig, tex }, scale = 1) {
     body.addChild(s);
     return { d, s, x: d.p[0], y: d.p[1] };
   });
-  root.scale.set(scale);
+  root.scale.set(scale * (rig.scale || 1) * (want === rig.face ? 1 : -1), scale * (rig.scale || 1));
   const R = {
     root, state: 'walk', t: Math.random() * 10, st: 0,
     blinkAt: 1 + Math.random() * 3, blinkT: 0, speed: 1,
@@ -66,7 +67,8 @@ export function createRigged({ rig, tex }, scale = 1) {
         }
         s.position.set(P.x + dx, P.y + dy);
         s.rotation = rot;
-        if (d.blink) s.texture = R.blinkT > 0 || kb ? tex[d.blink] : tex[d.n];
+        if (d.breath && R.state === 'hit') s.texture = tex[d.breath];
+        else if (d.blink) s.texture = R.blinkT > 0 || kb ? tex[d.blink] : tex[d.n];
       }
     },
   };
