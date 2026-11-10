@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>좀비와 드래곤 소리 미리듣기</title>
+<!--
+  좀비와 드래곤 — 배경 음악 · 효과음 · 재미 요소 소리 미리듣기 (겜팀장 · 2026-11-11)
+  정적 페이지 하나. 오락실 저장소 맨 위 폴더에서 개발 서버를 켠 뒤 연다:
+    npx vite            → http://localhost:5173/tools/idg-audio-preview.html
+    (또는)  npx serve   → 주소 끝에 /tools/idg-audio-preview.html
+  파일을 더블클릭(file://)하면 브라우저가 모듈을 막아서 소리가 안 난다. 버튼을 한 번 눌러야 소리 장치가 깨어난다.
+-->
+<style>
+  :root { color-scheme: dark; --bg: #14121f; --card: #1f1b33; --line: #3a3358; --ink: #f1ecff; --dim: #a79fc9; --acc: #ffb347; --new: #7be0a5; --fun: #c79bff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px 16px 80px; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, 'Malgun Gothic', sans-serif; max-width: 980px; margin-inline: auto; }
+  h1 { font-size: 22px; margin: 4px 0 2px; }
+  h2 { font-size: 17px; margin: 26px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  p.sub { margin: 0 0 8px; color: var(--dim); font-size: 13px; }
+  .bar { position: sticky; top: 0; z-index: 5; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; background: #251f40; border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; }
+  .bar label { font-size: 13px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+  button { font: inherit; cursor: pointer; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; }
+  button:hover { border-color: var(--acc); }
+  button.on { background: #4b2f12; border-color: var(--acc); }
+  button.stop { background: #4a1c28; border-color: #c4506a; }
+  .grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .grid button.new { border-color: var(--new); }
+  .grid button.fun { border-color: var(--fun); }
+  .tracks { display: grid; gap: 8px; }
+  .track { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  .track .meta { flex: 1; min-width: 0; }
+  .track b { font-size: 16px; }
+  .track small { display: block; color: var(--dim); font-size: 12.5px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: #2c3d33; color: var(--new); margin-left: 6px; vertical-align: 2px; }
+  .funrow { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  .funrow span { flex: 1; font-size: 14px; }
+  .funrow button { padding: 5px 10px; }
+  #funlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
+  .err { color: #ff8a8a; white-space: pre-wrap; }
+  @media (max-width: 520px) { .track { flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<h1>좀비와 드래곤 — 소리 미리듣기</h1>
+<p class="sub">파형 합성 소리 전부(녹음 파일 없음). 맨 위 «소리 켜기»를 한 번 누르면 이후 버튼이 다 울립니다.</p>
+
+<div class="bar">
+  <button id="wake">소리 켜기</button>
+  <button id="stopAll" class="stop">전부 멈춤</button>
+  <label>볼륨 <input id="vol" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+  <label>곡 빠르기 <input id="rate" type="range" min="0.6" max="1.6" step="0.05" value="1"><span id="rateTxt">1.00×</span></label>
+  <span id="now" class="sub" style="margin:0 0 0 auto"></span>
+</div>
+
+<h2>배경 음악 <span class="sub">(월드 1~5 = w1~w5 · 그 밖은 기존 곡)</span></h2>
+<div id="tracks" class="tracks"></div>
+
+<h2>효과음 — 이번에 새로 만든 · 강화한 것 <span class="sub">(초록 테두리)</span></h2>
+<div id="sfxNew" class="grid"></div>
+
+<h2>효과음 — 전체</h2>
+<div class="grid" style="margin-bottom:8px"><button id="seqNew">새 소리 차례로 듣기</button></div>
+<div id="sfxAll" class="grid"></div>
+
+<h2>재미 요소 작은 소리 후보 17종 <span class="sub">(게임에서는 기본 꺼짐 · 요소마다 변형 ①②)</span></h2>
+<p class="sub">각 0.6초 이하의 작고 조용한 소리입니다. 마음에 드는 것만 대표님이 고르면 켭니다.</p>
+<div id="funlist"></div>
+<div id="err" class="err"></div>
+
+<script type="module">
+import { audio } from '../src/games/iandragon_game/audio/synth.js';
+import * as Music from '../src/games/iandragon_game/audio/music.js';
+import * as Sfx from '../src/games/iandragon_game/audio/sfx.js';
+
+const $ = (id) => document.getElementById(id);
+const showErr = (e) => { $('err').textContent += `\n${e?.stack || e}`; };
+addEventListener('error', (e) => showErr(e.error || e.message));
+
+const INFO = {
+  lobby:   ['로비', '모차르트 「터키 행진곡」 · 장난스럽게'],
+  battleA: ['전투 A', '오펜바흐 「지옥의 갤럽」 · 신나는 전투'],
+  battleB: ['전투 B', '림스키코르사코프 「왕벌의 비행」 · 정신없는 전투'],
+  boss:    ['보스', '그리그 「산왕의 궁전에서」 · 돌수록 빨라짐'],
+  win:     ['승리', '베토벤 「환희의 송가」 · 징글'],
+  w1:      ['월드 1 · 달밤 초록 언덕', '생상스 「죽음의 무도」 (1921 졸) · 핼러윈 왈츠'],
+  w2:      ['월드 2 · 화산', '무소륵스키 「민둥산의 하룻밤」 (1881 졸)'],
+  w3:      ['월드 3 · 하늘 독수리', '바그너 「발키리의 기행」 (1883 졸)'],
+  w4:      ['월드 4 · 눈 눈사태', '비발디 「겨울」 1악장 (1741 졸)'],
+  w5:      ['월드 5 · 로봇 고철 공장', '뒤카 「마법사의 제자」 (1935 졸)'],
+};
+const NEW_SFX = ['deploy_s', 'deploy_m', 'deploy_l', 'summon_rare', 'hit_zombie_squish', 'breath_charge', 'breath_fire', 'win_fanfare', 'lose_womp', 'button', 'button_back', 'button_deny'];
+const FUN_NAME = {
+  thunder: '번개 우르릉', ghost_pop: '유령 까꿍 뿅', bones: '뼈 와르르', owl: '부엉이 부엉', bat: '박쥐 푸드덕', witch: '마녀 웃음',
+  ghost_cat: '유령 고양이 야옹', firefly: '반딧불 반짝', grave_creak: '묘비 끼이익', cauldron: '가마솥 보글보글', crow: '까마귀 까악',
+  wind: '바람 휘이이', chain: '쇠사슬 짤랑', bike_bell: '자전거 따르릉', moon_yawn: '달님 하품', skull_chatter: '해골 구름 딱딱', grave_hand: '무덤 손 쓱',
+};
+
+function wake() { const A = audio(); if (!A) { showErr('이 브라우저는 Web Audio 를 지원하지 않습니다'); return null; } if (A.ctx.state !== 'running') A.ctx.resume(); return A; }
+let playing = null;
+const rate = () => +$('rate').value;
+function play(id) { try { wake(); Music.startTrack(id, rate()); playing = id; refresh(); } catch (e) { showErr(e); } }
+function stop() { Music.stopTrack(); playing = null; refresh(); }
+function refresh() {
+  document.querySelectorAll('.track button.p').forEach((b) => { const on = b.dataset.id === playing; b.classList.toggle('on', on); b.textContent = on ? '■ 멈춤' : '▶ 듣기'; });
+  $('now').textContent = playing ? `재생 중: ${playing}` : '';
+}
+
+for (const id of Music.TRACK_IDS) {
+  const [name, desc] = INFO[id] ?? [id, ''];
+  const row = document.createElement('div'); row.className = 'track';
+  const isW = /^w\d$/.test(id);
+  row.innerHTML = `<button class="p" data-id="${id}">▶ 듣기</button><div class="meta"><b>${name}</b>${isW ? '<span class="tag">신곡</span>' : ''}<small>${desc} · ${Music.trackSeconds(id)}초 한 바퀴 · 반복</small></div>`;
+  row.querySelector('button').onclick = () => (playing === id ? stop() : play(id));
+  $('tracks').appendChild(row);
+}
+$('rate').oninput = () => { $('rateTxt').textContent = (+$('rate').value).toFixed(2) + '×'; if (playing) { try { Music.startTrack(playing, rate()); } catch (e) { showErr(e); } } };
+
+function sfxBtn(id, cls) {
+  const b = document.createElement('button'); b.textContent = id; if (cls) b.className = cls;
+  b.onclick = () => { try { wake(); Sfx.SFX[id]?.(); } catch (e) { showErr(e); } };
+  return b;
+}
+for (const id of NEW_SFX) if (Sfx.SFX[id]) $('sfxNew').appendChild(sfxBtn(id, 'new'));
+for (const id of Object.keys(Sfx.SFX)) $('sfxAll').appendChild(sfxBtn(id, NEW_SFX.includes(id) ? 'new' : ''));
+$('seqNew').onclick = () => { wake(); let t = 0; for (const id of NEW_SFX) { setTimeout(() => { try { Sfx.SFX[id]?.(); $('now').textContent = '재생: ' + id; } catch (e) { showErr(e); } }, t); t += id === 'win_fanfare' ? 2800 : id === 'lose_womp' ? 2200 : id === 'summon_rare' ? 1600 : id === 'breath_charge' ? 1500 : 1000; } };
+
+for (const id of Sfx.FUN_IDS) {
+  const row = document.createElement('div'); row.className = 'funrow';
+  row.innerHTML = `<span>${FUN_NAME[id] ?? id} <small style="color:var(--dim)">${id}</small></span>`;
+  for (const v of [0, 1]) { const b = document.createElement('button'); b.textContent = v ? '②' : '①'; b.className = 'fun'; b.onclick = () => { try { wake(); Sfx.playFun(id, { force: true, variant: v }); } catch (e) { showErr(e); } }; row.appendChild(b); }
+  $('funlist').appendChild(row);
+}
+
+$('wake').onclick = () => { if (wake()) { $('wake').textContent = '소리 켜짐 ✔'; Sfx.SFX.ready?.(); } };
+$('stopAll').onclick = () => stop();
+$('vol').oninput = () => { const A = wake(); if (A) A.master.gain.value = +$('vol').value; };
+refresh();
+</script>
+</body>
+</html>

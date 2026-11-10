@@ -1,5 +1,5 @@
 /**
- * 이안 드래곤 게임 — 한국어 음성 재생 v2 (겜팀장)
+ * 좀비와 드래곤 (옛 이름 이안 드래곤) — 한국어 음성 재생 v2 (겜팀장)
  * - 한 id 에 여러 줄: 무작위로 고르되 방금 한 줄은 피한다(반복 지루함 방지).
  * - 출격 deploy/<용>/0 · /1 은 그 용의 줄 전체에서 고른다.
  * - 줄마다 효과음을 겹친다(sfx · at: 'start' = 말과 동시, 'end' = 말 끝에 «뿡!»).
@@ -36,7 +36,7 @@ function load(file) {
 
 /** 게임에 들어갈 때 자주 쓰는 줄만 미리 받는다 (출격 · 보스 · 승패) */
 export function preloadVoices() {
-  for (const [k, lines] of Object.entries(VOICE_LINES)) if (/^(deploy|boss|win|lose|roar|fever)/.test(k)) lines.forEach((_, i) => load(fileName(k, i)));
+  for (const [k, lines] of Object.entries(VOICE_LINES)) if (/^(title|deploy|boss|win|lose|roar|fever)/.test(k)) lines.forEach((_, i) => load(fileName(k, i)));
 }
 
 let playing = null;
