@@ -170,3 +170,13 @@ html.idg-wide body { width: 100%; }
 .idg-hatch-card img { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
 .idg-hatch-card span { color: #FFC93C; font-size: 10px; }
 @keyframes idgPop { from { transform: scale(.2); opacity: 0; } }
+
+/* ── 도감 (2026-11-11) ── */
+.idg-codex { max-width: 400px; max-height: 88vh; overflow-y: auto; }
+.idg-codex-h { margin: 8px 0 4px; color: #5a3a1a; font: 700 13px 'Neo둥근모', monospace; }
+.idg-codex-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.idg-codex-card { display: flex; flex-direction: column; align-items: center; padding: 3px 1px; border-radius: 8px; background: #221548; border: 2px solid #6fb7ff; color: #fff; font: 10px 'Neo둥근모', monospace; min-height: 70px; }
+.idg-codex-card.story { border-color: #8bd16b; } .idg-codex-card.super { border-color: #c08bff; } .idg-codex-card.legend { border-color: #ffd84a; }
+.idg-codex-card img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.idg-codex-card span { color: #FFC93C; font-size: 9px; }
+.idg-codex-card.off img { filter: brightness(0); opacity: .55; } .idg-codex-card.off { border-color: #444; }
