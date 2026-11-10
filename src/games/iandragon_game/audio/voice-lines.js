@@ -1,68 +1,79 @@
 /**
- * 이안 드래곤 게임 — 한국어 음성 대사표 (겜팀장 · 1차 = 월드 1~5). 보이스 스튜디오로 만든다.
- * 대표님 톤 지시: «빠르고 박진감 · 임팩트 · 흥분되는 목소리». 출격 한마디 1초 안팎 · 긴 대사도 2초 안.
- *   baby  = 아기 용: 짧고 기운차게 (용마다 높이 · 말끝을 조금씩 다르게)
- *   boss  = 좀비 보스: 허세 부리다 망하는 코믹 톤
- *   caster = 진행: 경기 해설처럼 신나게
- * id → { text, who, note }   (파일 이름 = id 의 / 를 _ 로, voice.js)
+ * 이안 드래곤 게임 — 한국어 음성 대사표 v2 (겜팀장 · 1차 = 월드 1~5 · 보이스 스튜디오로 만든다)
+ * 대표님 2026-11-10: «심심하면 안 된다 · 과장된 표현 · 웃긴 말투 · 효과음과 합쳐진 목소리 · 보스는 무섭고도 웃기게 ·
+ *   코믹 + 긴장 + 공포 · 같은 목소리가 반복되지 않게 다양하게».
+ * 한 id 에 여러 줄(무작위 · 방금 한 줄은 안 고름). 출격은 게임이 deploy/<용>/0 · /1 을 부르면 그 용의 줄 전체에서 고른다.
+ *   v: 목소리 (VOICES) · sfx: 같이 터지는 효과음 id (sfx.js) · at: 'end'(말 끝에) | 'start'
+ * 파일 이름: id 의 / 를 _ 로 + '_' + 줄 번호  (예: deploy_kkomul_0.ogg)
  */
+const L = (text, v, sfx, at = 'end') => ({ text, v, sfx, at });
+
 export const VOICE_LINES = {
-  /* 출격 (용마다 2개 중 무작위 — 게임이 /0 · /1 을 고른다) */
-  'deploy/kkomul/0': { text: '가자뿡!', who: 'baby', note: '가장 어린 목소리, 통통 튀게' },
-  'deploy/kkomul/1': { text: '꼬물꼬물 출동!', who: 'baby' },
-  'deploy/doldeung/0': { text: '막아낸다…!', who: 'baby', note: '졸린 듯 느긋하지만 단단하게' },
-  'deploy/doldeung/1': { text: '돌등이 방패!', who: 'baby' },
-  'deploy/bulttong/0': { text: '불똥 튄다!', who: 'baby', note: '씩씩하고 화끈하게' },
-  'deploy/bulttong/1': { text: '활활 간다아!', who: 'baby' },
-  'deploy/twetwe/0': { text: '퉤엣!', who: 'baby', note: '입 크게, 장난스럽게' },
-  'deploy/twetwe/1': { text: '불덩이 배달!', who: 'baby' },
-  'deploy/bangul/0': { text: '물방울 발사!', who: 'baby', note: '맑고 상냥하게' },
-  'deploy/bangul/1': { text: '촉촉하게 간다!', who: 'baby' },
-  'deploy/ssaeng/0': { text: '쌩—!', who: 'baby', note: '아주 빠르게, 바람 소리처럼' },
-  'deploy/ssaeng/1': { text: '내가 제일 빨라!', who: 'baby' },
-  'deploy/dungsil/0': { text: '둥실둥실~', who: 'baby', note: '느긋하고 몽글하게' },
-  'deploy/dungsil/1': { text: '하늘에서 간다!', who: 'baby' },
-  'deploy/giljjuk/0': { text: '목 쭈욱!', who: 'baby', note: '키 큰 척 의젓하게' },
-  'deploy/giljjuk/1': { text: '멀리서도 보여!', who: 'baby' },
-  'deploy/eoreum/0': { text: '얼음땡!', who: 'baby', note: '시원하고 또박또박' },
-  'deploy/eoreum/1': { text: '꽁꽁 얼려 줄게!', who: 'baby' },
-  'deploy/jjirit/0': { text: '찌릿찌릿!', who: 'baby', note: '톡 쏘게, 빠르게' },
-  'deploy/jjirit/1': { text: '번개 꼬리 간다!', who: 'baby' },
-  'deploy/sapjil/0': { text: '파낸다!', who: 'baby', note: '부지런한 일꾼처럼' },
-  'deploy/sapjil/1': { text: '삽질 시작!', who: 'baby' },
-  'deploy/pokjuk/0': { text: '펑펑 터진다!', who: 'baby', note: '신나서 들뜬 목소리' },
-  'deploy/pokjuk/1': { text: '불꽃놀이다!', who: 'baby' },
-  'deploy/sommung/0': { text: '몽글몽글~', who: 'baby', note: '포근하게' },
-  'deploy/sommung/1': { text: '폭신하게 막아!', who: 'baby' },
-  'deploy/dongjeon/0': { text: '짤랑!', who: 'baby', note: '부자 흉내, 으쓱하게' },
-  'deploy/dongjeon/1': { text: '용돈 벌러 간다!', who: 'baby' },
-  'deploy/gasigong/0': { text: '데굴데굴!', who: 'baby', note: '구르듯 빠르게' },
-  'deploy/gasigong/1': { text: '가시 조심해!', who: 'baby' },
-  /* 월드 보스 등장 */
-  'boss/bossFat': { text: '배고프다아… 다 먹어 주마!', who: 'boss', note: '느끼하고 우렁차게, 마지막에 트림하듯' },
-  'boss/bossVolcano': { text: '뜨겁지? 내가 바로 화산 킹이다!', who: 'boss' },
-  'boss/bossRider': { text: '비켜라 비켜! 라이더 나가신다!', who: 'boss' },
-  'boss/bossAvalanche': { text: '우르르릉… 다 덮어 버리겠다!', who: 'boss' },
-  'boss/bossRobot': { text: '삐빅! 고철 대왕 출격! 삐…빅?', who: 'boss', note: '기계음 흉내, 끝에 고장 난 듯' },
-  /* 전투 진행 */
-  evolve: { text: '진화다아아!', who: 'caster' },
-  roar: { text: '분노의 포효! 전부 밀어내!', who: 'caster' },
-  fever: { text: '불꽃 타임! 몰아쳐라!', who: 'caster' },
-  win: { text: '승리! 드래곤 최고!', who: 'caster' },
-  lose: { text: '으악… 다시 한 번!', who: 'caster' },
-  star3: { text: '별 세 개! 완벽해!', who: 'caster' },
-  /* 튜토리얼 안내 (1-1 ~ 1-3) */
-  'tut/1': { text: '용 버튼을 눌러 출격!', who: 'caster' },
-  'tut/2': { text: '불씨가 모이면 더 센 용!', who: 'caster' },
-  'tut/3': { text: '화로를 올리면 불씨가 빨리 차!', who: 'caster' },
-  'tut/4': { text: '브레스 준비 완료! 지금이야!', who: 'caster' },
-  'tut/5': { text: '좀비 탑을 무너뜨려!', who: 'caster' },
-  'tut/6': { text: '보스다! 방패 용을 앞에!', who: 'caster' },
+  /* ───── 출격 (용마다 4~5줄 · 목소리도 용마다 다르게) ───── */
+  'deploy/kkomul': [L('가자뿡!', 'babyHi', 'toot'), L('꼬물꼬물~ 출동이다아!', 'babyHi', 'boing'), L('나 작아도 무섭거든?!', 'babyHi'), L('새싹 펀치 받아랏!', 'babyHi', 'bonk'), L('엄마아~ 나 간다!', 'babyHi', 'slide_up')],
+  'deploy/doldeung': [L('으음… 막는 건… 내 전문…', 'babySleepy', 'bonk'), L('돌등이 방패애… 쿵!', 'babySleepy', 'thud'), L('졸려도… 못 지나간다…', 'babySleepy'), L('딱딱해서… 아프지…?', 'babySleepy', 'thud')],
+  'deploy/bulttong': [L('불똥 튄다아아!', 'babyBold', 'fire_pop'), L('뜨거우니까 비켜!', 'babyBold', 'whoosh'), L('볼따구 장전 완료!', 'babyBold', 'boing'), L('활활! 화르륵!', 'babyBold', 'fire_pop')],
+  'deploy/twetwe': [L('퉤엣!', 'babyGoofy', 'spit'), L('불덩이 배달 왔습니다~!', 'babyGoofy', 'spit'), L('입 크게 아~ 퉤!', 'babyGoofy', 'spit'), L('맛 좀 봐라, 퉤퉤퉤!', 'babyGoofy', 'spit')],
+  'deploy/ssaeng': [L('쌩—!', 'babyFast', 'whoosh'), L('내가 제일 빨라!', 'babyFast', 'whoosh'), L('잡을 수 있으면 잡아 봐!', 'babyFast', 'zoom'), L('고글 장착! 출발!', 'babyFast', 'zoom')],
+  'deploy/bangul': [L('물방울 발사!', 'babySweet', 'splash'), L('찰랑찰랑~ 간다!', 'babySweet', 'splash'), L('촉촉하게 혼내 줄게!', 'babySweet'), L('볼에 물 가득! 푸우!', 'babySweet', 'splash')],
+  'deploy/dungsil': [L('둥실둥실~', 'babyDreamy', 'slide_up'), L('구름 타고 슝~', 'babyDreamy', 'whoosh'), L('하늘에서 내려다본다~', 'babyDreamy'), L('폭신폭신 공격!', 'babyDreamy', 'boing')],
+  'deploy/giljjuk': [L('목 쭈우우욱!', 'babyProud', 'slide_up'), L('멀리서도 다 보여!', 'babyProud'), L('키 큰 형님 등장!', 'babyProud', 'boing'), L('저 끝까지 쏴 주지!', 'babyProud', 'spit')],
+  'deploy/eoreum': [L('얼음땡!', 'babyCool', 'freeze'), L('꽁꽁 얼려 줄게!', 'babyCool', 'freeze'), L('목도리 휘날리며~ 출동!', 'babyCool', 'whoosh'), L('너무 차가웠나? 헤헤!', 'babyCool', 'freeze')],
+  'deploy/jjirit': [L('찌릿찌릿!', 'babyZappy', 'zap'), L('번개 꼬리 간다!', 'babyZappy', 'zap'), L('감전 주의!', 'babyZappy', 'zap'), L('빠지직! 따끔하지?', 'babyZappy', 'zap')],
+  'deploy/sapjil': [L('파낸다아!', 'babyBold', 'thud'), L('삽질 시작!', 'babyBold', 'bonk'), L('안전모 착용 완료!', 'babyBold')],
+  'deploy/pokjuk': [L('펑펑 터진다!', 'babyGoofy', 'fire_pop'), L('불꽃놀이다아!', 'babyGoofy', 'fire_pop'), L('도화선 치지직~', 'babyGoofy', 'fire_pop')],
+  'deploy/sommung': [L('몽글몽글~', 'babyDreamy', 'boing'), L('폭신하게 막아 줄게!', 'babyDreamy'), L('양털 방패 뿅!', 'babyDreamy', 'boing')],
+  'deploy/dongjeon': [L('짤랑!', 'babyProud', 'coin_jingle'), L('용돈 벌러 간다!', 'babyProud', 'coin_jingle'), L('부자 용님 납신다!', 'babyProud', 'coin_jingle')],
+  'deploy/gasigong': [L('데굴데굴!', 'babyFast', 'boing'), L('가시 조심해!', 'babyFast'), L('굴러간다아아!', 'babyFast', 'slide_down')],
+
+  /* ───── 월드 보스: 등장 · 반 피 · 쓰러짐 (무섭게 시작해서 웃기게 망한다) ───── */
+  'boss/bossFat': [L('크르르… 아기 용 냄새가… 나는구나…', 'bossDeep', 'growl', 'start'), L('점심 메뉴는… 바로 너희다!', 'bossDeep', 'growl'), L('배고프다아아아! 다 먹어 주마!', 'bossDeep', 'stomp')],
+  'boss/bossFat/half': [L('아야! 내 소중한 뱃살에 흠집을!', 'bossDeep', 'bonk'), L('이제 진짜 화났다… 꾸르르륵!', 'bossDeep', 'growl')],
+  'boss/bossFat/die': [L('내 간식… 다 못 먹었는데…', 'bossDeep', 'sad_trombone'), L('꺼억… 다음엔… 디저트로…', 'bossDeep', 'fart')],
+  'boss/bossVolcano': [L('땅이 울린다… 내가 깨어났다!', 'bossDeep', 'rumble', 'start'), L('모두 녹여 버리겠다! 크하하!', 'bossDeep', 'fire_pop'), L('뜨겁지? 이건 시작일 뿐이다!', 'bossDeep', 'rumble')],
+  'boss/bossVolcano/half': [L('내 머리에서… 김이 나잖아!', 'bossDeep', 'steam'), L('분화한다아아아!', 'bossDeep', 'rumble')],
+  'boss/bossVolcano/die': [L('식는다… 미지근해진다…', 'bossDeep', 'steam'), L('으아… 화산이… 꺼져 버렸어…', 'bossDeep', 'sad_trombone')],
+  'boss/bossRider': [L('비켜라 비켜! 라이더 나가신다!', 'bossShrill', 'zoom', 'start'), L('하늘은 내 거다! 크하하!', 'bossShrill', 'whoosh'), L('독수리야! 쪼아 버려!', 'bossShrill', 'screech')],
+  'boss/bossRider/half': [L('어이쿠! 깃털 빠진다, 깃털!', 'bossShrill', 'slide_down'), L('독수리야, 정신 차려!', 'bossShrill', 'screech')],
+  'boss/bossRider/die': [L('으아아… 추락이다아아…', 'bossShrill', 'slide_down'), L('면허… 반납합니다…', 'bossShrill', 'sad_trombone')],
+  'boss/bossAvalanche': [L('우르르릉… 모두 덮어 버리겠다…', 'bossDeep', 'rumble', 'start'), L('춥지? 더 춥게 해 주마!', 'bossDeep', 'freeze'), L('발밑을 조심해라… 꼬맹이들…', 'bossDeep', 'stomp')],
+  'boss/bossAvalanche/half': [L('내 털이… 녹는다!', 'bossDeep', 'splash'), L('화났다! 눈사태다아!', 'bossDeep', 'rumble')],
+  'boss/bossAvalanche/die': [L('봄이… 왔구나…', 'bossDeep', 'sad_trombone'), L('녹는다아… 물이 되어 버려…', 'bossDeep', 'splash')],
+  'boss/bossRobot': [L('삐빅… 침입자 발견. 제거 시작.', 'bossRobot', 'alarm', 'start'), L('고철 대왕 출격! 삐빅!', 'bossRobot', 'zap'), L('저항은… 무의미하다… 삐…', 'bossRobot', 'servo')],
+  'boss/bossRobot/half': [L('경고! 경고! 나사가 빠졌다!', 'bossRobot', 'alarm'), L('삐…빅? 왜 연기가 나지?', 'bossRobot', 'steam')],
+  'boss/bossRobot/die': [L('시스템… 종료… 삐이이이—', 'bossRobot', 'power_down'), L('엄마… 보고 싶다… 삐빅…', 'bossRobot', 'power_down')],
+
+  /* ───── 진행 · 해설 (경기 중계처럼 신나게) ───── */
+  evolve: [L('진화다아아아!', 'caster', 'sparkle'), L('오오! 더 강해졌다!', 'caster', 'sparkle'), L('변신 완료! 멋지다!', 'caster', 'sparkle')],
+  roar: [L('분노의 포효! 전부 밀어내!', 'caster', 'growl', 'start'), L('크아앙! 다 비켜라!', 'caster', 'growl', 'start'), L('으르렁! 판을 뒤집어!', 'caster', 'growl', 'start')],
+  fever: [L('불꽃 타임! 몰아쳐라!', 'caster', 'fire_pop'), L('지금이다! 전부 쏟아부어!', 'caster'), L('뜨거워진다아! 불꽃 타임!', 'caster', 'fire_pop')],
+  win: [L('승리! 드래곤 최고!', 'caster', 'crowd'), L('해냈다아아! 대단해!', 'caster', 'crowd'), L('좀비들 도망간다! 승리!', 'caster', 'crowd'), L('완벽한 승리입니다!', 'caster', 'crowd')],
+  lose: [L('으악… 다시 한 번!', 'caster', 'sad_trombone'), L('아깝다! 조금만 더!', 'caster', 'sad_trombone'), L('좀비한테 졌다니… 복수다!', 'caster')],
+  star3: [L('별 세 개! 완벽해!', 'caster', 'sparkle'), L('만점! 천재 아냐?!', 'caster', 'sparkle'), L('별 세 개 획득! 최고다!', 'caster', 'sparkle')],
+  danger: [L('위험해! 둥지가 흔들린다!', 'caster', 'alarm', 'start'), L('막아! 막아야 해!', 'caster', 'heartbeat', 'start'), L('큰일이다! 버텨!', 'caster', 'alarm', 'start')],
+  bossdown: [L('보스를 쓰러뜨렸다아!', 'caster', 'crowd'), L('거대한 놈이 넘어간다!', 'caster', 'crowd'), L('보스 격파! 끝내 버려!', 'caster', 'crowd')],
+  'tut/1': [L('용 버튼을 꾹! 출격이다!', 'caster')],
+  'tut/2': [L('불씨가 모이면 더 센 용이 나와!', 'caster')],
+  'tut/3': [L('화로를 올리면 불씨가 팍팍 찬다!', 'caster')],
+  'tut/4': [L('브레스 준비 완료! 지금 쏴!', 'caster')],
+  'tut/5': [L('좀비 탑을 무너뜨려라!', 'caster')],
+  'tut/6': [L('보스다! 튼튼한 용을 앞에 세워!', 'caster')],
 };
 
-/** 보이스 스튜디오 «목소리 설계» 설명 (who 별) */
-export const VOICE_DESIGN = {
-  baby: '한국어, 10살 안팎 아이 같은 높고 밝은 목소리, 아주 빠르고 기운찬 말투, 짧게 외치듯',
-  boss: '한국어, 굵고 우스꽝스러운 악당 목소리, 과장된 허세, 빠르고 힘 있게',
-  caster: '한국어, 신난 남자 경기 해설자, 빠르고 박진감 넘치게, 크게 외치듯',
+/** 보이스 스튜디오 «목소리 설계» — 목소리마다 다르게 (반복 지루함 방지) */
+export const VOICES = {
+  babyHi: '한국어, 아주 어린 아이, 아주 높은 목소리, 통통 튀고 신나게, 빠르게',
+  babySleepy: '한국어, 아이, 낮고 느릿한 졸린 말투지만 단단하게',
+  babyBold: '한국어, 씩씩한 남자아이, 힘차고 빠르게 외치듯',
+  babyGoofy: '한국어, 장난꾸러기 아이, 익살스럽고 과장되게',
+  babyFast: '한국어, 아이, 아주 빠르고 숨 가쁘게, 신나서',
+  babySweet: '한국어, 상냥한 여자아이, 맑고 밝게',
+  babyDreamy: '한국어, 몽글몽글한 아이 목소리, 느긋하고 귀엽게',
+  babyProud: '한국어, 으쓱대는 아이, 의젓한 척 과장되게',
+  babyCool: '한국어, 시원시원한 아이, 또박또박 자신 있게',
+  babyZappy: '한국어, 톡 쏘는 아이 목소리, 빠르고 짧게',
+  bossDeep: '한국어, 아주 굵고 낮은 괴물 목소리, 무섭게 으르렁대다가 허세 부리는 코믹 악당',
+  bossShrill: '한국어, 높고 째지는 악당 목소리, 촐싹대고 과장되게',
+  bossRobot: '한국어, 딱딱한 기계 말투, 단조롭고 차갑게, 가끔 버벅임',
+  caster: '한국어, 흥분한 남자 경기 해설자, 아주 빠르고 박진감 넘치게, 크게 외치듯',
 };

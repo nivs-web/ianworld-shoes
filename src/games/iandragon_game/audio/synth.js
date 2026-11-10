@@ -28,7 +28,7 @@ function noiseBuffer(c) {
 }
 
 /** 음 하나: type · f0→f1(Hz) · dur(초) · vol · at(시작 지연) · bus */
-export function tone({ type = 'square', f0 = 440, f1 = f0, dur = 0.12, vol = 0.3, at = 0, attack = 0.005, bus, detune = 0 }) {
+export function tone({ type = 'square', f0 = 440, f1 = f0, dur = 0.12, vol = 0.3, at = 0, attack = 0.005, bus, detune = 0, vib, trem }) {
   const A = audio(); if (!A) return;
   const t = A.ctx.currentTime + at;
   const o = A.ctx.createOscillator(), g = A.ctx.createGain();
@@ -39,7 +39,12 @@ export function tone({ type = 'square', f0 = 440, f1 = f0, dur = 0.12, vol = 0.3
   g.gain.exponentialRampToValueAtTime(vol, t + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g); g.connect(bus ?? A.sfxBus);
+  /* vib = { rate, depth(센트) } 떨림 · trem = { rate, depth(0~1) } 소리 크기 떨림 (방귀 · 으르렁 · 트롬본) */
+  const lfos = [];
+  if (vib) { const l = A.ctx.createOscillator(), lg = A.ctx.createGain(); l.frequency.value = vib.rate; lg.gain.value = vib.depth; l.connect(lg); lg.connect(o.detune); lfos.push(l); }
+  if (trem) { const l = A.ctx.createOscillator(), lg = A.ctx.createGain(), tg = A.ctx.createGain(); l.type = 'square'; l.frequency.value = trem.rate; lg.gain.value = trem.depth * 0.5; tg.gain.value = 1 - trem.depth * 0.5; l.connect(lg); lg.connect(tg.gain); g.disconnect(); g.connect(tg); tg.connect(bus ?? A.sfxBus); lfos.push(l); }
   o.start(t); o.stop(t + dur + 0.02);
+  for (const l of lfos) { l.start(t); l.stop(t + dur + 0.02); }
 }
 
 /** 잡음 하나: dur · vol · 필터(lp/hp/bp 주파수 f0→f1) */
