@@ -11,7 +11,7 @@ import { RAMP, C, OUT } from './palette.js';
 export const ANIMS = ['idle0', 'walk0', 'walk1', 'atk0', 'atk1', 'kb0'];
 
 /** 동작별 몸 움직임: dx(앞뒤) · dy(위아래) · 다리 칸 · 입 · 눈 */
-function pose(a) {
+export function pose(a) {
   return {
     idle0: { dx: 0, dy: 0, leg: 0, mouth: 0, eye: 'open' },
     walk0: { dx: 0, dy: 0, leg: 1, mouth: 0, eye: 'open' },
@@ -22,7 +22,7 @@ function pose(a) {
   }[a];
 }
 /** 눈 감김 «><» */
-function shutEye(p, x, y) { p.set(x - 1, y - 1, OUT); p.set(x, y, OUT); p.set(x - 1, y + 1, OUT); p.set(x + 1, y - 1, OUT); p.set(x + 1, y + 1, OUT); }
+export function shutEye(p, x, y) { p.set(x - 1, y - 1, OUT); p.set(x, y, OUT); p.set(x - 1, y + 1, OUT); p.set(x + 1, y - 1, OUT); p.set(x + 1, y + 1, OUT); }
 
 /* ───────── 꼬물이 kkomul — 동글동글 머리 큰 연두 아기 용 · 짧은 주둥이 · 반짝이는 까만 눈 · 새싹 ───────── */
 function kkomul(form, a) {

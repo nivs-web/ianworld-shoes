@@ -6,3 +6,9 @@
 - `art/units.js` : 꼬물이(1·2모습 32·36칸) · 돌등이(1·2모습 40·44칸) · 어슬렁 좀비(36칸) × 6동작(idle0 · walk0 · walk1 · atk0 · atk1 · kb0).
 - `tools/idg-art-preview.mjs` : 확인 시트(실제 크기 6동작 · 2배 · 4배 · 실루엣) → `tools/_out/idg-art-preview.png`.
 - 다음 : 대표님 승인 → 굽기(`tools/idg-art-build.mjs` · atlas) + A2 월드 1.
+
+## A1 승인 · A2 월드 1 (2026-11-10)
+- 대표님 승인: 3차 샘플(꼬물이 귀엽게 · 돌등이 그대로 · 좀비 다시). 대표님 방향: 용 = 귀여운 아기 몬스터 비율, 좀비 = «무섭고 징그러우면서 귀여운» 카툰 좀비, 크게(40~52칸).
+- 굽기 `tools/idg-art-build.mjs`(진짜 + 빠진 이름은 보관한 자리표시) · 검사 `tools/idg-art-qa.mjs` · 장면 확인 `tools/idg-art-scene.mjs`.
+- 월드 1 전부 진짜 그림(133/133): 용 5종 × 1·2모습(`units.js` · `dragons_w1.js`) · 좀비 6종(`zombies_w1.js`) · 뚱보 좀비 대장 · 노바트 · 왕관 · 둥지 탑 · 좀비 탑 hp0~3(`misc_w1.js`) · 배경 4겹 · 아이콘 6 · 이펙트 3×3(`bg_ui_w1.js`).
+- 다음: A3 효과음 · 곡 · 음성(보이스 스튜디오), artManifest 가 오면 빠진 이름 채우기.
