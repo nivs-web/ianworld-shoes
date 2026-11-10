@@ -29,6 +29,9 @@ export async function startBattle(ctx, opts) {
   loads[0].bonus = { ...loads[0].bonus, income: loads[0].bonus.income / tz.ember, baseHp: loads[0].bonus.baseHp / tz.base };
   /* 멀티 : 자리마다 같은 편성을 하나씩 (같이 깨기 = 모두 side 0) */
   const net = opts.net || null, me = net ? net.seat : 0;
+  /* 같이 깨기 : 좀비 세기 1.5배 (멀티 기획 2.1 · 계산기 2인 자동 28판 = 26승 — 혼자 26승과 같은 손맛) */
+  const coop = !!net && !pvp && net.seats > 1;
+  if (coop) { stage.mag *= 1.5; stage.atkMag *= 1.5; }
   if (net) { const one = loads[0]; loads.length = 0; for (let i = 0; i < net.seats; i++) loads.push(pvp ? pvpLoad(net.loads?.[i] || one, i) : { ...(net.loads?.[i] || one), side: 0 }); }   // 대결 = 0번 왼쪽 · 1번 오른쪽   // 서버 방 = 자리마다 받은 편성(ld) · 탭 시험 = 같은 편성
   const myDeck = pvp ? loads[me].deck : net?.loads?.[me]?.deck || deck;
   const allDragons = pvp || net?.loads ? [...new Map(loads.flatMap((l) => l.deck).map((d) => [d.id, d])).values()] : deck;
@@ -43,7 +46,8 @@ export async function startBattle(ctx, opts) {
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: allDragons, enemies: enemyIds, leader: loads[0].leader, pvp, mirror, foeLeader: pvp ? loads[1].leader : null });
 
   const sound = createBattleSound(stage, me);
-  const ui = { me, side: pvp ? me : 0, net: !!net, speed: Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
+  /* 멀티는 1배속 고정 */
+  const ui = { me, side: pvp ? me : 0, net: !!net, speed: net ? 1 : Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
   /* 자동 전투 (B6) : 별을 1개 이상 딴 스테이지만 — 기준 AI(코어 aiCommands)가 대신 누른다 */
   const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
@@ -53,7 +57,7 @@ export async function startBattle(ctx, opts) {
     cmd(c) { if (S.over) return; if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c }); },
     go() { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(); },
     pause() { if (ui.done || ui.intro || net) return; ui.paused = !ui.paused; sound.pause(ui.paused); if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
-    speed() { ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
+    speed() { if (net) return; ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
     auto() { if (canAuto) ui.auto = !ui.auto; },
     exit() { opts.onExit(); },
     retry() { opts.restart(stage.g); },
@@ -90,17 +94,20 @@ export async function startBattle(ctx, opts) {
     if (win) {
       info.stars = starsFor(stage, S.t);
       const save = opts.save || {};
+      /* 같이 깨기 보상 : 끌어 주기(내 다음 차례 판 = 별 1개로 첫 클리어) · 내 차례보다 뒤 판 = 다시 깨기 코인만(진행 안 건너뜀) · 별 2·3개는 혼자만 · 우정 +10% */
+      const ahead = coop && stage.g > (save.cleared || 0) + 1, pull = coop && stage.g === (save.cleared || 0) + 1;
+      if (coop) info.stars = pull ? 1 : 0;
       const stars = (save.stars || '').padEnd(stage.g, '0').split('');
-      const old = Number(stars[stage.g - 1]) || 0, first = old === 0, newStars = Math.max(0, info.stars - old);
+      const old = Number(stars[stage.g - 1]) || 0, first = old === 0 && !ahead, newStars = Math.max(0, info.stars - old);
       stars[stage.g - 1] = String(Math.max(old, info.stars));
       /* 보상 (기획서 10장 ECON) : 첫 클리어 코인 · 다시 깨면 40% · 새 별 하나마다 +25% / 젬 : 새 별 5 · 중간 보스 20 · 월드 보스 50 (첫 클리어) */
       const base = ECON.coin(stage.g);
-      info.coins = Math.round(base * (first ? 1 : ECON.replay) + base * ECON.starBonus * newStars);
+      info.coins = Math.round((base * (first ? 1 : ECON.replay) + base * ECON.starBonus * newStars) * (coop ? 1.1 : 1));
       info.gems = newStars * ECON.gem.star + (first && stage.s === 5 ? ECON.gem.mid : 0) + (first && stage.s === 10 ? ECON.gem.boss : 0);
       /* 매일 첫 승리 : 젬 10 (한국 날짜) */
       const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
       if (save.daily !== today) { info.gems += 10; info.daily = true; }
-      const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today, stat };
+      const part = { cleared: Math.max(save.cleared || 0, ahead ? 0 : stage.g), stars: (ahead ? save.stars || '' : stars.join('')), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today, stat };
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     } else info.hint = loseHint(S, me);
     if (net && ls.mismatch() >= 0) info.hint = '연결이 어긋났어요 — 이 판은 기록하지 않아요. 한 판 더?';
