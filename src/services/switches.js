@@ -21,6 +21,8 @@ const FUN = [
 export const SWITCHES = {
   zdFun: { name: '좀비와 드래곤 · 재미 요소 (보이기)', def: true, keys: FUN.map(([key, name]) => ({ key, name })) },
   zdFunSound: { name: '좀비와 드래곤 · 재미 요소 (소리)', def: false, keys: FUN.map(([key, name]) => ({ key, name })) },
+  /* 대표님 2026-11-11 «오락실 풍 / 오케스트라 풍을 토글로 켜고 끄며 해 보고 정하겠다» — 켜짐 = 오케스트라(공개 녹음) · 꺼짐 = 오락실(합성) */
+  zdBgm: { name: '좀비와 드래곤 · 배경음악', def: true, keys: [{ key: 'orchestra', name: '오케스트라 풍 (끄면 오락실 풍)' }] },
 };
 
 /* 등장 빈도 (초) — 대표님 2026-11-11 «몇 초에 한 번씩 등장할지 관리자가 설정». 기본값 = 지금 게임 값 (render/fun.js DEFS 의 쉬는 시간) */

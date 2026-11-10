@@ -773,6 +773,14 @@ service cloud.firestore {
           "mole": { ".validate": "newData.isBoolean()" },
           "$other": { ".validate": false }
         },
+        "zdBgm": {
+          "orchestra": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
         "zdFunEvery": {
           "all": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
           "bike": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
