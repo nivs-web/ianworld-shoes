@@ -23,7 +23,7 @@ const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
-export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false }, cb) {
+export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null }, cb) {
   const root = h('div', 'idg-hud'); host.appendChild(root);
   /* 위 */
   const top = h('div', 'idg-top'); root.appendChild(top);
@@ -77,6 +77,12 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     panel.replaceChildren();
     const box = h('div', 'idg-card');
     if (kind === 'pause') box.append(h('h2', null, '일시정지'));
+    else if (kind === 'intro' && stage.pvp) {   /* 용 대결 카드 : 양쪽 덱 · 리더 공개 */
+      box.append(h('h2', null, '용 대결!'));
+      const face = (list, ld) => { const z = h('div', 'idg-intro-z'); for (const id of [ld, ...list.map((d) => d.id)].filter(Boolean)) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.style.display = 'none'; }; z.appendChild(im); } return z; };
+      box.append(h('p', 'small', '나'), face(deck, leader), h('p', 'small', 'VS 친구'), face(foeDeck || [], foeLeader));
+      box.append(h('p', 'small', '상대 둥지를 먼저 무너뜨리면 승리 · 3분 · 90초부터 불꽃 타임 · 모두 Lv20'));
+    }
     else if (kind === 'intro') {   /* 스테이지 카드 (기획서 11.4) : 이름 · 기믹 · 오늘의 좀비 · 별 조건 */
       box.append(h('h2', null, `${stage.id} ${stage.name}`));
       if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
@@ -85,18 +91,19 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안에 · ★★★ ${stage.star3}초 안에`));
     }
     else {
-      box.append(h('h2', kind === 'win' ? 'win' : 'lose', kind === 'win' ? '승리!' : '아쉬워요…'));
-      if (kind === 'win') { const st = h('div', 'idg-stars'); for (let i = 0; i < 3; i++) { const s = h('span', i < info.stars ? 'on' : '', '★'); s.style.animationDelay = `${0.3 + i * 0.35}s`; st.appendChild(s); } box.appendChild(st); }
-      box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}${kind === 'win' && info.gems ? ` · 젬 +${info.gems}` : ''}${info.daily ? ' (오늘 첫 승리 +10)' : ''}`));
-      if (kind === 'lose' && info.hint) box.append(h('p', 'hint', info.hint));
+      box.append(h('h2', kind === 'win' ? 'win' : 'lose', info.title || (kind === 'win' ? '승리!' : '아쉬워요…')));
+      if (info.pvp) { box.append(h('p', null, `${clock(info.t || 0)} · 코인 +${fmt(info.coins || 0)}`), h('p', 'small', info.rec || '')); if (info.hint) box.append(h('p', 'hint', info.hint)); }
+      else if (kind === 'win') { const st = h('div', 'idg-stars'); for (let i = 0; i < 3; i++) { const s = h('span', i < info.stars ? 'on' : '', '★'); s.style.animationDelay = `${0.3 + i * 0.35}s`; st.appendChild(s); } box.appendChild(st); }
+      if (!info.pvp) box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}${kind === 'win' && info.gems ? ` · 젬 +${info.gems}` : ''}${info.daily ? ' (오늘 첫 승리 +10)' : ''}`));
+      if (kind === 'lose' && info.hint && !info.pvp) box.append(h('p', 'hint', info.hint));
     }
     const row = h('div', 'idg-row');
     const add = (label, fn, cls = '') => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
     if (kind === 'pause') add('계속', () => cb.pause(), 'main');
     if (kind === 'intro') { add('출격!', () => cb.go(), 'main'); add(text.exit, () => cb.exit()); box.appendChild(row); panel.appendChild(box); panel.classList.add('on'); return; }
     if (info.final) box.append(h('p', 'final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요! 🐉'));
-    if (kind === 'win' && info.hasNext) add('다음 스테이지', () => cb.next(), 'main');
-    add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main' : '');
+    if (kind === 'win' && info.hasNext && !info.pvp) add('다음 스테이지', () => cb.next(), 'main');
+    if (!info.pvp) add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main' : '');
     add(text.exit, () => cb.exit());
     box.appendChild(row); panel.appendChild(box); panel.classList.add('on');
   }
@@ -122,8 +129,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       const lim = S.stage.gim === 'time' ? S.stage.limit : 0;
       time.textContent = lim ? `남은 ${clock(Math.max(0, lim - S.t))}` : clock(S.t); time.classList.toggle('hurry', !!lim && lim - S.t < 20);
       moneyN.textContent = `${fmt(p.money)} / ${fmt(W[p.wl].max * p.B.walletMax)}`;
-      myHp.textContent = ` ${fmt(Math.max(0, S.base[0].hp))}`;
-      foeHp.textContent = `${fmt(Math.max(0, S.base[1].hp))} `;
+      const sd = ui.side || 0;   // 대결 오른쪽 편 = 내 둥지는 1번
+      myHp.textContent = ` ${fmt(Math.max(0, S.base[sd].hp))}`;
+      foeHp.textContent = `${fmt(Math.max(0, S.base[1 - sd].hp))} `;
       const top1 = p.wl >= W.length - 1;
       wLv.textContent = `Lv${p.wl + 1}`; wCost.textContent = top1 ? 'MAX' : fmt(W[p.wl].cost);
       wallet.classList.toggle('can', !top1 && p.money >= W[p.wl].cost && S.stage.walletLock == null);

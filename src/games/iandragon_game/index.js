@@ -53,12 +53,12 @@ export async function mount(host, opts) {
   /* 그림 공장 시험판(2026-11-11) — 옛 기준 장면은 주소에 ?idgDemo 를 붙이면 본다 */
   /* B2 (2026-11-11 야간) — 진짜 전투. 옛 장면 : ?idgDemo(기준 장면) · ?idgPilot(그림 공장 시험판) */
   /* 멀티 시험 (개발 서버 · 같은 컴퓨터 탭 둘) : ?idgNet=coop&seat=0 · seat=1 */
-  const netQ = /[?&]idgNet=coop/.test(q) ? { seat: Number((q.match(/[?&]seat=(\d)/) || [])[1] || 0), seats: 2 } : null;
+  const netQ = /[?&]idgNet=(coop|pvp)/.test(q) ? { seat: Number((q.match(/[?&]seat=(\d)/) || [])[1] || 0), seats: 2, pvp: /idgNet=pvp/.test(q) } : null;   // 점검용 : 탭 두 개 (?idgNet=pvp&seat=1)
   const begin = async (stageNo) => {
     me.scene?.destroy(); me.scene = null;
     try {
       const rm = opts.room;   // 친구랑 같이 깨기 (서버 방)
-      const net = rm && rm.seat >= 0 ? { seat: rm.seat, seats: rm.uids.length, seed: rm.seed, loads: rm.loads, transport: createRoomTransport(rm.code, rm.uids, rm.seat) }
+      const net = rm && rm.seat >= 0 ? { seat: rm.seat, seats: rm.uids.length, seed: rm.seed, loads: rm.loads, pvp: rm.stageNo === 0, transport: createRoomTransport(rm.code, rm.uids, rm.seat) }
         : netQ ? { ...netQ, seed: 7000 + stageNo, transport: createLocalTransport(`s${stageNo}`, netQ.seat) } : undefined;
       if (rm) opts.room = null;   // 다시 하기 · 다음 판은 혼자
       me.scene = await startBattle({ ...ctx, host }, {
@@ -76,7 +76,7 @@ export async function mount(host, opts) {
   const stQ = Number((q.match(/[?&]idgStage=(\d+)/) || [])[1]);   // 점검용 : ?idgStage=12
   if (/idgDemo/.test(q)) me.scene = startDemo(ctx, T, has, sheetMeta[0], sheetMeta[1]);
   else if (/idgPilot/.test(q)) me.scene = await startPilot(ctx, T);
-  else await begin(opts.room?.stageNo || stQ || opts.stageNo || Math.min(LAST_STAGE, (opts.save?.cleared || 0) + 1));
+  else await begin(opts.room ? opts.room.stageNo : stQ || opts.stageNo || Math.min(LAST_STAGE, (opts.save?.cleared || 0) + 1));
   const battle = !/idgDemo|idgPilot/.test(q);
 
   /* 나가기 단추 (화면 위 DOM — 캔버스 글씨 금지 규칙) */

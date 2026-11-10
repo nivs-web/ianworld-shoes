@@ -93,6 +93,19 @@ export function makeLoads(stage, save) {
   };
 }
 
+/** 용 대결 (3차 M5 · 멀티 기획 2.2) — 좀비 없음 · 길이 1000 · 180초 · 불꽃 타임 90초 · 모두 Lv20 · 덱 6칸 · 연구소/보물 미적용 */
+export const PVP_OPEN = 20;   // 2-10 을 깨면 열린다 (덱 6칸이 열릴 때)
+export const PVP_DAY = 5;     // 하루 보상 판 수
+export function pvpStage() {
+  const b = stageByNo(PVP_OPEN);
+  return { ...b, id: 'VS', name: '용 대결', g: 0, s: 0, gim: null, fog: false, pvp: true, lines: [], length: 1000, baseHp: 3000, limit: 180, fever: 90, star2: 0, star3: 0 };
+}
+export function pvpLoad(ld, side) {
+  const seen = new Set(); let legend = 0;
+  const deck = ld.deck.filter((d) => { if (seen.has(d.id)) return false; if (UNITS[d.id]?.rar === 'legend' && legend++) return false; seen.add(d.id); return true; }).slice(0, 6).map((d) => ({ id: d.id, lv: 20 }));
+  return { side, deck, leader: ld.leader, leaderLv: 20, skills: (ld.skills || []).slice(0, 2), bonus: {} };
+}
+
 /** 멀티 편성 → 글자 (방 `players/$uid/ld` · 500자 이하) */
 export function loadToLd(load) {
   const b = {}; for (const [k, v] of Object.entries(load.bonus || {})) b[k] = Math.round(v * 1000) / 1000;

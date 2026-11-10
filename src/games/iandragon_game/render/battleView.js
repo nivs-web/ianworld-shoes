@@ -24,11 +24,11 @@ const artOf = (id) => ART[id] || id;
 const nearest = (t) => { t.source.scaleMode = 'nearest'; return t; };
 const tryLoad = (url) => Assets.load(url).then(nearest).catch(() => null);
 
-export async function createBattleView(ctx, { world, L, dragons, enemies, leader = 'novart' }) {
+export async function createBattleView(ctx, { world, L, dragons, enemies, leader = 'novart', pvp = false, mirror = false, foeLeader = null }) {
   const { app, view } = ctx;
   const FIELD = M + L + M;
   /* ── 그림 받기 */
-  const ids = [...new Set([...dragons.flatMap((d) => (d.lv >= 10 ? [d.id, d.id + '_2'] : [d.id])), ...enemies.map(artOf), leader, 'kkomul', 'walker'])];
+  const ids = [...new Set([...dragons.flatMap((d) => (d.lv >= 10 ? [d.id, d.id + '_2'] : [d.id])), ...enemies.map(artOf), leader, ...(foeLeader ? [foeLeader] : []), 'kkomul', 'walker'])];
   const rigs = {};
   await Promise.all(ids.map((id) => loadRig(id).then((r) => { rigs[id] = r; }).catch(() => {})));
   const wN = String(world).padStart(2, '0');
@@ -39,6 +39,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     loadFun().catch(() => null),   // 재미 그림이 없어도 전투는 연다 (코드 검토 2)
   ]);
 
+  if (pvp) towerT.splice(0, 4, ...nestT);   // 대결 : 양쪽 다 용 둥지
   /* ── 층 : 배경 · 재미(뒤) · 성 · 유닛 · 효과 · 재미(앞) */
   const root = new Container(); app.stage.addChild(root);
   const bgBox = new Container(), funBack = new Container(), stage = new Container(), units = new Container(), fx = new Container(), funFront = new Container();
@@ -47,7 +48,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const k = bgTex ? 540 / bgTex.height : 1, bw = bgTex ? bgTex.width * k : FIELD;
   if (bgTex) for (let i = 0; i * bw < FIELD + bw; i++) { const s = new Sprite(bgTex); s.scale.set(i % 2 ? -k : k, k); s.x = i % 2 ? (i + 1) * bw : i * bw; bgBox.addChild(s); }
   const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, GY + 10);
-  const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, GY + 10);
+  const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, GY + 10); if (pvp) tower.scale.x = -1;
   stage.addChild(nest, tower, units, fx);
   const shade = new Graphics().rect(-50, -50, FIELD + 100, 700).fill(0x000000); shade.alpha = 0; root.addChild(shade);
   /* 안개 기믹 : 내 맨 앞 + 260칸 너머를 짙은 안개로 (화면 전용) */
@@ -65,6 +66,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   /* ── 리더 (내 기지 위) */
   const ldRig = rigs[leader] || null;
   const lead = ldRig ? createRigged(ldRig, 1, 1) : null;
+  const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(rigs[foeLeader], 1, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
+  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); }
 
   const white = new ColorMatrixFilter();
@@ -73,7 +76,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const parts = [];         // 작은 효과 조각 { g, vx, vy, life, t, grav }
   const shakes = { nest: 0, tower: 0, screen: 0 };
   const seen = { breath: 0, bossAt: null, baseHp: [null, null], over: false };
-  let breathFx = 0, overT = 0;
+  let breathFx = 0, overT = 0, bSide = 0, bP = null, bBS = null;
+  seen.by = [];
+  const bx = (x) => (bSide ? FIELD - x : x);   // 오른쪽 편 브레스는 좌우 반대로
   /* 리더마다 다른 브레스 (화면 전용) : 색 · 위로/아래로 · 크기 · 특수(번개 줄기 · 햇살 기둥) */
   const BREATH = {
     novart: { c: [0xff7a1a, 0xffd04a], vy: -40, g: 0, r: 6 },
@@ -88,7 +93,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
 
   const rigFor = (u) => {
     const art = u.def._art;
-    if (u.side === 0) { const lv = dragons.find((d) => d.id === art)?.lv || 1; return (lv >= 10 && rigs[art + '_2']) || rigs[art] || rigs.kkomul; }
+    if (u.side === 0 || pvp) { const lv = dragons.find((d) => d.id === art)?.lv || 1; return (lv >= 10 && rigs[art + '_2']) || rigs[art] || rigs.kkomul; }
     return rigs[artOf(art)] || rigs.walker;
   };
   function puff(x, y, color, n = 6, spd = 80, life = 0.4, r = 2) {
@@ -166,26 +171,30 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   function effects(S, dt) {
     const p = S.players[0];
     const allBreath = S.players.reduce((a, q) => a + q.st.breath, 0);   // 멀티 : 누가 쏘든 브레스 연출
-    if (p && allBreath > seen.breath) { seen.breath = allBreath; breathFx = 0.001; if (lead) lead.set('hit'); }
+    if (p && allBreath > seen.breath) {
+      let who = 0; S.players.forEach((q, i) => { if (q.st.breath > (seen.by[i] || 0)) who = i; seen.by[i] = q.st.breath; });
+      seen.breath = allBreath; breathFx = 0.001; bP = S.players[who]; bSide = pvp ? bP.side : 0; bBS = (bSide && BREATH[foeLeader]) || BS;
+      const L0 = bSide ? lead2 : lead; if (L0) L0.set('hit');
+    }
     if (breathFx > 0) {
       breathFx += dt;
       shade.alpha = breathFx < 0.2 ? 0.35 : Math.max(0, 0.35 - (breathFx - 0.2) * 1.2);
-      const reach = M + (p ? p.leader.range : 600);
+      const reach = M + (bP ? bP.leader.range : 600);
       if (breathFx < 0.6) for (let i = 0; i < 6; i++) {
         const x = M - 20 + (reach - M + 20) * Math.min(1, breathFx / 0.5) * Math.random();
-        const col = BS.c[(Math.random() * BS.c.length) | 0];
-        const g = BS.spin ? new Graphics().ellipse(0, 0, BS.r + 3, BS.r - 1).fill(col) : new Graphics().circle(0, 0, BS.r - 2 + Math.random() * 6).fill(col);
-        g.blendMode = 'add'; g.position.set(x, GY - 20 - Math.random() * 50); fx.addChild(g);
-        parts.push({ g, vx: 60, vy: BS.vy * (0.6 + Math.random() * 0.8), life: 0.45, t: 0, grav: BS.g });
+        const col = bBS.c[(Math.random() * bBS.c.length) | 0];
+        const g = bBS.spin ? new Graphics().ellipse(0, 0, bBS.r + 3, bBS.r - 1).fill(col) : new Graphics().circle(0, 0, bBS.r - 2 + Math.random() * 6).fill(col);
+        g.blendMode = 'add'; g.position.set(bx(x), GY - 20 - Math.random() * 50); fx.addChild(g);
+        parts.push({ g, vx: bSide ? -60 : 60, vy: bBS.vy * (0.6 + Math.random() * 0.8), life: 0.45, t: 0, grav: bBS.g });
       }
-      if (breathFx < 0.5 && (BS.bolt || BS.ray) && Math.random() < 0.35) {   // 번개 줄기 · 햇살 기둥
+      if (breathFx < 0.5 && (bBS.bolt || bBS.ray) && Math.random() < 0.35) {   // 번개 줄기 · 햇살 기둥
         const x = M + 40 + (reach - M - 40) * Math.random();
         const g = new Graphics();
-        if (BS.bolt) { let px = x, py = 30; g.moveTo(px, py); while (py < GY) { px += Math.random() * 24 - 12; py += 26 + Math.random() * 20; g.lineTo(px, py); } g.stroke({ width: 3, color: 0xfffbe0 }).stroke({ width: 8, color: 0xc08bff, alpha: 0.35 }); }
-        else g.rect(x - 10, 0, 20, GY).fill({ color: 0xfff1a0, alpha: 0.35 });
+        if (bBS.bolt) { let px = bx(x), py = 30; g.moveTo(px, py); while (py < GY) { px += Math.random() * 24 - 12; py += 26 + Math.random() * 20; g.lineTo(px, py); } g.stroke({ width: 3, color: 0xfffbe0 }).stroke({ width: 8, color: 0xc08bff, alpha: 0.35 }); }
+        else g.rect(bx(x) - 10, 0, 20, GY).fill({ color: 0xfff1a0, alpha: 0.35 });
         g.blendMode = 'add'; fx.addChild(g); parts.push({ g, vx: 0, vy: 0, life: 0.22, t: 0, grav: 0 });
       }
-      if (breathFx > 1.2) { breathFx = 0; if (lead) lead.set('idle'); }
+      if (breathFx > 1.2) { breathFx = 0; if (lead) lead.set('idle'); if (lead2) lead2.set('idle'); }
     }
     if (S.st.bossAt != null && seen.bossAt == null) {
       seen.bossAt = S.st.bossAt; fun.hush(4); shakes.screen = 0.5;
@@ -213,7 +222,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const canvas = app.canvas;
   const toWorld = (dx) => dx * (view.w / canvas.clientWidth);
   const onDown = (e) => { drag = { x: e.clientX, cam: camX }; handT = 3; };
-  const onMove = (e) => { if (!drag) return; camX = Math.max(0, Math.min(FIELD - view.w, drag.cam - toWorld(e.clientX - drag.x))); handT = 3; };
+  const onMove = (e) => { if (!drag) return; camX = Math.max(0, Math.min(FIELD - view.w, drag.cam - (mirror ? -1 : 1) * toWorld(e.clientX - drag.x))); handT = 3; };
   const onUp = () => { drag = null; };
   canvas.addEventListener('pointerdown', onDown); window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', onUp); window.addEventListener('blur', onUp);   // iOS 제스처 · 알림으로 끊겨도 카메라가 멈추지 않게 (코드 검토 8)
@@ -229,7 +238,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     }
     shakes.screen -= dt;
     const sx = shakes.screen > 0 ? Math.round(Math.random() * 4 - 2) : 0, sy = shakes.screen > 0 ? Math.round(Math.random() * 2 - 1) : 0;
-    root.position.set(-Math.round(camX) + sx, sy);
+    if (mirror) { root.scale.x = -1; root.position.set(Math.round(camX + view.w) + sx, sy); }   // 오른쪽 편 = 좌우 뒤집어 그린다
+    else root.position.set(-Math.round(camX) + sx, sy);
   }
 
   const api = {
@@ -240,6 +250,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       syncUnits(S, dt); bases(S, dt); effects(S, dt); ending(S, dt); camera(S, dt);
       fun.update(dt); amb.update(dt); bossFx.update(S, dt, V);
       if (lead) lead.update(dt);
+      if (lead2) lead2.update(dt);
     },
     /** 미니맵 · 시작 위치 */
     setCam(x) { camX = Math.max(0, Math.min(FIELD - view.w, x)); handT = 3; },
