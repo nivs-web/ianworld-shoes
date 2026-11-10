@@ -10,6 +10,7 @@ import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
 import { STAGES } from '../data/stages/index.js';
 import { LEADERS } from '../data/leaders.js';
+import { ENEMIES } from '../data/enemies.js';
 
 /** 용이 열리는 차례 (기획서 9.5) */
 export const DRAGON_ORDER = ['kkomul', 'doldeung', 'bulttong', 'twetwe', 'ssaeng', 'bangul', 'dungsil', 'giljjuk', 'eoreum', 'jjirit', 'banjjak', 'kungkwang'];
@@ -106,10 +107,13 @@ export function pvpLoad(ld, side) {
   return { side, deck, leader: ld.leader, leaderLv: 20, skills: (ld.skills || []).slice(0, 2), bonus: {} };
 }
 
+/** 멀티 버전 (멀티 기획 3.5) — 전투 숫자(데이터)의 짧은 해시. 두 기기가 다르면 계산이 어긋나므로 시작하지 않는다 */
+export const NET_V = (() => { const s = JSON.stringify([UNITS, ENEMIES, LEADERS, SKILLS, STAGES.length]); let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); })();
+
 /** 멀티 편성 → 글자 (방 `players/$uid/ld` · 500자 이하) */
 export function loadToLd(load) {
   const b = {}; for (const [k, v] of Object.entries(load.bonus || {})) b[k] = Math.round(v * 1000) / 1000;
-  return JSON.stringify({ d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b });
+  return JSON.stringify({ v: NET_V, d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b });
 }
 /** 글자 → 편성 (받은 값은 범위 안으로 자르고 확인 · 이상하면 null → 시작하지 않는다) */
 export function ldToLoad(str) {
@@ -120,7 +124,7 @@ export function ldToLoad(str) {
   if (!LEADERS[o.l]) return null;
   const skills = (Array.isArray(o.k) ? o.k : []).filter((id) => SKILLS[id]).slice(0, 2);
   const bonus = {}; for (const [k, v] of Object.entries(o.b || {})) if (Number.isFinite(v)) bonus[k] = Math.max(0, Math.min(k === 'startMoney' ? 2000 : 5, v));
-  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus };
+  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus, v: String(o.v || '') };
 }
 
 /** 별 : ★ 깨면 · ★★ star2 초 안 · ★★★ star3 초 안 (1배속 전투 시간) */

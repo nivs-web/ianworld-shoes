@@ -9,7 +9,7 @@ import * as G from '../services/iandragonGame.js';
 import * as Room from '../services/multiplayer.js';
 import * as Sfx from '../audio/sfx.js';
 import { seatsOf } from '../games/iandragon_game/net/roomBridge.js';
-import { makeLoads, stageByNo, loadToLd, ldToLoad, PVP_OPEN } from '../games/iandragon_game/render/battleSetup.js';
+import { makeLoads, stageByNo, loadToLd, ldToLoad, PVP_OPEN, NET_V } from '../games/iandragon_game/render/battleSetup.js';
 import { currentUser } from '../services/auth.js';
 
 export function showMulti(onStart) {
@@ -57,8 +57,9 @@ export function showMulti(onStart) {
       const me = uids.indexOf(currentUser()?.uid ?? '');
       const host = room.hostUid === currentUser()?.uid;   // 시작 단추는 방장 화면에만
       const loads = uids.map((u) => ldToLoad(room.players[u]?.ld || ''));
-      const allLd = loads.every(Boolean);
-      startB.replaceChildren(uids.length >= 2 && allLd && host ? button('시작!', () => Room.startCountdown(c), { primary: true }) : el('p.idg-multi-msg', uids.length < 2 ? '친구를 기다리는 중…' : '방장이 시작하기를 기다려요'));
+      const oldV = loads.some((l) => l && l.v !== NET_V);   // 한쪽이 옛 버전 (오락실은 PWA 라 실제로 생긴다)
+      const allLd = loads.every(Boolean) && !oldV;
+      startB.replaceChildren(uids.length >= 2 && allLd && host ? button('시작!', () => Room.startCountdown(c), { primary: true }) : el('p.idg-multi-msg', oldV ? '게임 버전이 서로 달라요 — 둘 다 새로고침 해 주세요!' : uids.length < 2 ? '친구를 기다리는 중…' : '방장이 시작하기를 기다려요'));
       if ((room.state === 'countdown' || room.state === 'playing') && allLd) {
         started = true; off?.(); close();
         const ms = room.startAt ? await Room.msUntilStart(room.startAt) : 0;
