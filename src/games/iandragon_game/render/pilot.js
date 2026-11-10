@@ -5,6 +5,7 @@
 import { Assets, Container, Sprite, ColorMatrixFilter } from 'pixi.js';
 import { createWorld } from './world.js';
 import { loadRig, createRigged } from './rig.js';
+import { loadFun, createFun, W1_SPOTS } from './fun.js';
 
 const AI = '/assets/iandragon_game/ai/';
 const GY = 440;                       // 배경 그림의 풀 높이(437) 에 맞춘 발 줄
@@ -20,13 +21,18 @@ export async function startPilot(ctx, T) {
     Assets.load(AI + 'bg/w01_panel.png').then(nearest), Assets.load(AI + 'castles/nest_hp0.png'), Assets.load(AI + 'castles/tower_hp0.png'),
     Promise.all(DRAGON_IDS.map(tryRig)), Promise.all(ZOMBIE_IDS.map(tryRig)), tryRig('bossGiant'), tryRig('novart'),
   ]);
+  const funTex = await loadFun();
   const dragons = dr.filter(Boolean), zombies = zr.filter(Boolean);
   let iD = 0, iZ = 0, bossDone = false, t = 0, next = 0, breathAt = 5;
   const FIELD = view.w + 300;
   const world = createWorld(ctx, T, { layers: [], front: [], lights: {} });   // 박쥐 · 유령 · 반딧불만
   const bg = new Sprite(bgTex); bg.scale.set(540 / bgTex.height);
   const stage = new Container();
-  app.stage.addChild(bg, world.back, stage, world.front);
+  const funBack = new Container(), funFront = new Container();   // 재미있는 요소 (배경 위 · 앞쪽 흙 띠)
+  app.stage.addChild(bg, funBack, world.back, stage, funFront, world.front);
+  let camX = 0;
+  const fun = createFun(funTex, { back: funBack, front: funFront, spots: W1_SPOTS, getCam: () => camX, viewW: () => view.w });
+  if (import.meta.env.DEV) window.__idgFun = fun;
 
   const nest = new Sprite(nestTex); nest.anchor.set(0.5, 1); nest.position.set(130, GY + 10);
   const tower = new Sprite(towerTex); tower.anchor.set(0.5, 1); tower.position.set(FIELD - 130, GY + 10);
@@ -38,7 +44,7 @@ export async function startPilot(ctx, T) {
   const live = [];
   const spawn = (side) => {
     const boss = side && giant && !bossDone && t > 12;
-    if (boss) bossDone = true;
+    if (boss) { bossDone = true; fun.hush(3); }
     const R = boss ? createRigged(giant, 1, -1) : side ? createRigged(zombies[iZ++ % zombies.length], 1, -1) : createRigged(dragons[iD++ % dragons.length], 1, 1);
     R.speed = side ? 0.9 : 1.1;
     const u = { R, side, x: side ? FIELD - 230 : 230, hp: boss ? 20 : side ? 3 : 4, kb: 0, cd: 0, flash: 0, boss };
@@ -52,7 +58,7 @@ export async function startPilot(ctx, T) {
   const tick = (ticker) => {
     const dt = Math.min(0.05, ticker.deltaMS / 1000); t += dt;
     const cam = window.__idgCamX ?? ((Math.sin(t * 0.22) + 1) / 2) * (FIELD - view.w);
-    stage.x = -Math.round(cam); bg.x = -Math.round(cam); world.setCamera(cam); world.update(dt);
+    camX = cam; stage.x = funBack.x = funFront.x = bg.x = -Math.round(cam); world.setCamera(cam); world.update(dt); fun.update(dt);
     if ((next -= dt) <= 0) { spawn(live.filter((u) => !u.side).length <= live.filter((u) => u.side).length ? 0 : 1); next = 1.5; }
     for (const u of live) {
       const foe = live.filter((f) => f.side !== u.side && f.hp > 0).sort((a, b) => Math.abs(a.x - u.x) - Math.abs(b.x - u.x))[0];
