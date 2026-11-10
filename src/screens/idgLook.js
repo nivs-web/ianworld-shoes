@@ -22,7 +22,7 @@ function pic(slot, id, name, style) {
   return wrap;
 }
 
-export function showLook({ idg, save }) {
+export function showLook({ idg, save, onClose }) {
   Sfx.play('sfx_menu_select');
   let cur = idg;
   // 지금 꾸밈 — 가진 것만 남긴다 (예전에 저장된 값이 이상해도 안전)
@@ -83,5 +83,6 @@ export function showLook({ idg, save }) {
 
   const box = el('div.dialog.idg-look.idg-lab', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '꾸미기'), preview, info, body, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
-  const close = presentOverlay(overlay);
+  const closeO = presentOverlay(overlay);
+  const close = () => { closeO(); onClose?.(); };   // 닫으면 로비 코인 · 젬 다시 그리기
 }

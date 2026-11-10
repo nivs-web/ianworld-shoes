@@ -273,6 +273,34 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── 좀비와 드래곤 명예의 전당 (2026-11-11) ──────────────────────────────
+    // 계정당 한 장(`idgPlayers/{uid}`). 다른 게임 기록과 섞지 않는다 (`services/idgRank.js`).
+    // ★ 색인이 필요 없다(필드 하나로만 정렬). ★ 기록은 내려가지 않는다 · 상한을 여기서 강제한다.
+    function igInt(v, maxV) { return v is int && v >= 0 && v <= maxV; }
+    function igValid(d) {
+      return d.keys().hasOnly(['nickname', 'look', 'title', 'cleared', 'stars', 'hard', 'kills', 'coop', 'pvpW', 'pvpL', 'at'])
+          && d.nickname is string && d.nickname.size() <= 16
+          && d.look is string && d.look.size() <= 64
+          && d.title is string && d.title.size() <= 24
+          && igInt(d.cleared, 100) && igInt(d.stars, 300) && igInt(d.hard, 300)
+          && igInt(d.kills, 100000000) && igInt(d.coop, 1000000)
+          && igInt(d.pvpW, 1000000) && igInt(d.pvpL, 1000000)
+          && d.at is int;
+    }
+    function igNotDown(n, o) {
+      return n.cleared >= o.cleared && n.stars >= o.stars && n.hard >= o.hard
+          && n.kills >= o.kills && n.coop >= o.coop
+          && n.pvpW >= o.pvpW && n.pvpL >= o.pvpL;
+    }
+
+    match /idgPlayers/{uid} {
+      allow read: if true;
+      allow create: if isMe(uid) && igValid(request.resource.data);
+      allow update: if isMe(uid) && igValid(request.resource.data)
+                    && igNotDown(request.resource.data, resource.data);
+      allow delete: if false;
+    }
+
     // 집계 캐시 — 읽기 전용. 쓰기는 서버(Cloud Functions)만.
     match /leaderboards/{doc} {
       allow read: if true;

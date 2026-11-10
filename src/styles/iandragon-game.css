@@ -314,3 +314,8 @@ html.idg-wide body { width: 100%; }
 .idg-diff { font-weight: 700; } .idg-diff.hard { color: #ff6a6a; } .idg-diff.easy { color: #7ee08f; }
 .idg-mate { position: absolute; left: 50%; top: 62px; transform: translateX(-50%); padding: 3px 12px; border-radius: 10px; background: rgba(20, 60, 30, .8); color: #c8ffd0; font: 700 12px 'Neo둥근모', monospace; display: none; pointer-events: none; }
 .idg-mate.on { display: block; } .idg-mate.foe { background: rgba(80, 16, 20, .8); color: #ffd0d0; }
+
+/* 편의품 고르기 (시작 카드) */
+.idg-cons-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin: 6px 0; font: 12px 'Neo둥근모', monospace; color: #ffe9b0; }
+.idg-cons { min-height: 32px; padding: 0 10px; border-radius: 10px; border: 2px solid #c9963a; background: rgba(26, 14, 52, .85); color: #e8dcff; font: 700 12px 'Neo둥근모', monospace; }
+.idg-cons.on { background: #2f8a4a; color: #fff; border-color: #9fffb0; }

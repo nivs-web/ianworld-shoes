@@ -24,7 +24,7 @@ export function itemIcon(slot, id, name) {
 }
 const priceText = (p, price) => (p.gem ? `젬 ${fmt(price)}` : `코인 ${fmt(price)}`);
 
-export function showShop({ idg, save }) {
+export function showShop({ idg, save, onClose }) {
   Sfx.play('sfx_menu_select');
   let cur = idg, tab = 'look';
   const body = el('div.idg-lab-sec');
@@ -109,5 +109,6 @@ export function showShop({ idg, save }) {
 
   const box = el('div.dialog.idg-shop.idg-lab', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '용 시장'), head, tabs, body, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
-  const close = presentOverlay(overlay);
+  const closeO = presentOverlay(overlay);
+  const close = () => { closeO(); onClose?.(); };   // 닫으면 로비 코인 · 젬 다시 그리기
 }

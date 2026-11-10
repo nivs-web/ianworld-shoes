@@ -38,6 +38,12 @@ function units(raw) {
 }
 
 /** 쌓인 기록 : 쓰러뜨린 좀비 · 이긴 판 · 브레스 · 화로 최고 단계 · 보스 · 알 */
+/* 용 시장 · 꾸미기 (META 2 · 3장) */
+const KEY = /^(hat|neck|breath|flag|frame):[a-z0-9_]{1,24}$/;
+const ownedKeys = (a) => [...new Set((Array.isArray(a) ? a : []).filter((s) => typeof s === 'string' && KEY.test(s)))].slice(0, 200);
+const CONS_IDS = ['ember50', 'brazier', 'basehp'];
+const consObj = (o) => Object.fromEntries(CONS_IDS.map((k) => [k, n0(o && typeof o === 'object' ? o[k] : 0, 99)]));
+const lookStr = (s) => (typeof s === 'string' && /^[a-z0-9.]{0,40}$/.test(s) ? s : '');
 const STAT_KEYS = ['kills', 'wins', 'breath', 'maxWl', 'boss', 'hatch', 'coop'];   // coop = 같이 깨기 이긴 판 (명예의 전당)
 function stats(raw) {
   const r = raw && typeof raw === 'object' ? raw : {};
@@ -69,6 +75,10 @@ export function normIdg(raw) {
     daily: str(r.daily, 10, ''),              // 마지막 첫 승리 날짜 (YYYY-MM-DD, KST)
     speed: [1, 2, 3].includes(r.speed) ? r.speed : 1,
     stat: stats(r.stat),                      // 쌓인 기록 (도전 과제용 · 2026-11-11 야간)
+    owned: ownedKeys(r.owned),                // 가진 꾸미기 'hat:crown' (용 시장 · 명예의 전당 보상)
+    cons: consObj(r.cons),                    // 편의품 개수
+    look: lookStr(r.look),                    // 꾸민 모습 'h3.n1.b2.f4.r0.t7'
+    title: str(r.title, 24, ''),              // 단 칭호 id
     diff: ['easy', 'normal', 'hard'].includes(r.diff) ? r.diff : 'normal',   // 고른 난이도 (META 4장)
     hardStars: starsStr(r.hardStars),           // 어려움 «붉은 별» (판마다 0~3)
     pvp: { w: n0(r.pvp?.w), l: n0(r.pvp?.l), d: n0(r.pvp?.d), day: str(r.pvp?.day, 10, ''), n: n0(r.pvp?.n, 99) },   // 용 대결 전적 · 오늘 보상 판 수 (3차 M5)
@@ -115,6 +125,10 @@ export function mergeIdg(localRaw, remoteRaw) {
     daily: a.daily > b.daily ? a.daily : b.daily,
     speed: remoteRaw.speed ? b.speed : a.speed,
     stat: Object.fromEntries(STAT_KEYS.map((k) => [k, Math.max(a.stat[k], b.stat[k])])),
+    owned: [...new Set([...a.owned, ...b.owned])].slice(0, 200),   // 합집합 (산 걸 잃지 않게)
+    cons: remoteRaw.cons ? b.cons : a.cons,
+    look: remoteRaw.look ? b.look : a.look,
+    title: remoteRaw.title ? b.title : a.title,
     diff: remoteRaw.diff ? b.diff : a.diff,
     hardStars: maxStars(a.hardStars, b.hardStars),
     pvp: { w: Math.max(a.pvp.w, b.pvp.w), l: Math.max(a.pvp.l, b.pvp.l), d: Math.max(a.pvp.d, b.pvp.d), day: a.pvp.day > b.pvp.day ? a.pvp.day : b.pvp.day,

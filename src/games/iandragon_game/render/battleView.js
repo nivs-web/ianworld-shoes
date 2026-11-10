@@ -14,6 +14,7 @@ import { offKeys, isOn, nums } from '../../../services/switches.js';
 import { SPOTS } from './funSpots.js';
 import { createAmbient } from './ambient.js';
 import { createBossFx } from './bossFx.js';
+import { BREATH_COLORS } from '../data/looks.js';
 
 const AI = '/assets/iandragon_game/ai/';
 export const GY = 440;
@@ -24,7 +25,7 @@ const artOf = (id) => ART[id] || id;
 const nearest = (t) => { t.source.scaleMode = 'nearest'; return t; };
 const tryLoad = (url) => Assets.load(url).then(nearest).catch(() => null);
 
-export async function createBattleView(ctx, { world, L, dragons, enemies, leader = 'novart', pvp = false, mirror = false, foeLeader = null }) {
+export async function createBattleView(ctx, { world, L, dragons, enemies, leader = 'novart', pvp = false, mirror = false, foeLeader = null, look = {} }) {
   const { app, view } = ctx;
   const FIELD = M + L + M;
   /* ── 그림 받기 */
@@ -68,6 +69,13 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const lead = ldRig ? createRigged(ldRig, 1, 1) : null;
   const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(rigs[foeLeader], 1, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
   if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
+  /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
+  if (lead && (look.hat || look.neck)) {
+    const [hatT, neckT] = await Promise.all([look.hat && tryLoad(`${AI}meta/hat_${look.hat}.png`), look.neck && tryLoad(`${AI}meta/neck_${look.neck}.png`)]);
+    const b = lead.root.getLocalBounds();
+    if (neckT) { const s = new Sprite(neckT); s.anchor.set(0.5, 0.5); s.width = s.height = Math.max(24, b.width * 0.42); s.position.set(b.x + b.width * 0.5, b.y + b.height * 0.48); lead.root.addChild(s); }
+    if (hatT) { const s = new Sprite(hatT); s.anchor.set(0.5, 1); s.width = s.height = Math.max(26, b.width * 0.45); s.position.set(b.x + b.width * 0.58, b.y + 10); lead.root.addChild(s); }
+  }
   if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); }
 
   const white = new ColorMatrixFilter();
@@ -186,7 +194,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     const allBreath = S.players.reduce((a, q) => a + q.st.breath, 0);   // 멀티 : 누가 쏘든 브레스 연출
     if (p && allBreath > seen.breath) {
       let who = 0; S.players.forEach((q, i) => { if (q.st.breath > (seen.by[i] || 0)) who = i; seen.by[i] = q.st.breath; });
-      seen.breath = allBreath; breathFx = 0.001; bP = S.players[who]; bSide = pvp ? bP.side : 0; bBS = (bSide && BREATH[foeLeader]) || BS;
+      seen.breath = allBreath; breathFx = 0.001; bP = S.players[who]; bSide = pvp ? bP.side : 0; bBS = (bSide && BREATH[foeLeader]) || (!bSide && BREATH_COLORS[look.breath] ? { ...BS, c: BREATH_COLORS[look.breath] } : BS);   // 내 브레스 색 꾸미기
       const L0 = bSide ? lead2 : lead; if (L0) L0.set('hit');
     }
     if (breathFx > 0) {

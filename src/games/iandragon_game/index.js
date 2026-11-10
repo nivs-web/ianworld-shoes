@@ -20,6 +20,7 @@ import { createLocalTransport } from './net/localTransport.js';
 import { createRoomTransport } from './net/roomBridge.js';
 import * as Audio from './audio/index.js';
 import { isOn } from '../../services/switches.js';
+import { syncIdgPlayerSoon } from '../../services/idgRank.js';
 
 export const ATLAS_URL = '/assets/iandragon_game/atlas.json';
 const ENV_URL = (name) => `/assets/iandragon_game/env/${name}.json`;
@@ -66,7 +67,7 @@ export async function mount(host, opts) {
       me.scene = await startBattle({ ...ctx, host }, {
         net,
       stageNo, save: opts.save, text: opts.text,
-      onSave: (part) => (opts.save = opts.onSave(part)),
+      onSave: (part) => { opts.save = opts.onSave(part); syncIdgPlayerSoon(); return opts.save; },   // 명예의 전당 (몇 초 모아 한 번)
       onExit: () => opts.onExit(),
       restart: (no) => { if (me.alive) begin(no); },
       });

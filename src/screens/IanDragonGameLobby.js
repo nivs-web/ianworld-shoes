@@ -22,6 +22,9 @@ import { showHatch } from './idgHatch.js';
 import { showCodex } from './idgCodex.js';
 import { showLab } from './idgLab.js';
 import { showMulti } from './idgMulti.js';
+import { showShop } from './idgShop.js';
+import { showLook } from './idgLook.js';
+import { showHall } from './idgHall.js';
 import { DIFF, hardOpen } from '../games/iandragon_game/render/battleSetup.js';
 import { isOn } from '../services/switches.js';
 import { MUST, SONGS } from '../games/iandragon_game/data/musicCredits.js';
@@ -137,6 +140,9 @@ export default function IanDragonGameLobby(nav) {
           tile('lab', '연구소 · 리더', () => showLab(() => nav.refresh?.())),
           tile('quest', claimable(g) ? `도전 과제 (${claimable(g)})` : '도전 과제', () => showQuests(() => nav.refresh?.()), false, claimable(g) > 0),
           tile('codex', '도감', showCodex),
+          tile('shop', '용 시장', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
+          tile('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
+          tile('hall', '명예의 전당', showHall),
           tile('coop', '친구랑 같이 깨기', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
           tile('how', S.idgLobbyHow, showHow),
         ]),

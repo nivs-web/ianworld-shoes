@@ -23,7 +23,8 @@ const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
-export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null }, cb) {
+export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null }, cb) {
+  let useCons = null;   // 시작 카드에서 고른 편의품
   const root = h('div', 'idg-hud'); host.appendChild(root);
   /* 위 */
   const top = h('div', 'idg-top'); root.appendChild(top);
@@ -102,7 +103,12 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     const row = h('div', 'idg-row');
     const add = (label, fn, cls = '') => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
     if (kind === 'pause') add('계속', () => cb.pause(), 'main');
-    if (kind === 'intro') { add('출격!', () => cb.go(), 'main'); add(text.exit, () => cb.exit()); box.appendChild(row); panel.appendChild(box); panel.classList.add('on'); return; }
+    if (kind === 'intro' && cons && cons.length) {   /* 편의품 (판마다 1개) */
+      const cr = h('div', 'idg-cons-row');
+      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
+      draw(); box.appendChild(cr);
+    }
+    if (kind === 'intro') { add('출격!', () => cb.go(useCons), 'main'); add(text.exit, () => cb.exit()); box.appendChild(row); panel.appendChild(box); panel.classList.add('on'); return; }
     if (info.final) box.append(h('p', 'final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요! 🐉'));
     if (kind === 'win' && info.hasNext && !info.pvp) add('다음 스테이지', () => cb.next(), 'main');
     if (!info.pvp) add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main' : '');
