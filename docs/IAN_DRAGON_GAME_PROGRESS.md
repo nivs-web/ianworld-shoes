@@ -38,3 +38,23 @@
 
 - 겜팀장 가지 `feat/iandragon-game-art` @ 0abf128 를 합침 (빨리 감기, 겜팀장 폴더 파일만 바뀜 · 충돌 0). 진짜 시트 133프레임 중 진짜 그림 30 (꼬물이 1·2 · 돌등이 1·2 · 어슬렁 좀비 44칸), 나머지 103은 자리표시.
 - 휴대폰 가로 화면에서 진짜 그림과 자리표시가 함께 정상 표시 · 프레임 크기를 시트에서 읽는 것 확인 (walker 44×44).
+
+## B1 — 전투 코어 + 검사 (2026-11-10 완료)
+
+**만든 것**
+- `tools/idg-import-data.mjs` (`npm run data:idg`) — 계산기 → 게임. **생성 파일은 손으로 고치지 않는다** (고칠 일은 계산기에서 → 다시 돌림)
+  - `core/rules · battle · step · ai · index.js` : `engine.js` 의 줄을 글자 그대로 잘라 붙임 (484줄 · 빠짐/겹침 자동 대조 · 파일당 300줄 이하)
+  - `data/units · enemies · leaders · skills · wallet · battleData(D) · econ.js` (경제표 ECON 은 gen-docs.js 블록 그대로)
+  - `data/stages/w01~w10.js · index.js` (STAGES · STAGE_BY_ID)
+  - `data/artManifest.js` — 1차 그림 프레임 351개 (용 10 × 모습 2 · 좀비 20 · 보스 5 · 리더 6 · 기지 · 배경 5월드 · 아이콘 · 이펙트). 크기는 참고값
+  - `tools/idg-golden.json` ← 계산기 `docs/sim/golden.js` 가 뽑은 정답표 300판 (씨앗 101 화로3 · 102 화로1+스킬 · 103 화로5+스킬)
+- `tools/idg-core-qa.mjs` (`npm run qa:idg-core`) — 300판 대조 + 코어 금지 글자 검사. 틀린 줄만 출력
+- `tools/idg-placeholder.mjs` 가 artManifest 를 따라 351프레임을 만들고 이름이 목록과 다르면 멈춘다. `--name _placeholder` 로 `_placeholder.*` 출력 (겜팀장 굽기용), `IDG_OUT` 으로 출력 폴더 바꾸기
+
+**합격 기준**
+- ✔ `300/300 OK · 금지 글자 0` (7초)
+- ✔ 검사가 정말 잡는지 : 코어의 넉백 거리 90→91 + `Math.random` 한 줄을 일부러 넣자 **299판 불일치 + 금지 1건**으로 실패 → 다시 생성하자 300/300 (CLAUDE.md «검사는 실제로 실패하는지 먼저 본다»)
+- ✔ 코어가 DOM · Pixi · 시계를 부르지 않는다 (금지 글자 검사에 포함)
+- ☐ (B0 에서 넘어온 것) 저장 묶음 서버 왕복 — 작업 폴더에 Firebase 설정(.env)이 없고 로그인을 대신 할 수 없어 **대표님 실기기 확인 지점 ①(B3 뒤)에서 함께 확인**
+
+**다음 : B2** — PixiJS 진짜 전장 (코어를 화면에 붙임 · 카메라 · HUD · 덱 · 화로 · 브레스 · 키보드), `render/demo.js` 삭제.
