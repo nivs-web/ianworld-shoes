@@ -13,9 +13,11 @@ import { LEADERS_W25, ICONS_W25 } from './leaders_w25.js';
 import { ZOMBIES_W25 } from './zombies_w25.js';
 import { BOSSES_W25 } from './bosses_w25.js';
 import { WORLD_W25 } from './world_w25.js';
+import { HUD_ICONS } from './ui_hud.js';
 
 export const FRAMES = {};
 for (const [k, draw] of Object.entries({ ...UNITS, ...DRAGONS_W1, ...ZOMBIES_W1, ...DRAGONS_W25, ...ZOMBIES_W25 })) FRAMES[k] = { anims: ANIMS, draw };
 Object.assign(FRAMES, MISC_W1);   // 보스 · 리더 · 왕관 · 기지 (동작 목록이 다르다)
 Object.assign(FRAMES, BG_UI_W1);   // 배경 · 아이콘 · 이펙트
 Object.assign(FRAMES, LEADERS_W25, ICONS_W25, BOSSES_W25, WORLD_W25);   // 월드 2~5 (A4 · A5)
+Object.assign(FRAMES, HUD_ICONS);   // 전투 HUD 아이콘 · 버튼 판 (ui/hud/…)

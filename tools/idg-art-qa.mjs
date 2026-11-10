@@ -28,7 +28,7 @@ const missing = need.filter((n) => !A.frames[n]);
 for (const n of missing) { console.log('✗ 없음', n); bad++; }
 const groups = {};
 for (const [n, f] of Object.entries(A.frames)) { const g = n.split('/').slice(0, -1).join('/'); (groups[g] ??= new Set()).add(`${f.sourceSize.w}x${f.sourceSize.h}`); }
-for (const [g, s] of Object.entries(groups)) if (s.size > 1 && !g.startsWith('bg') && !g.startsWith('base')) { console.log('✗ 동작끼리 크기 다름', g, [...s].join(' ')); bad++; }
+for (const [g, s] of Object.entries(groups)) if (s.size > 1 && !g.startsWith('bg') && !g.startsWith('base') && !g.startsWith('ui/')) { console.log('✗ 동작끼리 크기 다름', g, [...s].join(' ')); bad++; }
 const stub = (A.meta?.stub ?? []).length;
 console.log(bad ? `그림 검사 실패 ${bad}건` : `그림 검사 통과 — 필요 ${need.length} · 아직 자리표시 ${stub}${A.meta?.placeholder ? ' (시트 전체가 자리표시)' : ''}`);
 process.exit(bad ? 1 : 0);
