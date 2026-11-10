@@ -1,14 +1,14 @@
 /**
  * 좀비와 드래곤 (옛 이름 이안 드래곤) — 소리 (효과음 · 곡 · 음성). **겜팀장 담당 폴더** (팀 계획서 2.2).
  * 게임 코드는 아래 함수만 부른다 : init() · play(id) · bgm(id, {rate}) · worldBgm(world, {rate}) · stopBgm() · voice(id) ·
- *   fun(id) · setFun(on) · setMuted(on)
+ *   fun(id) · setFun(on) · setBgmStyle('orchestra' | 'arcade') · bgmStyle() · setMuted(on)
  * - 효과음 · 곡: 파형 합성(파일 없음). 음성: 보이스 스튜디오로 만든 한국어 파일(이 게임만 예외, 2026-11-10 대표님).
  * - 없는 id 는 조용히 무시한다. 같은 효과음은 0.05초 안에 한 번만. 소리는 화면 전용 — 전투 계산에 영향 없음.
  * - fun(id) = 배경 재미 요소 작은 소리 (FUN_SFX · 기본 꺼 둠 — 대표님이 고른 뒤 setFun(true)).
  */
 import { audio } from './synth.js';
 import { SFX, playFun, setFunSfx } from './sfx.js';
-import { startTrack, stopTrack, trackForWorld } from './music.js';
+import { startTrack, stopTrack, trackForWorld, preloadMusic, setMusicStyle, getMusicStyle } from './music.js';
 import { playVoice, preloadVoices } from './voice.js';
 
 let muted = false;
@@ -19,6 +19,7 @@ export function init() {
   const A = audio(); if (!A) return;
   if (A.ctx.state === 'suspended') A.ctx.resume().catch(() => {});
   preloadVoices();
+  preloadMusic(['lobby', 'w1', 'boss', 'win']).catch(() => {});   // 녹음 곡이 있으면 미리 받기
 }
 
 export function play(id) {
@@ -56,3 +57,7 @@ export function setMuted(on) {
   A.master.gain.setTargetAtTime(muted ? 0 : 0.8, A.ctx.currentTime, 0.02);
   if (muted) stopTrack();
 }
+
+/** 배경음악 풍 — 'orchestra'(공개 오케스트라 녹음, 기본) · 'arcade'(합성 오락실 풍). 운영자 화면 설정으로 부른다 */
+export function setBgmStyle(s) { try { setMusicStyle(s); } catch { /* */ } }
+export const bgmStyle = () => getMusicStyle();
