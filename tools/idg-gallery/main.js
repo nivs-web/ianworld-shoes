@@ -2,7 +2,7 @@
  * 이안 드래곤 «좀비와 드래곤» 에셋 갤러리 (그림 담당) — 개발 서버 전용 도구. 게임 코드(src)는 import 만 한다.
  * 탭 → 카드 → 클릭하면 큰 창(캐릭터는 실제 rig.js 로 움직임 · 배경은 재미 요소 자리 확인).
  */
-import { TABS, FUN_INFO, A, RAR } from './lists.js';
+import { TABS, FUN_INFO, A, RETOUCH } from './lists.js';
 import { makeThumb, getRig, createCharStage, createBgStage } from './viewer.js';
 
 const GAME = '/assets/iandragon_game/';
@@ -74,7 +74,8 @@ async function renderRig(tab) {
   const cards = items.map((it) => {
     const thumb = h('div', { class: 'thumb' }, h('div', { class: 'spin' }));
     const card = h('div', { class: 'card' + (it.rar ? ' rar-' + it.rar : '') }, thumb,
-      h('div', { class: 'name' }, it.name), h('div', { class: 'sub' }, it.sub));
+      h('div', { class: 'name' }, it.name), h('div', { class: 'sub' }, it.sub),
+      RETOUCH[it.art] && h('div', { class: 'retouch', title: RETOUCH[it.art] }, '✎ 리터치 후보 — ' + RETOUCH[it.art]));
     grid.append(card);
     return { it, thumb, card };
   });
@@ -112,6 +113,7 @@ async function openChar(it, rig) {
   body.querySelector('.left').append(controls);
 
   // 정보 · 부품 · 원본 시트
+  if (RETOUCH[it.art]) info.append(h('div', { class: 'retouch big' }, '✎ 리터치 후보 — ' + RETOUCH[it.art]));
   info.append(h('div', { class: 'statline' }, statLine(d) || '—'));
   if (d.role) info.append(h('div', { class: 'sub2' }, d.role));
   if (d.line) info.append(h('div', { class: 'sub2' }, d.line));

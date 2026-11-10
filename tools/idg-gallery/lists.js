@@ -41,3 +41,10 @@ export const FUN_INFO = [
   ['pumpkin', '호박', ['pumpkin', 'pumpkin_grin']], ['cross', '십자가 · 뼈다귀', ['cross', 'cross_b1', 'cross_b2', 'bone', 'bonepile', 'skull']], ['spider', '거미', ['spider']],
   ['window', '창문 춤', ['dancer1', 'dancer2']], ['mole', '두더지', ['mole', 'mound', 'rise']],
 ].map(([id, name, pieces]) => ({ id, name, pieces }));
+
+/** 대표님께 보여 드릴 «리터치 후보» (겜부장 · 2026-11-11) — 그림 id → 고칠 곳. 고치면 여기서 지운다 */
+export const RETOUCH = {
+  bossLord: '다리가 벌어져 고리처럼 보임',
+  bossCrystal: '목 쪽에 어두운 틈',
+  shard: '턱 조각이 가슴에 떠 보임',
+};
