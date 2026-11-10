@@ -1398,7 +1398,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   {
     const doc = fs.readFileSync('docs/FIREBASE_RULES.md', 'utf8');
     const i = doc.indexOf('## Realtime Database');
-    const json = /```json\n([\s\S]*?)\n```/.exec(doc.slice(i))[1];
+    const json = /```json\r?\n([\s\S]*?)\r?\n```/.exec(doc.slice(i))[1];   // 문서가 CRLF 여도
     const rules = JSON.parse(json).rules;
     eq('규칙에 result/found 가 있다', !!rules.rooms.$code.result.found, true);
   }
@@ -2200,7 +2200,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   {
     const doc = read('docs/FIREBASE_RULES.md');
     const i = doc.indexOf('## Realtime Database');
-    const json = /```json\n([\s\S]*?)\n```/.exec(doc.slice(i))[1];
+    const json = /```json\r?\n([\s\S]*?)\r?\n```/.exec(doc.slice(i))[1];   // 문서가 CRLF 여도
     const rules = JSON.parse(json).rules;
     const prefs = rules.prefs.$uid;
     eq('prefs/$uid 를 본인이 읽을 수 있다', prefs['.read'], 'auth != null && auth.uid == $uid');
@@ -3102,7 +3102,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   {
     const doc = read('docs/FIREBASE_RULES.md');
     const i = doc.indexOf('## Realtime Database');
-    const rules = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(doc.slice(i))[1]).rules;
+    const rules = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(doc.slice(i))[1]).rules;
     const room = rules.rooms.$code;
     for (const k of ['outAt', 'pauseUsed']) {
       eq(`참가자.${k} 규칙`, !!room.players.$uid[k], true);
@@ -3208,7 +3208,7 @@ console.log('17) 방 목록 · 대기자 (2026-08-16)');
   /** ⑩ 규칙에 `items` 가 없으면 **입장 자체가 거부된다**(`$other: false`, §9-0-34) */
   {
     const doc = read('docs/FIREBASE_RULES.md');
-    const rules = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(doc.slice(doc.indexOf('## Realtime Database')))[1]).rules;
+    const rules = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(doc.slice(doc.indexOf('## Realtime Database')))[1]).rules;
     const v = rules.rooms.$code.players.$uid.items?.['.validate'] ?? '';
     eq('★ 참가자.items 규칙이 있다', !!v, true);
     has('남의 값은 못 바꾼다', v, "$uid == auth.uid || newData.val() == data.val()");

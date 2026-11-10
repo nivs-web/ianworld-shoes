@@ -8,6 +8,17 @@
  * ⏳ 서버 규칙(`idgPlayers` — 초안, docs/FIREBASE_RULES.md)이 게시되기 전에는 읽기가 거부된다 — 그때는 «준비 중»과 내 기록만 보여 준다.
  */
 import S from '../config/strings.ko.js';
+import { decodeLook } from '../games/iandragon_game/data/looks.js';
+
+/** 줄 얼굴 : 대장 용 머리 + 모자 · 테두리 (꾸미기 글자) — 그림이 없으면 그 겹만 숨김 */
+const AIP = '/assets/iandragon_game/ai/';
+function face(look) {
+  const L = decodeLook(look || ''), hide = (e) => { e.target.style.display = 'none'; };
+  const kids = [el('img.f-head', { src: AIP + 'novart/head.png', alt: '', onerror: hide })];
+  if (L.hat) kids.push(el('img.f-hat', { src: `${AIP}meta/hat_${L.hat}.png`, alt: '', onerror: hide }));
+  if (L.frame) kids.push(el('img.f-frame', { src: `${AIP}meta/frame_${L.frame}.png`, alt: '', onerror: hide }));
+  return el('span.idg-hall-face', { 'data-look': look || null }, kids);
+}
 import { el, button, segmented, presentOverlay } from './ui.js';
 import { crownSlot } from './crown.js';
 import * as Sfx from '../audio/sfx.js';
@@ -65,7 +76,7 @@ export function showHall() {
       class: [r.uid === myUid ? 'me' : '', rank <= 3 ? `crowned c${rank}` : ''].filter(Boolean).join(' '),
     }, [
       el('div.rank-place', null, [crownSlot(rank), el('span.rank-no', S.rankPlace(rank))]),
-      el('span.idg-hall-face', { 'data-look': r.look || null }),
+      face(r.look),
       el('div.idg-hall-who', null, [el('div.rank-name', r.nickname || '???'), t ? el('div.idg-hall-title', t) : null].filter(Boolean)),
       el('div.idg-hall-val', null, [el('b', big), small ? el('span', small) : null].filter(Boolean)),
     ]);
@@ -133,7 +144,8 @@ const CSS = `
 .idg-hall-note { color: #ffd98a; font: 11px 'Neo둥근모', monospace; text-shadow: 0 1px 0 #1a0c38; }
 .idg-hall-list { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; min-height: 120px; max-height: 52vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .idg-hall-row { cursor: default; }
-.idg-hall-face { flex: 0 0 34px; width: 34px; height: 34px; display: block; }
+.idg-hall-face { flex: 0 0 34px; width: 34px; height: 34px; display: block; position: relative; }
+.idg-hall-face img { position: absolute; object-fit: contain; } .idg-hall-face .f-head { inset: 4px; } .idg-hall-face .f-hat { left: 6px; top: -8px; width: 24px; height: 20px; } .idg-hall-face .f-frame { inset: 0; width: 100%; height: 100%; }
 .idg-hall-who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
 .idg-hall-title { font-size: 10px; line-height: 1.2; color: #ffc93c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .idg-hall-val { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; font-size: 11px; line-height: 1.2; color: var(--c-panel-dark); white-space: nowrap; }
