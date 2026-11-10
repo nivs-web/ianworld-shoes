@@ -132,3 +132,8 @@ html.idg-wide body { width: 100%; }
 .idg-tip[data-at="skill"] { right: 90px; bottom: 74px; }
 @keyframes idgBob { to { margin-bottom: 6px; } }
 .idg-lobby-banner { display: block; width: 100%; max-width: 420px; height: auto; margin: 0 auto; border-radius: 12px; image-rendering: pixelated; }
+/* 덱 6~10칸도 한 줄 (두 줄이면 전장을 가린다 · 2026-11-11 야간) · 스킬 · 포효는 오른쪽 위 하늘 자리로 */
+.idg-deck, .idg-deck.two { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px; }
+.idg-deck .idg-unit { flex: 0 1 52px; min-width: 40px; }
+.idg-right { position: absolute; right: max(8px, env(safe-area-inset-right)); top: 64px; flex-direction: row; gap: 4px; }
+@media (max-height: 360px) { .idg-unit { height: 46px; } .idg-unit img { height: 32px; } .idg-wallet, .idg-breath { height: 46px; } }

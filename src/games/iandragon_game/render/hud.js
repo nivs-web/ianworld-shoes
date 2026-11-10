@@ -55,7 +55,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2 }, cb)
   const rage = h('button', 'idg-btn idg-rage', '포효'); rage.type = 'button'; rage.onclick = () => cb.cmd({ type: 'rage' }); right.appendChild(rage);
   const breath = h('button', 'idg-btn idg-breath'); breath.type = 'button'; breath.onclick = () => cb.cmd({ type: 'breath' });
   const bFill = h('i', 'fill'); breath.append(bFill, h('b', null, '브레스'));
-  bot.append(wallet, deckBox, right, breath);
+  bot.append(wallet, deckBox, breath);
+  root.appendChild(right);   // 스킬 · 포효 = 오른쪽 위 하늘 자리 (전장을 가리지 않게)
 
   /* 일시정지 · 결과 판 */
   const panel = h('div', 'idg-panel-over'); root.appendChild(panel);
