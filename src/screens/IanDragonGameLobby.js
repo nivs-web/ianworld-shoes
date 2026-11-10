@@ -14,6 +14,7 @@ import Portal from './Portal.js';
 import { lazyScreen } from './lazyScreen.js';
 import * as G from '../services/iandragonGame.js';
 import { enterFullscreen } from '../core/fullscreen.js';
+import { getSettings } from '../audio/audio.js';
 import * as Sfx from '../audio/sfx.js';
 import '../styles/iandragon-game.css';
 import { showNest } from './idgNest.js';
@@ -58,6 +59,8 @@ function showStages(onPick) {
 
 export default function IanDragonGameLobby(nav) {
   setTimeout(() => IanDragonGame.prefetch?.(), 1200);   // 한가할 때 게임 코드를 미리 받아 둔다
+  /* 타이틀 콜 «좀비와 드래곤!» (겜팀장 음성 · 오락실 효과음 설정을 따른다) */
+  if (getSettings().sfxEnabled !== false) import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); setTimeout(() => A.voice('title'), 300); }).catch(() => {});
 
   /**
    * 「모험 시작」 — 전체화면은 클릭 핸들러 안에서 곧바로 요청해야 받아 준다(await 먼저 금지).
