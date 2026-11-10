@@ -29,11 +29,11 @@ export async function startBattle(ctx, opts) {
   const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
   const cmds = [];
-  let acc = 0, bossSeen = false;
+  let acc = 0, bossSeen = false, gone = false;
   const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (!ui.paused && !S.over) cmds.push({ p: 0, ...c }); },
     go() { ui.intro = false; ui.paused = false; hud.hidePanel(); },
-    pause() { if (ui.done || ui.intro) return; ui.paused = !ui.paused; if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
+    pause() { if (ui.done || ui.intro) return; ui.paused = !ui.paused; sound.pause(ui.paused); if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
     speed() { ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
     auto() { if (canAuto) ui.auto = !ui.auto; },
     exit() { opts.onExit(); },
@@ -78,7 +78,7 @@ export async function startBattle(ctx, opts) {
       const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today };
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     } else info.hint = loseHint(S);
-    setTimeout(() => { hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);
+    setTimeout(() => { if (gone) return; hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);
   }
 
   const tick = (ticker) => {
@@ -102,13 +102,16 @@ export async function startBattle(ctx, opts) {
   };
   ctx.app.ticker.add(tick);
   ui.paused = true; hud.showPanel('intro');   // 스테이지 카드 → «출격!»
-  const onHide = () => { if (document.hidden && !ui.done && !ui.paused) { ui.paused = true; hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
+  const onHide = () => { if (document.hidden && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);
   if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };
 
   return {
-    destroy() { document.removeEventListener('visibilitychange', onHide); ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },
-    pause() { if (!ui.done && !ui.paused) { ui.paused = true; hud.showPanel('pause'); } },
+    destroy() { gone = true; document.removeEventListener('visibilitychange', onHide); ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },
+    /** 세로로 돌림 · 앱 내림 : 일시정지 판 (카드가 떠 있으면 그대로 둔다) */
+    pause() { if (!ui.intro && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } },
+    /** 뒤로가기 · ESC : 카드에서는 나가기, 전투 중에는 일시정지 판 (코드 검토 9) */
+    back() { if (ui.intro) { opts.onExit(); return; } this.pause(); },
   };
 }
 

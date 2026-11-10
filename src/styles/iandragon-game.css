@@ -196,3 +196,13 @@ html.idg-wide body { width: 100%; }
 .idg-leader.on { border-color: #FFC93C; background: #3a2a10; }
 .idg-leader img { width: 36px; height: 36px; object-fit: contain; image-rendering: pixelated; }
 .idg-leader span { color: #bba; font-size: 9px; }
+/* 코드 검토 5 (2026-11-11 야간) : 손가락 크기 44px · 미니맵이 단추를 가리지 않게 · 스킬 안내 자리 */
+.idg-pause, .idg-speed, .idg-auto { min-width: 44px; height: 44px; }
+.idg-skill, .idg-rage { height: 44px; padding: 0 10px; }
+.idg-deck .idg-unit { min-width: 44px; }
+.idg-world-tab { width: 46px; height: 44px; } .idg-nest-up, .idg-nest-go { min-height: 44px; }
+.idg-rotate-exit { min-height: 44px; }
+.idg-mini { top: calc(max(8px, env(safe-area-inset-top)) + 50px); height: 16px; }
+@media (max-width: 899px) { .idg-mini { display: none; } }
+.idg-tip[data-at="skill"] { top: 120px; right: 12px; bottom: auto; }
+@media (max-width: 600px) { .idg-deck { gap: 2px; } .idg-wallet { width: 56px; } .idg-breath { width: 60px; } }

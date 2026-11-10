@@ -4,6 +4,7 @@
  * 계산은 services/iandragonHatch.js (화면과 분리 · 검사 도구 있음).
  */
 import { el, button, presentOverlay } from './ui.js';
+import { getSettings } from '../audio/audio.js';
 import * as G from '../services/iandragonGame.js';
 import * as Sfx from '../audio/sfx.js';
 import { UNITS } from '../games/iandragon_game/data/units.js';
@@ -11,7 +12,7 @@ import { hatch, EGG, RATES, PITY, RAR_KO } from '../services/iandragonHatch.js';
 
 const AI = '/assets/iandragon_game/ai/';
 /* 게임 소리(겜팀장) — 부화장에서만 늦게 받는다 */
-const snd = (fn) => import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); fn(A); }).catch(() => {});
+const snd = (fn) => { if (getSettings().sfxEnabled === false) return; import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); fn(A); }).catch(() => {}); };
 const REVEAL = { rare: 'hatch_reveal_rare', super: 'hatch_reveal_super', legend: 'hatch_reveal_legend' };
 
 export function showHatch(onChange) {

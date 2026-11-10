@@ -34,28 +34,38 @@ export async function mount(host, opts) {
   if (!me.alive) { ctx.destroy(); return; }
   me.ctx = ctx;
 
-  /* 캐릭터 시트(겜팀장) + 배경 · 성 시트(겜부장) — 이름으로 어느 시트에서든 찾는다 */
-  const [sheet, common, w01] = await Promise.all([Assets.load(ATLAS_URL), Assets.load(ENV_URL('common')), Assets.load(ENV_URL('w01'))]);
-  if (!me.alive) return;
-  const sheets = [common, w01, sheet];
-  const has = (name) => sheets.some((s) => s.textures[name]);
-  const T = (name) => { for (const s of sheets) if (s.textures[name]) return s.textures[name]; return sheet.textures['icon/star'] ?? Object.values(sheet.textures)[0]; };
   Audio.init();
+  /* 점검용 주소(?idgDemo · ?idgPilot · ?idgStage=N)는 개발 서버에서만 — 운영에서 순서 잠금을 건너뛰지 못하게 (코드 검토 3) */
+  const q = import.meta.env.DEV ? location.search : '';
+  /* 옛 장면(시트 기반)만 캐릭터 시트 · 배경 시트가 필요하다 — 전투는 ai/ 그림만 쓴다 (코드 검토 2) */
+  let T = null, has = null, sheetMeta = null;
+  if (/idgDemo|idgPilot/.test(q)) {
+    const [sheet, common, w01] = await Promise.all([Assets.load(ATLAS_URL), Assets.load(ENV_URL('common')), Assets.load(ENV_URL('w01'))]);
+    if (!me.alive) return;
+    const sheets = [common, w01, sheet];
+    has = (name) => sheets.some((s) => s.textures[name]);
+    T = (name) => { for (const s of sheets) if (s.textures[name]) return s.textures[name]; return sheet.textures['icon/star'] ?? Object.values(sheet.textures)[0]; };
+    sheetMeta = [w01.data.meta, common.data.meta];
+  }
 
   /* 그림 공장 시험판(2026-11-11) — 옛 기준 장면은 주소에 ?idgDemo 를 붙이면 본다 */
   /* B2 (2026-11-11 야간) — 진짜 전투. 옛 장면 : ?idgDemo(기준 장면) · ?idgPilot(그림 공장 시험판) */
-  const q = location.search;
   const begin = async (stageNo) => {
-    me.scene?.destroy();
-    me.scene = await startBattle({ ...ctx, host }, {
+    me.scene?.destroy(); me.scene = null;
+    try {
+      me.scene = await startBattle({ ...ctx, host }, {
       stageNo, save: opts.save, text: opts.text,
       onSave: (part) => (opts.save = opts.onSave(part)),
       onExit: () => opts.onExit(),
       restart: (no) => { if (me.alive) begin(no); },
-    });
+      });
+    } catch (e) {   /* 못 열면 갇히지 않게 로비로 (코드 검토 1) */
+      console.warn('[좀비와 드래곤] 전투를 열지 못했다', e);
+      if (me.alive) opts.onExit();
+    }
   };
   const stQ = Number((q.match(/[?&]idgStage=(\d+)/) || [])[1]);   // 점검용 : ?idgStage=12
-  if (/idgDemo/.test(q)) me.scene = startDemo(ctx, T, has, w01.data.meta, common.data.meta);
+  if (/idgDemo/.test(q)) me.scene = startDemo(ctx, T, has, sheetMeta[0], sheetMeta[1]);
   else if (/idgPilot/.test(q)) me.scene = await startPilot(ctx, T);
   else await begin(stQ || opts.stageNo || Math.min(LAST_STAGE, (opts.save?.cleared || 0) + 1));
   const battle = !/idgDemo|idgPilot/.test(q);
@@ -85,7 +95,7 @@ function setPaused(me, on) {
 export function requestPause() {
   if (!S || !S.ctx) return;
   if (S.guard?.portrait) return;    // 세로 안내 중에는 그대로
-  if (S.scene?.pause) { S.scene.pause(); return; }   // 전투 : 일시정지 판(계속 · 다시 · 나가기)
+  if (S.scene?.back) { S.scene.back(); return; }   // 전투 : 카드면 나가기, 아니면 일시정지 판(계속 · 다시 · 나가기)
   setPaused(S, !S.paused);
 }
 

@@ -86,7 +86,7 @@ export default function IanDragonGameLobby(nav) {
         el('div.panel.idg-panel', null, [
           el('div.idg-player', p.nickname || '???'),
           el('div.idg-stats', null, [
-            el('div', S.idgStatNext(G.stageLabel(G.nextStage(g)))),
+            el('div', g.cleared >= 50 ? '1차 모험 끝! 다음 이야기는 곧!' : S.idgStatNext(G.stageLabel(G.nextStage(g)))),   // 코드 검토 7
             el('div', S.idgStatStars(G.totalStars(g))),
             el('div', `${S.idgStatCoins(g.coins)} · ${S.idgStatGems(g.gems)}`),
           ]),

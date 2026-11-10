@@ -34,7 +34,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     tryLoad(`${AI}bg/w${wN}_panel.png`).then((t) => t || tryLoad(`${AI}bg/w01_panel.png`)),
     Promise.all([0, 1, 2, 3].map((i) => tryLoad(`${AI}castles/nest_hp${i}.png`))),
     Promise.all([0, 1, 2, 3].map((i) => tryLoad(`${AI}castles/tower_w${wN}_hp${i}.png`).then((t) => t || tryLoad(`${AI}castles/tower_hp${i}.png`)))),
-    loadFun(),
+    loadFun().catch(() => null),   // 재미 그림이 없어도 전투는 연다 (코드 검토 2)
   ]);
 
   /* ── 층 : 배경 · 재미(뒤) · 성 · 유닛 · 효과 · 재미(앞) */
@@ -42,8 +42,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const bgBox = new Container(), funBack = new Container(), stage = new Container(), units = new Container(), fx = new Container(), funFront = new Container();
   units.sortableChildren = true;
   root.addChild(bgBox, funBack, stage, funFront);
-  const k = 540 / bgTex.height, bw = bgTex.width * k;
-  for (let i = 0; i * bw < FIELD + bw; i++) { const s = new Sprite(bgTex); s.scale.set(i % 2 ? -k : k, k); s.x = i % 2 ? (i + 1) * bw : i * bw; bgBox.addChild(s); }
+  const k = bgTex ? 540 / bgTex.height : 1, bw = bgTex ? bgTex.width * k : FIELD;
+  if (bgTex) for (let i = 0; i * bw < FIELD + bw; i++) { const s = new Sprite(bgTex); s.scale.set(i % 2 ? -k : k, k); s.x = i % 2 ? (i + 1) * bw : i * bw; bgBox.addChild(s); }
   const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, GY + 10);
   const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, GY + 10);
   stage.addChild(nest, tower, units, fx);
@@ -55,7 +55,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const spots = { ...(SPOTS[world] || { sky: [50, 200], ground: 437, dirtY: 494 }) };
   spots.safe = [260, FIELD - 260];
   let camX = 0, viewW = view.w;
-  const fun = createFun(funTex, { back: funBack, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && Audio.fun(FUN_SOUND[id]) });
+  const fun = funTex ? createFun(funTex, { back: funBack, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && Audio.fun(FUN_SOUND[id]) }) : { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
   const amb = createAmbient(funBack, world, () => camX, () => viewW);   // 월드 분위기 입자 (불티 · 눈 · 구름 · 불꽃)
 
   /* ── 리더 (내 기지 위) */
@@ -191,6 +191,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const onMove = (e) => { if (!drag) return; camX = Math.max(0, Math.min(FIELD - view.w, drag.cam - toWorld(e.clientX - drag.x))); handT = 3; };
   const onUp = () => { drag = null; };
   canvas.addEventListener('pointerdown', onDown); window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp); window.addEventListener('blur', onUp);   // iOS 제스처 · 알림으로 끊겨도 카메라가 멈추지 않게 (코드 검토 8)
 
   function camera(S, dt) {
     viewW = view.w;
@@ -221,6 +222,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     fun,
     destroy() {
       canvas.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp); window.removeEventListener('blur', onUp);
       root.destroy({ children: true });
     },
   };

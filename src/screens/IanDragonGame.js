@@ -51,7 +51,7 @@ export default function IanDragonGame(nav) {
         if (!live) return;
         if (isRunning()) { stopLoop(); stoppedArcadeLoop = true; }
         setGameGuard(() => m.requestPause());
-        m.mount(host, {
+        return m.mount(host, {
           save: G.idg(),
           stageNo: G.takePickedStage(),
           text: { rotate: S.idgRotate, rotateSub: S.idgRotateSub, exit: S.idgExit },
@@ -59,7 +59,8 @@ export default function IanDragonGame(nav) {
           onExit() { if (live) nav.back(); },
         });
       }).catch((e) => {
-        console.warn('[이안 드래곤] 게임을 받지 못했다', e);
+        console.warn('[좀비와 드래곤] 게임을 열지 못했다', e);
+        try { mod?.unmount(); } catch { /* */ }
         if (live) { toast(S.idgLoadFailed, 3200); nav.back(); }
       });
       return el('div.dragon-stage.idg-stage', null, [el('div.dragon-loading', S.idgLoading), host]);

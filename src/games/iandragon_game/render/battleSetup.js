@@ -77,7 +77,7 @@ export function bonusFor(w, save) {
 export const leaderFor = (stage, save) => { const want = save?.leader; const open = Math.floor((save?.cleared || 0) / 10); return want && want !== 'auto' && LEADERS[want] && LEADERS[want].unlock <= open ? want : LEADER_AT[stage.w - 1] || 'novart'; };
 
 export function makeLoads(stage, save) {
-  const un = unlockedBefore(stage.g);
+  const un = unlockedBefore(Math.max(stage.g, Math.min(LAST_STAGE, (save?.cleared || 0) + 1)));   // 다시 하기도 지금까지 연 만큼 (코드 검토 4)
   const lvOf = (id) => Math.max(save?.units?.[id]?.[0] || 1, stage.expLevel || 1);
   /* 내가 고른 덱(둥지에서 «출전») — 2마리 이상 골랐으면 그것, 아니면 기준 덱. 고른 덱도 칸 수 · 비용 제한을 따른다 */
   const owned = (id) => un.dragons.includes(id) || (UNITS[id]?.rar !== 'story' && save?.units?.[id]);

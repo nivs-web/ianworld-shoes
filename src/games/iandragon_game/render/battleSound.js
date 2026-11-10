@@ -13,7 +13,10 @@ export function createBattleSound(stage) {
   const musicOn = set.bgmEnabled !== false;
   Audio.init();
   Audio.setMuted(set.sfxEnabled === false);
-  const song = (id, rate) => { if (musicOn) Audio.bgm(id, { rate }); };
+  let cur = null;   // 지금 곡 (일시정지 뒤 다시 틀기)
+  const song = (id, rate) => { cur = id; if (musicOn) Audio.bgm(id, { rate }); };
+  const timers = [];   // 나간 뒤에 소리가 나지 않게 모아 두었다가 지운다 (코드 검토 6)
+  const later = (fn, ms) => timers.push(setTimeout(fn, ms));
   if (musicOn) Audio.worldBgm(stage.w);   // 겜팀장 월드 곡 (월드 1 «죽음의 무도» … 월드 5 «마법사의 제자»)
   const was = { spawned: 0, wl: 0, breath: 0, breathReady: false, skill: 0, rage: 0, kills: 0, base0: null, base1: null, boss: null, bossHalf: false, fever: false, over: false, hits: 0, units: new Set() };
 
@@ -41,17 +44,22 @@ export function createBattleSound(stage) {
         was[k] = hp;
       }
       const b = S.boss;
-      if (b && was.boss !== b.id) { was.boss = b.id; Audio.play('boss_warn'); setTimeout(() => Audio.play('shockwave'), 700); Audio.voice(`boss/${b.def._art}`); song('boss'); }
+      if (b && was.boss !== b.id) { was.boss = b.id; Audio.play('boss_warn'); later(() => Audio.play('shockwave'), 700); Audio.voice(`boss/${b.def._art}`); song('boss'); }
       if (b && !was.bossHalf && b.hp <= b.maxHp / 2) { was.bossHalf = true; Audio.voice(`boss/${b.def._art}/half`); }
       if (!was.fever && S.t >= S.feverAt) { was.fever = true; Audio.voice('fever'); }
       if (S.over && !was.over) {
         was.over = true; Audio.stopBgm();
-        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) Audio.voice('bossdown'); setTimeout(() => { Audio.play('win_fanfare'); Audio.voice('win'); }, 900); }
+        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) Audio.voice('bossdown'); later(() => { Audio.play('win_fanfare'); Audio.voice('win'); }, 900); }
         else { Audio.play('lose_womp'); Audio.voice('lose'); }
       }
     },
     /** 결과 판의 별 «탕 · 탕 · 탕» */
-    stars(n) { for (let i = 0; i < n; i++) setTimeout(() => Audio.play('star'), 300 + i * 350); },
-    destroy() { Audio.stopBgm(); },
+    stars(n) { for (let i = 0; i < n; i++) later(() => Audio.play('star'), 300 + i * 350); },
+    /** 일시정지 · 앱 내림 : 곡까지 멈춤, 풀면 다시 (코드 검토 12) */
+    pause(on) {
+      if (on) Audio.setMuted(true);
+      else { Audio.setMuted(set.sfxEnabled === false); if (musicOn) { if (cur) Audio.bgm(cur); else Audio.worldBgm(stage.w); } }
+    },
+    destroy() { for (const t of timers) clearTimeout(t); Audio.stopBgm(); },
   };
 }

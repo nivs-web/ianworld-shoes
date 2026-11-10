@@ -9,7 +9,7 @@ import * as Sfx from '../audio/sfx.js';
 import { UNITS } from '../games/iandragon_game/data/units.js';
 import { ENEMIES } from '../games/iandragon_game/data/enemies.js';
 import { STAGES } from '../games/iandragon_game/data/stages/index.js';
-import { unlockedBefore, LAST_STAGE } from '../games/iandragon_game/render/battleSetup.js';
+import { unlockedBefore, LAST_STAGE, DRAGON_ORDER } from '../games/iandragon_game/render/battleSetup.js';
 import { RAR_KO } from '../services/iandragonHatch.js';
 
 const AI = '/assets/iandragon_game/ai/';
@@ -27,12 +27,13 @@ export function showCodex() {
   const card = (img, name, sub, on, cls = '') => el('div.idg-codex-card' + (on ? '' : '.off') + cls, null, [
     el('img', { src: img, alt: '', onerror: (e) => { if (!e.target.src.endsWith('/torso.png')) e.target.src = img.replace('/head.png', '/torso.png'); } }), el('b', on ? name : '???'), el('span', on ? sub : ''),
   ]);
-  const dragons = Object.keys(UNITS).map((id) => card(`${AI}${id}/head.png`, UNITS[id].name, RAR[UNITS[id].rar], have(id), '.' + UNITS[id].rar));
+  const DR = Object.keys(UNITS).filter((id) => UNITS[id].rar !== 'story' || DRAGON_ORDER.includes(id));   // 1차에 얻을 수 있는 용만 (코드 검토 10)
+  const dragons = DR.map((id) => card(`${AI}${id}/head.png`, UNITS[id].name, RAR[UNITS[id].rar], have(id), '.' + UNITS[id].rar));
   const zs = zombies.map((id) => card(`${AI}${ART[id] || id}/head.png`, ENEMIES[id].name, ENEMIES[id].boss ? '보스' : '', met.has(id), ENEMIES[id].boss ? '.legend' : ''));
-  const nD = Object.keys(UNITS).filter(have).length, nZ = zombies.filter((id) => met.has(id)).length;
+  const nD = DR.filter(have).length, nZ = zombies.filter((id) => met.has(id)).length;
   const box = el('div.dialog.idg-codex', { onclick: (e) => e.stopPropagation() }, [
     el('div.idg-how-title', '도감'),
-    el('div.idg-codex-h', `용 ${nD} / ${Object.keys(UNITS).length}`), el('div.idg-codex-grid', null, dragons),
+    el('div.idg-codex-h', `용 ${nD} / ${DR.length}`), el('div.idg-codex-grid', null, dragons),
     el('div.idg-codex-h', `좀비 ${nZ} / ${zombies.length}`), el('div.idg-codex-grid', null, zs),
     button('닫기', () => close()),
   ]);
