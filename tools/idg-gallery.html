@@ -37,6 +37,15 @@
   .retouch { background:#5a2a12; color:#ffc58a; border:1px solid #ff9a4a; border-radius:8px; padding:3px 7px; font-size:12px; font-weight:700; margin-top:4px; }
   .retouch.big { font-size:14px; padding:6px 10px; margin:0 0 8px; }
   .card.castle.ready { cursor:default; }
+  .grid.hudgrid { grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); }
+  .card.hud.fresh { border-color:#7dffa0; }
+  .hudpair { display:flex; gap:6px; background:#18102f; border-radius:8px; padding:8px; }
+  .hudpair figure { margin:0; flex:1; text-align:center; } .hudpair img { width:72px; height:72px; object-fit:contain; image-rendering:pixelated; cursor:zoom-in; }
+  .hudpair figure.old { opacity:.75; } .hudpair figure.old img { width:48px; height:48px; margin-top:12px; }
+  .newtag { margin-left:6px; font-size:10px; background:#7dffa0; color:#0b2a14; border-radius:5px; padding:1px 5px; vertical-align:2px; }
+  .hudbg { background-size:cover; background-position:center 30%; border-radius:12px; padding:70px 12px 12px; margin-bottom:14px; border:1px solid var(--line); }
+  .hudbar { background:rgba(10,6,22,.85); border-radius:10px; padding:8px; }
+  .hudstrip { display:flex; flex-wrap:wrap; gap:6px; } .hudstrip img { width:40px; height:40px; image-rendering:pixelated; }
   .card.dim { opacity:.45; }
   .card.rar-rare { border-color:#5ab0ff; } .card.rar-super { border-color:#c07bff; } .card.rar-legend { border-color:#ffd24a; box-shadow:0 0 0 1px #ffd24a55; }
   .name { font-weight:800; } .sub { color:var(--dim); font-size:12px; word-break:break-all; }

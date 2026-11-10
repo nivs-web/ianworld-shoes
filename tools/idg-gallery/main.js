@@ -251,15 +251,44 @@ async function renderEgg(tab) {
   if (pj?.src) { const si = new Image(); si.className = 'zoomable sheet'; si.onload = () => sheets.append(h('figure', {}, si, h('figcaption', {}, '원본 시트 ' + pj.src))); si.src = `/idg-sheets/${pj.src}?v=${bust}`; }
   return [h('div', { class: 'tabhead' }, h('b', {}, '알'), h('span', { class: 'count' }, `그림 있음 ${have} / ${tab.items().length}`)), grid, sheets];
 }
+/** 옛 도트판(tools/idg-gallery/old/) 과 바이트가 다르면 «새 그림» */
+const OLD = '/tools/idg-gallery/old/';
+async function changed(file) {
+  try {
+    const [a, b] = await Promise.all([GAME + file, OLD + file].map((u) => fetch(u + '?v=' + bust).then((r) => (r.ok && /image/.test(r.headers.get('content-type') || '') ? r.arrayBuffer() : null))));
+    if (!a || !b) return null;
+    if (a.byteLength !== b.byteLength) return true;
+    const x = new Uint8Array(a), y = new Uint8Array(b);
+    for (let i = 0; i < x.length; i += 7) if (x[i] !== y[i]) return true;
+    return false;
+  } catch { return null; }
+}
 async function renderHud() {
-  const j = await probeJson(`${GAME}ui/hud_icons.json`);
-  const grid = h('div', { class: 'grid small' });
-  const entries = Object.entries(j || {});
-  await Promise.all(entries.map(async ([key, e]) => {
-    const im = await probeImg(GAME + e.file);
-    grid.append(h('div', { class: 'card' + (im ? ' ready' : ' missing') }, h('div', { class: 'thumb hud' }, im ? h('img', { src: im.src, class: 'zoomable pix' }) : soon()), h('div', { class: 'name' }, key.replace('ui/hud/', '')), h('div', { class: 'sub' }, `${e.file.replace('ui/', '')} · ${e.w}×${e.h}`)));
+  const j = await probeJson(`${GAME}ui/hud_icons.json`) || {};
+  const bases = [...new Set(Object.keys(j).map((k) => k.replace('ui/hud/', '').replace(/_(s|xs)$/, '')))];
+  const grid = h('div', { class: 'grid hudgrid' });
+  let fresh = 0;
+  const strip = h('div', { class: 'hudstrip' });
+  await Promise.all(bases.map(async (b) => {
+    const e = j['ui/hud/' + b];
+    const isNew = await changed(e.file);
+    if (isNew) fresh++;
+    const sizes = ['', '_s', '_xs'].filter((s) => j['ui/hud/' + b + s]);
+    const card = h('div', { class: 'card hud' + (isNew ? ' fresh' : '') },
+      h('div', { class: 'hudpair' },
+        h('figure', {}, img(GAME + e.file, 'pix'), h('figcaption', {}, isNew ? '새 그림' : '지금')),
+        h('figure', { class: 'old' }, img(OLD + e.file, 'pix'), h('figcaption', {}, '옛 도트'))),
+      h('div', { class: 'name' }, b, isNew ? h('span', { class: 'newtag' }, 'NEW') : null),
+      h('div', { class: 'sub' }, sizes.map((s) => `hud_${b}${s}.png`).join(' · ')));
+    card.dataset.b = b;
+    grid.append(card);
+    strip.append(h('img', { src: GAME + e.file + '?v=' + bust, title: b }));
   }));
-  return [h('div', { class: 'tabhead' }, h('b', {}, 'HUD 아이콘'), h('span', { class: 'count' }, `${entries.length}개`)), grid];
+  [...grid.children].sort((p, q) => bases.indexOf(p.dataset.b) - bases.indexOf(q.dataset.b)).forEach((c) => grid.append(c));
+  [...strip.children].sort((p, q) => bases.indexOf(p.title) - bases.indexOf(q.title)).forEach((c) => strip.append(c));
+  const onBg = h('div', { class: 'hudbg', style: `background-image:url(${A}bg/w01_panel.png)` }, h('div', { class: 'hudbar' }, strip));
+  return [h('div', { class: 'tabhead' }, h('b', {}, 'HUD 아이콘'), h('span', { class: 'count' }, `새 그림 ${fresh} / ${bases.length}종`), h('span', { class: 'hint' }, '왼쪽 = 지금 게임에 들어간 것 · 오른쪽 = 옛 도트판 · 아래 줄 = 실제 크기(40칸)로 전투 배경 위에')),
+    onBg, grid];
 }
 async function renderBanner(tab) {
   const grid = h('div', { class: 'grid wide' });
