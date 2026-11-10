@@ -60,6 +60,13 @@ export const TUNING = {
     { key: 'damage', name: '피해', desc: '걸렸을 때 깎이는 양' },
     { key: 'scroll', name: '내려오는 속도 · 간격', desc: '동그라미가 떨어지는 빠르기 — 빠를수록 동그라미 사이 간격도 넓어짐' },
   ],
+  /* 좀비와 드래곤 (2026-11-11 대표님 «관리자가 난이도를 조절하면서 게임이 제공되게») — 전투 코어는 그대로, 판에 넣는 숫자만 바꾼다 */
+  zd: [
+    { key: 'hp', name: '좀비 체력', desc: '모든 좀비 · 보스 맷집 (스테이지 체력 배율)' },
+    { key: 'atk', name: '좀비 공격', desc: '좀비 · 보스가 때리는 세기' },
+    { key: 'ember', name: '불씨 벌이', desc: '높이면 불씨가 느리게 모인다 (용을 덜 낸다)' },
+    { key: 'base', name: '내 성 체력', desc: '높이면 내 성이 약해진다' },
+  ],
   /* 점프 피아노 (2026-11-07) — 줄넘기 챔피언과 따로 맞춘다 */
   piano: [
     { key: 'timing', name: '판정', desc: '박자 판정 엄격함' },
@@ -76,6 +83,7 @@ export const TUNING_GAMES = [
   { id: 'dragon', name: '드래곤 스트라이커' },
   { id: 'jump', name: '줄넘기 챔피언' },
   { id: 'piano', name: '점프 피아노' },
+  { id: 'zd', name: '좀비와 드래곤' },
 ];
 
 const ROOT = 'config/tuning';

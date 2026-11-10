@@ -12,13 +12,18 @@ import { createHud } from './hud.js';
 import { createBattleSound } from './battleSound.js';
 import { makeLoads, starsFor, stageByNo, LAST_STAGE } from './battleSetup.js';
 import { ECON } from '../data/econ.js';
+import { tunes } from '../../../services/tuning.js';
 
 tagArt(D);
 
 /** opts = { stageNo, save, onSave(part), onExit(), restart(stageNo), text } */
 export async function startBattle(ctx, opts) {
-  const stage = stageByNo(opts.stageNo);
+  /* 운영자 난이도 (50 = 그대로 · 높을수록 어렵게) — 코어는 그대로, 판에 넣는 숫자만 바꾼다 */
+  const tz = tunes('zd');
+  const base0 = stageByNo(opts.stageNo);
+  const stage = { ...base0, mag: base0.mag * tz.hp, atkMag: (base0.atkMag || base0.mag) * tz.atk };
   const { deck, skills, loads, speedMax } = makeLoads(stage, opts.save);
+  loads[0].bonus = { ...loads[0].bonus, income: loads[0].bonus.income / tz.ember, baseHp: loads[0].bonus.baseHp / tz.base };
   const S = createBattle(stage, loads, D, (Date.now() % 1e9) | 0);
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: deck, enemies: enemyIds, leader: loads[0].leader });

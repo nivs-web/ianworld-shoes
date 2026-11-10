@@ -10,6 +10,7 @@ import { Assets, Container, Sprite, Graphics, ColorMatrixFilter } from 'pixi.js'
 import { loadRig, createRigged } from './rig.js';
 import { loadFun, createFun, FUN_SOUND } from './fun.js';
 import * as Audio from '../audio/index.js';
+import { offKeys, isOn, nums } from '../../../services/switches.js';
 import { SPOTS } from './funSpots.js';
 import { createAmbient } from './ambient.js';
 
@@ -55,7 +56,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const spots = { ...(SPOTS[world] || { sky: [50, 200], ground: 437, dirtY: 494 }) };
   spots.safe = [260, FIELD - 260];
   let camX = 0, viewW = view.w;
-  const fun = funTex ? createFun(funTex, { back: funBack, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && Audio.fun(FUN_SOUND[id]) }) : { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
+  const fun = funTex ? createFun(funTex, { back: funBack, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && isOn('zdFunSound', id) && Audio.fun(FUN_SOUND[id]), every: nums('zdFunEvery') }) : { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
+  fun.setOff(offKeys('zdFun'));   // 운영자가 끈 재미 요소 (관리자 화면 · services/switches.js)
+  Audio.setFun(offKeys('zdFunSound').length < 17);   // 재미 소리 — 하나라도 켜져 있으면 소리 장치를 연다(켜진 것만 난다)
   const amb = createAmbient(funBack, world, () => camX, () => viewW);   // 월드 분위기 입자 (불티 · 눈 · 구름 · 불꽃)
 
   /* ── 리더 (내 기지 위) */

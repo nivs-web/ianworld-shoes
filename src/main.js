@@ -201,6 +201,7 @@ async function boot() {
       import('./screens/inboxPopups.js').then((I) => I.start(nav)).catch(() => {});
       // 운영자 난이도 설정 — 붙은 뒤 한 번만 읽어 캐시한다(구독 안 함). 게임은 캐시를 읽는다 (2026-11-07)
       import('./services/tuning.js').then((T) => T.loadTuning()).catch(() => {});
+      import('./services/switches.js').then((W) => W.loadSwitches()).catch(() => {});   // 운영자 켜기/끄기 (좀비와 드래곤 재미 요소)
     })).catch(() => {});
   };
 

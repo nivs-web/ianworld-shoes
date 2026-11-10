@@ -19,6 +19,7 @@ import S from '../config/strings.ko.js';
 import * as Sfx from '../audio/sfx.js';
 import { el, button, backButton, screen, title } from './ui.js';
 import * as Tuning from '../services/tuning.js';
+import * as Sw from '../services/switches.js';
 
 const SAVE_DELAY_MS = 500;
 /** 길게 누르기 — 이만큼 지나면 되풀이가 시작되고, 오래 누를수록 빨라진다 */
@@ -170,6 +171,53 @@ export default function AdminTuning(nav) {
     ]);
   }
 
+  /* 켜기/끄기 스위치 (2026-11-11) — 누르면 곧바로 저장 */
+  const swBox = el('div');
+  function switches() {
+    swBox.replaceChildren(...Object.entries(Sw.SWITCHES).map(([g, G]) => el('div.tune-game', null, [
+      el('div.tune-game-name', G.name),
+      el('div.sw-grid', null, G.keys.map(({ key, name }) => {
+        const box = el('input', { type: 'checkbox' }); box.checked = Sw.isOn(g, key);
+        box.addEventListener('change', async () => {
+          setStatus('saving'); const ok = await Sw.setSwitch(g, key, box.checked);
+          if (!ok) box.checked = Sw.isOn(g, key);
+          if (live) setStatus(ok ? 'saved' : 'failed');
+        });
+        return el('label.sw-item', null, [box, el('span', name)]);
+      })),
+      el('div.sw-row', null, [
+        button('전부 켜기', () => G.keys.forEach(({ key }) => Sw.setSwitch(g, key, true).then(() => live && switches())), { class: 'tune-reset' }),
+        button('전부 끄기', () => G.keys.forEach(({ key }) => Sw.setSwitch(g, key, false).then(() => live && switches())), { class: 'tune-reset' }),
+      ]),
+    ])));
+  }
+  /* 등장 빈도 (초) */
+  const numBox = el('div');
+  function numbers() {
+    numBox.replaceChildren(...Object.entries(Sw.NUMBERS).map(([g, G]) => el('div.tune-game', null, [
+      el('div.tune-game-name', G.name),
+      el('div.hint', '숫자가 클수록 덜 자주 나와요. «전체 간격»은 재미 요소가 하나 끝나고 다음 것이 나올 때까지의 시간이에요.'),
+      ...G.keys.map((k) => {
+        const val = el('div.tune-val', String(Sw.num(g, k.key)));
+        const put = async (v) => {
+          v = Math.round(Math.min(k.max, Math.max(k.min, v)) * 100) / 100; val.textContent = String(v);
+          setStatus('saving'); const ok = await Sw.setNum(g, k.key, v);
+          if (!live) return; if (!ok) val.textContent = String(Sw.num(g, k.key)); setStatus(ok ? 'saved' : 'failed');
+        };
+        return el('div.tune-row', null, [
+          el('div.tune-label', null, [el('div.tune-name', k.name), el('div.tune-desc', `기본 ${k.def}초 · ${k.min}~${k.max}초`)]),
+          el('div.tune-ctrl', null, [
+            el('button.pbtn.tune-btn', { type: 'button', onclick: () => put(Number(val.textContent) - k.step) }, ['-']), val,
+            el('button.pbtn.tune-btn', { type: 'button', onclick: () => put(Number(val.textContent) + k.step) }, ['+']),
+          ]),
+        ]);
+      }),
+      button('기본값으로', () => G.keys.forEach((k) => Sw.setNum(g, k.key, k.def).then(() => live && numbers())), { class: 'tune-reset', sfx: 'sfx_menu_back' }),
+    ])));
+  }
+  switches(); numbers();
+  Sw.refreshSwitches().then((ok) => { if (live && ok) { switches(); numbers(); } });
+
   return {
     onLeave() { live = false; flush(); },
 
@@ -181,6 +229,8 @@ export default function AdminTuning(nav) {
         el('div.hint', `${S.adminTuningHint}\n${S.adminTuningHint2}`),
         statusEl,
         ...Tuning.TUNING_GAMES.map(group),
+        swBox,
+        numBox,
         el('div.spacer'),
         backButton(S.back, () => nav.back())
       );

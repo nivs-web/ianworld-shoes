@@ -43,7 +43,8 @@ const DEFS = [
 /** 재미 요소 → 겜팀장 재미 소리 id (audio fun() · 기본 꺼짐 — 대표님이 켜실지 고르신다) */
 export const FUN_SOUND = { bike: 'bike_bell', wisps: 'firefly', lightning: 'thunder', bats: 'bat', hand: 'grave_hand', witch: 'witch', skelBroom: 'skull_chatter', moon: 'moon_yawn', boo: 'ghost_pop', cat: 'ghost_cat', owl: 'owl', pumpkin: 'cauldron', cross: 'bones', spider: 'chain', window: 'wind', mole: 'grave_creak' };
 
-export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, onStart }) {
+/** every = { all: 다음 요소까지 간격(초), [요소 id]: 다시 나오기까지(초) } — 운영자 «등장 빈도» (services/switches.js NUMBERS) */
+export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, onStart, every = {} }) {
   const S = spots;
   const owlS = S.owl ? back.addChild(sp(tex.owl, S.owl.x, S.owl.y, 0.5, 1)) : null;
   const pumpS = S.pumpkin ? back.addChild(sp(tex.pumpkin, S.pumpkin.x, S.pumpkin.y, 0.5, 1)) : null;
@@ -56,7 +57,8 @@ export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, o
   const active = [], rest = {};
   let next = 0.6, hush = 0, last = null, off = new Set();
 
-  function start(d) { rest[d.id] = d.cd; last = d.id; active.push({ d, t: 0, ev: d.make(E) }); onStart?.(d.id); }
+  const gap = every.all > 0 ? every.all : 1.25;
+  function start(d) { rest[d.id] = every[d.id] > 0 ? every[d.id] : d.cd; last = d.id; active.push({ d, t: 0, ev: d.make(E) }); onStart?.(d.id); }
   function choose() {
     if (active.length >= 3) return;
     const bigOn = active.some((a) => a.d.big);
@@ -72,7 +74,7 @@ export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, o
     update(dt) {
       hush = Math.max(0, hush - dt);
       for (const k in rest) rest[k] -= dt;
-      if ((next -= dt) <= 0) { next = 1.0 + Math.random() * 0.5; if (!hush) choose(); }
+      if ((next -= dt) <= 0) { next = gap * (0.8 + Math.random() * 0.4); if (!hush) choose(); }   // 기본 1.25초 → 1.0~1.5초
       for (let i = active.length - 1; i >= 0; i--) {
         const a = active[i]; a.t += dt;
         if (!a.ev.update(a.t, dt)) { a.ev.destroy(); active.splice(i, 1); }
