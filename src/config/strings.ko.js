@@ -229,6 +229,12 @@ export const S = {
   /* 5번째 게임 줄넘기 챔피언 (2026-11-07) — 나머지 문구는 줄넘기 화면 안에 있다 */
   jumpTitle: '줄넘기 챔피언',
   pianoTitle: '점프 피아노',
+  /* 7번째 게임 이안 드래곤 (2026-11-10 신작 등록 · 아직 제작 전이라 카드만 — 대표님 «신발을 찾아서 위쪽으로») */
+  idgTitle: '이안 드래곤',
+  idgSoonBadge: 'NEW',
+  idgSoonTag: '제작 중',
+  idgSoonLine: '아기 드래곤 vs 좀비 · 100스테이지 라인 배틀',
+  idgSoonToast: '이안 드래곤은 지금 만드는 중이에요. 조금만 기다려 주세요!',
   pianoCardLine: (best, jumps) => `무한 피아노 최고 ${best | 0}개 · 총 ${Number(jumps || 0).toLocaleString('en-US')}번 점프`,
   jumpCardLine: (best, jumps) => `무한 줄넘기 최고 ${best | 0}개 · 총 ${Number(jumps || 0).toLocaleString('en-US')}번 넘음`,
   catch3dLoading: '3D 경기장을 불러오는 중...',

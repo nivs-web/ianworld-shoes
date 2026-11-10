@@ -115,6 +115,17 @@
   color: #FFC93C; font-family: 'PretendardV', 'Neo둥근모', sans-serif; font-weight: 900; font-size: 20px; letter-spacing: 1px; }
 .gc-play:active { transform: translateY(2px); background: #241544; }
 .gc-sub { grid-column: 1 / span 2; grid-row: 2; font-size: 12px; color: #e9dcc0; opacity: .9; padding: 0 2px; }
+/* 신작 «제작 중» 카드 (2026-11-10 이안 드래곤) — 타이틀 그림이 생기기 전까지 그림 자리를 글자로. 크기는 배너와 같다 */
+.gc-new { border-color: rgba(255, 201, 60, .55); }
+.gc-new-art { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, #2a1550 0%, #120a26 60%, #0a0716 100%); border: 1px dashed rgba(255, 201, 60, .5); box-sizing: border-box; }
+.gc-new-title { font-family: 'PretendardV', 'Neo둥근모', sans-serif; font-weight: 900; font-size: clamp(24px, 8vw, 34px); letter-spacing: 1px; line-height: 1;
+  background: linear-gradient(180deg, #FFE27A 0%, #FF9A3C 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 3px 0 #3a1a00); }
+.gc-new-tag { font-size: 12px; letter-spacing: 3px; color: #22E6FF; animation: ohCur 1.2s steps(1) infinite; }
+.gc-new-badge { position: absolute; top: 8px; left: 8px; padding: 2px 7px; border-radius: 6px; background: #FF3D6E; color: #fff;
+  font-family: 'PretendardV', sans-serif; font-weight: 900; font-size: 11px; letter-spacing: 1px; }
+.gc-new-play { font-size: 17px; color: rgba(255, 201, 60, .75); border-style: dashed; }
 .gc-soon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; min-height: 92px; border-radius: 16px; border: 1px dashed rgba(255, 255, 255, .25);
   background: rgba(255, 255, 255, .04); color: rgba(255, 255, 255, .55); font-size: 14px; letter-spacing: 1px; }
 .gc-soon .dots i { display: inline-block; animation: ohDot 1.4s infinite; opacity: 0; font-style: normal; }

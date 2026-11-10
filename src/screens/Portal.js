@@ -53,6 +53,8 @@ const pianoLine = (p) => ((p.jp?.plays | 0) > 0 ? S.pianoCardLine(jpBest(p), p.j
  * (신발은 모은 켤레, 드래곤은 최고 점수).
  */
 const CARDS = [
+  /* 7번째 게임 이안 드래곤 — 맨 위 신작 자리 (2026-11-10 대표님). 아직 제작 전이라 `ready: false` = 그림 대신 «제작 중» 카드 */
+  { id: 'iandragon', banner: null, title: S.idgTitle, sub: () => S.idgSoonLine, screen: null, ready: false },
   { id: 'find_shoes', banner: '/assets/ui/banner_find_shoes.webp', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
   { id: 'dragon_striker', banner: '/assets/ui/banner_dragon_striker.webp', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
   { id: 'catchball', banner: '/assets/ui/banner_catchball.webp', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
@@ -64,7 +66,7 @@ const CARDS = [
 /** 플레이어 정보 (2026-11-07 대표님 «플레이어 누르면 플레이어 정보») — 게임마다 내 기록 한 줄씩 */
 function showPlayerInfo(p) {
   Sfx.play('sfx_menu_select');
-  const rows = CARDS.map((c) => el('div.oh-pinfo-row', null, [el('div.oh-pinfo-game', c.title), el('div.oh-pinfo-val', c.sub(p))]));
+  const rows = CARDS.filter((c) => c.ready).map((c) => el('div.oh-pinfo-row', null, [el('div.oh-pinfo-game', c.title), el('div.oh-pinfo-val', c.sub(p))]));
   const box = el('div.dialog.oh-pinfo', { onclick: (e) => e.stopPropagation() }, [
     el('div.oh-pinfo-label', 'PLAYER 1'),
     el('div.oh-pinfo-name', p.nickname || '???'),
@@ -166,8 +168,21 @@ export default function Portal(nav) {
         /* 플레이어 이름 — 아케이드 하이스코어 등록창(대표님 11/4 밤 1번) */
         el('div.oh-player', { role: 'button', tabindex: 0, title: '플레이어 정보', onclick: () => showPlayerInfo(p) }, [el('span.oh-player-label', 'PLAYER 1'), el('span.oh-player-name', null, [p.nickname, el('span.oh-player-cur', '▌')])]),
         /* 게임 목록 — 왼쪽 위 타이틀 그림 · 오른쪽 위 정사각 PLAY(높이 = 그림 높이 · 대표님 11/4 밤 1번) · 아래 기록 한 줄 */
-        ...CARDS.map((c) =>
-          el('div.gc', null, [
+        ...CARDS.map((c) => !c.ready
+          ? /* 제작 중 카드 — 타이틀 그림 자리에 이름 · PLAY 자리에 SOON. 누르면 안내만 */
+            el('div.gc.gc-new', null, [
+              el('div.gc-art.gc-new-art', { role: 'img', 'aria-label': `${c.title} ${S.idgSoonTag}` }, [
+                el('span.gc-new-badge', S.idgSoonBadge),
+                el('span.gc-new-title', c.title),
+                el('span.gc-new-tag', S.idgSoonTag),
+              ]),
+              el('button.gc-play.gc-new-play', {
+                type: 'button', 'aria-label': `${c.title} ${S.idgSoonTag}`,
+                onclick: () => { Sfx.play('sfx_menu_select'); toast(S.idgSoonToast, 2600); },
+              }, ['SOON']),
+              el('div.gc-sub', c.sub(p)),
+            ])
+          : el('div.gc', null, [
             el('img.gc-art', { src: c.banner, alt: c.title, loading: 'lazy' }),
             el('button.gc-play', {
               type: 'button', 'aria-label': `${c.title} 게임 플레이`,
@@ -176,8 +191,8 @@ export default function Portal(nav) {
             el('div.gc-sub', c.sub(p)),
           ])
         ),
-        /* 6번째 자리 — 준비 중 (5번째 줄넘기 챔피언가 들어왔다, 2026-11-07) */
-        el('div.gc-soon', null, ['7번째 게임 준비 중',el('span.dots', null, [el('i', '.'), el('i', '.'), el('i', '.')])]),
+        /* 다음 자리 — 준비 중 (7번째 이안 드래곤이 맨 위에 들어왔다, 2026-11-10) */
+        el('div.gc-soon', null, ['8번째 게임 준비 중',el('span.dots', null, [el('i', '.'), el('i', '.'), el('i', '.')])]),
         el('div.spacer'),
         // 이미 홈 화면 앱으로 돌고 있으면 바로가기가 무의미하므로 감춘다
         !isStandalone() ? button(S.installShortcut, onInstall) : null,
