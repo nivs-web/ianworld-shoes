@@ -110,6 +110,7 @@ for (const { name, text, v, c, cands } of jobs) {
   const st = cands.find((k) => k.id === 'st'), vx = cands.find((k) => k.id !== 'st');
   let pick = cands[0];
   if (vx && vx.acc >= 0.85 && vx.acc >= (st?.acc ?? 0) - 0.1) pick = vx;   // 온전하면 감정 큰 VoxCPM2 를 우선
+  else if (st && (!vx || vx.acc < st.acc + 0.15)) pick = st;               // 아니면 또박또박 Supertonic (의성어는 Whisper 가 못 알아들어 점수가 같게 낮다)
   if (!pick) { console.log('✗', name, '후보 없음'); continue; }
   pick.fx = pick.raw.replace(/\.wav$/, '.fx.wav'); fxApply(pick.raw, pick.fx, c.fx);
   ff(['-i', pick.fx, '-c:a', 'libopus', '-b:a', '40k', `${OUT}/${name}.ogg`]);
