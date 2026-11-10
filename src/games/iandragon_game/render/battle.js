@@ -11,6 +11,7 @@ import { createBattleView, tagArt } from './battleView.js';
 import { createHud } from './hud.js';
 import { createBattleSound } from './battleSound.js';
 import { makeLoads, starsFor, stageByNo, LAST_STAGE } from './battleSetup.js';
+import { ECON } from '../data/econ.js';
 
 tagArt(D);
 
@@ -60,10 +61,13 @@ export async function startBattle(ctx, opts) {
       info.stars = starsFor(stage, S.t);
       const save = opts.save || {};
       const stars = (save.stars || '').padEnd(stage.g, '0').split('');
-      const first = (Number(stars[stage.g - 1]) || 0) === 0;
-      stars[stage.g - 1] = String(Math.max(Number(stars[stage.g - 1]) || 0, info.stars));
-      info.coins = first ? stage.reward?.coins || 0 : Math.round((stage.reward?.coins || 0) * 0.3);
-      const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + (first ? stage.reward?.gems || 0 : 0) };
+      const old = Number(stars[stage.g - 1]) || 0, first = old === 0, newStars = Math.max(0, info.stars - old);
+      stars[stage.g - 1] = String(Math.max(old, info.stars));
+      /* 보상 (기획서 10장 ECON) : 첫 클리어 코인 · 다시 깨면 40% · 새 별 하나마다 +25% / 젬 : 새 별 5 · 중간 보스 20 · 월드 보스 50 (첫 클리어) */
+      const base = ECON.coin(stage.g);
+      info.coins = Math.round(base * (first ? 1 : ECON.replay) + base * ECON.starBonus * newStars);
+      info.gems = newStars * ECON.gem.star + (first && stage.s === 5 ? ECON.gem.mid : 0) + (first && stage.s === 10 ? ECON.gem.boss : 0);
+      const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems };
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     } else info.hint = loseHint(S);
     setTimeout(() => { hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);

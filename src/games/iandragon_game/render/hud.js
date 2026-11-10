@@ -67,7 +67,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2 }, cb)
     else {
       box.append(h('h2', kind === 'win' ? 'win' : 'lose', kind === 'win' ? '승리!' : '아쉬워요…'));
       if (kind === 'win') { const st = h('div', 'idg-stars'); for (let i = 0; i < 3; i++) { const s = h('span', i < info.stars ? 'on' : '', '★'); s.style.animationDelay = `${0.3 + i * 0.35}s`; st.appendChild(s); } box.appendChild(st); }
-      box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}`));
+      box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}${kind === 'win' && info.gems ? ` · 젬 +${info.gems}` : ''}`));
       if (kind === 'lose' && info.hint) box.append(h('p', 'hint', info.hint));
     }
     const row = h('div', 'idg-row');

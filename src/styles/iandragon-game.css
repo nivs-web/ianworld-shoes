@@ -137,3 +137,14 @@ html.idg-wide body { width: 100%; }
 .idg-deck .idg-unit { flex: 0 1 52px; min-width: 40px; }
 .idg-right { position: absolute; right: max(8px, env(safe-area-inset-right)); top: 64px; flex-direction: row; gap: 4px; }
 @media (max-height: 360px) { .idg-unit { height: 46px; } .idg-unit img { height: 32px; } .idg-wallet, .idg-breath { height: 46px; } }
+
+/* ── 용 둥지 (훈련소 · 2026-11-11) ── */
+.idg-nest { max-width: 380px; max-height: 86vh; display: flex; flex-direction: column; }
+.idg-nest-coins { text-align: center; color: #8a5a00; font: 700 14px 'Neo둥근모', monospace; }
+.idg-nest-help { text-align: center; color: #5a3a1a; font-size: 12px; margin: 4px 0 8px; }
+.idg-nest-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.idg-nest-row { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 10px; background: #221548; color: #fff; }
+.idg-nest-face { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.idg-nest-name { flex: 1; display: flex; flex-direction: column; font: 13px 'Neo둥근모', monospace; } .idg-nest-name span { color: #FFC93C; font-size: 11px; }
+.idg-nest-up { min-width: 92px; min-height: 40px; border-radius: 10px; border: 2px solid #FFC93C; background: #FFC93C; color: #1a1033; font: 700 12px 'Neo둥근모', monospace; }
+.idg-nest-up:disabled { background: #3a2a5a; color: #998; border-color: #554; }

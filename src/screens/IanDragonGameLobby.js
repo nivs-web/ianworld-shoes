@@ -16,6 +16,7 @@ import * as G from '../services/iandragonGame.js';
 import { enterFullscreen } from '../core/fullscreen.js';
 import * as Sfx from '../audio/sfx.js';
 import '../styles/iandragon-game.css';
+import { showNest } from './idgNest.js';
 
 const IanDragonGame = lazyScreen(() => import('./IanDragonGame.js'), S.idgTitle);
 
@@ -85,6 +86,7 @@ export default function IanDragonGameLobby(nav) {
         ]),
         el('div.idg-preview', S.idgLobbyPreview),
         button('스테이지 고르기', () => showStages((no) => start(no))),
+        button('용 둥지 (훈련소)', () => showNest(() => nav.refresh?.())),
         button(S.idgLobbyHow, showHow),
         el('div.spacer'),
         button(S.idgLobbyStart, () => start(), { primary: true }),
