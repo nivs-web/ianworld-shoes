@@ -50,3 +50,13 @@ body.idg-skin-battle .idg-card:has(h2.win)::before, body.idg-skin-battle .idg-ca
 }
 body.idg-skin-battle .idg-card:has(h2.lose)::before { background-image: url(/assets/iandragon_game/ai/result/lose.webp); }
 body.idg-skin-battle .idg-stars span.on { color: #ffd84a; text-shadow: 0 2px 0 #7a4a00, 0 0 8px #ffb000; }
+/* 보스 체력 막대 · 미니맵 = 금테 돌 막대 틀 */
+body.idg-skin-battle .idg-boss b {
+  width: 200px; height: 18px; border: 6px solid transparent; border-radius: 0; background: rgba(0, 0, 0, .55);
+  border-image: url(/assets/iandragon_game/ai/hud/bar_progress.webp) 40 60 fill / 6px 9px stretch; background-clip: padding-box;
+}
+body.idg-skin-battle .idg-boss span { display: inline-block; width: 30px; height: 30px; font-size: 0; background: url(/assets/iandragon_game/ui/hud_boss_warn_s.png) center / contain no-repeat; image-rendering: pixelated; }
+body.idg-skin-battle .idg-mini {
+  border: 5px solid transparent; border-radius: 0; background: rgba(10, 4, 24, .7); background-clip: padding-box; height: 20px;
+  border-image: url(/assets/iandragon_game/ai/hud/bar_progress.webp) 40 60 fill / 5px 8px stretch;
+}
