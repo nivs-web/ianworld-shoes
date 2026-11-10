@@ -222,5 +222,309 @@
   "srcW": 32,
   "srcH": 32,
   "scale": 3
+ },
+ "ui/hud/attr_ghost": {
+  "file": "ui/hud_attr_ghost.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/attr_ghost_s": {
+  "file": "ui/hud_attr_ghost_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/attr_giant": {
+  "file": "ui/hud_attr_giant.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/attr_giant_s": {
+  "file": "ui/hud_attr_giant_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/attr_shadow": {
+  "file": "ui/hud_attr_shadow.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/attr_shadow_s": {
+  "file": "ui/hud_attr_shadow_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/attr_crystal": {
+  "file": "ui/hud_attr_crystal.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/attr_crystal_s": {
+  "file": "ui/hud_attr_crystal_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/attr_all": {
+  "file": "ui/hud_attr_all.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/attr_all_s": {
+  "file": "ui/hud_attr_all_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/st_poison": {
+  "file": "ui/hud_st_poison.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/st_poison_s": {
+  "file": "ui/hud_st_poison_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/st_poison_xs": {
+  "file": "ui/hud_st_poison_xs.png",
+  "w": 48,
+  "h": 48,
+  "srcW": 16,
+  "srcH": 16,
+  "scale": 3
+ },
+ "ui/hud/st_shield": {
+  "file": "ui/hud_st_shield.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/st_shield_s": {
+  "file": "ui/hud_st_shield_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/st_shield_xs": {
+  "file": "ui/hud_st_shield_xs.png",
+  "w": 48,
+  "h": 48,
+  "srcW": 16,
+  "srcH": 16,
+  "scale": 3
+ },
+ "ui/hud/st_weaken": {
+  "file": "ui/hud_st_weaken.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/st_weaken_s": {
+  "file": "ui/hud_st_weaken_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/st_weaken_xs": {
+  "file": "ui/hud_st_weaken_xs.png",
+  "w": 48,
+  "h": 48,
+  "srcW": 16,
+  "srcH": 16,
+  "scale": 3
+ },
+ "ui/hud/st_revive": {
+  "file": "ui/hud_st_revive.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/st_revive_s": {
+  "file": "ui/hud_st_revive_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/st_revive_xs": {
+  "file": "ui/hud_st_revive_xs.png",
+  "w": 48,
+  "h": 48,
+  "srcW": 16,
+  "srcH": 16,
+  "scale": 3
+ },
+ "ui/hud/st_purify": {
+  "file": "ui/hud_st_purify.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/st_purify_s": {
+  "file": "ui/hud_st_purify_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/st_purify_xs": {
+  "file": "ui/hud_st_purify_xs.png",
+  "w": 48,
+  "h": 48,
+  "srcW": 16,
+  "srcH": 16,
+  "scale": 3
+ },
+ "ui/hud/st_noknock": {
+  "file": "ui/hud_st_noknock.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/st_noknock_s": {
+  "file": "ui/hud_st_noknock_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/st_noknock_xs": {
+  "file": "ui/hud_st_noknock_xs.png",
+  "w": 48,
+  "h": 48,
+  "srcW": 16,
+  "srcH": 16,
+  "scale": 3
+ },
+ "ui/hud/boss_warn": {
+  "file": "ui/hud_boss_warn.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/boss_warn_s": {
+  "file": "ui/hud_boss_warn_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/hatch_egg": {
+  "file": "ui/hud_hatch_egg.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/hatch_egg_s": {
+  "file": "ui/hud_hatch_egg_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/gem": {
+  "file": "ui/hud_gem.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/gem_s": {
+  "file": "ui/hud_gem_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/coop": {
+  "file": "ui/hud_coop.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/coop_s": {
+  "file": "ui/hud_coop_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
+ },
+ "ui/hud/versus": {
+  "file": "ui/hud_versus.png",
+  "w": 96,
+  "h": 96,
+  "srcW": 32,
+  "srcH": 32,
+  "scale": 3
+ },
+ "ui/hud/versus_s": {
+  "file": "ui/hud_versus_s.png",
+  "w": 72,
+  "h": 72,
+  "srcW": 24,
+  "srcH": 24,
+  "scale": 3
  }
 }
