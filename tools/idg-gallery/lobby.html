@@ -18,8 +18,23 @@
 import Lobby from '/src/screens/IanDragonGameLobby.js';
 const root = document.getElementById('ui');
 const stack = [];
+/* ?skin=a|b : 새 그림 옷 입혀 보기 (lobby-skin.css · 이 미리보기에서만) */
+const skin = new URLSearchParams(location.search).get('skin');
+if (skin) {
+  document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/tools/idg-gallery/lobby-skin.css?v=' + Date.now() }));
+  root.classList.add('idg-skin');
+  root.style.setProperty('--skin-bg', `url(/assets/iandragon_game/ai/lobby/bg_${skin}.webp)`);
+}
+const ICO = [['스테이지', 'ico_stages'], ['둥지', 'ico_nest'], ['부화장', 'ico_hatch'], ['연구소', 'ico_lab'], ['과제', 'ico_quests'], ['도감', 'ico_codex'], ['하는 법', 'ico_how'], ['오락실', 'ico_arcade']];
+function decorate() {
+  if (!skin || stack.length > 1) return;
+  for (const b of root.querySelectorAll('.pbtn:not(.primary)')) {
+    const hit = ICO.find(([t]) => b.textContent.includes(t));
+    if (hit) { b.dataset.ico = hit[1]; b.style.setProperty('--ico', `url(/assets/iandragon_game/ai/lobby/${hit[1]}.png)`); }
+  }
+}
 const nav = {
-  refresh() { const top = stack[stack.length - 1]; if (!top) return; top.destroy?.(); root.replaceChildren(); const v = top.render(nav); if (v) root.append(v); top.mounted?.(root); },
+  refresh() { const top = stack[stack.length - 1]; if (!top) return; top.destroy?.(); root.replaceChildren(); const v = top.render(nav); if (v) root.append(v); top.mounted?.(root); root.classList.toggle('idg-skin', !!skin && stack.length === 1); decorate(); },
   push(f) { stack.push(f(nav)); root.classList.toggle('wide', stack.length > 1); nav.refresh(); },
   back() { stack.pop()?.destroy?.(); root.classList.toggle('wide', stack.length > 1); nav.refresh(); },
   reset(f) { stack.length = 0; nav.push(f); },
