@@ -165,7 +165,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   }
   function effects(S, dt) {
     const p = S.players[0];
-    if (p && p.st.breath > seen.breath) { seen.breath = p.st.breath; breathFx = 0.001; if (lead) lead.set('hit'); }
+    const allBreath = S.players.reduce((a, q) => a + q.st.breath, 0);   // 멀티 : 누가 쏘든 브레스 연출
+    if (p && allBreath > seen.breath) { seen.breath = allBreath; breathFx = 0.001; if (lead) lead.set('hit'); }
     if (breathFx > 0) {
       breathFx += dt;
       shade.alpha = breathFx < 0.2 ? 0.35 : Math.max(0, 0.35 - (breathFx - 0.2) * 1.2);

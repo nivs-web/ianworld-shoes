@@ -8,7 +8,7 @@ import { getSettings } from '../../../audio/audio.js';
 
 const deployFx = (cost) => (cost < 150 ? 'deploy_s' : cost < 400 ? 'deploy_m' : 'deploy_l');
 
-export function createBattleSound(stage) {
+export function createBattleSound(stage, me = 0) {
   const set = getSettings();
   const musicOn = set.bgmEnabled !== false;
   Audio.init();
@@ -23,7 +23,7 @@ export function createBattleSound(stage) {
   return {
     /** 매 프레임 — S = 코어 상태, view = 그리기(맞은 횟수 hits) */
     update(S, view) {
-      const p = S.players[0];
+      const p = S.players[me];
       if (p.st.spawned > was.spawned) {
         const ids = new Set(S.units.filter((u) => u.side === 0).map((u) => u.id));
         for (const u of S.units) if (u.side === 0 && !was.units.has(u.id)) { Audio.play(deployFx(u.def.cost)); if (Math.random() < 0.4) Audio.voice(`deploy/${u.def._art}`); break; }
