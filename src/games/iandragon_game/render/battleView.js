@@ -13,6 +13,7 @@ import * as Audio from '../audio/index.js';
 import { offKeys, isOn, nums } from '../../../services/switches.js';
 import { SPOTS } from './funSpots.js';
 import { createAmbient } from './ambient.js';
+import { createBossFx } from './bossFx.js';
 
 const AI = '/assets/iandragon_game/ai/';
 export const GY = 440;
@@ -83,6 +84,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     solaris: { c: [0xfff6c0, 0xffd84a], vy: -20, g: 0, r: 5, ray: true },
   };
   const BS = BREATH[leader] || BREATH.novart;
+  const bossFx = createBossFx({ layer: app.stage, fx, M, GY, view, artOf: (def) => artOf(def._art), shake: (t) => { shakes.screen = Math.max(shakes.screen, t); } });   // 보스 컷인 · 큰 공격 경고 (bossFx.js)
 
   const rigFor = (u) => {
     const art = u.def._art;
@@ -235,7 +237,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       lastS = S;
       if (S.stage.fog) { let a = 0; for (const u of S.units) if (u.alive && u.side === 0) a = Math.max(a, u.x); const fx0 = M + a + 260; fog.clear(); for (let i = 0; i < 6; i++) fog.rect(fx0 + i * 30, 0, FIELD, 540).fill({ color: 0x8a90b8, alpha: 0.16 }); }
       syncUnits(S, dt); bases(S, dt); effects(S, dt); ending(S, dt); camera(S, dt);
-      fun.update(dt); amb.update(dt);
+      fun.update(dt); amb.update(dt); bossFx.update(S, dt, V);
       if (lead) lead.update(dt);
     },
     /** 미니맵 · 시작 위치 */
@@ -245,7 +247,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     destroy() {
       canvas.removeEventListener('pointerdown', onDown); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp); window.removeEventListener('blur', onUp);
-      root.destroy({ children: true });
+      bossFx.destroy(); root.destroy({ children: true });
     },
   };
   return api;

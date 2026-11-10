@@ -14,8 +14,8 @@ const AI = '/assets/iandragon_game/ai/';
 const GIM = {
   gold: '황금 좀비가 나와요! 잡으면 코인이 듬뿍', race: '좀비 달리기 대회! 좀비가 빨라요', time: '시간 안에 좀비 탑을 무너뜨려요!',
   cap10: '용은 10마리까지만 나갈 수 있어요', cap8: '용은 8마리까지만 나갈 수 있어요', lock: '화로가 고장 났어요 — 화로를 못 올려요',
-  rush: '보스가 줄줄이 나와요! 보스 러시', wind: '맞바람 — 용들이 느리게 걸어요', fog: '안개 — 멀리 있는 좀비가 잘 안 보여요',
-  cost: '비싼 용은 못 나가요 (불씨 300 이하만)', money: '용돈 듬뿍! 불씨를 많이 들고 시작해요', fever: '불꽃 타임이 빨리 와요',
+  rush: '보스가 줄줄이 나와요! 보스 러시', wind: '앞에서 거센 바람이 불어요 — 용들이 느리게 걸어요', fog: '안개 — 멀리 있는 좀비가 잘 안 보여요',
+  cost: '불씨 300 이하인 용만 나갈 수 있어요', money: '용돈 듬뿍! 불씨를 많이 들고 시작해요', fever: '불꽃 타임이 빨리 와요',
 };
 const ZART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant' };
 const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
@@ -40,6 +40,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   hp.append(myHp, foeHp);
   const boss = h('div', 'idg-boss'); const bossFill = h('i'); boss.append(h('span', null, '보스'), h('b', null, '')); boss.lastChild.appendChild(bossFill); root.appendChild(boss);
   const warn = h('div', 'idg-warn', 'WARNING'); root.appendChild(warn);
+  /* 보스 이름 띠 : 보스가 새로 나오면 1.2초(bossFx.js CUT_TIME) 보여 주고, 그 뒤에 WARNING 을 켠다 (처음 보스만) */
+  const bname = h('div', 'idg-bossname'); const bnameT = h('b'); bname.appendChild(bnameT); root.appendChild(bname);
+  let bossRef = null, nameT = 0, warnT = 0, bossCount = 0, lastNow = performance.now();
   /* 미니맵 (기획서 11.1) : ▲ 내 맨 앞 · ▼ 적 맨 앞 · 네모 = 지금 보는 곳. 누르면 그 자리로 */
   const mini = h('div', 'idg-mini'), miniView = h('i', 'view'), miniMe = h('b', 'me', '▲'), miniFoe = h('b', 'foe', '▼');
   mini.append(miniView, miniMe, miniFoe); root.appendChild(mini);
@@ -61,7 +64,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   });
   const right = h('div', 'idg-right');
   const sk = skills.map((id, i) => { const b = h('button', 'idg-btn idg-skill', SKILLS[id]?.name || id); b.type = 'button'; b.onclick = () => cb.cmd({ type: 'skill', i }); right.appendChild(b); return b; });
-  const rage = h('button', 'idg-btn idg-rage', '포효'); rage.type = 'button'; rage.onclick = () => cb.cmd({ type: 'rage' }); right.appendChild(rage);
+  const rage = h('button', 'idg-btn idg-rage', '으르렁!'); rage.type = 'button'; rage.onclick = () => cb.cmd({ type: 'rage' }); right.appendChild(rage);
   const breath = h('button', 'idg-btn idg-breath'); breath.type = 'button'; breath.onclick = () => cb.cmd({ type: 'breath' });
   const bFill = h('i', 'fill'); breath.append(bFill, h('b', null, '브레스'));
   bot.append(wallet, deckBox, breath);
@@ -78,7 +81,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
       const zs = h('div', 'idg-intro-z');
       for (const id of [...new Set(stage.lines.map((l) => l.id))]) { const im = h('img'); im.src = `${AI}${ZART[id] || id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${ZART[id] || id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
-      box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안 · ★★★ ${stage.star3}초 안`));
+      box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안에 · ★★★ ${stage.star3}초 안에`));
     }
     else {
       box.append(h('h2', kind === 'win' ? 'win' : 'lose', kind === 'win' ? '승리!' : '아쉬워요…'));
@@ -139,7 +142,16 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       const bs = S.boss;
       boss.classList.toggle('on', !!(bs && bs.alive));
       if (bs) bossFill.style.width = `${Math.max(0, bs.hp / bs.maxHp) * 100}%`;
-      warn.classList.toggle('on', ui.warn > 0);
+      const now = performance.now(), dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
+      if (bs && bs !== bossRef) {
+        bossRef = bs; bossCount++; nameT = 1.2; bnameT.textContent = bs.def.name;
+        bname.classList.remove('on'); void bname.offsetWidth; bname.classList.add('on');
+      }
+      if (!ui.paused) {   // 일시정지 중에는 시간이 멈춘다
+        if (nameT > 0) { nameT -= dt; if (nameT <= 0) { bname.classList.remove('on'); if (bossCount === 1) warnT = 0.9; } }
+        else if (warnT > 0) warnT -= dt;
+      }
+      warn.classList.toggle('on', warnT > 0);
       speedB.textContent = `×${ui.speed}`; autoB.classList.toggle('on', !!ui.auto);
       if (ui.mini) {
         const { a, b, cam, w, F } = ui.mini;
