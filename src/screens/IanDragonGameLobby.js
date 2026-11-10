@@ -73,7 +73,8 @@ export default function IanDragonGameLobby(nav) {
       const g = G.idg();
       return screen(
         /* 로고 그림(겜팀장 · 540×150 도트) — 좀비와 드래곤 / ZOMBIE & DRAGON */
-        el('div.idg-logo', null, [el('img.idg-logo-img', { src: '/assets/iandragon-logo.png', alt: `${S.idgTitle} ${S.idgTitleEn}` })]),
+        /* 로비 맨 위 배너 (겜팀장 v2 · 신발 · 드래곤 로비와 같은 비율) — 결정 D4 */
+        el('div.idg-logo', null, [el('img.idg-lobby-banner', { src: '/assets/ui/banner_iandragon_lobby.webp', alt: `${S.idgTitle} ${S.idgTitleEn}` })]),
         el('div.panel.idg-panel', null, [
           el('div.idg-player', p.nickname || '???'),
           el('div.idg-stats', null, [

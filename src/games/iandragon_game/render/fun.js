@@ -395,7 +395,10 @@ const DEFS = [
  * back : 배경 바로 위 그릇(카메라와 함께 움직인다) · front : 유닛 위 그릇(두더지 전용, 발 줄 아래에만 그린다)
  * getCam() : 지금 카메라 x · viewW() : 화면 너비(월드 칸)
  */
-export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW }) {
+/** 재미 요소 → 겜팀장 재미 소리 id (audio fun() · 기본 꺼짐 — 대표님이 켜실지 고르신다) */
+export const FUN_SOUND = { bike: 'bike_bell', wisps: 'firefly', lightning: 'thunder', bats: 'bat', hand: 'grave_hand', witch: 'witch', skelBroom: 'skull_chatter', moon: 'moon_yawn', boo: 'ghost_pop', cat: 'ghost_cat', owl: 'owl', pumpkin: 'cauldron', cross: 'bones', spider: 'chain', window: 'wind', mole: 'grave_creak' };
+
+export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, onStart }) {
   const S = spots;
   const owlS = S.owl ? back.addChild(sp(tex.owl, S.owl.x, S.owl.y, 0.5, 1)) : null;
   const pumpS = S.pumpkin ? back.addChild(sp(tex.pumpkin, S.pumpkin.x, S.pumpkin.y, 0.5, 1)) : null;
@@ -408,7 +411,7 @@ export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW })
   const active = [], rest = {};
   let next = 0.6, hush = 0, last = null, off = new Set();
 
-  function start(d) { rest[d.id] = d.cd; last = d.id; active.push({ d, t: 0, ev: d.make(E) }); }
+  function start(d) { rest[d.id] = d.cd; last = d.id; active.push({ d, t: 0, ev: d.make(E) }); onStart?.(d.id); }
   function choose() {
     if (active.length >= 3) return;
     const bigOn = active.some((a) => a.d.big);

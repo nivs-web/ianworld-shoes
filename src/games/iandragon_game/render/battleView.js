@@ -8,7 +8,8 @@
  */
 import { Assets, Container, Sprite, Graphics, ColorMatrixFilter } from 'pixi.js';
 import { loadRig, createRigged } from './rig.js';
-import { loadFun, createFun } from './fun.js';
+import { loadFun, createFun, FUN_SOUND } from './fun.js';
+import * as Audio from '../audio/index.js';
 import { SPOTS } from './funSpots.js';
 import { createAmbient } from './ambient.js';
 
@@ -52,7 +53,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const spots = { ...(SPOTS[world] || { sky: [50, 200], ground: 437, dirtY: 494 }) };
   spots.safe = [260, FIELD - 260];
   let camX = 0, viewW = view.w;
-  const fun = createFun(funTex, { back: funBack, front: funFront, spots, getCam: () => camX, viewW: () => viewW });
+  const fun = createFun(funTex, { back: funBack, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && Audio.fun(FUN_SOUND[id]) });
   const amb = createAmbient(funBack, world, () => camX, () => viewW);   // 월드 분위기 입자 (불티 · 눈 · 구름 · 불꽃)
 
   /* ── 리더 (내 기지 위) */

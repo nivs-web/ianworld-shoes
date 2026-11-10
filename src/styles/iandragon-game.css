@@ -131,3 +131,4 @@ html.idg-wide body { width: 100%; }
 .idg-tip[data-at="wallet"] { left: 12px; bottom: 74px; }
 .idg-tip[data-at="skill"] { right: 90px; bottom: 74px; }
 @keyframes idgBob { to { margin-bottom: 6px; } }
+.idg-lobby-banner { display: block; width: 100%; max-width: 420px; height: auto; margin: 0 auto; border-radius: 12px; image-rendering: pixelated; }

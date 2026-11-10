@@ -14,7 +14,7 @@ export function createBattleSound(stage) {
   Audio.init();
   Audio.setMuted(set.sfxEnabled === false);
   const song = (id, rate) => { if (musicOn) Audio.bgm(id, { rate }); };
-  song(stage.s % 2 ? 'battleA' : 'battleB');
+  if (musicOn) Audio.worldBgm(stage.w);   // 겜팀장 월드 곡 (월드 1 «죽음의 무도» … 월드 5 «마법사의 제자»)
   const was = { spawned: 0, wl: 0, breath: 0, breathReady: false, skill: 0, rage: 0, kills: 0, base0: null, base1: null, boss: null, bossHalf: false, fever: false, over: false, hits: 0, units: new Set() };
 
   return {
@@ -46,8 +46,8 @@ export function createBattleSound(stage) {
       if (!was.fever && S.t >= S.feverAt) { was.fever = true; Audio.voice('fever'); }
       if (S.over && !was.over) {
         was.over = true; Audio.stopBgm();
-        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) Audio.voice('bossdown'); setTimeout(() => { song('win'); Audio.voice('win'); }, 900); }
-        else { Audio.play('fail'); Audio.voice('lose'); }
+        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) Audio.voice('bossdown'); setTimeout(() => { Audio.play('win_fanfare'); Audio.voice('win'); }, 900); }
+        else { Audio.play('lose_womp'); Audio.voice('lose'); }
       }
     },
     /** 결과 판의 별 «탕 · 탕 · 탕» */
