@@ -18,7 +18,7 @@ if (fs.existsSync(MAN)) {
     const [prefix, , , kind] = e;
     if (anims[kind]) for (const a of anims[kind]) need.push(`${prefix}/${a}`); else need.push(prefix);
   }
-  for (const n of m.ART_NAMES ?? []) need.push(n);
+  if (m.ART_NAMES) need = [...m.ART_NAMES];   // 겜부장 목록이 정답 (351)
 } else {
   const P = path.join(ROOT, 'public/assets/iandragon_game/_placeholder.json');
   if (fs.existsSync(P)) need = Object.keys(JSON.parse(fs.readFileSync(P, 'utf8')).frames);
