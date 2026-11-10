@@ -331,6 +331,11 @@
           "joined": {
             ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
           },
+          "tot": {
+            "$game": {
+              ".validate": "$game.matches(/^(shoes|dragon|catch|catch3d|jump|piano)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000"
+            }
+          },
           "$other": {
             ".validate": false
           }
@@ -356,6 +361,23 @@
             "g": {
               "$game": {
                 ".validate": "$game.matches(/^(shoes|dragon|catch|catch3d|jump|piano)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 5000"
+              }
+            },
+            "v": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+            },
+            "s": {
+              "$sid": {
+                ".validate": "$sid.matches(/^[a-z0-9]{6,12}$/)",
+                "a": {
+                  ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+                },
+                "b": {
+                  ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+                },
+                "$other": {
+                  ".validate": false
+                }
               }
             },
             "$other": {

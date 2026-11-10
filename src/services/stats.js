@@ -166,14 +166,33 @@ export async function readStats(days = 7) {
 /* ───────────────────────── 회원 · 접속 시간 · 게임 판 수 (2026-11-10 대표님 «신규 회원 가입 현황») ─────────────────────────
  *
  *   stats/members/{uid}          { nick, email, name, joined }   name = 구글 계정 이름 · joined = 구글 계정으로 처음 가입한 시각(Firebase 로그인 기록)
- *   stats/act/{YYYYMMDD}/{uid}   { nick, sec, first, last, g: { shoes, dragon, catch, catch3d, jump, piano } }
+ *   stats/act/{YYYYMMDD}/{uid}   { nick, sec, first, last, v, s: { 접속ID: { a, b } }, g: { shoes, dragon, catch, catch3d, jump, piano } }
+ *     v = 그날 접속 횟수(페이지를 열 때마다 1) · s = 접속마다 들어온 시각 a · 나간 시각 b(창을 닫거나 끊기면 서버가 찍는다)
+ *   stats/members/{uid}/tot     { shoes, dragon, catch, catch3d, jump, piano } — 접속할 때마다 그 사람의 누적 판 수 사본
  *
  * sec = 그날 사이트를 켜 둔 시간(화면을 보고 있을 때만, 30초마다 +30). first · last = 그날 처음 · 마지막 신호 시각.
  * 쓰기는 본인 칸만, 읽기는 운영자만(규칙 `stats/.read`). 실패해도 게임에는 아무 영향이 없다.
  */
 export const GAME_NAMES = { shoes: '신발을 찾아서', dragon: '드래곤 스트라이커', catch: '캐치볼', catch3d: '3D캐치볼', jump: '줄넘기 챔피언', piano: '점프 피아노' };
 const BEAT_SEC = 30;
-let beatTimer = 0, actDay = '', memberFor = '';
+let beatTimer = 0, actDay = '', memberFor = '', sessDay = '';
+const SID = (Date.now().toString(36) + Math.random().toString(36).slice(2, 5)).slice(0, 12);   // 이번 접속(페이지 열기) 하나
+const sessPath = (fb, day) => path(STATS, 'act', day, fb.uid, 's', SID);
+/** 누적 판 수 — 프로필에서 */
+function totals() {
+  const p = loadProfile() || {};
+  return { shoes: p.totalPlays | 0, dragon: p.dragonPlays | 0, catch: p.catchPlays | 0, catch3d: p.catch3dPlays | 0, jump: p.jr?.plays | 0, piano: p.jp?.plays | 0 };
+}
+/** 그날 첫 접속이면 접속 횟수 +1 · 들어온 시각 · 끊기면 나간 시각을 서버가 찍게 예약 */
+async function startSession(fb, day) {
+  const { ref, update, onDisconnect, serverTimestamp, increment } = fb.dbMod;
+  const now = Date.now();
+  if (sessDay !== day) {
+    await withTimeout(update(ref(fb.rtdb, actPath(fb, day)), { v: increment(1), [`s/${SID}/a`]: now, [`s/${SID}/b`]: now }), undefined, '접속 횟수');
+    sessDay = day;
+  }
+  await onDisconnect(ref(fb.rtdb, path(sessPath(fb, day), 'b'))).set(serverTimestamp());
+}
 const nickNow = () => String(loadProfile()?.nickname || currentUser()?.nickname || '').slice(0, 24);
 const actPath = (fb, day) => path(STATS, 'act', day, fb.uid);
 
@@ -183,6 +202,7 @@ async function touchDay(fb) {
   const first = await readVal(fb, path(actPath(fb, day), 'first')).catch(() => null);
   if (!first) await withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(actPath(fb, day), 'first')), Date.now()), undefined, '첫 접속');
   actDay = day;
+  try { await startSession(fb, day); } catch { /* */ }
   return day;
 }
 
@@ -195,12 +215,12 @@ export async function startActivity(fb) {
     try {
       const cur = await readVal(fb, path(STATS, 'members', fb.uid)).catch(() => null);
       await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(STATS, 'members', fb.uid)), {
-        nick: nickNow(), email: String(u?.email || '').slice(0, 100), name: String(u?.name || '').slice(0, 60), joined: cur?.joined || u?.created || Date.now(),
+        nick: nickNow(), email: String(u?.email || '').slice(0, 100), name: String(u?.name || '').slice(0, 60), joined: cur?.joined || u?.created || Date.now(), tot: totals(),
       }), undefined, '회원 기록');
       memberFor = fb.uid;
     } catch (e) { console.warn('[stats] 회원 기록 실패', e?.message || e); /* 규칙 게시 전 — 다음 접속에 다시 */ }
   }
-  try { await touchDay(fb); } catch { /* */ }
+  try { await touchDay(fb); await startSession(fb, actDay); } catch { /* */ }   // 다시 붙으면 «나간 시각» 예약을 다시 건다
   clearInterval(beatTimer);
   beatTimer = setInterval(() => { if (!document.hidden) beatOnce().catch(() => {}); }, BEAT_SEC * 1000);
 }
@@ -209,7 +229,7 @@ async function beatOnce() {
   if (!fb) return;
   const day = await touchDay(fb);
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, actPath(fb, day)), {
-    sec: fb.dbMod.increment(BEAT_SEC), last: Date.now(), nick: nickNow(),
+    sec: fb.dbMod.increment(BEAT_SEC), last: Date.now(), nick: nickNow(), [`s/${SID}/b`]: Date.now(),
   }), undefined, '접속 시간');
 }
 
@@ -221,8 +241,10 @@ export function countPlay(game) {
     if (!fb) return;
     const day = await touchDay(fb);
     await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, actPath(fb, day)), {
-      [`g/${game}`]: fb.dbMod.increment(1), last: Date.now(), nick: nickNow(),
+      [`g/${game}`]: fb.dbMod.increment(1), last: Date.now(), nick: nickNow(), [`s/${SID}/b`]: Date.now(),
     }), undefined, '게임 판 수');
+    /* 누적 사본도 갱신(판이 끝나야 프로필 숫자가 오르므로 1분 뒤 한 번 더) */
+    setTimeout(() => { fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(STATS, 'members', fb.uid)), { tot: totals() }).catch(() => {}); }, 60000);
   })().catch(() => {});
 }
 

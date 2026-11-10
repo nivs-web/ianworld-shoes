@@ -24,6 +24,9 @@ const hm = (ms) => {
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 };
 const dateTime = (ms) => (ms ? `${md(Stats.dayKey(ms))} ${hm(ms)}` : '-');
+/** 접속마다 «10:12 들어옴 → 10:40 나감 (28분)» */
+const sessions = (S) => Object.values(S || {}).filter((x) => x && x.a).sort((p, q) => p.a - q.a)
+  .map((x, i) => `${i + 1}회차 ${hm(x.a)} 들어옴 → ${hm(x.b)} 나감 (${hms(Math.round(((x.b || x.a) - x.a) / 1000))})`);
 const gamesLine = (g) => {
   const parts = Object.keys(Stats.GAME_NAMES).filter((k) => (g?.[k] | 0) > 0).map((k) => `${Stats.GAME_NAMES[k]} ${g[k] | 0}판`);
   return parts.length ? parts.join(' · ') : '게임 안 함';
@@ -64,7 +67,8 @@ export default function AdminMembers(nav) {
         ...(fresh.length ? fresh.map(([uid, m]) => el('div.am-row', null, [
           el('div.am-name', null, [m.nick || '(이름 없음)', el('span.am-new', '신규')]),
           el('div.am-sub', [m.name, m.email].filter(Boolean).join(' · ')),
-          el('div.am-sub', `가입 ${dateTime(m.joined)} · 접속 ${hms(tot[uid]?.sec)} · ${tot[uid]?.plays | 0}판 · ${tot[uid]?.days | 0}일 접속`),
+          el('div.am-sub', `가입 ${dateTime(m.joined)} · 최근 ${DAYS}일 접속 ${hms(tot[uid]?.sec)} · ${tot[uid]?.plays | 0}판 · ${tot[uid]?.days | 0}일 접속`),
+          m.tot ? el('div.am-tot', `누적: ${gamesLine(m.tot)}`) : null,
         ])) : [el('div.am-sub', '아직 없어요')]),
       ]);
 
@@ -78,8 +82,11 @@ export default function AdminMembers(nav) {
             return el('div.am-row', null, [
               el('div.am-name', null, [nameOf(uid, a), isNew ? el('span.am-new', '신규') : null]),
               M[uid]?.email || M[uid]?.name ? el('div.am-sub', [M[uid].name, M[uid].email].filter(Boolean).join(' · ')) : null,
-              el('div.am-sub', `접속 ${hms(a.sec)} · ${hm(a.first)} ~ ${hm(a.last)}`),
-              el('div.am-games', gamesLine(a.g)),
+              M[uid]?.joined ? el('div.am-sub', `가입 ${dateTime(M[uid].joined)}`) : null,
+              el('div.am-sub', `그날 ${a.v ? `${a.v | 0}회 접속 · ` : ''}총 ${hms(a.sec)} · 처음 ${hm(a.first)} · 마지막 ${hm(a.last)}`),
+              ...sessions(a.s).map((x) => el('div.am-sess', x)),
+              el('div.am-games', `그날 게임: ${gamesLine(a.g)}`),
+              M[uid]?.tot ? el('div.am-tot', `누적: ${gamesLine(M[uid].tot)}`) : null,
             ]);
           }),
         ]);
