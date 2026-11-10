@@ -9,6 +9,7 @@ import { TICK, createBattle, step } from '../core/index.js';
 import { D } from '../data/battleData.js';
 import { createBattleView, tagArt } from './battleView.js';
 import { createHud } from './hud.js';
+import { createBattleSound } from './battleSound.js';
 import { makeLoads, starsFor, stageByNo, LAST_STAGE } from './battleSetup.js';
 
 tagArt(D);
@@ -21,6 +22,7 @@ export async function startBattle(ctx, opts) {
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: deck, enemies: enemyIds, leader: loads[0].leader });
 
+  const sound = createBattleSound(stage);
   const ui = { speed: 1, paused: false, warn: 0, done: false };
   const cmds = [];
   let acc = 0, bossSeen = false;
@@ -47,7 +49,7 @@ export async function startBattle(ctx, opts) {
       const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + (first ? stage.reward?.gems || 0 : 0) };
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     } else info.hint = loseHint(S);
-    setTimeout(() => hud.showPanel(win ? 'win' : 'lose', info), win ? 1600 : 900);
+    setTimeout(() => { hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);
   }
 
   const tick = (ticker) => {
@@ -61,6 +63,7 @@ export async function startBattle(ctx, opts) {
       ui.warn -= dt;
       if (S.over && !ui.done) finish();
       view.update(S, dt);
+      sound.update(S, view);
     }
     hud.update(S, ui);
   };
@@ -68,7 +71,7 @@ export async function startBattle(ctx, opts) {
   if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };
 
   return {
-    destroy() { ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); },
+    destroy() { ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },
     pause() { if (!ui.done && !ui.paused) { ui.paused = true; hud.showPanel('pause'); } },
   };
 }

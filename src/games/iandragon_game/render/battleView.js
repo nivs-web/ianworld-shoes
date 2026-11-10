@@ -96,7 +96,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       }
       v.x += (M + u.x - v.x) * Math.min(1, dt * 18);
       const R = v.R;
-      if (u.hp < v.hp) { v.flash = 0.08; if (u.hp > 0) puff(v.x, v.y - 30, u.side ? 0xfff0a0 : 0xffffff, 4, 60, 0.25, 1.6); }
+      if (u.hp < v.hp) { api.hits++; api.bigHit = v.hp - u.hp > u.maxHp * 0.25; v.flash = 0.08; if (u.hp > 0) puff(v.x, v.y - 30, u.side ? 0xfff0a0 : 0xffffff, 4, 60, 0.25, 1.6); }
       v.hp = u.hp;
       if (u.state !== v.st) {
         if (u.state === 'back' && v.st === 'fore') { v.hitT = 0.12; if ((u.def.range || 0) > 100) aim(u, v); }
@@ -201,8 +201,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     root.position.set(-Math.round(camX) + sx, sy);
   }
 
-  return {
-    FIELD,
+  const api = {
+    FIELD, hits: 0, bigHit: false,
     update(S, dt) {
       lastS = S;
       syncUnits(S, dt); bases(S, dt); effects(S, dt); ending(S, dt); camera(S, dt);
@@ -218,6 +218,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       root.destroy({ children: true });
     },
   };
+  return api;
 }
 /** 코어 유닛 def 에 그림 id 를 달아 둔다 (유닛 표에서 키를 찾아서) */
 export function tagArt(D) {
