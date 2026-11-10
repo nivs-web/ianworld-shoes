@@ -42,3 +42,59 @@ html.idg-wide body { width: 100%; }
 
 /* 로고 그림 (2026-11-10 좀비와 드래곤) */
 .idg-logo-img { display: block; width: min(100%, 360px); height: auto; margin: 0 auto; image-rendering: pixelated; }
+
+/* ── 전투 HUD (B2 · 2026-11-11) — 캔버스 위 DOM. 버튼은 44px 이상 (기획서 11.1) ── */
+.idg-hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; font: 700 13px 'Neo둥근모', monospace; color: #fff; user-select: none; -webkit-user-select: none;
+  padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+.idg-hud .idg-btn { pointer-events: auto; cursor: pointer; border: 2px solid #FFC93C; background: rgba(20, 8, 42, .85); color: #FFC93C; border-radius: 10px; font: inherit; touch-action: manipulation; }
+.idg-hud .idg-btn:active { transform: translateY(1px); }
+.idg-top { display: flex; align-items: center; gap: 8px; text-shadow: 0 2px 0 #000; }
+.idg-pause, .idg-speed { min-width: 40px; height: 34px; padding: 0 8px; }
+.idg-title { color: #FFC93C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30%; }
+.idg-time { color: #e9dcc0; }
+.idg-money { margin-left: auto; display: flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; background: rgba(20, 8, 42, .8); color: #FFD27a; font-size: 15px; }
+.idg-ico-ember { width: 14px; height: 18px; display: inline-block; background: radial-gradient(circle at 50% 70%, #ffe27a 0 30%, #ff7a1a 31% 60%, transparent 61%); }
+.idg-hp { display: flex; justify-content: space-between; margin-top: 4px; font-size: 14px; text-shadow: 0 2px 0 #000; }
+.idg-hp-me { color: #9cf; } .idg-hp-foe { color: #f99; }
+.idg-boss { position: absolute; left: 50%; top: 44px; transform: translateX(-50%); display: none; align-items: center; gap: 6px; color: #ffb3b3; text-shadow: 0 2px 0 #000; }
+.idg-boss.on { display: flex; }
+.idg-boss b { width: 180px; height: 10px; border: 2px solid #ff6b6b; border-radius: 6px; background: rgba(0, 0, 0, .6); overflow: hidden; display: block; }
+.idg-boss i { display: block; height: 100%; background: linear-gradient(#ff8a8a, #d32f2f); }
+.idg-warn { position: absolute; left: 0; right: 0; top: 38%; text-align: center; font-size: 28px; letter-spacing: 6px; color: #ff4d4d; background: repeating-linear-gradient(45deg, rgba(0,0,0,.7) 0 14px, rgba(80,0,0,.7) 14px 28px); padding: 6px 0; display: none; }
+.idg-warn.on { display: block; animation: idgBlink .2s steps(1) infinite; }
+@keyframes idgBlink { 50% { opacity: .4 } }
+.idg-bot { position: absolute; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); bottom: max(6px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 6px; }
+.idg-wallet { width: 64px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; font-size: 11px; }
+.idg-wallet b { font-size: 13px; } .idg-wallet.can { box-shadow: 0 0 10px #ff9a2e; animation: idgGlow 1s ease-in-out infinite alternate; }
+.idg-ico-furnace { width: 16px; height: 12px; background: linear-gradient(#ff9a2e, #c2410c); border-radius: 3px 3px 0 0; display: block; }
+@keyframes idgGlow { to { box-shadow: 0 0 2px #ff9a2e; } }
+.idg-deck { flex: 1; display: grid; grid-template-columns: repeat(5, minmax(44px, 56px)); justify-content: center; gap: 5px; }
+.idg-deck.two { grid-template-columns: repeat(5, minmax(44px, 50px)); }
+.idg-unit { position: relative; height: 52px; padding: 0; overflow: hidden; display: block; }
+.idg-unit img { width: 100%; height: 38px; object-fit: contain; image-rendering: pixelated; display: block; margin-top: 1px; }
+.idg-unit .cost { position: absolute; left: 0; right: 0; bottom: 0; font-size: 11px; color: #FFD27a; background: rgba(0,0,0,.55); }
+.idg-unit .key { position: absolute; right: 2px; top: 0; font-size: 9px; font-style: normal; color: #bba; }
+.idg-unit .cd { position: absolute; inset: 0; background: conic-gradient(rgba(0,0,0,.65) calc(var(--p, 0) * 360deg), transparent 0); }
+.idg-unit.poor img { filter: grayscale(1) brightness(.55); }
+.idg-unit.flash { animation: idgFlash .35s ease-out; }
+@keyframes idgFlash { from { box-shadow: 0 0 14px #fff, inset 0 0 12px #fff; } }
+.idg-right { display: flex; flex-direction: column; gap: 4px; }
+.idg-skill, .idg-rage { height: 30px; padding: 0 8px; font-size: 11px; }
+.idg-skill:disabled { opacity: .4; }
+.idg-skill::after { content: ' ' attr(data-left); color: #bba; }
+.idg-rage { display: none; } .idg-rage.on { display: block; background: #7a1a00; color: #ffe08a; animation: idgGlow .6s infinite alternate; }
+.idg-breath { position: relative; width: 74px; height: 52px; overflow: hidden; }
+.idg-breath .fill { position: absolute; left: 0; bottom: 0; width: 100%; height: calc(var(--p, 0) * 100%); background: linear-gradient(#ff9a2e, #c2410c); opacity: .7; }
+.idg-breath b { position: relative; }
+.idg-breath.can { border-color: #fff; box-shadow: 0 0 12px #ff7a1a; animation: idgGlow .8s infinite alternate; }
+.idg-hud.fever { box-shadow: inset 0 0 30px rgba(255, 90, 0, .55); }
+.idg-panel-over { position: absolute; inset: 0; display: none; place-items: center; background: rgba(5, 2, 12, .6); pointer-events: auto; }
+.idg-panel-over.on { display: grid; }
+.idg-card { min-width: 260px; padding: 16px 20px; border: 3px solid #FFC93C; border-radius: 14px; background: #1a1033; text-align: center; }
+.idg-card h2 { margin: 0 0 8px; color: #FFC93C; font-size: 22px; } .idg-card h2.lose { color: #9cf; }
+.idg-card p { margin: 4px 0; color: #e9dcc0; } .idg-card p.hint { color: #FFD27a; font-size: 12px; max-width: 320px; }
+.idg-stars { font-size: 34px; letter-spacing: 6px; color: #444; }
+.idg-stars span.on { color: #FFC93C; display: inline-block; animation: idgStar .4s backwards cubic-bezier(.3, 1.8, .5, 1); }
+@keyframes idgStar { from { transform: scale(2.4); opacity: 0; } }
+.idg-row { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.idg-row .idg-btn { min-height: 44px; padding: 0 14px; } .idg-row .idg-btn.main { background: #FFC93C; color: #1a1033; }

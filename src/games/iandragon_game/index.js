@@ -14,6 +14,8 @@ import { createApp } from './render/app.js';
 import { guardLandscape } from './render/orient.js';
 import { startDemo } from './render/demo.js';
 import { startPilot } from './render/pilot.js';
+import { startBattle } from './render/battle.js';
+import { LAST_STAGE } from './render/battleSetup.js';
 import * as Audio from './audio/index.js';
 
 export const ATLAS_URL = '/assets/iandragon_game/atlas.json';
@@ -41,7 +43,22 @@ export async function mount(host, opts) {
   Audio.init();
 
   /* 그림 공장 시험판(2026-11-11) — 옛 기준 장면은 주소에 ?idgDemo 를 붙이면 본다 */
-  me.scene = /idgDemo/.test(location.search) ? startDemo(ctx, T, has, w01.data.meta, common.data.meta) : await startPilot(ctx, T);
+  /* B2 (2026-11-11 야간) — 진짜 전투. 옛 장면 : ?idgDemo(기준 장면) · ?idgPilot(그림 공장 시험판) */
+  const q = location.search;
+  const begin = async (stageNo) => {
+    me.scene?.destroy();
+    me.scene = await startBattle({ ...ctx, host }, {
+      stageNo, save: opts.save, text: opts.text,
+      onSave: (part) => (opts.save = opts.onSave(part)),
+      onExit: () => opts.onExit(),
+      restart: (no) => { if (me.alive) begin(no); },
+    });
+  };
+  const stQ = Number((q.match(/[?&]idgStage=(\d+)/) || [])[1]);   // 점검용 : ?idgStage=12
+  if (/idgDemo/.test(q)) me.scene = startDemo(ctx, T, has, w01.data.meta, common.data.meta);
+  else if (/idgPilot/.test(q)) me.scene = await startPilot(ctx, T);
+  else await begin(stQ || opts.stageNo || Math.min(LAST_STAGE, (opts.save?.cleared || 0) + 1));
+  const battle = !/idgDemo|idgPilot/.test(q);
 
   /* 나가기 단추 (화면 위 DOM — 캔버스 글씨 금지 규칙) */
   const exit = document.createElement('button');
@@ -49,11 +66,10 @@ export async function mount(host, opts) {
   exit.className = 'idg-exit';
   exit.textContent = opts.text.exit;
   exit.addEventListener('click', () => opts.onExit());
-  host.appendChild(exit);
-  me.exitBtn = exit;
+  if (!battle) { host.appendChild(exit); me.exitBtn = exit; }   // 전투는 일시정지 판 안에 나가기가 있다
 
   me.guard = guardLandscape(host, opts.text, {
-    onPortrait: () => setPaused(me, true),
+    onPortrait: () => { me.scene?.pause?.(); setPaused(me, true); },
     onLandscape: () => setPaused(me, false),
     onExit: () => opts.onExit(),
   });
@@ -69,6 +85,7 @@ function setPaused(me, on) {
 export function requestPause() {
   if (!S || !S.ctx) return;
   if (S.guard?.portrait) return;    // 세로 안내 중에는 그대로
+  if (S.scene?.pause) { S.scene.pause(); return; }   // 전투 : 일시정지 판(계속 · 다시 · 나가기)
   setPaused(S, !S.paused);
 }
 
