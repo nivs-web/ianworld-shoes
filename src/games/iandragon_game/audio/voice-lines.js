@@ -60,6 +60,16 @@ export const VOICE_LINES = {
   'tut/6': [L('보스다! 튼튼한 용을 앞에 세워!', 'caster')],
   /* 타이틀 콜 (첫 화면 · 2026-11-10 대표님: 게임 이름 «좀비와 드래곤») */
   title: [L('좀비와아… 드래고오온!', 'caster', 'growl', 'start'), L('좀비와 드래곤! 지금 시작합니다!', 'caster', 'crowd'), L('크르르… 좀비와… 드래곤…', 'bossDeep', 'rumble', 'start')],
+  /* 전투 진행 · 부화장 (2026-11-11 야간 추가) */
+  start: [L('좀비들이 몰려온다! 준비해!', 'caster', 'alarm', 'start'), L('전투 시작! 둥지를 지켜라!', 'caster'), L('온다, 온다! 좀비 떼다!', 'caster', 'groan')],
+  'wave/big': [L('큰 무리가 온다! 버텨!', 'caster', 'alarm', 'start')],
+  'wave/last': [L('마지막 무리다! 조금만 더!', 'caster', 'heartbeat', 'start')],
+  brazier: [L('화로 강화! 불씨가 쑥쑥!', 'caster', 'fire_pop'), L('화르륵! 더 뜨거워졌다!', 'caster', 'fire_pop')],
+  breath: [L('드래곤 브레스! 다 태워라!', 'caster', 'whoosh', 'start'), L('불꽃 브레스 발사아!', 'caster', 'fire_pop', 'start')],
+  'hatch/shake': [L('오오? 알이 흔들린다!', 'caster'), L('곧 나온다… 두근두근!', 'caster', 'heartbeat')],
+  'hatch/rare': [L('짜잔! 새 친구다!', 'caster', 'sparkle')],
+  'hatch/super': [L('우와아! 영웅 드래곤이다!', 'caster', 'sparkle')],
+  'hatch/legend': [L('저, 저, 전설이다아아! 대박!', 'caster', 'crowd')],
 };
 
 /** 보이스 스튜디오 «목소리 설계» — 목소리마다 다르게 (반복 지루함 방지) */
