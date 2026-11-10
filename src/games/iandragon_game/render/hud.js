@@ -15,7 +15,7 @@ const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
-export function createHud(host, { stage, deck, skills, text, speedMax = 2 }, cb) {
+export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false }, cb) {
   const root = h('div', 'idg-hud'); host.appendChild(root);
   /* 위 */
   const top = h('div', 'idg-top'); root.appendChild(top);
@@ -26,6 +26,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2 }, cb)
   const money = h('div', 'idg-money'); const moneyN = h('span', 'n', '0'); money.append(h('i', 'idg-ico-ember'), moneyN);
   top.append(pauseB, title, time, speedB, money);
   if (speedMax < 2) speedB.style.visibility = 'hidden';
+  const autoB = h('button', 'idg-btn idg-speed idg-auto', '자동'); autoB.type = 'button'; autoB.onclick = () => cb.auto(); if (canAuto) speedB.after(autoB);
   const hp = h('div', 'idg-hp'); root.appendChild(hp);
   const myHp = h('div', 'idg-hp-me'), foeHp = h('div', 'idg-hp-foe');
   hp.append(myHp, foeHp);
@@ -67,7 +68,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2 }, cb)
     else {
       box.append(h('h2', kind === 'win' ? 'win' : 'lose', kind === 'win' ? '승리!' : '아쉬워요…'));
       if (kind === 'win') { const st = h('div', 'idg-stars'); for (let i = 0; i < 3; i++) { const s = h('span', i < info.stars ? 'on' : '', '★'); s.style.animationDelay = `${0.3 + i * 0.35}s`; st.appendChild(s); } box.appendChild(st); }
-      box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}${kind === 'win' && info.gems ? ` · 젬 +${info.gems}` : ''}`));
+      box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}${kind === 'win' && info.gems ? ` · 젬 +${info.gems}` : ''}${info.daily ? ' (오늘 첫 승리 +10)' : ''}`));
       if (kind === 'lose' && info.hint) box.append(h('p', 'hint', info.hint));
     }
     const row = h('div', 'idg-row');
@@ -121,7 +122,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2 }, cb)
       boss.classList.toggle('on', !!(bs && bs.alive));
       if (bs) bossFill.style.width = `${Math.max(0, bs.hp / bs.maxHp) * 100}%`;
       warn.classList.toggle('on', ui.warn > 0);
-      speedB.textContent = `×${ui.speed}`;
+      speedB.textContent = `×${ui.speed}`; autoB.classList.toggle('on', !!ui.auto);
       if (ui.mini) {
         const { a, b, cam, w, F } = ui.mini;
         miniMe.style.left = `${(a / F) * 100}%`; miniFoe.style.left = `${(b / F) * 100}%`;

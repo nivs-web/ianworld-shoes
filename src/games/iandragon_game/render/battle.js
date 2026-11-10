@@ -5,7 +5,7 @@
  * 명령(덱 · 화로 · 브레스 · 스킬 · 포효)은 모았다가 다음 걸음에 넣는다 — 코어가 정한 대로만 움직인다.
  * 판이 끝나면 별 · 코인을 저장(onSave)하고 결과 판을 띄운다.
  */
-import { TICK, createBattle, step } from '../core/index.js';
+import { TICK, createBattle, step, aiCommands } from '../core/index.js';
 import { D } from '../data/battleData.js';
 import { createBattleView, tagArt } from './battleView.js';
 import { createHud } from './hud.js';
@@ -24,13 +24,17 @@ export async function startBattle(ctx, opts) {
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: deck, enemies: enemyIds, leader: loads[0].leader });
 
   const sound = createBattleSound(stage);
-  const ui = { speed: 1, paused: false, warn: 0, done: false };
+  const ui = { speed: Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false };
+  /* 자동 전투 (B6) : 별을 1개 이상 딴 스테이지만 — 기준 AI(코어 aiCommands)가 대신 누른다 */
+  const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
+  const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
   const cmds = [];
   let acc = 0, bossSeen = false;
-  const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text, speedMax }, {
+  const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (!ui.paused && !S.over) cmds.push({ p: 0, ...c }); },
     pause() { if (ui.done) return; ui.paused = !ui.paused; if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
-    speed() { ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면
+    speed() { ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
+    auto() { if (canAuto) ui.auto = !ui.auto; },
     exit() { opts.onExit(); },
     retry() { opts.restart(stage.g); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
@@ -67,7 +71,10 @@ export async function startBattle(ctx, opts) {
       const base = ECON.coin(stage.g);
       info.coins = Math.round(base * (first ? 1 : ECON.replay) + base * ECON.starBonus * newStars);
       info.gems = newStars * ECON.gem.star + (first && stage.s === 5 ? ECON.gem.mid : 0) + (first && stage.s === 10 ? ECON.gem.boss : 0);
-      const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems };
+      /* 매일 첫 승리 : 젬 10 (한국 날짜) */
+      const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+      if (save.daily !== today) { info.gems += 10; info.daily = true; }
+      const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today };
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     } else info.hint = loseHint(S);
     setTimeout(() => { hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);
@@ -78,7 +85,7 @@ export async function startBattle(ctx, opts) {
     if (!ui.paused) {
       acc += dt * ui.speed;
       let n = 0;
-      while (acc >= TICK && n < 6 * ui.speed) { step(S, cmds.splice(0)); acc -= TICK; n++; }
+      while (acc >= TICK && n < 6 * ui.speed) { if (ui.auto && !S.over) cmds.push(...aiCommands(S, 0, autoPol, autoMem)); step(S, cmds.splice(0)); acc -= TICK; n++; }
       if (acc > TICK * 6) acc = 0;
       if (S.boss && !bossSeen) { bossSeen = true; ui.warn = 0.9; }
       ui.warn -= dt;
