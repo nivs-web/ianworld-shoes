@@ -58,7 +58,7 @@ export function createBattleSound(stage) {
       }
       if (S.over && !was.over) {
         was.over = true; Audio.stopBgm();
-        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) Audio.voice('bossdown'); later(() => { Audio.play('win_fanfare'); Audio.voice(stage.g === 100 ? 'ending' : 'win'); }, 900); }   // 10-10 = 엔딩 대사
+        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) Audio.voice('bossdown'); later(() => { Audio.play('win_fanfare'); Audio.voice(stage.g === 100 ? 'ending' : 'win'); if (stage.g === 100 && musicOn) later(() => Audio.bgm('ending'), 2800); }, 900); }   // 10-10 = 엔딩 대사
         else { Audio.play('lose_womp'); Audio.voice('lose'); }
       }
     },
