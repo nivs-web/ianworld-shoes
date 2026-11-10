@@ -110,3 +110,11 @@ html.idg-wide body { width: 100%; }
 .idg-stage-btn.boss { border-color: #ff6b6b; }
 .idg-stage-btn.locked { opacity: .45; }
 .idg-stage-stars { font-size: 11px; color: #FFC93C; letter-spacing: 1px; }
+
+/* HUD 아이콘 = 겜팀장 도트 (public/assets/iandragon_game/ui/hud_*.png · 2026-11-11) */
+.idg-ico-ember { width: 18px; height: 18px; background: url(/assets/iandragon_game/ui/hud_ember_s.png) center / contain no-repeat; image-rendering: pixelated; }
+.idg-ico-furnace { width: 26px; height: 22px; background: url(/assets/iandragon_game/ui/hud_brazier_s.png) center / contain no-repeat; image-rendering: pixelated; border-radius: 0; }
+.idg-pause { font-size: 0; background: rgba(20, 8, 42, .85) url(/assets/iandragon_game/ui/hud_pause.png) center / 22px no-repeat; image-rendering: pixelated; }
+.idg-breath b { font-size: 0; display: block; width: 40px; height: 34px; margin: 0 auto; background: url(/assets/iandragon_game/ui/hud_breath.png) center / contain no-repeat; image-rendering: pixelated; }
+.idg-breath.can b { background-image: url(/assets/iandragon_game/ui/hud_breath_ready.png); }
+.idg-hp-me::before, .idg-hp-foe::after { content: ''; display: inline-block; width: 14px; height: 14px; vertical-align: -2px; background: url(/assets/iandragon_game/ui/hud_base_hp_s.png) center / contain no-repeat; image-rendering: pixelated; }

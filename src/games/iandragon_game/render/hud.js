@@ -91,8 +91,8 @@ export function createHud(host, { stage, deck, skills, text }, cb) {
       const p = S.players[0], W = S.D.wallet;
       time.textContent = clock(S.t);
       moneyN.textContent = `${fmt(p.money)} / ${fmt(W[p.wl].max * p.B.walletMax)}`;
-      myHp.textContent = `♥ ${fmt(Math.max(0, S.base[0].hp))}`;
-      foeHp.textContent = `${fmt(Math.max(0, S.base[1].hp))} ♥`;
+      myHp.textContent = ` ${fmt(Math.max(0, S.base[0].hp))}`;
+      foeHp.textContent = `${fmt(Math.max(0, S.base[1].hp))} `;
       const top1 = p.wl >= W.length - 1;
       wLv.textContent = `Lv${p.wl + 1}`; wCost.textContent = top1 ? 'MAX' : fmt(W[p.wl].cost);
       wallet.classList.toggle('can', !top1 && p.money >= W[p.wl].cost && S.stage.walletLock == null);
