@@ -22,6 +22,7 @@ import { showHatch } from './idgHatch.js';
 import { showCodex } from './idgCodex.js';
 import { showLab } from './idgLab.js';
 import { showMulti } from './idgMulti.js';
+import { MUST, SONGS } from '../games/iandragon_game/data/musicCredits.js';
 import { showQuests } from './idgQuests.js';
 import { claimable } from '../services/iandragonQuests.js';
 import { OPEN_AT } from '../services/iandragonHatch.js';
@@ -34,6 +35,21 @@ function showHow() {
     el('div.idg-how-title', S.idgLobbyHow),
     el('p', S.idgLobbyHowText),
     button('알겠어요', () => close(), { primary: true }),
+    button('음악 출처', () => { close(); showCredits(); }),
+  ]);
+  const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
+  const close = presentOverlay(overlay);
+}
+
+/** 음악 출처 (겜팀장 녹음 · CC BY 3.0 곡은 게임 안 표기 필수) — «하는 법» 창 아래 단추 */
+function showCredits() {
+  Sfx.play('sfx_menu_select');
+  const box = el('div.dialog.idg-how.idg-credits', { onclick: (e) => e.stopPropagation() }, [
+    el('div.idg-how-title', '음악 출처'),
+    el('p.idg-credits-small', '배경음악은 저작권이 끝난 클래식 곡의 공개 녹음입니다.'),
+    ...MUST.map((t) => el('p.idg-credits-must', t)),
+    el('div.idg-credits-list', null, SONGS.map((x) => el('p', ))),
+    button('닫기', () => close(), { primary: true }),
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);

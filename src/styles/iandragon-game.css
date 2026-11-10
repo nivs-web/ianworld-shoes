@@ -302,3 +302,5 @@ html.idg-wide body { width: 100%; }
   border: 12px solid transparent; border-width: 12px 18px; border-image: url(/assets/iandragon_game/ai/lobby/btn_menu.webp) 58 80 fill / 12px 18px stretch; }
 .pbtn.idg-back::before { content: ''; display: inline-block; width: 26px; height: 26px; margin-right: 6px; vertical-align: middle; background: url(/assets/iandragon_game/ai/lobby/ico_arcade.png) center / contain no-repeat; image-rendering: pixelated; }
 .pbtn.idg-back:active { filter: brightness(.82); }
+.idg-credits { max-height: 80vh; overflow-y: auto; } .idg-credits p { font-size: 11px; line-height: 1.5; margin: 4px 0; text-align: left; word-break: break-all; }
+.idg-credits-must { color: #ffe9b0 !important; } .idg-credits-list { border-top: 1px solid #c9963a66; margin-top: 6px; padding-top: 4px; }
