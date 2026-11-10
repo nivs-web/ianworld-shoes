@@ -82,7 +82,8 @@
     "perf:boot": "node tools/_bootperf.mjs",
     "preview:wear": "node tools/_wear-preview.mjs",
     "qa:idg-play": "node tools/idg-play-qa.mjs 50 3",
-    "qa:idg-hatch": "node tools/idg-hatch-qa.mjs"
+    "qa:idg-hatch": "node tools/idg-hatch-qa.mjs",
+    "qa:idg-lockstep": "node tools/idg-lockstep-qa.mjs 20"
   },
   "dependencies": {
     "firebase": "^11.1.0",
