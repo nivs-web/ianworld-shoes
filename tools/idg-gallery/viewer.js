@@ -47,7 +47,25 @@ export async function createCharStage(host, W = 640, H = 380) {
     S.R = createRigged(S.data, S.scale, S.want);
     holder.addChild(S.R.root);
     S.R.set(S.base);
+    attachLook();
   };
+  /** 꾸미기 미리보기 : 모자 = 머리 부품 위 가운데(그림 아래 가운데가 붙는 점) · 목 장식 = 몸통 위 가운데(그림 위 가운데) — 부품의 자식이라 같이 움직인다 */
+  async function attachLook() {
+    const R = S.R, body = R?.root.children[0];
+    if (!body || !S.look) return;
+    const part = (n) => body.children[S.data.rig.parts.findIndex((p) => p.n === n)];
+    for (const [slot, partName, ay, k] of [['neck', 'torso', 0, 1.15], ['hat', 'head', 1, 0.95]]) {
+      const id = S.look[slot], host = part(partName);
+      if (!id || !host) continue;
+      const tex = await Assets.load(`/assets/iandragon_game/ai/meta/${id}.png`);
+      if (S.R !== R) return;
+      const s = new Sprite(tex), w = host.texture.width, h = host.texture.height, a = host.anchor;
+      s.anchor.set(0.5, ay);
+      s.scale.set((w * k) / 256);
+      s.position.set((0.5 - a.x) * w, -a.y * h + (slot === 'hat' ? h * 0.3 : h * 0.12));
+      host.addChild(s);
+    }
+  }
   app.ticker.add((tk) => {
     const dt = Math.min(0.05, tk.deltaMS / 1000);
     if (!S.R) return;
@@ -74,6 +92,7 @@ export async function createCharStage(host, W = 640, H = 380) {
     get want() { return S.want; },
     get rig() { return S.data?.rig; },
     setScale(v) { S.scale = v; build(); },
+    setLook(look) { S.look = look; build(); },
     setWant(v) { S.want = v; build(); },
     setMove(v) { S.move = v; S.x = W / 2; },
     base(b) { S.base = b; S.seq = null; S.R?.set(b); },

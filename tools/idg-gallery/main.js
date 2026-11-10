@@ -56,7 +56,7 @@ async function render() {
   state.funStage?.destroy(); state.funStage = null;
   const tab = TABS.find((t) => t.id === state.tab) || TABS[0];
   const main = $('#main'); main.replaceChildren(h('p', { class: 'hint' }, '불러오는 중…'));
-  const fn = { rig: renderRig, bg: renderBg, castle: renderCastle, fun: renderFun, egg: renderEgg, hud: renderHud, banner: renderBanner, lobby: renderLobby }[tab.kind];
+  const fn = { rig: renderRig, bg: renderBg, castle: renderCastle, fun: renderFun, egg: renderEgg, hud: renderHud, banner: renderBanner, lobby: renderLobby, meta: renderMeta }[tab.kind];
   const view = await fn(tab);
   main.replaceChildren(...[].concat(view));
   window.scrollTo(0, 0);
@@ -312,6 +312,45 @@ async function renderLobby() {
   return [h('div', { class: 'tabhead' }, h('b', {}, '로비 · 전투 UI'), h('span', { class: 'hint' }, '진짜 로비 화면(IanDragonGameLobby.js)에 새 그림을 입혀 본 것 — 게임 코드는 그대로, 미리보기에서만 CSS 를 덧씌움 (lobby-skin.css · battle-skin.css). «새 창» → 모험 시작 → 전투 HUD 도 새 옷')),
     phones, h('h3', { class: 'sec' }, '배경 (대표님이 하나 고르기)'), bgs, h('h3', { class: 'sec' }, '버튼 판 · 테두리'), parts, h('h3', { class: 'sec' }, '메뉴 아이콘'), icons,
     h('h3', { class: 'sec' }, '전투 HUD 판'), hud, h('h3', { class: 'sec' }, '창 · 스테이지 고르기'), dlg, h('h3', { class: 'sec' }, '작은 아이콘'), small, h('h3', { class: 'sec' }, '결과 그림'), result];
+}
+
+/* ───────── 꾸미기 · 상점 · 명예의 전당 (IAN_DRAGON_META.md §7) ───────── */
+const META = '/assets/iandragon_game/ai/meta/';
+const HATS = [['crown', '왕관'], ['pirate', '해적 모자'], ['wizard', '마법사 고깔'], ['pumpkin', '호박 모자'], ['helmet', '기사 헬멧'], ['ribbon', '리본'], ['party', '파티 고깔'], ['viking', '바이킹 투구'], ['tophat', '마술사 모자 (여분)']];
+const NECKS = [['cape', '망토'], ['scarf', '목도리'], ['medal', '메달'], ['skull', '해골 목걸이'], ['bow', '나비넥타이'], ['bell', '방울'], ['lei', '꽃목걸이 (여분)'], ['chain', '금목걸이 (여분)'], ['vine', '덩굴 목걸이 (여분)']];
+const FLAGS = [['dragon', '용'], ['flame', '불꽃'], ['moon', '달'], ['star', '별'], ['skull', '해골'], ['crown', '왕관'], ['heart', '하트'], ['rainbow', '무지개'], ['pumpkin', '호박 (여분)']];
+const BREATHS = [['default', '기본'], ['rainbow', '무지개'], ['ghost', '보라 유령불'], ['gold', '황금'], ['ice', '얼음 파랑']];
+const FRAMES = [['wood', '나무'], ['silver', '은'], ['gold', '금'], ['fire', '불꽃']];
+const BADGES = [['hunter', '좀비 사냥꾼'], ['hundred', '백 판의 용'], ['stars', '별 수집가'], ['weekhero', '이번 주 용사'], ['boss', '보스 사냥꾼'], ['buddies', '단짝 친구'], ['duel', '대결 왕'], ['hard', '어려움 정복'], ['egg', '알 박사'], ['breath', '브레스 달인'], ['nest', '둥지 지킴이'], ['explorer', '탐험가']];
+async function renderMeta() {
+  // 꾸미기 미리보기 : 진짜 rig 대장 용에 모자 · 목 장식을 붙여 움직인다
+  const host = h('div', { class: 'stage' });
+  const stage = await createCharStage(host, 520, 320);
+  const leaders = ['novart', 'aquantis', 'forestia', 'crimsonde', 'volttail', 'solaris', 'sandscale', 'shadowfen', 'frostwing', 'goldrex'];
+  const look = { hat: 'hat_crown', neck: 'neck_cape' };
+  let lead = 'novart';
+  const load = async () => { await stage.load(lead, 1); stage.setScale(2); stage.setLook(look); };
+  await load();
+  const sel = h('select', { class: 'sel', onchange: async (e) => { lead = e.target.value; await load(); } }, leaders.map((id) => h('option', { value: id }, id)));
+  const pick = (slot, list, prefix) => h('div', { class: 'lookrow' }, h('button', { class: 'btn', onclick: () => { look[slot] = null; stage.setLook(look); } }, '없음'),
+    list.map(([id, name]) => h('button', { class: 'lookbtn', title: name, onclick: () => { look[slot] = `${prefix}_${id}`; stage.setLook(look); } }, h('img', { src: `${META}${prefix}_${id}.png?v=${bust}` }))));
+  const tryOn = h('div', { class: 'charwin' }, h('div', { class: 'left' }, host, h('div', { class: 'btngroup' }, h('span', { class: 'lbl' }, '대장 용'), sel, h('button', { class: 'btn act', onclick: () => stage.attack() }, '⚔ 브레스 자세'), h('button', { class: 'btn', onclick: () => stage.base('walk') }, '걷기'), h('button', { class: 'btn', onclick: () => stage.base('idle') }, '쉬기'))),
+    h('div', { class: 'info' }, h('h4', {}, '모자 (눌러서 씌우기)'), pick('hat', HATS, 'hat'), h('h4', {}, '목 장식'), pick('neck', NECKS, 'neck'),
+      h('div', { class: 'hint' }, '붙는 자리는 미리보기용 어림값 — 실제 기준점 표(대장 용마다 머리 · 목 x, y, 각도)는 겜부장 코드')));
+  const grid = (list, prefix, cls, size) => h('div', { class: 'grid ' + cls }, list.map(([id, name]) => h('div', { class: 'card' }, h('div', { class: 'thumb meta' }, img(`${META}${prefix}_${id}.png`)), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, `ai/meta/${prefix}_${id}.png · ${size}`))));
+  const shop = h('div', { class: 'grid' },
+    h('div', { class: 'card' }, h('div', { class: 'thumb tall' }, img(`${META}shop_bg.webp`)), h('div', { class: 'name' }, '상점 배경'), h('div', { class: 'sub' }, 'ai/meta/shop_bg.webp · 720×1560')),
+    h('div', { class: 'card' }, h('div', { class: 'thumb tall' }, img(`${META}shopkeeper.png`)), h('div', { class: 'name' }, '상점 주인 (좀비 상인)'), h('div', { class: 'sub' }, 'ai/meta/shopkeeper.png · 512×512')),
+    ...[['icon_shop', '용 시장 타일'], ['icon_hall', '명예의 전당 타일'], ['icon_look', '꾸미기 타일']].map(([id, name]) => h('div', { class: 'card' }, h('div', { class: 'thumb' }, img(`/assets/iandragon_game/ui/lobby/${id}.png`)), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, `ui/lobby/${id}.png · 256×256`))),
+    ...[['shop_coins', '코인 더미 (여분)'], ['shop_gems', '젬 주머니 (여분)'], ['shop_basket', '장바구니 (여분)']].map(([id, name]) => h('div', { class: 'card' }, h('div', { class: 'thumb' }, img(`${META}${id}.png`)), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, `ai/meta/${id}.png · 96×96`))));
+  return [h('div', { class: 'tabhead' }, h('b', {}, '꾸미기 · 상점 · 명예의 전당'), h('span', { class: 'hint' }, '기획서 IAN_DRAGON_META.md §7 — 이름 · 크기는 겜부장 규격 (ai/meta/)')),
+    tryOn, h('h3', { class: 'sec' }, '모자 (256×256 · 아래 가운데 = 머리 위에 붙는 점)'), grid(HATS, 'hat', 'small', '256×256'),
+    h('h3', { class: 'sec' }, '목 장식 (256×256 · 위 가운데 = 목에 붙는 점)'), grid(NECKS, 'neck', 'small', '256×256'),
+    h('h3', { class: 'sec' }, '성 깃발 (128×192)'), grid(FLAGS, 'flag', 'small', '128×192'),
+    h('h3', { class: 'sec' }, '브레스 색 (128×128)'), grid(BREATHS, 'breath', 'small', '128×128'),
+    h('h3', { class: 'sec' }, '얼굴 테두리 (256×256 · 안쪽 투명)'), grid(FRAMES, 'frame', 'small', '256×256'),
+    h('h3', { class: 'sec' }, '칭호 배지 (96×96)'), grid(BADGES, 'badge', 'small', '96×96'),
+    h('h3', { class: 'sec' }, '상점 · 타일'), shop];
 }
 
 async function renderBanner(tab) {
