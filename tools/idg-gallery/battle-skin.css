@@ -1,0 +1,45 @@
+/*
+ * 전투 HUD «새 옷» 미리보기 (그림 담당 · 2026-11-11) — tools/idg-gallery/lobby.html?skin=a|b 로 들어간 전투에서만 쓴다.
+ * 게임 코드(src/styles/iandragon-game.css)는 그대로 — 겜부장이 옮길 본보기.
+ * 그림 : public/assets/iandragon_game/ai/hud/ (bar_top · bar_bottom · slot · slot_ready · btn_breath · bar_progress · frame_portrait)
+ *        public/assets/iandragon_game/ui/hud_btn_round · hud_btn_square (+pressed)
+ */
+body.idg-skin-battle .idg-top {
+  border: 10px solid transparent; border-width: 8px 14px 12px;
+  border-image: url(/assets/iandragon_game/ai/hud/bar_top.webp) 34 60 40 fill / 8px 14px 12px stretch;
+  margin: 0 -4px; padding: 0 6px;
+}
+body.idg-skin-battle .idg-bot {
+  border: 10px solid transparent; border-width: 12px 14px 8px;
+  border-image: url(/assets/iandragon_game/ai/hud/bar_bottom_clean.webp) 40 60 34 fill / 12px 14px 8px stretch;
+  padding: 2px 6px;
+}
+/* 버튼 공통 : 금테 선 대신 돌 판 */
+body.idg-skin-battle .idg-hud .idg-btn {
+  border: 8px solid transparent; border-radius: 0; background: none;
+  border-image: url(/assets/iandragon_game/ui/hud_btn_square.png) 24 fill / 8px stretch; image-rendering: pixelated;
+  color: #ffe9b0; text-shadow: 0 1px 0 #000;
+}
+body.idg-skin-battle .idg-hud .idg-btn:active { border-image-source: url(/assets/iandragon_game/ui/hud_btn_square_pressed.png); transform: none; }
+body.idg-skin-battle .idg-hud .idg-pause { background: url(/assets/iandragon_game/ui/hud_pause.png) center / 20px no-repeat; border-image-source: url(/assets/iandragon_game/ui/hud_btn_round.png); }
+/* 용 카드 칸 */
+body.idg-skin-battle .idg-hud .idg-unit {
+  border: 0; border-image: none; background: url(/assets/iandragon_game/ai/hud/slot.webp) center / 100% 100% no-repeat; overflow: visible;
+}
+body.idg-skin-battle .idg-hud .idg-unit img { width: 78%; margin: 4px auto 0; height: 34px; }
+body.idg-skin-battle .idg-hud .idg-unit:not(.poor) { background-image: url(/assets/iandragon_game/ai/hud/slot_ready.webp); }
+body.idg-skin-battle .idg-hud .idg-unit .cost { background: none; text-shadow: 0 1px 0 #000, 0 0 3px #000; bottom: 3px; }
+body.idg-skin-battle .idg-hud .idg-unit .cd { inset: 4px; border-radius: 4px; }
+/* 브레스 = 불꽃 둥근 판 */
+body.idg-skin-battle .idg-hud .idg-breath {
+  width: 64px; height: 64px; border: 0; border-image: none; overflow: hidden; border-radius: 50%;
+  background: url(/assets/iandragon_game/ai/hud/btn_breath.webp) center / 100% 100% no-repeat;
+}
+body.idg-skin-battle .idg-hud .idg-breath .fill { border-radius: 50%; inset: 8px; width: auto; height: auto; opacity: .45; clip-path: inset(calc((1 - var(--p, 0)) * 100%) 0 0 0); }
+body.idg-skin-battle .idg-hud .idg-breath b { width: 38px; height: 38px; margin-top: 2px; }
+body.idg-skin-battle .idg-hud .idg-wallet { border-image-source: url(/assets/iandragon_game/ui/hud_btn_square.png); }
+/* 결과 · 일시정지 창 = 박쥐 · 호박 창 테두리 */
+body.idg-skin-battle .idg-card {
+  border: 26px solid transparent; border-radius: 0; background: none;
+  border-image: url(/assets/iandragon_game/ai/lobby/dialog.webp) 64 64 fill / 26px stretch;
+}

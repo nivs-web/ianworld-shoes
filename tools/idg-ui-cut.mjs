@@ -24,6 +24,7 @@ const MAX = Number(opt('--max') || 512);
 /* 칸 : «3x3» (가로x세로) 또는 «1,1,3,1» (줄마다 개수 — 줄별로 크기가 다른 버튼 시트) */
 const ROWS = gridArg.includes(',') ? gridArg.split(',').map(Number) : Array(Number(gridArg.split('x')[1])).fill(Number(gridArg.split('x')[0]));
 const GY = ROWS.length;
+const YB = (opt('--ybreaks') || '').split(',').filter(Boolean).map(Number);   // 줄 경계 y (줄 높이가 고르지 않은 시트) — 예: 170,340,740
 const PIXEL = Number(opt('--pixel') || 0), PSCALE = Number(opt('--scale') || 3);
 const ERASE = (opt('--erase') || '').split(';').filter(Boolean).map((r) => r.split(',').map(Number));   // x,y,w,h;... 를 분홍으로 (글자 · 군더더기 지우기)
 const names = namesArg.split(',');
@@ -67,7 +68,7 @@ const cells = Array.from({ length: ROWS.reduce((a, b) => a + b, 0) }, () => ({ x
 for (const c of comps) {
   if (c.n < 40) continue;                                                    // 티끌
   const cx = c.sx / c.n, cy = c.sy / c.n;
-  const row = Math.min(GY - 1, (cy / (H / GY)) | 0), n = ROWS[row];
+  const row = YB.length ? YB.filter((y) => cy >= y).length : Math.min(GY - 1, (cy / (H / GY)) | 0), n = ROWS[row];
   const k = ROWS.slice(0, row).reduce((a, b) => a + b, 0) + Math.min(n - 1, (cx / (W / n)) | 0);
   const C = cells[k]; C.ids.add(c.id);
   C.x0 = Math.min(C.x0, c.x0); C.y0 = Math.min(C.y0, c.y0); C.x1 = Math.max(C.x1, c.x1); C.y1 = Math.max(C.y1, c.y1);

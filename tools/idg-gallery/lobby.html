@@ -22,6 +22,8 @@ const stack = [];
 const skin = new URLSearchParams(location.search).get('skin');
 if (skin) {
   document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/tools/idg-gallery/lobby-skin.css?v=' + Date.now() }));
+  document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/tools/idg-gallery/battle-skin.css?v=' + Date.now() }));
+  document.body.classList.add('idg-skin-battle');
   root.classList.add('idg-skin');
   root.style.setProperty('--skin-bg', `url(/assets/iandragon_game/ai/lobby/bg_${skin}.webp)`);
 }
