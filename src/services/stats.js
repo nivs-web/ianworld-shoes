@@ -198,7 +198,7 @@ export async function startActivity(fb) {
         nick: nickNow(), email: String(u?.email || '').slice(0, 100), name: String(u?.name || '').slice(0, 60), joined: cur?.joined || u?.created || Date.now(),
       }), undefined, '회원 기록');
       memberFor = fb.uid;
-    } catch { /* 규칙 게시 전 — 다음 접속에 다시 */ }
+    } catch (e) { console.warn('[stats] 회원 기록 실패', e?.message || e); /* 규칙 게시 전 — 다음 접속에 다시 */ }
   }
   try { await touchDay(fb); } catch { /* */ }
   clearInterval(beatTimer);
