@@ -17,6 +17,7 @@ import { startPilot } from './render/pilot.js';
 import { startBattle } from './render/battle.js';
 import { LAST_STAGE } from './render/battleSetup.js';
 import { createLocalTransport } from './net/localTransport.js';
+import { createRoomTransport } from './net/roomBridge.js';
 import * as Audio from './audio/index.js';
 
 export const ATLAS_URL = '/assets/iandragon_game/atlas.json';
@@ -56,7 +57,10 @@ export async function mount(host, opts) {
   const begin = async (stageNo) => {
     me.scene?.destroy(); me.scene = null;
     try {
-      const net = netQ ? { ...netQ, seed: 7000 + stageNo, transport: createLocalTransport(`s${stageNo}`, netQ.seat) } : undefined;
+      const rm = opts.room;   // 친구랑 같이 깨기 (서버 방)
+      const net = rm && rm.seat >= 0 ? { seat: rm.seat, seats: rm.uids.length, seed: rm.seed, loads: rm.loads, transport: createRoomTransport(rm.code, rm.uids, rm.seat) }
+        : netQ ? { ...netQ, seed: 7000 + stageNo, transport: createLocalTransport(`s${stageNo}`, netQ.seat) } : undefined;
+      if (rm) opts.room = null;   // 다시 하기 · 다음 판은 혼자
       me.scene = await startBattle({ ...ctx, host }, {
         net,
       stageNo, save: opts.save, text: opts.text,
@@ -72,7 +76,7 @@ export async function mount(host, opts) {
   const stQ = Number((q.match(/[?&]idgStage=(\d+)/) || [])[1]);   // 점검용 : ?idgStage=12
   if (/idgDemo/.test(q)) me.scene = startDemo(ctx, T, has, sheetMeta[0], sheetMeta[1]);
   else if (/idgPilot/.test(q)) me.scene = await startPilot(ctx, T);
-  else await begin(stQ || opts.stageNo || Math.min(LAST_STAGE, (opts.save?.cleared || 0) + 1));
+  else await begin(opts.room?.stageNo || stQ || opts.stageNo || Math.min(LAST_STAGE, (opts.save?.cleared || 0) + 1));
   const battle = !/idgDemo|idgPilot/.test(q);
 
   /* 나가기 단추 (화면 위 DOM — 캔버스 글씨 금지 규칙) */

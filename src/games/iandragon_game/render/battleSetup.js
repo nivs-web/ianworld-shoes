@@ -93,6 +93,23 @@ export function makeLoads(stage, save) {
   };
 }
 
+/** 멀티 편성 → 글자 (방 `players/$uid/ld` · 500자 이하) */
+export function loadToLd(load) {
+  const b = {}; for (const [k, v] of Object.entries(load.bonus || {})) b[k] = Math.round(v * 1000) / 1000;
+  return JSON.stringify({ d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b });
+}
+/** 글자 → 편성 (받은 값은 범위 안으로 자르고 확인 · 이상하면 null → 시작하지 않는다) */
+export function ldToLoad(str) {
+  let o; try { o = JSON.parse(str); } catch { return null; }
+  if (!o || !Array.isArray(o.d) || o.d.length < 1 || o.d.length > 10) return null;
+  const seen = new Set(), deck = [];
+  for (const [id, lv] of o.d) { if (!UNITS[id] || seen.has(id)) return null; seen.add(id); deck.push({ id, lv: Math.max(1, Math.min(30, Math.round(lv) || 1)) }); }
+  if (!LEADERS[o.l]) return null;
+  const skills = (Array.isArray(o.k) ? o.k : []).filter((id) => SKILLS[id]).slice(0, 2);
+  const bonus = {}; for (const [k, v] of Object.entries(o.b || {})) if (Number.isFinite(v)) bonus[k] = Math.max(0, Math.min(k === 'startMoney' ? 2000 : 5, v));
+  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus };
+}
+
 /** 별 : ★ 깨면 · ★★ star2 초 안 · ★★★ star3 초 안 (1배속 전투 시간) */
 export function starsFor(stage, t) {
   if (t <= stage.star3) return 3;

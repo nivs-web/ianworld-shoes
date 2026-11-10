@@ -21,6 +21,7 @@ import { showNest } from './idgNest.js';
 import { showHatch } from './idgHatch.js';
 import { showCodex } from './idgCodex.js';
 import { showLab } from './idgLab.js';
+import { showMulti } from './idgMulti.js';
 import { showQuests } from './idgQuests.js';
 import { claimable } from '../services/iandragonQuests.js';
 import { OPEN_AT } from '../services/iandragonHatch.js';
@@ -111,6 +112,7 @@ export default function IanDragonGameLobby(nav) {
           tile('lab', '연구소 · 리더', () => showLab(() => nav.refresh?.())),
           tile('quest', claimable(g) ? `도전 과제 (${claimable(g)})` : '도전 과제', () => showQuests(() => nav.refresh?.()), false, claimable(g) > 0),
           tile('codex', '도감', showCodex),
+          tile('coop', '친구랑 같이 깨기', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
           tile('how', S.idgLobbyHow, showHow),
         ]),
         el('div.spacer'),

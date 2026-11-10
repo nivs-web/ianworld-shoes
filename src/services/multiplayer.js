@@ -181,10 +181,16 @@ export const GAME_CATCH = 'catch';
  */
 export const GAME_JUMP = 'jump';
 /** 걸린 것이 없는 친선 게임 — 신발 규칙(순위 박기 · 정산)을 타지 않는다 */
-export const isFriendlyGame = (room) => gameOf(room) === GAME_CATCH || gameOf(room) === GAME_JUMP;
+/**
+ * ★ **좀비와 드래곤 (7번째 게임 · 3차 멀티, 2026-11-11).** 2인 «같이 깨기» · «용 대결». 명령 락스텝 — 버튼만 주고받는다
+ * (`players/$uid/lk` 0.2초마다 · `ld` 편성 1번). 판 정산은 게임 쪽(저장 idg)이 한다 — 신발 정산과 엮이지 않는다.
+ * ⏳ RTDB 규칙(game 'idragon' · idgStage · ld/lk)이 게시되기 전에는 방 만들기 쓰기가 거부된다.
+ */
+export const GAME_IDRAGON = 'idragon';
+export const isFriendlyGame = (room) => gameOf(room) === GAME_CATCH || gameOf(room) === GAME_JUMP || gameOf(room) === GAME_IDRAGON;
 export const gameOf = (room) => (room && room.game) || GAME_SHOES;
 
-export async function createRoom({ isPrivate = false, difficulty, game = GAME_SHOES, maxPlayers, ctrl } = {}) {
+export async function createRoom({ isPrivate = false, difficulty, game = GAME_SHOES, maxPlayers, ctrl, idgStage } = {}) {
   const fb = await rt();
   if (!fb) return null;
   const p = L.loadProfile();
@@ -205,6 +211,8 @@ export async function createRoom({ isPrivate = false, difficulty, game = GAME_SH
         difficulty: difficulty ?? p.difficulty ?? 'normal',
         /* 줄넘기 방만 — 방식: 'jump'(점프만) · 'both'(로프+점프). 난이도처럼 방장이 고른다 */
         ...(game === GAME_JUMP ? { ctrl: ctrl === 'both' ? 'both' : 'jump' } : {}),
+        /* 좀비와 드래곤 방만 — 같이 깰 스테이지 순번(1~200 · 0 = 용 대결) */
+        ...(game === GAME_IDRAGON ? { idgStage: Math.max(0, Math.min(200, Math.round(idgStage ?? 1))) } : {}),
         seed: Math.floor(Math.random() * 0x7fffffff),
         maxPlayers: maxPlayers ?? MULTI.maxPlayers,
         createdAt: nowOn(fb, offset),
@@ -1184,6 +1192,28 @@ export async function setRoomCtrl(code, ctrl) {
   const fb = await rt();
   if (!fb) return;
   await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { ctrl: ctrl === 'both' ? 'both' : 'jump' }), undefined, '방식').catch(() => {});
+}
+
+/** 좀비와 드래곤 — 같이 깰 스테이지(방장만 · 0 = 용 대결) */
+export async function setRoomIdgStage(code, n) {
+  const fb = await rt();
+  if (!fb) return;
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code)), { idgStage: Math.max(0, Math.min(200, Math.round(n) || 0)) }), undefined, '스테이지').catch(() => {});
+}
+
+/**
+ * 좀비와 드래곤 — 내 칸 쓰기 : `ld` 편성(대기실에서 1번 · 500자) · `lk` 락스텝 묶음(판 중 0.2초마다 · 400자).
+ * 필드 하나를 덮어쓰기만 해서 쌓이지 않는다(멀티 기획 3.4). 실패해도 다음 묶음이 최근 20개 명령을 다시 싣는다.
+ */
+export async function publishIdg(code, { ld, lk } = {}) {
+  const fb = await rt();
+  if (!fb) return false;
+  const out = {};
+  if (typeof ld === 'string') out.ld = ld.slice(0, 500);
+  if (typeof lk === 'string') out.lk = lk.slice(0, 400);
+  if (!Object.keys(out).length) return true;
+  try { await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(ROOMS, code, 'players', fb.uid)), out), undefined, '좀비와 드래곤'); return true; }
+  catch { return false; }
 }
 
 /** 난이도는 방장만 바꾼다 (기획서 §5-9 — 승자 기록이 이 난이도 랭킹으로 간다) */

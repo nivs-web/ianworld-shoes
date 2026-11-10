@@ -21,20 +21,22 @@ tagArt(D);
  *  net = { seat, seats, seed, transport } — 멀티(3차 · 같이 깨기). 두 기기가 같은 씨앗 · 같은 편성으로 만들고 명령만 주고받는다(net/lockstep.js). */
 export async function startBattle(ctx, opts) {
   /* 운영자 난이도 (50 = 그대로 · 높을수록 어렵게) — 코어는 그대로, 판에 넣는 숫자만 바꾼다 */
-  const tz = tunes('zd');
+  const tz = opts.net ? { hp: 1, atk: 1, ember: 1, base: 1 } : tunes('zd');   // 멀티는 두 기기 숫자가 같아야 해서 운영자 손잡이를 쓰지 않는다
   const base0 = stageByNo(opts.stageNo);
   const stage = { ...base0, mag: base0.mag * tz.hp, atkMag: (base0.atkMag || base0.mag) * tz.atk };
   const { deck, skills, loads, speedMax } = makeLoads(stage, opts.save);
   loads[0].bonus = { ...loads[0].bonus, income: loads[0].bonus.income / tz.ember, baseHp: loads[0].bonus.baseHp / tz.base };
   /* 멀티 : 자리마다 같은 편성을 하나씩 (같이 깨기 = 모두 side 0) */
   const net = opts.net || null, me = net ? net.seat : 0;
-  if (net) { const one = loads[0]; loads.length = 0; for (let i = 0; i < net.seats; i++) loads.push({ ...one, side: 0 }); }
+  if (net) { const one = loads[0]; loads.length = 0; for (let i = 0; i < net.seats; i++) loads.push({ ...(net.loads?.[i] || one), side: 0 }); }   // 서버 방 = 자리마다 받은 편성(ld) · 탭 시험 = 같은 편성
+  const myDeck = net?.loads?.[me]?.deck || deck;
+  const allDragons = net?.loads ? [...new Map(net.loads.flatMap((l) => l.deck).map((d) => [d.id, d])).values()] : deck;
   const S = createBattle(stage, loads, D, net ? net.seed : (Date.now() % 1e9) | 0);
   const ls = net ? createLockstep({ seat: me, seats: net.seats }) : null;
   if (net) net.transport.onMessage((from, str) => ls.receive(from, str));
   let tickN = 0, sendT = 0, nextHash = 150, waitT = 0;
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
-  const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: deck, enemies: enemyIds, leader: loads[0].leader });
+  const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: allDragons, enemies: enemyIds, leader: loads[0].leader });
 
   const sound = createBattleSound(stage, me);
   const ui = { me, net: !!net, speed: Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
@@ -43,7 +45,7 @@ export async function startBattle(ctx, opts) {
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
   const cmds = [];
   let acc = 0, bossSeen = false, gone = false;
-  const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text, speedMax, canAuto }, {
+  const hud = createHud(ctx.host || opts.hudHost, { stage, deck: myDeck, skills: net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (S.over) return; if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c }); },
     go() { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(); },
     pause() { if (ui.done || ui.intro || net) return; ui.paused = !ui.paused; sound.pause(ui.paused); if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },

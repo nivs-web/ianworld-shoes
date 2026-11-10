@@ -234,3 +234,10 @@ html.idg-wide body { width: 100%; }
 .idg-start { width: 100%; min-height: 64px; border: 0; border-radius: 16px; background: url(/assets/iandragon_game/ui/lobby/btn_start.png) center / 100% 100% no-repeat, linear-gradient(180deg, #ff7a1a, #c2410c); color: #fff;
   font: 900 22px 'Neo둥근모', monospace; letter-spacing: 2px; text-shadow: 0 3px 0 #5a1a00; box-shadow: 0 4px 0 #6a2200; margin-bottom: 8px; }
 .idg-start:active { transform: translateY(2px); box-shadow: 0 2px 0 #6a2200; }
+
+/* 친구랑 같이 깨기 (2026-11-11) */
+.idg-multi { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.idg-multi-msg { text-align: center; color: #5a3a1a; font: 13px 'Neo둥근모', monospace; }
+.idg-multi-join { display: flex; gap: 6px; } .idg-code { flex: 1; min-height: 44px; border-radius: 10px; border: 2px solid #7a5cff; padding: 0 10px; font: 700 18px 'Neo둥근모', monospace; text-align: center; }
+.idg-multi-code { text-align: center; color: #5a3a1a; } .idg-multi-code b { display: block; font: 900 34px 'Neo둥근모', monospace; letter-spacing: 6px; color: #1a1033; }
+.idg-multi-who { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 10px; background: #221548; color: #fff; font: 13px 'Neo둥근모', monospace; }

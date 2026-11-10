@@ -22,6 +22,9 @@
         "difficulty": {
           ".validate": "newData.val() == 'easy' || newData.val() == 'normal' || newData.val() == 'hard'"
         },
+        "idgStage": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200"
+        },
         "ctrl": {
           ".validate": "newData.val() == 'jump' || newData.val() == 'both'"
         },
@@ -111,6 +114,12 @@
             },
             "jl": {
               ".validate": "newData.isString() && newData.val().length <= 40 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "ld": {
+              ".validate": "newData.isString() && newData.val().length <= 500 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "lk": {
+              ".validate": "newData.isString() && newData.val().length <= 400 && ($uid == auth.uid || newData.val() == data.val())"
             },
             "lives": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20 && ($uid == auth.uid || newData.val() == data.val())"
@@ -226,7 +235,7 @@
           }
         },
         "game": {
-          ".validate": "(newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump') && (!data.exists() || newData.val() == data.val())"
+          ".validate": "(newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump' || newData.val() == 'idragon') && (!data.exists() || newData.val() == data.val())"
         },
         "$other": {
           ".validate": false
@@ -333,7 +342,7 @@
           },
           "tot": {
             "$game": {
-              ".validate": "$game.matches(/^(shoes|dragon|catch|catch3d|jump|piano)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000"
+              ".validate": "$game.matches(/^(shoes|dragon|catch|catch3d|jump|piano|idragon)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000"
             }
           },
           "$other": {
@@ -360,7 +369,7 @@
             },
             "g": {
               "$game": {
-                ".validate": "$game.matches(/^(shoes|dragon|catch|catch3d|jump|piano)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 5000"
+                ".validate": "$game.matches(/^(shoes|dragon|catch|catch3d|jump|piano|idragon)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 5000"
               }
             },
             "v": {
@@ -692,7 +701,7 @@
           ".validate": "newData.val() == now"
         },
         "game": {
-          ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump')"
+          ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump' || newData.val() == 'idragon')"
         },
         "coins": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
@@ -742,7 +751,7 @@
             ".validate": "newData.isBoolean()"
           },
           "game": {
-            ".validate": "newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch'"
+            ".validate": "newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'idragon'"
           },
           "$other": {
             ".validate": false

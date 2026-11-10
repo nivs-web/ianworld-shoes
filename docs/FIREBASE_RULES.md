@@ -440,6 +440,9 @@ service cloud.firestore {
         "difficulty": {
           ".validate": "newData.val() == 'easy' || newData.val() == 'normal' || newData.val() == 'hard'"
         },
+        "idgStage": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200"
+        },
         "ctrl": {
           ".validate": "newData.val() == 'jump' || newData.val() == 'both'"
         },
@@ -529,6 +532,12 @@ service cloud.firestore {
             },
             "jl": {
               ".validate": "newData.isString() && newData.val().length <= 40 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "ld": {
+              ".validate": "newData.isString() && newData.val().length <= 500 && ($uid == auth.uid || newData.val() == data.val())"
+            },
+            "lk": {
+              ".validate": "newData.isString() && newData.val().length <= 400 && ($uid == auth.uid || newData.val() == data.val())"
             },
             "lives": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20 && ($uid == auth.uid || newData.val() == data.val())"
@@ -644,7 +653,7 @@ service cloud.firestore {
           }
         },
         "game": {
-          ".validate": "(newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump') && (!data.exists() || newData.val() == data.val())"
+          ".validate": "(newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump' || newData.val() == 'idragon') && (!data.exists() || newData.val() == data.val())"
         },
         "$other": {
           ".validate": false
@@ -818,7 +827,7 @@ service cloud.firestore {
           ".validate": "newData.val() == now"
         },
         "game": {
-          ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump')"
+          ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'jump' || newData.val() == 'idragon')"
         },
         "coins": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
