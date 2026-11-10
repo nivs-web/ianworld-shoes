@@ -1,0 +1,30 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>좀비와 드래곤 · 로비 미리보기</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<!--
+  그림 담당 점검용 — 진짜 IanDragonGameLobby.js 를 로그인 없이 띄운다 (profile.js 만 대역 tools/_dragon-stub.js 로 바꿈).
+  «모험 시작»을 누르면 진짜 게임 화면(IanDragonGame.js)으로 넘어간다. 게임 코드는 고치지 않는다.
+-->
+<script type="importmap">
+{ "imports": { "/src/services/profile.js": "/tools/_dragon-stub.js" } }
+</script>
+</head>
+<body class="ui-mode">
+<div id="ui" class="active"></div>
+<script type="module">
+import Lobby from '/src/screens/IanDragonGameLobby.js';
+const root = document.getElementById('ui');
+const stack = [];
+const nav = {
+  refresh() { const top = stack[stack.length - 1]; if (!top) return; top.destroy?.(); root.replaceChildren(); const v = top.render(nav); if (v) root.append(v); top.mounted?.(root); },
+  push(f) { stack.push(f(nav)); root.classList.toggle('wide', stack.length > 1); nav.refresh(); },
+  back() { stack.pop()?.destroy?.(); root.classList.toggle('wide', stack.length > 1); nav.refresh(); },
+  reset(f) { stack.length = 0; nav.push(f); },
+};
+nav.push(Lobby);
+window.__nav = nav;
+</script>
+</body></html>
