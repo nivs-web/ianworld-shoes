@@ -80,7 +80,7 @@ function bike(E) {
 /** 2 도깨비불 한 바퀴 — 셋이 서로 쫓으며 돌고 «퐁» */
 function wisps(E) {
   const p = pick(E.S.wisps), c = new Container(); E.back.addChild(c);
-  const fx = bits(c), fl = [0, 1, 2].map(() => { const s = sp(E.tex.wisp1, p.x, p.y, 0.5, 0.7); s.blendMode = 'add'; c.addChild(s); return s; });
+  const fx = bits(c), fl = [0, 1, 2].map(() => { const s = sp(E.tex.wisp1, p.x, p.y, 0.5, 0.7); s.blendMode = 'add'; s.tint = E.S.wispTint ?? 0xffffff; c.addChild(s); return s; });   // 월드별 색 (화산 = 붉은 불)
   let trail = 0;
   return {
     update(t, dt) {

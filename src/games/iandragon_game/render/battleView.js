@@ -10,6 +10,7 @@ import { Assets, Container, Sprite, Graphics, ColorMatrixFilter } from 'pixi.js'
 import { loadRig, createRigged } from './rig.js';
 import { loadFun, createFun } from './fun.js';
 import { SPOTS } from './funSpots.js';
+import { createAmbient } from './ambient.js';
 
 const AI = '/assets/iandragon_game/ai/';
 export const GY = 440;
@@ -52,6 +53,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   spots.safe = [260, FIELD - 260];
   let camX = 0, viewW = view.w;
   const fun = createFun(funTex, { back: funBack, front: funFront, spots, getCam: () => camX, viewW: () => viewW });
+  const amb = createAmbient(funBack, world, () => camX, () => viewW);   // 월드 분위기 입자 (불티 · 눈 · 구름 · 불꽃)
 
   /* ── 리더 (내 기지 위) */
   const ldRig = rigs[leader] || null;
@@ -206,7 +208,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     update(S, dt) {
       lastS = S;
       syncUnits(S, dt); bases(S, dt); effects(S, dt); ending(S, dt); camera(S, dt);
-      fun.update(dt);
+      fun.update(dt); amb.update(dt);
       if (lead) lead.update(dt);
     },
     /** 미니맵 · 시작 위치 */

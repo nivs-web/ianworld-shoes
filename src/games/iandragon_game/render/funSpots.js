@@ -26,6 +26,7 @@ export const W1_SPOTS = {
 /** 월드 2 «화산» (제미나이 배경 bg_w02 · 1273×540) — 2026-11-11 야간에 잼 */
 export const W2_SPOTS = {
   safe: [260, 1000],
+  wispTint: 0xff9a5a,                            // 화산 도깨비불은 붉은 불
   moonFace: true,
   moon: { x: 734, y: 91, d: 88 },
   ground: 437,
