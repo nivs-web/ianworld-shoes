@@ -148,3 +148,25 @@ html.idg-wide body { width: 100%; }
 .idg-nest-name { flex: 1; display: flex; flex-direction: column; font: 13px 'Neo둥근모', monospace; } .idg-nest-name span { color: #FFC93C; font-size: 11px; }
 .idg-nest-up { min-width: 92px; min-height: 40px; border-radius: 10px; border: 2px solid #FFC93C; background: #FFC93C; color: #1a1033; font: 700 12px 'Neo둥근모', monospace; }
 .idg-nest-up:disabled { background: #3a2a5a; color: #998; border-color: #554; }
+.idg-nest-deck { text-align: center; color: #5a3a1a; font: 12px 'Neo둥근모', monospace; }
+.idg-nest-go { min-width: 52px; min-height: 40px; border-radius: 10px; border: 2px solid #7a5cff; background: #1a1033; color: #bba; font: 700 12px 'Neo둥근모', monospace; }
+.idg-nest-go.on { background: #7a5cff; color: #fff; }
+
+/* ── 알 부화장 (B6 · 2026-11-11) ── */
+.idg-hatch { max-width: 400px; }
+.idg-hatch-info { text-align: center; color: #5a3a1a; font: 700 14px 'Neo둥근모', monospace; } .idg-hatch-info .small { font-size: 11px; font-weight: 400; margin-top: 2px; }
+.idg-hatch-stage { min-height: 170px; display: grid; place-items: center; margin: 8px 0; }
+.idg-egg { width: 96px; height: 120px; border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%; background: radial-gradient(circle at 35% 30%, #fff 0 12%, #f3e6c8 13% 100%); display: grid; place-items: center; position: relative; }
+.idg-egg img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; position: absolute; inset: 0; }
+.idg-egg:has(img) { background: none; }
+.idg-egg.shake { animation: idgShake .18s ease-in-out infinite alternate; }
+@keyframes idgShake { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+.idg-egg.crack { animation: none; transform: scale(1.15); filter: drop-shadow(0 0 18px var(--glow, #9cf)); }
+.idg-egg.super { --glow: #c08bff; } .idg-egg.legend { --glow: #ffd84a; }
+.idg-hatch-grid { display: grid; grid-template-columns: repeat(1, 120px); gap: 6px; justify-content: center; }
+.idg-hatch-grid.ten { grid-template-columns: repeat(5, 1fr); }
+.idg-hatch-card { display: flex; flex-direction: column; align-items: center; padding: 4px; border-radius: 10px; border: 2px solid #6fb7ff; background: #1a1033; color: #fff; font: 11px 'Neo둥근모', monospace; animation: idgPop .35s backwards cubic-bezier(.3, 1.6, .5, 1); }
+.idg-hatch-card.super { border-color: #c08bff; } .idg-hatch-card.legend { border-color: #ffd84a; box-shadow: 0 0 12px #ffd84a; }
+.idg-hatch-card img { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
+.idg-hatch-card span { color: #FFC93C; font-size: 10px; }
+@keyframes idgPop { from { transform: scale(.2); opacity: 0; } }

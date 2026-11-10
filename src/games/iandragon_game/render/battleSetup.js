@@ -51,7 +51,11 @@ export function refBonus(w) {   // 연구소 = (월드−1) 레벨, 지난 월�
 export function makeLoads(stage, save) {
   const un = unlockedBefore(stage.g);
   const lvOf = (id) => Math.max(save?.units?.[id]?.[0] || 1, stage.expLevel || 1);
-  const deck = pickDeck(un.dragons, un.deckCap, stage.w, stage.costMax).map((id) => ({ id, lv: lvOf(id) }));
+  /* 내가 고른 덱(둥지에서 «출전») — 2마리 이상 골랐으면 그것, 아니면 기준 덱. 고른 덱도 칸 수 · 비용 제한을 따른다 */
+  const owned = (id) => un.dragons.includes(id) || (UNITS[id]?.rar !== 'story' && save?.units?.[id]);
+  const mine = (save?.deck || []).filter((id) => UNITS[id] && owned(id) && (!stage.costMax || UNITS[id].cost <= stage.costMax)).slice(0, un.deckCap);
+  const ids = mine.length >= 2 ? mine : pickDeck(un.dragons, un.deckCap, stage.w, stage.costMax);
+  const deck = ids.map((id) => ({ id, lv: lvOf(id) }));
   const leader = LEADER_AT[stage.w - 1] || 'novart';
   return {
     deck,
