@@ -43,6 +43,7 @@ const VC = {
   bossWitch:   { vx: 'A cackling swamp witch, high raspy voice', st: 'F4', fx: 'bossWitch', sp: 1.05 },
   bossCrystal: { vx: 'A cold crystal monster, clear echoing voice', st: 'M3', fx: 'bossCrystal', sp: 0.92 },
   bossLord:    { vx: 'A final boss dragon, the deepest grand voice', st: 'M4', fx: 'bossLord', sp: 0.88 },
+  trailer:     { vx: 'A deep epic movie trailer narrator, slow and dramatic', st: 'M5', fx: 'trailer', sp: 0.85 },
 };
 
 const rb = (p, t = 1, f = 'shifted') => `rubberband=pitch=${p}:tempo=${t}:formant=${f}:pitchq=quality`;
@@ -67,6 +68,7 @@ const FX = {
   bossRegal: `${rb(0.76, 0.96, 'preserved')},bass=g=5,aecho=0.8:0.8:120|240:0.35|0.2,acompressor=threshold=-16dB:ratio=4`,
   bossWitch: `${rb(1.22, 1.05)},aphaser=type=t:speed=1.2,acrusher=bits=12:mix=0.2,acompressor=threshold=-18dB:ratio=3`,
   bossCrystal: `${rb(0.9, 0.96, 'preserved')},chorus=0.6:0.9:40|60:0.4|0.3:0.3|0.5:2|3,aecho=0.8:0.7:90|180:0.35|0.2,highpass=f=120`,
+  trailer: `${rb(0.88, 0.97, 'preserved')},bass=g=5,acompressor=threshold=-18dB:ratio=4:makeup=2,aecho=0.8:0.75:140|280:0.35|0.22`,
   bossLord: `${rb(0.62, 0.93, 'preserved')},bass=g=9,aecho=0.8:0.85:110|230:0.4|0.28,acompressor=threshold=-15dB:ratio=5`,
 };
 const ff = (args) => execFileSync(FF, ['-y', '-loglevel', 'error', ...args]);
