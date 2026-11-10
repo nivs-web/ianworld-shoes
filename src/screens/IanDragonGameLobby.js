@@ -65,7 +65,7 @@ function showStages(onPick) {
 /* 로비 그림 (겜부장 보조가 제미나이로 만든다 · 파일이 없으면 그림만 숨기고 글자로) */
 const UI = '/assets/iandragon_game/ui/lobby/';
 const AL = '/assets/iandragon_game/ai/lobby/';   // 보조 제미나이 2차 (2026-11-11) — 메뉴 아이콘 · 판
-const ICO = { stage: 'ico_stages', nest: 'ico_nest', hatch: 'ico_hatch', lab: 'ico_lab', quest: 'ico_quests', codex: 'ico_codex', how: 'ico_how', coop: 'ico_start' };
+const ICO = { stage: 'ico_stages', nest: 'ico_nest', hatch: 'ico_hatch', lab: 'ico_lab', quest: 'ico_quests', codex: 'ico_codex', how: 'ico_how', coop: 'ico_coop' };
 const hideBad = (e) => { e.target.style.display = 'none'; };
 function tile(key, label, fn, locked = false, dot = false) {
   return el('button.idg-tile' + (locked ? '.locked' : '') + (dot ? '.dot' : ''), { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); fn(); } }, [
@@ -119,7 +119,7 @@ export default function IanDragonGameLobby(nav) {
         ]),
         el('div.spacer'),
         el('button.idg-start', { type: 'button', onclick: () => start() }, [el('span', S.idgLobbyStart)]),
-        backButton(S.backToPortal, () => nav.reset(Portal)),
+        (() => { const b = backButton(S.backToPortal, () => nav.reset(Portal)); b.classList.add('idg-back'); return b; })(),   // 돌 판 옷 (보조 의견)
       );
     },
   };
