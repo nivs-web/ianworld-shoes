@@ -90,7 +90,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     const add = (label, fn, cls = '') => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
     if (kind === 'pause') add('계속', () => cb.pause(), 'main');
     if (kind === 'intro') { add('출격!', () => cb.go(), 'main'); add(text.exit, () => cb.exit()); box.appendChild(row); panel.appendChild(box); panel.classList.add('on'); return; }
-    if (info.final) box.append(h('p', 'final', '1차 모험 끝! 다음 이야기는 곧! 🐉'));
+    if (info.final) box.append(h('p', 'final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요! 🐉'));
     if (kind === 'win' && info.hasNext) add('다음 스테이지', () => cb.next(), 'main');
     add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main' : '');
     add(text.exit, () => cb.exit());

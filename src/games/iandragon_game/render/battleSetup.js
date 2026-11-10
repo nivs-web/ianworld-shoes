@@ -12,7 +12,7 @@ import { STAGES } from '../data/stages/index.js';
 import { LEADERS } from '../data/leaders.js';
 
 /** 용이 열리는 차례 (기획서 9.5) */
-export const DRAGON_ORDER = ['kkomul', 'doldeung', 'bulttong', 'twetwe', 'ssaeng', 'bangul', 'dungsil', 'giljjuk', 'eoreum', 'jjirit'];
+export const DRAGON_ORDER = ['kkomul', 'doldeung', 'bulttong', 'twetwe', 'ssaeng', 'bangul', 'dungsil', 'giljjuk', 'eoreum', 'jjirit', 'banjjak', 'kungkwang'];
 const byName = (table, name) => Object.keys(table).find((k) => table[k].name === name);
 
 /** 순번 g 스테이지를 시작할 때 열려 있는 것 (그 앞 스테이지들을 깨서 얻은 것) */
@@ -32,9 +32,9 @@ export function unlockedBefore(g) {
   return { dragons: DRAGON_ORDER.filter((id) => dragons.has(id)), skills: skills.slice(-2), deckCap: Math.min(10, deckCap), speedMax };
 }
 
-/* 계산기 기준 출전 (docs/sim/stages.js) — 월드 1~5 */
-const MUST = [[], ['bangul'], ['dungsil'], ['bulttong', 'eoreum'], ['jjirit']];
-const LEADER_AT = ['novart', 'aquantis', 'forestia', 'crimsonde', 'volttail'];
+/* 계산기 기준 출전 (docs/sim/stages.js) — 월드 1~10 */
+const MUST = [[], ['bangul'], ['dungsil'], ['bulttong', 'eoreum'], ['jjirit'], ['banjjak'], ['giljjuk', 'kungkwang'], ['banjjak', 'eoreum'], ['jjirit', 'kungkwang'], []];
+const LEADER_AT = ['novart', 'aquantis', 'forestia', 'crimsonde', 'volttail', 'solaris', 'sandscale', 'shadowfen', 'volttail', 'aquantis'];
 const PRIORITY = ['kungkwang', 'giljjuk', 'dungsil', 'twetwe', 'banjjak', 'jjirit', 'eoreum', 'bangul', 'bulttong', 'ssaeng'];
 function pickDeck(dragons, cap, w, costMax) {
   const want = ['kkomul', 'doldeung', ...(MUST[w - 1] || []), ...PRIORITY].filter((id, i, a) => a.indexOf(id) === i && dragons.includes(id));
@@ -101,5 +101,5 @@ export function starsFor(stage, t) {
 }
 
 export const stageByNo = (g) => STAGES.find((s) => s.g === g) || STAGES[0];
-/** 1차 범위 = 월드 1~5 (50판) */
-export const LAST_STAGE = 50;
+/** 범위 = 월드 1~10 (100판 · 2차 2026-11-11 결정 D10) */
+export const LAST_STAGE = 100;

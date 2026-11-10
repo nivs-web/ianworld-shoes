@@ -101,7 +101,7 @@ html.idg-wide body { width: 100%; }
 
 /* ── 스테이지 고르기 (B4 최소판 · 2026-11-11) ── */
 .idg-stages { max-width: 380px; }
-.idg-world-tabs { display: flex; gap: 6px; justify-content: center; margin: 8px 0 4px; }
+.idg-world-tabs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 8px 0 4px; }
 .idg-world-tab { width: 44px; height: 40px; border-radius: 10px; border: 2px solid #FFC93C; background: #1a1033; color: #FFC93C; font: 700 16px 'Neo둥근모', monospace; }
 .idg-world-tab.on { background: #FFC93C; color: #1a1033; } .idg-world-tab:disabled { opacity: .35; }
 .idg-world-name { text-align: center; color: #5a3a1a; font: 13px 'Neo둥근모', monospace; margin-bottom: 8px; }

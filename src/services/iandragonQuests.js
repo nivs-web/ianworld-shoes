@@ -1,6 +1,6 @@
 /**
  * 좀비와 드래곤 — 도전 과제 (B6 · 2026-11-11 야간 · 기획서 10.7 «30개쯤 · 젬 10~50 · 가벼운 것만»)
- * 1차(월드 1~5)에 맞는 22개. 진행도는 저장의 stat(쌓인 기록) · 별 · 깬 판 · 용에서 계산하고,
+ * 월드 1~10 에 맞는 27개 (1차 22 + 2차 5). 진행도는 저장의 stat(쌓인 기록) · 별 · 깬 판 · 용에서 계산하고,
  * 받은 과제는 quests 비트 문자열(i 번째 = '1')로 기억한다. 순서를 바꾸면 비트가 어긋나니 뒤에만 붙인다.
  */
 import { UNITS } from '../games/iandragon_game/data/units.js';
@@ -25,7 +25,7 @@ export const QUESTS = [
   ['별 10개', starsOf, 10, 10],
   ['별 50개', starsOf, 50, 20],
   ['별 100개', starsOf, 100, 30],
-  ['별 150개 (전부!)', starsOf, 150, 50],
+  ['별 150개', starsOf, 150, 50],
   ['월드 1 깨기', (g) => g.cleared, 10, 20],
   ['월드 3 깨기', (g) => g.cleared, 30, 30],
   ['월드 5 깨기', (g) => g.cleared, 50, 50],
@@ -35,6 +35,12 @@ export const QUESTS = [
   ['처음으로 알 깨기', (g) => g.stat.hatch, 1, 10],
   ['전설 용 만나기', hasLegend, 1, 50],
   ['용 하나를 Lv10 (진화!)', maxLv, 10, 20],
+  /* 2차 (월드 6~10 · 2026-11-11) — 비트 순서 때문에 뒤에만 붙인다 */
+  ['월드 7 깨기', (g) => g.cleared, 70, 30],
+  ['월드 10 깨기 — 엔딩!', (g) => g.cleared, 100, 50],
+  ['보스 10마리 쓰러뜨리기', (g) => g.stat.boss, 10, 30],
+  ['별 300개 (전부!)', starsOf, 300, 50],
+  ['용 하나를 Lv20 (마지막 진화!)', maxLv, 20, 30],
 ].map(([name, prog, need, gems], i) => ({ i, name, prog, need, gems }));
 
 export const questState = (g, q) => ({ now: Math.min(q.need, q.prog(g) || 0), done: (q.prog(g) || 0) >= q.need, got: (g.quests || '')[q.i] === '1' });

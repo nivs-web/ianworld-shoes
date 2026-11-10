@@ -39,11 +39,11 @@ function showHow() {
 }
 
 /** 스테이지 고르기 (B4 최소판 · 2026-11-11 야간) — 월드 1~5 × 10판 · 별 · 잠금(깬 다음 판까지만 열림) */
-const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 고철 광산'];
+const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 고철 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤 성'];
 function showStages(onPick) {
   Sfx.play('sfx_menu_select');
-  const g = G.idg(), open = Math.min(50, g.cleared + 1);
-  let w = Math.min(5, Math.floor((open - 1) / 10) + 1);
+  const g = G.idg(), open = Math.min(100, g.cleared + 1);
+  let w = Math.min(10, Math.floor((open - 1) / 10) + 1);
   const grid = el('div.idg-stage-grid'), tabs = el('div.idg-world-tabs'), name = el('div.idg-world-name');
   function draw() {
     tabs.replaceChildren(...WORLD_NAMES.map((_, i) => el('button.idg-world-tab' + (i + 1 === w ? '.on' : ''), { type: 'button', disabled: i * 10 + 1 > open, onclick: () => { w = i + 1; draw(); } }, [String(i + 1)])));
@@ -88,7 +88,7 @@ export default function IanDragonGameLobby(nav) {
         el('div.panel.idg-panel', null, [
           el('div.idg-player', p.nickname || '???'),
           el('div.idg-stats', null, [
-            el('div', g.cleared >= 50 ? '1차 모험 끝! 다음 이야기는 곧!' : S.idgStatNext(G.stageLabel(G.nextStage(g)))),   // 코드 검토 7
+            el('div', g.cleared >= 100 ? '모든 모험 끝! 좀비 드래곤 로드를 물리쳤어요!' : S.idgStatNext(G.stageLabel(G.nextStage(g)))),   // 코드 검토 7
             el('div', S.idgStatStars(G.totalStars(g))),
             el('div', `${S.idgStatCoins(g.coins)} · ${S.idgStatGems(g.gems)}`),
           ]),

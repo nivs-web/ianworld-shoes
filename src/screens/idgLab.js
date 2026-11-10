@@ -48,7 +48,7 @@ export function showLab(onChange) {
     const pick = (id) => { G.saveIdg({ leader: id }); Sfx.play('sfx_menu_select'); draw(); onChange?.(); };
     row.appendChild(el('button.idg-leader' + (g.leader === 'auto' ? '.on' : ''), { type: 'button', onclick: () => pick('auto') }, [el('b', '자동'), el('span', '월드 추천')]));
     for (const [id, L] of Object.entries(LEADERS)) {
-      if (L.unlock > worlds || L.unlock > 5) continue;
+      if (L.unlock > worlds) continue;
       row.appendChild(el('button.idg-leader' + (g.leader === id ? '.on' : ''), { type: 'button', onclick: () => pick(id) }, [
         el('img', { src: `${AI}${id}/head.png`, alt: '' }), el('b', L.ko), el('span', L.line.slice(0, 14)),
       ]));

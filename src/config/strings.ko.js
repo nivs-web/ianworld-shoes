@@ -240,7 +240,7 @@ export const S = {
   idgLobbyStart: '모험 시작',
   idgLobbyHow: '하는 법',
   idgLobbyHowText: '아기 용을 내보내 좀비 탑을 무너뜨려요! ① 아래 용 버튼을 누르면 불씨를 내고 용이 나가요. ② 왼쪽 화로를 올리면 불씨가 더 빨리 모여요. ③ 오른쪽 브레스가 꽉 차면 눌러서 성 앞 좀비를 한꺼번에 태워요. ④ 빨리 깰수록 별을 더 받아요. 코인으로 «용 둥지»에서 용을 키우고, 젬으로 «알 부화장»에서 새 용을 깨워요. 휴대폰을 가로로 돌려서 해요.',
-  idgLobbyPreview: '제작 중 미리보기 · 월드 1~5',
+  idgLobbyPreview: '제작 중 미리보기 · 월드 1~10',
   idgStatNext: (label) => `다음 스테이지 ${label}`,
   idgStatStars: (n) => `모은 별 ${n}개`,
   idgStatCoins: (n) => `코인 ${n.toLocaleString('en-US')}`,
