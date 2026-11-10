@@ -3,7 +3,7 @@
  * 탭 → 카드 → 클릭하면 큰 창(캐릭터는 실제 rig.js 로 움직임 · 배경은 재미 요소 자리 확인).
  */
 import { TABS, FUN_INFO, A, RETOUCH } from './lists.js';
-import { makeThumb, getRig, createCharStage, createBgStage } from './viewer.js';
+import { makeThumb, getRig, createCharStage, createBgStage, createLineup } from './viewer.js';
 
 const GAME = '/assets/iandragon_game/';
 const $ = (s, r = document) => r.querySelector(s);
@@ -332,11 +332,20 @@ async function renderMeta() {
   const load = async () => { await stage.load(lead, 1); stage.setScale(2); stage.setLook(look); };
   await load();
   const sel = h('select', { class: 'sel', onchange: async (e) => { lead = e.target.value; await load(); } }, leaders.map((id) => h('option', { value: id }, id)));
-  const pick = (slot, list, prefix) => h('div', { class: 'lookrow' }, h('button', { class: 'btn', onclick: () => { look[slot] = null; stage.setLook(look); } }, '없음'),
-    list.map(([id, name]) => h('button', { class: 'lookbtn', title: name, onclick: () => { look[slot] = `${prefix}_${id}`; stage.setLook(look); } }, h('img', { src: `${META}${prefix}_${id}.png?v=${bust}` }))));
+  const lineHost = h('div', { class: 'stage' });
+  const lineup = await createLineup(lineHost, leaders);
+  state.funStage = { destroy() { stage.destroy(); lineup.destroy(); } };
+  const apply = () => { stage.setLook(look); lineup.setLook(look); };
+  apply();
+  const pick = (slot, list, prefix) => h('div', { class: 'lookrow' }, h('button', { class: 'btn', onclick: () => { look[slot] = null; apply(); } }, '없음'),
+    list.map(([id, name]) => h('button', { class: 'lookbtn', title: name, onclick: () => { look[slot] = `${prefix}_${id}`; apply(); } }, h('img', { src: `${META}${prefix}_${id}.png?v=${bust}` }))));
   const tryOn = h('div', { class: 'charwin' }, h('div', { class: 'left' }, host, h('div', { class: 'btngroup' }, h('span', { class: 'lbl' }, '대장 용'), sel, h('button', { class: 'btn act', onclick: () => stage.attack() }, '⚔ 브레스 자세'), h('button', { class: 'btn', onclick: () => stage.base('walk') }, '걷기'), h('button', { class: 'btn', onclick: () => stage.base('idle') }, '쉬기'))),
     h('div', { class: 'info' }, h('h4', {}, '모자 (눌러서 씌우기)'), pick('hat', HATS, 'hat'), h('h4', {}, '목 장식'), pick('neck', NECKS, 'neck'),
-      h('div', { class: 'hint' }, '붙는 자리는 미리보기용 어림값 — 실제 기준점 표(대장 용마다 머리 · 목 x, y, 각도)는 겜부장 코드')));
+      h('div', { class: 'hint' }, '단추 = 상점 아이콘(정면 상품 그림) · 용이 쓴 모습 = 착용 부품(옆모습 · 게임 칸 굵기). 붙는 자리는 tools/idg-wear-fit.mjs 가 대장 용마다 머리 · 목 픽셀을 재서 계산 → ai/meta/wear.json')));
+  const wearGrid = (list) => h('div', { class: 'grid small' }, list.map(([id, name]) => {
+    const f = /^neck_(?!cape)/.test(id) ? [`${id}_back`, `${id}_front`] : [id];
+    return h('div', { class: 'card' }, h('div', { class: 'thumb meta wear' }, f.map((x) => img(`${META}wear/${x}.png`, 'pix'))), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, f.map((x) => `wear/${x}.png`).join(' · ')));
+  }));
   const grid = (list, prefix, cls, size) => h('div', { class: 'grid ' + cls }, list.map(([id, name]) => h('div', { class: 'card' }, h('div', { class: 'thumb meta' }, img(`${META}${prefix}_${id}.png`)), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, `ai/meta/${prefix}_${id}.png · ${size}`))));
   const shop = h('div', { class: 'grid' },
     h('div', { class: 'card' }, h('div', { class: 'thumb tall' }, img(`${META}shop_bg.webp`)), h('div', { class: 'name' }, '상점 배경'), h('div', { class: 'sub' }, 'ai/meta/shop_bg.webp · 720×1560')),
@@ -344,8 +353,11 @@ async function renderMeta() {
     ...[['icon_shop', '용 시장 타일'], ['icon_hall', '명예의 전당 타일'], ['icon_look', '꾸미기 타일']].map(([id, name]) => h('div', { class: 'card' }, h('div', { class: 'thumb' }, img(`/assets/iandragon_game/ui/lobby/${id}.png`)), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, `ui/lobby/${id}.png · 256×256`))),
     ...[['shop_coins', '코인 더미 (여분)'], ['shop_gems', '젬 주머니 (여분)'], ['shop_basket', '장바구니 (여분)']].map(([id, name]) => h('div', { class: 'card' }, h('div', { class: 'thumb' }, img(`${META}${id}.png`)), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, `ai/meta/${id}.png · 96×96`))));
   return [h('div', { class: 'tabhead' }, h('b', {}, '꾸미기 · 상점 · 명예의 전당'), h('span', { class: 'hint' }, '기획서 IAN_DRAGON_META.md §7 — 이름 · 크기는 겜부장 규격 (ai/meta/)')),
-    tryOn, h('h3', { class: 'sec' }, '모자 (256×256 · 아래 가운데 = 머리 위에 붙는 점)'), grid(HATS, 'hat', 'small', '256×256'),
-    h('h3', { class: 'sec' }, '목 장식 (256×256 · 위 가운데 = 목에 붙는 점)'), grid(NECKS, 'neck', 'small', '256×256'),
+    tryOn, h('h3', { class: 'sec' }, '대장 용 10마리 착용 비교 (같은 꾸미기 · 쉬는 자세)'), lineHost,
+    h('h3', { class: 'sec' }, '착용 부품 — 모자 (옆모습 · 머리에 맞춘 크기 · ai/meta/wear/)'), wearGrid(HATS.map(([id, n]) => [`hat_${id}`, n])),
+    h('h3', { class: 'sec' }, '착용 부품 — 목 장식 (고리는 뒤 반쪽 = 몸통 뒤 · 앞 반쪽 = 몸통 앞 · 망토 = 몸통 뒤)'), wearGrid(NECKS.map(([id, n]) => [`neck_${id}`, n])),
+    h('h3', { class: 'sec' }, '상점 아이콘 — 모자 (정면 상품 그림 · 256×256)'), grid(HATS, 'hat', 'small', '256×256'),
+    h('h3', { class: 'sec' }, '상점 아이콘 — 목 장식 (정면 상품 그림 · 256×256)'), grid(NECKS, 'neck', 'small', '256×256'),
     h('h3', { class: 'sec' }, '성 깃발 (128×192)'), grid(FLAGS, 'flag', 'small', '128×192'),
     h('h3', { class: 'sec' }, '브레스 색 (128×128)'), grid(BREATHS, 'breath', 'small', '128×128'),
     h('h3', { class: 'sec' }, '얼굴 테두리 (256×256 · 안쪽 투명)'), grid(FRAMES, 'frame', 'small', '256×256'),

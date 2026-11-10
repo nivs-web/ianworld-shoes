@@ -30,6 +30,68 @@ export function makeThumb(art, want, scale = 3) {
   return job;
 }
 
+/* ───────── 꾸미기 착용 (ai/meta/wear.json — tools/idg-wear-fit.mjs 가 계산) ───────── */
+let wearP = null;
+export const getWear = () => (wearP ||= fetch('/assets/iandragon_game/ai/meta/wear.json?v=' + Date.now()).then((r) => r.json()));
+const wtex = async (file) => { const t = await Assets.load('/assets/iandragon_game/' + file); t.source.scaleMode = 'nearest'; return t; };
+/**
+ * 모자 = 머리 부품의 자식 (표의 x, y 에 그림 왼쪽 위) · 고리 = 뒤 반쪽은 몸통 뒤 층, 앞 반쪽은 몸통의 자식 · 망토 = 몸통 뒤 층.
+ * 몸통 뒤 층은 몸통을 따라 움직여야 하므로 [그릇, 몸통] 짝을 돌려준다 (매 프레임 위치 · 회전 복사).
+ */
+export async function attachWear(R, data, art, look) {
+  const follow = [];
+  const body = R?.root.children[0];
+  if (!body || !look) return follow;
+  const W = await getWear(), L = W.leaders[art];
+  if (!L) return follow;
+  const idx = (n) => data.rig.parts.findIndex((p) => p.n === n);
+  const torso = body.children[idx('torso')], head = body.children[idx('head')];
+  if (look.hat && W.items[look.hat] && L.hat[look.hat]) {
+    const s = new Sprite(await wtex(W.items[look.hat].file));
+    if (!head || head.destroyed) return follow;
+    s.position.set(L.hat[look.hat].x, L.hat[look.hat].y);
+    head.addChild(s);
+  }
+  const it = look.neck && W.items[look.neck];
+  if (it) {
+    const at = it.layer === 'behind' ? L.nape : L.neck;
+    const mk = async (file) => { const s = new Sprite(await wtex(file)); s.anchor.set(it.anchor[0], it.anchor[1]); s.position.set(at.x, at.y); return s; };
+    const behind = async (file) => { const sp = await mk(file); if (!torso || torso.destroyed || body.destroyed || torso.parent !== body) return; const box = new Container(); box.addChild(sp); body.addChildAt(box, body.getChildIndex(torso)); box.position.copyFrom(torso.position); follow.push([box, torso]); };
+    if (it.layer === 'split') { const f = await mk(it.files.front); if (!torso || torso.destroyed) return follow; torso.addChild(f); await behind(it.files.back); }
+    else await behind(it.file);
+  }
+  return follow;
+}
+
+/** 대장 용 여러 마리를 한 줄로 (같은 꾸미기) — 착용 확인용 */
+export async function createLineup(host, arts, W = 1100, H = 460, scale = 2, perRow = 5) {
+  const app = new Application();
+  await app.init({ width: W, height: H, backgroundAlpha: 0, antialias: false, resolution: Math.min(2, window.devicePixelRatio || 1), autoDensity: true });
+  host.appendChild(app.canvas);
+  app.canvas.style.cssText = 'width:100%;height:auto;display:block';
+  const rows = Math.ceil(arts.length / perRow), RH = H / rows, GY = (r) => RH * (r + 1) - 14;
+  for (let r = 0; r < rows; r++) app.stage.addChild(new Graphics().rect(0, GY(r), W, 4).fill({ color: 0x5b4a8a }));
+  let rigs = [], follow = [], token = 0;
+  app.ticker.add((tk) => { const dt = Math.min(0.05, tk.deltaMS / 1000); for (const R of rigs) R.update(dt); for (const [b, t] of follow) { if (b.destroyed || t.destroyed) continue; b.position.copyFrom(t.position); b.rotation = t.rotation; } });
+  return {
+    async setLook(look) {
+      const my = ++token;
+      const next = [], nf = [];
+      for (let i = 0; i < arts.length; i++) {
+        const data = await getRig(arts[i]);
+        const R = createRigged(data, scale, 1); R.set('idle');
+        R.root.position.set((W / perRow) * ((i % perRow) + 0.5), GY(Math.floor(i / perRow)));
+        nf.push(...await attachWear(R, data, arts[i], look));
+        next.push(R);
+      }
+      if (my !== token) { next.forEach((R) => R.root.destroy({ children: true })); return; }
+      rigs.forEach((R) => R.root.destroy({ children: true }));
+      rigs = next; follow = nf; rigs.forEach((R) => app.stage.addChild(R.root));
+    },
+    destroy() { app.destroy(true, { children: true }); },
+  };
+}
+
 /* ───────── 캐릭터 무대 ───────── */
 export async function createCharStage(host, W = 640, H = 380) {
   const app = new Application();
@@ -43,28 +105,17 @@ export async function createCharStage(host, W = 640, H = 380) {
   const S = { art: null, data: null, R: null, scale: 3, want: 1, base: 'walk', move: false, x: W / 2, seq: null, timing: { fore: 0.3, back: 0.6, kb: 0.45 } };
   const build = () => {
     if (!S.data) return;
+    S.follow = [];
     S.R?.root.destroy({ children: true });
     S.R = createRigged(S.data, S.scale, S.want);
     holder.addChild(S.R.root);
     S.R.set(S.base);
     attachLook();
   };
-  /** 꾸미기 미리보기 : 모자 = 머리 부품 위 가운데(그림 아래 가운데가 붙는 점) · 목 장식 = 몸통 위 가운데(그림 위 가운데) — 부품의 자식이라 같이 움직인다 */
   async function attachLook() {
-    const R = S.R, body = R?.root.children[0];
-    if (!body || !S.look) return;
-    const part = (n) => body.children[S.data.rig.parts.findIndex((p) => p.n === n)];
-    for (const [slot, partName, ay, k] of [['neck', 'torso', 0, 1.15], ['hat', 'head', 1, 0.95]]) {
-      const id = S.look[slot], host = part(partName);
-      if (!id || !host) continue;
-      const tex = await Assets.load(`/assets/iandragon_game/ai/meta/${id}.png`);
-      if (S.R !== R) return;
-      const s = new Sprite(tex), w = host.texture.width, h = host.texture.height, a = host.anchor;
-      s.anchor.set(0.5, ay);
-      s.scale.set((w * k) / 256);
-      s.position.set((0.5 - a.x) * w, -a.y * h + (slot === 'hat' ? h * 0.3 : h * 0.12));
-      host.addChild(s);
-    }
+    const R = S.R;
+    S.follow = await attachWear(R, S.data, S.art, S.look);
+    if (S.R !== R) S.follow = [];
   }
   app.ticker.add((tk) => {
     const dt = Math.min(0.05, tk.deltaMS / 1000);
@@ -79,6 +130,7 @@ export async function createCharStage(host, W = 640, H = 380) {
     }
     if (S.move && S.base === 'walk' && !S.seq) { S.x += S.want * 46 * dt; if (S.x > W - 50) S.x = 50; if (S.x < 50) S.x = W - 50; }
     S.R.update(dt);
+    for (const [box, t] of S.follow || []) { if (box.destroyed || t.destroyed) continue; box.position.copyFrom(t.position); box.rotation = t.rotation; }
     S.R.root.position.set(S.move ? S.x : W / 2, GY);
   });
   return {
