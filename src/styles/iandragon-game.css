@@ -206,3 +206,6 @@ html.idg-wide body { width: 100%; }
 @media (max-width: 899px) { .idg-mini { display: none; } }
 .idg-tip[data-at="skill"] { top: 120px; right: 12px; bottom: auto; }
 @media (max-width: 600px) { .idg-deck { gap: 2px; } .idg-wallet { width: 56px; } .idg-breath { width: 60px; } }
+/* 도전 과제 (2026-11-11) */
+.idg-q-bar { display: block; height: 5px; margin-top: 3px; border-radius: 3px; background: linear-gradient(90deg, #FFC93C calc(var(--p, 0) * 100%), #3a2a5a 0); }
+.idg-nest-row.got { opacity: .55; }

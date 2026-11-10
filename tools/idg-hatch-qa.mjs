@@ -1,13 +1,13 @@
 /**
  * 부화장 검사 (B6 합격 기준) — node tools/idg-hatch-qa.mjs
- * ① 1만 번 뽑아 희귀 70 · 슈퍼 25 · 전설 5% (±1%) ② 천장 : 어떤 운이어도 50번 안에 전설 ③ 젬 모자라면 못 깸 · 겹치면 + 1 (최대 10)
+ * ① 10만 번 뽑아(1만 번이면 ±1% 가 2σ 라 가끔 떨어진다) 희귀 70 · 슈퍼 25 · 전설 5% (±1%) ② 천장 : 어떤 운이어도 50번 안에 전설 ③ 젬 모자라면 못 깸 · 겹치면 + 1 (최대 10)
  */
 import { roll, hatch, RATES, PITY } from '../src/services/iandragonHatch.js';
 
 let bad = 0;
 const ok = (c, msg) => { console.log(`${c ? '✔' : '✘'} ${msg}`); if (!c) bad++; };
 /* ① 확률 (천장이 끼어들지 않게 매번 pity 0 에서) */
-const N = 10000, cnt = { rare: 0, super: 0, legend: 0 };
+const N = 100000, cnt = { rare: 0, super: 0, legend: 0 };
 for (let i = 0; i < N; i++) cnt[roll(0).rar]++;
 for (const r of Object.keys(RATES)) ok(Math.abs(cnt[r] / N - RATES[r]) <= 0.01, `${r} ${(cnt[r] / N * 100).toFixed(1)}% (기대 ${RATES[r] * 100}%)`);
 /* ② 천장 — 가장 나쁜 운(늘 희귀가 나오는 난수)으로도 50번째에 전설 */

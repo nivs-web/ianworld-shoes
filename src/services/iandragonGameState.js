@@ -37,6 +37,13 @@ function units(raw) {
   return out;
 }
 
+/** 쌓인 기록 : 쓰러뜨린 좀비 · 이긴 판 · 브레스 · 화로 최고 단계 · 보스 · 알 */
+const STAT_KEYS = ['kills', 'wins', 'breath', 'maxWl', 'boss', 'hatch'];
+function stats(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return Object.fromEntries(STAT_KEYS.map((k) => [k, n0(r[k], 1e9)]));
+}
+
 export function emptyIdg() { return normIdg(null); }
 
 /** 저장된 값이 어떤 모양이든 안전한 모양으로 */
@@ -61,6 +68,7 @@ export function normIdg(raw) {
     quests: bits(r.quests, 256),              // 도전 과제
     daily: str(r.daily, 10, ''),              // 마지막 첫 승리 날짜 (YYYY-MM-DD, KST)
     speed: [1, 2, 3].includes(r.speed) ? r.speed : 1,
+    stat: stats(r.stat),                      // 쌓인 기록 (도전 과제용 · 2026-11-11 야간)
   };
 }
 
@@ -103,5 +111,6 @@ export function mergeIdg(localRaw, remoteRaw) {
     quests: orBits(a.quests, b.quests),
     daily: a.daily > b.daily ? a.daily : b.daily,
     speed: remoteRaw.speed ? b.speed : a.speed,
+    stat: Object.fromEntries(STAT_KEYS.map((k) => [k, Math.max(a.stat[k], b.stat[k])])),
   };
 }

@@ -62,6 +62,11 @@ export async function startBattle(ctx, opts) {
     ui.done = true;
     const win = S.over.winner === 0;
     const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE };
+    /* 쌓인 기록 (도전 과제) — 이겨도 져도 */
+    const P0 = S.players[0], st0 = opts.save?.stat || {};
+    const stat = { ...st0, kills: (st0.kills || 0) + S.st.kills, breath: (st0.breath || 0) + P0.st.breath, maxWl: Math.max(st0.maxWl || 0, P0.wl + 1),
+      wins: (st0.wins || 0) + (win ? 1 : 0), boss: (st0.boss || 0) + (win && stage.s === 10 ? 1 : 0), hatch: st0.hatch || 0 };
+    if (!win) { try { opts.save = opts.onSave?.({ stat }) || opts.save; } catch { /* */ } }
     if (win) {
       info.stars = starsFor(stage, S.t);
       const save = opts.save || {};
@@ -75,7 +80,7 @@ export async function startBattle(ctx, opts) {
       /* 매일 첫 승리 : 젬 10 (한국 날짜) */
       const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
       if (save.daily !== today) { info.gems += 10; info.daily = true; }
-      const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today };
+      const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today, stat };
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     } else info.hint = loseHint(S);
     setTimeout(() => { if (gone) return; hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);

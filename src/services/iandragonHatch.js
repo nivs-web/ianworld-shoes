@@ -38,5 +38,5 @@ export function hatch(save, n, rnd = Math.random) {
     else units[r.id] = [ECON.joinLv[world - 1] || 1, 0];
     results.push(r);
   }
-  return { results, part: { gems: save.gems - cost, pity, units } };
+  return { results, part: { gems: save.gems - cost, pity, units, stat: { ...(save.stat || {}), hatch: (save.stat?.hatch || 0) + n } } };
 }
