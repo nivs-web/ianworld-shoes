@@ -118,3 +118,16 @@ html.idg-wide body { width: 100%; }
 .idg-breath b { font-size: 0; display: block; width: 40px; height: 34px; margin: 0 auto; background: url(/assets/iandragon_game/ui/hud_breath.png) center / contain no-repeat; image-rendering: pixelated; }
 .idg-breath.can b { background-image: url(/assets/iandragon_game/ui/hud_breath_ready.png); }
 .idg-hp-me::before, .idg-hp-foe::after { content: ''; display: inline-block; width: 14px; height: 14px; vertical-align: -2px; background: url(/assets/iandragon_game/ui/hud_base_hp_s.png) center / contain no-repeat; image-rendering: pixelated; }
+/* 미니맵 · 안내 (2026-11-11) */
+.idg-mini { position: absolute; left: 50%; top: max(8px, env(safe-area-inset-top)); transform: translateX(-50%); width: 150px; height: 14px; border: 2px solid rgba(255, 201, 60, .7); border-radius: 7px; background: rgba(20, 8, 42, .75); pointer-events: auto; overflow: hidden; display: none; }
+@media (min-width: 700px) { .idg-mini { display: block; } }
+.idg-mini .view { position: absolute; top: 0; bottom: 0; background: rgba(255, 255, 255, .18); }
+.idg-mini b { position: absolute; top: -2px; font-size: 10px; transform: translateX(-50%); }
+.idg-mini .me { color: #9cf; } .idg-mini .foe { color: #f88; }
+.idg-tip { position: absolute; padding: 8px 14px; border-radius: 12px; background: #FFC93C; color: #1a1033; font-size: 14px; display: none; box-shadow: 0 4px 0 #8a5a00; animation: idgBob .8s ease-in-out infinite alternate; }
+.idg-tip.on { display: block; }
+.idg-tip[data-at="deck"] { left: 50%; bottom: 74px; transform: translateX(-50%); }
+.idg-tip[data-at="breath"] { right: 12px; bottom: 74px; }
+.idg-tip[data-at="wallet"] { left: 12px; bottom: 74px; }
+.idg-tip[data-at="skill"] { right: 90px; bottom: 74px; }
+@keyframes idgBob { to { margin-bottom: 6px; } }

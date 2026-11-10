@@ -30,6 +30,11 @@ export function createHud(host, { stage, deck, skills, text }, cb) {
   hp.append(myHp, foeHp);
   const boss = h('div', 'idg-boss'); const bossFill = h('i'); boss.append(h('span', null, '보스'), h('b', null, '')); boss.lastChild.appendChild(bossFill); root.appendChild(boss);
   const warn = h('div', 'idg-warn', 'WARNING'); root.appendChild(warn);
+  /* 미니맵 (기획서 11.1) : ▲ 내 맨 앞 · ▼ 적 맨 앞 · 네모 = 지금 보는 곳. 누르면 그 자리로 */
+  const mini = h('div', 'idg-mini'), miniView = h('i', 'view'), miniMe = h('b', 'me', '▲'), miniFoe = h('b', 'foe', '▼');
+  mini.append(miniView, miniMe, miniFoe); root.appendChild(mini);
+  mini.onpointerdown = (e) => { const r = mini.getBoundingClientRect(); cb.look?.((e.clientX - r.left) / r.width); };
+  const tip = h('div', 'idg-tip'); root.appendChild(tip);
 
   /* 아래 */
   const bot = h('div', 'idg-bot'); root.appendChild(bot);
@@ -115,6 +120,12 @@ export function createHud(host, { stage, deck, skills, text }, cb) {
       if (bs) bossFill.style.width = `${Math.max(0, bs.hp / bs.maxHp) * 100}%`;
       warn.classList.toggle('on', ui.warn > 0);
       speedB.textContent = `×${ui.speed}`;
+      if (ui.mini) {
+        const { a, b, cam, w, F } = ui.mini;
+        miniMe.style.left = `${(a / F) * 100}%`; miniFoe.style.left = `${(b / F) * 100}%`;
+        miniView.style.left = `${(cam / F) * 100}%`; miniView.style.width = `${(w / F) * 100}%`;
+      }
+      tip.textContent = ui.tip || ''; tip.classList.toggle('on', !!ui.tip); tip.dataset.at = ui.tipAt || '';
       root.classList.toggle('fever', S.t >= S.feverAt);
     },
     showPanel,

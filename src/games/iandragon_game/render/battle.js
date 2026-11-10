@@ -33,7 +33,24 @@ export async function startBattle(ctx, opts) {
     exit() { opts.onExit(); },
     retry() { opts.restart(stage.g); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
+    look(f) { view.setCam(f * view.FIELD - ctx.view.w / 2); },
   });
+
+  /* 처음 하는 아이를 위한 한 줄 안내 (튜토리얼 최소판) — 해당 행동을 하면 사라진다 */
+  const TIPS = [
+    { g: 1, at: 'deck', text: '용 버튼을 눌러서 꼬물이를 내보내요!', done: () => S.players[0].st.spawned >= 2 },
+    { g: 1, at: 'breath', text: '브레스가 꽉 찼어요! 눌러서 좀비를 태워요!', when: () => S.players[0].breathT >= S.players[0].breathCharge, done: () => S.players[0].st.breath > 0 },
+    { g: 2, at: 'wallet', text: '화로를 올리면 불씨가 더 빨리 모여요!', when: () => S.players[0].money >= S.D.wallet[0].cost, done: () => S.players[0].wl > 0 },
+    { g: 7, at: 'skill', text: '새 스킬 «운석»! 좀비가 몰려오면 눌러요.', when: () => S.t > 8, done: () => S.players[0].st.skill > 0 },
+  ].filter((q) => q.g === stage.g && !(opts.save?.cleared >= stage.g));
+  let tipT = 0;
+  function tips(dt) {
+    const q = TIPS.find((x) => !x.gone && (!x.when || x.shown || x.when()));
+    if (!q) { ui.tip = ''; return; }
+    q.shown = true; tipT += dt;
+    if (q.done() || tipT > 12) { q.gone = true; tipT = 0; ui.tip = ''; return; }
+    ui.tip = q.text; ui.tipAt = q.at;
+  }
 
   function finish() {
     ui.done = true;
@@ -62,8 +79,12 @@ export async function startBattle(ctx, opts) {
       if (S.boss && !bossSeen) { bossSeen = true; ui.warn = 0.9; }
       ui.warn -= dt;
       if (S.over && !ui.done) finish();
+      tips(dt);
       view.update(S, dt);
       sound.update(S, view);
+      let a = 0, b = stage.length;
+      for (const u of S.units) { if (!u.alive) continue; if (u.side === 0) a = Math.max(a, u.x); else b = Math.min(b, u.x); }
+      ui.mini = { a: a + 170, b: b + 170, cam: view.cam, w: ctx.view.w, F: view.FIELD };
     }
     hud.update(S, ui);
   };
