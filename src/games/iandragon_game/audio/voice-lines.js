@@ -59,7 +59,9 @@ export const VOICE_LINES = {
   'tut/5': [L('좀비 탑을 무너뜨려라!', 'caster')],
   'tut/6': [L('보스다! 튼튼한 용을 앞에 세워!', 'caster')],
   /* 타이틀 콜 (첫 화면 · 2026-11-10 대표님: 게임 이름 «좀비와 드래곤») */
-  title: [L('좀비와아… 드래고오온!', 'caster', 'growl', 'start'), L('좀비와 드래곤! 지금 시작합니다!', 'caster', 'crowd'), L('크르르… 좀비와… 드래곤…', 'bossDeep', 'rumble', 'start')],
+  title: [L('좀비와아… 드래고오온!', 'caster', 'growl', 'start'), L('좀비와 드래곤! 지금 시작합니다!', 'caster', 'crowd'), L('크르르… 좀비와… 드래곤…', 'bossDeep', 'rumble', 'start'),
+    /* 2026-11-11 대표님: «더 긴장감 있고 웅장하게» — 영화 예고편 성우 · 마지막 보스 목소리 */
+    L('어둠이 깨어난다… 좀비와… 드래곤!', 'trailer', 'rumble', 'start'), L('불꽃이냐, 어둠이냐… 좀비와 드래곤!', 'trailer', 'organ', 'start'), L('마지막 전쟁이 시작된다… 좀비와 드래곤!', 'bossLord', 'lord_roar', 'start')],
   /* 전투 진행 · 부화장 (2026-11-11 야간 추가) */
   start: [L('좀비들이 몰려온다! 준비해!', 'caster', 'alarm', 'start'), L('전투 시작! 둥지를 지켜라!', 'caster'), L('온다, 온다! 좀비 떼다!', 'caster', 'groan')],
   'wave/big': [L('큰 무리가 온다! 버텨!', 'caster', 'alarm', 'start'), L('우와, 엄청 많이 몰려온다!', 'caster', 'alarm', 'start'), L('좀비 떼 등장! 정신 바짝!', 'caster', 'groan', 'start')],
@@ -118,4 +120,5 @@ export const VOICES = {
   bossWitch: '한국어, 늪의 마녀, 높고 갈라지는 웃음, 촐싹대는 코믹 악당',
   bossCrystal: '한국어, 수정 괴물, 차갑고 맑게 울리는 목소리, 유리 같은 메아리',
   bossLord: '한국어, 마지막 보스 좀비 드래곤, 가장 굵고 웅장한 목소리, 무섭다가 끝에 감동',
+  trailer: '한국어, 영화 예고편 성우, 낮고 웅장하게, 천천히 긴장감을 쌓다가 제목에서 터뜨리듯',
 };
