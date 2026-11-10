@@ -1,0 +1,7 @@
+{
+  "zombie_spawn": 7,
+  "zombie_idle": 7,
+  "zombie_die": 7,
+  "zombie_big": 4,
+  "zombie_ghost": 4
+}
