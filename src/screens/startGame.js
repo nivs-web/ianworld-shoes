@@ -26,6 +26,7 @@ let starting = false;
 
 export async function startGame(navigator, opt = {}) {
   if (starting) return false;
+  import('../services/stats.js').then((St) => St.countPlay('shoes')).catch(() => {});   // 관리자 «신규 회원 가입 현황» 판 수
   const p = getProfile();
 
   // 엘리베이터는 **누르는 즉시** 차감한다 (기획서 §5-8-1 "도중에 나가도 환불 없음")

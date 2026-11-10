@@ -266,9 +266,15 @@
         ".write": "auth != null && auth.uid == $uid",
         "$f": {
           ".validate": "newData.hasChildren(['n', 'at']) && $f != $uid",
-          "n": { ".validate": "newData.isString() && newData.val().length <= 16" },
-          "at": { ".validate": "newData.isNumber()" },
-          "$other": { ".validate": false }
+          "n": {
+            ".validate": "newData.isString() && newData.val().length <= 16"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },
@@ -304,7 +310,55 @@
             ".write": "auth != null",
             ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= newData.parent().parent().parent().child('live').val()"
           },
-          "$other": { ".validate": false }
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "members": {
+        "$uid": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.hasChildren(['nick', 'joined']) && (!data.exists() || newData.child('joined').val() == data.child('joined').val())",
+          "nick": {
+            ".validate": "newData.isString() && newData.val().length <= 24"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length <= 100"
+          },
+          "joined": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "act": {
+        "$day": {
+          ".validate": "$day.matches(/^[0-9]{8}$/)",
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+            "nick": {
+              ".validate": "newData.isString() && newData.val().length <= 24"
+            },
+            "sec": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 90000"
+            },
+            "first": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+            },
+            "last": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+            },
+            "g": {
+              "$game": {
+                ".validate": "$game.matches(/^(shoes|dragon|catch|catch3d|jump|piano)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 5000"
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         }
       }
     },
@@ -313,41 +367,83 @@
         ".read": "auth != null",
         ".write": "auth != null && root.child('admins').child(auth.uid).val() == true",
         "catch": {
-          "throw": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "catch": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "$other": { ".validate": false }
+          "throw": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "catch": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "speed": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "dragon": {
-          "enemy": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "hp": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "spawn": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "$other": { ".validate": false }
+          "enemy": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "hp": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "spawn": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "jump": {
-          "timing": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "density": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "damage": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "timing": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "density": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "speed": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "damage": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
           "scroll": {
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
           },
-          "$other": { ".validate": false }
+          "$other": {
+            ".validate": false
+          }
         },
         "piano": {
-          "timing": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "density": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "damage": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "scroll": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "$other": { ".validate": false }
+          "timing": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "density": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "speed": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "damage": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "scroll": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
-        "$other": { ".validate": false }
+        "$other": {
+          ".validate": false
+        }
       }
     },
     "presence": {
       ".read": "auth != null",
-      ".indexOn": ["lastActive"],
+      ".indexOn": [
+        "lastActive"
+      ],
       "$uid": {
         ".write": "auth != null && auth.uid == $uid",
         ".validate": "!newData.exists() || newData.hasChildren(['nickname', 'state', 'at'])",

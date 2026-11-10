@@ -15,6 +15,7 @@ import { lazyScreen } from './lazyScreen.js';
 
 /** 운영자 난이도 설정 (2026-11-07, 권반장 지시) — 이 화면이 운영자에게만 보이므로 여기서만 들어간다 */
 const AdminTuning = lazyScreen(() => import('./AdminTuning.js'), S.adminTuningTitle);
+const AdminMembers = lazyScreen(() => import('./AdminMembers.js'), '신규 회원 가입 현황');   // 2026-11-10
 
 /** 'YYYYMMDD' → 'M/D' */
 const md = (k) => `${Number(k.slice(4, 6))}/${Number(k.slice(6, 8))}`;
@@ -29,7 +30,7 @@ export default function AdminStats(nav) {
     Stats.readStats(7).then((d) => { if (!live) return; data = d; nav.refresh(); });
   }
   load();
-  const tuningBtn = () => button(S.adminTuningTitle, () => nav.push(AdminTuning), { primary: true });
+  const tuningBtn = () => [button('신규 회원 가입 현황', () => nav.push(AdminMembers), { primary: true }), button(S.adminTuningTitle, () => nav.push(AdminTuning), { primary: true })];
 
   return {
     onLeave() { live = false; },

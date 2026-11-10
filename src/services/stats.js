@@ -30,6 +30,7 @@
 
 import { getRtdb, configured, withTimeout } from './firebase.js';
 import { currentUser } from './auth.js';
+import { loadProfile } from './storageLocal.js';
 
 const STATS = 'stats';
 const ADMINS = 'admins';
@@ -159,5 +160,85 @@ export async function readStats(days = 7) {
       }),
     ]);
     return { live: Math.max(0, live | 0), today: keys[0], days: rows };
+  } catch { return null; }
+}
+
+/* ───────────────────────── 회원 · 접속 시간 · 게임 판 수 (2026-11-10 대표님 «신규 회원 가입 현황») ─────────────────────────
+ *
+ *   stats/members/{uid}          { nick, email, joined }   joined = 구글 계정으로 처음 가입한 시각(Firebase 로그인 기록)
+ *   stats/act/{YYYYMMDD}/{uid}   { nick, sec, first, last, g: { shoes, dragon, catch, catch3d, jump, piano } }
+ *
+ * sec = 그날 사이트를 켜 둔 시간(화면을 보고 있을 때만, 30초마다 +30). first · last = 그날 처음 · 마지막 신호 시각.
+ * 쓰기는 본인 칸만, 읽기는 운영자만(규칙 `stats/.read`). 실패해도 게임에는 아무 영향이 없다.
+ */
+export const GAME_NAMES = { shoes: '신발을 찾아서', dragon: '드래곤 스트라이커', catch: '캐치볼', catch3d: '3D캐치볼', jump: '줄넘기 챔피언', piano: '점프 피아노' };
+const BEAT_SEC = 30;
+let beatTimer = 0, actDay = '', memberFor = '';
+const nickNow = () => String(loadProfile()?.nickname || currentUser()?.nickname || '').slice(0, 24);
+const actPath = (fb, day) => path(STATS, 'act', day, fb.uid);
+
+async function touchDay(fb) {
+  const day = dayKey();
+  if (actDay === day) return day;
+  const first = await readVal(fb, path(actPath(fb, day), 'first')).catch(() => null);
+  if (!first) await withTimeout(fb.dbMod.set(fb.dbMod.ref(fb.rtdb, path(actPath(fb, day), 'first')), Date.now()), undefined, '첫 접속');
+  actDay = day;
+  return day;
+}
+
+/** 붙을 때마다 부른다(presence) — 회원 칸을 적고, 30초 신호를 건다 */
+export async function startActivity(fb) {
+  fb = fb ?? await rt();
+  if (!fb) return;
+  const u = currentUser();
+  if (memberFor !== fb.uid) {
+    try {
+      const cur = await readVal(fb, path(STATS, 'members', fb.uid)).catch(() => null);
+      await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, path(STATS, 'members', fb.uid)), {
+        nick: nickNow(), email: String(u?.email || '').slice(0, 100), joined: cur?.joined || u?.created || Date.now(),
+      }), undefined, '회원 기록');
+      memberFor = fb.uid;
+    } catch { /* 규칙 게시 전 — 다음 접속에 다시 */ }
+  }
+  try { await touchDay(fb); } catch { /* */ }
+  clearInterval(beatTimer);
+  beatTimer = setInterval(() => { if (!document.hidden) beatOnce().catch(() => {}); }, BEAT_SEC * 1000);
+}
+async function beatOnce() {
+  const fb = await rt();
+  if (!fb) return;
+  const day = await touchDay(fb);
+  await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, actPath(fb, day)), {
+    sec: fb.dbMod.increment(BEAT_SEC), last: Date.now(), nick: nickNow(),
+  }), undefined, '접속 시간');
+}
+
+/** 게임 한 판 시작 — 그날 내 칸의 판 수 +1 */
+export function countPlay(game) {
+  if (!GAME_NAMES[game]) return;
+  (async () => {
+    const fb = await rt();
+    if (!fb) return;
+    const day = await touchDay(fb);
+    await withTimeout(fb.dbMod.update(fb.dbMod.ref(fb.rtdb, actPath(fb, day)), {
+      [`g/${game}`]: fb.dbMod.increment(1), last: Date.now(), nick: nickNow(),
+    }), undefined, '게임 판 수');
+  })().catch(() => {});
+}
+
+/**
+ * 운영자 «신규 회원 가입 현황» 읽기 — 회원 전체 + 최근 `days` 일 활동.
+ * @returns {Promise<{members:Object, days:Array<{day:string, users:Object}>}|null>}
+ */
+export async function readMembers(days = 14) {
+  const fb = await rt();
+  if (!fb) return null;
+  try {
+    const keys = Array.from({ length: days }, (_, i) => dayKey(Date.now() - i * 86400000));
+    const [members, ...acts] = await Promise.all([
+      readVal(fb, path(STATS, 'members')),
+      ...keys.map((day) => readVal(fb, path(STATS, 'act', day))),
+    ]);
+    return { members: members || {}, days: keys.map((day, i) => ({ day, users: acts[i] || {} })) };
   } catch { return null; }
 }

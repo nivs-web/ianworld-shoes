@@ -186,6 +186,7 @@ export default function DragonGame(nav, opt = {}) {
         Presence.setState('playing', 'dragon');
         /* ESC · 안드로이드 뒤로가기를 게임이 먼저 받는다 — 곧바로 나가지 않고 일시정지 */
         setGameGuard(() => m.requestPause());
+        import('../services/stats.js').then((St) => St.countPlay('dragon')).catch(() => {});   // 관리자 «신규 회원 가입 현황» 판 수
         m.mount(host, {
           mode,
           difficulty: p.dragonDifficulty || 'normal',

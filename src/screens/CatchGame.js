@@ -122,6 +122,7 @@ export default function CatchGame(nav, opt = {}) {
 
     Room.msUntilStart(startAt).catch(() => 3000).then((ms) => {
       if (!live) return;
+      import('../services/stats.js').then((St) => St.countPlay('catch')).catch(() => {});   // 관리자 «신규 회원 가입 현황» 판 수
       m.mount(host, {
         mode: 'duel',
         ...(world ? { world3d: world.createWorld3D } : null),
@@ -195,6 +196,7 @@ export default function CatchGame(nav, opt = {}) {
         }
 
         const p = getProfile();
+        import('../services/stats.js').then((St) => St.countPlay('catch')).catch(() => {});   // 관리자 «신규 회원 가입 현황» 판 수
         m.mount(host, {
           mode: 'solo',
           ...lookOpts(p),

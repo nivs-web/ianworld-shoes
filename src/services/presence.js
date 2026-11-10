@@ -220,7 +220,7 @@ export async function start() {
         await writeCard(fb, ref);
       } catch { /* 규칙이 아직 없으면 조용히 넘어간다 — 게임은 그대로 돈다 */ }
       /* 운영자 통계 (오늘 접속자 · 동시접속) — 붙을 때마다. 실패해도 게임과 무관하다 */
-      import('./stats.js').then((St) => St.onConnected(fb)).catch(() => {});
+      import('./stats.js').then((St) => { St.onConnected(fb); St.startActivity(fb); }).catch(() => {});   // + 회원 · 접속 시간 기록(11/10)
     });
     beat = setInterval(() => heartbeat().catch(() => {}), HEARTBEAT_MS);
     bindLifecycle();

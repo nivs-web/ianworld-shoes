@@ -67,6 +67,7 @@ export default function Catch3DGame(nav) {
         setGameGuard(() => game.requestPause());
 
         const p = getProfile();
+        import('../services/stats.js').then((St) => St.countPlay('catch3d')).catch(() => {});   // 관리자 «신규 회원 가입 현황» 판 수
         game.mount(host, {
           mode: 'solo',
           world3d: world.createWorld3D,

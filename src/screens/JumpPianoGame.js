@@ -46,6 +46,7 @@ export default function JumpPianoGame(nav, params = {}) {
         setGameGuard(() => m.requestPause());
         const j = J.jp();
         const stageNo = Math.max(1, Math.min(J.CHAMP_STAGES, params.stageNo | 0 || 1));
+        import('../services/stats.js').then((St) => St.countPlay('piano')).catch(() => {});   // 관리자 «신규 회원 가입 현황» 판 수
         m.mount(host, {
           mode,
           stageNo,

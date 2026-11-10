@@ -2668,3 +2668,12 @@
 .tune-row.harder .tune-val { color: #ff8a5c; }
 .tune-row.easier .tune-val { color: #8fd3ff; }
 .pbtn.tune-reset { font-size: 15px; padding: 8px 12px; }
+
+/* 운영자 «신규 회원 가입 현황» (2026-11-10) */
+.am-box { background: #120c06; border: 2px solid #5a4108; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.am-h { color: #FFC93C; font-size: 16px; }
+.am-row { border-top: 1px solid #3a2a08; padding-top: 7px; }
+.am-name { color: #fff; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+.am-new { background: #ff4f8b; color: #fff; font-size: 11px; padding: 1px 5px; }
+.am-sub { color: #c9bfa8; font-size: 13px; margin-top: 2px; word-break: break-all; }
+.am-games { color: #9be36f; font-size: 13px; margin-top: 2px; }

@@ -77,6 +77,7 @@ export default function JumpRopeGame(nav, params = {}) {
         const stageNo = Math.max(1, Math.min(J.CHAMP_STAGES, params.stageNo | 0 || 1));
         if (mode === 'survival') {
           const room = params.room || {};
+          import('../services/stats.js').then((St) => St.countPlay('jump')).catch(() => {});   // 관리자 «신규 회원 가입 현황» 판 수
           m.mount(host, {
             mode, diff: room.difficulty || 'normal', seed: room.seed | 0, room, comboRec: j.comboRec | 0, tune: tunes('jump'),
             myUid: currentUser()?.uid,
@@ -99,6 +100,7 @@ export default function JumpRopeGame(nav, params = {}) {
           beat = setInterval(() => Room.heartbeat(code).catch(() => {}), MULTI.heartbeatMs);
           return;
         }
+        import('../services/stats.js').then((St) => St.countPlay('jump')).catch(() => {});   // 관리자 «신규 회원 가입 현황» 판 수
         m.mount(host, {
           mode,
           stageNo,
