@@ -13,6 +13,7 @@ import { Assets } from 'pixi.js';
 import { createApp } from './render/app.js';
 import { guardLandscape } from './render/orient.js';
 import { startDemo } from './render/demo.js';
+import { startPilot } from './render/pilot.js';
 import * as Audio from './audio/index.js';
 
 export const ATLAS_URL = '/assets/iandragon_game/atlas.json';
@@ -39,7 +40,8 @@ export async function mount(host, opts) {
   const T = (name) => { for (const s of sheets) if (s.textures[name]) return s.textures[name]; return sheet.textures['icon/star'] ?? Object.values(sheet.textures)[0]; };
   Audio.init();
 
-  me.scene = startDemo(ctx, T, has, w01.data.meta, common.data.meta);
+  /* 그림 공장 시험판(2026-11-11) — 옛 기준 장면은 주소에 ?idgDemo 를 붙이면 본다 */
+  me.scene = /idgDemo/.test(location.search) ? startDemo(ctx, T, has, w01.data.meta, common.data.meta) : await startPilot(ctx, T);
 
   /* 나가기 단추 (화면 위 DOM — 캔버스 글씨 금지 규칙) */
   const exit = document.createElement('button');

@@ -1,0 +1,74 @@
+/**
+ * 부품 애니메이션 (그림 공장 · 2026-11-11 대표님 결정 «움직임은 부품 방식»)
+ *
+ * 그림 AI 가 캐릭터를 부품(머리 · 깜빡 머리 · 몸통 · 팔 · 다리 · 날개 · 꼬리 · 턱)으로 그려 주면,
+ * rig.json(부품마다 붙는 자리 · 회전 축)을 따라 조립하고 코드가 움직인다 — 그림을 프레임마다 다시 그리지 않으니
+ * 화풍이 흔들리지 않고 API 비용도 캐릭터당 부품 시트 1장이면 된다.
+ *
+ * 움직임 (움직임 규칙서 v2) : 숨쉬기 · 깜빡임 · 걷기(다리 교차 · 팔 엇박자 · 몸 통통) · 날개 퍼덕 · 꼬리 흔들 ·
+ * 좀비 고개 까딱 · 턱 덜렁 · 공격(젖혔다 휘두르기) · 맞음(뒤로 젖힘). 캐릭터마다 위상이 달라 엇박자.
+ */
+import { Assets, Container, Sprite } from 'pixi.js';
+
+const BASE = '/assets/iandragon_game/ai/';
+
+/** 캐릭터 하나의 부품 텍스처 + rig 를 받는다 */
+export async function loadRig(id) {
+  const rig = await (await fetch(`${BASE}${id}/rig.json`)).json();
+  const names = new Set(rig.parts.flatMap((p) => [p.n, p.blink].filter(Boolean)));
+  const tex = {};
+  await Promise.all([...names].map(async (n) => { tex[n] = await Assets.load(`${BASE}${id}/${n}.png`); tex[n].source.scaleMode = 'nearest'; }));
+  return { rig, tex };
+}
+
+export function createRigged({ rig, tex }, scale = 1) {
+  const root = new Container();
+  const body = new Container(); root.addChild(body);
+  const parts = rig.parts.map((d) => {
+    const s = new Sprite(tex[d.n]);
+    s.anchor.set(d.a[0], d.a[1]);
+    s.position.set(d.p[0], d.p[1]);
+    if (d.flip) s.scale.x = -1;
+    body.addChild(s);
+    return { d, s, x: d.p[0], y: d.p[1] };
+  });
+  root.scale.set(scale);
+  const R = {
+    root, state: 'walk', t: Math.random() * 10, st: 0,
+    blinkAt: 1 + Math.random() * 3, blinkT: 0, speed: 1,
+    set(st) { if (st !== R.state) { R.state = st; R.st = 0; } },
+    update(dt) {
+      R.t += dt; R.st += dt;
+      const z = rig.kind === 'zombie', t = R.t;
+      const walking = R.state === 'walk', ph = t * (z ? 5.5 : 8) * R.speed;
+      const step = walking ? Math.sin(ph) : 0;
+      const bob = walking ? Math.abs(Math.sin(ph)) * (z ? 1.5 : 2.5) : Math.sin(t * 2.4) * 0.8;   // 걷기 통통 · 쉬기 숨쉬기
+      const atk = R.state === 'fore' ? Math.min(1, R.st / 0.3) : R.state === 'hit' ? -1 : R.state === 'back' ? Math.max(0, 1 - R.st / 0.4) * -0.6 : 0;
+      const kb = R.state === 'kb' ? 1 : 0;
+      body.rotation = atk * -0.12 * rig.face + kb * -0.25 * rig.face + (z && walking ? Math.sin(ph * 0.5) * 0.04 : 0);
+      body.x = (atk < 0 ? -atk * 5 : -atk * 2) * rig.face;
+      if (R.blinkT > 0) R.blinkT -= dt;
+      else if ((R.blinkAt -= dt) <= 0) { R.blinkT = 0.13; R.blinkAt = 2 + Math.random() * 3; }
+      for (const P of parts) {
+        const { d, s } = P;
+        let rot = 0, dy = 0, dx = 0;
+        switch (d.move) {
+          case 'body': dy = -bob; break;
+          case 'head': dy = -bob * 1.15 - (walking ? 0 : Math.sin(t * 2.4 - 0.6) * 0.5); rot = z ? (walking ? Math.sin(ph * 0.5 + 1) * 0.14 + (Math.sin(t * 7.3) > 0.97 ? 0.2 : 0) : Math.sin(t * 1.3) * 0.08) : Math.sin(t * 2.4) * 0.04; rot += atk * 0.15 * rig.face - kb * 0.3 * rig.face; break;
+          case 'jaw': dy = -bob * 1.15 + (walking ? Math.max(0, Math.sin(ph * 0.5)) * 2 : 0) + (atk < 0 ? 3 : 0); rot = (walking ? Math.sin(ph) * 0.1 : 0) - (atk < 0 ? 0.4 : 0) * rig.face; break;
+          case 'hair': dy = -bob * 1.2; rot = Math.sin(t * 6) * 0.15; break;
+          case 'legF': rot = step * 0.45; dy = 0; break;
+          case 'legB': rot = -step * 0.45; break;
+          case 'armF': dy = -bob; rot = z ? Math.sin(ph * 0.9) * 0.18 * rig.face - (atk < 0 ? 0.6 : atk * -0.4) * rig.face : -step * 0.5 + atk * 0.9 - (atk < 0 ? 0.9 : 0); break;
+          case 'armB': dy = -bob; rot = z ? Math.sin(ph * 0.9 + 1.7) * 0.18 * rig.face : step * 0.5; break;
+          case 'wing': dy = -bob; rot = Math.sin(t * (walking ? 14 : 4)) * (walking ? 0.35 : 0.12) - 0.1; break;
+          case 'tail': dy = -bob * 0.5; rot = Math.sin(t * 3 + 1) * 0.18 - step * 0.1; break;
+        }
+        s.position.set(P.x + dx, P.y + dy);
+        s.rotation = rot;
+        if (d.blink) s.texture = R.blinkT > 0 || kb ? tex[d.blink] : tex[d.n];
+      }
+    },
+  };
+  return R;
+}
