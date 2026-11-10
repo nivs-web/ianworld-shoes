@@ -26,23 +26,28 @@ import { get as getProfile } from '../services/profile.js';
 import { currentUser } from '../services/auth.js';
 import { stageLabel } from '../services/iandragonGame.js';
 import { idgDoc, fetchIdgBoard, syncIdgPlayer, PVP_RATE_MIN } from '../services/idgRank.js';
+import { weekKey } from '../games/iandragon_game/render/battleSetup.js';
+import { titleOf } from '../games/iandragon_game/data/looks.js';
+const WK = weekKey();
 
 const TABS = [
   { value: 'conquer', label: '정복왕' },
   { value: 'hard', label: '어려움' },
   { value: 'coop', label: '같이 깨기' },
   { value: 'pvp', label: '용 대결' },
+  { value: 'raid', label: '주간 습격' },
 ];
 const NOTE = {
   conquer: '정복왕 — 깬 스테이지가 많은 순서 (같으면 별이 많은 쪽)',
   hard: '어려움 — 붉은 별을 많이 모은 순서',
   coop: '같이 깨기 — 친구와 함께 이긴 판이 많은 순서',
   pvp: `용 대결 — 이긴 판이 많은 순서 (${PVP_RATE_MIN}판부터 승률이 보여요)`,
+  raid: `주간 좀비 습격 ${WK.key} — 이번 주 버틴 웨이브 순서 (모두 같은 조건 · 월요일에 새로 시작)`,
 };
 
 /** 칭호 id → 한글 이름. 칭호 표가 생기면 여기에 채운다 (표에 없는 id 는 한글일 때만 그대로 보인다) */
 export const TITLE_KO = {};
-const titleText = (id) => TITLE_KO[id] || (/[가-힣]/.test(id || '') ? id : '');
+const titleText = (id) => TITLE_KO[id] || titleOf(id)?.name || (/[가-힣]/.test(id || '') ? id : '');
 const fmt = (n) => Number(n || 0).toLocaleString('en-US');
 
 /** 순위표 한 줄의 기록 칸 — [큰 글씨, 작은 글씨] */
@@ -51,6 +56,7 @@ function valueOf(kind, r) {
     case 'conquer': return [r.cleared ? `${stageLabel(r.cleared)} 클리어` : '-', `별 ${fmt(r.stars)}`];
     case 'hard': return [`붉은 별 ${fmt(r.hard)}`, `${r.cleared ? stageLabel(r.cleared) : '-'} 까지`];
     case 'coop': return [`${fmt(r.coop)}승`, ''];
+    case 'raid': return Math.floor((r.raid || 0) / 100) === WK.idx ? [`${(r.raid || 0) % 100} 웨이브`, ''] : ['-', '이번 주 기록 없음'];
     default: return [`${fmt(r.pvpW)}승 ${fmt(r.pvpL)}패`, r.rate == null ? '' : `승률 ${r.rate}%`];
   }
 }
@@ -116,6 +122,7 @@ export function showHall() {
     const ready = synced ? Promise.resolve() : syncIdgPlayer().catch(() => false).then(() => { synced = true; });
     ready.then(() => fetchIdgBoard(kind, 50)).then((r) => {
       if (!live || my !== reqId) return;
+      if (r.ok && kind === 'raid') r.rows = r.rows.filter((x) => Math.floor((x.raid || 0) / 100) === WK.idx);   // 이번 주만
       state = r.ok ? { loading: false, rows: r.rows, err: null } : { loading: false, rows: [], err: r.reason || 'error' };
       draw();
     }).catch(() => {

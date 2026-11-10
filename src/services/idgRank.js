@@ -30,7 +30,7 @@ const ci = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)))
 const sumStars = (s) => [...(typeof s === 'string' ? s : '')].reduce((a, c) => a + (Number(c) || 0), 0);
 
 /** 순위표 → 정렬 필드 */
-export const BOARD_FIELD = { conquer: 'cleared', hard: 'hard', coop: 'coop', pvp: 'pvpW' };
+export const BOARD_FIELD = { conquer: 'cleared', hard: 'hard', coop: 'coop', pvp: 'pvpW', raid: 'raid' };
 /** 승률을 보여 주는 최소 판 수 */
 export const PVP_RATE_MIN = 10;
 
@@ -51,6 +51,7 @@ export function idgDoc(p, at = Date.now()) {
     hard: ci(sumStars(g.hardStars), 0, 300),
     kills: ci(g.stat?.kills, 0, 1e8),
     coop: ci(coop, 0, 1e6),
+    raid: ci((g.raid?.w || 0) * 100 + (g.raid?.best || 0), 0, 1e9),   // 주간 습격 (주 번호×100 + 웨이브)
     pvpW: ci(g.pvp?.w, 0, 1e6),
     pvpL: ci(g.pvp?.l, 0, 1e6),
     at: Math.round(at),
@@ -105,7 +106,7 @@ export async function fetchIdgBoard(kind, n = TOP) {
       const w = v.pvpW | 0, l = v.pvpL | 0;
       return {
         uid: d.id, nickname: v.nickname || '', look: v.look || '', title: v.title || '',
-        cleared: v.cleared | 0, stars: v.stars | 0, hard: v.hard | 0, kills: v.kills | 0, coop: v.coop | 0, pvpW: w, pvpL: l,
+        raid: v.raid | 0, cleared: v.cleared | 0, stars: v.stars | 0, hard: v.hard | 0, kills: v.kills | 0, coop: v.coop | 0, pvpW: w, pvpL: l,
         value: v[field] | 0,
         rate: w + l >= PVP_RATE_MIN ? Math.round((w / (w + l)) * 100) : null,
       };

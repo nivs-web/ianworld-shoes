@@ -87,6 +87,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     panel.replaceChildren();
     const box = h('div', 'idg-card');
     if (kind === 'pause') box.append(h('h2', null, '일시정지'));
+    else if (kind === 'intro' && stage.raid) {   /* 주간 습격 카드 */
+      box.append(h('h2', null, '주간 좀비 습격'), h('p', 'small', `${stage.raid} · 20초마다 웨이브 · 점점 세져요 · 5웨이브마다 보스`), h('p', 'small', '모두 같은 조건 : 내 덱 6칸 · 모두 Lv20 · 연구소/보물 없음'));
+    }
     else if (kind === 'intro' && stage.pvp) {   /* 용 대결 카드 : 양쪽 덱 · 리더 공개 */
       box.append(h('h2', null, '용 대결!'));
       const face = (list, ld) => { const z = h('div', 'idg-intro-z'); for (const id of [ld, ...list.map((d) => d.id)].filter(Boolean)) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.style.display = 'none'; }; z.appendChild(im); } return z; };
@@ -119,7 +122,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     if (kind === 'intro') { add('출격!', () => cb.go(useCons), 'main'); add(text.exit, () => cb.exit()); box.appendChild(row); panel.appendChild(box); panel.classList.add('on'); return; }
     if (info.final) box.append(h('p', 'final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요! 🐉'));
     if (kind === 'win' && info.hasNext && !info.pvp) add('다음 스테이지', () => cb.next(), 'main');
-    if (!info.pvp) add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main' : '');
+    if (!info.pvp || stage.raid) add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main' : '');
     add(text.exit, () => cb.exit());
     box.appendChild(row); panel.appendChild(box); panel.classList.add('on');
   }
@@ -150,11 +153,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       }
       net.textContent = ui.netNote || (ui.netWait > 1.5 ? '연결 확인 중…' : ''); net.classList.toggle('on', !!ui.netNote || ui.netWait > 1.5);
       const lim = S.stage.gim === 'time' ? S.stage.limit : 0;
-      time.textContent = lim ? `남은 ${clock(Math.max(0, lim - S.t))}` : clock(S.t); time.classList.toggle('hurry', !!lim && lim - S.t < 20);
+      time.textContent = S.stage.raid ? `웨이브 ${Math.max(1, Math.min(40, Math.floor((S.t - 3) / 20) + 1))} · ${clock(S.t)}` : lim ? `남은 ${clock(Math.max(0, lim - S.t))}` : clock(S.t); time.classList.toggle('hurry', !!lim && lim - S.t < 20);
       moneyN.textContent = `${fmt(p.money)} / ${fmt(W[p.wl].max * p.B.walletMax)}`;
       const sd = ui.side || 0;   // 대결 오른쪽 편 = 내 둥지는 1번
       myHp.textContent = ` ${fmt(Math.max(0, S.base[sd].hp))}`;
-      foeHp.textContent = `${fmt(Math.max(0, S.base[1 - sd].hp))} `;
+      foeHp.textContent = S.stage.raid ? '∞ ' : `${fmt(Math.max(0, S.base[1 - sd].hp))} `;   // 습격 : 좀비 성은 무너지지 않음
       const top1 = p.wl >= W.length - 1;
       wLv.textContent = `Lv${p.wl + 1}`; wCost.textContent = top1 ? 'MAX' : fmt(W[p.wl].cost);
       wallet.classList.toggle('can', !top1 && p.money >= W[p.wl].cost && S.stage.walletLock == null);

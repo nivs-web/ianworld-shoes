@@ -37,3 +37,7 @@ export const takePickedStage = () => { const n = picked; picked = null; return n
 let pickedNet = null;
 export const pickNet = (n) => { pickedNet = n; };
 export const takePickedNet = () => { const n = pickedNet; pickedNet = null; return n; };
+/** 주간 습격으로 들어갈 때 (명예의 전당 · 로비 타일) */
+let pickedRaid = false;
+export const pickRaid = () => { pickedRaid = true; };
+export const takePickedRaid = () => { const n = pickedRaid; pickedRaid = false; return n; };

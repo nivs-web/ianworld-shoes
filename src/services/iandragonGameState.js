@@ -79,6 +79,7 @@ export function normIdg(raw) {
     cons: consObj(r.cons),                    // 편의품 개수
     look: lookStr(r.look),                    // 꾸민 모습 'h3.n1.b2.f4.r0.t7'
     title: str(r.title, 24, ''),              // 단 칭호 id
+    raid: { w: n0(r.raid?.w, 999999), best: n0(r.raid?.best, 40) },   // 주간 습격 : 주 번호(년×100+주) · 그 주 최고 웨이브
     diff: ['easy', 'normal', 'hard'].includes(r.diff) ? r.diff : 'normal',   // 고른 난이도 (META 4장)
     hardStars: starsStr(r.hardStars),           // 어려움 «붉은 별» (판마다 0~3)
     pvp: { w: n0(r.pvp?.w), l: n0(r.pvp?.l), d: n0(r.pvp?.d), day: str(r.pvp?.day, 10, ''), n: n0(r.pvp?.n, 99) },   // 용 대결 전적 · 오늘 보상 판 수 (3차 M5)
@@ -129,6 +130,7 @@ export function mergeIdg(localRaw, remoteRaw) {
     cons: remoteRaw.cons ? b.cons : a.cons,
     look: remoteRaw.look ? b.look : a.look,
     title: remoteRaw.title ? b.title : a.title,
+    raid: a.raid.w !== b.raid.w ? (a.raid.w > b.raid.w ? a.raid : b.raid) : { w: a.raid.w, best: Math.max(a.raid.best, b.raid.best) },
     diff: remoteRaw.diff ? b.diff : a.diff,
     hardStars: maxStars(a.hardStars, b.hardStars),
     pvp: { w: Math.max(a.pvp.w, b.pvp.w), l: Math.max(a.pvp.l, b.pvp.l), d: Math.max(a.pvp.d, b.pvp.d), day: a.pvp.day > b.pvp.day ? a.pvp.day : b.pvp.day,

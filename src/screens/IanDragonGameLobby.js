@@ -143,6 +143,7 @@ export default function IanDragonGameLobby(nav) {
           tile('shop', '용 시장', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           tile('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           tile('hall', '명예의 전당', showHall),
+          tile('raid', '주간 좀비 습격', () => { if ((G.idg().cleared || 0) < 20) return; G.pickRaid(); start(); }, (G.idg().cleared || 0) < 20),
           tile('coop', '친구랑 같이 깨기', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
           tile('how', S.idgLobbyHow, showHow),
         ]),

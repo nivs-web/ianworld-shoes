@@ -279,19 +279,19 @@ service cloud.firestore {
     // ★ 색인이 필요 없다(필드 하나로만 정렬). ★ 기록은 내려가지 않는다 · 상한을 여기서 강제한다.
     function igInt(v, maxV) { return v is int && v >= 0 && v <= maxV; }
     function igValid(d) {
-      return d.keys().hasOnly(['nickname', 'look', 'title', 'cleared', 'stars', 'hard', 'kills', 'coop', 'pvpW', 'pvpL', 'at'])
+      return d.keys().hasOnly(['nickname', 'look', 'title', 'cleared', 'stars', 'hard', 'kills', 'coop', 'pvpW', 'pvpL', 'raid', 'at'])
           && d.nickname is string && d.nickname.size() <= 16
           && d.look is string && d.look.size() <= 64
           && d.title is string && d.title.size() <= 24
           && igInt(d.cleared, 100) && igInt(d.stars, 300) && igInt(d.hard, 300)
           && igInt(d.kills, 100000000) && igInt(d.coop, 1000000)
-          && igInt(d.pvpW, 1000000) && igInt(d.pvpL, 1000000)
+          && igInt(d.pvpW, 1000000) && igInt(d.pvpL, 1000000) && igInt(d.raid, 1000000000)
           && d.at is int;
     }
     function igNotDown(n, o) {
       return n.cleared >= o.cleared && n.stars >= o.stars && n.hard >= o.hard
           && n.kills >= o.kills && n.coop >= o.coop
-          && n.pvpW >= o.pvpW && n.pvpL >= o.pvpL;
+          && n.pvpW >= o.pvpW && n.pvpL >= o.pvpL && n.raid >= o.get('raid', 0);
     }
 
     match /idgPlayers/{uid} {

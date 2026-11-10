@@ -11,7 +11,7 @@ import { D } from '../data/battleData.js';
 import { createBattleView, tagArt } from './battleView.js';
 import { createHud } from './hud.js';
 import { createBattleSound } from './battleSound.js';
-import { makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY, DIFF, diffFor } from './battleSetup.js';
+import { makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY, DIFF, diffFor, raidStage, raidWaves, weekKey } from './battleSetup.js';
 import { isOn } from '../../../services/switches.js';
 import { decodeLook, CONSUMABLES } from '../data/looks.js';
 import { sendChat, subscribeChat } from '../../../services/multiplayer.js';
@@ -29,11 +29,13 @@ export async function startBattle(ctx, opts) {
   /* 운영자 난이도 (50 = 그대로 · 높을수록 어렵게) — 코어는 그대로, 판에 넣는 숫자만 바꾼다 */
   const tz = opts.net ? { hp: 1, atk: 1, ember: 1, base: 1 } : tunes('zd');   // 멀티는 두 기기 숫자가 같아야 해서 운영자 손잡이를 쓰지 않는다
   const pvp = !!opts.net?.pvp;   // 용 대결 (3차 M5)
-  const base0 = pvp ? pvpStage() : stageByNo(opts.stageNo);
+  const raid = !opts.net && opts.raid ? weekKey() : null;   // 주간 좀비 습격 (혼자 · 모두 같은 조건)
+  const base0 = pvp ? pvpStage() : raid ? raidStage(raid.key) : stageByNo(opts.stageNo);
   /* 난이도 : 혼자 할 때만 (멀티는 두 기기 숫자가 같아야 해서 보통) */
-  const dk = opts.net ? 'normal' : diffFor(base0.g, opts.save, isOn('zdOpt', 'diff')), DF = DIFF[dk];
+  const dk = opts.net || raid ? 'normal' : diffFor(base0.g, opts.save, isOn('zdOpt', 'diff')), DF = DIFF[dk];
   const stage = { ...base0, mag: base0.mag * tz.hp * DF.mag, atkMag: (base0.atkMag || base0.mag) * tz.atk * DF.mag, diff: dk };
-  const { deck, skills, loads, speedMax } = makeLoads(stage, opts.save);
+  const { deck, skills, loads, speedMax } = makeLoads(raid ? stageByNo(Math.max(20, Math.min(LAST_STAGE, opts.save?.cleared || 1))) : stage, opts.save);
+  if (raid) { const one = pvpLoad(loads[0], 0); loads.length = 0; loads.push(one); }   // 습격 = 내 덱 6칸 · 모두 Lv20 · 보너스 없음
   loads[0].bonus = { ...loads[0].bonus, income: loads[0].bonus.income / tz.ember, baseHp: loads[0].bonus.baseHp / tz.base };
   /* 멀티 : 자리마다 같은 편성을 하나씩 (같이 깨기 = 모두 side 0) */
   const net = opts.net || null, me = net ? net.seat : 0;
@@ -84,7 +86,7 @@ export async function startBattle(ctx, opts) {
     speed() { if (net) return; ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
     auto() { if (canAuto) ui.auto = !ui.auto; },
     exit() { opts.onExit(); },
-    retry() { opts.restart(stage.g); },
+    retry() { opts.restart(raid ? 'raid' : stage.g); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
     talk(t) { if (net?.code) { sendChat(net.code, t).catch?.(() => {}); ui.myTalk = t; ui.myTalkT = 1.6; } },
     look(f) { view.setCam((mirror ? 1 - f : f) * view.FIELD - ctx.view.w / 2); },
@@ -109,6 +111,7 @@ export async function startBattle(ctx, opts) {
   function finish() {
     ui.done = true;
     if (pvp) { finishPvp(); return; }
+    if (raid) { finishRaid(); return; }
     const win = S.over.winner === 0;
     const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE };
     /* 쌓인 기록 (도전 과제) — 이겨도 져도 */
@@ -148,6 +151,16 @@ export async function startBattle(ctx, opts) {
     } else info.hint = loseHint(S, me);
     if (net && ls.mismatch() >= 0) info.hint = '연결이 어긋났어요 — 이 판은 기록하지 않아요. 한 판 더?';
     setTimeout(() => { if (gone) return; hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);
+  }
+
+  /* 주간 습격 끝 : 버틴 웨이브 · 이번 주 최고면 웨이브당 코인 20 (늘어난 만큼만) · 명예의 전당 «주간 습격» */
+  function finishRaid() {
+    const waves = S.over.winner === 0 || S.over.timeout ? 40 : raidWaves(S.t);
+    const save = opts.save || {}, old = save.raid?.w === raid.idx ? save.raid.best || 0 : 0;
+    const coins = Math.max(0, waves - old) * 20;
+    try { opts.save = opts.onSave?.({ raid: { w: raid.idx, best: Math.max(old, waves) }, coins: (save.coins || 0) + coins }) || opts.save; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
+    const info = { t: S.t, pvp: true, coins, title: waves >= 40 ? '끝까지 버텼다!' : `${waves} 웨이브!`, rec: `${raid.key} · 이번 주 최고 ${Math.max(old, waves)} 웨이브${waves > old ? ' (새 기록!)' : ''}`, hint: '명예의 전당 «주간 습격»에서 순위를 볼 수 있어요.' };
+    setTimeout(() => { if (!gone) hud.showPanel(waves > old ? 'win' : 'lose', info); }, 1200);
   }
 
   /* 용 대결 끝 : 승 200 · 무 120 · 패 80 코인 (하루 PVP_DAY 판까지) · 젬 없음 · 전적만 기록 */

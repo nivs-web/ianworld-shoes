@@ -55,6 +55,7 @@ export default function IanDragonGame(nav) {
           save: G.idg(),
           stageNo: G.takePickedStage(),
           room: G.takePickedNet(),   // 멀티 (3차)
+          raid: G.takePickedRaid(),   // 주간 습격
           text: { rotate: S.idgRotate, rotateSub: S.idgRotateSub, exit: S.idgExit },
           onSave: (part) => G.saveIdg(part),
           onExit() { if (live) nav.back(); },

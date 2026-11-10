@@ -107,6 +107,33 @@ export function diffFor(g, save, enabled = true) {
   return d === 'hard' && !hardOpen(g, save) ? 'normal' : DIFF[d] ? d : 'normal';
 }
 
+/**
+ * 주간 좀비 습격 (META 5장 · 명예의 전당 핵심) — 끝없는 웨이브. 20초마다 웨이브 · 웨이브마다 13% 세짐 · 5웨이브마다 보스 · 최대 40웨이브.
+ * 모두 같은 조건 : 주(한국 시간 ISO 주)마다 같은 씨앗 → 같은 좀비 순서, 내 덱 6칸 · 모두 Lv20 · 연구소/보물 미적용.
+ * 자동 전투(기준 AI) 5주 : 20~23 웨이브.
+ */
+export const RAID_WAVE = 20, RAID_MAX = 40;
+export function weekKey(now = Date.now()) {
+  const d = new Date(now + 9 * 3600e3); d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7));
+  const y = d.getUTCFullYear(), w = 1 + Math.round(((d - Date.UTC(y, 0, 4)) / 864e5 - 3 + ((new Date(Date.UTC(y, 0, 4)).getUTCDay() + 6) % 7)) / 7);
+  return { key: `${y}-W${String(w).padStart(2, '0')}`, idx: y * 100 + w };
+}
+export function raidStage(key) {
+  let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  let s = h || 1; const r = () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const pool = Object.keys(ENEMIES).filter((k) => !ENEMIES[k].boss && k !== 'gold'), boss = Object.keys(ENEMIES).filter((k) => ENEMIES[k].boss);
+  const pick = (a) => a[Math.floor(r() * a.length)], lines = [];
+  for (let wv = 0; wv < RAID_MAX; wv++) {
+    const t0 = 3 + wv * RAID_WAVE, mag = 3 * Math.pow(1.13, wv);
+    lines.push({ id: pick(pool), count: 4 + (wv >> 2), start: t0, every: [1.2, 2.2], mag });
+    lines.push({ id: pick(pool), count: 2 + (wv >> 3), start: t0 + 6, every: [2, 3.5], mag });
+    if (wv % 5 === 4) lines.push({ id: pick(boss), count: 1, start: t0 + 10, every: 999, mag: mag * 0.35 });
+  }
+  return { id: '습격', name: '주간 좀비 습격', g: 0, w: 1 + (h % 10), s: 0, gim: null, raid: key, length: 1100, mag: 1, atkMag: 1, baseHp: 1e9, limit: 3 + RAID_MAX * RAID_WAVE + 30, fever: 9999, star2: 0, star3: 0, lines };
+}
+export const raidWaves = (t) => Math.max(0, Math.min(RAID_MAX, Math.floor((t - 3) / RAID_WAVE)));
+
 /** 용 대결 (3차 M5 · 멀티 기획 2.2) — 좀비 없음 · 길이 1000 · 180초 · 불꽃 타임 90초 · 모두 Lv20 · 덱 6칸 · 연구소/보물 미적용 */
 export const PVP_OPEN = 20;   // 2-10 을 깨면 열린다 (덱 6칸이 열릴 때)
 export const PVP_DAY = 5;     // 하루 보상 판 수

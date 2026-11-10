@@ -66,7 +66,7 @@ export async function mount(host, opts) {
       if (rm) opts.room = null;   // 다시 하기 · 다음 판은 혼자
       me.scene = await startBattle({ ...ctx, host }, {
         net,
-      stageNo, save: opts.save, text: opts.text,
+      stageNo, raid: stageNo === 'raid', save: opts.save, text: opts.text,
       onSave: (part) => { opts.save = opts.onSave(part); syncIdgPlayerSoon(); return opts.save; },   // 명예의 전당 (몇 초 모아 한 번)
       onExit: () => opts.onExit(),
       restart: (no) => { if (me.alive) begin(no); },
@@ -79,7 +79,7 @@ export async function mount(host, opts) {
   const stQ = Number((q.match(/[?&]idgStage=(\d+)/) || [])[1]);   // 점검용 : ?idgStage=12
   if (/idgDemo/.test(q)) me.scene = startDemo(ctx, T, has, sheetMeta[0], sheetMeta[1]);
   else if (/idgPilot/.test(q)) me.scene = await startPilot(ctx, T);
-  else await begin(opts.room ? opts.room.stageNo : stQ || opts.stageNo || Math.min(LAST_STAGE, (opts.save?.cleared || 0) + 1));
+  else await begin(opts.raid ? 'raid' : opts.room ? opts.room.stageNo : stQ || opts.stageNo || Math.min(LAST_STAGE, (opts.save?.cleared || 0) + 1));
   const battle = !/idgDemo|idgPilot/.test(q);
 
   /* 나가기 단추 (화면 위 DOM — 캔버스 글씨 금지 규칙) */
