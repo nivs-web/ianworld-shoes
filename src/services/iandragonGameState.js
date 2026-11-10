@@ -69,6 +69,7 @@ export function normIdg(raw) {
     daily: str(r.daily, 10, ''),              // 마지막 첫 승리 날짜 (YYYY-MM-DD, KST)
     speed: [1, 2, 3].includes(r.speed) ? r.speed : 1,
     stat: stats(r.stat),                      // 쌓인 기록 (도전 과제용 · 2026-11-11 야간)
+    pvp: { w: n0(r.pvp?.w), l: n0(r.pvp?.l), d: n0(r.pvp?.d), day: str(r.pvp?.day, 10, ''), n: n0(r.pvp?.n, 99) },   // 용 대결 전적 · 오늘 보상 판 수 (3차 M5)
   };
 }
 
@@ -112,5 +113,7 @@ export function mergeIdg(localRaw, remoteRaw) {
     daily: a.daily > b.daily ? a.daily : b.daily,
     speed: remoteRaw.speed ? b.speed : a.speed,
     stat: Object.fromEntries(STAT_KEYS.map((k) => [k, Math.max(a.stat[k], b.stat[k])])),
+    pvp: { w: Math.max(a.pvp.w, b.pvp.w), l: Math.max(a.pvp.l, b.pvp.l), d: Math.max(a.pvp.d, b.pvp.d), day: a.pvp.day > b.pvp.day ? a.pvp.day : b.pvp.day,
+      n: a.pvp.day === b.pvp.day ? Math.max(a.pvp.n, b.pvp.n) : a.pvp.day > b.pvp.day ? a.pvp.n : b.pvp.n },
   };
 }

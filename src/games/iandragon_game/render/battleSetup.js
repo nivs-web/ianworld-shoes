@@ -93,6 +93,36 @@ export function makeLoads(stage, save) {
   };
 }
 
+/** 용 대결 (3차 M5 · 멀티 기획 2.2) — 좀비 없음 · 길이 1000 · 180초 · 불꽃 타임 90초 · 모두 Lv20 · 덱 6칸 · 연구소/보물 미적용 */
+export const PVP_OPEN = 20;   // 2-10 을 깨면 열린다 (덱 6칸이 열릴 때)
+export const PVP_DAY = 5;     // 하루 보상 판 수
+export function pvpStage() {
+  const b = stageByNo(PVP_OPEN);
+  return { ...b, id: 'VS', name: '용 대결', g: 0, s: 0, gim: null, fog: false, pvp: true, lines: [], length: 1000, baseHp: 3000, limit: 180, fever: 90, star2: 0, star3: 0 };
+}
+export function pvpLoad(ld, side) {
+  const seen = new Set(); let legend = 0;
+  const deck = ld.deck.filter((d) => { if (seen.has(d.id)) return false; if (UNITS[d.id]?.rar === 'legend' && legend++) return false; seen.add(d.id); return true; }).slice(0, 6).map((d) => ({ id: d.id, lv: 20 }));
+  return { side, deck, leader: ld.leader, leaderLv: 20, skills: (ld.skills || []).slice(0, 2), bonus: {} };
+}
+
+/** 멀티 편성 → 글자 (방 `players/$uid/ld` · 500자 이하) */
+export function loadToLd(load) {
+  const b = {}; for (const [k, v] of Object.entries(load.bonus || {})) b[k] = Math.round(v * 1000) / 1000;
+  return JSON.stringify({ d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b });
+}
+/** 글자 → 편성 (받은 값은 범위 안으로 자르고 확인 · 이상하면 null → 시작하지 않는다) */
+export function ldToLoad(str) {
+  let o; try { o = JSON.parse(str); } catch { return null; }
+  if (!o || !Array.isArray(o.d) || o.d.length < 1 || o.d.length > 10) return null;
+  const seen = new Set(), deck = [];
+  for (const [id, lv] of o.d) { if (!UNITS[id] || seen.has(id)) return null; seen.add(id); deck.push({ id, lv: Math.max(1, Math.min(30, Math.round(lv) || 1)) }); }
+  if (!LEADERS[o.l]) return null;
+  const skills = (Array.isArray(o.k) ? o.k : []).filter((id) => SKILLS[id]).slice(0, 2);
+  const bonus = {}; for (const [k, v] of Object.entries(o.b || {})) if (Number.isFinite(v)) bonus[k] = Math.max(0, Math.min(k === 'startMoney' ? 2000 : 5, v));
+  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus };
+}
+
 /** 별 : ★ 깨면 · ★★ star2 초 안 · ★★★ star3 초 안 (1배속 전투 시간) */
 export function starsFor(stage, t) {
   if (t <= stage.star3) return 3;

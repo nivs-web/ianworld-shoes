@@ -33,3 +33,7 @@ export const stageLabel = (no) => `${Math.floor((no - 1) / 10) + 1}-${((no - 1) 
 let picked = null;
 export const pickStage = (no) => { picked = no; };
 export const takePickedStage = () => { const n = picked; picked = null; return n; };
+/** 멀티(친구랑 같이 깨기)로 들어갈 때 방 정보 { code, seed, uids, seat } — 게임 화면이 한 번 읽고 지운다 */
+let pickedNet = null;
+export const pickNet = (n) => { pickedNet = n; };
+export const takePickedNet = () => { const n = pickedNet; pickedNet = null; return n; };

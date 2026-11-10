@@ -54,6 +54,7 @@ export default function IanDragonGame(nav) {
         return m.mount(host, {
           save: G.idg(),
           stageNo: G.takePickedStage(),
+          room: G.takePickedNet(),   // 멀티 (3차)
           text: { rotate: S.idgRotate, rotateSub: S.idgRotateSub, exit: S.idgExit },
           onSave: (part) => G.saveIdg(part),
           onExit() { if (live) nav.back(); },

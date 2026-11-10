@@ -11,7 +11,7 @@ import { D } from '../data/battleData.js';
 import { createBattleView, tagArt } from './battleView.js';
 import { createHud } from './hud.js';
 import { createBattleSound } from './battleSound.js';
-import { makeLoads, starsFor, stageByNo, LAST_STAGE } from './battleSetup.js';
+import { makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY } from './battleSetup.js';
 import { ECON } from '../data/econ.js';
 import { tunes } from '../../../services/tuning.js';
 
@@ -21,29 +21,35 @@ tagArt(D);
  *  net = { seat, seats, seed, transport } — 멀티(3차 · 같이 깨기). 두 기기가 같은 씨앗 · 같은 편성으로 만들고 명령만 주고받는다(net/lockstep.js). */
 export async function startBattle(ctx, opts) {
   /* 운영자 난이도 (50 = 그대로 · 높을수록 어렵게) — 코어는 그대로, 판에 넣는 숫자만 바꾼다 */
-  const tz = tunes('zd');
-  const base0 = stageByNo(opts.stageNo);
+  const tz = opts.net ? { hp: 1, atk: 1, ember: 1, base: 1 } : tunes('zd');   // 멀티는 두 기기 숫자가 같아야 해서 운영자 손잡이를 쓰지 않는다
+  const pvp = !!opts.net?.pvp;   // 용 대결 (3차 M5)
+  const base0 = pvp ? pvpStage() : stageByNo(opts.stageNo);
   const stage = { ...base0, mag: base0.mag * tz.hp, atkMag: (base0.atkMag || base0.mag) * tz.atk };
   const { deck, skills, loads, speedMax } = makeLoads(stage, opts.save);
   loads[0].bonus = { ...loads[0].bonus, income: loads[0].bonus.income / tz.ember, baseHp: loads[0].bonus.baseHp / tz.base };
   /* 멀티 : 자리마다 같은 편성을 하나씩 (같이 깨기 = 모두 side 0) */
   const net = opts.net || null, me = net ? net.seat : 0;
-  if (net) { const one = loads[0]; loads.length = 0; for (let i = 0; i < net.seats; i++) loads.push({ ...one, side: 0 }); }
+  if (net) { const one = loads[0]; loads.length = 0; for (let i = 0; i < net.seats; i++) loads.push(pvp ? pvpLoad(net.loads?.[i] || one, i) : { ...(net.loads?.[i] || one), side: 0 }); }   // 대결 = 0번 왼쪽 · 1번 오른쪽   // 서버 방 = 자리마다 받은 편성(ld) · 탭 시험 = 같은 편성
+  const myDeck = pvp ? loads[me].deck : net?.loads?.[me]?.deck || deck;
+  const allDragons = pvp || net?.loads ? [...new Map(loads.flatMap((l) => l.deck).map((d) => [d.id, d])).values()] : deck;
+  const mirror = pvp && me === 1;   // 대결 : 누구나 자기가 왼쪽 (오른쪽 편은 화면만 뒤집는다)
   const S = createBattle(stage, loads, D, net ? net.seed : (Date.now() % 1e9) | 0);
   const ls = net ? createLockstep({ seat: me, seats: net.seats }) : null;
-  if (net) net.transport.onMessage((from, str) => ls.receive(from, str));
+  const NET_GIVEUP = 12;   // 초 — 이만큼 아무 소식이 없으면 그 친구는 나간 것으로 보고 혼자 계속 (M4)
+  const leave = (s) => { ls.drop(s); ui.netNote = '친구가 나갔어요 — 혼자 계속해요!'; ui.netNoteT = 4; };
+  if (net) { net.transport.onMessage((from, str) => ls.receive(from, str)); net.transport.onLeave?.(leave); }
   let tickN = 0, sendT = 0, nextHash = 150, waitT = 0;
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
-  const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: deck, enemies: enemyIds, leader: loads[0].leader });
+  const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: allDragons, enemies: enemyIds, leader: loads[0].leader, pvp, mirror, foeLeader: pvp ? loads[1].leader : null });
 
   const sound = createBattleSound(stage, me);
-  const ui = { me, net: !!net, speed: Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
+  const ui = { me, side: pvp ? me : 0, net: !!net, speed: Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
   /* 자동 전투 (B6) : 별을 1개 이상 딴 스테이지만 — 기준 AI(코어 aiCommands)가 대신 누른다 */
   const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
   const cmds = [];
   let acc = 0, bossSeen = false, gone = false;
-  const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text, speedMax, canAuto }, {
+  const hud = createHud(ctx.host || opts.hudHost, { stage, deck: myDeck, leader: loads[me].leader, foeDeck: pvp ? loads[1 - me].deck : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (S.over) return; if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c }); },
     go() { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(); },
     pause() { if (ui.done || ui.intro || net) return; ui.paused = !ui.paused; sound.pause(ui.paused); if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
@@ -52,7 +58,7 @@ export async function startBattle(ctx, opts) {
     exit() { opts.onExit(); },
     retry() { opts.restart(stage.g); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
-    look(f) { view.setCam(f * view.FIELD - ctx.view.w / 2); },
+    look(f) { view.setCam((mirror ? 1 - f : f) * view.FIELD - ctx.view.w / 2); },
   });
 
   /* 처음 하는 아이를 위한 한 줄 안내 (튜토리얼 최소판) — 해당 행동을 하면 사라진다 */
@@ -73,6 +79,7 @@ export async function startBattle(ctx, opts) {
 
   function finish() {
     ui.done = true;
+    if (pvp) { finishPvp(); return; }
     const win = S.over.winner === 0;
     const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE };
     /* 쌓인 기록 (도전 과제) — 이겨도 져도 */
@@ -100,6 +107,26 @@ export async function startBattle(ctx, opts) {
     setTimeout(() => { if (gone) return; hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);
   }
 
+  /* 용 대결 끝 : 승 200 · 무 120 · 패 80 코인 (하루 PVP_DAY 판까지) · 젬 없음 · 전적만 기록 */
+  function finishPvp() {
+    /* 시간 끝 · 둥지 체력이 같으면 → 잃은 용이 적은 쪽 승 (AI 대 AI 40판 : 무승부 38 → 0 · 좌우 20 : 20) */
+    let w = S.over.winner;
+    if (w === -1) { const l0 = S.players[0].st.lost, l1 = S.players[1].st.lost; w = l0 < l1 ? 0 : l1 < l0 ? 1 : -1; }
+    const win = w === me, draw = w === -1, bad = ls.mismatch() >= 0;
+    const save = opts.save || {}, today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    const pv = { w: 0, l: 0, d: 0, n: 0, ...(save.pvp || {}) }; if (pv.day !== today) { pv.day = today; pv.n = 0; }
+    const coins = bad || pv.n >= PVP_DAY ? 0 : win ? 200 : draw ? 120 : 80;
+    if (!bad) {
+      const rec = { w: pv.w + (win ? 1 : 0), l: pv.l + (!win && !draw ? 1 : 0), d: pv.d + (draw ? 1 : 0), day: today, n: pv.n + 1 };
+      try { opts.save = opts.onSave?.({ coins: (save.coins || 0) + coins, pvp: rec }) || { ...save, pvp: rec }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
+    }
+    const r = opts.save?.pvp || pv;
+    const info = { t: S.t, pvp: true, coins, title: win ? '승리!' : draw ? '무승부' : '아쉬워요…',
+      rec: `전적 ${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''}${pv.n >= PVP_DAY && !bad ? ' · 오늘 보상은 다 받았어요' : ''}`,
+      hint: bad ? '연결이 어긋났어요 — 이 판은 기록하지 않아요.' : S.over.timeout ? '시간 끝 — 둥지 체력이 많은 쪽, 같으면 잃은 용이 적은 쪽이 이겨요.' : '' };
+    setTimeout(() => { if (!gone) hud.showPanel(win ? 'win' : 'lose', info); }, 1400);
+  }
+
   const tick = (ticker) => {
     const dt = Math.min(0.1, ticker.deltaMS / 1000);
     if (!ui.paused) {
@@ -110,6 +137,8 @@ export async function startBattle(ctx, opts) {
         while (acc >= TICK && n < 6 && !S.over) { if (!ls.ready(tickN + 1)) { waited = true; break; } tickN++; step(S, ls.commandsAt(tickN)); acc -= TICK; n++; }
         if (acc > TICK * 90) acc = TICK * 90;
         waitT = waited ? waitT + dt : 0; ui.netWait = waitT;
+        if (ui.netNote && (ui.netNoteT -= dt) < 0) ui.netNote = '';
+        if (waitT > NET_GIVEUP) { for (const s of ls.late(tickN + 1)) leave(s); waitT = 0; }
         if ((sendT += dt) >= 0.2) { sendT = 0; let h = null; if (tickN >= nextHash) { h = [tickN, hashState(S)]; nextHash = tickN + 150; } net.transport.send(ls.packet(tickN, h)); }
       } else {
         while (acc >= TICK && n < 6 * ui.speed) { if (ui.auto && !S.over) cmds.push(...aiCommands(S, 0, autoPol, autoMem)); step(S, cmds.splice(0)); acc -= TICK; n++; }
@@ -123,13 +152,15 @@ export async function startBattle(ctx, opts) {
       sound.update(S, view);
       let a = 0, b = stage.length;
       for (const u of S.units) { if (!u.alive) continue; if (u.side === 0) a = Math.max(a, u.x); else b = Math.min(b, u.x); }
-      ui.mini = { a: a + 170, b: b + 170, cam: view.cam, w: ctx.view.w, F: view.FIELD };
+      const F = view.FIELD;
+      ui.mini = mirror ? { a: F - (b + 170), b: F - (a + 170), cam: F - view.cam - ctx.view.w, w: ctx.view.w, F } : { a: a + 170, b: b + 170, cam: view.cam, w: ctx.view.w, F };
     }
     hud.update(S, ui);
   };
   ctx.app.ticker.add(tick);
   ui.paused = true; hud.showPanel('intro');   // 스테이지 카드 → «출격!»
-  const onHide = () => { if (document.hidden && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
+  if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
+  const onHide = () => { if (document.hidden && !net && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);
   if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };
 

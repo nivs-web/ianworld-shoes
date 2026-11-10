@@ -8,7 +8,7 @@
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, backButton, screen, presentOverlay } from './ui.js';
+import { el, button, backButton, screen, presentOverlay, toast } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
 import Portal from './Portal.js';
 import { lazyScreen } from './lazyScreen.js';
@@ -21,6 +21,7 @@ import { showNest } from './idgNest.js';
 import { showHatch } from './idgHatch.js';
 import { showCodex } from './idgCodex.js';
 import { showLab } from './idgLab.js';
+import { showMulti } from './idgMulti.js';
 import { showQuests } from './idgQuests.js';
 import { claimable } from '../services/iandragonQuests.js';
 import { OPEN_AT } from '../services/iandragonHatch.js';
@@ -61,6 +62,18 @@ function showStages(onPick) {
   const close = presentOverlay(overlay);
 }
 
+/* 로비 그림 (겜부장 보조가 제미나이로 만든다 · 파일이 없으면 그림만 숨기고 글자로) */
+const UI = '/assets/iandragon_game/ui/lobby/';
+const AL = '/assets/iandragon_game/ai/lobby/';   // 보조 제미나이 2차 (2026-11-11) — 메뉴 아이콘 · 판
+const ICO = { stage: 'ico_stages', nest: 'ico_nest', hatch: 'ico_hatch', lab: 'ico_lab', quest: 'ico_quests', codex: 'ico_codex', how: 'ico_how', coop: 'ico_start' };
+const hideBad = (e) => { e.target.style.display = 'none'; };
+function tile(key, label, fn, locked = false, dot = false) {
+  return el('button.idg-tile' + (locked ? '.locked' : '') + (dot ? '.dot' : ''), { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); fn(); } }, [
+    el('img', { src: ICO[key] ? `${AL}${ICO[key]}.png` : `${UI}icon_${key}.png`, alt: '', onerror: hideBad }), el('span', label),
+  ]);
+}
+const stat = (key, n) => el('span.idg-stat', null, [el('img', { src: `${UI}icon_${key}.png`, alt: '', onerror: hideBad }), el('b', Number(n || 0).toLocaleString('en-US'))]);
+
 export default function IanDragonGameLobby(nav) {
   setTimeout(() => IanDragonGame.prefetch?.(), 1200);   // 한가할 때 게임 코드를 미리 받아 둔다
   /* 타이틀 콜 «좀비와 드래곤!» (겜팀장 음성 · 오락실 효과음 설정을 따른다) */
@@ -82,27 +95,30 @@ export default function IanDragonGameLobby(nav) {
       const p = getProfile();
       const g = G.idg();
       return screen(
+        el('div.idg-lobby-bg'),   // 로비 배경 그림 (ui/lobby/bg.webp · 없으면 어두운 바탕)
         /* 로고 그림(겜팀장 · 540×150 도트) — 좀비와 드래곤 / ZOMBIE & DRAGON */
         /* 로비 맨 위 배너 (겜팀장 v2 · 신발 · 드래곤 로비와 같은 비율) — 결정 D4 */
         el('div.idg-logo', null, [el('img.idg-lobby-banner', { src: '/assets/ui/banner_iandragon_lobby.webp', alt: `${S.idgTitle} ${S.idgTitleEn}` })]),
+        /* 상태판 — 그림(겜부장 보조 · ui/lobby/*)이 있으면 그림, 없으면 글자만 (2026-11-11 대표님 «로비에 디자인 요소가 없다») */
         el('div.panel.idg-panel', null, [
           el('div.idg-player', p.nickname || '???'),
           el('div.idg-stats', null, [
             el('div', g.cleared >= 100 ? '모든 모험 끝! 좀비 드래곤 로드를 물리쳤어요!' : S.idgStatNext(G.stageLabel(G.nextStage(g)))),   // 코드 검토 7
-            el('div', S.idgStatStars(G.totalStars(g))),
-            el('div', `${S.idgStatCoins(g.coins)} · ${S.idgStatGems(g.gems)}`),
+            el('div.idg-stat-row', null, [stat('star', G.totalStars(g)), stat('coin', g.coins), stat('gem', g.gems)]),
           ]),
         ]),
-        el('div.idg-preview', S.idgLobbyPreview),
-        button('스테이지 고르기', () => showStages((no) => start(no))),
-        button('용 둥지 (훈련소)', () => showNest(() => nav.refresh?.())),
-        G.idg().cleared >= OPEN_AT ? button('알 부화장', () => showHatch(() => nav.refresh?.())) : el('div.idg-preview', '알 부화장은 2-5를 깨면 열려요'),
-        button('연구소 · 보물 · 리더', () => showLab(() => nav.refresh?.())),
-        button(claimable(G.idg()) ? `도전 과제 · 받을 것 ${claimable(G.idg())}개!` : '도전 과제', () => showQuests(() => nav.refresh?.())),
-        button('도감', showCodex),
-        button(S.idgLobbyHow, showHow),
+        el('div.idg-menu', null, [
+          tile('stage', '스테이지 고르기', () => showStages((no) => start(no))),
+          tile('nest', '용 둥지', () => showNest(() => nav.refresh?.())),
+          g.cleared >= OPEN_AT ? tile('hatch', '알 부화장', () => showHatch(() => nav.refresh?.())) : tile('hatch', '알 부화장', () => toast('알 부화장은 2-5를 깨면 열려요', 2200), true),
+          tile('lab', '연구소 · 리더', () => showLab(() => nav.refresh?.())),
+          tile('quest', claimable(g) ? `도전 과제 (${claimable(g)})` : '도전 과제', () => showQuests(() => nav.refresh?.()), false, claimable(g) > 0),
+          tile('codex', '도감', showCodex),
+          tile('coop', '친구랑 같이 깨기', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
+          tile('how', S.idgLobbyHow, showHow),
+        ]),
         el('div.spacer'),
-        button(S.idgLobbyStart, () => start(), { primary: true }),
+        el('button.idg-start', { type: 'button', onclick: () => start() }, [el('span', S.idgLobbyStart)]),
         backButton(S.backToPortal, () => nav.reset(Portal)),
       );
     },

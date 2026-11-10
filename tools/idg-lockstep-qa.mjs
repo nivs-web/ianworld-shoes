@@ -7,7 +7,7 @@
  */
 import { createBattle, step, aiCommands, hashState, TICK } from '../src/games/iandragon_game/core/index.js';
 import { D } from '../src/games/iandragon_game/data/battleData.js';
-import { stageByNo, makeLoads } from '../src/games/iandragon_game/render/battleSetup.js';
+import { stageByNo, makeLoads, pvpStage, pvpLoad } from '../src/games/iandragon_game/render/battleSetup.js';
 import { createLockstep } from '../src/games/iandragon_game/net/lockstep.js';
 
 const N = Number(process.argv[2] || 20);
@@ -17,9 +17,9 @@ let rs = 12345; const rnd = () => ((rs = (rs * 1103515245 + 12345) >>> 0) / 4294
 
 function run(mode, g, seed) {
   const st0 = stageByNo(g);
-  const stage = mode === 'pvp' ? { ...st0, pvp: true, lines: [], baseHp: 3000 } : st0;
+  const stage = mode === 'pvp' ? pvpStage() : st0;   // 진짜 대결 규칙 (Lv20 · 6칸 · 180초 · 불꽃 90초)
   const base = makeLoads(st0, {}).loads[0];
-  const loads = mode === 'pvp' ? [{ ...base, side: 0 }, { ...base, side: 1 }] : [{ ...base, side: 0 }, { ...base, side: 0 }];
+  const loads = mode === 'pvp' ? [pvpLoad(base, 0), pvpLoad(makeLoads(stageByNo(Math.max(20, g)), {}).loads[0], 1)] : [{ ...base, side: 0 }, { ...base, side: 0 }];
   const dev = [0, 1].map((seat) => ({
     seat, S: createBattle(stage, loads, D, seed), ls: createLockstep({ seat, seats: 2 }), mem: {}, now: 0, sent: 0, inbox: [],
   }));

@@ -542,13 +542,77 @@ function playNote(kind, v, len, stepDur, at, bell) {
   else if (v === 'c') { noise({ dur: 0.9, vol: 0.16, filter: 'highpass', f0: 4500, at, bus }); }        // 심벌
 }
 
+/* ───── 녹음 파일 곡 (2026-11-11 대표님: «무료로 공개된 오케스트라 음원이 있으면 그걸 써라») ─────
+ * public/assets/iandragon_game/music/music.json 에 있는 곡은 공개(PD · CC0) 녹음 파일로 튼다. 출처 = 같은 폴더 CREDITS.md.
+ * 파일이 없거나 못 받으면 아래 합성 곡으로 그대로 나온다(이름 · 부르는 법 같음). */
+const MUSIC_BASE = '/assets/iandragon_game/music/';
+let fileList = null;                     // Promise<{ id: { file, loop, loopStart } }>
+const bufCache = new Map();              // id → Promise<AudioBuffer | null>
+const musicExt = () => (typeof Audio !== 'undefined' && new Audio().canPlayType('audio/ogg; codecs="opus"') ? 'ogg' : 'm4a');
+const listFiles = () => (fileList ??= fetch(`${MUSIC_BASE}music.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+function loadBuf(id, meta) {
+  if (!bufCache.has(id)) {
+    const A = audio();
+    bufCache.set(id, fetch(`${MUSIC_BASE}${meta.file}.${musicExt()}`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+      .then((b) => A.ctx.decodeAudioData(b)).catch(() => null));
+  }
+  return bufCache.get(id);
+}
+/** 자주 쓰는 곡을 미리 받아 둔다 (로비에서 한 번) */
+export async function preloadMusic(ids) { const L = await listFiles(); for (const id of ids) if (L[id]) loadBuf(id, L[id]); }
+
+let gen = 0, fileCur = null;             // gen = 곡을 바꿀 때마다 +1 (늦게 도착한 파일이 엉뚱하게 틀어지지 않게)
+function startFile(id, buf, meta, rate) {
+  const A = audio(), T = COMPILED[id];
+  const g = A.ctx.createGain(); g.gain.value = 0.55; g.connect(A.musicBus);   // 녹음은 합성보다 커서 줄인다
+  const src = A.ctx.createBufferSource(); src.buffer = buf; src.loop = meta.loop !== false;
+  if (src.loop) { src.loopStart = meta.loopStart ?? 0; src.loopEnd = buf.duration; }
+  const maxR = Math.min(T?.maxRate ?? 1.25, 1.25);                            // 녹음은 너무 빠르게 하면 음이 올라가 어색 → 1.25배까지
+  src.playbackRate.value = Math.min(maxR, rate);
+  src.connect(g); src.start();
+  fileCur = { id, src, g, base: rate, accel: 0, timer: 0 };
+  if (T?.accel && src.loop) {             // 산왕의 궁전: 한 바퀴 돌 때마다 조금씩 빨라진다
+    const lap = () => { if (fileCur?.src !== src) return; fileCur.accel += T.accel; src.playbackRate.setTargetAtTime(Math.min(maxR, fileCur.base * (1 + fileCur.accel)), A.ctx.currentTime, 0.3); fileCur.timer = setTimeout(lap, (buf.duration / src.playbackRate.value) * 1000); };
+    fileCur.timer = setTimeout(lap, (buf.duration / src.playbackRate.value) * 1000);
+  }
+  if (!src.loop) src.onended = () => { if (fileCur?.src === src) fileCur = null; };
+}
+function stopFile() {
+  if (!fileCur) return;
+  const A = audio(), { src, g, timer } = fileCur; fileCur = null; clearTimeout(timer);
+  try { g.gain.setTargetAtTime(0, A.ctx.currentTime, 0.08); src.stop(A.ctx.currentTime + 0.4); } catch { /* */ }
+}
+
+/* 곡 풍 (2026-11-11 대표님: «운영자 화면에서 오케스트라 / 오락실 풍을 켜고 끄며 게임을 해 보고 정하겠다»)
+ *   'orchestra' = 공개 오케스트라 녹음(없는 곡은 합성으로) · 'arcade' = 지금의 합성 곡(오락실 칩튠 풍) */
+let style = 'orchestra';
+export const getMusicStyle = () => style;
+export function setMusicStyle(s) {
+  const next = s === 'arcade' ? 'arcade' : 'orchestra';
+  if (next === style) return;
+  style = next;
+  const playing = fileCur?.id ?? cur?.id, rate = fileCur?.base ?? cur?.base ?? 1;
+  if (playing) { stopTrack(); startTrack(playing, rate); }                    // 돌던 곡을 바로 새 풍으로
+}
+
 let cur = null, timer = 0;
-/** 곡 시작 (같은 곡이 돌고 있으면 빠르기만 바꾼다) */
+/** 곡 시작 (같은 곡이 돌고 있으면 빠르기만 바꾼다) — 오케스트라 풍이고 녹음 파일이 있으면 파일로, 아니면 합성으로 */
 export function startTrack(id, rate = 1) {
-  const T = COMPILED[id]; if (!T) return;
   const A = audio(); if (!A) return;
+  if (fileCur && fileCur.id === id) { fileCur.base = rate; fileCur.src.playbackRate.setTargetAtTime(Math.min(1.25, rate), A.ctx.currentTime, 0.2); return; }
   if (cur && cur.id === id) { cur.base = rate; return; }
   stopTrack();
+  const my = ++gen;
+  if (style === 'arcade') { startSynth(id, rate); return; }
+  listFiles().then((L) => {
+    if (my !== gen) return;
+    if (!L[id]) { startSynth(id, rate); return; }
+    loadBuf(id, L[id]).then((buf) => { if (my !== gen) return; if (buf) startFile(id, buf, L[id], rate); else startSynth(id, rate); });
+  });
+}
+function startSynth(id, rate) {
+  const T = COMPILED[id]; if (!T) return;
+  const A = audio(); if (!A) return;
   cur = { id, T, base: rate, accel: 0, step: 0, next: A.ctx.currentTime + 0.05 };
   const tick = () => {
     if (!cur) return;
@@ -559,14 +623,14 @@ export function startTrack(id, rate = 1) {
       for (const [kind, map] of [['L', cur.T.L], ['H', cur.T.H], ['B', cur.T.B], ['D', cur.T.D]]) for (const n of map.get(s) ?? []) playNote(kind, n.v, n.len, stepDur, at, cur.T.bell);
       cur.step++; cur.next += stepDur;
       if (cur.step % cur.T.steps === 0) {
-        if (!cur.T.loop) { stopTrack(); return; }
+        if (!cur.T.loop) { clearInterval(timer); timer = 0; cur = null; return; }
         if (cur.T.accel) cur.accel += cur.T.accel;                                              // 산왕의 궁전: 돌 때마다 빨라진다
       }
     }
   };
   tick(); timer = setInterval(tick, 25);
 }
-export function stopTrack() { clearInterval(timer); timer = 0; cur = null; }
+export function stopTrack() { gen++; clearInterval(timer); timer = 0; cur = null; stopFile(); }
 export const TRACK_IDS = Object.keys(TRACKS);
 /** 월드 번호 → 배경 곡 (월드 1~10 전부 전용 곡 · 엔딩곡은 id 'ending') */
 export const WORLD_TRACK = { 1: 'w1', 2: 'w2', 3: 'w3', 4: 'w4', 5: 'w5', 6: 'w6', 7: 'w7', 8: 'w8', 9: 'w9', 10: 'w10' };

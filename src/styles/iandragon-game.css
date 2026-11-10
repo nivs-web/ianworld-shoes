@@ -219,3 +219,81 @@ html.idg-wide body { width: 100%; }
 /* 멀티 — 상대를 기다리는 중 (2026-11-11) */
 .idg-net { position: absolute; left: 50%; top: 38%; transform: translateX(-50%); padding: 8px 16px; border-radius: 10px; background: rgba(20, 8, 42, .85); color: #9cf; display: none; }
 .idg-net.on { display: block; animation: idgBlink .8s steps(1) infinite; }
+
+/* ── 로비 꾸밈 (2026-11-11 대표님 «디자인 요소가 없다 · 버튼 그림까지») — 그림은 ui/lobby/ (겜부장 보조) ── */
+.idg-lobby-bg { position: fixed; inset: 0; z-index: -1; background: #0b0716 url(/assets/iandragon_game/ui/lobby/bg.webp) center top / cover no-repeat; }
+.idg-stat-row { display: flex; justify-content: center; gap: 14px; margin-top: 4px; }
+.idg-stat { display: inline-flex; align-items: center; gap: 4px; } .idg-stat img { width: 22px; height: 22px; object-fit: contain; }
+.idg-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 10px 0; }
+.idg-menu .idg-tile:last-child:nth-child(odd) { grid-column: span 2; }
+.idg-tile { position: relative; display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 6px 10px; border-radius: 14px; border: 2px solid #FFC93C;
+  background: linear-gradient(180deg, rgba(58, 34, 110, .92), rgba(26, 14, 52, .92)); color: #fff; font: 700 14px 'Neo둥근모', monospace; text-align: left; box-shadow: 0 3px 0 #8a5a00; }
+.idg-tile img { width: 48px; height: 48px; object-fit: contain; flex: none; }
+.idg-tile:active { transform: translateY(2px); box-shadow: 0 1px 0 #8a5a00; }
+.idg-tile.locked { opacity: .5; } .idg-tile.dot::after { content: ''; position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 6px #ff4d4d; }
+.idg-start { width: 100%; min-height: 64px; border: 0; border-radius: 16px; background: url(/assets/iandragon_game/ui/lobby/btn_start.png) center / 100% 100% no-repeat, linear-gradient(180deg, #ff7a1a, #c2410c); color: #fff;
+  font: 900 22px 'Neo둥근모', monospace; letter-spacing: 2px; text-shadow: 0 3px 0 #5a1a00; box-shadow: 0 4px 0 #6a2200; margin-bottom: 8px; }
+.idg-start:active { transform: translateY(2px); box-shadow: 0 2px 0 #6a2200; }
+
+/* 친구랑 같이 깨기 (2026-11-11) */
+.idg-multi { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.idg-multi-msg { text-align: center; color: #5a3a1a; font: 13px 'Neo둥근모', monospace; }
+.idg-multi-join { display: flex; gap: 6px; } .idg-code { flex: 1; min-height: 44px; border-radius: 10px; border: 2px solid #7a5cff; padding: 0 10px; font: 700 18px 'Neo둥근모', monospace; text-align: center; }
+.idg-multi-code { text-align: center; color: #5a3a1a; } .idg-multi-code b { display: block; font: 900 34px 'Neo둥근모', monospace; letter-spacing: 6px; color: #1a1033; }
+.idg-multi-who { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 10px; background: #221548; color: #fff; font: 13px 'Neo둥근모', monospace; }
+
+/* ── 새 옷 (겜부장 보조 제미나이 그림 · 2026-11-11 · 본보기 tools/idg-gallery/lobby-skin.css · battle-skin.css 를 진짜 화면 구조에 맞춤) ── */
+/* 로비 : 배경 A안(대표님이 B 고르시면 bg_b) · 상태판 박쥐 테두리 · 메뉴 보라 돌 판 · 불꽃 시작 판 */
+.idg-lobby-bg { background:
+  linear-gradient(180deg, rgba(12, 6, 30, 0) 0%, rgba(12, 6, 30, .15) 22%, rgba(12, 6, 30, .55) 40%, rgba(12, 6, 30, .55) 72%, rgba(12, 6, 30, .1) 100%),
+  #120a26 url(/assets/iandragon_game/ai/lobby/bg_a.webp) center top / cover no-repeat; }
+.panel.idg-panel { background: rgba(22, 12, 48, .82); border: 22px solid transparent; border-width: 22px 30px; border-radius: 0;
+  border-image: url(/assets/iandragon_game/ai/lobby/frame.webp) 88 118 / 22px 30px / 6px 8px stretch; box-shadow: none; padding: 6px 4px; text-align: center; }
+.idg-tile { min-height: 54px; padding: 2px 10px 2px 4px; border-radius: 0; background: none; box-shadow: none; color: #ffe9b0; text-shadow: 0 2px 0 #1a0c38, 0 0 6px #000;
+  border: 12px solid transparent; border-width: 12px 18px; border-image: url(/assets/iandragon_game/ai/lobby/btn_menu.webp) 58 80 fill / 12px 18px stretch; }
+.idg-tile img { width: 42px; height: 42px; image-rendering: pixelated; }
+.idg-tile:active { filter: brightness(.82); box-shadow: none; }
+.idg-start { min-height: 74px; border-radius: 0; background: none; box-shadow: none; text-shadow: 0 2px 0 #7a1c00, 0 0 8px #ff8a2a;
+  border: 18px solid transparent; border-width: 18px 40px; border-image: url(/assets/iandragon_game/ai/lobby/btn_start.webp) 70 150 fill / 18px 40px stretch; animation: idgSkinBreath 2.4s ease-in-out infinite; }
+.idg-start:active { box-shadow: none; filter: brightness(.9); }
+@keyframes idgSkinBreath { 50% { filter: brightness(1.12) drop-shadow(0 0 8px #ff7a1a88); } }
+/* 로비 창 (스테이지 고르기 · 둥지 · 연구소 · 도감 · 과제 · 하는 법 · 같이 깨기) */
+.dialog[class*="idg-"] { background: none; color: #e8dcff; box-shadow: none; border: 26px solid transparent; border-image: url(/assets/iandragon_game/ai/lobby/dialog.webp) 64 64 fill / 26px stretch; }
+.dialog .idg-how-title { display: block; margin: -6px auto 8px; padding: 8px 44px 12px; width: fit-content; color: #fff; text-shadow: 0 2px 0 #7a1c00;
+  background: url(/assets/iandragon_game/ai/lobby/ribbon.webp) center / 100% 100% no-repeat; }
+.dialog[class*="idg-"] p, .idg-world-name, .idg-multi-msg, .idg-multi-code { color: #e8dcff; }
+.dialog[class*="idg-"] .pbtn { background: none; color: #ffe9b0; text-shadow: 0 2px 0 #1a0c38; box-shadow: none;
+  border: 12px solid transparent; border-width: 10px 16px; border-image: url(/assets/iandragon_game/ai/lobby/btn_menu.webp) 58 80 fill / 10px 16px stretch; }
+.dialog[class*="idg-"] .pbtn.primary { color: #fff; text-shadow: 0 2px 0 #7a1c00; border-width: 12px 28px; border-image: url(/assets/iandragon_game/ai/lobby/btn_start.webp) 70 150 fill / 12px 28px stretch; }
+.idg-multi-code b { color: #ffe9b0; }
+.idg-stage-btn { border: 0; border-radius: 0; background: url(/assets/iandragon_game/ai/lobby/tile.webp) center / 100% 100% no-repeat; min-height: 60px; text-shadow: 0 1px 0 #000; }
+.idg-stage-btn.boss { background-image: url(/assets/iandragon_game/ai/lobby/tile_boss.webp); padding-top: 8px; }
+.idg-stage-btn.locked { background-image: url(/assets/iandragon_game/ai/lobby/tile_locked.webp); opacity: 1; color: #aab; }
+.idg-stage-btn .idg-stage-stars { color: #ffd84a; }
+.idg-world-tab { border: 0; border-radius: 50%; width: 42px; height: 42px; background: url(/assets/iandragon_game/ai/lobby/badge.webp) center / 100% 100% no-repeat; color: #ffe9b0; text-shadow: 0 1px 0 #000; }
+.idg-world-tab.on { background-image: url(/assets/iandragon_game/ai/lobby/badge_on.webp); color: #fff; }
+.idg-nest-help, .idg-nest-deck, .idg-hatch-info, .idg-codex-h, .idg-nest-coins { color: #ffd98a; text-shadow: 0 1px 0 #1a0c38; }
+/* 전투 HUD : 위 · 아래 띠 · 돌 판 버튼 · 용 카드 칸 · 불꽃 브레스 판 */
+.idg-top { border: 10px solid transparent; border-width: 8px 14px 12px; border-image: url(/assets/iandragon_game/ai/hud/bar_top.webp) 34 60 40 fill / 8px 14px 12px stretch; margin: 0 -4px; padding: 0 6px; }
+.idg-bot { border: 10px solid transparent; border-width: 12px 14px 8px; border-image: url(/assets/iandragon_game/ai/hud/bar_bottom_clean.webp) 40 60 34 fill / 12px 14px 8px stretch; padding: 2px 6px; }
+.idg-hud .idg-btn { border: 8px solid transparent; border-radius: 0; background: none; border-image: url(/assets/iandragon_game/ui/hud_btn_square.png) 24 fill / 8px stretch; image-rendering: pixelated; color: #ffe9b0; text-shadow: 0 1px 0 #000; }
+.idg-hud .idg-btn:active { border-image-source: url(/assets/iandragon_game/ui/hud_btn_square_pressed.png); transform: none; }
+.idg-hud .idg-pause { background: url(/assets/iandragon_game/ui/hud_pause.png) center / 20px no-repeat; border-image-source: url(/assets/iandragon_game/ui/hud_btn_round.png); }
+.idg-hud .idg-unit { border: 0; border-image: none; background: url(/assets/iandragon_game/ai/hud/slot.webp) center / 100% 100% no-repeat; overflow: visible; }
+.idg-hud .idg-unit img { width: 78%; margin: 4px auto 0; height: 34px; }
+.idg-hud .idg-unit:not(.poor) { background-image: url(/assets/iandragon_game/ai/hud/slot_ready.webp); }
+.idg-hud .idg-unit .cost { background: none; text-shadow: 0 1px 0 #000, 0 0 3px #000; bottom: 3px; }
+.idg-hud .idg-unit .cd { inset: 4px; border-radius: 4px; }
+.idg-hud .idg-breath { width: 64px; height: 64px; border: 0; border-image: none; overflow: hidden; border-radius: 50%; background: url(/assets/iandragon_game/ai/hud/btn_breath.webp) center / 100% 100% no-repeat; }
+.idg-hud .idg-breath .fill { border-radius: 50%; inset: 8px; width: auto; height: auto; opacity: .45; clip-path: inset(calc((1 - var(--p, 0)) * 100%) 0 0 0); }
+.idg-hud .idg-breath b { width: 38px; height: 38px; margin-top: 2px; }
+.idg-hud .idg-wallet { border-image-source: url(/assets/iandragon_game/ui/hud_btn_square.png); }
+/* 결과 · 일시정지 창 + 결과 그림 (승리 · 패배) */
+.idg-card { border: 26px solid transparent; border-radius: 0; background: none; border-image: url(/assets/iandragon_game/ai/lobby/dialog.webp) 64 64 fill / 26px stretch; }
+.idg-card:has(h2.win)::before, .idg-card:has(h2.lose)::before { content: ''; display: block; width: min(340px, 70vw); aspect-ratio: 16 / 9; margin: -6px auto 8px; border-radius: 8px;
+  background: url(/assets/iandragon_game/ai/result/win.webp) center / cover no-repeat; box-shadow: 0 0 0 3px #1a0c38, 0 0 0 5px #c9963a; }
+.idg-card:has(h2.lose)::before { background-image: url(/assets/iandragon_game/ai/result/lose.webp); }
+.idg-stars span.on { color: #ffd84a; text-shadow: 0 2px 0 #7a4a00, 0 0 8px #ffb000; }
+.idg-boss b { width: 200px; height: 18px; border: 6px solid transparent; border-radius: 0; background: rgba(0, 0, 0, .55); border-image: url(/assets/iandragon_game/ai/hud/bar_progress.webp) 40 60 fill / 6px 9px stretch; background-clip: padding-box; }
+.idg-mini { border: 5px solid transparent; border-radius: 0; background: rgba(10, 4, 24, .7); background-clip: padding-box; height: 20px; border-image: url(/assets/iandragon_game/ai/hud/bar_progress.webp) 40 60 fill / 5px 8px stretch; }
+.idg-tile span { white-space: nowrap; font-size: 13px; letter-spacing: -.5px; overflow: hidden; text-overflow: ellipsis; }
