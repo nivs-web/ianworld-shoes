@@ -25,6 +25,8 @@ const MAX = Number(opt('--max') || 512);
 const ROWS = gridArg.includes(',') ? gridArg.split(',').map(Number) : Array(Number(gridArg.split('x')[1])).fill(Number(gridArg.split('x')[0]));
 const GY = ROWS.length;
 const YB = (opt('--ybreaks') || '').split(',').filter(Boolean).map(Number);   // 줄 경계 y (줄 높이가 고르지 않은 시트) — 예: 170,340,740
+const BOX = opt('--box') ? opt('--box').split('x').map(Number) : null;          // --box 256x256 : 투명 틀 크기 (팔레트 PNG)
+const ANCHOR = opt('--anchor') || 'center';                                     // bottom(모자) · top(목 장식) · center
 const PIXEL = Number(opt('--pixel') || 0), PSCALE = Number(opt('--scale') || 3);
 const ERASE = (opt('--erase') || '').split(';').filter(Boolean).map((r) => r.split(',').map(Number));   // x,y,w,h;... 를 분홍으로 (글자 · 군더더기 지우기)
 const names = namesArg.split(',');
@@ -120,6 +122,16 @@ for (let k = 0; k < names.length; k++) {
     if (PIXEL) {                                                             // 아이콘 : HUD 와 같은 칸 굵기
       await (await toPixel(img, PIXEL, PIXEL, PSCALE)).toFile(path.join(OUT, name + '.png'));
       console.log(`→ ${path.join(OUT, name + '.png')} (${PIXEL}칸 ×${PSCALE})`);
+      continue;
+    }
+    if (BOX) {                                                               // 정해진 틀(W×H)에 맞춰 넣기 — 붙는 점(--anchor)에 여백 없이
+      const [bw, bh] = BOX, k3 = Math.min(bw / img.w, bh / img.h);
+      const w = Math.round(img.w * k3), h = Math.round(img.h * k3);
+      const art = await sharp(img.b, { raw: { width: img.w, height: img.h, channels: 4 } }).resize(w, h, { kernel: 'lanczos3' }).png().toBuffer();
+      const top = ANCHOR === 'bottom' ? bh - h : ANCHOR === 'top' ? 0 : Math.round((bh - h) / 2);
+      await sharp({ create: { width: bw, height: bh, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: art, left: Math.round((bw - w) / 2), top }])
+        .png({ palette: true, quality: 92, effort: 10, compressionLevel: 9 }).toFile(path.join(OUT, name + '.png'));
+      console.log(`→ ${path.join(OUT, name + '.png')} (${bw}×${bh} · ${ANCHOR})`);
       continue;
     }
     const k2 = Math.min(1, MAX / Math.max(img.w, img.h));
