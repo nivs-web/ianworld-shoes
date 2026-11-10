@@ -69,7 +69,7 @@ const ICO = { stage: 'ico_stages', nest: 'ico_nest', hatch: 'ico_hatch', lab: 'i
 const hideBad = (e) => { e.target.style.display = 'none'; };
 function tile(key, label, fn, locked = false, dot = false) {
   return el('button.idg-tile' + (locked ? '.locked' : '') + (dot ? '.dot' : ''), { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); fn(); } }, [
-    el('img', { src: ICO[key] ? `${AL}${ICO[key]}.png` : `${UI}icon_${key}.png`, alt: '', onerror: hideBad }), el('span', label),
+    el('img', { src: `${UI}icon_${key}.png`, alt: '', onerror: (e) => { if (ICO[key] && !e.target.dataset.f) { e.target.dataset.f = 1; e.target.src = `${AL}${ICO[key]}.png`; } else hideBad(e); } }), el('span', label),
   ]);
 }
 const stat = (key, n) => el('span.idg-stat', null, [el('img', { src: `${UI}icon_${key}.png`, alt: '', onerror: hideBad }), el('b', Number(n || 0).toLocaleString('en-US'))]);

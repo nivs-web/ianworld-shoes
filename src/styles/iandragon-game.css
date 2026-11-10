@@ -246,12 +246,12 @@ html.idg-wide body { width: 100%; }
 /* 로비 : 배경 A안(대표님이 B 고르시면 bg_b) · 상태판 박쥐 테두리 · 메뉴 보라 돌 판 · 불꽃 시작 판 */
 .idg-lobby-bg { background:
   linear-gradient(180deg, rgba(12, 6, 30, 0) 0%, rgba(12, 6, 30, .15) 22%, rgba(12, 6, 30, .55) 40%, rgba(12, 6, 30, .55) 72%, rgba(12, 6, 30, .1) 100%),
-  #120a26 url(/assets/iandragon_game/ai/lobby/bg_a.webp) center top / cover no-repeat; }
+  #120a26 url(/assets/iandragon_game/ui/lobby/bg.webp) center top / cover no-repeat; }   /* bg.webp = A안 · B안으로 정하시면 bg_b.webp 를 bg.webp 로 */
 .panel.idg-panel { background: rgba(22, 12, 48, .82); border: 22px solid transparent; border-width: 22px 30px; border-radius: 0;
   border-image: url(/assets/iandragon_game/ai/lobby/frame.webp) 88 118 / 22px 30px / 6px 8px stretch; box-shadow: none; padding: 6px 4px; text-align: center; }
 .idg-tile { min-height: 54px; padding: 2px 10px 2px 4px; border-radius: 0; background: none; box-shadow: none; color: #ffe9b0; text-shadow: 0 2px 0 #1a0c38, 0 0 6px #000;
   border: 12px solid transparent; border-width: 12px 18px; border-image: url(/assets/iandragon_game/ai/lobby/btn_menu.webp) 58 80 fill / 12px 18px stretch; }
-.idg-tile img { width: 42px; height: 42px; image-rendering: pixelated; }
+.idg-tile img { width: 44px; height: 44px; }
 .idg-tile:active { filter: brightness(.82); box-shadow: none; }
 .idg-start { min-height: 74px; border-radius: 0; background: none; box-shadow: none; text-shadow: 0 2px 0 #7a1c00, 0 0 8px #ff8a2a;
   border: 18px solid transparent; border-width: 18px 40px; border-image: url(/assets/iandragon_game/ai/lobby/btn_start.webp) 70 150 fill / 18px 40px stretch; animation: idgSkinBreath 2.4s ease-in-out infinite; }
