@@ -35,6 +35,14 @@ const VC = {
   bossShrill: { vx: 'A cocky villain, high screechy voice', st: 'M3', fx: 'bossShrill', sp: 1.08 },
   bossRobot:  { vx: 'A cold robot, flat mechanical monotone', st: 'M3', fx: 'bossRobot', sp: 0.95 },
   caster:     { vx: 'An excited male game announcer, loud and fast', st: 'M4', fx: 'caster', sp: 1.1 },
+  /* 2차 (월드 6~10) */
+  babySparkle: { vx: 'A bright confident little girl, sparkly', st: 'F3', fx: 'babySparkle' },
+  babyBig:     { vx: 'A big chubby little boy, slow and deep', st: 'M1', fx: 'babyBig', sp: 0.92 },
+  bossGhost:   { vx: 'A spooky ghost, trembling wavering voice', st: 'F5', fx: 'bossGhost', sp: 0.9 },
+  bossRegal:   { vx: 'An arrogant ancient king, grand deep voice', st: 'M5', fx: 'bossRegal', sp: 0.92 },
+  bossWitch:   { vx: 'A cackling swamp witch, high raspy voice', st: 'F4', fx: 'bossWitch', sp: 1.05 },
+  bossCrystal: { vx: 'A cold crystal monster, clear echoing voice', st: 'M3', fx: 'bossCrystal', sp: 0.92 },
+  bossLord:    { vx: 'A final boss dragon, the deepest grand voice', st: 'M4', fx: 'bossLord', sp: 0.88 },
 };
 
 const rb = (p, t = 1, f = 'shifted') => `rubberband=pitch=${p}:tempo=${t}:formant=${f}:pitchq=quality`;
@@ -52,6 +60,14 @@ const FX = {
   bossShrill: `${rb(1.18, 1.06)},aphaser=type=t:speed=0.6,acompressor=threshold=-18dB:ratio=3`,
   bossRobot: `${rb(0.85, 1.0, 'preserved')},flanger=delay=2:depth=4:regen=40:speed=0.5,acrusher=bits=10:mix=0.35,aecho=0.8:0.5:30:0.25`,
   caster: 'highpass=f=80,acompressor=threshold=-20dB:ratio=4:makeup=3,aecho=0.8:0.4:25:0.12',
+  /* 2차 */
+  babySparkle: `${rb(1.32, 1.05)},highpass=f=140,aecho=0.8:0.5:30:0.15,acompressor=threshold=-18dB:ratio=3`,
+  babyBig: `${rb(1.08, 0.95)},bass=g=4,highpass=f=70`,
+  bossGhost: `${rb(1.05, 0.95, 'preserved')},vibrato=f=5:d=0.35,aecho=0.8:0.85:220|440:0.45|0.3,highpass=f=150`,
+  bossRegal: `${rb(0.76, 0.96, 'preserved')},bass=g=5,aecho=0.8:0.8:120|240:0.35|0.2,acompressor=threshold=-16dB:ratio=4`,
+  bossWitch: `${rb(1.22, 1.05)},aphaser=type=t:speed=1.2,acrusher=bits=12:mix=0.2,acompressor=threshold=-18dB:ratio=3`,
+  bossCrystal: `${rb(0.9, 0.96, 'preserved')},chorus=0.6:0.9:40|60:0.4|0.3:0.3|0.5:2|3,aecho=0.8:0.7:90|180:0.35|0.2,highpass=f=120`,
+  bossLord: `${rb(0.62, 0.93, 'preserved')},bass=g=9,aecho=0.8:0.85:110|230:0.4|0.28,acompressor=threshold=-15dB:ratio=5`,
 };
 const ff = (args) => execFileSync(FF, ['-y', '-loglevel', 'error', ...args]);
 const fxApply = (src, dst, chain) => ff(['-i', src, '-af',
