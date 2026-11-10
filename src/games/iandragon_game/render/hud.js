@@ -77,7 +77,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       box.append(h('h2', null, `${stage.id} ${stage.name}`));
       if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
       const zs = h('div', 'idg-intro-z');
-      for (const id of [...new Set(stage.lines.map((l) => l.id))]) { const im = h('img'); im.src = `${AI}${ZART[id] || id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${ZART[id] || id}/torso.png`; };   // 머리 조각이 없는 좀비(박쥐)는 몸 zs.appendChild(im); }
+      for (const id of [...new Set(stage.lines.map((l) => l.id))]) { const im = h('img'); im.src = `${AI}${ZART[id] || id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${ZART[id] || id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
       box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안 · ★★★ ${stage.star3}초 안`));
     }
     else {
