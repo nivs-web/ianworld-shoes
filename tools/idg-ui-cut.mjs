@@ -21,13 +21,19 @@ const opt = (k) => { const i = args.indexOf(k); return i < 0 ? null : args[i + 1
 const HUD = args.includes('--hud');
 const OUT = opt('--out');
 const MAX = Number(opt('--max') || 512);
-const [GX, GY] = gridArg.split('x').map(Number);
+/* 칸 : «3x3» (가로x세로) 또는 «1,1,3,1» (줄마다 개수 — 줄별로 크기가 다른 버튼 시트) */
+const ROWS = gridArg.includes(',') ? gridArg.split(',').map(Number) : Array(Number(gridArg.split('x')[1])).fill(Number(gridArg.split('x')[0]));
+const GY = ROWS.length;
+const YB = (opt('--ybreaks') || '').split(',').filter(Boolean).map(Number);   // 줄 경계 y (줄 높이가 고르지 않은 시트) — 예: 170,340,740
+const PIXEL = Number(opt('--pixel') || 0), PSCALE = Number(opt('--scale') || 3);
+const ERASE = (opt('--erase') || '').split(';').filter(Boolean).map((r) => r.split(',').map(Number));   // x,y,w,h;... 를 분홍으로 (글자 · 군더더기 지우기)
 const names = namesArg.split(',');
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 
 const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 const W = info.width, H = info.height;
 
+for (const [ex, ey, ew, eh] of ERASE) for (let y = ey; y < Math.min(H, ey + eh); y++) for (let x = ex; x < Math.min(W, ex + ew); x++) { const i = (y * W + x) * 4; data[i] = 255; data[i + 1] = 0; data[i + 2] = 255; }
 /* 1. 분홍 지우기 + 분홍 번짐 걷어내기 (투명과 맞닿은 분홍 기운 칸 → 투명, 세 번) */
 const isKey = (i) => { const r = data[i], g = data[i + 1], b = data[i + 2]; return r > 150 && b > 150 && g < 110 && Math.abs(r - b) < 90; };
 for (let i = 0; i < W * H * 4; i += 4) if (isKey(i)) data[i + 3] = 0;
@@ -58,11 +64,12 @@ for (let s = 0; s < W * H; s++) {
   }
   comps.push(c);
 }
-const cells = Array.from({ length: GX * GY }, () => ({ x0: W, y0: H, x1: -1, y1: -1, ids: new Set() }));
+const cells = Array.from({ length: ROWS.reduce((a, b) => a + b, 0) }, () => ({ x0: W, y0: H, x1: -1, y1: -1, ids: new Set() }));
 for (const c of comps) {
   if (c.n < 40) continue;                                                    // 티끌
   const cx = c.sx / c.n, cy = c.sy / c.n;
-  const k = Math.min(GY - 1, (cy / (H / GY)) | 0) * GX + Math.min(GX - 1, (cx / (W / GX)) | 0);
+  const row = YB.length ? YB.filter((y) => cy >= y).length : Math.min(GY - 1, (cy / (H / GY)) | 0), n = ROWS[row];
+  const k = ROWS.slice(0, row).reduce((a, b) => a + b, 0) + Math.min(n - 1, (cx / (W / n)) | 0);
   const C = cells[k]; C.ids.add(c.id);
   C.x0 = Math.min(C.x0, c.x0); C.y0 = Math.min(C.y0, c.y0); C.x1 = Math.max(C.x1, c.x1); C.y1 = Math.max(C.y1, c.y1);
 }
@@ -110,6 +117,11 @@ for (let k = 0; k < names.length; k++) {
     if (!keys.length) console.log(`✘ ${name} : hud_icons.json 에 없음`);
   } else {
     fs.mkdirSync(OUT, { recursive: true });
+    if (PIXEL) {                                                             // 아이콘 : HUD 와 같은 칸 굵기
+      await (await toPixel(img, PIXEL, PIXEL, PSCALE)).toFile(path.join(OUT, name + '.png'));
+      console.log(`→ ${path.join(OUT, name + '.png')} (${PIXEL}칸 ×${PSCALE})`);
+      continue;
+    }
     const k2 = Math.min(1, MAX / Math.max(img.w, img.h));
     await sharp(img.b, { raw: { width: img.w, height: img.h, channels: 4 } }).resize(Math.round(img.w * k2), Math.round(img.h * k2), { kernel: 'lanczos3' }).png({ compressionLevel: 9 }).toFile(path.join(OUT, name + '.png'));
     console.log(`→ ${path.join(OUT, name + '.png')} (${Math.round(img.w * k2)}×${Math.round(img.h * k2)})`);

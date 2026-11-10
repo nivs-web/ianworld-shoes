@@ -1,0 +1,78 @@
+/*
+ * 로비 «새 옷» 미리보기 (그림 담당 · 2026-11-11) — tools/idg-gallery/lobby.html?skin=a|b 에서만 쓴다.
+ * 게임 코드(src/styles/iandragon-game.css)는 그대로 — 겜부장이 진짜 로비에 옮길 때의 본보기.
+ * 그림 : public/assets/iandragon_game/ai/lobby/ (bg_a · bg_b · btn_start · btn_menu · frame · plate_count · ico_*)
+ */
+#ui.idg-skin {
+  --L: '/assets/iandragon_game/ai/lobby/';
+  background:
+    linear-gradient(180deg, rgba(12, 6, 30, 0) 0%, rgba(12, 6, 30, .15) 22%, rgba(12, 6, 30, .55) 40%, rgba(12, 6, 30, .55) 72%, rgba(12, 6, 30, .1) 100%),
+    var(--skin-bg) center top / cover no-repeat, #120a26;
+  background-attachment: fixed;                 /* 화면에 고정 — 버튼만 위로 흐른다 (폰 세로 9:16 에 딱 맞음) */
+}
+#ui.idg-skin .screen { gap: 8px; }
+
+/* 상태판 = 박쥐 · 호박 테두리 (9조각) */
+#ui.idg-skin .panel.idg-panel {
+  background: rgba(22, 12, 48, .82);
+  border: 22px solid transparent; border-width: 22px 30px;
+  border-image: url(/assets/iandragon_game/ai/lobby/frame.webp) 88 118 / 22px 30px / 6px 8px stretch;
+  box-shadow: none; padding: 6px 4px; text-align: center;
+}
+#ui.idg-skin .idg-player { color: #ffe9b0; text-shadow: 0 2px 0 #2a1450; }
+#ui.idg-skin .idg-stats { color: #e8dcff; }
+#ui.idg-skin .idg-preview { color: #9fe8ff; text-shadow: 0 1px 2px #000; }
+
+/* 메뉴 버튼 = 보라 돌 판 + 금테 (9조각) + 왼쪽 아이콘 */
+#ui.idg-skin .pbtn:not(.primary) {
+  position: relative; min-height: 50px; padding: 4px 20px 4px 58px;
+  background: none; color: #ffe9b0; text-shadow: 0 2px 0 #1a0c38, 0 0 6px #000;
+  border: 14px solid transparent; border-width: 12px 18px;
+  border-image: url(/assets/iandragon_game/ai/lobby/btn_menu.webp) 58 80 fill / 12px 18px stretch;
+  box-shadow: none; font-size: 17px; text-align: left;
+}
+#ui.idg-skin .pbtn:not(.primary):active { filter: brightness(.82); transform: translateY(2px); }
+#ui.idg-skin .pbtn[data-ico]::before {
+  content: ''; position: absolute; left: 4px; top: 50%; width: 42px; height: 42px; transform: translateY(-50%);
+  background: var(--ico) center / contain no-repeat; image-rendering: pixelated;
+}
+
+/* 큰 시작 버튼 = 불꽃 판 + 뿔 (9조각) · 살짝 숨쉬기 */
+#ui.idg-skin .pbtn.primary {
+  min-height: 74px; background: none; color: #fff; font-size: 22px; letter-spacing: 2px;
+  text-shadow: 0 2px 0 #7a1c00, 0 0 8px #ff8a2a;
+  border: 18px solid transparent; border-width: 18px 40px;
+  border-image: url(/assets/iandragon_game/ai/lobby/btn_start.webp) 70 150 fill / 18px 40px stretch;
+  box-shadow: none; animation: idgSkinBreath 2.4s ease-in-out infinite;
+}
+@keyframes idgSkinBreath { 50% { filter: brightness(1.12) drop-shadow(0 0 8px #ff7a1a88); } }
+
+/* 오락실로 돌아가기 (작게) */
+#ui.idg-skin .pbtn.back, #ui.idg-skin .back-btn { opacity: .9; }
+
+/* ── 로비 대화창 (스테이지 고르기 · 둥지 · 연구소 · 도감 · 과제 · 하는 법) — 창은 body 에 붙으므로 body 클래스로 ── */
+body.idg-skin-battle .dialog[class*="idg-"] {
+  background: none; color: #e8dcff; box-shadow: none;
+  border: 26px solid transparent; border-image: url(/assets/iandragon_game/ai/lobby/dialog.webp) 64 64 fill / 26px stretch;
+}
+body.idg-skin-battle .dialog .idg-how-title {
+  display: block; margin: -6px auto 8px; padding: 8px 44px 12px; width: fit-content; color: #fff; text-shadow: 0 2px 0 #7a1c00;
+  background: url(/assets/iandragon_game/ai/lobby/ribbon.webp) center / 100% 100% no-repeat;
+}
+body.idg-skin-battle .dialog p, body.idg-skin-battle .idg-world-name { color: #e8dcff; }
+body.idg-skin-battle .dialog .pbtn {
+  background: none; color: #ffe9b0; text-shadow: 0 2px 0 #1a0c38; box-shadow: none;
+  border: 12px solid transparent; border-width: 10px 16px;
+  border-image: url(/assets/iandragon_game/ai/lobby/btn_menu.webp) 58 80 fill / 10px 16px stretch;
+}
+body.idg-skin-battle .dialog .pbtn.primary { color: #fff; text-shadow: 0 2px 0 #7a1c00; border-width: 12px 28px; border-image: url(/assets/iandragon_game/ai/lobby/btn_start.webp) 70 150 fill / 12px 28px stretch; }
+/* 스테이지 칸 : 보통 · 보스(10판) · 잠김 */
+body.idg-skin-battle .idg-stage-btn { border: 0; border-radius: 0; background: url(/assets/iandragon_game/ai/lobby/tile.webp) center / 100% 100% no-repeat; min-height: 60px; text-shadow: 0 1px 0 #000; }
+body.idg-skin-battle .idg-stage-btn.boss { background-image: url(/assets/iandragon_game/ai/lobby/tile_boss.webp); padding-top: 8px; }
+body.idg-skin-battle .idg-stage-btn.locked { background-image: url(/assets/iandragon_game/ai/lobby/tile_locked.webp); opacity: 1; color: #aab; }
+body.idg-skin-battle .idg-stage-btn .idg-stage-stars { color: #ffd84a; }
+/* 월드 번호 탭 */
+body.idg-skin-battle .idg-world-tab { border: 0; border-radius: 50%; width: 42px; height: 42px; background: url(/assets/iandragon_game/ai/lobby/badge.webp) center / 100% 100% no-repeat; color: #ffe9b0; text-shadow: 0 1px 0 #000; }
+body.idg-skin-battle .idg-world-tab.on { background-image: url(/assets/iandragon_game/ai/lobby/badge_on.webp); color: #fff; }
+/* 창 안 갈색 글자(#5a3a1a — 크림색 창에 맞춘 색) → 보라 판 위에서 읽히게 */
+body.idg-skin-battle .idg-nest-help, body.idg-skin-battle .idg-nest-deck, body.idg-skin-battle .idg-hatch-info, body.idg-skin-battle .idg-codex-h, body.idg-skin-battle .idg-nest-coins { color: #ffd98a; text-shadow: 0 1px 0 #1a0c38; }

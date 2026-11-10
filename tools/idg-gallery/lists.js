@@ -29,6 +29,7 @@ export const TABS = [
   { id: 'fun', label: '재미 요소', kind: 'fun' },
   { id: 'egg', label: '알', kind: 'egg', items: () => ['egg_rare', 'egg_super', 'egg_legend', 'shell_top', 'shell_bottom', 'sparkle'].map((id) => ({ id, name: { egg_rare: '희귀 알', egg_super: '슈퍼 알', egg_legend: '전설 알', shell_top: '껍데기 위', shell_bottom: '껍데기 아래', sparkle: '반짝이' }[id] })) },
   { id: 'hud', label: 'HUD 아이콘', kind: 'hud' },
+  { id: 'lobby', label: '로비', kind: 'lobby' },
   { id: 'banner', label: '배너', kind: 'banner', items: () => [{ id: 'banner_iandragon', name: '배너 (게임 카드)' }, { id: 'banner_iandragon_lobby', name: '배너 (로비)' }] },
 ];
 
