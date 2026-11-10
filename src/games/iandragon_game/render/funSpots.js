@@ -40,5 +40,22 @@ export const W2_SPOTS = {
   sky: [40, 200],
 };
 
+/** 월드 3 «하늘섬» (제미나이 배경 bg_w03 · 높이 540 · 땅 줄을 437 로 맞춰 1.34배 키워 위쪽만 남김) */
+export const W3_SPOTS = {
+  safe: [260, 1000],
+  wispTint: 0xcfe8ff,
+  moonFace: true,
+  moon: { x: 692, y: 112, d: 145 },
+  ground: 437,
+  graves: [270, 325, 442, 590, 640, 750, 850, 950],
+  fence: { x0: 1015, x1: 1250, y: 374 },
+  owl: { x: 300, y: 180 },
+  pumpkin: { x: 540, y: 437 },
+  window: { x: 1128, y: 235 },
+  wisps: [{ x: 380, y: 372 }, { x: 560, y: 380 }, { x: 780, y: 372 }],
+  dirtY: 494,
+  sky: [40, 200],
+};
+
 /** 월드 번호 → 자리표 · 배경 그림 (배경을 새로 만들면 여기에 재서 적고 tools/idg-fun-spots.mjs 로 확인) */
-export const SPOTS = { 1: W1_SPOTS, 2: W2_SPOTS };
+export const SPOTS = { 1: W1_SPOTS, 2: W2_SPOTS, 3: W3_SPOTS };

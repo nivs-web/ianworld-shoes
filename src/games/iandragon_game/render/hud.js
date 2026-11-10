@@ -15,7 +15,7 @@ const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
-export function createHud(host, { stage, deck, skills, text }, cb) {
+export function createHud(host, { stage, deck, skills, text, speedMax = 2 }, cb) {
   const root = h('div', 'idg-hud'); host.appendChild(root);
   /* 위 */
   const top = h('div', 'idg-top'); root.appendChild(top);
@@ -25,6 +25,7 @@ export function createHud(host, { stage, deck, skills, text }, cb) {
   const speedB = h('button', 'idg-btn idg-speed', '×1'); speedB.type = 'button'; speedB.onclick = () => cb.speed();
   const money = h('div', 'idg-money'); const moneyN = h('span', 'n', '0'); money.append(h('i', 'idg-ico-ember'), moneyN);
   top.append(pauseB, title, time, speedB, money);
+  if (speedMax < 2) speedB.style.visibility = 'hidden';
   const hp = h('div', 'idg-hp'); root.appendChild(hp);
   const myHp = h('div', 'idg-hp-me'), foeHp = h('div', 'idg-hp-foe');
   hp.append(myHp, foeHp);

@@ -17,16 +17,18 @@ const byName = (table, name) => Object.keys(table).find((k) => table[k].name ===
 /** 순번 g 스테이지를 시작할 때 열려 있는 것 (그 앞 스테이지들을 깨서 얻은 것) */
 export function unlockedBefore(g) {
   const dragons = new Set(['kkomul']), skills = [];
-  let deckCap = 5;
+  let deckCap = 5, speedMax = 1;
   for (const st of STAGES) {
     if (st.g >= g) break;
     for (const txt of st.unlocks || []) {
       const d = txt.match(/^용 「(.+)」/); if (d) { const id = byName(UNITS, d[1]); if (id) dragons.add(id); }
       const s = txt.match(/^스킬 「(.+)」/); if (s) { const id = byName(SKILLS, s[1]); if (id && !skills.includes(id)) skills.push(id); }
       if (/덱 칸 \+1/.test(txt)) deckCap++;
+      if (txt === '2배속') speedMax = Math.max(speedMax, 2);
+      if (txt === '3배속') speedMax = 3;
     }
   }
-  return { dragons: DRAGON_ORDER.filter((id) => dragons.has(id)), skills: skills.slice(-2), deckCap: Math.min(10, deckCap) };
+  return { dragons: DRAGON_ORDER.filter((id) => dragons.has(id)), skills: skills.slice(-2), deckCap: Math.min(10, deckCap), speedMax };
 }
 
 /* 계산기 기준 출전 (docs/sim/stages.js) — 월드 1~5 */
@@ -54,6 +56,7 @@ export function makeLoads(stage, save) {
   return {
     deck,
     skills: un.skills,
+    speedMax: un.speedMax,
     loads: [{ side: 0, deck, leader, leaderLv: Math.max(1, stage.expLevel || 1), skills: un.skills, bonus: refBonus(stage.w) }],
   };
 }

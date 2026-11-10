@@ -17,7 +17,7 @@ tagArt(D);
 /** opts = { stageNo, save, onSave(part), onExit(), restart(stageNo), text } */
 export async function startBattle(ctx, opts) {
   const stage = stageByNo(opts.stageNo);
-  const { deck, skills, loads } = makeLoads(stage, opts.save);
+  const { deck, skills, loads, speedMax } = makeLoads(stage, opts.save);
   const S = createBattle(stage, loads, D, (Date.now() % 1e9) | 0);
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: deck, enemies: enemyIds, leader: loads[0].leader });
@@ -26,10 +26,10 @@ export async function startBattle(ctx, opts) {
   const ui = { speed: 1, paused: false, warn: 0, done: false };
   const cmds = [];
   let acc = 0, bossSeen = false;
-  const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text }, {
+  const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text, speedMax }, {
     cmd(c) { if (!ui.paused && !S.over) cmds.push({ p: 0, ...c }); },
     pause() { if (ui.done) return; ui.paused = !ui.paused; if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
-    speed() { ui.speed = ui.speed === 1 ? 2 : 1; },
+    speed() { ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면
     exit() { opts.onExit(); },
     retry() { opts.restart(stage.g); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
@@ -89,10 +89,12 @@ export async function startBattle(ctx, opts) {
     hud.update(S, ui);
   };
   ctx.app.ticker.add(tick);
+  const onHide = () => { if (document.hidden && !ui.done && !ui.paused) { ui.paused = true; hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
+  document.addEventListener('visibilitychange', onHide);
   if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };
 
   return {
-    destroy() { ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },
+    destroy() { document.removeEventListener('visibilitychange', onHide); ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },
     pause() { if (!ui.done && !ui.paused) { ui.paused = true; hud.showPanel('pause'); } },
   };
 }
