@@ -44,14 +44,14 @@ export const LOOKS = {
     { id: 'ice', name: '얼음 파랑', price: 10000 },
   ],
   flag: [
-    { id: 'fire', name: '불꽃 깃발', price: 6000 },
+    { id: 'dragon', name: '용 깃발', price: 6000 },     /* 보조 그림 이름에 맞춤 (11/11) */
     { id: 'moon', name: '달 깃발', price: 4000 },
     { id: 'skull', name: '해골 깃발', price: 50, gem: true },
     { id: 'star', name: '별 깃발', price: 4000 },
     { id: 'heart', name: '하트 깃발', price: 3000 },
-    { id: 'leaf', name: '나뭇잎 깃발', price: 3000 },
-    { id: 'wave', name: '물결 깃발', price: 5000 },
-    { id: 'bolt', name: '번개 깃발', price: 5000 },
+    { id: 'flame', name: '불꽃 깃발', price: 5000 },
+    { id: 'crown', name: '왕관 깃발', price: 8000 },
+    { id: 'rainbow', name: '무지개 깃발', price: 5000 },
   ],
   frame: [   // 명예의 전당 시즌 보상 — 상점 판매 X (price 없음)
     { id: 'wood', name: '나무 테두리' },
@@ -92,6 +92,9 @@ export const TITLES = [
   { id: 'hundred_wins', name: '백전백승', how: '100판 이기기', has: (g) => st(g, 'wins') >= 100 },
 ];
 LOOKS.title = TITLES.map((t) => ({ id: t.id, name: t.name }));
+/** 그림 경로 — 보조 파일 이름과 다른 것만 따로 (브레스 기본 = breath_default · 칭호 = badge_<그림 이름>) */
+const BADGE = { zombie_hunter: 'hunter', star_collector: 'stars', hundred_dragon: 'hundred', hard_conqueror: 'hard', coop_friend: 'buddies', boss_slayer: 'boss', breath_master: 'breath', egg_rich: 'egg', brazier_master: 'nest', duelist: 'duel', first_world: 'explorer', hundred_wins: 'weekhero' };
+export const artOf = (slot, id) => `/assets/iandragon_game/ai/meta/${slot === 'title' ? `badge_${BADGE[id] || id}` : slot === 'breath' && id === 'basic' ? 'breath_default' : `${slot}_${id}`}.png`;
 export const titleOf = (id) => TITLES.find((t) => t.id === id) || null;
 
 /** 편의품 — 판마다 1개 · 혼자 하기(스테이지)만. 능력치가 아주 약하게만 오른다 (저장 cons[id] = 가진 개수) */

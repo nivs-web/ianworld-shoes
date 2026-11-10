@@ -73,8 +73,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   if (lead && (look.hat || look.neck)) {
     const [hatT, neckT] = await Promise.all([look.hat && tryLoad(`${AI}meta/hat_${look.hat}.png`), look.neck && tryLoad(`${AI}meta/neck_${look.neck}.png`)]);
     const b = lead.root.getLocalBounds();
-    if (neckT) { const s = new Sprite(neckT); s.anchor.set(0.5, 0.5); s.width = s.height = Math.max(24, b.width * 0.42); s.position.set(b.x + b.width * 0.5, b.y + b.height * 0.48); lead.root.addChild(s); }
-    if (hatT) { const s = new Sprite(hatT); s.anchor.set(0.5, 1); s.width = s.height = Math.max(26, b.width * 0.45); s.position.set(b.x + b.width * 0.58, b.y + 10); lead.root.addChild(s); }
+    if (neckT) { const s = new Sprite(neckT); s.anchor.set(0.5, 0); s.width = s.height = Math.max(24, b.width * 0.42); s.position.set(b.x + b.width * 0.52, b.y + b.height * 0.36); if (look.neck === 'cape') lead.root.addChildAt(s, 0); else lead.root.addChild(s); }   // 목 장식 붙는 점 = 위 가운데(보조) · 망토는 몸 뒤
+    if (hatT) { const s = new Sprite(hatT); s.anchor.set(0.5, 1); s.width = s.height = Math.max(22, b.width * 0.3); s.position.set(b.x + b.width * 0.7, b.y + b.height * 0.24); lead.root.addChild(s); }
   }
   if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); }
 

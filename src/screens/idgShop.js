@@ -7,7 +7,7 @@
  */
 import { el, button, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
-import { SLOT_NAME, LOOKS, CONSUMABLES, CONS_MAX, SELLABLE, keyOf, parseKey, priceOf, dealPrice, dealsFor, todayKst } from '../games/iandragon_game/data/looks.js';
+import { SLOT_NAME, LOOKS, CONSUMABLES, CONS_MAX, SELLABLE, keyOf, parseKey, priceOf, dealPrice, dealsFor, todayKst, artOf } from '../games/iandragon_game/data/looks.js';
 
 const META = '/assets/iandragon_game/ai/meta/';
 const fmt = (n) => Number(n || 0).toLocaleString('en-US');
@@ -17,7 +17,7 @@ const ICON = { width: '40px', height: '40px', display: 'grid', placeItems: 'cent
 /** 아이템 그림 — 그림 파일이 아직 없으면 글자(이름 첫 글자들)로 보인다 */
 export function itemIcon(slot, id, name) {
   const wrap = el('span', { style: ICON });
-  const img = el('img', { src: `${META}${slot}_${id}.png`, alt: '', style: 'width:100%;height:100%;object-fit:contain;image-rendering:pixelated' });
+  const img = el('img', { src: artOf(slot, id), alt: '', style: 'width:100%;height:100%;object-fit:contain' });
   img.onerror = () => { wrap.replaceChildren(document.createTextNode(String(name || id).slice(0, 4))); };
   wrap.append(img);
   return wrap;

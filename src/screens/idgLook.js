@@ -6,12 +6,12 @@
  */
 import { el, button, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
-import { SLOTS, SLOT_NAME, LOOKS, TITLES, BREATH_COLORS, encodeLook, decodeLook, hasItem } from '../games/iandragon_game/data/looks.js';
+import { SLOTS, SLOT_NAME, LOOKS, TITLES, BREATH_COLORS, encodeLook, decodeLook, hasItem, artOf } from '../games/iandragon_game/data/looks.js';
 
 const AI = '/assets/iandragon_game/ai/';
 const META = `${AI}meta/`;
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
-const imgFor = (slot, id) => (slot === 'title' ? `${META}badge_${id}.png` : `${META}${slot}_${id}.png`);
+const imgFor = artOf;   // 보조 그림 이름 맞춤 (looks.js)
 
 /** 그림이 없으면 글자로 */
 function pic(slot, id, name, style) {
