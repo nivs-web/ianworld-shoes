@@ -18,7 +18,9 @@ export function createBattleSound(stage, me = 0) {
   const timers = [];   // 나간 뒤에 소리가 나지 않게 모아 두었다가 지운다 (코드 검토 6)
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
   if (musicOn) Audio.worldBgm(stage.w);   // 겜팀장 월드 곡 (월드 1 «죽음의 무도» … 월드 5 «마법사의 제자»)
-  const was = { spawned: 0, wl: 0, breath: 0, breathReady: false, skill: 0, rage: 0, kills: 0, base0: null, base1: null, boss: null, bossHalf: false, fever: false, over: false, hits: 0, units: new Set(), spawnT: [], waveCd: 0, lastWave: false, bossSt: null, barrier: new Map(), corpse: new Set() };
+  const was = { spawned: 0, wl: 0, breath: 0, breathReady: false, skill: 0, rage: 0, kills: 0, base0: null, base1: null, boss: null, bossHalf: false, fever: false, over: false, hits: 0, units: new Set(), spawnT: [], waveCd: 0, lastWave: false, bossSt: null, barrier: new Map(), corpse: new Set(), weak: new Set(), st: new Map(), dead: new Set(), gap: {} };
+  /** 같은 소리를 너무 자주 내지 않기 (초) */
+  const once = (id, sec, t) => { if (t - (was.gap[id] ?? -99) < sec) return; was.gap[id] = t; Audio.play(id); };
 
   return {
     /** 매 프레임 — S = 코어 상태, view = 그리기(맞은 횟수 hits) */
@@ -33,7 +35,7 @@ export function createBattleSound(stage, me = 0) {
       if (p.wl > was.wl) { Audio.play('wallet_up'); if (Math.random() < 0.5) Audio.voice('brazier'); } was.wl = p.wl;
       const ready = p.breathT >= p.breathCharge;
       if (ready && !was.breathReady) Audio.play('breath_ready'); was.breathReady = ready;
-      if (p.st.breath > was.breath) { Audio.play('breath_fire'); Audio.voice('breath'); } was.breath = p.st.breath;
+      if (p.st.breath > was.breath) { Audio.play('breath_fire'); Audio.voice('breath'); if (S.units.some((u) => u.alive && u.side !== p.side && u.def.kbImmune)) later(() => Audio.play('no_knockback'), 250); } was.breath = p.st.breath;
       if (p.st.skill > was.skill) { const used = p.skills.find((s) => s.cdT > s.def.cd - 0.2); Audio.play(`skill_${used ? used.id : 'meteor'}`); } was.skill = p.st.skill;
       if (p.st.rageUse > was.rage) { Audio.play('roar'); Audio.voice('roar'); } was.rage = p.st.rageUse;
       if (S.st.kills > was.kills) Audio.play('die'); was.kills = S.st.kills;
@@ -49,9 +51,12 @@ export function createBattleSound(stage, me = 0) {
       if (b && b.alive && b.state === 'fore' && was.bossSt !== 'fore') Audio.play('boss_big_attack_warn');
       if (b && b.state === 'back' && was.bossSt === 'fore' && b.def._art === 'bossLord') Audio.play('lord_shockwave');
       was.bossSt = b ? b.state : null;
-      /* 2차 상태 소리 : 방어막 깨짐 · 유령 되살아남 */
+      /* 2차 상태 소리 : 방어막 막음/깨짐 · 유령 되살아남 · 약해짐 · 독 · 정화 · 안 밀림 */
       for (const u of S.units) {
-        const pb = was.barrier.get(u.id); if (pb > 0 && u.barrier === 0) Audio.play('shield_break'); was.barrier.set(u.id, u.barrier || 0);
+        const pb = was.barrier.get(u.id); if (pb > 0 && u.barrier === 0) Audio.play('shield_break'); else if (pb > 0 && u.barrier < pb) once('shield_block', 0.25, S.t); was.barrier.set(u.id, u.barrier || 0);
+        if (u.weakT > 0 && !was.weak.has(u.id)) { was.weak.add(u.id); once('weaken_curse', 1.5, S.t); } else if (!(u.weakT > 0)) was.weak.delete(u.id);
+        const ps = was.st.get(u.id); if (ps === 'fore' && u.state === 'back' && u.def.poison) once('poison_tick', 0.2, S.t); was.st.set(u.id, u.state);
+        if (!u.alive && u.killPurify && u.def.revive && !was.dead.has(u.id)) { was.dead.add(u.id); once('purify', 0.6, S.t); }
         if (u.corpseT > 0) was.corpse.add(u.id); else if (was.corpse.has(u.id)) { was.corpse.delete(u.id); Audio.play('ghost_revive'); }
       }
       if (b && !was.bossHalf && b.hp <= b.maxHp / 2) { was.bossHalf = true; Audio.voice(`boss/${b.def._art}/half`); }

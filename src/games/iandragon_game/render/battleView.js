@@ -91,6 +91,11 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const BS = BREATH[leader] || BREATH.novart;
   const bossFx = createBossFx({ layer: app.stage, fx, M, GY, view, artOf: (def) => artOf(def._art), shake: (t) => { shakes.screen = Math.max(shakes.screen, t); } });   // 보스 컷인 · 큰 공격 경고 (bossFx.js)
 
+  /* 상태 아이콘 : 약해짐(보라) > 되살아날 유령 > 방패 > 안 밀림 > 독 공격 > 정화 공격 */
+  const ST = ['weaken', 'revive', 'shield', 'noknock', 'poison', 'purify'];
+  const stTex = Object.fromEntries(await Promise.all(ST.map(async (k) => [k, await tryLoad(`/assets/iandragon_game/ui/hud_st_${k}_xs.png`)])));
+  const badges = new Container(); stage.addChild(badges);
+  const stOf = (u) => (u.weakT > 0 ? 'weaken' : u.def.revive && !u.revived ? 'revive' : u.barrier > 0 ? 'shield' : u.def.kbImmune ? 'noknock' : u.def.poison ? 'poison' : u.def.purify ? 'purify' : null);
   const rigFor = (u) => {
     const art = u.def._art;
     if (u.side === 0 || pvp) { const lv = dragons.find((d) => d.id === art)?.lv || 1; return (lv >= 10 && rigs[art + '_2']) || rigs[art] || rigs.kkomul; }
@@ -118,6 +123,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
         R.speed = u.side === 0 ? 1.1 : 0.9;
         v = { R, x: M + u.x, hp: u.hp, st: u.state, hitT: 0, flash: 0, kbT: 0, y: GY + ((u.id * 37) % 13) - 6, dieT: -1 };
         R.root.position.set(v.x, v.y); R.root.zIndex = v.y + (u.boss ? -20 : 0); units.addChild(R.root); V.set(u.id, v);
+        v.h = Math.min(220, R.root.height || 60);
       }
       v.x += (M + u.x - v.x) * Math.min(1, dt * 18);
       const R = v.R;
@@ -139,12 +145,19 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       R.root.rotation = corpse ? (u.side ? -1.3 : 1.3) : 0;
       R.root.position.set(Math.round(v.x), Math.round(v.y + dy));
       v.flash -= dt; R.root.filters = v.flash > 0 ? [white] : null;
+      const sk = u.alive && !buried ? stOf(u) : null, tx = sk && stTex[sk];
+      if (tx) {
+        if (!v.badge) { v.badge = new Sprite(tx); v.badge.anchor.set(0.5, 1); v.badge.width = v.badge.height = 20; badges.addChild(v.badge); }
+        if (v.badge.texture !== tx) { v.badge.texture = tx; v.badge.width = v.badge.height = 20; }
+        v.badge.visible = true; v.badge.alpha = corpse ? 0.6 : 0.95; v.badge.position.set(Math.round(v.x), Math.round(v.y + dy - v.h - 10));
+      } else if (v.badge) v.badge.visible = false;
     }
     for (const [id, v] of V) {
       if (alive.has(id) && v.dieT < 0) continue;
       if (v.dieT < 0) { v.dieT = 0; puff(v.x, v.y - 30, 0xfff6c0, 10, 110, 0.5, 2); }
+      if (v.badge) v.badge.visible = false;
       v.dieT += dt; v.R.root.alpha = Math.max(0, 1 - v.dieT / 0.35); v.R.root.y = v.y - v.dieT * 30;
-      if (v.dieT > 0.35) { v.R.root.destroy({ children: true }); V.delete(id); }
+      if (v.dieT > 0.35) { v.R.root.destroy({ children: true }); v.badge?.destroy(); V.delete(id); }
     }
   }
   /** 원거리 : 가장 가까운 상대에게 불덩이 / 침을 날린다 (그림 전용) */
