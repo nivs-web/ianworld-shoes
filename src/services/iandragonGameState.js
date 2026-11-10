@@ -1,0 +1,107 @@
+/**
+ * 이안 드래곤 게임 — 계정에 저장하는 값 한 묶음(`profile.idg`)의 모양 · 고치기 · 병합. (2026-11-10)
+ *
+ * `profile.js` 의 `pullRemote` 가 부르므로 **부팅 번들에 들어간다** — 게임 코드 · 표를 물지 않는
+ * 작은 순수 함수만 둔다 (줄넘기 `jumpropeState.js` 와 같은 방식). 모양은 기획서 14장.
+ *
+ * ## 병합 규칙 (줄넘기 · 드래곤과 같은 방침)
+ * 줄지 않는 값(진행 · 별 · 레벨 · 연구 · 도감 비트)은 큰 쪽 / 합집합, 지갑(코인 · 젬)도 큰 쪽
+ * — 한 기기에서 번 것이 옛 값에 덮여 사라지는 것보다 쓴 것이 되살아나는 쪽이 낫다.
+ * 고른 것(리더 · 스킬 · 덱 · 배속)은 마지막에 고른 쪽(원격)을 따른다.
+ */
+
+const CAP = 1e9;
+const STAGES = 200;          // 100스테이지 → 나중에 200 (기획서 17장)
+const LAB_N = 7;
+const ID = /^[a-zA-Z][a-zA-Z0-9]{0,23}$/;
+
+const n0 = (v, hi = CAP) => {
+  const x = Math.round(Number(v) || 0);
+  return x < 0 ? 0 : x > hi ? hi : x;
+};
+const str = (v, max, def) => (typeof v === 'string' && v.length <= max ? v : def);
+const ids = (a, max) => [...new Set((Array.isArray(a) ? a : []).filter((s) => typeof s === 'string' && ID.test(s)))].slice(0, max);
+/** 스테이지마다 별 0~3 — 문자열 한 줄 ('0'~'3') */
+const starsStr = (s) => (typeof s === 'string' ? s : '').slice(0, STAGES).replace(/[^0-3]/g, '0');
+/** 비트 문자열(도감 · 과제) — 0/1 만 */
+const bits = (s, max) => (typeof s === 'string' ? s : '').slice(0, max).replace(/[^01]/g, '0');
+
+function units(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return { kkomul: [1, 0] };
+  for (const [k, v] of Object.entries(raw)) {
+    if (!ID.test(k) || !Array.isArray(v)) continue;
+    out[k] = [Math.max(1, n0(v[0], 99)), n0(v[1], 99)];   // [레벨, +]
+  }
+  if (!out.kkomul) out.kkomul = [1, 0];
+  return out;
+}
+
+export function emptyIdg() { return normIdg(null); }
+
+/** 저장된 값이 어떤 모양이든 안전한 모양으로 */
+export function normIdg(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const lab = Array.from({ length: LAB_N }, (_, i) => n0(Array.isArray(r.lab) ? r.lab[i] : 0, 99));
+  const deck = ids(r.deck, 10);
+  return {
+    v: 1,
+    coins: n0(r.coins),
+    gems: n0(r.gems),
+    cleared: n0(r.cleared, STAGES),          // 깬 마지막 스테이지 순번 (차례로만 열린다)
+    stars: starsStr(r.stars),
+    units: units(r.units),
+    squadLv: Math.max(1, n0(r.squadLv, 99)),
+    lab,
+    leader: str(r.leader, 24, 'novart'),
+    skills: ids(r.skills, 2),
+    deck: deck.length ? deck : ['kkomul'],
+    pity: n0(r.pity, 999),                    // 전설이 안 나온 연속 횟수
+    seen: bits(r.seen, 512),                  // 도감 · 튜토리얼 표시
+    quests: bits(r.quests, 256),              // 도전 과제
+    daily: str(r.daily, 10, ''),              // 마지막 첫 승리 날짜 (YYYY-MM-DD, KST)
+    speed: [1, 2, 3].includes(r.speed) ? r.speed : 1,
+  };
+}
+
+const maxStars = (a, b) => {
+  const n = Math.max(a.length, b.length);
+  let s = '';
+  for (let i = 0; i < n; i++) s += String(Math.max(Number(a[i] || 0), Number(b[i] || 0)));
+  return s;
+};
+const orBits = (a, b) => {
+  const n = Math.max(a.length, b.length);
+  let s = '';
+  for (let i = 0; i < n; i++) s += a[i] === '1' || b[i] === '1' ? '1' : '0';
+  return s;
+};
+
+/** 두 기기의 값 합치기 — 위 «병합 규칙» */
+export function mergeIdg(localRaw, remoteRaw) {
+  if (!remoteRaw) return localRaw ? normIdg(localRaw) : undefined;
+  const a = normIdg(localRaw), b = normIdg(remoteRaw);
+  const unitsOut = { ...a.units };
+  for (const [k, v] of Object.entries(b.units)) {
+    const u = unitsOut[k];
+    unitsOut[k] = u ? [Math.max(u[0], v[0]), Math.max(u[1], v[1])] : v;
+  }
+  return {
+    v: 1,
+    coins: Math.max(a.coins, b.coins),
+    gems: Math.max(a.gems, b.gems),
+    cleared: Math.max(a.cleared, b.cleared),
+    stars: maxStars(a.stars, b.stars),
+    units: unitsOut,
+    squadLv: Math.max(a.squadLv, b.squadLv),
+    lab: a.lab.map((x, i) => Math.max(x, b.lab[i])),
+    leader: remoteRaw.leader ? b.leader : a.leader,
+    skills: remoteRaw.skills ? b.skills : a.skills,
+    deck: remoteRaw.deck ? b.deck : a.deck,
+    pity: remoteRaw.pity != null ? b.pity : a.pity,
+    seen: orBits(a.seen, b.seen),
+    quests: orBits(a.quests, b.quests),
+    daily: a.daily > b.daily ? a.daily : b.daily,
+    speed: remoteRaw.speed ? b.speed : a.speed,
+  };
+}

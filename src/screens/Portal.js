@@ -47,6 +47,13 @@ const jrBest = (p) => { const e = p.jr?.endless || {}; return Math.max(e.easy | 
 /** 점프 피아노 기록(프로필 `jp` — 챔피언 `jr` 과 따로). 한 판도 안 했으면 소개 한 줄 */
 const jpBest = (p) => { const e = p.jp?.endless || {}; return Math.max(e.easy | 0, e.normal | 0, e.hard | 0); };
 const pianoLine = (p) => ((p.jp?.plays | 0) > 0 ? S.pianoCardLine(jpBest(p), p.jp?.jumps) : '3칸 · 6칸 타일을 두드려 점프!');
+/** 7번째 게임 이안 드래곤 게임 (2026-11-10 제작 시작) — 세로 로비, 게임은 가로 */
+const IanDragonGameLobby = lazyScreen(() => import('./IanDragonGameLobby.js'), S.idgTitle);
+/**
+ * 제작 중 미리보기 숨은 입구 — 주소에 `?game=iandragon_game` 이 있으면 «SOON» 이 로비로 들어간다.
+ * 카드를 열기(`ready: true`) 전까지 대표님 · 겜팀장이 배포 없이도 들어가 보는 길 (제작 명령서 B0).
+ */
+const idgPreview = () => /[?&]game=iandragon_game(&|$)/.test(location.search);
 
 /**
  * 게임 카드.  `sub` 는 카드 제목 아래 한 줄 — 게임마다 자랑할 숫자가 다르다
@@ -54,7 +61,7 @@ const pianoLine = (p) => ((p.jp?.plays | 0) > 0 ? S.pianoCardLine(jpBest(p), p.j
  */
 const CARDS = [
   /* 7번째 게임 이안 드래곤 — 맨 위 신작 자리 (2026-11-10 대표님). 아직 제작 전이라 `ready: false` = 그림 대신 «제작 중» 카드 */
-  { id: 'iandragon', banner: null, title: S.idgTitle, sub: () => S.idgSoonLine, screen: null, ready: false },
+  { id: 'iandragon_game', banner: null, title: S.idgTitle, sub: () => S.idgSoonLine, screen: () => IanDragonGameLobby, ready: false },
   { id: 'find_shoes', banner: '/assets/ui/banner_find_shoes.webp', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
   { id: 'dragon_striker', banner: '/assets/ui/banner_dragon_striker.webp', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
   { id: 'catchball', banner: '/assets/ui/banner_catchball.webp', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
@@ -178,7 +185,11 @@ export default function Portal(nav) {
               ]),
               el('button.gc-play.gc-new-play', {
                 type: 'button', 'aria-label': `${c.title} ${S.idgSoonTag}`,
-                onclick: () => { Sfx.play('sfx_menu_select'); toast(S.idgSoonToast, 2600); },
+                onclick: () => {
+                  Sfx.play('sfx_menu_select');
+                  if (idgPreview() && c.screen) nav.push(c.screen());
+                  else toast(S.idgSoonToast, 2600);
+                },
               }, ['SOON']),
               el('div.gc-sub', c.sub(p)),
             ])

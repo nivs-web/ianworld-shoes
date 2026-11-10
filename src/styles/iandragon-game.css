@@ -1,0 +1,41 @@
+/* 이안 드래곤 게임 (2026-11-10) — 세로 로비 + 가로 게임 화면 */
+
+/* ── 가로 게임 화면에 있는 동안만 : 오락실의 «폭 450» 틀을 풀어 창 전체를 쓴다 (reset.css 11/6 규칙의 예외) ── */
+html.idg-wide body { width: 100%; }
+
+.idg-stage { background: #07040f; }
+.idg-host { display: grid; place-items: center; overflow: hidden; background: #07040f; }
+.idg-canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; }
+
+.idg-exit {
+  position: absolute; left: max(8px, env(safe-area-inset-left)); top: max(8px, env(safe-area-inset-top)); z-index: 3;
+  padding: 6px 12px; border-radius: 8px; border: 2px solid #FFC93C; background: rgba(20, 8, 42, .82); color: #FFC93C;
+  font: 700 13px 'Neo둥근모', monospace; cursor: pointer;
+}
+
+/* 세로로 들면 덮는 안내 — 세로 모드는 없다 (기획서 11.0) */
+.idg-rotate {
+  position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: #0b0716; color: #fff; text-align: center; padding: 24px;
+}
+.idg-rotate[hidden] { display: none; }
+.idg-rotate-icon { font-size: 44px; animation: idgTurn 1.6s ease-in-out infinite; }
+.idg-rotate-main { font: 700 18px 'Neo둥근모', monospace; color: #FFC93C; }
+.idg-rotate-sub { font: 13px 'Neo둥근모', monospace; color: #e9dcc0; }
+.idg-rotate-exit { margin-top: 14px; padding: 8px 18px; border-radius: 10px; border: 2px solid #FFC93C; background: #1a1033; color: #FFC93C; font: 700 14px 'Neo둥근모', monospace; }
+@keyframes idgTurn { 0%, 30% { transform: rotate(0) } 60%, 100% { transform: rotate(-90deg) } }
+
+/* ── 세로 로비 ── */
+.idg-logo { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 18px 0 8px; }
+.idg-logo-main {
+  font-family: 'PretendardV', 'Neo둥근모', sans-serif; font-weight: 900; font-size: 40px; line-height: 1; letter-spacing: 1px;
+  background: linear-gradient(180deg, #FFE27A 0%, #FF9A3C 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 3px 0 #3a1a00);
+}
+.idg-logo-sub { font: 700 13px 'Neo둥근모', monospace; letter-spacing: 4px; color: #22E6FF; }
+.idg-panel { display: flex; flex-direction: column; gap: 8px; }
+.idg-player { font-size: 20px; color: #fff; }
+.idg-stats { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: #e9dcc0; }
+.idg-preview { text-align: center; font-size: 12px; color: #22E6FF; opacity: .85; margin: 4px 0; }
+.dialog.idg-how p { line-height: 1.6; margin: 8px 0 14px; }
+.idg-how-title { font-weight: 700; color: #FFC93C; }

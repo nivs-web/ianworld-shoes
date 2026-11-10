@@ -15,6 +15,7 @@ import * as Rank from './leaderboard.js';
 import { syncCatchPlayerSoon } from './catchRank.js';
 import { mergeJr } from './jumpropeState.js';
 import { mergeJp } from './jumppianoState.js';
+import { mergeIdg } from './iandragonGameState.js';
 /** 착용 자리 목록 — 표가 유일한 진실이라 슬롯이 늘어도 여기가 저절로 따라온다 */
 import { ITEM_CATS } from '../data/items.js';
 
@@ -280,6 +281,8 @@ export async function pullRemote() {
     jr: mergeJr(local.jr, remote.jr),
     /* 점프 피아노 (2026-11-07) — 따로 한 묶음(jp). 챔피언(jr)과 같은 병합 규칙, 값은 섞지 않는다 */
     jp: mergeJp(local.jp, remote.jp),
+    /* 이안 드래곤 게임 (2026-11-10) — 한 묶음(idg). 진행·별·레벨은 큰 쪽, 고른 것(리더·덱·배속)은 원격 */
+    idg: mergeIdg(local.idg, remote.idg),
   };
   L.reconcile(merged);
   L.saveProfile(merged);
