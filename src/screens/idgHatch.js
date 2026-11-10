@@ -40,9 +40,11 @@ export function showHatch(onChange) {
     btns.style.visibility = 'hidden';
     /* 소리(겜팀장) : 달그락 ×3 → 빠직 → 등급 소리. 전설은 북소리 1.3초가 끝나는 순간 알이 터진다 */
     for (const t of [0, 300, 600]) setTimeout(() => snd((A) => A.play('egg_shake')), t);
+    snd((A) => A.voice('hatch/shake'));   // 겜팀장 대사 (파일이 없으면 조용히 넘어감)
     setTimeout(() => { stage.firstChild?.classList.add('crack'); snd((A) => { A.play('egg_crack'); if (best === 'legend') A.play(REVEAL.legend); }); }, 900);
     const burst = best === 'legend' ? 900 + 1300 : 1400;
     if (best !== 'legend') setTimeout(() => snd((A) => A.play(REVEAL[best])), burst);
+    setTimeout(() => snd((A) => A.voice(`hatch/${best}`)), burst + 150);
     setTimeout(() => {
       stage.replaceChildren(el('div.idg-hatch-grid' + (n > 1 ? '.ten' : ''), null, r.results.map((x, i) => el(`div.idg-hatch-card.${x.rar}`, { style: `animation-delay:${i * 0.08}s` }, [
         el('img', { src: `${AI}${x.id}/head.png`, alt: '' }),

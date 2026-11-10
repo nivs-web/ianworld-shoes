@@ -30,10 +30,10 @@ export function createBattleSound(stage) {
         was.units = ids;
       } else was.units = new Set(S.units.filter((u) => u.side === 0).map((u) => u.id));
       was.spawned = p.st.spawned;
-      if (p.wl > was.wl) Audio.play('wallet_up'); was.wl = p.wl;
+      if (p.wl > was.wl) { Audio.play('wallet_up'); if (Math.random() < 0.5) Audio.voice('brazier'); } was.wl = p.wl;
       const ready = p.breathT >= p.breathCharge;
       if (ready && !was.breathReady) Audio.play('breath_ready'); was.breathReady = ready;
-      if (p.st.breath > was.breath) Audio.play('breath_fire'); was.breath = p.st.breath;
+      if (p.st.breath > was.breath) { Audio.play('breath_fire'); Audio.voice('breath'); } was.breath = p.st.breath;
       if (p.st.skill > was.skill) { const used = p.skills.find((s) => s.cdT > s.def.cd - 0.2); Audio.play(`skill_${used ? used.id : 'meteor'}`); } was.skill = p.st.skill;
       if (p.st.rageUse > was.rage) { Audio.play('roar'); Audio.voice('roar'); } was.rage = p.st.rageUse;
       if (S.st.kills > was.kills) Audio.play('die'); was.kills = S.st.kills;
@@ -53,6 +53,8 @@ export function createBattleSound(stage) {
         else { Audio.play('lose_womp'); Audio.voice('lose'); }
       }
     },
+    /** 출격! (스테이지 카드에서) */
+    start() { Audio.voice('start'); },
     /** 결과 판의 별 «탕 · 탕 · 탕» */
     stars(n) { for (let i = 0; i < n; i++) later(() => Audio.play('star'), 300 + i * 350); },
     /** 일시정지 · 앱 내림 : 곡까지 멈춤, 풀면 다시 (코드 검토 12) */

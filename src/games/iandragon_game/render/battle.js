@@ -32,7 +32,7 @@ export async function startBattle(ctx, opts) {
   let acc = 0, bossSeen = false, gone = false;
   const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (!ui.paused && !S.over) cmds.push({ p: 0, ...c }); },
-    go() { ui.intro = false; ui.paused = false; hud.hidePanel(); },
+    go() { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(); },
     pause() { if (ui.done || ui.intro) return; ui.paused = !ui.paused; sound.pause(ui.paused); if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
     speed() { ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
     auto() { if (canAuto) ui.auto = !ui.auto; },
