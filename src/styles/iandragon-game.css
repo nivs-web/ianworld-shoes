@@ -219,3 +219,18 @@ html.idg-wide body { width: 100%; }
 /* 멀티 — 상대를 기다리는 중 (2026-11-11) */
 .idg-net { position: absolute; left: 50%; top: 38%; transform: translateX(-50%); padding: 8px 16px; border-radius: 10px; background: rgba(20, 8, 42, .85); color: #9cf; display: none; }
 .idg-net.on { display: block; animation: idgBlink .8s steps(1) infinite; }
+
+/* ── 로비 꾸밈 (2026-11-11 대표님 «디자인 요소가 없다 · 버튼 그림까지») — 그림은 ui/lobby/ (겜부장 보조) ── */
+.idg-lobby-bg { position: fixed; inset: 0; z-index: -1; background: #0b0716 url(/assets/iandragon_game/ui/lobby/bg.webp) center top / cover no-repeat; }
+.idg-stat-row { display: flex; justify-content: center; gap: 14px; margin-top: 4px; }
+.idg-stat { display: inline-flex; align-items: center; gap: 4px; } .idg-stat img { width: 22px; height: 22px; object-fit: contain; }
+.idg-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 10px 0; }
+.idg-menu .idg-tile:last-child:nth-child(odd) { grid-column: span 2; }
+.idg-tile { position: relative; display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 6px 10px; border-radius: 14px; border: 2px solid #FFC93C;
+  background: linear-gradient(180deg, rgba(58, 34, 110, .92), rgba(26, 14, 52, .92)); color: #fff; font: 700 14px 'Neo둥근모', monospace; text-align: left; box-shadow: 0 3px 0 #8a5a00; }
+.idg-tile img { width: 48px; height: 48px; object-fit: contain; flex: none; }
+.idg-tile:active { transform: translateY(2px); box-shadow: 0 1px 0 #8a5a00; }
+.idg-tile.locked { opacity: .5; } .idg-tile.dot::after { content: ''; position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 6px #ff4d4d; }
+.idg-start { width: 100%; min-height: 64px; border: 0; border-radius: 16px; background: url(/assets/iandragon_game/ui/lobby/btn_start.png) center / 100% 100% no-repeat, linear-gradient(180deg, #ff7a1a, #c2410c); color: #fff;
+  font: 900 22px 'Neo둥근모', monospace; letter-spacing: 2px; text-shadow: 0 3px 0 #5a1a00; box-shadow: 0 4px 0 #6a2200; margin-bottom: 8px; }
+.idg-start:active { transform: translateY(2px); box-shadow: 0 2px 0 #6a2200; }
