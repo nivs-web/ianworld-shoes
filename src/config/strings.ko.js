@@ -240,7 +240,7 @@ export const S = {
   idgLobbyStart: '모험 시작',
   idgLobbyHow: '하는 법',
   idgLobbyHowText: '아기 드래곤을 내보내 좀비 탑을 무너뜨리세요! 불씨가 모이면 드래곤 버튼을 누르고, 화로를 올리면 불씨가 더 빨리 모여요. 게임은 휴대폰을 가로로 돌려서 해요.',
-  idgLobbyPreview: '제작 중 미리보기 · 그림은 자리표시예요',
+  idgLobbyPreview: '제작 중 미리보기 · 월드 1~5',
   idgStatNext: (label) => `다음 스테이지 ${label}`,
   idgStatStars: (n) => `모은 별 ${n}개`,
   idgStatCoins: (n) => `코인 ${n.toLocaleString('en-US')}`,

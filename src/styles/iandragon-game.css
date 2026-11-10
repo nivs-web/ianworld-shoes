@@ -98,3 +98,15 @@ html.idg-wide body { width: 100%; }
 @keyframes idgStar { from { transform: scale(2.4); opacity: 0; } }
 .idg-row { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
 .idg-row .idg-btn { min-height: 44px; padding: 0 14px; } .idg-row .idg-btn.main { background: #FFC93C; color: #1a1033; }
+
+/* ── 스테이지 고르기 (B4 최소판 · 2026-11-11) ── */
+.idg-stages { max-width: 380px; }
+.idg-world-tabs { display: flex; gap: 6px; justify-content: center; margin: 8px 0 4px; }
+.idg-world-tab { width: 44px; height: 40px; border-radius: 10px; border: 2px solid #FFC93C; background: #1a1033; color: #FFC93C; font: 700 16px 'Neo둥근모', monospace; }
+.idg-world-tab.on { background: #FFC93C; color: #1a1033; } .idg-world-tab:disabled { opacity: .35; }
+.idg-world-name { text-align: center; color: #5a3a1a; font: 13px 'Neo둥근모', monospace; margin-bottom: 8px; }
+.idg-stage-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
+.idg-stage-btn { min-height: 56px; border-radius: 10px; border: 2px solid #7a5cff; background: #221548; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 700 14px 'Neo둥근모', monospace; }
+.idg-stage-btn.boss { border-color: #ff6b6b; }
+.idg-stage-btn.locked { opacity: .45; }
+.idg-stage-stars { font-size: 11px; color: #FFC93C; letter-spacing: 1px; }

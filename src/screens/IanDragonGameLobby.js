@@ -30,6 +30,29 @@ function showHow() {
   const close = presentOverlay(overlay);
 }
 
+/** 스테이지 고르기 (B4 최소판 · 2026-11-11 야간) — 월드 1~5 × 10판 · 별 · 잠금(깬 다음 판까지만 열림) */
+const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 고철 광산'];
+function showStages(onPick) {
+  Sfx.play('sfx_menu_select');
+  const g = G.idg(), open = Math.min(50, g.cleared + 1);
+  let w = Math.min(5, Math.floor((open - 1) / 10) + 1);
+  const grid = el('div.idg-stage-grid'), tabs = el('div.idg-world-tabs'), name = el('div.idg-world-name');
+  function draw() {
+    tabs.replaceChildren(...WORLD_NAMES.map((_, i) => el('button.idg-world-tab' + (i + 1 === w ? '.on' : ''), { type: 'button', disabled: i * 10 + 1 > open, onclick: () => { w = i + 1; draw(); } }, [String(i + 1)])));
+    name.textContent = `월드 ${w} · ${WORLD_NAMES[w - 1]}`;
+    grid.replaceChildren(...Array.from({ length: 10 }, (_, k) => {
+      const no = (w - 1) * 10 + k + 1, st = Number(g.stars[no - 1]) || 0, locked = no > open;
+      return el('button.idg-stage-btn' + (locked ? '.locked' : '') + (k === 9 ? '.boss' : ''), { type: 'button', disabled: locked, onclick: () => { close(); onPick(no); } }, [
+        el('b', `${w}-${k + 1}`), el('span.idg-stage-stars', locked ? '🔒' : '★'.repeat(st) + '☆'.repeat(3 - st)),
+      ]);
+    }));
+  }
+  draw();
+  const box = el('div.dialog.idg-stages', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '스테이지 고르기'), tabs, name, grid, button('닫기', () => close())]);
+  const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
+  const close = presentOverlay(overlay);
+}
+
 export default function IanDragonGameLobby(nav) {
   setTimeout(() => IanDragonGame.prefetch?.(), 1200);   // 한가할 때 게임 코드를 미리 받아 둔다
 
@@ -37,9 +60,10 @@ export default function IanDragonGameLobby(nav) {
    * 「모험 시작」 — 전체화면은 클릭 핸들러 안에서 곧바로 요청해야 받아 준다(await 먼저 금지).
    * 가로 잠금은 전체화면이어야 먹으므로 게임 화면이 그 뒤에 건다.
    */
-  function start() {
+  function start(stageNo) {
     Sfx.play('sfx_menu_select');
     enterFullscreen();
+    G.pickStage(typeof stageNo === 'number' ? stageNo : null);
     nav.push(IanDragonGame);
   }
 
@@ -59,9 +83,10 @@ export default function IanDragonGameLobby(nav) {
           ]),
         ]),
         el('div.idg-preview', S.idgLobbyPreview),
+        button('스테이지 고르기', () => showStages((no) => start(no))),
         button(S.idgLobbyHow, showHow),
         el('div.spacer'),
-        button(S.idgLobbyStart, start, { primary: true }),
+        button(S.idgLobbyStart, () => start(), { primary: true }),
         backButton(S.backToPortal, () => nav.reset(Portal)),
       );
     },

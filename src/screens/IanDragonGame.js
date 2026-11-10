@@ -53,6 +53,7 @@ export default function IanDragonGame(nav) {
         setGameGuard(() => m.requestPause());
         m.mount(host, {
           save: G.idg(),
+          stageNo: G.takePickedStage(),
           text: { rotate: S.idgRotate, rotateSub: S.idgRotateSub, exit: S.idgExit },
           onSave: (part) => G.saveIdg(part),
           onExit() { if (live) nav.back(); },

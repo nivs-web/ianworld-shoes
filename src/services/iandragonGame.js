@@ -28,3 +28,8 @@ export const nextStage = (g = idg()) => g.cleared + 1;
 
 /** 순번 → "월드-번호" (1 → "1-1", 15 → "2-5") */
 export const stageLabel = (no) => `${Math.floor((no - 1) / 10) + 1}-${((no - 1) % 10) + 1}`;
+
+/** 로비에서 고른 스테이지(순번) — 게임 화면이 한 번 읽고 지운다 (2026-11-11 야간 · B4 최소판) */
+let picked = null;
+export const pickStage = (no) => { picked = no; };
+export const takePickedStage = () => { const n = picked; picked = null; return n; };
