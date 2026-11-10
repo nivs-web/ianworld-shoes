@@ -52,7 +52,7 @@ export function showMulti(onStart) {
       if (!room || started) return;
       const uids = seatsOf(room);
       /* 내 편성을 한 번 올린다 (방 스테이지 기준 — 둘이 같은 판) */
-      if (!sentLd) { sentLd = true; Room.publishIdg(c, { ld: loadToLd(makeLoads(stageByNo(room.idgStage || PVP_OPEN), G.idg()).loads[0]) }); }   // 대결(0)은 덱 6칸 판 기준
+      if (!sentLd) { sentLd = true; Room.publishIdg(c, { ld: loadToLd(makeLoads(stageByNo(room.idgStage || PVP_OPEN), G.idg()).loads[0], G.idg().look) }); }   // 대결(0)은 덱 6칸 판 기준
       who.replaceChildren(...uids.map((u, i) => el('div', `${i + 1}. ${room.players[u]?.nickname || '친구'}${u === room.hostUid ? ' (방장)' : ''}`)));
       const me = uids.indexOf(currentUser()?.uid ?? '');
       const host = room.hostUid === currentUser()?.uid;   // 시작 단추는 방장 화면에만

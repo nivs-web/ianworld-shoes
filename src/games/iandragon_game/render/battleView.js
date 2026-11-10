@@ -25,7 +25,7 @@ const artOf = (id) => ART[id] || id;
 const nearest = (t) => { t.source.scaleMode = 'nearest'; return t; };
 const tryLoad = (url) => Assets.load(url).then(nearest).catch(() => null);
 
-export async function createBattleView(ctx, { world, L, dragons, enemies, leader = 'novart', pvp = false, mirror = false, foeLeader = null, look = {} }) {
+export async function createBattleView(ctx, { world, L, dragons, enemies, leader = 'novart', pvp = false, mirror = false, foeLeader = null, look = {}, lookR = {} }) {   // look = 왼쪽(0번 편) · lookR = 오른쪽(대결 상대)
   const { app, view } = ctx;
   const FIELD = M + L + M;
   /* ── 그림 받기 */
@@ -69,14 +69,25 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const lead = ldRig ? createRigged(ldRig, 1, 1) : null;
   const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(rigs[foeLeader], 1, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
   if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
-  /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
-  if (lead && (look.hat || look.neck)) {
-    const [hatT, neckT] = await Promise.all([look.hat && tryLoad(`${AI}meta/hat_${look.hat}.png`), look.neck && tryLoad(`${AI}meta/neck_${look.neck}.png`)]);
-    const b = lead.root.getLocalBounds();
-    if (neckT) { const s = new Sprite(neckT); s.anchor.set(0.5, 0); s.width = s.height = Math.max(24, b.width * 0.42); s.position.set(b.x + b.width * 0.52, b.y + b.height * 0.36); if (look.neck === 'cape') lead.root.addChildAt(s, 0); else lead.root.addChild(s); }   // 목 장식 붙는 점 = 위 가운데(보조) · 망토는 몸 뒤
-    if (hatT) { const s = new Sprite(hatT); s.anchor.set(0.5, 1); s.width = s.height = Math.max(22, b.width * 0.3); s.position.set(b.x + b.width * 0.7, b.y + b.height * 0.24); lead.root.addChild(s); }
+  /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
+  async function dress(rig, lk, castle) {
+    const [hatT, neckT, flagT] = await Promise.all([lk.hat && tryLoad(`${AI}meta/hat_${lk.hat}.png`), lk.neck && tryLoad(`${AI}meta/neck_${lk.neck}.png`), lk.flag && tryLoad(`${AI}meta/flag_${lk.flag}.png`)]);
+    if (rig) {
+      const b = rig.root.getLocalBounds();
+      if (neckT) { const s = new Sprite(neckT); s.anchor.set(0.5, 0); s.width = s.height = Math.max(20, b.width * 0.3); s.position.set(b.x + b.width * 0.6, b.y + b.height * 0.34); if (lk.neck === 'cape') rig.root.addChildAt(s, 0); else rig.root.addChild(s); }   // 목 장식 붙는 점 = 위 가운데(보조) · 망토는 몸 뒤
+      if (hatT) { const s = new Sprite(hatT); s.anchor.set(0.5, 1); s.width = s.height = Math.max(22, b.width * 0.3); s.position.set(b.x + b.width * 0.7, b.y + b.height * 0.24); rig.root.addChild(s); }
+    }
+    if (flagT && castle) {   // 성 깃발 : 깃대 + 펄럭이는 깃발 (성 뒤 왼쪽 위)
+      const side = castle === tower ? -1 : 1, top = GY + 10 - castle.height;
+      const pole = new Graphics().rect(-1.5, -64, 3, 64).fill(0x5a3a1a); pole.position.set(castle.x - side * castle.width * 0.32, top + 18);
+      const f = new Sprite(flagT); f.anchor.set(0, 0); f.width = 30; f.height = 44; f.scale.x *= side; f.position.set(pole.x + side * 1.5, pole.y - 62);
+      stage.addChildAt(pole, stage.getChildIndex(castle)); stage.addChildAt(f, stage.getChildIndex(castle)); flags.push(f);
+    }
   }
-  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); }
+  const flags = [];
+  await Promise.all([dress(lead, look, nest), dress(lead2, lookR, pvp ? tower : null)]);
+  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
+  if (lead2) lead2.baseY = lead2.root.y;
 
   const white = new ColorMatrixFilter();
   white.matrix = [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0];
@@ -194,7 +205,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     const allBreath = S.players.reduce((a, q) => a + q.st.breath, 0);   // 멀티 : 누가 쏘든 브레스 연출
     if (p && allBreath > seen.breath) {
       let who = 0; S.players.forEach((q, i) => { if (q.st.breath > (seen.by[i] || 0)) who = i; seen.by[i] = q.st.breath; });
-      seen.breath = allBreath; breathFx = 0.001; bP = S.players[who]; bSide = pvp ? bP.side : 0; bBS = (bSide && BREATH[foeLeader]) || (!bSide && BREATH_COLORS[look.breath] ? { ...BS, c: BREATH_COLORS[look.breath] } : BS);   // 내 브레스 색 꾸미기
+      seen.breath = allBreath; breathFx = 0.001; bP = S.players[who]; bSide = pvp ? bP.side : 0; const lkB = bSide ? lookR : look; bBS = BREATH_COLORS[lkB.breath] ? { ...((bSide && BREATH[foeLeader]) || BS), c: BREATH_COLORS[lkB.breath] } : (bSide && BREATH[foeLeader]) || BS;   // 브레스 색 꾸미기 (양쪽)   // 내 브레스 색 꾸미기
       const L0 = bSide ? lead2 : lead; if (L0) L0.set('hit');
     }
     if (breathFx > 0) {
@@ -236,6 +247,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     if (S.over.winner === 0) {   // 좀비 탑이 무너지고 좀비들이 줄행랑
       tower.y = GY + 10 + Math.min(60, overT * 40); tower.alpha = Math.max(0, 1 - overT / 1.6); if (overT < 1.2) { shakes.screen = 0.1; if (Math.random() < 0.5) puff(tower.x + (Math.random() - 0.5) * 80, GY - Math.random() * 60, 0x9a8c80, 2, 50, 0.6, 3); }
     } else if (overT < 1) shakes.nest = 0.1;
+    /* 대결 : 이긴 쪽 리더가 깡충깡충 (멀티 기획 5장) */
+    if (pvp && S.over.winner >= 0) { const w = S.over.winner === 0 ? lead : lead2; if (w) { w.root.y = w.baseY - Math.abs(Math.sin(overT * 7)) * 18; if (overT < 0.05) w.set('hit'); } }
   }
 
   /* ── 카메라 : 전선 따라가기 + 끌어서 보기(손 떼고 3초 뒤 복귀) */
@@ -272,6 +285,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       fun.update(dt); amb.update(dt); bossFx.update(S, dt, V);
       if (lead) lead.update(dt);
       if (lead2) lead2.update(dt);
+      for (const f of flags) f.skew.y = Math.sin(performance.now() / 260 + f.x) * 0.06;   // 깃발 펄럭
     },
     /** 미니맵 · 시작 위치 */
     setCam(x) { camX = Math.max(0, Math.min(FIELD - view.w, x)); handT = 3; },

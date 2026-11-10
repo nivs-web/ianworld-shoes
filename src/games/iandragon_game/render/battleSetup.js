@@ -124,9 +124,9 @@ export function pvpLoad(ld, side) {
 export const NET_V = (() => { const s = JSON.stringify([UNITS, ENEMIES, LEADERS, SKILLS, STAGES.length]); let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); })();
 
 /** 멀티 편성 → 글자 (방 `players/$uid/ld` · 500자 이하) */
-export function loadToLd(load) {
+export function loadToLd(load, look = '') {
   const b = {}; for (const [k, v] of Object.entries(load.bonus || {})) b[k] = Math.round(v * 1000) / 1000;
-  return JSON.stringify({ v: NET_V, d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b });
+  return JSON.stringify({ v: NET_V, o: String(look || '').slice(0, 40), d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b });
 }
 /** 글자 → 편성 (받은 값은 범위 안으로 자르고 확인 · 이상하면 null → 시작하지 않는다) */
 export function ldToLoad(str) {
@@ -137,7 +137,7 @@ export function ldToLoad(str) {
   if (!LEADERS[o.l]) return null;
   const skills = (Array.isArray(o.k) ? o.k : []).filter((id) => SKILLS[id]).slice(0, 2);
   const bonus = {}; for (const [k, v] of Object.entries(o.b || {})) if (Number.isFinite(v)) bonus[k] = Math.max(0, Math.min(k === 'startMoney' ? 2000 : 5, v));
-  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus, v: String(o.v || '') };
+  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus, v: String(o.v || ''), look: typeof o.o === 'string' && /^[a-z0-9.]{0,40}$/.test(o.o) ? o.o : '' };
 }
 
 /** 별 : ★ 깨면 · ★★ star2 초 안 · ★★★ star3 초 안 (1배속 전투 시간) */
