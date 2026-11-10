@@ -304,8 +304,14 @@ async function renderLobby() {
   const bgs = h('div', { class: 'grid' }, ['a', 'b'].map((k) => h('div', { class: 'card' }, h('div', { class: 'thumb tall' }, img(`${LOBBY}bg_${k}.webp`)), h('div', { class: 'name' }, `로비 배경 ${k.toUpperCase()}안`), h('div', { class: 'sub' }, `ai/lobby/bg_${k}.webp · 900×1614`))));
   const parts = h('div', { class: 'grid wide' }, LOBBY_PARTS.map(([id, name, ext, note]) => h('div', { class: 'card' }, h('div', { class: 'thumb plate' }, img(`${LOBBY}${id}.${ext}`)), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, `ai/lobby/${id}.${ext}${note ? ' · ' + note : ''}`))));
   const icons = h('div', { class: 'grid small' }, LOBBY_ICONS.map(([id, name]) => h('div', { class: 'card' }, h('div', { class: 'thumb hud' }, img(`${LOBBY}${id}.png`, 'pix')), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, `ai/lobby/${id}.png · 96×96`))));
-  return [h('div', { class: 'tabhead' }, h('b', {}, '로비'), h('span', { class: 'hint' }, '진짜 로비 화면(IanDragonGameLobby.js)에 새 그림을 입혀 본 것 — 게임 코드는 그대로, 미리보기에서만 CSS 를 덧씌움 (tools/idg-gallery/lobby-skin.css)')),
-    phones, h('h3', { class: 'sec' }, '배경 (대표님이 하나 고르기)'), bgs, h('h3', { class: 'sec' }, '버튼 판 · 테두리'), parts, h('h3', { class: 'sec' }, '메뉴 아이콘'), icons];
+  const plates = (dir, list) => h('div', { class: 'grid wide' }, list.map(([id, name]) => h('div', { class: 'card' }, h('div', { class: 'thumb plate' }, img(`/assets/iandragon_game/ai/${dir}/${id}`)), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, `ai/${dir}/${id}`))));
+  const hud = plates('hud', [['bar_top.webp', '전투 위 띠'], ['bar_bottom_clean.webp', '전투 아래 띠 (위 띠 뒤집기 · 추천)'], ['bar_bottom.webp', '전투 아래 띠 (뼈 · 이끼)'], ['slot.webp', '용 카드 칸'], ['slot_ready.webp', '용 카드 칸 (준비됨)'], ['btn_breath.webp', '브레스 둥근 판'], ['bar_progress.webp', '체력 · 진행 막대 틀'], ['frame_portrait.webp', '박쥐 날개 얼굴 틀']]);
+  const dlg = plates('lobby', [['dialog.webp', '창 테두리 (결과 · 일시정지 · 로비 창)'], ['ribbon.webp', '창 제목 리본'], ['tile.webp', '스테이지 칸'], ['tile_boss.webp', '스테이지 칸 (보스)'], ['tile_locked.webp', '스테이지 칸 (잠김)'], ['badge.webp', '월드 탭'], ['badge_on.webp', '월드 탭 (고름)']]);
+  const small = h('div', { class: 'grid small' }, ['ico_star_empty', 'ico_lock', 'ico_gift', 'ico_check', 'ico_seal', 'ico_marker', 'ico_key'].map((id) => h('div', { class: 'card' }, h('div', { class: 'thumb hud' }, img(`${LOBBY}${id}.png`, 'pix')), h('div', { class: 'name' }, id.replace('ico_', '')), h('div', { class: 'sub' }, `ai/lobby/${id}.png`))));
+  const result = plates('result', [['win.webp', '승리 그림'], ['lose.webp', '패배 그림 (귀엽게)']]);
+  return [h('div', { class: 'tabhead' }, h('b', {}, '로비 · 전투 UI'), h('span', { class: 'hint' }, '진짜 로비 화면(IanDragonGameLobby.js)에 새 그림을 입혀 본 것 — 게임 코드는 그대로, 미리보기에서만 CSS 를 덧씌움 (lobby-skin.css · battle-skin.css). «새 창» → 모험 시작 → 전투 HUD 도 새 옷')),
+    phones, h('h3', { class: 'sec' }, '배경 (대표님이 하나 고르기)'), bgs, h('h3', { class: 'sec' }, '버튼 판 · 테두리'), parts, h('h3', { class: 'sec' }, '메뉴 아이콘'), icons,
+    h('h3', { class: 'sec' }, '전투 HUD 판'), hud, h('h3', { class: 'sec' }, '창 · 스테이지 고르기'), dlg, h('h3', { class: 'sec' }, '작은 아이콘'), small, h('h3', { class: 'sec' }, '결과 그림'), result];
 }
 
 async function renderBanner(tab) {
