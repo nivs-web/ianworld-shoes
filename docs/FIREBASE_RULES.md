@@ -29,6 +29,7 @@ Firebase 콘솔에 **그대로 붙여넣는** 규칙이다. 프로덕션/잠금 
 > 게시할 때도 **콘솔 게시본을 받아** 아래 `jpInt` ~ `match /jumpPlayers` 블록만 얹어 올린다.
 > 게시 전에는 명예의 전당이 «여는 중» 안내만 띄우고, 기록은 계정(`users/{uid}.jr`)에 그대로 쌓인다(게시 뒤 다음 판에 저절로 올라간다).
 
+> ✅ 2026-11-11 2차 : Firestore idgPlayers 에 raid(주간 습격) 칸 — 11,698 → 11,765자 게시(Publish 누름). 게시 뒤 다시 읽어 확인하는 단계는 자동 안전장치에 막혀 못 함 → 다음에 콘솔에서 «igInt(d.raid» 가 있는지 한 번 확인할 것.
 > ✅ **2026-11-11 좀비와 드래곤 — 게시 완료(대표님 «파이어베이스 규칙 게시 진행해»).** RTDB 25,089 → 32,342자(방 game idragon · idgStage · players ld/lk · presence/invite/stats idragon · config.tuning.zd · config.switches zdFun/zdFunSound/zdOpt/zdBgm/zdFunEvery) — 게시 전 콘솔본 = origin/main 판(키 순서만 다름) 확인, 게시 뒤 다시 읽어 해시 일치. Firestore 10,334 → 11,698자(idgPlayers 명예의 전당), 다시 읽어 블록 확인.
 > ✅ **2026-11-10 RTDB `stats/members`(nick · email · name · joined) · `stats/act` (운영자 «신규 회원 가입 현황») — 게시 완료(대표님 «규칙 게시해»).** 콘솔 22,401 → 24,214자, 다시 읽어 확인. 정본은 `docs/rtdb-rules.json`. 2차(같은 날): `act` 에 v(접속 횟수) · s(접속마다 a 들어옴 · b 나감), `members` 에 tot(누적) — 게시 완료 25,089자.
 > ✅ **2026-11-07 점프 피아노 `pianoPlayers` 칸 — 게시 완료(대표님 «규칙 게시해»). 콘솔 8,652자 → 10,334자, 다시 읽어 블록 확인.**
