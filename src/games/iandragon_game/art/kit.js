@@ -92,6 +92,17 @@ export const part = {
     p.rect(px - 1, py - 1, 2 + (r >= 3 ? 1 : 0), 2 + (r >= 3 ? 1 : 0), opts.pupil ?? OUT);
     p.set(px - 1, py - 1, '#ffffff');                          // 반짝
   },
+  /** 반짝이는 큰 눈 (귀여운 아기 몬스터 비율) — 진한 눈동자 + 큰 하이라이트 2개 · lid: 위 눈꺼풀(0~1, 졸린 눈) */
+  gem(p, x, y, rx, ry, opts = {}) {
+    const iris = opts.iris ?? '#2a1c48';
+    const cells = ellCells(x, y, rx, ry);
+    stamp(p, cells, [opts.irisHi ?? '#5a4a9a', iris, OUT], { hi: 0.55, lo: 0.1, light: [0.3, 0.9] });
+    const top = Math.round(y - ry);
+    if (opts.lid) { const lh = Math.round((ry * 2 + 1) * opts.lid); stamp(p, cells.filter(([, cy]) => cy < top + lh), opts.lidRamp ?? ['#000', '#000', '#000'], { outline: false, flat: 1 }); p.rect(Math.round(x - rx), top + lh, Math.round(rx * 2) + 1, 1, OUT); }
+    const hx = Math.round(x - rx * 0.35), hy = Math.round(y - ry * (opts.lid ? 0.05 : 0.45));
+    p.rect(hx - 1, hy - 1, 2, 2, '#ffffff'); if (rx >= 3) p.set(hx + 1, hy - 1, '#ffffff');
+    p.set(Math.round(x + rx * 0.4), Math.round(y + ry * 0.5), '#ffffff');
+  },
   /** 졸린 눈 — 반달 줄 */
   sleepy(p, x, y, w, col = OUT) { p.rect(x, y, w, 1, col); p.set(x - 1, y - 1, col); p.set(x + w, y - 1, col); },
   dot: (p, x, y, col) => p.set(x, y, col),
