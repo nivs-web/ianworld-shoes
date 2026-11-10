@@ -188,3 +188,11 @@ html.idg-wide body { width: 100%; }
 .idg-intro-z { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 6px 0; }
 .idg-intro-z img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; background: #221548; border-radius: 8px; }
 .idg-time.hurry { color: #ff6b6b; animation: idgBlink .5s steps(1) infinite; }
+/* 연구소 · 보물 · 리더 (2026-11-11) */
+.idg-lab { max-width: 400px; max-height: 88vh; overflow-y: auto; }
+.idg-lab-sec { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.idg-leader-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.idg-leader { display: flex; flex-direction: column; align-items: center; padding: 4px; min-height: 64px; border-radius: 10px; border: 2px solid #7a5cff; background: #221548; color: #fff; font: 11px 'Neo둥근모', monospace; }
+.idg-leader.on { border-color: #FFC93C; background: #3a2a10; }
+.idg-leader img { width: 36px; height: 36px; object-fit: contain; image-rendering: pixelated; }
+.idg-leader span { color: #bba; font-size: 9px; }

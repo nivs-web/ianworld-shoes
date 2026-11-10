@@ -53,7 +53,7 @@ export function normIdg(raw) {
     units: units(r.units),
     squadLv: Math.max(1, n0(r.squadLv, 99)),
     lab,
-    leader: str(r.leader, 24, 'novart'),
+    leader: str(r.leader, 24, 'auto'),          // 'auto' = 월드마다 추천 리더 (2026-11-11 결정 D8)
     skills: ids(r.skills, 2),
     deck: deck.length ? deck : ['kkomul'],
     pity: n0(r.pity, 999),                    // 전설이 안 나온 연속 횟수

@@ -9,6 +9,7 @@
 import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
 import { STAGES } from '../data/stages/index.js';
+import { LEADERS } from '../data/leaders.js';
 
 /** 용이 열리는 차례 (기획서 9.5) */
 export const DRAGON_ORDER = ['kkomul', 'doldeung', 'bulttong', 'twetwe', 'ssaeng', 'bangul', 'dungsil', 'giljjuk', 'eoreum', 'jjirit'];
@@ -48,6 +49,33 @@ export function refBonus(w) {   // 연구소 = (월드−1) 레벨, 지난 월�
   };
 }
 
+/* 연구소 7항목 (기획서 10장 · 저장 lab[0..6] 순서) · 보물 (10.5 · 월드 별 10/20/30 → 1/2/3단계) */
+export const LAB = [
+  { k: 'income', name: '불씨 생산', per: 0.02, pct: true }, { k: 'walletMax', name: '불씨 최대', per: 0.05, pct: true }, { k: 'startMoney', name: '시작 불씨', per: 20 },
+  { k: 'baseHp', name: '기지 체력', per: 0.05, pct: true }, { k: 'breathDmg', name: '브레스 피해', per: 0.05, pct: true }, { k: 'breathCharge', name: '브레스 충전', per: 0.02, pct: true }, { k: 'bounty', name: '현상금', per: 0.03, pct: true },
+];
+export const TREASURE = [
+  { k: 'income', name: '불씨 생산', per: 0.04 }, { k: 'atk', name: '공격', per: 0.03 }, { k: 'cooldown', name: '재생산', per: 0.03 }, { k: 'baseHp', name: '기지 체력', per: 0.10 }, { k: 'walletMax', name: '불씨 최대', per: 0.10 },
+  { k: 'bounty', name: '현상금', per: 0.05 }, { k: 'breathCharge', name: '브레스 충전', per: 0.05 }, { k: 'hp', name: '체력', per: 0.03 }, { k: 'breathDmg', name: '브레스 피해', per: 0.10 }, { k: 'startMoney', name: '시작 불씨', per: 25, flat: true },
+];
+/** 월드 w 의 보물 단계 : 그 월드 별 합 10 · 20 · 30 */
+export const treasureLv = (stars, w) => { let n = 0; for (let i = (w - 1) * 10; i < w * 10; i++) n += Number(stars?.[i]) || 0; return n >= 30 ? 3 : n >= 20 ? 2 : n >= 10 ? 1 : 0; };
+/** 내가 실제로 쌓은 보너스 (연구소 + 보물) */
+export function realBonus(save) {
+  const B = { income: 1, walletMax: 1, startMoney: 0, baseHp: 1, breathDmg: 1, breathCharge: 1, cooldown: 1, bounty: 1, atk: 1, hp: 1 };
+  LAB.forEach((L, i) => { const n = save?.lab?.[i] || 0; if (L.pct) B[L.k] *= 1 + L.per * n; else B[L.k] += L.per * n; });
+  TREASURE.forEach((T, j) => { const n = treasureLv(save?.stars, j + 1); if (T.flat) B[T.k] += T.per * n; else B[T.k] *= 1 + T.per * n; });
+  return B;
+}
+/** 결정 D7 : 기준(계산기)과 내 것 중 항목마다 큰 값 — 연구소를 안 해도 기준만큼은, 하면 더 세게 */
+export function bonusFor(w, save) {
+  const ref = refBonus(w), mine = realBonus(save), out = {};
+  for (const k of Object.keys(ref)) out[k] = Math.max(ref[k], mine[k] ?? ref[k]);
+  return out;
+}
+/** 리더 : 저장값 'auto' 면 월드 추천 리더, 아니면 고른 리더(연 것만 · 결정 D8) */
+export const leaderFor = (stage, save) => { const want = save?.leader; const open = Math.floor((save?.cleared || 0) / 10); return want && want !== 'auto' && LEADERS[want] && LEADERS[want].unlock <= open ? want : LEADER_AT[stage.w - 1] || 'novart'; };
+
 export function makeLoads(stage, save) {
   const un = unlockedBefore(stage.g);
   const lvOf = (id) => Math.max(save?.units?.[id]?.[0] || 1, stage.expLevel || 1);
@@ -56,12 +84,12 @@ export function makeLoads(stage, save) {
   const mine = (save?.deck || []).filter((id) => UNITS[id] && owned(id) && (!stage.costMax || UNITS[id].cost <= stage.costMax)).slice(0, un.deckCap);
   const ids = mine.length >= 2 ? mine : pickDeck(un.dragons, un.deckCap, stage.w, stage.costMax);
   const deck = ids.map((id) => ({ id, lv: lvOf(id) }));
-  const leader = LEADER_AT[stage.w - 1] || 'novart';
+  const leader = leaderFor(stage, save);
   return {
     deck,
     skills: un.skills,
     speedMax: un.speedMax,
-    loads: [{ side: 0, deck, leader, leaderLv: Math.max(1, stage.expLevel || 1), skills: un.skills, bonus: refBonus(stage.w) }],
+    loads: [{ side: 0, deck, leader, leaderLv: Math.max(1, stage.expLevel || 1), skills: un.skills, bonus: bonusFor(stage.w, save) }],
   };
 }
 
