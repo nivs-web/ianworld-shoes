@@ -12,19 +12,8 @@ import { Assets, Container, Sprite, Graphics } from 'pixi.js';
 
 const BASE = '/assets/iandragon_game/ai/fun/';
 
-/** 월드 1 «달밤 초록 언덕» 배경(대표님 그림)의 자리 — 배경과 같은 좌표(배경이 카메라와 1:1 로 움직인다) */
-export const W1_SPOTS = {
-  moon: { x: 790, y: 110, d: 240 },
-  ground: 437,                                   // 풀 윗줄
-  graves: [255, 330, 470, 560, 670, 735, 1000, 1150],
-  fence: { x0: 770, x1: 1100, y: 384 },
-  owl: { x: 262, y: 88 },                       // 왼쪽 마른 나무 오른쪽 가지 (성 뒤에 가리지 않게)
-  pumpkin: { x: 452, y: 436 },
-  window: { x: 1156, y: 262 },
-  wisps: [{ x: 620, y: 372 }, { x: 300, y: 382 }, { x: 1060, y: 376 }, { x: 860, y: 360 }],
-  dirtY: 494,                                    // 앞쪽 흙 띠
-  sky: [50, 200],
-};
+export { W1_SPOTS, SPOTS } from './funSpots.js';
+import { W1_SPOTS } from './funSpots.js';
 
 export async function loadFun() {
   const meta = await (await fetch(BASE + 'fun.json')).json();
@@ -159,7 +148,7 @@ function bats(E) {
 
 /** 5 무덤 손 인사 — 쑥 올라와 손을 흔들고(가끔 꽃) 쏙 */
 function hand(E) {
-  const cam = E.cam(), xs = E.S.graves.filter((x) => x > cam + 40 && x < cam + E.viewW() - 40);
+  const cam = E.cam(), xs = E.S.graves.filter((x) => E.inSafe(x) && x > cam + 40 && x < cam + E.viewW() - 40);
   const x = (xs.length ? pick(xs) : cam + E.viewW() / 2) + rnd(-20, 20), y = E.S.ground;
   const c = new Container(); E.back.addChild(c);
   const box = maskedBox(c, x, y), fx = bits(c), flower = Math.random() < 0.35;
@@ -215,7 +204,7 @@ function moonFace(E) {
 
 /** 8 유령 까꿍 — 땅에서 쑥 «까꿍!» 하고 쏙 */
 function boo(E) {
-  const cam = E.cam(), xs = E.S.graves.concat([E.S.fence.x0 + 60, E.S.fence.x1 - 60]).filter((x) => x > cam + 40 && x < cam + E.viewW() - 40);
+  const cam = E.cam(), xs = E.S.graves.concat(E.S.fence ? [E.S.fence.x0 + 60, E.S.fence.x1 - 60] : []).filter((x) => E.inSafe(x) && x > cam + 40 && x < cam + E.viewW() - 40);
   const x = xs.length ? pick(xs) : cam + E.viewW() * 0.6, y = E.S.ground - 4, c = new Container(); E.back.addChild(c);
   const box = maskedBox(c, x, y), g = box.addChild(sp(E.tex.boo, x, y + 50, 0.5, 1));
   return {
@@ -304,7 +293,7 @@ function pumpkin(E) {
 
 /** 13 십자가 좀비 — 십자가가 솟아 흔들리다 와장창, 해골 좀비가 «짠!» 하더니 픽 와르르 */
 function cross(E) {
-  const cam = E.cam(), x = rnd(cam + 120, cam + E.viewW() - 120), y = E.S.ground - 2;
+  const x = E.safeX(120), y = E.S.ground - 2;
   const c = new Container(); E.back.addChild(c);
   const box = maskedBox(c, x, y, 120), fx = bits(c);
   const cr = box.addChild(sp(E.tex.cross, x, y + 64, 0.5, 1));
@@ -378,7 +367,7 @@ function windowDance(E) {
 
 /** 19 두더지 좀비 — 앞쪽 흙에서 흙더미가 솟고 머리가 쏙, 두리번 */
 function mole(E) {
-  const cam = E.cam(), x = rnd(cam + 120, cam + E.viewW() - 120), y = E.S.dirtY;
+  const x = E.safeX(120), y = E.S.dirtY;
   const c = new Container(); E.front.addChild(c);
   const box = maskedBox(c, x, y - 12, 90), m = box.addChild(sp(E.tex.mole, x, y + 30, 0.5, 1)), mound = c.addChild(sp(E.tex.mound, x, y, 0.5, 1));
   return {
@@ -394,12 +383,13 @@ function mole(E) {
 
 /** [이름, 무게(자주 나오는 정도), 쉬는 시간(초), 큰 볼거리] */
 const DEFS = [
-  ['bike', bike, 3, 40, true], ['wisps', wisps, 5, 8], ['lightning', lightning, 2, 30, true], ['bats', bats, 5, 7],
-  ['hand', hand, 4, 10], ['witch', broom('witch', [0xfff3a0, 0xc9a7ff, 0xffffff]), 2, 35, true],
-  ['skelBroom', broom('skel_broom', [0xd8d2c0, 0x9a9488, 0xc9a7ff]), 2, 35, true], ['moon', moonFace, 3, 25],
-  ['boo', boo, 4, 9], ['star', star, 6, 5], ['cat', cat, 2, 30], ['owl', owl, 3, 15], ['pumpkin', pumpkin, 3, 12],
-  ['cross', cross, 3, 28], ['spider', spider, 2, 25], ['window', windowDance, 2, 30], ['mole', mole, 3, 20],
-].map(([id, make, w, cd, big = false]) => ({ id, make, w, cd, big }));
+  ['bike', bike, 3, 40, true, ['moon']], ['wisps', wisps, 5, 8, false, ['wisps']], ['lightning', lightning, 2, 30, true, ['sky']], ['bats', bats, 5, 7, false, ['moon']],
+  ['hand', hand, 4, 10, false, ['graves', 'ground']], ['witch', broom('witch', [0xfff3a0, 0xc9a7ff, 0xffffff]), 2, 35, true, ['sky']],
+  ['skelBroom', broom('skel_broom', [0xd8d2c0, 0x9a9488, 0xc9a7ff]), 2, 35, true, ['sky']], ['moon', moonFace, 3, 25, false, ['moon', 'moonFace']],
+  ['boo', boo, 4, 9, false, ['graves', 'ground']], ['star', star, 6, 5, false, []], ['cat', cat, 2, 30, false, ['fence']], ['owl', owl, 3, 15, false, ['owl']],
+  ['pumpkin', pumpkin, 3, 12, false, ['pumpkin']], ['cross', cross, 3, 28, false, ['ground', 'safe']], ['spider', spider, 2, 25, false, []],
+  ['window', windowDance, 2, 30, false, ['window']], ['mole', mole, 3, 20, false, ['dirtY', 'safe']],
+].map(([id, make, w, cd, big, needs]) => ({ id, make, w, cd, big, needs }));
 
 /**
  * back : 배경 바로 위 그릇(카메라와 함께 움직인다) · front : 유닛 위 그릇(두더지 전용, 발 줄 아래에만 그린다)
@@ -407,9 +397,14 @@ const DEFS = [
  */
 export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW }) {
   const S = spots;
-  const owlS = back.addChild(sp(tex.owl, S.owl.x, S.owl.y, 0.5, 1));
-  const pumpS = back.addChild(sp(tex.pumpkin, S.pumpkin.x, S.pumpkin.y, 0.5, 1));
-  const E = { tex, back, front, S, cam: getCam, viewW, owl: owlS, pump: pumpS };
+  const owlS = S.owl ? back.addChild(sp(tex.owl, S.owl.x, S.owl.y, 0.5, 1)) : null;
+  const pumpS = S.pumpkin ? back.addChild(sp(tex.pumpkin, S.pumpkin.x, S.pumpkin.y, 0.5, 1)) : null;
+  const inSafe = (x) => !S.safe || (x >= S.safe[0] && x <= S.safe[1]);
+  /** 지금 화면 안 + 안전 범위 안에서 x 하나 (여백 m) */
+  const safeX = (m) => { const cam = getCam(), a = Math.max(cam + m, S.safe ? S.safe[0] : -1e9), b = Math.min(cam + viewW() - m, S.safe ? S.safe[1] : 1e9); return a < b ? rnd(a, b) : (a + b) / 2; };
+  const E = { tex, back, front, S, cam: getCam, viewW, owl: owlS, pump: pumpS, inSafe, safeX };
+  /** 이 월드 자리표로 나올 수 있는 요소만 (자리 규칙) */
+  const usable = DEFS.filter((d) => d.needs.every((k) => S[k] != null && S[k] !== false));
   const active = [], rest = {};
   let next = 0.6, hush = 0, last = null, off = new Set();
 
@@ -417,13 +412,15 @@ export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW })
   function choose() {
     if (active.length >= 3) return;
     const bigOn = active.some((a) => a.d.big);
-    const pool = DEFS.filter((d) => !off.has(d.id) && !(rest[d.id] > 0) && d.id !== last && !active.some((a) => a.d.id === d.id) && !(d.big && bigOn));
+    const pool = usable.filter((d) => !off.has(d.id) && !(rest[d.id] > 0) && d.id !== last && !active.some((a) => a.d.id === d.id) && !(d.big && bigOn));
     if (!pool.length) return;
     let r = Math.random() * pool.reduce((s, d) => s + d.w, 0);
     for (const d of pool) { if ((r -= d.w) <= 0) { start(d); return; } }
   }
   return {
     ids: DEFS.map((d) => d.id),
+    /** 이 월드에서 실제로 쓰이는 요소 (자리표가 허락한 것) */
+    usable: usable.map((d) => d.id),
     update(dt) {
       hush = Math.max(0, hush - dt);
       for (const k in rest) rest[k] -= dt;
@@ -438,6 +435,6 @@ export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW })
     /** 대표님 «이건 빼자» → 이름으로 끄기 */
     setOff(ids) { off = new Set(ids); },
     /** 확인용 — 이름으로 바로 띄우기 */
-    trigger(id) { const d = DEFS.find((q) => q.id === id); if (d) start(d); },
+    trigger(id) { const d = usable.find((q) => q.id === id); if (d) start(d); },
   };
 }
