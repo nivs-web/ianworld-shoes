@@ -93,7 +93,8 @@ export function createBattleSound(stage, me = 0) {
       }
     },
     /** 출격! (스테이지 카드에서) */
-    start() { Audio.voice('start'); },
+    start(kind) { Audio.voice(kind === 'raid' ? 'raid/start' : kind === 'coop' ? 'coop/start' : 'start'); },   // 겜팀장 새 상황 대사 (습격 · 같이 깨기)
+    say(id) { Audio.voice(id); },
     /** 결과 판의 별 «탕 · 탕 · 탕» */
     stars(n) { for (let i = 0; i < n; i++) later(() => Audio.play('star'), 300 + i * 350); },
     /** 일시정지 · 앱 내림 : 곡까지 멈춤, 풀면 다시 (코드 검토 12) */

@@ -71,7 +71,7 @@ export async function startBattle(ctx, opts) {
   const hud = createHud(ctx.host || opts.hudHost, { stage, deck: myDeck, leader: loads[me].leader, cons: net ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (S.over) return; if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c }); },
     go(useCons) {
-      ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start();
+      ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '');
       /* 편의품 (META 3장 · 판마다 1개 · 혼자 하기만) — 판을 시작하며 1개 쓴다 · 도중에 나가도 돌려주지 않는다 */
       const have = opts.save?.cons?.[useCons] || 0;
       if (!net && useCons && have > 0) {
@@ -160,6 +160,7 @@ export async function startBattle(ctx, opts) {
     const coins = Math.max(0, waves - old) * 20;
     try { opts.save = opts.onSave?.({ raid: { w: raid.idx, best: Math.max(old, waves) }, coins: (save.coins || 0) + coins }) || opts.save; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     const info = { t: S.t, pvp: true, coins, title: waves >= 40 ? '끝까지 버텼다!' : `${waves} 웨이브!`, rec: `${raid.key} · 이번 주 최고 ${Math.max(old, waves)} 웨이브${waves > old ? ' (새 기록!)' : ''}`, hint: '명예의 전당 «주간 습격»에서 순위를 볼 수 있어요.' };
+    if (waves > old) sound.say('raid/record');
     setTimeout(() => { if (!gone) hud.showPanel(waves > old ? 'win' : 'lose', info); }, 1200);
   }
 
@@ -180,6 +181,7 @@ export async function startBattle(ctx, opts) {
     const info = { t: S.t, pvp: true, coins, title: win ? '승리!' : draw ? '무승부' : '아쉬워요…',
       rec: `전적 ${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''}${pv.n >= PVP_DAY && !bad ? ' · 오늘 보상은 다 받았어요' : ''}`,
       hint: bad ? '연결이 어긋났어요 — 이 판은 기록하지 않아요.' : S.over.timeout ? '시간 끝 — 둥지 체력이 많은 쪽, 같으면 잃은 용이 적은 쪽이 이겨요.' : '' };
+    if (!bad) sound.say(win ? 'duel/win' : draw ? 'duel/win' : 'duel/lose');   // 대결 끝 대사 (진 쪽도 기죽지 않는 말투)
     setTimeout(() => { if (!gone) hud.showPanel(win ? 'win' : 'lose', info); }, 1400);
   }
 
@@ -217,7 +219,7 @@ export async function startBattle(ctx, opts) {
   };
   ctx.app.ticker.add(tick);
   ui.paused = true; hud.showPanel('intro');   // 스테이지 카드 → «출격!»
-  if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
+  if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : ''); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
   const onHide = () => { if (document.hidden && !net && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);
   if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };
