@@ -70,13 +70,28 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(rigs[foeLeader], 1, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
   if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
-  async function dress(rig, lk, castle) {
-    const [hatT, neckT, flagT] = await Promise.all([lk.hat && tryLoad(`${AI}meta/hat_${lk.hat}.png`), lk.neck && tryLoad(`${AI}meta/neck_${lk.neck}.png`), lk.flag && tryLoad(`${AI}meta/flag_${lk.flag}.png`)]);
-    if (rig) {
-      const b = rig.root.getLocalBounds();
-      if (neckT) { const s = new Sprite(neckT); s.anchor.set(0.5, 0); s.width = s.height = Math.max(20, b.width * 0.3); s.position.set(b.x + b.width * 0.6, b.y + b.height * 0.34); if (lk.neck === 'cape') rig.root.addChildAt(s, 0); else rig.root.addChild(s); }   // 목 장식 붙는 점 = 위 가운데(보조) · 망토는 몸 뒤
-      if (hatT) { const s = new Sprite(hatT); s.anchor.set(0.5, 1); s.width = s.height = Math.max(22, b.width * 0.3); s.position.set(b.x + b.width * 0.7, b.y + b.height * 0.24); rig.root.addChild(s); }
+  /* 착용 부품 (보조 2차 · 대표님 «상점 아이콘과 용이 쓴 모습은 달라야») — ai/meta/wear/ 옆모습 부품을 head · torso 부품에 붙인다.
+     좌표 = ai/meta/wear.json (tools/idg-wear-fit.mjs 가 대장 용마다 계산) · 예시 tools/idg-gallery/viewer.js attachWear */
+  async function wear(R, art, lk) {
+    const body = R?.root.children[0], data = rigs[art], W = await WEARP, L = W?.leaders?.[art];
+    if (!body || !data || !L) return;
+    const idx = (n) => data.rig.parts.findIndex((p) => p.n === n);
+    const torso = body.children[idx('torso')], head = body.children[idx('head')];
+    const wt = (file) => tryLoad('/assets/iandragon_game/' + file);
+    const hk = 'hat_' + lk.hat, nk = 'neck_' + lk.neck;   // 표 열쇠 = 그림 이름
+    if (lk.hat && W.items[hk] && L.hat?.[hk] && head) { const t = await wt(W.items[hk].file); if (t && !head.destroyed) { const sp = new Sprite(t); sp.position.set(L.hat[hk].x, L.hat[hk].y); head.addChild(sp); } }
+    const it = lk.neck && W.items[nk];
+    if (it && torso) {
+      const at = it.layer === 'behind' ? L.nape : L.neck;
+      const mk = async (file) => { const t = await wt(file); if (!t) return null; const sp = new Sprite(t); sp.anchor.set(it.anchor[0], it.anchor[1]); sp.position.set(at.x, at.y); return sp; };
+      const behind = async (file) => { const sp = await mk(file); if (!sp || torso.destroyed || torso.parent !== body) return; const box = new Container(); box.addChild(sp); body.addChildAt(box, body.getChildIndex(torso)); box.position.copyFrom(torso.position); follow.push([box, torso]); };
+      if (it.layer === 'split') { const fr = await mk(it.files.front); if (fr && !torso.destroyed) torso.addChild(fr); await behind(it.files.back); }
+      else await behind(it.file);
     }
+  }
+  async function dress(rig, lk, castle, art) {
+    const flagT = lk.flag ? await tryLoad(`${AI}meta/flag_${lk.flag}.png`) : null;
+    if (rig) await wear(rig, art, lk);
     if (flagT && castle) {   // 성 깃발 : 깃대 + 펄럭이는 깃발 (성 뒤 왼쪽 위)
       const side = castle === tower ? -1 : 1, top = GY + 10 - castle.height;
       const pole = new Graphics().rect(-1.5, -64, 3, 64).fill(0x5a3a1a); pole.position.set(castle.x - side * castle.width * 0.32, top + 18);
@@ -84,8 +99,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       stage.addChildAt(pole, stage.getChildIndex(castle)); stage.addChildAt(f, stage.getChildIndex(castle)); flags.push(f);
     }
   }
-  const flags = [];
-  await Promise.all([dress(lead, look, nest), dress(lead2, lookR, pvp ? tower : null)]);
+  const flags = [], follow = [];   // follow = 몸통 뒤 층 장식이 torso 를 따라가게 [상자, torso]
+  const WEARP = fetch('/assets/iandragon_game/ai/meta/wear.json').then((r) => r.json()).catch(() => null);
+  await Promise.all([dress(lead, look, nest, leader), dress(lead2, lookR, pvp ? tower : null, foeLeader)]);
   if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
   if (lead2) lead2.baseY = lead2.root.y;
 
@@ -285,6 +301,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       fun.update(dt); amb.update(dt); bossFx.update(S, dt, V);
       if (lead) lead.update(dt);
       if (lead2) lead2.update(dt);
+      for (const [b, t] of follow) { if (b.destroyed || t.destroyed) continue; b.position.copyFrom(t.position); b.rotation = t.rotation; }
       for (const f of flags) f.skew.y = Math.sin(performance.now() / 260 + f.x) * 0.06;   // 깃발 펄럭
     },
     /** 미니맵 · 시작 위치 */
