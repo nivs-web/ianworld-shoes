@@ -10,6 +10,9 @@ import { UNITS } from '../games/iandragon_game/data/units.js';
 import { hatch, EGG, RATES, PITY, RAR_KO } from '../services/iandragonHatch.js';
 
 const AI = '/assets/iandragon_game/ai/';
+/* 게임 소리(겜팀장) — 부화장에서만 늦게 받는다 */
+const snd = (fn) => import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); fn(A); }).catch(() => {});
+const HATCH_SFX = { rare: 'hatch_r', super: 'hatch_sr', legend: 'hatch_ur' };
 
 export function showHatch(onChange) {
   Sfx.play('sfx_menu_select');
@@ -34,7 +37,9 @@ export function showHatch(onChange) {
     /* 연출 : 알 흔들림 0.9초 → 금 + 등급 빛 0.5초 → 결과 */
     stage.replaceChildren(el(`div.idg-egg.shake.${best}`, null, [el('img', { src: `${AI}eggs/egg_${best}.png`, alt: '', onerror: (e) => e.target.remove() })]));
     btns.style.visibility = 'hidden';
+    snd((A) => A.play('knockback'));
     setTimeout(() => stage.firstChild?.classList.add('crack'), 900);
+    setTimeout(() => snd((A) => A.play(HATCH_SFX[best])), 1300);
     setTimeout(() => {
       stage.replaceChildren(el('div.idg-hatch-grid' + (n > 1 ? '.ten' : ''), null, r.results.map((x, i) => el(`div.idg-hatch-card.${x.rar}`, { style: `animation-delay:${i * 0.08}s` }, [
         el('img', { src: `${AI}${x.id}/head.png`, alt: '' }),
