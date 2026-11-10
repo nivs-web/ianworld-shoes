@@ -4,6 +4,8 @@
  *   접두 + '/' + 동작 = 시트의 프레임 이름 (팀 계획서 2.1). 배경(bg/…)은 동작 없이 접두가 곧 이름.
  */
 import { UNITS, ANIMS } from './units.js';
+import { DRAGONS_W1 } from './dragons_w1.js';
+import { ZOMBIES_W1 } from './zombies_w1.js';
 
 export const FRAMES = {};
-for (const [k, draw] of Object.entries(UNITS)) FRAMES[k] = { anims: ANIMS, draw };
+for (const [k, draw] of Object.entries({ ...UNITS, ...DRAGONS_W1, ...ZOMBIES_W1 })) FRAMES[k] = { anims: ANIMS, draw };
