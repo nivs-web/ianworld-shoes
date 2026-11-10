@@ -70,6 +70,16 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const shakes = { nest: 0, tower: 0, screen: 0 };
   const seen = { breath: 0, bossAt: null, baseHp: [null, null], over: false };
   let breathFx = 0, overT = 0;
+  /* 리더마다 다른 브레스 (화면 전용) : 색 · 위로/아래로 · 크기 · 특수(번개 줄기 · 햇살 기둥) */
+  const BREATH = {
+    novart: { c: [0xff7a1a, 0xffd04a], vy: -40, g: 0, r: 6 },
+    aquantis: { c: [0x4fc3ff, 0xbff0ff, 0xffffff], vy: -90, g: 380, r: 5 },
+    forestia: { c: [0x6bd64a, 0xb8f07a, 0x2f8f3a], vy: -20, g: 30, r: 5, spin: true },
+    crimsonde: { c: [0xff3a1a, 0xff8a2a, 0xffe08a], vy: -170, g: 0, r: 8 },
+    volttail: { c: [0xfff35a, 0xc08bff], vy: -10, g: 0, r: 4, bolt: true },
+    solaris: { c: [0xfff6c0, 0xffd84a], vy: -20, g: 0, r: 5, ray: true },
+  };
+  const BS = BREATH[leader] || BREATH.novart;
 
   const rigFor = (u) => {
     const art = u.def._art;
@@ -157,8 +167,17 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       const reach = M + (p ? p.leader.range : 600);
       if (breathFx < 0.6) for (let i = 0; i < 6; i++) {
         const x = M - 20 + (reach - M + 20) * Math.min(1, breathFx / 0.5) * Math.random();
-        const g = new Graphics().circle(0, 0, 4 + Math.random() * 6).fill(Math.random() < 0.5 ? 0xff7a1a : 0xffd04a); g.blendMode = 'add'; g.position.set(x, GY - 20 - Math.random() * 50); fx.addChild(g);
-        parts.push({ g, vx: 60, vy: -40, life: 0.45, t: 0, grav: 0 });
+        const col = BS.c[(Math.random() * BS.c.length) | 0];
+        const g = BS.spin ? new Graphics().ellipse(0, 0, BS.r + 3, BS.r - 1).fill(col) : new Graphics().circle(0, 0, BS.r - 2 + Math.random() * 6).fill(col);
+        g.blendMode = 'add'; g.position.set(x, GY - 20 - Math.random() * 50); fx.addChild(g);
+        parts.push({ g, vx: 60, vy: BS.vy * (0.6 + Math.random() * 0.8), life: 0.45, t: 0, grav: BS.g });
+      }
+      if (breathFx < 0.5 && (BS.bolt || BS.ray) && Math.random() < 0.35) {   // 번개 줄기 · 햇살 기둥
+        const x = M + 40 + (reach - M - 40) * Math.random();
+        const g = new Graphics();
+        if (BS.bolt) { let px = x, py = 30; g.moveTo(px, py); while (py < GY) { px += Math.random() * 24 - 12; py += 26 + Math.random() * 20; g.lineTo(px, py); } g.stroke({ width: 3, color: 0xfffbe0 }).stroke({ width: 8, color: 0xc08bff, alpha: 0.35 }); }
+        else g.rect(x - 10, 0, 20, GY).fill({ color: 0xfff1a0, alpha: 0.35 });
+        g.blendMode = 'add'; fx.addChild(g); parts.push({ g, vx: 0, vy: 0, life: 0.22, t: 0, grav: 0 });
       }
       if (breathFx > 1.2) { breathFx = 0; if (lead) lead.set('idle'); }
     }
