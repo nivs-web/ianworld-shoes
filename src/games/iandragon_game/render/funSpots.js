@@ -57,5 +57,39 @@ export const W3_SPOTS = {
   sky: [40, 200],
 };
 
+/** 월드 4 «얼음골» (제미나이 배경 bg_w04 · 높이 540 그대로) */
+export const W4_SPOTS = {
+  safe: [260, 1000],
+  wispTint: 0x9ff0ff,
+  moonFace: false,                               // 달이 푸른 흰색이라 얼굴 X
+  moon: { x: 714, y: 106, d: 118 },
+  ground: 437,
+  graves: [280, 360, 440, 560, 640, 780, 880, 960],
+  fence: { x0: 745, x1: 1250, y: 352 },
+  owl: { x: 230, y: 214 },
+  pumpkin: { x: 600, y: 437 },
+  window: { x: 942, y: 226 },
+  wisps: [{ x: 530, y: 383 }, { x: 710, y: 383 }, { x: 1215, y: 383 }],
+  dirtY: 494,
+  sky: [40, 200],
+};
+
+/** 월드 5 «고철 광산» (제미나이 배경 bg_w05 · 보도 윗줄이 456 이라 위 19칸을 잘라 437 로 맞추고 아래는 거울로 채움) */
+export const W5_SPOTS = {
+  safe: [260, 1000],
+  wispTint: 0xc8ff6a,
+  moonFace: true,
+  moon: { x: 662, y: 76, d: 122 },
+  ground: 437,
+  graves: [275, 345, 460, 590, 650, 760, 850, 960],
+  fence: { x0: 605, x1: 1200, y: 327 },
+  owl: { x: 520, y: 188 },
+  pumpkin: { x: 535, y: 437 },
+  window: { x: 925, y: 238 },
+  wisps: [{ x: 195, y: 372 }, { x: 470, y: 400 }, { x: 1035, y: 418 }],
+  dirtY: 494,
+  sky: [40, 200],
+};
+
 /** 월드 번호 → 자리표 · 배경 그림 (배경을 새로 만들면 여기에 재서 적고 tools/idg-fun-spots.mjs 로 확인) */
-export const SPOTS = { 1: W1_SPOTS, 2: W2_SPOTS, 3: W3_SPOTS };
+export const SPOTS = { 1: W1_SPOTS, 2: W2_SPOTS, 3: W3_SPOTS, 4: W4_SPOTS, 5: W5_SPOTS };
