@@ -1,5 +1,5 @@
 /**
- * 이안 드래곤 게임 — 한국어 음성 대사표 v2 (겜팀장 · 1차 = 월드 1~5 · 보이스 스튜디오로 만든다)
+ * 좀비와 드래곤 (옛 이름 이안 드래곤) — 한국어 음성 대사표 v2 (겜팀장 · 1차 = 월드 1~5 · 보이스 스튜디오로 만든다)
  * 대표님 2026-11-10: «심심하면 안 된다 · 과장된 표현 · 웃긴 말투 · 효과음과 합쳐진 목소리 · 보스는 무섭고도 웃기게 ·
  *   코믹 + 긴장 + 공포 · 같은 목소리가 반복되지 않게 다양하게».
  * 한 id 에 여러 줄(무작위 · 방금 한 줄은 안 고름). 출격은 게임이 deploy/<용>/0 · /1 을 부르면 그 용의 줄 전체에서 고른다.
@@ -27,18 +27,18 @@ export const VOICE_LINES = {
   'deploy/gasigong': [L('데굴데굴!', 'babyFast', 'boing'), L('가시 조심해!', 'babyFast'), L('굴러간다아아!', 'babyFast', 'slide_down')],
 
   /* ───── 월드 보스: 등장 · 반 피 · 쓰러짐 (무섭게 시작해서 웃기게 망한다) ───── */
-  'boss/bossFat': [L('크르르… 아기 용 냄새가… 나는구나…', 'bossDeep', 'growl', 'start'), L('점심 메뉴는… 바로 너희다!', 'bossDeep', 'growl'), L('배고프다아아아! 다 먹어 주마!', 'bossDeep', 'stomp')],
-  'boss/bossFat/half': [L('아야! 내 소중한 뱃살에 흠집을!', 'bossDeep', 'bonk'), L('이제 진짜 화났다… 꾸르르륵!', 'bossDeep', 'growl')],
-  'boss/bossFat/die': [L('내 간식… 다 못 먹었는데…', 'bossDeep', 'sad_trombone'), L('꺼억… 다음엔… 디저트로…', 'bossDeep', 'fart')],
-  'boss/bossVolcano': [L('땅이 울린다… 내가 깨어났다!', 'bossDeep', 'rumble', 'start'), L('모두 녹여 버리겠다! 크하하!', 'bossDeep', 'fire_pop'), L('뜨겁지? 이건 시작일 뿐이다!', 'bossDeep', 'rumble')],
-  'boss/bossVolcano/half': [L('내 머리에서… 김이 나잖아!', 'bossDeep', 'steam'), L('분화한다아아아!', 'bossDeep', 'rumble')],
-  'boss/bossVolcano/die': [L('식는다… 미지근해진다…', 'bossDeep', 'steam'), L('으아… 화산이… 꺼져 버렸어…', 'bossDeep', 'sad_trombone')],
+  'boss/bossFat': [L('쿠웅… 쿠웅… 크르르… 아기 용 냄새가 난다…', 'bossDeep', 'growl', 'start'), L('이 몽둥이… 원래 전봇대였다! 크하하!', 'bossDeep', 'stomp'), L('꼬마야, 잘 봐라! 몽땅 납작하게 만들어 주마!', 'bossDeep', 'stomp')],
+  'boss/bossFat/half': [L('아야! 등에 꼬마가… 꼬마가 무겁다!', 'bossDeep', 'bonk'), L('내 몽둥이에 금이 갔잖아! 우어어어!', 'bossDeep', 'growl')],
+  'boss/bossFat/die': [L('몽둥이가… 너무… 무거웠어…', 'bossDeep', 'sad_trombone'), L('꼬마야… 집까지… 업어 줘…', 'bossDeep', 'sad_trombone'), L('쿠당탕! …아이고, 허리야…', 'bossDeep', 'thud')],
+  'boss/bossVolcano': [L('땅이 울린다… 내가 깨어났다!', 'bossGiant', 'rumble', 'start'), L('모두 녹여 버리겠다! 크하하!', 'bossGiant', 'fire_pop'), L('뜨겁지? 이건 시작일 뿐이다!', 'bossGiant', 'rumble')],
+  'boss/bossVolcano/half': [L('내 머리에서… 김이 나잖아!', 'bossGiant', 'steam'), L('분화한다아아아!', 'bossGiant', 'rumble')],
+  'boss/bossVolcano/die': [L('식는다… 미지근해진다…', 'bossGiant', 'steam'), L('으아… 화산이… 꺼져 버렸어…', 'bossGiant', 'sad_trombone')],
   'boss/bossRider': [L('비켜라 비켜! 라이더 나가신다!', 'bossShrill', 'zoom', 'start'), L('하늘은 내 거다! 크하하!', 'bossShrill', 'whoosh'), L('독수리야! 쪼아 버려!', 'bossShrill', 'screech')],
   'boss/bossRider/half': [L('어이쿠! 깃털 빠진다, 깃털!', 'bossShrill', 'slide_down'), L('독수리야, 정신 차려!', 'bossShrill', 'screech')],
   'boss/bossRider/die': [L('으아아… 추락이다아아…', 'bossShrill', 'slide_down'), L('면허… 반납합니다…', 'bossShrill', 'sad_trombone')],
-  'boss/bossAvalanche': [L('우르르릉… 모두 덮어 버리겠다…', 'bossDeep', 'rumble', 'start'), L('춥지? 더 춥게 해 주마!', 'bossDeep', 'freeze'), L('발밑을 조심해라… 꼬맹이들…', 'bossDeep', 'stomp')],
-  'boss/bossAvalanche/half': [L('내 털이… 녹는다!', 'bossDeep', 'splash'), L('화났다! 눈사태다아!', 'bossDeep', 'rumble')],
-  'boss/bossAvalanche/die': [L('봄이… 왔구나…', 'bossDeep', 'sad_trombone'), L('녹는다아… 물이 되어 버려…', 'bossDeep', 'splash')],
+  'boss/bossAvalanche': [L('우르르릉… 모두 덮어 버리겠다…', 'bossCold', 'rumble', 'start'), L('춥지? 더 춥게 해 주마!', 'bossCold', 'freeze'), L('발밑을 조심해라… 꼬맹이들…', 'bossCold', 'stomp')],
+  'boss/bossAvalanche/half': [L('내 털이… 녹는다!', 'bossCold', 'splash'), L('화났다! 눈사태다아!', 'bossCold', 'rumble')],
+  'boss/bossAvalanche/die': [L('봄이… 왔구나…', 'bossCold', 'sad_trombone'), L('녹는다아… 물이 되어 버려…', 'bossCold', 'splash')],
   'boss/bossRobot': [L('삐빅… 침입자 발견. 제거 시작.', 'bossRobot', 'alarm', 'start'), L('고철 대왕 출격! 삐빅!', 'bossRobot', 'zap'), L('저항은… 무의미하다… 삐…', 'bossRobot', 'servo')],
   'boss/bossRobot/half': [L('경고! 경고! 나사가 빠졌다!', 'bossRobot', 'alarm'), L('삐…빅? 왜 연기가 나지?', 'bossRobot', 'steam')],
   'boss/bossRobot/die': [L('시스템… 종료… 삐이이이—', 'bossRobot', 'power_down'), L('엄마… 보고 싶다… 삐빅…', 'bossRobot', 'power_down')],
@@ -58,6 +58,8 @@ export const VOICE_LINES = {
   'tut/4': [L('브레스 준비 완료! 지금 쏴!', 'caster')],
   'tut/5': [L('좀비 탑을 무너뜨려라!', 'caster')],
   'tut/6': [L('보스다! 튼튼한 용을 앞에 세워!', 'caster')],
+  /* 타이틀 콜 (첫 화면 · 2026-11-10 대표님: 게임 이름 «좀비와 드래곤») */
+  title: [L('좀비와아… 드래고오온!', 'caster', 'growl', 'start'), L('좀비와 드래곤! 지금 시작합니다!', 'caster', 'crowd'), L('크르르… 좀비와… 드래곤…', 'bossDeep', 'rumble', 'start')],
 };
 
 /** 보이스 스튜디오 «목소리 설계» — 목소리마다 다르게 (반복 지루함 방지) */
@@ -73,6 +75,8 @@ export const VOICES = {
   babyCool: '한국어, 시원시원한 아이, 또박또박 자신 있게',
   babyZappy: '한국어, 톡 쏘는 아이 목소리, 빠르고 짧게',
   bossDeep: '한국어, 아주 굵고 낮은 괴물 목소리, 무섭게 으르렁대다가 허세 부리는 코믹 악당',
+  bossGiant: '한국어, 산처럼 거대한 괴물, 땅이 울리는 굵은 목소리, 천천히 쿵쿵 외치다가 허둥대는 코믹 악당',
+  bossCold: '한국어, 차갑게 속삭이는 낮은 괴물 목소리, 메아리치듯 오싹하게, 끝엔 울먹이는 코믹 악당',
   bossShrill: '한국어, 높고 째지는 악당 목소리, 촐싹대고 과장되게',
   bossRobot: '한국어, 딱딱한 기계 말투, 단조롭고 차갑게, 가끔 버벅임',
   caster: '한국어, 흥분한 남자 경기 해설자, 아주 빠르고 박진감 넘치게, 크게 외치듯',

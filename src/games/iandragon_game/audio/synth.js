@@ -1,5 +1,5 @@
 /**
- * 이안 드래곤 게임 — 소리 합성 바탕 (겜팀장). 파일 없이 Web Audio 파형만으로 (오락실 규칙).
+ * 좀비와 드래곤 (옛 이름 이안 드래곤) — 소리 합성 바탕 (겜팀장). 파일 없이 Web Audio 파형만으로 (오락실 규칙).
  * 효과음 한 개 = tone() / noise() 몇 개를 겹친 것.
  */
 let ctx = null, master = null, sfxBus = null, musicBus = null, voiceBus = null;
