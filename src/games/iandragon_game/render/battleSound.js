@@ -24,7 +24,7 @@ export function createBattleSound(stage, me = 0) {
   /** 같은 소리를 너무 자주 내지 않기 (초) */
   /* 좀비 소리 (대표님 11/11 «좀비가 등장 · 가끔 중얼 · 쓰러지는 소리» · 겜팀장 녹음 zombie_* · 운영자 스위치 zdOpt.zombieSfx) — 파일이 없으면 조용히 */
   const zOn = isOn('zdOpt', 'zombieSfx');
-  const zPick = (kind, n) => `zombie_${kind}_${1 + Math.floor(Math.random() * n)}`;
+  const zPick = (kind) => `zombie_${kind}`;   // 겜팀장 묶음 키 — 묶음 안 무작위 · 방금 낸 것 피하기 · 높낮이 흔들기는 소리 쪽이 한다
   const zKind = (d) => (hasTrait(d.traits, 'ghost') ? 'ghost' : hasTrait(d.traits, 'giant') || d.boss ? 'big' : null);
   let zIdleAt = 4, zSeen = new Set();
   const once = (id, sec, t) => { if (t - (was.gap[id] ?? -99) < sec) return; was.gap[id] = t; Audio.play(id); };
