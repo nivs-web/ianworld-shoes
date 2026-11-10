@@ -34,8 +34,8 @@ export function play(id) {
   lastAt.set(id, now);
   try { if (f) f(); else playFileSfx(id, FILE_VOL[id] ?? 0.8); } catch { /* 소리 실패는 게임과 무관 */ }
 }
-/* 좀비 소리는 은은하게 (대표님 11/11: «말하는 것보다 은은하게 작게») — 중얼거림이 가장 작다 */
-const FILE_VOL = { zombie_idle: 0.32, zombie_spawn: 0.5, zombie_die: 0.55, zombie_big: 0.6, zombie_ghost: 0.45 };
+/* 좀비 소리 볼륨 (대표님 11/11 두 번째: «너무 은은하게 말고 일반 소리로» → 여기서 키우고 줄인다) */
+const FILE_VOL = { zombie_idle: 1.0, zombie_spawn: 0.95, zombie_die: 1.0, zombie_big: 1.0, zombie_ghost: 0.95 };
 
 export function bgm(id, opt = {}) {
   if (muted) return;
