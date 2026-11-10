@@ -12,7 +12,7 @@ import { hatch, EGG, RATES, PITY, RAR_KO } from '../services/iandragonHatch.js';
 const AI = '/assets/iandragon_game/ai/';
 /* 게임 소리(겜팀장) — 부화장에서만 늦게 받는다 */
 const snd = (fn) => import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); fn(A); }).catch(() => {});
-const HATCH_SFX = { rare: 'hatch_r', super: 'hatch_sr', legend: 'hatch_ur' };
+const REVEAL = { rare: 'hatch_reveal_rare', super: 'hatch_reveal_super', legend: 'hatch_reveal_legend' };
 
 export function showHatch(onChange) {
   Sfx.play('sfx_menu_select');
@@ -37,16 +37,18 @@ export function showHatch(onChange) {
     /* 연출 : 알 흔들림 0.9초 → 금 + 등급 빛 0.5초 → 결과 */
     stage.replaceChildren(el(`div.idg-egg.shake.${best}`, null, [el('img', { src: `${AI}eggs/egg_${best}.png`, alt: '', onerror: (e) => e.target.remove() })]));
     btns.style.visibility = 'hidden';
-    snd((A) => A.play('knockback'));
-    setTimeout(() => stage.firstChild?.classList.add('crack'), 900);
-    setTimeout(() => snd((A) => A.play(HATCH_SFX[best])), 1300);
+    /* 소리(겜팀장) : 달그락 ×3 → 빠직 → 등급 소리. 전설은 북소리 1.3초가 끝나는 순간 알이 터진다 */
+    for (const t of [0, 300, 600]) setTimeout(() => snd((A) => A.play('egg_shake')), t);
+    setTimeout(() => { stage.firstChild?.classList.add('crack'); snd((A) => { A.play('egg_crack'); if (best === 'legend') A.play(REVEAL.legend); }); }, 900);
+    const burst = best === 'legend' ? 900 + 1300 : 1400;
+    if (best !== 'legend') setTimeout(() => snd((A) => A.play(REVEAL[best])), burst);
     setTimeout(() => {
       stage.replaceChildren(el('div.idg-hatch-grid' + (n > 1 ? '.ten' : ''), null, r.results.map((x, i) => el(`div.idg-hatch-card.${x.rar}`, { style: `animation-delay:${i * 0.08}s` }, [
         el('img', { src: `${AI}${x.id}/head.png`, alt: '' }),
         el('b', UNITS[x.id].name), el('span', x.dup ? `+${x.plus}` : `${RAR_KO[x.rar]} · NEW`),
       ]))));
       btns.style.visibility = ''; drawInfo();
-    }, 1400);
+    }, burst);
   }
   drawInfo();
   stage.appendChild(el('div.idg-egg', null, [el('img', { src: `${AI}eggs/egg_rare.png`, alt: '', onerror: (e) => e.target.remove() })]));
