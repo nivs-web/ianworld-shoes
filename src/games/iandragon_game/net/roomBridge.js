@@ -14,9 +14,11 @@ export function seatsOf(room) {
 }
 
 export function createRoomTransport(code, uids, mySeat) {
-  const fns = [], last = new Map();
+  const fns = [], leaves = [], last = new Map(), gone = new Set();
   const off = subscribeRoom(code, (room) => {
     if (!room) return;
+    /* 방에서 빠진 사람 → 나감 (M4) */
+    uids.forEach((u, s) => { if (s !== mySeat && !gone.has(s) && !room.players?.[u]) { gone.add(s); for (const f of leaves) f(s); } });
     for (const [uid, p] of Object.entries(room.players || {})) {
       const seat = uids.indexOf(uid);
       if (seat < 0 || seat === mySeat || typeof p?.lk !== 'string' || p.lk === last.get(uid)) continue;
@@ -27,6 +29,7 @@ export function createRoomTransport(code, uids, mySeat) {
   return {
     send(str) { publishIdg(code, { lk: str }).catch?.(() => {}); },
     onMessage(fn) { fns.push(fn); },
+    onLeave(fn) { leaves.push(fn); },
     close() { off(); },
   };
 }

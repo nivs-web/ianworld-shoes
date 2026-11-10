@@ -90,6 +90,10 @@ export function createLockstep({ seat, seats, delay = DELAY }) {
     },
     /** 상대가 얼마나 늦었나 (틱) — 화면의 «연결 확인 중» 표시용 */
     lag(nowTick) { return Math.max(0, nowTick - Math.min(...promised)); },
+    /** 나간 자리 (M4) — 더 기다리지 않는다. 그 자리 용은 필드에 남고 새 명령만 없다 */
+    drop(s) { if (s !== seat && s >= 0 && s < seats) promised[s] = Infinity; },
+    /** 늦은 자리들 (이 틱을 아직 약속 안 한 자리) */
+    late(tick) { return promised.map((p, s) => (p < tick ? s : -1)).filter((s) => s >= 0); },
     /** 오래된 명령 지우기 (메모리) */
     forget(beforeTick) { for (const m of cmds) for (const [k, v] of m) if (v.tick < beforeTick) m.delete(k); },
   };

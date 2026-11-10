@@ -118,7 +118,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   return {
     update(S, ui) {
       const p = S.players[ui.me || 0], W = S.D.wallet;
-      net.textContent = ui.netWait > 1.5 ? '연결 확인 중…' : ''; net.classList.toggle('on', ui.netWait > 1.5);
+      net.textContent = ui.netNote || (ui.netWait > 1.5 ? '연결 확인 중…' : ''); net.classList.toggle('on', !!ui.netNote || ui.netWait > 1.5);
       const lim = S.stage.gim === 'time' ? S.stage.limit : 0;
       time.textContent = lim ? `남은 ${clock(Math.max(0, lim - S.t))}` : clock(S.t); time.classList.toggle('hurry', !!lim && lim - S.t < 20);
       moneyN.textContent = `${fmt(p.money)} / ${fmt(W[p.wl].max * p.B.walletMax)}`;

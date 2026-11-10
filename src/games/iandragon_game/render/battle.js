@@ -33,7 +33,9 @@ export async function startBattle(ctx, opts) {
   const allDragons = net?.loads ? [...new Map(net.loads.flatMap((l) => l.deck).map((d) => [d.id, d])).values()] : deck;
   const S = createBattle(stage, loads, D, net ? net.seed : (Date.now() % 1e9) | 0);
   const ls = net ? createLockstep({ seat: me, seats: net.seats }) : null;
-  if (net) net.transport.onMessage((from, str) => ls.receive(from, str));
+  const NET_GIVEUP = 12;   // 초 — 이만큼 아무 소식이 없으면 그 친구는 나간 것으로 보고 혼자 계속 (M4)
+  const leave = (s) => { ls.drop(s); ui.netNote = '친구가 나갔어요 — 혼자 계속해요!'; ui.netNoteT = 4; };
+  if (net) { net.transport.onMessage((from, str) => ls.receive(from, str)); net.transport.onLeave?.(leave); }
   let tickN = 0, sendT = 0, nextHash = 150, waitT = 0;
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: allDragons, enemies: enemyIds, leader: loads[0].leader });
@@ -112,6 +114,8 @@ export async function startBattle(ctx, opts) {
         while (acc >= TICK && n < 6 && !S.over) { if (!ls.ready(tickN + 1)) { waited = true; break; } tickN++; step(S, ls.commandsAt(tickN)); acc -= TICK; n++; }
         if (acc > TICK * 90) acc = TICK * 90;
         waitT = waited ? waitT + dt : 0; ui.netWait = waitT;
+        if (ui.netNote && (ui.netNoteT -= dt) < 0) ui.netNote = '';
+        if (waitT > NET_GIVEUP) { for (const s of ls.late(tickN + 1)) leave(s); waitT = 0; }
         if ((sendT += dt) >= 0.2) { sendT = 0; let h = null; if (tickN >= nextHash) { h = [tickN, hashState(S)]; nextHash = tickN + 150; } net.transport.send(ls.packet(tickN, h)); }
       } else {
         while (acc >= TICK && n < 6 * ui.speed) { if (ui.auto && !S.over) cmds.push(...aiCommands(S, 0, autoPol, autoMem)); step(S, cmds.splice(0)); acc -= TICK; n++; }
