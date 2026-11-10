@@ -110,6 +110,15 @@ export const SFX = {
   button: () => tone({ type: 'square', f0: 660, f1: 880, dur: 0.04, vol: 0.12 }),
   button_back: () => { tone({ type: 'square', f0: 660, f1: 520, dur: 0.05, vol: 0.12 }); tone({ type: 'square', f0: 520, f1: 330, dur: 0.07, vol: 0.12, at: 0.05 }); },   // 뾱↘ 뒤로
   button_deny: () => { for (let i = 0; i < 2; i++) { tone({ type: 'square', f0: 150, f1: 110, dur: 0.09, vol: 0.2, at: i * 0.12, trem: { rate: 40, depth: 0.5 } }); noise({ dur: 0.05, vol: 0.1, f0: 600, at: i * 0.12 }); } },   // 붑-붑 안 돼요
+  /* 부화장 (알 깨기) — 흔들림 → 금 → 등급별 등장. 흔들림 · 금은 여러 번 불러도 되게 짧게 */
+  egg_shake: () => { for (let i = 0; i < 3; i++) { tone({ type: 'triangle', f0: 340 + (i % 2) * 60, f1: 260, dur: 0.06, vol: 0.16, at: i * 0.09 }); noise({ dur: 0.04, vol: 0.08, filter: 'bandpass', f0: 1800, q: 4, at: i * 0.09 }); } },   // 달그락 달그락
+  egg_crack: () => { noise({ dur: 0.05, vol: 0.3, filter: 'highpass', f0: 2600, at: 0 }); noise({ dur: 0.04, vol: 0.24, filter: 'bandpass', f0: 3800, q: 5, at: 0.06 }); noise({ dur: 0.07, vol: 0.2, filter: 'bandpass', f0: 2200, q: 3, at: 0.11 }); tone({ type: 'square', f0: 1500, f1: 900, dur: 0.05, vol: 0.08, at: 0.02 }); },   // 쩍 · 빠직
+  hatch_reveal_rare: () => { noise({ dur: 0.18, vol: 0.28, filter: 'highpass', f0: 2000 }); FX.boing(0.05); arp([79, 84, 88], 0.08, { type: 'triangle', vol: 0.15, dur: 0.18, at: 0.2 }); },   // 뽕! 짜잔
+  hatch_reveal_super: () => { noise({ dur: 0.22, vol: 0.3, filter: 'highpass', f0: 1800 }); FX.slide_up(0.02); arp([72, 76, 79, 84, 88, 91], 0.07, { vol: 0.15, dur: 0.18, at: 0.3 }); FX.sparkle(0.75); },
+  hatch_reveal_legend: () => {   // 두구두구두구… 쾅! 전설!
+    for (let i = 0; i < 14; i++) noise({ dur: 0.06, vol: 0.14 + i * 0.012, f0: 260, f1: 120, at: i * 0.09 });
+    at(1.3, () => { FX.stomp(); noise({ dur: 0.5, vol: 0.32, filter: 'highpass', f0: 1500 }); arp([60, 67, 72, 76, 79, 84, 88, 91, 96], 0.06, { type: 'sawtooth', vol: 0.12, dur: 0.22, at: 0.1 }); FX.crowd(0.4); FX.sparkle(0.8); });
+  },
   /* 새 id — 긴장 · 웃음 연출 (겜부장에게 목록 전달) */
   ...Object.fromEntries(Object.entries(FX).map(([k, f]) => [k, () => f(0)])),
 };
