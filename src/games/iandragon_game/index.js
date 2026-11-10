@@ -16,6 +16,7 @@ import { startDemo } from './render/demo.js';
 import * as Audio from './audio/index.js';
 
 export const ATLAS_URL = '/assets/iandragon_game/atlas.json';
+const ENV_URL = (name) => `/assets/iandragon_game/env/${name}.json`;
 
 let S = null;   // 지금 붙어 있는 판 하나
 
@@ -30,11 +31,15 @@ export async function mount(host, opts) {
   if (!me.alive) { ctx.destroy(); return; }
   me.ctx = ctx;
 
-  const sheet = await Assets.load(ATLAS_URL);
+  /* 캐릭터 시트(겜팀장) + 배경 · 성 시트(겜부장) — 이름으로 어느 시트에서든 찾는다 */
+  const [sheet, common, w01] = await Promise.all([Assets.load(ATLAS_URL), Assets.load(ENV_URL('common')), Assets.load(ENV_URL('w01'))]);
   if (!me.alive) return;
+  const sheets = [common, w01, sheet];
+  const has = (name) => sheets.some((s) => s.textures[name]);
+  const T = (name) => { for (const s of sheets) if (s.textures[name]) return s.textures[name]; return sheet.textures['icon/star'] ?? Object.values(sheet.textures)[0]; };
   Audio.init();
 
-  me.scene = startDemo(ctx, sheet);
+  me.scene = startDemo(ctx, T, has, w01.data.meta, common.data.meta);
 
   /* 나가기 단추 (화면 위 DOM — 캔버스 글씨 금지 규칙) */
   const exit = document.createElement('button');

@@ -19,6 +19,7 @@
     "assets:faces": "node tools/build-faces.mjs",
     "//idg": "이안 드래곤 게임 (2026-11-10). placeholder = 겜부장 자리표시 시트 · idg-art = 겜팀장 진짜 그림 (팀 계획서 2장). 구운 시트는 커밋하므로 build 에 넣지 않는다",
     "assets:idg-placeholder": "node tools/idg-placeholder.mjs",
+    "assets:idg-env": "node tools/idg-env-build.mjs",
     "data:idg": "node tools/idg-import-data.mjs",
     "qa:idg-core": "node tools/idg-core-qa.mjs",
     "assets:idg-art": "node tools/idg-art-build.mjs",
