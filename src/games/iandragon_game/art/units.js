@@ -24,32 +24,39 @@ function pose(a) {
 /** 눈 감김 «><» */
 function shutEye(p, x, y) { p.set(x - 1, y - 1, OUT); p.set(x, y, OUT); p.set(x - 1, y + 1, OUT); p.set(x + 1, y - 1, OUT); p.set(x + 1, y + 1, OUT); }
 
-/* ───────── 꼬물이 kkomul — 머리가 몸보다 큰 연두 아기 용 · 머리 위 새싹 · 꼬리 끝 잎 ───────── */
+/* ───────── 꼬물이 kkomul — 동글동글 머리 큰 연두 아기 용 · 짧은 주둥이 · 반짝이는 까만 눈 · 새싹 ───────── */
 function kkomul(form, a) {
   const S = form === 1 ? 32 : 36, k = S / 32, p = new Pix(S, S), q = pose(a);
   const G = form === 1 ? RAMP.leaf : ['#b6ee6a', '#6cc843', '#358a31'];
   const X = (v) => Math.round(v * k) + q.dx, Y = (v) => Math.round(v * k) + q.dy, R = (v) => v * k;
-  part.poly(p, [[X(2), Y(17)], [X(5), Y(14)], [X(7), Y(19)]], RAMP.leaf);                     // 꼬리 끝 잎
-  part.ell(p, X(6), Y(23), R(3.4), R(2.4), G);                                                 // 꼬리
+  part.poly(p, [[X(2), Y(18)], [X(4), Y(14)], [X(7), Y(19)]], RAMP.leaf);                     // 꼬리 끝 잎
+  part.ell(p, X(6), Y(24), R(3.2), R(2.3), G);                                                 // 꼬리
   part.ell(p, X(10) - q.leg, S - 3, R(2.8), R(2.4), G, { openBottom: true });                  // 뒷다리
-  part.ell(p, X(13), Y(23), R(7.5), R(6), G);                                                  // 몸 (작게)
-  part.ell(p, X(15), Y(25), R(4.5), R(3.6), RAMP.belly);                                       // 배
+  part.ell(p, X(13), Y(24), R(7.5), R(5.8), G);                                                // 몸 (통통하게)
+  part.ell(p, X(15), Y(26), R(4.6), R(3.4), RAMP.belly);                                       // 배
   part.ell(p, X(18) + q.leg, S - 3, R(2.8), R(2.4), G, { openBottom: true });                  // 앞다리
-  part.poly(p, [[X(7), Y(17)], [X(10), Y(12)], [X(12), Y(17)]], RAMP.leaf);                    // 아기 날개
-  part.ell(p, X(19), Y(13), R(10), R(9), G);                                                   // 머리 (아주 크게)
-  part.ell(p, X(26), Y(17), R(4), R(3), RAMP.belly, { outline: false });                       // 주둥이 · 턱
+  part.poly(p, [[X(7), Y(18)], [X(9), Y(13)], [X(12), Y(18)]], RAMP.leaf);                     // 아기 날개
+  part.ell(p, X(19), Y(13), R(10), R(9.5), G);                                                 // 머리 (동그랗게 · 크게)
+  part.ell(p, X(24), Y(18), R(4.5), R(3), RAMP.belly, { outline: false });                     // 턱 밑 (짧게)
   /* 머리 위 새싹 (진화하면 잎 두 장 + 작은 뿔) */
-  part.poly(p, [[X(17), Y(5)], [X(14), Y(0)], [X(19), Y(2)]], RAMP.leaf);
+  part.poly(p, [[X(17), Y(5)], [X(13), Y(0)], [X(19), Y(2)]], RAMP.leaf);
   if (form === 2) {
     part.poly(p, [[X(19), Y(4)], [X(23), Y(-0.5)], [X(22), Y(5)]], RAMP.leaf);
-    part.poly(p, [[X(24), Y(6)], [X(26), Y(2)], [X(27), Y(7)]], RAMP.lemon);
+    part.poly(p, [[X(25), Y(7)], [X(27), Y(3)], [X(28), Y(8)]], RAMP.lemon);
   }
-  if (q.eye === 'shut') shutEye(p, X(22), Y(12));
-  else part.gem(p, X(22), Y(12), R(3), R(4) * (q.eye === 'focus' ? 0.85 : 1));               // 반짝이는 큰 눈
-  p.rect(X(23), Y(17), 3, 1, C.blush); p.rect(X(24), Y(18), 1, 1, C.blush);                    // 볼 홍조
-  if (q.mouth === 1) { p.rect(X(27), Y(18), 3, 2, C.mouth); p.set(X(28), Y(19), C.tongue); }  // 앙!
-  else if (q.mouth === 2) p.rect(X(27), Y(18), 2, 2, C.mouth);
-  else { p.set(X(27), Y(18), OUT); p.set(X(28), Y(19), OUT); p.set(X(29), Y(18), OUT); }       // ω 웃음
+  /* 눈 — 세로로 긴 까만 눈 + 큰 하이라이트 (아기 몬스터 눈) */
+  const ex = X(23), ey = Y(12);
+  if (q.eye === 'shut') shutEye(p, ex, ey + 1);
+  else {
+    const eh = q.eye === 'focus' ? 3 : 4;
+    p.rect(ex - 1, ey - eh + 1, 3, eh * 2 - 1, OUT); p.rect(ex - 2, ey - eh + 2, 5, eh * 2 - 3, OUT);   // 까만 타원 눈
+    p.rect(ex - 1, ey - eh + 2, 2, 2, '#ffffff'); p.set(ex + 1, ey + eh - 3, '#ffffff');              // 하이라이트
+    p.set(ex, ey + eh - 2, '#4a3a6a');                                                                 // 눈 아래 반사
+  }
+  part.ell(p, X(22), Y(18), R(2.2), R(1.4), [C.blush, C.blush, '#f07890'], { outline: false });       // 동그란 볼
+  if (q.mouth === 1) { p.rect(X(27), Y(16), 3, 3, C.mouth); p.rect(X(28), Y(17), 2, 2, C.tongue); }  // 앙!
+  else if (q.mouth === 2) p.rect(X(27), Y(17), 2, 2, C.mouth);
+  else { p.set(X(26), Y(17), OUT); p.set(X(27), Y(18), OUT); p.set(X(28), Y(17), OUT); }             // 방긋
   return p;
 }
 
@@ -79,45 +86,55 @@ function doldeung(form, a) {
   return p;
 }
 
-/* ───────── 어슬렁 좀비 walker — 크고 구부정한 회록색 좀비 · 꺼진 눈두덩 · 벌린 턱 · 해진 옷 ───────── */
-const ZSKIN = ['#c3cfae', '#8a9c78', '#56684d'];
+/* ───────── 어슬렁 좀비 walker — 머리 큰 카툰 좀비 · 툭 튀어나온 눈 + 처진 눈 · 침 흘리는 입 · 해진 양복 ───────── */
+const ZSKIN = ['#c6d6a2', '#8fa66e', '#5a6e45'];
+const JACKET = ['#a3825f', '#715640', '#45321f'];
+const SHIRT = ['#ece6cf', '#c2b897', '#8a7e60'];
 function walker(form, a) {
   const S = 44, p = new Pix(S, S), q = pose(a);
   const X = (v) => v + q.dx, Y = (v) => v + q.dy, lg = q.leg;
-  /* 다리 — 질질 끄는 걸음 (한쪽은 맨발) */
-  part.poly(p, [[X(13) + lg, Y(30)], [X(18) + lg, Y(30)], [X(17) + lg, S - 2], [X(12) + lg, S - 2]], RAMP.cloth);
-  part.poly(p, [[X(19) - lg, Y(30)], [X(24) - lg, Y(30)], [X(25) - lg, S - 3], [X(20) - lg, S - 3]], RAMP.cloth);
-  p.rect(X(10) + lg, S - 3, 8, 2, RAMP.rag[2]);                                                // 낡은 신발
-  part.ell(p, X(24) - lg, S - 3, 3, 1.6, ZSKIN, { openBottom: true });                         // 맨발
-  /* 몸통 — 앞으로 숙인 해진 셔츠 + 구멍 사이 갈비뼈 */
-  part.poly(p, [[X(11), Y(16)], [X(25), Y(15)], [X(27), Y(31)], [X(12), Y(32)]], ['#9fb0a8', '#6b7d78', '#3f4d4c']);
-  for (const [tx, ty] of [[14, 31], [18, 32], [23, 31]]) { p.set(X(tx), Y(ty), OUT); p.set(X(tx) + 1, Y(ty) - 1, OUT); }
-  p.rect(X(17), Y(21), 5, 6, '#2a2030');                                                       // 셔츠 구멍
-  for (let i = 0; i < 3; i++) p.rect(X(17), Y(22) + i * 2, 5, 1, RAMP.bone[1]);                // 갈비뼈
-  p.rect(X(13), Y(26), 2, 3, '#5c3a3a'); p.set(X(24), Y(19), '#5c3a3a');                       // 얼룩
-  /* 뒷팔 · 앞팔 — 축 늘어진 손을 앞으로 */
-  part.poly(p, [[X(13), Y(18)], [X(16), Y(17)], [X(15), Y(25)], [X(12), Y(25)]], ZSKIN);
+  /* 다리 — 안짱다리로 질질 */
+  part.poly(p, [[X(12) + lg, Y(30)], [X(17) + lg, Y(30)], [X(16) + lg, S - 2], [X(12) + lg, S - 2]], ['#7d7f86', '#55575f', '#33343a']);
+  part.poly(p, [[X(18) - lg, Y(30)], [X(23) - lg, Y(30)], [X(24) - lg, S - 3], [X(19) - lg, S - 3]], ['#7d7f86', '#55575f', '#33343a']);
+  p.rect(X(10) + lg, S - 3, 8, 2, '#3a2a20'); p.rect(X(19) - lg, S - 3, 8, 2, '#3a2a20');      // 낡은 구두
+  /* 뒷팔 — 축 늘어짐 */
+  part.poly(p, [[X(10), Y(18)], [X(14), Y(17)], [X(13), Y(28)], [X(10), Y(28)]], JACKET);
+  part.ell(p, X(11), Y(29), 2.2, 2, ZSKIN);
+  /* 몸통 — 앞으로 굽은 해진 양복 + 얼룩진 셔츠 */
+  part.poly(p, [[X(11), Y(17)], [X(24), Y(15)], [X(26), Y(31)], [X(12), Y(32)]], JACKET);
+  part.poly(p, [[X(17), Y(16)], [X(22), Y(15)], [X(21), Y(30)], [X(17), Y(31)]], SHIRT, { outline: false });
+  p.rect(X(18), Y(22), 2, 3, '#7a8a50'); p.set(X(20), Y(26), '#6a3030');                       // 셔츠 얼룩
+  for (const [tx, ty] of [[13, 31], [16, 32], [22, 31], [25, 30]]) { p.set(X(tx), Y(ty), OUT); p.set(X(tx) + 1, Y(ty) + 1, OUT); }   // 찢어진 옷단
+  /* 앞팔 — 앞으로 쭉, 손목이 축 처짐 */
   const reach = q.mouth === 1 ? 3 : 0;
-  part.ell(p, X(29) + reach, Y(20), 7, 2.4, ['#9fb0a8', '#6b7d78', '#3f4d4c']);                // 소매
-  part.ell(p, X(36) + reach, Y(22), 3.2, 3, ZSKIN);                                            // 늘어진 손
-  for (const fx of [34, 36, 38]) p.set(X(fx) + reach, Y(25), OUT);                             // 손톱
-  /* 머리 — 앞으로 쑥 내민 길쭉한 머리 · 꺼진 눈두덩 · 벌린 턱 */
-  part.ell(p, X(23), Y(10), 8, 8.5, ZSKIN);
-  part.poly(p, [[X(20), Y(15)], [X(31), Y(14)], [X(30), Y(20)], [X(21), Y(19)]], ZSKIN);       // 아래턱
-  for (const [hx, hy] of [[17, 2], [20, 1], [23, 2], [26, 3]]) p.rect(X(hx), Y(hy), 1, 2, '#3a3a2a');   // 듬성듬성한 머리털
-  p.rect(X(19), Y(5), 3, 1, C.stitch); p.set(X(20), Y(4), C.stitch); p.set(X(20), Y(6), C.stitch);       // 이마 꿰맨 자국
-  if (q.eye === 'shut') { p.rect(X(23), Y(9), 3, 1, OUT); p.rect(X(28), Y(9), 2, 1, OUT); }
+  part.ell(p, X(28) + reach, Y(19), 6.5, 2.4, JACKET);
+  part.poly(p, [[X(33) + reach, Y(18)], [X(37) + reach, Y(19)], [X(37) + reach, Y(25)], [X(34) + reach, Y(24)]], ZSKIN);
+  for (const fx of [34, 36]) p.rect(X(fx) + reach, Y(25), 1, 2, ZSKIN[2]);                     // 처진 손가락
+  /* 머리 — 크고 둥근 머리를 앞으로 기울임 */
+  part.ell(p, X(26), Y(11), 9.5, 9, ZSKIN);
+  part.ell(p, X(18), Y(11), 2.2, 3, ZSKIN);                                                    // 귀 (뜯긴)
+  p.set(X(17), Y(9), OUT); p.set(X(17), Y(10), OUT);
+  for (const [hx, hy, h] of [[20, 2, 3], [23, 1, 3], [26, 1, 2], [29, 2, 2]]) p.rect(X(hx), Y(hy), 1, h, '#2e2a22');   // 듬성 머리털
+  p.set(X(22), Y(1), '#2e2a22'); p.set(X(27), Y(0), '#2e2a22');
+  part.ell(p, X(22), Y(6), 2, 1.2, ['#a49cb8', '#7d6f95', '#55496a'], { outline: false });     // 멍
+  if (q.eye === 'shut') { p.rect(X(28), Y(9), 4, 1, OUT); p.rect(X(23), Y(10), 3, 1, OUT); }
   else {
-    part.ell(p, X(24), Y(9), 2.4, 2.4, ['#3a2a3a', '#241826', '#140c18'], { outline: false });  // 꺼진 눈두덩
-    part.ell(p, X(29), Y(9), 2, 2, ['#3a2a3a', '#241826', '#140c18'], { outline: false });
-    p.set(X(25), Y(9), q.eye === 'focus' ? '#ff5a3a' : '#f2e46a');                            // 번뜩이는 눈
-    p.set(X(29), Y(9), q.eye === 'focus' ? '#ff5a3a' : '#f2e46a');
+    /* 툭 튀어나온 큰 눈 (작은 눈동자가 딴 데를 봄) */
+    part.ell(p, X(30), Y(9), 3.4, 3.6, ['#ffffff', '#f2eed8', '#c8c0a0']);
+    p.rect(X(31), Y(10), 2, 2, q.eye === 'focus' ? '#c01818' : OUT);
+    p.set(X(28), Y(7), '#e8a0a0');                                                             // 핏발
+    /* 처진 작은 눈 + 다크서클 */
+    part.ell(p, X(24), Y(10), 2, 1.6, ['#f2eed8', '#e2dcc0', '#c8c0a0'], { outline: false });
+    p.rect(X(22), Y(9), 5, 1, OUT);                                                            // 처진 눈꺼풀
+    p.set(X(24), Y(10), OUT);
+    p.rect(X(23), Y(12), 3, 1, ZSKIN[2]);                                                      // 다크서클
   }
-  const open = q.mouth === 1 ? 3 : q.mouth === 2 ? 2 : 1;                                     // 벌린 턱 + 들쭉날쭉 이빨
-  p.rect(X(22), Y(15), 8, open + 1, '#2a1018');
-  for (const tx of [22, 24, 27, 29]) p.set(X(tx), Y(15), C.tooth);
-  for (const tx of [23, 26, 28]) p.set(X(tx), Y(15) + open, C.tooth);
-  p.set(X(18), Y(12), ZSKIN[2]); p.set(X(19), Y(13), ZSKIN[2]); p.set(X(27), Y(4), ZSKIN[2]);  // 썩은 반점
+  /* 입 — 비뚤게 벌린 입 · 이빨 두어 개 · 초록 침 */
+  const open = q.mouth === 1 ? 4 : q.mouth === 2 ? 3 : 2;
+  part.poly(p, [[X(25), Y(15)], [X(33), Y(14)], [X(32), Y(15) + open], [X(26), Y(15) + open]], ['#5a1a24', '#3a0e16', '#22060c'], { lineCol: ZSKIN[2] });
+  p.set(X(27), Y(15), SHIRT[0]); p.set(X(31), Y(14), SHIRT[0]); p.set(X(29), Y(15) + open - 1, SHIRT[1]);
+  p.rect(X(32), Y(16) + open, 1, 2, '#9fd86a'); p.set(X(32), Y(18) + open, '#c8f27a');         // 침
+  p.set(X(20), Y(14), ZSKIN[2]); p.set(X(33), Y(5), ZSKIN[2]);                                 // 썩은 반점
   const out = new Pix(S, S); out.blit(p, 0, 0, true);                                         // 왼쪽을 보게
   return out;
 }
