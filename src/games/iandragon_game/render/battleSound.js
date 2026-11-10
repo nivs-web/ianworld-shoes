@@ -8,7 +8,7 @@ import { getSettings } from '../../../audio/audio.js';
 
 const deployFx = (cost) => (cost < 150 ? 'deploy_s' : cost < 400 ? 'deploy_m' : 'deploy_l');
 
-export function createBattleSound(stage) {
+export function createBattleSound(stage, me = 0) {
   const set = getSettings();
   const musicOn = set.bgmEnabled !== false;
   Audio.init();
@@ -18,12 +18,12 @@ export function createBattleSound(stage) {
   const timers = [];   // 나간 뒤에 소리가 나지 않게 모아 두었다가 지운다 (코드 검토 6)
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
   if (musicOn) Audio.worldBgm(stage.w);   // 겜팀장 월드 곡 (월드 1 «죽음의 무도» … 월드 5 «마법사의 제자»)
-  const was = { spawned: 0, wl: 0, breath: 0, breathReady: false, skill: 0, rage: 0, kills: 0, base0: null, base1: null, boss: null, bossHalf: false, fever: false, over: false, hits: 0, units: new Set(), spawnT: [], waveCd: 0, lastWave: false };
+  const was = { spawned: 0, wl: 0, breath: 0, breathReady: false, skill: 0, rage: 0, kills: 0, base0: null, base1: null, boss: null, bossHalf: false, fever: false, over: false, hits: 0, units: new Set(), spawnT: [], waveCd: 0, lastWave: false, bossSt: null, barrier: new Map(), corpse: new Set() };
 
   return {
     /** 매 프레임 — S = 코어 상태, view = 그리기(맞은 횟수 hits) */
     update(S, view) {
-      const p = S.players[0];
+      const p = S.players[me];
       if (p.st.spawned > was.spawned) {
         const ids = new Set(S.units.filter((u) => u.side === 0).map((u) => u.id));
         for (const u of S.units) if (u.side === 0 && !was.units.has(u.id)) { Audio.play(deployFx(u.def.cost)); if (Math.random() < 0.4) Audio.voice(`deploy/${u.def._art}`); break; }
@@ -44,7 +44,16 @@ export function createBattleSound(stage) {
         was[k] = hp;
       }
       const b = S.boss;
-      if (b && was.boss !== b.id) { was.boss = b.id; Audio.play('boss_warn'); later(() => Audio.play('shockwave'), 700); Audio.voice(`boss/${b.def._art}`); song('boss'); }
+      if (b && was.boss !== b.id) { was.boss = b.id; Audio.play('boss_cutin'); if (b.def._art === 'bossLord') later(() => Audio.play('lord_roar'), 400); later(() => Audio.play('boss_warn'), 1200); later(() => Audio.play('shockwave'), 700); Audio.voice(`boss/${b.def._art}`); song('boss'); }
+      /* 보스 큰 공격 준비(fore) — 경고음 (화면의 빨간 띠와 같은 순간) */
+      if (b && b.alive && b.state === 'fore' && was.bossSt !== 'fore') Audio.play('boss_big_attack_warn');
+      if (b && b.state === 'back' && was.bossSt === 'fore' && b.def._art === 'bossLord') Audio.play('lord_shockwave');
+      was.bossSt = b ? b.state : null;
+      /* 2차 상태 소리 : 방어막 깨짐 · 유령 되살아남 */
+      for (const u of S.units) {
+        const pb = was.barrier.get(u.id); if (pb > 0 && u.barrier === 0) Audio.play('shield_break'); was.barrier.set(u.id, u.barrier || 0);
+        if (u.corpseT > 0) was.corpse.add(u.id); else if (was.corpse.has(u.id)) { was.corpse.delete(u.id); Audio.play('ghost_revive'); }
+      }
       if (b && !was.bossHalf && b.hp <= b.maxHp / 2) { was.bossHalf = true; Audio.voice(`boss/${b.def._art}/half`); }
       if (!was.fever && S.t >= S.feverAt) { was.fever = true; Audio.voice('fever'); }
       /* 무리 대사 (겜팀장) : 1.5초 안에 좀비 4마리 이상 = 큰 무리(20초에 한 번) · 정해진 무리 줄이 하나 남고 그것이 나오기 시작 = 마지막 무리(한 번) */
@@ -58,7 +67,7 @@ export function createBattleSound(stage) {
       }
       if (S.over && !was.over) {
         was.over = true; Audio.stopBgm();
-        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) Audio.voice('bossdown'); later(() => { Audio.play('win_fanfare'); Audio.voice(stage.g === 100 ? 'ending' : 'win'); if (stage.g === 100 && musicOn) later(() => Audio.bgm('ending'), 2800); }, 900); }   // 10-10 = 엔딩 대사
+        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) Audio.voice('bossdown'); later(() => { Audio.play(stage.g === 100 ? 'ending_sting' : 'win_fanfare'); Audio.voice(stage.g === 100 ? 'ending' : 'win'); if (stage.g === 100 && musicOn) later(() => Audio.bgm('ending'), 2800); }, 900); }   // 10-10 = 엔딩 대사
         else { Audio.play('lose_womp'); Audio.voice('lose'); }
       }
     },

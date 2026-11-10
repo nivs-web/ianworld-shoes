@@ -91,5 +91,90 @@ export const W5_SPOTS = {
   sky: [40, 200],
 };
 
+/** 월드 6 «유령 묘지» (제미나이 배경 bg_w06 · 1273×540 그대로 · 땅 줄 437) */
+export const W6_SPOTS = {
+  safe: [260, 1000],
+  wispTint: 0x8affa0,
+  moonFace: true,
+  moon: { x: 440, y: 118, d: 140 },
+  ground: 437,
+  graves: [275, 330, 400, 560, 640, 740, 960, 1020],
+  fence: { x0: 530, x1: 900, y: 372 },
+  owl: { x: 300, y: 206 },
+  pumpkin: { x: 600, y: 437 },
+  window: { x: 882, y: 268 },
+  wisps: [{ x: 600, y: 380 }, { x: 700, y: 395 }, { x: 1010, y: 385 }],
+  dirtY: 494,
+  sky: [40, 200],
+};
+
+/** 월드 7 «모래폭풍 사막» (제미나이 배경 bg_w07 · 땅 줄 420 을 437 로 맞춰 1.04배 키움) */
+export const W7_SPOTS = {
+  safe: [260, 1000],
+  wispTint: 0xffd27a,
+  moonFace: true,
+  moon: { x: 663, y: 130, d: 195 },
+  ground: 437,
+  graves: [280, 365, 470, 600, 690, 780, 900, 970],
+  fence: { x0: 775, x1: 1255, y: 372 },
+  owl: { x: 300, y: 178 },
+  pumpkin: { x: 620, y: 437 },
+  window: { x: 1105, y: 247 },
+  wisps: [{ x: 380, y: 400 }, { x: 620, y: 400 }, { x: 1000, y: 395 }],
+  dirtY: 494,
+  sky: [40, 200],
+};
+
+/** 월드 8 «독 늪» (제미나이 배경 bg_w08 · 풀 윗줄 425 를 437 로 맞춰 1.03배 키움 · 오른쪽 절반은 독물 + 널다리) */
+export const W8_SPOTS = {
+  safe: [260, 1000],
+  wispTint: 0x9aff6a,
+  moonFace: true,
+  moon: { x: 660, y: 98, d: 120 },
+  ground: 437,
+  graves: [275, 350, 430, 520, 600, 680],
+  fence: { x0: 760, x1: 1250, y: 298 },
+  owl: { x: 340, y: 247 },
+  pumpkin: { x: 480, y: 437 },
+  window: { x: 1048, y: 198 },
+  wisps: [{ x: 420, y: 395 }, { x: 560, y: 420 }, { x: 700, y: 410 }],
+  dirtY: 494,
+  sky: [40, 200],
+};
+
+/** 월드 9 «수정 동굴» (제미나이 배경 bg_w09 · 보도 윗줄이 448 이라 위 11칸을 잘라 437 로 맞추고 아래는 거울로 채움) */
+export const W9_SPOTS = {
+  safe: [260, 1000],
+  wispTint: 0xc9a0ff,
+  moonFace: true,
+  moon: { x: 637, y: 105, d: 140 },
+  ground: 437,
+  graves: [275, 360, 460, 560, 650, 760, 900, 1050],
+  fence: { x0: 700, x1: 1190, y: 378 },
+  owl: { x: 330, y: 265 },
+  pumpkin: { x: 650, y: 437 },
+  window: { x: 1130, y: 212 },
+  wisps: [{ x: 600, y: 395 }, { x: 760, y: 350 }, { x: 1000, y: 330 }],
+  dirtY: 494,
+  sky: [40, 200],
+};
+
+/** 월드 10 «좀비 드래곤 성» (제미나이 배경 bg_w10 · 풀 윗줄이 459 라 위 22칸을 잘라 437 로 맞추고 아래는 거울로 채움) */
+export const W10_SPOTS = {
+  safe: [260, 1000],
+  wispTint: 0x8aff7a,
+  moonFace: true,
+  moon: { x: 633, y: 142, d: 210 },
+  ground: 437,
+  graves: [275, 360, 470, 600, 700, 780, 900, 1000],
+  fence: { x0: 760, x1: 1250, y: 378 },
+  owl: { x: 335, y: 138 },
+  pumpkin: { x: 590, y: 437 },
+  window: { x: 1038, y: 130 },
+  wisps: [{ x: 490, y: 392 }, { x: 620, y: 400 }, { x: 710, y: 395 }],
+  dirtY: 494,
+  sky: [40, 200],
+};
+
 /** 월드 번호 → 자리표 · 배경 그림 (배경을 새로 만들면 여기에 재서 적고 tools/idg-fun-spots.mjs 로 확인) */
-export const SPOTS = { 1: W1_SPOTS, 2: W2_SPOTS, 3: W3_SPOTS, 4: W4_SPOTS, 5: W5_SPOTS };
+export const SPOTS = { 1: W1_SPOTS, 2: W2_SPOTS, 3: W3_SPOTS, 4: W4_SPOTS, 5: W5_SPOTS, 6: W6_SPOTS, 7: W7_SPOTS, 8: W8_SPOTS, 9: W9_SPOTS, 10: W10_SPOTS };

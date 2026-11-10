@@ -4,6 +4,8 @@
  * 전부 파형 합성 · 새로 지은 소리. 위쪽 28개는 팀 계획서 2.2 의 약속 id, 아래는 대사와 같이 터지는 소리 · 긴장 소리.
  * v3 (2026-11-11): 소환(deploy_s/m/l = summon_s/m/l 별칭) 더 과장 · 새 id = summon_rare · hit_zombie_squish · breath_charge ·
  *   win_fanfare · lose_womp · button_back · button_deny.  맨 아래 FUN_SFX = 배경 «재미 요소» 작은 소리 후보 17종(기본 꺼 둠).
+ * v4 (2026-11-11, 2차 월드 6~10): 새 id = ghost_revive · purify · poison_tick · poison_cloud · shield_block · shield_break · weaken_curse ·
+ *   sandstorm · no_knockback · shadow_dash · gem_beam · hammer_quake · boss_cutin · boss_big_attack_warn · lord_roar · lord_shockwave · ending_sting.
  */
 import { tone, noise, midi } from './synth.js';
 
@@ -118,6 +120,104 @@ export const SFX = {
   hatch_reveal_legend: () => {   // 두구두구두구… 쾅! 전설!
     for (let i = 0; i < 14; i++) noise({ dur: 0.06, vol: 0.14 + i * 0.012, f0: 260, f1: 120, at: i * 0.09 });
     at(1.3, () => { FX.stomp(); noise({ dur: 0.5, vol: 0.32, filter: 'highpass', f0: 1500 }); arp([60, 67, 72, 76, 79, 84, 88, 91, 96], 0.06, { type: 'sawtooth', vol: 0.12, dur: 0.22, at: 0.1 }); FX.crowd(0.4); FX.sparkle(0.8); });
+  },
+  /* ───── v4 · 2차 효과음 (월드 6~10) — 유령 · 독 · 수정 방패 · 사막 · 그림자 · 보스 · 로드 · 엔딩 ───── */
+  ghost_revive: () => {                                                                               // 우우웅~ 유령이 스르륵 떠오름 (약 1.2초)
+    tone({ type: 'sine', f0: 150, f1: 430, dur: 1, vol: 0.2, attack: 0.5, vib: { rate: 6, depth: 50 } });
+    tone({ type: 'triangle', f0: 300, f1: 860, dur: 1, vol: 0.09, attack: 0.6, vib: { rate: 7, depth: 70 } });
+    noise({ dur: 0.9, vol: 0.07, filter: 'bandpass', f0: 400, f1: 1500, q: 3 });
+    tone({ type: 'sine', f0: 1100, f1: 1500, dur: 0.25, vol: 0.06, at: 0.95, vib: { rate: 14, depth: 60 } });   // 스으
+  },
+  purify: () => {                                                                                     // 띠링~ 맑은 종소리 + 반짝이 (약 1.3초)
+    tone({ type: 'sine', f0: midi(84), dur: 1.2, vol: 0.16 }); tone({ type: 'sine', f0: midi(91), dur: 1, vol: 0.1, at: 0.02 });
+    tone({ type: 'sine', f0: midi(96), dur: 0.8, vol: 0.07, at: 0.04 });
+    tone({ type: 'sine', f0: midi(88), dur: 0.9, vol: 0.12, at: 0.25 }); tone({ type: 'sine', f0: midi(95), dur: 0.7, vol: 0.07, at: 0.27 });
+    noise({ dur: 0.6, vol: 0.05, filter: 'highpass', f0: 7000, at: 0.1 }); FX.sparkle(0.4);
+  },
+  poison_tick: () => {                                                                                // 보글 (0.15초 안 · 자주 울려도 작게 · 높낮이 조금씩)
+    const p = 0.9 + Math.random() * 0.2;
+    tone({ type: 'sine', f0: 200 * p, f1: 520 * p, dur: 0.07, vol: 0.08 });
+    tone({ type: 'sine', f0: 320 * p, f1: 640 * p, dur: 0.06, vol: 0.06, at: 0.06 });
+    noise({ dur: 0.05, vol: 0.035, filter: 'bandpass', f0: 700, q: 2 });
+  },
+  poison_cloud: () => {                                                                               // 푸쉬이~ 보글보글 독 구름 (약 1초)
+    noise({ dur: 0.9, vol: 0.2, f0: 1100, f1: 300 }); noise({ dur: 0.5, vol: 0.06, filter: 'highpass', f0: 3000 });
+    tone({ type: 'sawtooth', f0: 95, f1: 60, dur: 0.85, vol: 0.09, trem: { rate: 8, depth: 0.5 } });
+    for (let i = 0; i < 7; i++) tone({ type: 'sine', f0: rnd(170, 300), f1: rnd(400, 650), dur: rnd(0.07, 0.1), vol: 0.07, at: 0.1 + i * 0.1 + rnd(0, 0.03) });
+  },
+  shield_block: () => {                                                                               // 챙! 방어막이 막았다 (약 0.3초)
+    tone({ type: 'triangle', f0: 1800, f1: 1200, dur: 0.18, vol: 0.2 }); tone({ type: 'sine', f0: 2700, dur: 0.26, vol: 0.09 });
+    noise({ dur: 0.05, vol: 0.2, filter: 'bandpass', f0: 4000, q: 4 }); tone({ type: 'square', f0: 900, f1: 600, dur: 0.07, vol: 0.09 });
+  },
+  shield_break: () => {                                                                               // 와장창! 유리 깨짐 (약 0.8초)
+    noise({ dur: 0.14, vol: 0.28, filter: 'highpass', f0: 3000 }); tone({ type: 'triangle', f0: 220, f1: 60, dur: 0.2, vol: 0.28 });
+    noise({ dur: 0.3, vol: 0.12, filter: 'bandpass', f0: 2200, f1: 900, q: 1.5, at: 0.05 });
+    [3100, 2300, 3900, 2700, 3400, 2000, 3600, 2500].forEach((f, i) => tone({ type: 'sine', f0: f, f1: f * 0.8, dur: 0.08, vol: 0.05, at: 0.06 + i * 0.07 }));   // 파편 쨍그랑
+    noise({ dur: 0.3, vol: 0.06, filter: 'highpass', f0: 5000, at: 0.35 });
+  },
+  weaken_curse: () => {                                                                               // 우웅~ 내려가는 저주 (약 1.6초)
+    tone({ type: 'sawtooth', f0: 90, f1: 80, dur: 1.4, vol: 0.16, trem: { rate: 7, depth: 0.6 } });
+    tone({ type: 'sine', f0: 440, f1: 110, dur: 1.2, vol: 0.14, at: 0.1, vib: { rate: 5, depth: 40 } });
+    tone({ type: 'triangle', f0: 330, f1: 82, dur: 1.4, vol: 0.1, at: 0.2, detune: 18, vib: { rate: 6, depth: 50 } });
+    noise({ dur: 1, vol: 0.08, f0: 300, f1: 120 });
+  },
+  sandstorm: () => {                                                                                  // 휘이이잉~ 모래바람 (1.5초 · 커졌다 작아짐)
+    noise({ dur: 0.7, vol: 0.12, filter: 'bandpass', f0: 400, f1: 1200, q: 1.2 });
+    noise({ dur: 0.7, vol: 0.2, filter: 'bandpass', f0: 600, f1: 1400, q: 1.5, at: 0.3 });
+    noise({ dur: 0.6, vol: 0.1, filter: 'bandpass', f0: 1400, f1: 500, q: 1.2, at: 0.9 });
+    noise({ dur: 1.5, vol: 0.04, filter: 'highpass', f0: 3500 });                                       // 모래알 사르르
+    tone({ type: 'sine', f0: 520, f1: 900, dur: 0.7, vol: 0.025, at: 0.2, vib: { rate: 5, depth: 40 } });
+  },
+  no_knockback: () => {                                                                               // 쿵! 보잉~ 안 밀려요 (약 0.3초)
+    tone({ type: 'triangle', f0: 130, f1: 50, dur: 0.16, vol: 0.45 }); noise({ dur: 0.08, vol: 0.18, f0: 600 });
+    tone({ type: 'sine', f0: 200, f1: 420, dur: 0.08, vol: 0.14, at: 0.1 }); tone({ type: 'sine', f0: 420, f1: 240, dur: 0.12, vol: 0.12, at: 0.17, vib: { rate: 20, depth: 90 } });
+  },
+  shadow_dash: () => {                                                                                // 쉭! 그림자 돌진 (약 0.25초)
+    noise({ dur: 0.22, vol: 0.24, filter: 'bandpass', f0: 3500, f1: 600, q: 3 });
+    tone({ type: 'sawtooth', f0: 900, f1: 200, dur: 0.2, vol: 0.07 }); noise({ dur: 0.05, vol: 0.1, filter: 'highpass', f0: 4500 });
+  },
+  gem_beam: () => {                                                                                   // 지잉~ 반짝! 보석 빔 (약 0.55초)
+    tone({ type: 'triangle', f0: 600, f1: 2400, dur: 0.3, vol: 0.14 }); tone({ type: 'sine', f0: 2400, f1: 1500, dur: 0.2, vol: 0.09, at: 0.3 });
+    tone({ type: 'sawtooth', f0: 220, f1: 330, dur: 0.4, vol: 0.05, trem: { rate: 30, depth: 0.5 } });
+    arp([100, 103, 107, 110], 0.04, { type: 'triangle', vol: 0.07, at: 0.1, dur: 0.08 }); noise({ dur: 0.3, vol: 0.04, filter: 'highpass', f0: 6000, at: 0.1 });
+  },
+  hammer_quake: () => {                                                                               // 쿠웅~ 드르르 땅 울림 (약 0.9초)
+    FX.thud(); tone({ type: 'triangle', f0: 70, f1: 30, dur: 0.5, vol: 0.5 });
+    tone({ type: 'sine', f0: 45, f1: 36, dur: 0.7, vol: 0.4, at: 0.1, trem: { rate: 14, depth: 0.7 } });
+    noise({ dur: 0.8, vol: 0.28, f0: 300, f1: 70 });
+    [0.3, 0.42, 0.5, 0.63, 0.72].forEach((a) => noise({ dur: 0.04, vol: 0.09, filter: 'bandpass', f0: rnd(900, 2200), q: 3, at: a }));   // 돌 부스러기
+  },
+  boss_cutin: () => {                                                                                 // 쾅! 빠빰 빠~밤! 보스 얼굴 컷인 (약 1.15초)
+    const brass = (n, d, a, v = 0.13) => { tone({ type: 'sawtooth', f0: midi(n), dur: d, vol: v, at: a, vib: { rate: 6, depth: 14 } }); tone({ type: 'square', f0: midi(n), dur: d * 0.9, vol: v * 0.5, at: a, detune: 7 }); };
+    FX.stomp(); noise({ dur: 0.3, vol: 0.22, filter: 'highpass', f0: 2500 });
+    brass(60, 0.1, 0.15); brass(63, 0.1, 0.27); brass(67, 0.12, 0.39);
+    [60, 63, 67, 72].forEach((n) => brass(n, 0.6, 0.55, 0.1));
+    tone({ type: 'triangle', f0: 100, f1: 45, dur: 0.3, vol: 0.4, at: 0.55 });
+  },
+  boss_big_attack_warn: () => {                                                                       // 삐…삐…삐삐삐삐! 점점 빨라지는 경고 (0.9초)
+    [0, 0.2, 0.36, 0.48, 0.58, 0.66, 0.73, 0.79, 0.84].forEach((a, i) => tone({ type: 'square', f0: 880 + i * 45, dur: 0.05, vol: 0.14, at: a }));
+    tone({ type: 'sawtooth', f0: 60, f1: 130, dur: 0.88, vol: 0.08, attack: 0.8 });
+  },
+  lord_roar: () => {                                                                                  // 구오오오오! 좀비 드래곤 로드 — 가장 크고 긴 으르렁 (약 2.4초)
+    FX.stomp();
+    tone({ type: 'sawtooth', f0: 80, f1: 50, dur: 2.2, vol: 0.34, attack: 0.15, trem: { rate: 22, depth: 0.7 } });
+    tone({ type: 'sawtooth', f0: 160, f1: 70, dur: 1.8, vol: 0.22, at: 0.05, trem: { rate: 18, depth: 0.6 } });
+    tone({ type: 'square', f0: 55, f1: 35, dur: 2, vol: 0.14, at: 0.1 });
+    tone({ type: 'sawtooth', f0: 240, f1: 100, dur: 0.9, vol: 0.26, at: 0.5, vib: { rate: 9, depth: 60 } });
+    noise({ dur: 2.3, vol: 0.22, f0: 900, f1: 200 }); FX.rumble(0.3);
+  },
+  lord_shockwave: () => {                                                                             // 쿠콰아앙! 로드 충격파 (약 1.5초)
+    FX.stomp(); tone({ type: 'triangle', f0: 120, f1: 25, dur: 1, vol: 0.5 });
+    tone({ type: 'sine', f0: 300, f1: 50, dur: 0.8, vol: 0.2, at: 0.05 });
+    noise({ dur: 1, vol: 0.34, f0: 700, f1: 60 }); noise({ dur: 0.5, vol: 0.2, filter: 'bandpass', f0: 200, f1: 2500, q: 1.5, at: 0.05 });
+    FX.rumble(0.15);
+  },
+  ending_sting: () => {                                                                               // 빠밤~ 빠바바바~암! 승리 직후 웅장한 화음 (2초)
+    const brass = (n, d, a, v = 0.12) => { tone({ type: 'sawtooth', f0: midi(n), dur: d, vol: v, at: a, vib: { rate: 6, depth: 14 } }); tone({ type: 'square', f0: midi(n), dur: d * 0.9, vol: v * 0.5, at: a, detune: 7 }); };
+    brass(67, 0.15, 0); brass(72, 0.15, 0.16);
+    [48, 60, 64, 67, 72, 76].forEach((n) => brass(n, 1.65, 0.35, 0.08));                                 // 으뜸화음 길게
+    tone({ type: 'triangle', f0: 110, f1: 45, dur: 0.4, vol: 0.5, at: 0.35 }); noise({ dur: 1.2, vol: 0.1, filter: 'highpass', f0: 5000, at: 0.35 });
+    FX.sparkle(0.5); tone({ type: 'sine', f0: midi(96), dur: 1.2, vol: 0.06, at: 0.6 });
   },
   /* 새 id — 긴장 · 웃음 연출 (겜부장에게 목록 전달) */
   ...Object.fromEntries(Object.entries(FX).map(([k, f]) => [k, () => f(0)])),

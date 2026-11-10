@@ -5,7 +5,8 @@
  * 명령(덱 · 화로 · 브레스 · 스킬 · 포효)은 모았다가 다음 걸음에 넣는다 — 코어가 정한 대로만 움직인다.
  * 판이 끝나면 별 · 코인을 저장(onSave)하고 결과 판을 띄운다.
  */
-import { TICK, createBattle, step, aiCommands } from '../core/index.js';
+import { TICK, createBattle, step, aiCommands, hashState } from '../core/index.js';
+import { createLockstep } from '../net/lockstep.js';
 import { D } from '../data/battleData.js';
 import { createBattleView, tagArt } from './battleView.js';
 import { createHud } from './hud.js';
@@ -16,7 +17,8 @@ import { tunes } from '../../../services/tuning.js';
 
 tagArt(D);
 
-/** opts = { stageNo, save, onSave(part), onExit(), restart(stageNo), text } */
+/** opts = { stageNo, save, onSave(part), onExit(), restart(stageNo), text, net? }
+ *  net = { seat, seats, seed, transport } — 멀티(3차 · 같이 깨기). 두 기기가 같은 씨앗 · 같은 편성으로 만들고 명령만 주고받는다(net/lockstep.js). */
 export async function startBattle(ctx, opts) {
   /* 운영자 난이도 (50 = 그대로 · 높을수록 어렵게) — 코어는 그대로, 판에 넣는 숫자만 바꾼다 */
   const tz = tunes('zd');
@@ -24,21 +26,27 @@ export async function startBattle(ctx, opts) {
   const stage = { ...base0, mag: base0.mag * tz.hp, atkMag: (base0.atkMag || base0.mag) * tz.atk };
   const { deck, skills, loads, speedMax } = makeLoads(stage, opts.save);
   loads[0].bonus = { ...loads[0].bonus, income: loads[0].bonus.income / tz.ember, baseHp: loads[0].bonus.baseHp / tz.base };
-  const S = createBattle(stage, loads, D, (Date.now() % 1e9) | 0);
+  /* 멀티 : 자리마다 같은 편성을 하나씩 (같이 깨기 = 모두 side 0) */
+  const net = opts.net || null, me = net ? net.seat : 0;
+  if (net) { const one = loads[0]; loads.length = 0; for (let i = 0; i < net.seats; i++) loads.push({ ...one, side: 0 }); }
+  const S = createBattle(stage, loads, D, net ? net.seed : (Date.now() % 1e9) | 0);
+  const ls = net ? createLockstep({ seat: me, seats: net.seats }) : null;
+  if (net) net.transport.onMessage((from, str) => ls.receive(from, str));
+  let tickN = 0, sendT = 0, nextHash = 150, waitT = 0;
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: deck, enemies: enemyIds, leader: loads[0].leader });
 
-  const sound = createBattleSound(stage);
-  const ui = { speed: Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
+  const sound = createBattleSound(stage, me);
+  const ui = { me, net: !!net, speed: Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
   /* 자동 전투 (B6) : 별을 1개 이상 딴 스테이지만 — 기준 AI(코어 aiCommands)가 대신 누른다 */
   const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
   const cmds = [];
   let acc = 0, bossSeen = false, gone = false;
   const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text, speedMax, canAuto }, {
-    cmd(c) { if (!ui.paused && !S.over) cmds.push({ p: 0, ...c }); },
+    cmd(c) { if (S.over) return; if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c }); },
     go() { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(); },
-    pause() { if (ui.done || ui.intro) return; ui.paused = !ui.paused; sound.pause(ui.paused); if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
+    pause() { if (ui.done || ui.intro || net) return; ui.paused = !ui.paused; sound.pause(ui.paused); if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
     speed() { ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
     auto() { if (canAuto) ui.auto = !ui.auto; },
     exit() { opts.onExit(); },
@@ -49,10 +57,10 @@ export async function startBattle(ctx, opts) {
 
   /* 처음 하는 아이를 위한 한 줄 안내 (튜토리얼 최소판) — 해당 행동을 하면 사라진다 */
   const TIPS = [
-    { g: 1, at: 'deck', text: '용 버튼을 눌러서 꼬물이를 내보내요!', done: () => S.players[0].st.spawned >= 2 },
-    { g: 1, at: 'breath', text: '브레스가 꽉 찼어요! 눌러서 좀비를 태워요!', when: () => S.players[0].breathT >= S.players[0].breathCharge, done: () => S.players[0].st.breath > 0 },
-    { g: 2, at: 'wallet', text: '화로를 올리면 불씨가 더 빨리 모여요!', when: () => S.players[0].money >= S.D.wallet[0].cost, done: () => S.players[0].wl > 0 },
-    { g: 7, at: 'skill', text: '새 스킬 «운석»! 좀비가 몰려오면 눌러요.', when: () => S.t > 8, done: () => S.players[0].st.skill > 0 },
+    { g: 1, at: 'deck', text: '용 버튼을 눌러서 꼬물이를 내보내요!', done: () => S.players[me].st.spawned >= 2 },
+    { g: 1, at: 'breath', text: '브레스가 꽉 찼어요! 눌러서 좀비를 태워요!', when: () => S.players[me].breathT >= S.players[me].breathCharge, done: () => S.players[me].st.breath > 0 },
+    { g: 2, at: 'wallet', text: '화로를 올리면 불씨가 더 빨리 모여요!', when: () => S.players[me].money >= S.D.wallet[0].cost, done: () => S.players[me].wl > 0 },
+    { g: 7, at: 'skill', text: '새 스킬 «운석»! 좀비가 몰려오면 눌러요.', when: () => S.t > 8, done: () => S.players[me].st.skill > 0 },
   ].filter((q) => q.g === stage.g && !(opts.save?.cleared >= stage.g));
   let tipT = 0;
   function tips(dt) {
@@ -68,7 +76,7 @@ export async function startBattle(ctx, opts) {
     const win = S.over.winner === 0;
     const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE };
     /* 쌓인 기록 (도전 과제) — 이겨도 져도 */
-    const P0 = S.players[0], st0 = opts.save?.stat || {};
+    const P0 = S.players[me], st0 = opts.save?.stat || {};
     const stat = { ...st0, kills: (st0.kills || 0) + S.st.kills, breath: (st0.breath || 0) + P0.st.breath, maxWl: Math.max(st0.maxWl || 0, P0.wl + 1),
       wins: (st0.wins || 0) + (win ? 1 : 0), boss: (st0.boss || 0) + (win && stage.s === 10 ? 1 : 0), hatch: st0.hatch || 0 };
     if (!win) { try { opts.save = opts.onSave?.({ stat }) || opts.save; } catch { /* */ } }
@@ -87,7 +95,8 @@ export async function startBattle(ctx, opts) {
       if (save.daily !== today) { info.gems += 10; info.daily = true; }
       const part = { cleared: Math.max(save.cleared || 0, stage.g), stars: stars.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today, stat };
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
-    } else info.hint = loseHint(S);
+    } else info.hint = loseHint(S, me);
+    if (net && ls.mismatch() >= 0) info.hint = '연결이 어긋났어요 — 이 판은 기록하지 않아요. 한 판 더?';
     setTimeout(() => { if (gone) return; hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);
   }
 
@@ -96,8 +105,16 @@ export async function startBattle(ctx, opts) {
     if (!ui.paused) {
       acc += dt * ui.speed;
       let n = 0;
-      while (acc >= TICK && n < 6 * ui.speed) { if (ui.auto && !S.over) cmds.push(...aiCommands(S, 0, autoPol, autoMem)); step(S, cmds.splice(0)); acc -= TICK; n++; }
-      if (acc > TICK * 6) acc = 0;
+      if (net) {   /* 멀티 : 모든 자리가 약속한 틱까지만 계산 (늦으면 기다렸다가 빨리 감기) */
+        let waited = false;
+        while (acc >= TICK && n < 6 && !S.over) { if (!ls.ready(tickN + 1)) { waited = true; break; } tickN++; step(S, ls.commandsAt(tickN)); acc -= TICK; n++; }
+        if (acc > TICK * 90) acc = TICK * 90;
+        waitT = waited ? waitT + dt : 0; ui.netWait = waitT;
+        if ((sendT += dt) >= 0.2) { sendT = 0; let h = null; if (tickN >= nextHash) { h = [tickN, hashState(S)]; nextHash = tickN + 150; } net.transport.send(ls.packet(tickN, h)); }
+      } else {
+        while (acc >= TICK && n < 6 * ui.speed) { if (ui.auto && !S.over) cmds.push(...aiCommands(S, 0, autoPol, autoMem)); step(S, cmds.splice(0)); acc -= TICK; n++; }
+        if (acc > TICK * 6) acc = 0;
+      }
       if (S.boss && !bossSeen) { bossSeen = true; ui.warn = 0.9; }
       ui.warn -= dt;
       if (S.over && !ui.done) finish();
@@ -117,7 +134,7 @@ export async function startBattle(ctx, opts) {
   if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };
 
   return {
-    destroy() { gone = true; document.removeEventListener('visibilitychange', onHide); ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },
+    destroy() { gone = true; net?.transport.close(); document.removeEventListener('visibilitychange', onHide); ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },
     /** 세로로 돌림 · 앱 내림 : 일시정지 판 (카드가 떠 있으면 그대로 둔다) */
     pause() { if (!ui.intro && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } },
     /** 뒤로가기 · ESC : 카드에서는 나가기, 전투 중에는 일시정지 판 (코드 검토 9) */
@@ -126,8 +143,8 @@ export async function startBattle(ctx, opts) {
 }
 
 /** 졌을 때 힌트 (기획서 11.6) — 가장 그럴듯한 이유 하나 */
-function loseHint(S) {
-  const p = S.players[0];
+function loseHint(S, me = 0) {
+  const p = S.players[me];
   if (p.st.walletUps === 0) return '화로를 올리면 불씨가 더 빨리 모여요!';
   if (p.st.breath === 0) return '브레스가 차면 꾹 눌러요! 앞에 있는 좀비를 한꺼번에 태워요.';
   if (p.st.spawned < 15) return '용을 더 자주 내보내 보세요. 싼 꼬물이로 앞을 막아요.';

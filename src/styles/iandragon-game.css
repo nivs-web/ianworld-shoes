@@ -215,3 +215,7 @@ html.idg-wide body { width: 100%; }
 .idg-bossname.on { display: block; animation: idgBossName 1.2s linear forwards; }
 .idg-bossname b { font-size: 30px; letter-spacing: 4px; color: #ffe08a; text-shadow: 0 3px 0 #000, 0 0 12px #ff3a1a; }
 @keyframes idgBossName { 0% { transform: translateX(-100%); opacity: 1 } 20% { transform: translateX(0) } 80% { transform: translateX(0); opacity: 1 } 100% { transform: translateX(0); opacity: 0 } }
+
+/* 멀티 — 상대를 기다리는 중 (2026-11-11) */
+.idg-net { position: absolute; left: 50%; top: 38%; transform: translateX(-50%); padding: 8px 16px; border-radius: 10px; background: rgba(20, 8, 42, .85); color: #9cf; display: none; }
+.idg-net.on { display: block; animation: idgBlink .8s steps(1) infinite; }

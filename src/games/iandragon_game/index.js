@@ -16,6 +16,7 @@ import { startDemo } from './render/demo.js';
 import { startPilot } from './render/pilot.js';
 import { startBattle } from './render/battle.js';
 import { LAST_STAGE } from './render/battleSetup.js';
+import { createLocalTransport } from './net/localTransport.js';
 import * as Audio from './audio/index.js';
 
 export const ATLAS_URL = '/assets/iandragon_game/atlas.json';
@@ -50,10 +51,14 @@ export async function mount(host, opts) {
 
   /* 그림 공장 시험판(2026-11-11) — 옛 기준 장면은 주소에 ?idgDemo 를 붙이면 본다 */
   /* B2 (2026-11-11 야간) — 진짜 전투. 옛 장면 : ?idgDemo(기준 장면) · ?idgPilot(그림 공장 시험판) */
+  /* 멀티 시험 (개발 서버 · 같은 컴퓨터 탭 둘) : ?idgNet=coop&seat=0 · seat=1 */
+  const netQ = /[?&]idgNet=coop/.test(q) ? { seat: Number((q.match(/[?&]seat=(\d)/) || [])[1] || 0), seats: 2 } : null;
   const begin = async (stageNo) => {
     me.scene?.destroy(); me.scene = null;
     try {
+      const net = netQ ? { ...netQ, seed: 7000 + stageNo, transport: createLocalTransport(`s${stageNo}`, netQ.seat) } : undefined;
       me.scene = await startBattle({ ...ctx, host }, {
+        net,
       stageNo, save: opts.save, text: opts.text,
       onSave: (part) => (opts.save = opts.onSave(part)),
       onExit: () => opts.onExit(),

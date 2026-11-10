@@ -48,6 +48,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   mini.append(miniView, miniMe, miniFoe); root.appendChild(mini);
   mini.onpointerdown = (e) => { const r = mini.getBoundingClientRect(); cb.look?.((e.clientX - r.left) / r.width); };
   const tip = h('div', 'idg-tip'); root.appendChild(tip);
+  const net = h('div', 'idg-net'); root.appendChild(net);   // 멀티 : 상대 기다리는 중
 
   /* 아래 */
   const bot = h('div', 'idg-bot'); root.appendChild(bot);
@@ -116,7 +117,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
 
   return {
     update(S, ui) {
-      const p = S.players[0], W = S.D.wallet;
+      const p = S.players[ui.me || 0], W = S.D.wallet;
+      net.textContent = ui.netWait > 1.5 ? '연결 확인 중…' : ''; net.classList.toggle('on', ui.netWait > 1.5);
       const lim = S.stage.gim === 'time' ? S.stage.limit : 0;
       time.textContent = lim ? `남은 ${clock(Math.max(0, lim - S.t))}` : clock(S.t); time.classList.toggle('hurry', !!lim && lim - S.t < 20);
       moneyN.textContent = `${fmt(p.money)} / ${fmt(W[p.wl].max * p.B.walletMax)}`;
