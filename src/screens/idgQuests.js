@@ -20,7 +20,7 @@ export function showQuests(onChange) {
         el('button.idg-nest-up', {
           type: 'button', disabled: !s.done || s.got,
           onclick: () => { const part = claim(G.idg(), q.i); if (!part) return; G.saveIdg(part); Sfx.play('sfx_menu_select'); draw(); onChange?.(); },
-        }, [s.got ? '받음' : s.done ? `받기 +${q.gems}` : '진행 중']),
+        }, [s.got ? '받음' : s.done ? `젬 ${q.gems} 받기` : '진행 중']),
       ]);
     }));
   }

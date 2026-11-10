@@ -39,7 +39,7 @@ export const QUESTS = [
   ['월드 7 깨기', (g) => g.cleared, 70, 30],
   ['월드 10 깨기 — 엔딩!', (g) => g.cleared, 100, 50],
   ['보스 10마리 쓰러뜨리기', (g) => g.stat.boss, 10, 30],
-  ['별 300개 (전부!)', starsOf, 300, 50],
+  ['별 300개 모두 모으기', starsOf, 300, 50],
   ['용 하나를 Lv20 (마지막 진화!)', maxLv, 20, 30],
 ].map(([name, prog, need, gems], i) => ({ i, name, prog, need, gems }));
 

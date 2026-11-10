@@ -26,7 +26,7 @@ export function showHatch(onChange) {
     );
     btns.replaceChildren(
       el('button.idg-btn.main', { type: 'button', disabled: g.gems < EGG.one, onclick: () => go(1) }, [`알 1개 · 젬 ${EGG.one}`]),
-      el('button.idg-btn.main', { type: 'button', disabled: g.gems < EGG.ten, onclick: () => go(10) }, [`10개 · 젬 ${EGG.ten}`]),
+      el('button.idg-btn.main', { type: 'button', disabled: g.gems < EGG.ten, onclick: () => go(10) }, [`알 10개 · 젬 ${EGG.ten}`]),
     );
   }
   function go(n) {

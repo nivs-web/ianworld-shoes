@@ -45,14 +45,14 @@ export function showNest(onChange) {
             G.saveIdg({ coins: cur.coins - c, units: { ...cur.units, [id]: [now + 1, cur.units[id]?.[1] || 0] } });
             Sfx.play('sfx_menu_select'); draw(); onChange?.();
           },
-        }, [max ? 'MAX' : `Lv업 ${fmt(cost)}`]),
+        }, [max ? 'MAX' : `레벨업 ${fmt(cost)}`]),
       ]);
     }));
   }
   draw();
   const box = el('div.dialog.idg-nest', { onclick: (e) => e.stopPropagation() }, [
     el('div.idg-how-title', '용 둥지 (훈련소)'), coins, deckInfo,
-    el('p.idg-nest-help', '코인으로 용을 키워요. Lv10 이 되면 모습이 바뀌어요!'),
+    el('p.idg-nest-help', '코인으로 용을 키워요. Lv10이 되면 모습이 바뀌어요!'),
     list, button('닫기', () => close()),
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);

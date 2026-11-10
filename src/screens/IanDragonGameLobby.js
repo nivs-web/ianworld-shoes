@@ -39,7 +39,7 @@ function showHow() {
 }
 
 /** 스테이지 고르기 (B4 최소판 · 2026-11-11 야간) — 월드 1~5 × 10판 · 별 · 잠금(깬 다음 판까지만 열림) */
-const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 고철 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤 성'];
+const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 쇠 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤 성'];
 function showStages(onPick) {
   Sfx.play('sfx_menu_select');
   const g = G.idg(), open = Math.min(100, g.cleared + 1);
@@ -96,7 +96,7 @@ export default function IanDragonGameLobby(nav) {
         el('div.idg-preview', S.idgLobbyPreview),
         button('스테이지 고르기', () => showStages((no) => start(no))),
         button('용 둥지 (훈련소)', () => showNest(() => nav.refresh?.())),
-        G.idg().cleared >= OPEN_AT ? button('알 부화장', () => showHatch(() => nav.refresh?.())) : el('div.idg-preview', '알 부화장은 2-5 를 깨면 열려요'),
+        G.idg().cleared >= OPEN_AT ? button('알 부화장', () => showHatch(() => nav.refresh?.())) : el('div.idg-preview', '알 부화장은 2-5를 깨면 열려요'),
         button('연구소 · 보물 · 리더', () => showLab(() => nav.refresh?.())),
         button(claimable(G.idg()) ? `도전 과제 · 받을 것 ${claimable(G.idg())}개!` : '도전 과제', () => showQuests(() => nav.refresh?.())),
         button('도감', showCodex),

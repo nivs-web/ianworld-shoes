@@ -34,7 +34,7 @@ export function showLab(onChange) {
             const next = cur.lab.slice(); next[i] = now + 1;
             G.saveIdg({ coins: cur.coins - c, lab: next }); Sfx.play('sfx_menu_select'); draw(); onChange?.();
           },
-        }, [max ? (cap ? 'MAX' : '월드 1 클리어 후') : `올리기 ${fmt(cost)}`]),
+        }, [max ? (cap ? 'MAX' : '월드 1을 깬 뒤') : `올리기 ${fmt(cost)}`]),
       ]));
     });
     const tre = el('div.idg-lab-sec', null, [el('div.idg-codex-h', '보물 — 월드마다 별 10 · 20 · 30개')]);

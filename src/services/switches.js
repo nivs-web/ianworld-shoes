@@ -20,7 +20,7 @@ const FUN = [
 /** 그룹 → { name, keys:[{key,name}], def } */
 export const SWITCHES = {
   zdFun: { name: '좀비와 드래곤 · 재미 요소 (보이기)', def: true, keys: FUN.map(([key, name]) => ({ key, name })) },
-  zdFunSound: { name: '좀비와 드래곤 · 재미 요소 소리', def: false, keys: FUN.map(([key, name]) => ({ key, name })) },
+  zdFunSound: { name: '좀비와 드래곤 · 재미 요소 (소리)', def: false, keys: FUN.map(([key, name]) => ({ key, name })) },
 };
 
 /* 등장 빈도 (초) — 대표님 2026-11-11 «몇 초에 한 번씩 등장할지 관리자가 설정». 기본값 = 지금 게임 값 (render/fun.js DEFS 의 쉬는 시간) */
