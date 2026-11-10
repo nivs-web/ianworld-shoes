@@ -49,6 +49,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   mini.onpointerdown = (e) => { const r = mini.getBoundingClientRect(); cb.look?.((e.clientX - r.left) / r.width); };
   const tip = h('div', 'idg-tip'); root.appendChild(tip);
   const net = h('div', 'idg-net'); root.appendChild(net);   // 멀티 : 상대 기다리는 중
+  const mate = h('div', 'idg-mate'); root.appendChild(mate);   // 멀티 친구 띠 (멀티 기획 5장) : 같이 깨기 = 친구 화로 · 브레스 준비 / 대결 = 상대 화로 레벨만
 
   /* 아래 */
   const bot = h('div', 'idg-bot'); root.appendChild(bot);
@@ -126,6 +127,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   return {
     update(S, ui) {
       const p = S.players[ui.me || 0], W = S.D.wallet;
+      if (ui.net && S.players.length > 1) {
+        const o = S.players[(ui.me || 0) === 0 ? 1 : 0], foe = o.side !== p.side;
+        mate.textContent = foe ? `상대 화로 Lv${o.wl + 1}` : `친구 화로 Lv${o.wl + 1}${o.breathT >= o.breathCharge ? ' · 브레스 준비!' : ''}`;
+        mate.classList.add('on'); mate.classList.toggle('foe', foe);
+      }
       net.textContent = ui.netNote || (ui.netWait > 1.5 ? '연결 확인 중…' : ''); net.classList.toggle('on', !!ui.netNote || ui.netWait > 1.5);
       const lim = S.stage.gim === 'time' ? S.stage.limit : 0;
       time.textContent = lim ? `남은 ${clock(Math.max(0, lim - S.t))}` : clock(S.t); time.classList.toggle('hurry', !!lim && lim - S.t < 20);

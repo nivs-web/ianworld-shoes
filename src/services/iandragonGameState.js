@@ -38,7 +38,7 @@ function units(raw) {
 }
 
 /** 쌓인 기록 : 쓰러뜨린 좀비 · 이긴 판 · 브레스 · 화로 최고 단계 · 보스 · 알 */
-const STAT_KEYS = ['kills', 'wins', 'breath', 'maxWl', 'boss', 'hatch'];
+const STAT_KEYS = ['kills', 'wins', 'breath', 'maxWl', 'boss', 'hatch', 'coop'];   // coop = 같이 깨기 이긴 판 (명예의 전당)
 function stats(raw) {
   const r = raw && typeof raw === 'object' ? raw : {};
   return Object.fromEntries(STAT_KEYS.map((k) => [k, n0(r[k], 1e9)]));

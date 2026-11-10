@@ -92,7 +92,7 @@ export async function startBattle(ctx, opts) {
     /* 쌓인 기록 (도전 과제) — 이겨도 져도 */
     const P0 = S.players[me], st0 = opts.save?.stat || {};
     const stat = { ...st0, kills: (st0.kills || 0) + S.st.kills, breath: (st0.breath || 0) + P0.st.breath, maxWl: Math.max(st0.maxWl || 0, P0.wl + 1),
-      wins: (st0.wins || 0) + (win ? 1 : 0), boss: (st0.boss || 0) + (win && stage.s === 10 ? 1 : 0), hatch: st0.hatch || 0 };
+      wins: (st0.wins || 0) + (win ? 1 : 0), boss: (st0.boss || 0) + (win && stage.s === 10 ? 1 : 0), hatch: st0.hatch || 0, coop: (st0.coop || 0) + (win && coop ? 1 : 0) };
     if (!win) { try { opts.save = opts.onSave?.({ stat }) || opts.save; } catch { /* */ } }
     if (win) {
       info.stars = starsFor(stage, S.t);
