@@ -25,6 +25,10 @@ import { showMulti } from './idgMulti.js';
 import { showShop } from './idgShop.js';
 import { showLook } from './idgLook.js';
 import { showHall } from './idgHall.js';
+import { TITLES } from '../games/iandragon_game/data/looks.js';
+import { fetchIdgBoard } from '../services/idgRank.js';
+import { weekKey } from '../games/iandragon_game/render/battleSetup.js';
+import { currentUser } from '../services/auth.js';
 import { DIFF, hardOpen } from '../games/iandragon_game/render/battleSetup.js';
 import { isOn } from '../services/switches.js';
 import { MUST, SONGS } from '../games/iandragon_game/data/musicCredits.js';
@@ -100,7 +104,30 @@ function tile(key, label, fn, locked = false, dot = false) {
 }
 const stat = (key, n) => el('span.idg-stat', null, [el('img', { src: `${UI}icon_${key}.png`, alt: '', onerror: hideBad }), el('b', Number(n || 0).toLocaleString('en-US'))]);
 
+/** 새로 얻은 칭호 알림 (꾸미기에서 달 수 있음) */
+function checkTitles() {
+  const g = G.idg(), got = TITLES.filter((t) => t.has(g)).map((t) => t.id), fresh = got.filter((id) => !g.tGot.includes(id));
+  if (!fresh.length) return;
+  G.saveIdg({ tGot: [...g.tGot, ...fresh] });
+  Sfx.play('sfx_purchase');
+  toast(`칭호 획득! «${TITLES.filter((t) => fresh.includes(t.id)).map((t) => t.name).join(' · ')}» — 꾸미기에서 달 수 있어요`, 3200);
+}
+/** 지난주 주간 습격 1~3위 → 금 · 은 · 나무 테두리 (META 5장 · 한 주에 한 번 · 서버 순위를 보고 기기에서 준다) */
+async function checkRaidFrame(onGot) {
+  const prev = weekKey(Date.now() - 7 * 864e5), g = G.idg(), uid = currentUser()?.uid;
+  if (!uid || g.frameW >= prev.idx) return;
+  const r = await fetchIdgBoard('raid', 50).catch(() => null);
+  if (!r?.ok) return;
+  const rows = r.rows.filter((x) => Math.floor((x.raid || 0) / 100) === prev.idx).sort((a, b) => (b.raid % 100) - (a.raid % 100));
+  const place = rows.findIndex((x) => x.uid === uid);
+  const frame = ['gold', 'silver', 'wood'][place];
+  G.saveIdg({ frameW: prev.idx, ...(frame ? { owned: [...G.idg().owned, `frame:${frame}`] } : {}) });
+  if (frame) { Sfx.play('sfx_purchase'); toast(`지난주 주간 습격 ${place + 1}위! ${frame === 'gold' ? '금' : frame === 'silver' ? '은' : '나무'} 테두리를 받았어요`, 3600); onGot?.(); }
+}
+
 export default function IanDragonGameLobby(nav) {
+  setTimeout(checkTitles, 900);
+  setTimeout(() => checkRaidFrame(() => nav.refresh?.()), 1500);
   setTimeout(() => IanDragonGame.prefetch?.(), 1200);   // 한가할 때 게임 코드를 미리 받아 둔다
   /* 타이틀 콜 «좀비와 드래곤!» (겜팀장 음성 · 오락실 효과음 설정을 따른다) */
   if (getSettings().sfxEnabled !== false) import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); setTimeout(() => A.voice('title'), 300); }).catch(() => {});

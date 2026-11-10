@@ -79,6 +79,8 @@ export function normIdg(raw) {
     cons: consObj(r.cons),                    // 편의품 개수
     look: lookStr(r.look),                    // 꾸민 모습 'h3.n1.b2.f4.r0.t7'
     title: str(r.title, 24, ''),              // 단 칭호 id
+    tGot: [...new Set((Array.isArray(r.tGot) ? r.tGot : []).filter((x) => typeof x === 'string' && /^[a-z_]{1,24}$/.test(x)))].slice(0, 32),                    // 알림을 보여 준 칭호들 (새로 얻으면 로비에서 «칭호 획득!»)
+    frameW: n0(r.frameW, 999999),             // 주간 습격 테두리를 받은 주 (한 주에 한 번)
     raid: { w: n0(r.raid?.w, 999999), best: n0(r.raid?.best, 40) },   // 주간 습격 : 주 번호(년×100+주) · 그 주 최고 웨이브
     diff: ['easy', 'normal', 'hard'].includes(r.diff) ? r.diff : 'normal',   // 고른 난이도 (META 4장)
     hardStars: starsStr(r.hardStars),           // 어려움 «붉은 별» (판마다 0~3)
@@ -130,6 +132,8 @@ export function mergeIdg(localRaw, remoteRaw) {
     cons: remoteRaw.cons ? b.cons : a.cons,
     look: remoteRaw.look ? b.look : a.look,
     title: remoteRaw.title ? b.title : a.title,
+    tGot: [...new Set([...a.tGot, ...b.tGot])].slice(0, 32),
+    frameW: Math.max(a.frameW, b.frameW),
     raid: a.raid.w !== b.raid.w ? (a.raid.w > b.raid.w ? a.raid : b.raid) : { w: a.raid.w, best: Math.max(a.raid.best, b.raid.best) },
     diff: remoteRaw.diff ? b.diff : a.diff,
     hardStars: maxStars(a.hardStars, b.hardStars),

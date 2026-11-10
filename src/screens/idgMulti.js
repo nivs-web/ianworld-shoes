@@ -9,7 +9,7 @@ import * as G from '../services/iandragonGame.js';
 import * as Room from '../services/multiplayer.js';
 import * as Sfx from '../audio/sfx.js';
 import { seatsOf } from '../games/iandragon_game/net/roomBridge.js';
-import { makeLoads, stageByNo, loadToLd, ldToLoad, PVP_OPEN, NET_V } from '../games/iandragon_game/render/battleSetup.js';
+import { makeLoads, stageByNo, loadToLd, ldToLoad, PVP_OPEN, PVP_DAY, NET_V } from '../games/iandragon_game/render/battleSetup.js';
 import { currentUser } from '../services/auth.js';
 
 export function showMulti(onStart) {
@@ -25,7 +25,7 @@ export function showMulti(onStart) {
     body.replaceChildren(
       el('p.idg-multi-msg', `둘이 함께 ${G.stageLabel(stageNo)} 에 도전해요. 용은 각자 덱에서 나가요.`),
       button('같이 깨기 방 만들기', () => make(stageNo), { primary: true }),
-      (g.cleared || 0) >= PVP_OPEN ? button('용 대결 방 만들기', () => make(0)) : el('p.idg-multi-msg', `용 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 열려요.`),
+      (g.cleared || 0) >= PVP_OPEN ? button(`용 대결 방 만들기 (오늘 보상 ${Math.max(0, PVP_DAY - (g.pvp?.day === new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) ? g.pvp.n : 0))}/${PVP_DAY}판 · 전적 ${g.pvp?.w || 0}승 ${g.pvp?.l || 0}패)`, () => make(0)) : el('p.idg-multi-msg', `용 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 열려요.`),
       el('div.idg-multi-join', null, [input, button('들어가기', async () => {
         const c = input.value.trim(); if (!c) return;
         msg('들어가는 중…');
