@@ -10,6 +10,14 @@ import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
 
 const AI = '/assets/iandragon_game/ai/';
+/** 기믹 설명 (아이 말투 · 계산기 GIM_KO 와 같은 뜻) */
+const GIM = {
+  gold: '황금 좀비가 나와요! 잡으면 코인이 듬뿍', race: '좀비 달리기 대회! 좀비가 빨라요', time: '시간 안에 좀비 탑을 무너뜨려요!',
+  cap10: '용은 10마리까지만 나갈 수 있어요', cap8: '용은 8마리까지만 나갈 수 있어요', lock: '화로가 고장 났어요 — 화로를 못 올려요',
+  rush: '보스가 줄줄이 나와요! 보스 러시', wind: '맞바람 — 용들이 느리게 걸어요', fog: '안개 — 멀리 있는 좀비가 잘 안 보여요',
+  cost: '비싼 용은 못 나가요 (불씨 300 이하만)', money: '용돈 듬뿍! 불씨를 많이 들고 시작해요', fever: '불꽃 타임이 빨리 와요',
+};
+const ZART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant' };
 const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -65,6 +73,13 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     panel.replaceChildren();
     const box = h('div', 'idg-card');
     if (kind === 'pause') box.append(h('h2', null, '일시정지'));
+    else if (kind === 'intro') {   /* 스테이지 카드 (기획서 11.4) : 이름 · 기믹 · 오늘의 좀비 · 별 조건 */
+      box.append(h('h2', null, `${stage.id} ${stage.name}`));
+      if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
+      const zs = h('div', 'idg-intro-z');
+      for (const id of [...new Set(stage.lines.map((l) => l.id))]) { const im = h('img'); im.src = `${AI}${ZART[id] || id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${ZART[id] || id}/torso.png`; };   // 머리 조각이 없는 좀비(박쥐)는 몸 zs.appendChild(im); }
+      box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안 · ★★★ ${stage.star3}초 안`));
+    }
     else {
       box.append(h('h2', kind === 'win' ? 'win' : 'lose', kind === 'win' ? '승리!' : '아쉬워요…'));
       if (kind === 'win') { const st = h('div', 'idg-stars'); for (let i = 0; i < 3; i++) { const s = h('span', i < info.stars ? 'on' : '', '★'); s.style.animationDelay = `${0.3 + i * 0.35}s`; st.appendChild(s); } box.appendChild(st); }
@@ -74,6 +89,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     const row = h('div', 'idg-row');
     const add = (label, fn, cls = '') => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
     if (kind === 'pause') add('계속', () => cb.pause(), 'main');
+    if (kind === 'intro') { add('출격!', () => cb.go(), 'main'); box.appendChild(row); panel.appendChild(box); panel.classList.add('on'); return; }
+    if (info.final) box.append(h('p', 'final', '1차 모험 끝! 다음 이야기는 곧! 🐉'));
     if (kind === 'win' && info.hasNext) add('다음 스테이지', () => cb.next(), 'main');
     add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main' : '');
     add(text.exit, () => cb.exit());
@@ -97,7 +114,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   return {
     update(S, ui) {
       const p = S.players[0], W = S.D.wallet;
-      time.textContent = clock(S.t);
+      const lim = S.stage.gim === 'time' ? S.stage.limit : 0;
+      time.textContent = lim ? `남은 ${clock(Math.max(0, lim - S.t))}` : clock(S.t); time.classList.toggle('hurry', !!lim && lim - S.t < 20);
       moneyN.textContent = `${fmt(p.money)} / ${fmt(W[p.wl].max * p.B.walletMax)}`;
       myHp.textContent = ` ${fmt(Math.max(0, S.base[0].hp))}`;
       foeHp.textContent = `${fmt(Math.max(0, S.base[1].hp))} `;

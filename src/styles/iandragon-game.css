@@ -181,3 +181,10 @@ html.idg-wide body { width: 100%; }
 .idg-codex-card span { color: #FFC93C; font-size: 9px; }
 .idg-codex-card.off img { filter: brightness(0); opacity: .55; } .idg-codex-card.off { border-color: #444; }
 .idg-auto.on { background: #FFC93C; color: #1a1033; }
+/* 스테이지 카드 · 기믹 (2026-11-11) */
+.idg-card p.gim { color: #FFC93C; font-weight: 700; }
+.idg-card p.small { font-size: 11px; color: #bba; }
+.idg-card p.final { color: #FFC93C; font-size: 16px; margin-top: 8px; }
+.idg-intro-z { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 6px 0; }
+.idg-intro-z img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; background: #221548; border-radius: 8px; }
+.idg-time.hurry { color: #ff6b6b; animation: idgBlink .5s steps(1) infinite; }

@@ -24,7 +24,7 @@ export async function startBattle(ctx, opts) {
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: deck, enemies: enemyIds, leader: loads[0].leader });
 
   const sound = createBattleSound(stage);
-  const ui = { speed: Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false };
+  const ui = { speed: Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
   /* 자동 전투 (B6) : 별을 1개 이상 딴 스테이지만 — 기준 AI(코어 aiCommands)가 대신 누른다 */
   const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
@@ -32,7 +32,8 @@ export async function startBattle(ctx, opts) {
   let acc = 0, bossSeen = false;
   const hud = createHud(ctx.host || opts.hudHost, { stage, deck, skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (!ui.paused && !S.over) cmds.push({ p: 0, ...c }); },
-    pause() { if (ui.done) return; ui.paused = !ui.paused; if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
+    go() { ui.intro = false; ui.paused = false; hud.hidePanel(); },
+    pause() { if (ui.done || ui.intro) return; ui.paused = !ui.paused; if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
     speed() { ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
     auto() { if (canAuto) ui.auto = !ui.auto; },
     exit() { opts.onExit(); },
@@ -60,7 +61,7 @@ export async function startBattle(ctx, opts) {
   function finish() {
     ui.done = true;
     const win = S.over.winner === 0;
-    const info = { t: S.t, hasNext: stage.g < LAST_STAGE };
+    const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE };
     if (win) {
       info.stars = starsFor(stage, S.t);
       const save = opts.save || {};
@@ -100,6 +101,7 @@ export async function startBattle(ctx, opts) {
     hud.update(S, ui);
   };
   ctx.app.ticker.add(tick);
+  ui.paused = true; hud.showPanel('intro');   // 스테이지 카드 → «출격!»
   const onHide = () => { if (document.hidden && !ui.done && !ui.paused) { ui.paused = true; hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);
   if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };

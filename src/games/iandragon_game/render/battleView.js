@@ -48,6 +48,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, GY + 10);
   stage.addChild(nest, tower, units, fx);
   const shade = new Graphics().rect(-50, -50, FIELD + 100, 700).fill(0x000000); shade.alpha = 0; root.addChild(shade);
+  /* 안개 기믹 : 내 맨 앞 + 260칸 너머를 짙은 안개로 (화면 전용) */
+  const fog = new Graphics(); root.addChildAt(fog, root.getChildIndex(funFront));
 
   /* ── 재미있는 요소 (자리표가 없는 월드는 하늘 요소만) */
   const spots = { ...(SPOTS[world] || { sky: [50, 200], ground: 437, dirtY: 494 }) };
@@ -208,6 +210,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     FIELD, hits: 0, bigHit: false,
     update(S, dt) {
       lastS = S;
+      if (S.stage.fog) { let a = 0; for (const u of S.units) if (u.alive && u.side === 0) a = Math.max(a, u.x); const fx0 = M + a + 260; fog.clear(); for (let i = 0; i < 6; i++) fog.rect(fx0 + i * 30, 0, FIELD, 540).fill({ color: 0x8a90b8, alpha: 0.16 }); }
       syncUnits(S, dt); bases(S, dt); effects(S, dt); ending(S, dt); camera(S, dt);
       fun.update(dt); amb.update(dt);
       if (lead) lead.update(dt);

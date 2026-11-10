@@ -25,7 +25,7 @@ export function showCodex() {
   for (const st of STAGES) if (st.g <= Math.min(g.cleared, LAST_STAGE)) for (const l of st.lines) met.add(l.id);
   const zombies = [...new Set(STAGES.filter((s) => s.g <= LAST_STAGE).flatMap((s) => s.lines.map((l) => l.id)))];
   const card = (img, name, sub, on, cls = '') => el('div.idg-codex-card' + (on ? '' : '.off') + cls, null, [
-    el('img', { src: img, alt: '' }), el('b', on ? name : '???'), el('span', on ? sub : ''),
+    el('img', { src: img, alt: '', onerror: (e) => { if (!e.target.src.endsWith('/torso.png')) e.target.src = img.replace('/head.png', '/torso.png'); } }), el('b', on ? name : '???'), el('span', on ? sub : ''),
   ]);
   const dragons = Object.keys(UNITS).map((id) => card(`${AI}${id}/head.png`, UNITS[id].name, RAR[UNITS[id].rar], have(id), '.' + UNITS[id].rar));
   const zs = zombies.map((id) => card(`${AI}${ART[id] || id}/head.png`, ENEMIES[id].name, ENEMIES[id].boss ? '보스' : '', met.has(id), ENEMIES[id].boss ? '.legend' : ''));
