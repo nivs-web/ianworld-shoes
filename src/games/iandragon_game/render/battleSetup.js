@@ -3,6 +3,8 @@
  *
  * 해금 : 스테이지의 `unlocks` 글(«용 「돌등이」» · «스킬 「운석」» · «덱 칸 +1»)을 앞 스테이지부터 모은다.
  * 레벨 : 훈련소(B4) 전이라 «저장된 레벨»과 «그 스테이지 권장 레벨(expLevel)» 중 큰 값으로 나간다 — 결정 D1 (OVERNIGHT_LOG).
+ * 덱 · 리더 · 보너스 : 연구소 · 보물(B4) 전이라 밸런스 계산기의 «기준 출전»(docs/sim/stages.js refLoad)을 그대로 따른다 — 결정 D3.
+ *   덱 = 꼬물이 · 돌등이 · 그 월드 필수 용 · 우선순위 순 · 칸 수만큼 / 리더 = 월드마다 정해진 리더 / 보너스 = 연구소 (월드−1)레벨 + 지난 월드 보물 2단계
  */
 import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
@@ -24,24 +26,35 @@ export function unlockedBefore(g) {
       if (/덱 칸 \+1/.test(txt)) deckCap++;
     }
   }
-  return { dragons: DRAGON_ORDER.filter((id) => dragons.has(id)), skills: skills.slice(0, 2), deckCap: Math.min(10, deckCap) };
+  return { dragons: DRAGON_ORDER.filter((id) => dragons.has(id)), skills: skills.slice(-2), deckCap: Math.min(10, deckCap) };
 }
 
-/** 덱 : 칸이 모자라면 싼 방패 둘(꼬물이 · 돌등이) + 가장 최근에 연 용들 */
-function pickDeck(dragons, cap) {
-  if (dragons.length <= cap) return dragons;
-  const keep = dragons.slice(0, 2), rest = dragons.slice(2);
-  return keep.concat(rest.slice(rest.length - (cap - 2)));
+/* 계산기 기준 출전 (docs/sim/stages.js) — 월드 1~5 */
+const MUST = [[], ['bangul'], ['dungsil'], ['bulttong', 'eoreum'], ['jjirit']];
+const LEADER_AT = ['novart', 'aquantis', 'forestia', 'crimsonde', 'volttail'];
+const PRIORITY = ['kungkwang', 'giljjuk', 'dungsil', 'twetwe', 'banjjak', 'jjirit', 'eoreum', 'bangul', 'bulttong', 'ssaeng'];
+function pickDeck(dragons, cap, w, costMax) {
+  const want = ['kkomul', 'doldeung', ...(MUST[w - 1] || []), ...PRIORITY].filter((id, i, a) => a.indexOf(id) === i && dragons.includes(id));
+  return (costMax ? want.filter((id) => UNITS[id].cost <= costMax) : want).slice(0, cap);
+}
+export function refBonus(w) {   // 연구소 = (월드−1) 레벨, 지난 월드 보물 = 2단계
+  const lab = w - 1, T = (j) => (w > j ? 2 : 0);
+  return {
+    income: (1 + 0.02 * lab) * (1 + 0.04 * T(1)), walletMax: (1 + 0.05 * lab) * (1 + 0.10 * T(5)), startMoney: 20 * lab + 50 * T(10) / 2,
+    baseHp: (1 + 0.05 * lab) * (1 + 0.10 * T(4)), breathDmg: (1 + 0.05 * lab) * (1 + 0.10 * T(9)), breathCharge: (1 + 0.02 * lab) * (1 + 0.05 * T(7)),
+    cooldown: 1 + 0.03 * T(3), bounty: (1 + 0.03 * lab) * (1 + 0.05 * T(6)), atk: 1 + 0.03 * T(2), hp: 1 + 0.03 * T(8),
+  };
 }
 
 export function makeLoads(stage, save) {
   const un = unlockedBefore(stage.g);
   const lvOf = (id) => Math.max(save?.units?.[id]?.[0] || 1, stage.expLevel || 1);
-  const deck = pickDeck(un.dragons, un.deckCap).map((id) => ({ id, lv: lvOf(id) }));
+  const deck = pickDeck(un.dragons, un.deckCap, stage.w, stage.costMax).map((id) => ({ id, lv: lvOf(id) }));
+  const leader = LEADER_AT[stage.w - 1] || 'novart';
   return {
     deck,
     skills: un.skills,
-    loads: [{ side: 0, deck, leader: 'novart', leaderLv: Math.max(1, stage.expLevel || 1), skills: un.skills }],
+    loads: [{ side: 0, deck, leader, leaderLv: Math.max(1, stage.expLevel || 1), skills: un.skills, bonus: refBonus(stage.w) }],
   };
 }
 
