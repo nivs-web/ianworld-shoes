@@ -17,10 +17,12 @@ const FUN = [
   ['cat', '유령 고양이'], ['owl', '부엉이'], ['pumpkin', '호박 등불'], ['cross', '십자가 좀비'], ['spider', '거미'], ['window', '성 창문 그림자 춤'], ['mole', '두더지 좀비'],
 ];
 
-/** 그룹 → { name, keys:[{key,name}], def } */
+const SOUND_ON = ['owl', 'boo', 'lightning', 'bats', 'wisps', 'skelBroom', 'bike'];
+/** 그룹 → { name, keys:[{key,name,def?}], def } — 칸마다 def 가 있으면 그것이 먼저 */
 export const SWITCHES = {
   zdFun: { name: '좀비와 드래곤 · 재미 요소 (보이기)', def: true, keys: FUN.map(([key, name]) => ({ key, name })) },
-  zdFunSound: { name: '좀비와 드래곤 · 재미 요소 (소리)', def: false, keys: FUN.map(([key, name]) => ({ key, name })) },
+  /* 소리 기본값 : 겜팀장 추천 7개만 켬 (대표님 11/11 «추천대로») — 다 켜면 시끄럽다 */
+  zdFunSound: { name: '좀비와 드래곤 · 재미 요소 (소리)', def: false, keys: FUN.map(([key, name]) => ({ key, name, def: SOUND_ON.includes(key) })) },
   /* 대표님 2026-11-11 «오락실 풍 / 오케스트라 풍을 토글로 켜고 끄며 해 보고 정하겠다» — 켜짐 = 오케스트라(공개 녹음) · 꺼짐 = 오락실(합성) */
   /* 대표님 2026-11-11 «난이도를 관리자 페이지에서 켜고 끄게» — 꺼지면 모두 보통 · 고르기 단추 숨김 / 좀비 소리도 여기서 */
   zdOpt: { name: '좀비와 드래곤 · 기능', def: true, keys: [{ key: 'diff', name: '난이도 고르기 (쉬움 · 보통 · 어려움)' }, { key: 'zombieSfx', name: '좀비 소리 (등장 · 중얼 · 쓰러짐)' }] },
@@ -70,7 +72,9 @@ function mem() { if (!vals) vals = readCache(); return vals; }
 /** 지금 켜져 있나 (없으면 그룹 기본값) */
 export function isOn(group, key) {
   const v = mem()[group]?.[key];
-  return typeof v === 'boolean' ? v : !!SWITCHES[group]?.def;
+  if (typeof v === 'boolean') return v;
+  const k = SWITCHES[group]?.keys.find((x) => x.key === key);
+  return typeof k?.def === 'boolean' ? k.def : !!SWITCHES[group]?.def;
 }
 /** 그룹에서 꺼진 키 목록 */
 export function offKeys(group) { return (SWITCHES[group]?.keys || []).filter(({ key }) => !isOn(group, key)).map(({ key }) => key); }
