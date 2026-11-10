@@ -4,6 +4,8 @@
  * 오락실 소리 설정을 따른다 : 효과음 끔 → 전부 끔 · 배경음 끔 → 곡만 안 튼다. 소리는 화면 전용(계산 영향 없음).
  */
 import * as Audio from '../audio/index.js';
+import { isOn } from '../../../services/switches.js';
+import { hasTrait } from '../core/rules.js';
 import { getSettings } from '../../../audio/audio.js';
 
 const deployFx = (cost) => (cost < 150 ? 'deploy_s' : cost < 400 ? 'deploy_m' : 'deploy_l');
@@ -20,6 +22,11 @@ export function createBattleSound(stage, me = 0) {
   if (musicOn) Audio.worldBgm(stage.w);   // 겜팀장 월드 곡 (월드 1 «죽음의 무도» … 월드 5 «마법사의 제자»)
   const was = { spawned: 0, wl: 0, breath: 0, breathReady: false, skill: 0, rage: 0, kills: 0, base0: null, base1: null, boss: null, bossHalf: false, fever: false, over: false, hits: 0, units: new Set(), spawnT: [], waveCd: 0, lastWave: false, bossSt: null, barrier: new Map(), corpse: new Set(), weak: new Set(), st: new Map(), dead: new Set(), gap: {} };
   /** 같은 소리를 너무 자주 내지 않기 (초) */
+  /* 좀비 소리 (대표님 11/11 «좀비가 등장 · 가끔 중얼 · 쓰러지는 소리» · 겜팀장 녹음 zombie_* · 운영자 스위치 zdOpt.zombieSfx) — 파일이 없으면 조용히 */
+  const zOn = isOn('zdOpt', 'zombieSfx');
+  const zPick = (kind, n) => `zombie_${kind}_${1 + Math.floor(Math.random() * n)}`;
+  const zKind = (d) => (hasTrait(d.traits, 'ghost') ? 'ghost' : hasTrait(d.traits, 'giant') || d.boss ? 'big' : null);
+  let zIdleAt = 4, zSeen = new Set();
   const once = (id, sec, t) => { if (t - (was.gap[id] ?? -99) < sec) return; was.gap[id] = t; Audio.play(id); };
 
   return {
@@ -38,7 +45,15 @@ export function createBattleSound(stage, me = 0) {
       if (p.st.breath > was.breath) { Audio.play('breath_fire'); Audio.voice('breath'); if (S.units.some((u) => u.alive && u.side !== p.side && u.def.kbImmune)) later(() => Audio.play('no_knockback'), 250); } was.breath = p.st.breath;
       if (p.st.skill > was.skill) { const used = p.skills.find((s) => s.cdT > s.def.cd - 0.2); Audio.play(`skill_${used ? used.id : 'meteor'}`); } was.skill = p.st.skill;
       if (p.st.rageUse > was.rage) { Audio.play('roar'); Audio.voice('roar'); } was.rage = p.st.rageUse;
-      if (S.st.kills > was.kills) Audio.play('die'); was.kills = S.st.kills;
+      if (S.st.kills > was.kills) { Audio.play('die'); if (zOn) once(zPick('die', 4), 0.15, S.t); } was.kills = S.st.kills;
+      if (zOn) {
+        let alive = 0;
+        for (const u of S.units) {
+          if (u.side === p.side || !u.alive) continue; alive++;
+          if (!zSeen.has(u.id)) { zSeen.add(u.id); const k = zKind(u.def); once(k ? zPick(k, 2) : zPick('spawn', 4), 0.8, S.t); }
+        }
+        if (S.t >= zIdleAt) { zIdleAt = S.t + 3 + Math.random() * 4; if (alive) Audio.play(zPick('idle', 4)); }   // 좀비가 있으면 3~7초에 한 번 중얼
+      }
       if (view.hits > was.hits) Audio.play(view.bigHit ? 'hit_heavy' : 'hit_light'); was.hits = view.hits;
       for (const side of [0, 1]) {
         const k = side ? 'base1' : 'base0', hp = S.base[side].hp;
