@@ -10,6 +10,7 @@ import { audio } from './synth.js';
 import { SFX, playFun, setFunSfx } from './sfx.js';
 import { startTrack, stopTrack, trackForWorld, preloadMusic, setMusicStyle, getMusicStyle } from './music.js';
 import { playVoice, preloadVoices } from './voice.js';
+import { preloadSfxFiles, hasFileSfx, playFileSfx } from './sfxfile.js';
 
 let muted = false;
 const lastAt = new Map();
@@ -20,17 +21,21 @@ export function init() {
   if (A.ctx.state === 'suspended') A.ctx.resume().catch(() => {});
   preloadVoices();
   preloadMusic(['lobby', 'w1', 'boss', 'win']).catch(() => {});   // 녹음 곡이 있으면 미리 받기
+  preloadSfxFiles().catch(() => {});                                 // 좀비 소리 같은 파일 효과음
 }
 
+/** 효과음 — 합성(SFX) 또는 파일 묶음(zombie_spawn · zombie_idle · zombie_die · zombie_big · zombie_ghost) */
 export function play(id) {
   if (muted) return;
-  const f = SFX[id]; if (!f) return;
+  const f = SFX[id], file = !f && hasFileSfx(id); if (!f && !file) return;
   const A = audio(); if (!A) return;
   const now = A.ctx.currentTime;
   if (now - (lastAt.get(id) ?? -1) < 0.05) return;
   lastAt.set(id, now);
-  try { f(); } catch { /* 소리 실패는 게임과 무관 */ }
+  try { if (f) f(); else playFileSfx(id, FILE_VOL[id] ?? 0.8); } catch { /* 소리 실패는 게임과 무관 */ }
 }
+/* 좀비 소리는 은은하게 (대표님 11/11: «말하는 것보다 은은하게 작게») — 중얼거림이 가장 작다 */
+const FILE_VOL = { zombie_idle: 0.32, zombie_spawn: 0.5, zombie_die: 0.55, zombie_big: 0.6, zombie_ghost: 0.45 };
 
 export function bgm(id, opt = {}) {
   if (muted) return;
