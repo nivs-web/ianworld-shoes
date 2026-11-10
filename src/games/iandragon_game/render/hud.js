@@ -23,7 +23,7 @@ const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
-export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null }, cb) {
+export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null, talk = null }, cb) {
   let useCons = null;   // 시작 카드에서 고른 편의품
   const root = h('div', 'idg-hud'); host.appendChild(root);
   /* 위 */
@@ -50,7 +50,15 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   mini.onpointerdown = (e) => { const r = mini.getBoundingClientRect(); cb.look?.((e.clientX - r.left) / r.width); };
   const tip = h('div', 'idg-tip'); root.appendChild(tip);
   const net = h('div', 'idg-net'); root.appendChild(net);   // 멀티 : 상대 기다리는 중
-  const mate = h('div', 'idg-mate'); root.appendChild(mate);   // 멀티 친구 띠 (멀티 기획 5장) : 같이 깨기 = 친구 화로 · 브레스 준비 / 대결 = 상대 화로 레벨만
+  const mate = h('div', 'idg-mate'); root.appendChild(mate);
+  const bubble = h('div', 'idg-talk'); root.appendChild(bubble);   // 상대 빠른 말
+  if (talk) {   /* 빠른 말 서랍 : 💬 누르면 4개가 펼쳐진다 */
+    const drawer = h('div', 'idg-talk-drawer'), open = h('button', 'idg-btn idg-talk-open', '💬'); open.type = 'button';
+    const list = h('div', 'idg-talk-list');
+    for (const t of talk) { const b = h('button', 'idg-btn', t); b.type = 'button'; b.onclick = () => { cb.talk?.(t); list.classList.remove('on'); }; list.appendChild(b); }
+    open.onclick = () => list.classList.toggle('on');
+    drawer.append(open, list); root.appendChild(drawer);
+  }   // 멀티 친구 띠 (멀티 기획 5장) : 같이 깨기 = 친구 화로 · 브레스 준비 / 대결 = 상대 화로 레벨만
 
   /* 아래 */
   const bot = h('div', 'idg-bot'); root.appendChild(bot);
@@ -137,6 +145,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
         const o = S.players[(ui.me || 0) === 0 ? 1 : 0], foe = o.side !== p.side;
         mate.textContent = foe ? `상대 화로 Lv${o.wl + 1}` : `친구 화로 Lv${o.wl + 1}${o.breathT >= o.breathCharge ? ' · 브레스 준비!' : ''}`;
         mate.classList.add('on'); mate.classList.toggle('foe', foe);
+        const say = ui.talk ? `${foe ? '상대' : '친구'} : ${ui.talk}` : ui.myTalk ? `나 : ${ui.myTalk}` : '';
+        bubble.textContent = say; bubble.classList.toggle('on', !!say); bubble.classList.toggle('mine', !ui.talk && !!ui.myTalk);
       }
       net.textContent = ui.netNote || (ui.netWait > 1.5 ? '연결 확인 중…' : ''); net.classList.toggle('on', !!ui.netNote || ui.netWait > 1.5);
       const lim = S.stage.gim === 'time' ? S.stage.limit : 0;

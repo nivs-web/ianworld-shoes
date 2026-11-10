@@ -61,7 +61,7 @@ export async function mount(host, opts) {
     me.scene?.destroy(); me.scene = null;
     try {
       const rm = opts.room;   // 친구랑 같이 깨기 (서버 방)
-      const net = rm && rm.seat >= 0 ? { seat: rm.seat, seats: rm.uids.length, seed: rm.seed, loads: rm.loads, pvp: rm.stageNo === 0, transport: createRoomTransport(rm.code, rm.uids, rm.seat) }
+      const net = rm && rm.seat >= 0 ? { seat: rm.seat, seats: rm.uids.length, seed: rm.seed, loads: rm.loads, pvp: rm.stageNo === 0, code: rm.code, uids: rm.uids, transport: createRoomTransport(rm.code, rm.uids, rm.seat) }
         : netQ ? { ...netQ, seed: 7000 + stageNo, transport: createLocalTransport(`s${stageNo}`, netQ.seat) } : undefined;
       if (rm) opts.room = null;   // 다시 하기 · 다음 판은 혼자
       me.scene = await startBattle({ ...ctx, host }, {

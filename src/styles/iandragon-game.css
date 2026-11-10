@@ -319,3 +319,12 @@ html.idg-wide body { width: 100%; }
 .idg-cons-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin: 6px 0; font: 12px 'Neo둥근모', monospace; color: #ffe9b0; }
 .idg-cons { min-height: 32px; padding: 0 10px; border-radius: 10px; border: 2px solid #c9963a; background: rgba(26, 14, 52, .85); color: #e8dcff; font: 700 12px 'Neo둥근모', monospace; }
 .idg-cons.on { background: #2f8a4a; color: #fff; border-color: #9fffb0; }
+
+/* 빠른 말 (멀티) */
+.idg-talk { position: absolute; left: 50%; top: 88px; transform: translateX(-50%); padding: 4px 14px; border-radius: 14px; background: #fff; color: #1a1033; font: 700 13px 'Neo둥근모', monospace; display: none; pointer-events: none; box-shadow: 0 2px 0 #0006; }
+.idg-talk.on { display: block; animation: idgPop .25s ease-out; } .idg-talk.mine { background: #ffe9b0; }
+@keyframes idgPop { from { transform: translateX(-50%) scale(.6); } to { transform: translateX(-50%) scale(1); } }
+.idg-talk-drawer { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 6px; pointer-events: auto; }
+.idg-talk-open { min-width: 40px; min-height: 40px; font-size: 18px; }
+.idg-talk-list { display: none; flex-direction: column; gap: 4px; } .idg-talk-list.on { display: flex; }
+.idg-talk-list .idg-btn { min-height: 34px; padding: 0 10px; font: 700 12px 'Neo둥근모', monospace; white-space: nowrap; }

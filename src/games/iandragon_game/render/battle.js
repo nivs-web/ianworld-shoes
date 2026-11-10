@@ -14,6 +14,10 @@ import { createBattleSound } from './battleSound.js';
 import { makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY, DIFF, diffFor } from './battleSetup.js';
 import { isOn } from '../../../services/switches.js';
 import { decodeLook, CONSUMABLES } from '../data/looks.js';
+import { sendChat, subscribeChat } from '../../../services/multiplayer.js';
+
+/** 빠른 말 4개 (멀티 기획 2.1 · 글자 입력 없음 · 오락실 방 채팅을 그대로 쓴다) */
+const TALK = { coop: ['방패 부탁!', '브레스 간다!', '화로 올릴게!', '최고!'], pvp: ['잘 부탁해!', '간다~!', '앗 따가워!', '최고!'] };
 import { ECON } from '../data/econ.js';
 import { tunes } from '../../../services/tuning.js';
 
@@ -42,6 +46,11 @@ export async function startBattle(ctx, opts) {
   const mirror = pvp && me === 1;   // 대결 : 누구나 자기가 왼쪽 (오른쪽 편은 화면만 뒤집는다)
   const S = createBattle(stage, loads, D, net ? net.seed : (Date.now() % 1e9) | 0);
   const ls = net ? createLockstep({ seat: me, seats: net.seats }) : null;
+  /* 빠른 말 : 서버 방에서만 (탭 시험은 code 없음) — 상대 말은 친구 띠 아래 말풍선 2.5초 */
+  const talkOff = net?.code ? subscribeChat(net.code, (rows) => {
+    const last = rows && rows[rows.length - 1]; if (!last || last.id === ui.talkSeen) return; ui.talkSeen = last.id;
+    if (last.uid !== net.uids?.[me] && Date.now() - (last.at || 0) < 8000) { ui.talk = last.text; ui.talkT = 2.5; }
+  }) : null;
   const NET_GIVEUP = 12;   // 초 — 이만큼 아무 소식이 없으면 그 친구는 나간 것으로 보고 혼자 계속 (M4)
   const leave = (s) => { ls.drop(s); ui.netNote = '친구가 나갔어요 — 혼자 계속해요!'; ui.netNoteT = 4; };
   if (net) { net.transport.onMessage((from, str) => ls.receive(from, str)); net.transport.onLeave?.(leave); }
@@ -57,7 +66,7 @@ export async function startBattle(ctx, opts) {
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
   const cmds = [];
   let acc = 0, bossSeen = false, gone = false;
-  const hud = createHud(ctx.host || opts.hudHost, { stage, deck: myDeck, leader: loads[me].leader, cons: net ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), foeDeck: pvp ? loads[1 - me].deck : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
+  const hud = createHud(ctx.host || opts.hudHost, { stage, deck: myDeck, leader: loads[me].leader, cons: net ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (S.over) return; if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c }); },
     go(useCons) {
       ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start();
@@ -77,6 +86,7 @@ export async function startBattle(ctx, opts) {
     exit() { opts.onExit(); },
     retry() { opts.restart(stage.g); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
+    talk(t) { if (net?.code) { sendChat(net.code, t).catch?.(() => {}); ui.myTalk = t; ui.myTalkT = 1.6; } },
     look(f) { view.setCam((mirror ? 1 - f : f) * view.FIELD - ctx.view.w / 2); },
   });
 
@@ -171,6 +181,8 @@ export async function startBattle(ctx, opts) {
         if (acc > TICK * 90) acc = TICK * 90;
         waitT = waited ? waitT + dt : 0; ui.netWait = waitT;
         if (ui.netNote && (ui.netNoteT -= dt) < 0) ui.netNote = '';
+        if (ui.talk && (ui.talkT -= dt) < 0) ui.talk = '';
+        if (ui.myTalk && (ui.myTalkT -= dt) < 0) ui.myTalk = '';
         if (waitT > NET_GIVEUP) { for (const s of ls.late(tickN + 1)) leave(s); waitT = 0; }
         if ((sendT += dt) >= 0.2) { sendT = 0; let h = null; if (tickN >= nextHash) { h = [tickN, hashState(S)]; nextHash = tickN + 150; } net.transport.send(ls.packet(tickN, h)); }
       } else {
@@ -198,7 +210,7 @@ export async function startBattle(ctx, opts) {
   if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };
 
   return {
-    destroy() { gone = true; net?.transport.close(); document.removeEventListener('visibilitychange', onHide); ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },
+    destroy() { gone = true; net?.transport.close(); talkOff?.(); document.removeEventListener('visibilitychange', onHide); ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },
     /** 세로로 돌림 · 앱 내림 : 일시정지 판 (카드가 떠 있으면 그대로 둔다) */
     pause() { if (!ui.intro && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } },
     /** 뒤로가기 · ESC : 카드에서는 나가기, 전투 중에는 일시정지 판 (코드 검토 9) */
