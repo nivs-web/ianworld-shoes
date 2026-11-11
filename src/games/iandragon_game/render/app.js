@@ -31,7 +31,8 @@ export function fitView(cssW, cssH, dpr, ins = { t: 0, b: 0 }) {
   const crop = ins.f || null;
   const band = crop ? BASE_H - crop.top - crop.bottom : ins.t || ins.b ? BASE_H - SKY_CUT - DIRT_CUT : BASE_H;
   const ph = Math.max(1, Math.floor((cssH - ins.t - ins.b) * dpr));
-  const minW = crop ? 760 : BASE_W;   /* 떠 있는 HUD : 어느 기기든 화면을 꽉 채운다(태블릿 · PC 처럼 덜 긴 화면은 화면 너비를 760칸까지 줄여 위아래 검은 띠 없이) */
+  const portrait = cssH > cssW * 1.05;   /* 세로 : 화면 너비를 480칸까지 (전장을 확대해 보인다) */
+  const minW = crop ? (portrait ? 420 : 760) : BASE_W;   /* 떠 있는 HUD : 어느 기기든 화면을 꽉 채운다(태블릿 · PC 처럼 덜 긴 화면은 화면 너비를 760칸까지 줄여 위아래 검은 띠 없이) */
   const kFit = Math.min(pw / minW, ph / band);
   /*
    * 2026-11-11 대표님 «PC 에서 배경이 흐리다» : 예전엔 960×540 으로 그린 캔버스를 그대로 늘려서 제미나이 고해상도 그림이 뭉개졌다.
@@ -46,7 +47,8 @@ export function fitView(cssW, cssH, dpr, ins = { t: 0, b: 0 }) {
   /* 띠 사이에 다 들어가면 가운데 · 모자라면 땅 줄(흙 위)을 아래 띠 바로 위에 붙이고 하늘 위쪽을 더 자른다 (땅 · 유닛은 항상 보이게) */
   const top = crop ? (bandCss <= cssH ? (cssH - bandCss) / 2 - (crop.top * k) / dpr : cssH - ((BASE_H - crop.bottom) * k) / dpr) :   /* 넘치면 땅 쪽(아래)을 맞추고 하늘을 더 자른다 */ !(ins.t || ins.b) ? (cssH - ch) / 2 : bandCss <= avail ? ins.t + (avail - bandCss) / 2 - (SKY_CUT * k) / dpr : cssH - ins.b - ((BASE_H - DIRT_CUT) * k) / dpr;
   /* 캔버스가 화면보다 크면 위 · 아래 끝에 빈칸이 생기지 않게 */
-  const topC = ch >= cssH ? Math.min(0, Math.max(cssH - ch, top)) : top;
+  /* 세로 : 캔버스를 화면 위 18% 아래에 붙이고(위 HUD 자리) 아래는 단추 자리로 비운다 */
+  const topC = crop && portrait && ch < cssH ? Math.max(0, Math.min(cssH * 0.09, cssH - ch - 150)) - (crop.top * k) / dpr * 0 : ch >= cssH ? Math.min(0, Math.max(cssH - ch, top)) : top;
   return { w, h: BASE_H, k, res, cssW: cw, cssH: ch, left: (cssW - cw) / 2, top: topC };
 }
 

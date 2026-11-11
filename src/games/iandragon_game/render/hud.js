@@ -42,7 +42,12 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   let useCons = null;   // 시작 카드에서 고른 편의품
   const root = h('div', 'idg-hud' + (FLOAT_HUD ? ' float' : '')); host.appendChild(root);
   /* 대표님 «PC 에서 위 글씨 · 숫자가 너무 작다» (11/11) : HUD 전체를 화면 크기에 맞춰 키운다 (폰 가로 = 1 · PC 1280×800 ≈ 1.33 · 최대 1.7) */
-  const fitHud = () => { const z = Math.max(1, Math.min(1.7, innerWidth / 960, innerHeight / 540)); root.style.zoom = String(Math.round(z * 100) / 100); };
+  /* 2026-11-11 대표님 태블릿 «아래 단추가 사라진다» : CSS zoom 은 옛 크롬 · 삼성 인터넷에서 크기 계산이 달라 HUD 가 화면보다 커지며 아래가 잘렸다
+   * → 어느 브라우저든 같은 transform 확대 (상자 크기를 1/z 로 줄이고 z 배로 키움 = 늘 화면에 꼭 맞음) */
+  const fitHud = () => {
+    const z = Math.round(Math.max(1, Math.min(1.7, host.clientWidth / 960, host.clientHeight / 540)) * 100) / 100;
+    Object.assign(root.style, { zoom: '', transformOrigin: '0 0', transform: z === 1 ? '' : `scale(${z})`, width: z === 1 ? '' : `${100 / z}%`, height: z === 1 ? '' : `${100 / z}%`, right: z === 1 ? '' : 'auto', bottom: z === 1 ? '' : 'auto' });
+  };
   /* 위 · 아래 띠 높이를 캔버스에 알려 전장이 띠에 가리지 않게 한다 (app.js 'idg-insets') */
   let zoomK = 0;   /* 0 = 전체 화면 · 1 = 확대 끝 */
   const sendIns = () => requestAnimationFrame(() => {
@@ -62,7 +67,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const money = h('div', 'idg-money'); const moneyN = h('span', 'n', '0'); money.append(h('i', 'idg-ico-ember'), moneyN);
   /* 소리 단추 (대표님 «게임하면서 배경음 · 효과음을 켜고 끄는 단추») */
   /* 소리 단추는 화면에서 뺐다 — 일시정지 · 로비 «더보기 → 음향 설정» (대표님 11/11) */
-  top.append(pauseB, title, time, speedB, money);
+  const fsB = h('button', 'idg-btn idg-fs', '⛶'); fsB.type = 'button'; fsB.title = '꽉 찬 화면';
+  fsB.onclick = () => { const d = document; try { if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else { const e = d.documentElement; (e.requestFullscreen || e.webkitRequestFullscreen)?.call(e)?.catch?.(() => {}); } } catch { /* 안 되는 기기 */ } };
+  top.append(pauseB, title, time, speedB, money, fsB);   /* ⛶ 꽉 찬 화면 (대표님 «브라우저 아래 줄이 갑자기 나와 가린다») */
   if (speedMax < 2 || isNet) speedB.style.visibility = 'hidden';   // 멀티는 1배속 고정
   if (isNet) { pauseB.textContent = '✕'; pauseB.title = '나가기'; pauseB.onclick = () => { if (window.confirm('정말 나갈까요? 친구는 혼자 계속해요.')) cb.exit(); }; }   // 멀티는 멈출 수 없다 (기획 5장)
   const autoB = h('button', 'idg-btn idg-speed idg-auto', '자동'); autoB.type = 'button'; autoB.onclick = () => cb.auto(); if (canAuto) speedB.after(autoB);

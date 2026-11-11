@@ -4,7 +4,7 @@
  * 오락실 소리 설정을 따른다 : 효과음 끔 → 전부 끔 · 배경음 끔 → 곡만 안 튼다. 소리는 화면 전용(계산 영향 없음).
  */
 import * as Audio from '../audio/index.js';
-import { isOn } from '../../../services/switches.js';
+import { isOn, nums } from '../../../services/switches.js';
 import { hasTrait } from '../core/rules.js';
 import { getSettings } from '../../../audio/audio.js';
 import { applySound, soundPrefs } from './soundPrefs.js';
@@ -111,7 +111,7 @@ export function createBattleSound(stage, me = 0) {
       }
     },
     /** 출격! (스테이지 카드에서) */
-    start(kind) { Audio.voice(kind === 'raid' ? 'raid/start' : kind === 'coop' ? 'coop/start' : 'start'); },   // 겜팀장 새 상황 대사 (습격 · 같이 깨기)
+    start(kind) { was.startAt = performance.now(); Audio.voice(kind === 'raid' ? 'raid/start' : kind === 'coop' ? 'coop/start' : 'start'); },   // 겜팀장 새 상황 대사 (습격 · 같이 깨기)
     say(id) { Audio.voice(id); },
     /** 결과 판의 별 «탕 · 탕 · 탕» */
     stars(n) { for (let i = 0; i < n; i++) later(() => Audio.play('star'), 300 + i * 350); },
@@ -123,7 +123,12 @@ export function createBattleSound(stage, me = 0) {
       if (!ok) { Audio.play('button_deny'); return; }
       Audio.play('button');
       const nk = `name/${art}`, now = performance.now();
-      if (VOICE_LINES[nk] && now - (was.namePress ?? -1e9) > 600) { was.namePress = now; Audio.voice(nk); }
+      if (now - (was.namePress ?? -1e9) <= 600) return;   /* 간격 제한 */
+      was.namePress = now;
+      /* 이름 외침 모드 (관리자 «출격 이름 외침») : 끔 → 옛 출격 대사 · 판 내내 → 이름 · 기본 → 처음 N초(10/15/20)만 이름, 그 뒤 옛 출격 대사 */
+      const sec = (performance.now() - (was.startAt ?? now)) / 1000, nameSec = nums('zdVoiceNum').nameSec || 15;
+      const useName = VOICE_LINES[nk] && isOn('zdVoice', 'nameOn') && (isOn('zdVoice', 'nameAlways') || sec < nameSec);
+      Audio.voice(useName ? nk : `deploy/${art}`);
     },
     pause(on) {
       if (on) Audio.setMuted(true);

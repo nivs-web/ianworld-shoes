@@ -34,7 +34,7 @@ export default function IanDragonGame(nav) {
   let live = true;
   let stoppedArcadeLoop = false;
   document.documentElement.classList.add('idg-wide');
-  lockLandscape();
+  /* 가로로 잠그지 않는다 (가로 · 세로 둘 다 · 2026-11-11 대표님) */
 
   return {
     onLeave() {

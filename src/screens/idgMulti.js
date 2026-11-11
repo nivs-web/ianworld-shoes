@@ -19,13 +19,18 @@ export function showMulti(onStart, rejoinCode = null) {
   let code = null, off = null, started = false;
   const msg = (t) => body.replaceChildren(el('p.idg-multi-msg', t), button('처음으로', menu));
 
+  Room.prewarm?.();   /* 미리 서버에 붙여 둔다 — 번호 넣고 «들어가기» 때 렉 줄이기 */
   function menu() {
     off?.(); off = null; code = null;
     const g = G.idg(), stageNo = Math.min(100, (g.cleared || 0) + 1);
     const input = el('input.idg-code', { type: 'text', inputmode: 'numeric', maxlength: 6, placeholder: '방 번호' });
     body.replaceChildren(
       el('p.idg-multi-msg', `둘이 함께 ${G.stageLabel(stageNo)} 에 도전해요. 용은 각자 덱에서 나가요.`),
-      button('같이 깨기 방 만들기', () => make(stageNo), { primary: true }),
+      /* 빠른 시작 (대표님 «다른 게임처럼 방 번호 없이 바로») : 열린 방이 있으면 들어가고, 없으면 만들어 기다린다 */
+      button('빠른 시작 · 같이 깨기', () => quick(false, stageNo), { primary: true }),
+      (g.cleared || 0) >= PVP_OPEN ? button('빠른 시작 · 용 대결', () => quick(true, 0), { primary: true }) : '',
+      el('p.idg-multi-msg.sub', '친구와 방 번호로 만나기'),
+      button('같이 깨기 방 만들기', () => make(stageNo)),
       (g.cleared || 0) >= PVP_OPEN ? button(`용 대결 방 만들기 (오늘 보상 ${Math.max(0, PVP_DAY - (g.pvp?.day === new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) ? g.pvp.n : 0))}/${PVP_DAY}판 · 전적 ${g.pvp?.w || 0}승 ${g.pvp?.l || 0}패)`, () => make(0)) : el('p.idg-multi-msg', `용 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 열려요.`),
       el('div.idg-multi-join', null, [input, button('들어가기', async () => {
         const c = input.value.trim(); if (!c) return;
@@ -37,6 +42,13 @@ export function showMulti(onStart, rejoinCode = null) {
     );
   }
 
+  async function quick(pvp, n) {
+    msg('같이 할 친구를 찾는 중…');
+    const accept = (r) => (pvp ? (r.idgStage | 0) === 0 : (r.idgStage | 0) > 0);
+    const r = await Room.quickJoin({ game: Room.GAME_IDRAGON, maxPlayers: 2, accept, idgStage: n }).catch(() => null);
+    if (!r) { msg('지금은 연결이 어려워요. 잠시 뒤 다시 해 봐요!'); return; }
+    wait(r);
+  }
   async function make(n) {
     msg('방을 만드는 중…');
     const r = await Room.createRoom({ game: Room.GAME_IDRAGON, maxPlayers: 2, isPrivate: true, idgStage: n }).catch(() => null);

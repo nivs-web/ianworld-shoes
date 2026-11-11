@@ -618,6 +618,25 @@
             ".validate": false
           }
         },
+        "zdVoice": {
+          "nameOn": {
+            ".validate": "newData.isBoolean()"
+          },
+          "nameAlways": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "zdVoiceNum": {
+          "nameSec": {
+            ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 20"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
         "zdBgm": {
           "orchestra": {
             ".validate": "newData.isBoolean()"

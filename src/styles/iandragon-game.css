@@ -741,3 +741,26 @@ html.idg-wide body { width: 100%; }
 .idg-sound-opt { white-space: pre-line; min-height: 42px; }
 .idg-sound-opt { font-size: 15px; min-height: 40px; letter-spacing: .5px; }
 .idg-credits-h { color: #ffd84a !important; font-weight: 700; margin-top: 10px !important; font-size: 13px !important; }
+
+/* ════ 대표님 태블릿 · 폰 검토 (11/11 저녁) ════ */
+/* 창 : 어떤 폰에서도 손가락으로 끌어 스크롤 (오락실 body 의 touch-action:none 아래에서 창이 스크롤 상자가 되게 — 높이 제한 + pan-y) */
+.dialog-overlay { touch-action: pan-y; }
+.dialog[class*="idg-"] { max-height: calc(100dvh - 24px); overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+/* 창 제목 리본 : 글씨를 빨간 띠 가운데로 (위로 붙거나 띠 위로 깨지던 것) */
+.dialog[class*="idg-"] > .idg-how-title { padding: 15px 34px 11px; line-height: 1.1; white-space: nowrap; font-size: 16px; }
+/* 승리 · 패배 그림이 창 위 테두리에 잘리지 않게 */
+.idg-card:has(h2.win)::before, .idg-card:has(h2.lose)::before { margin: 4px auto 8px; }
+/* 같이 깨기 «스테이지 1-7» 글씨 세로로 꺾임 */
+.idg-multi-stage { flex-wrap: wrap; } .idg-multi-stage > span, .idg-multi-stage > b { white-space: nowrap; }
+/* 로비 가로 화면 : 타이틀 배너를 작게 */
+@media (orientation: landscape) and (max-height: 560px) { .idg-lobby-banner { max-height: 30vh; width: auto; } .idg-logo { margin: 6px 0 4px; } }
+/* 꽉 찬 화면 단추 */
+.idg-hud .idg-fs { width: 36px; height: 36px; min-width: 36px; padding: 0; border: 0; border-image: none; border-radius: 50%; background: url(/assets/iandragon_game/ui/hud_btn_round.png) center / contain no-repeat; color: #ffe9b0; font-size: 18px; line-height: 1; display: grid; place-items: center; flex: none; }
+@media (max-height: 430px) { .idg-hud .idg-fs { width: 30px; height: 30px; min-width: 30px; font-size: 15px; } }
+/* 세로 화면 : 아래 단추 줄은 화면 맨 아래 (캔버스 아래 빈자리) · 카드 크게 */
+@media (orientation: portrait) { .idg-hud.float .idg-bot { bottom: max(10px, env(safe-area-inset-bottom)); } .idg-hud.float .idg-unit, .idg-hud.float .idg-wallet { height: 64px; } .idg-hud.float .idg-breath { width: 70px; height: 70px; } .idg-host { background: #120a24; } }
+/* 멀티 : 방 번호 «들어가기» 단추가 안 보이던 것 (입력칸이 자리를 다 먹었다) · 빠른 시작 아래 작은 제목 */
+.idg-multi-join { display: flex; gap: 6px; align-items: stretch; }
+.idg-multi-join .idg-code { flex: 1 1 auto; min-width: 0; }
+.idg-multi-join .pbtn { flex: 0 0 auto; width: auto; min-width: 104px; margin: 0; white-space: nowrap; }
+.idg-multi-msg.sub { margin-top: 6px; color: #c8bcd8 !important; font-size: 12px; }

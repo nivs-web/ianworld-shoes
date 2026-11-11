@@ -92,11 +92,8 @@ export async function mount(host, opts) {
   exit.addEventListener('click', () => opts.onExit());
   if (!battle) { host.appendChild(exit); me.exitBtn = exit; }   // 전투는 일시정지 판 안에 나가기가 있다
 
-  me.guard = guardLandscape(host, opts.text, {
-    onPortrait: () => { me.scene?.pause?.(); setPaused(me, true); },
-    onLandscape: () => setPaused(me, false),
-    onExit: () => opts.onExit(),
-  });
+  /* 세로로 들어도 막지 않는다 (2026-11-11 대표님 «세로로 돌리라는데 안 돌아가 진행이 안 되는 폰이 있다 · 가로 · 세로 둘 다 되게») — 세로는 전장을 확대해 보인다(app.js fitView) */
+  me.guard = null;
 }
 
 function setPaused(me, on) {

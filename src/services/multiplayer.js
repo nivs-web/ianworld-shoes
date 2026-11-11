@@ -1064,7 +1064,8 @@ async function scanOpenRooms(fb, game) {
  * 내 방을 접고 그쪽으로 옮긴다. 판정 기준이 (생성시각, 코드)로 결정적이라
  * 양쪽이 같은 답을 내고 **정확히 한 명만** 움직인다.
  */
-export async function quickJoin({ difficulty, game = GAME_SHOES, maxPlayers, ctrl } = {}) {
+/* accept(room) = 이 방에 들어가도 되나(좀비와 드래곤 : 같이 깨기 / 용 대결 구분) · idgStage = 새로 만들 때 판 번호 (2026-11-11) */
+export async function quickJoin({ difficulty, game = GAME_SHOES, maxPlayers, ctrl, accept = null, idgStage } = {}) {
   const fb = await rt();
   if (!fb) return null;
   await waitConnected(fb);
@@ -1104,7 +1105,7 @@ export async function quickJoin({ difficulty, game = GAME_SHOES, maxPlayers, ctr
       await new Promise((r) => setTimeout(r, EMPTY_RESCAN_MS));
       raw = await scanOpenRooms(fb, game);
     }
-    const free = raw.filter((r) => hasSeat(r, fb.uid, MULTI.maxPlayers));
+    const free = raw.filter((r) => hasSeat(r, fb.uid, maxPlayers || MULTI.maxPlayers) && (!accept || accept(r)));
     const 대기중 = free.filter((r) => r.state === 'waiting').sort(byPreference);
     const 게임중 = free.filter((r) => r.state !== 'waiting').sort(byPreference);
 
@@ -1112,7 +1113,7 @@ export async function quickJoin({ difficulty, game = GAME_SHOES, maxPlayers, ctr
     if (got) return got;
   } catch { /* 못 찾으면 새로 판다 */ }
 
-  const mine = await createRoom({ isPrivate: false, difficulty, game, maxPlayers, ctrl });
+  const mine = await createRoom({ isPrivate: false, difficulty, game, maxPlayers, ctrl, idgStage });
   if (!mine) return null;
 
   // 같은 순간에 만들어진 방이 있으면 한쪽만 옮겨 간다 (동시 입장 해소)
@@ -1122,7 +1123,7 @@ export async function quickJoin({ difficulty, game = GAME_SHOES, maxPlayers, ctr
     if (Object.keys(mineRoom?.players ?? {}).length > 1) return mine;
 
     const older = (await scanOpenRooms(fb, game))
-      .filter((r) => hasSeat(r, fb.uid, MULTI.maxPlayers) && r.code !== mine && r.state === 'waiting')
+      .filter((r) => hasSeat(r, fb.uid, maxPlayers || MULTI.maxPlayers) && r.code !== mine && r.state === 'waiting' && (!accept || accept(r)))
       .filter((r) => byPreference(r, mineRoom ?? { code: mine, createdAt: Infinity }) < 0)
       .sort(byPreference)[0];
     if (!older) return mine;
