@@ -7,14 +7,15 @@ import * as Audio from '../audio/index.js';
 import { isOn } from '../../../services/switches.js';
 import { hasTrait } from '../core/rules.js';
 import { getSettings } from '../../../audio/audio.js';
+import { applySound } from './soundPrefs.js';
 
 const deployFx = (cost) => (cost < 150 ? 'deploy_s' : cost < 400 ? 'deploy_m' : 'deploy_l');
 
 export function createBattleSound(stage, me = 0) {
   const set = getSettings();
-  const musicOn = set.bgmEnabled !== false;
+  let musicOn = set.bgmEnabled !== false;
   Audio.init();
-  Audio.setMuted(set.sfxEnabled === false);
+  Audio.setMuted(false); applySound();   // 효과음 · 배경음 따로 켜고 끄기 + 크기 (soundPrefs.js · 대표님 11/11)
   let cur = null;   // 지금 곡 (일시정지 뒤 다시 틀기)
   const song = (id, rate) => { cur = id; if (musicOn) Audio.bgm(id, { rate }); };
   const timers = [];   // 나간 뒤에 소리가 나지 않게 모아 두었다가 지운다 (코드 검토 6)
@@ -101,8 +102,12 @@ export function createBattleSound(stage, me = 0) {
     /** 일시정지 · 앱 내림 : 곡까지 멈춤, 풀면 다시 (코드 검토 12) */
     pause(on) {
       if (on) Audio.setMuted(true);
-      else { Audio.setMuted(set.sfxEnabled === false); if (musicOn) { if (cur) Audio.bgm(cur); else Audio.worldBgm(stage.w); } }
+      else { Audio.setMuted(false); applySound(); if (musicOn) { if (cur) Audio.bgm(cur); else Audio.worldBgm(stage.w); } }
     },
+    /** 게임 중 배경음 켜고 끄기 (HUD 소리 단추) */
+    setMusic(on) { musicOn = !!on; applySound(); if (musicOn) { if (cur) Audio.bgm(cur); else Audio.worldBgm(stage.w); } else Audio.stopBgm(); },
+    /** 효과음 · 크기 바꾼 뒤 */
+    refresh() { applySound(); },
     destroy() { for (const t of timers) clearTimeout(t); Audio.stopBgm(); },
   };
 }

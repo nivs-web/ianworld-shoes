@@ -90,6 +90,8 @@ export async function startBattle(ctx, opts) {
         try { opts.save = opts.onSave?.({ cons: { ...opts.save.cons, [useCons]: have - 1 } }) || opts.save; } catch { /* */ }
       }
     },
+    music(on) { sound.setMusic(on); },
+    soundRefresh() { sound.refresh(); },
     pause() { if (ui.done || ui.intro || net) return; ui.paused = !ui.paused; sound.pause(ui.paused); if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
     speed() { if (net) return; ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
     auto() { if (canAuto) ui.auto = !ui.auto; },
@@ -106,7 +108,7 @@ export async function startBattle(ctx, opts) {
     { g: 1, at: 'deck', text: '용 버튼을 눌러서 꼬물이를 내보내요!', done: () => S.players[me].st.spawned >= 2 },
     { g: 1, at: 'breath', text: '브레스가 꽉 찼어요! 눌러서 좀비를 태워요!', when: () => S.players[me].breathT >= S.players[me].breathCharge, done: () => S.players[me].st.breath > 0 },
     { g: 2, at: 'wallet', text: '화로를 올리면 불씨가 더 빨리 모여요!', when: () => S.players[me].money >= S.D.wallet[0].cost, done: () => S.players[me].wl > 0 },
-    { g: 7, at: 'skill', text: '새 스킬 «운석»! 좀비가 몰려오면 눌러요.', when: () => S.t > 8, done: () => S.players[me].st.skill > 0 },
+    { g: 7, at: 'skill', text: '새 스킬 «운석»! 좀비가 몰려오면 눌러요 — 맨 앞 좀비 무리에 운석이 쾅! (한 판 2번)', when: () => S.t > 8, done: () => S.players[me].st.skill > 0 },
   ].filter((q) => q.g === stage.g && !(opts.save?.cleared >= stage.g));
   let tipT = 0;
   function tips(dt) {

@@ -13,8 +13,12 @@ import { Assets, Container, Sprite } from 'pixi.js';
 const BASE = '/assets/iandragon_game/ai/';
 
 /** 캐릭터 하나의 부품 텍스처 + rig 를 받는다 */
+/** 부품 자리 보정 (2026-11-11 대표님 «리더 용 날개가 등이 아니라 뒤통수에 붙은 것 같다») — { 캐릭터: { 부품: [x, y] } } */
+const RIG_FIX = { novart: { wing: [-10, -47] } };
+
 export async function loadRig(id) {
   const rig = await (await fetch(`${BASE}${id}/rig.json`)).json();
+  for (const [n, pos] of Object.entries(RIG_FIX[id] || {})) { const q = rig.parts.find((x) => x.n === n); if (q) q.p = pos; }   // 자리 보정 (R2 1년 캐시라 rig.json 대신 여기서)
   const names = new Set(rig.parts.flatMap((p) => [p.n, p.blink, p.breath].filter(Boolean)));
   const tex = {};
   await Promise.all([...names].map(async (n) => { tex[n] = await Assets.load(`${BASE}${id}/${n}.png`); tex[n].source.scaleMode = 'nearest'; }));

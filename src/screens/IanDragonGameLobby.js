@@ -42,7 +42,7 @@ function showHow() {
   Sfx.play('sfx_menu_select');
   const box = el('div.dialog.idg-how', { onclick: (e) => e.stopPropagation() }, [
     el('div.idg-how-title', S.idgLobbyHow),
-    el('p', S.idgLobbyHowText),
+    el('ol.idg-how-steps', null, S.idgLobbyHowSteps.map((t) => el('li', t))),
     button('알겠어요', () => close(), { primary: true }),
     button('음악 출처', () => { close(); showCredits(); }),
   ]);
@@ -77,7 +77,7 @@ function showStages(onPick) {
     name.textContent = `월드 ${w} · ${WORLD_NAMES[w - 1]}`;
     /* 난이도 (운영자 스위치 · 어려움은 이 월드를 다 깨야 열림) */
     const cur = G.idg().diff, hOk = hardOpen(w * 10, g);
-    diffRow.replaceChildren(...(diffOn ? Object.entries(DIFF).map(([k, d]) => el('button.idg-diff-btn' + (cur === k ? '.on' : '') + '.' + k, { type: 'button', disabled: k === 'hard' && !hOk, title: k === 'hard' && !hOk ? '이 월드를 다 깨면 열려요' : '', onclick: () => { G.saveIdg({ diff: k }); draw(); } }, [d.name + (k === 'hard' && !hOk ? ' 🔒' : '')])) : []));
+    diffRow.replaceChildren(...(diffOn ? Object.entries(DIFF).map(([k, d]) => el('button.idg-diff-btn' + (cur === k ? '.on' : '') + '.' + k, { type: 'button', disabled: k === 'hard' && !hOk, title: k === 'hard' && !hOk ? '이 월드를 다 깨면 열려요' : '', onclick: () => { G.saveIdg({ diff: k }); draw(); } }, [d.name, ...(k === 'hard' && !hOk ? [el('span.idg-lock', '🔒')] : [])])) : []));
     const hard = diffOn && cur === 'hard' && hOk;
     grid.replaceChildren(...Array.from({ length: 10 }, (_, k) => {
       const no = (w - 1) * 10 + k + 1, st = Number((hard ? g.hardStars : g.stars)[no - 1]) || 0, locked = no > open;

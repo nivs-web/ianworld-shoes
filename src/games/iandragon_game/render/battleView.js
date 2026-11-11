@@ -61,6 +61,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   spots.safe = [260, FIELD - 260];
   let camX = 0, viewW = view.w;
   const fun = funTex ? createFun(funTex, { back: funBack, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && isOn('zdFunSound', id) && Audio.fun(FUN_SOUND[id]), every: nums('zdFunEvery') }) : { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
+  if (import.meta.env.DEV) window.__idgFun = fun;   // 미리보기 점검용 (__idgFun.trigger('owl'))
   fun.setOff(offKeys('zdFun'));   // 운영자가 끈 재미 요소 (관리자 화면 · services/switches.js)
   Audio.setFun(offKeys('zdFunSound').length < 17);   // 재미 소리 — 하나라도 켜져 있으면 소리 장치를 연다(켜진 것만 난다)
   const amb = createAmbient(funBack, world, () => camX, () => viewW);   // 월드 분위기 입자 (불티 · 눈 · 구름 · 불꽃)
@@ -79,7 +80,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const ldRig = await wearRig(rigs[leader] || null, leader, look);
   const lead = ldRig ? createRigged(ldRig, 1, 1) : null;
   const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(await wearRig(rigs[foeLeader], foeLeader, lookR), 1, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
-  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
+  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 16, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
   /* 착용 부품 (보조 2차 · 대표님 «상점 아이콘과 용이 쓴 모습은 달라야») — ai/meta/wear/ 옆모습 부품을 head · torso 부품에 붙인다.
      좌표 = ai/meta/wear.json (tools/idg-wear-fit.mjs 가 대장 용마다 계산) · 예시 tools/idg-gallery/viewer.js attachWear */
@@ -112,7 +113,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   }
   const flags = [], follow = [];   // follow = 몸통 뒤 층 장식이 torso 를 따라가게 [상자, torso]
   await Promise.all([dress(lead, look, nest, leader), dress(lead2, lookR, pvp ? tower : null, foeLeader)]);
-  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
+  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 16, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
   if (lead2) lead2.baseY = lead2.root.y;
 
   const white = new ColorMatrixFilter();

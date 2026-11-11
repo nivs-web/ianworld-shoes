@@ -13,6 +13,8 @@ import { Application, TextureSource } from 'pixi.js';
 export const BASE_W = 960;
 export const BASE_H = 540;
 export const MAX_W = 1170;
+/** 캔버스 촘촘함 상한 (논리 1칸 = 물리 픽셀 최대 2.5개) */
+export const RES_MAX = 2.5;
 
 TextureSource.defaultOptions.scaleMode = 'nearest';
 
@@ -20,16 +22,15 @@ TextureSource.defaultOptions.scaleMode = 'nearest';
 export function fitView(cssW, cssH, dpr) {
   const pw = Math.max(1, Math.floor(cssW * dpr));
   const ph = Math.max(1, Math.floor(cssH * dpr));
-  /*
-   * 배율 : PC 같은 저밀도 화면은 **정수배**(칸 크기가 고르게). 폰 같은 고밀도 화면(dpr 2 이상)에서
-   * 한 칸이 물리 픽셀 1.25개 이상이면 **화면을 꽉 채우는 배율** — 정수만 고집하면 위아래가 25% 넘게 비는데,
-   * 이 밀도에서는 칸 크기 1픽셀 차이가 눈에 보이지 않는다 (번짐은 여전히 없음 — nearest).
-   */
   const kFit = Math.min(pw / BASE_W, ph / BASE_H);
-  const kInt = Math.floor(kFit);
-  const k = dpr >= 2 && kFit >= 1.25 ? kFit : kInt >= 1 ? kInt : kFit;
+  /*
+   * 2026-11-11 대표님 «PC 에서 배경이 흐리다» : 예전엔 960×540 으로 그린 캔버스를 그대로 늘려서 제미나이 고해상도 그림이 뭉개졌다.
+   * 이제 화면을 꽉 채우는 배율(kFit)로 맞추고, 캔버스 자체를 그 배율만큼 촘촘하게 그린다(res · 상한 RES_MAX — 태블릿 · 고밀도 폰 부담).
+   */
+  const k = kFit;
   const w = Math.max(BASE_W, Math.min(MAX_W, Math.floor(pw / k)));
-  return { w, h: BASE_H, k, cssW: (w * k) / dpr, cssH: (BASE_H * k) / dpr };
+  const res = Math.max(1, Math.min(RES_MAX, Math.round(k * 4) / 4));
+  return { w, h: BASE_H, k, res, cssW: (w * k) / dpr, cssH: (BASE_H * k) / dpr };
 }
 
 /**
@@ -42,7 +43,7 @@ export async function createApp(host) {
   await app.init({
     width: first.w,
     height: first.h,
-    resolution: 1,
+    resolution: first.res,
     autoDensity: false,
     antialias: false,
     roundPixels: true,
@@ -58,10 +59,11 @@ export async function createApp(host) {
   const listeners = [];
   const apply = () => {
     const f = fitView(host.clientWidth || innerWidth, host.clientHeight || innerHeight, devicePixelRatio || 1);
-    if (f.w !== view.w || f.h !== view.h) {
+    const sized = f.w !== view.w || f.h !== view.h;
+    if (sized || f.res !== app.renderer.resolution) {
       view.w = f.w; view.h = f.h;
-      app.renderer.resize(f.w, f.h);
-      for (const fn of listeners) fn(view);
+      app.renderer.resize(f.w, f.h, f.res);
+      if (sized) for (const fn of listeners) fn(view);
     }
     cv.style.width = `${f.cssW}px`;
     cv.style.height = `${f.cssH}px`;

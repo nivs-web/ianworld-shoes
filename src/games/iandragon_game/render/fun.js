@@ -23,15 +23,15 @@ export async function loadFun() {
 }
 
 import { sp, rnd } from './funKit.js';
-import { bike, wisps, lightning, bats, broom, moonFace, star, spider } from './funSky.js';
-import { hand, boo, cat, owl, pumpkin, cross, windowDance, mole } from './funGround.js';
+import { bike, wisps, lightning, bats, swarm, broom, moonFace, star, spider } from './funSky.js';
+import { hand, boo, cat, owl, owlLids, pumpkin, cross, windowDance, mole } from './funGround.js';
 
 /** [이름, 무게(자주 나오는 정도), 쉬는 시간(초), 큰 볼거리] */
 const DEFS = [
-  ['bike', bike, 3, 40, true, ['moon']], ['wisps', wisps, 5, 8, false, ['wisps']], ['lightning', lightning, 2, 30, true, ['sky']], ['bats', bats, 5, 7, false, ['moon']],
+  ['bike', bike, 3, 40, true, ['moon']], ['wisps', wisps, 5, 8, false, ['wisps']], ['lightning', lightning, 2, 30, true, ['sky']], ['bats', bats, 5, 7, false, ['moon']], ['swarm', swarm, 3, 22, true, ['sky']],
   ['hand', hand, 4, 10, false, ['graves', 'ground']], ['witch', broom('witch', [0xfff3a0, 0xc9a7ff, 0xffffff]), 2, 35, true, ['sky']],
   ['skelBroom', broom('skel_broom', [0xd8d2c0, 0x9a9488, 0xc9a7ff]), 2, 35, true, ['sky']], ['moon', moonFace, 3, 25, false, ['moon', 'moonFace']],
-  ['boo', boo, 4, 9, false, ['graves', 'ground']], ['star', star, 6, 5, false, []], ['cat', cat, 2, 30, false, ['fence']], ['owl', owl, 3, 15, false, ['owl']],
+  ['boo', boo, 4, 9, false, ['graves', 'ground']], ['star', star, 6, 5, false, []], ['cat', cat, 2, 30, false, ['fence']], ['owl', owl, 4, 12, false, ['owl']],
   ['pumpkin', pumpkin, 3, 12, false, ['pumpkin']], ['cross', cross, 3, 28, false, ['ground', 'safe']], ['spider', spider, 2, 25, false, []],
   ['window', windowDance, 2, 30, false, ['window']], ['mole', mole, 3, 20, false, ['dirtY', 'safe']],
 ].map(([id, make, w, cd, big, needs]) => ({ id, make, w, cd, big, needs }));
@@ -41,7 +41,7 @@ const DEFS = [
  * getCam() : 지금 카메라 x · viewW() : 화면 너비(월드 칸)
  */
 /** 재미 요소 → 겜팀장 재미 소리 id (audio fun() · 기본 꺼짐 — 대표님이 켜실지 고르신다) */
-export const FUN_SOUND = { bike: 'bike_bell', wisps: 'firefly', lightning: 'thunder', bats: 'bat', hand: 'grave_hand', witch: 'witch', skelBroom: 'skull_chatter', moon: 'moon_yawn', boo: 'ghost_pop', cat: 'ghost_cat', owl: 'owl', pumpkin: 'cauldron', cross: 'bones', spider: 'chain', window: 'wind', mole: 'grave_creak' };
+export const FUN_SOUND = { bike: 'bike_bell', wisps: 'firefly', lightning: 'thunder', bats: 'bat', swarm: 'bat', hand: 'grave_hand', witch: 'witch', skelBroom: 'skull_chatter', moon: 'moon_yawn', boo: 'ghost_pop', cat: 'ghost_cat', owl: 'owl', pumpkin: 'cauldron', cross: 'bones', spider: 'chain', window: 'wind', mole: 'grave_creak' };
 
 /** every = { all: 다음 요소까지 간격(초), [요소 id]: 다시 나오기까지(초) } — 운영자 «등장 빈도» (services/switches.js NUMBERS) */
 export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, onStart, every = {} }) {
@@ -52,6 +52,12 @@ export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, o
   /** 지금 화면 안 + 안전 범위 안에서 x 하나 (여백 m) */
   const safeX = (m) => { const cam = getCam(), a = Math.max(cam + m, S.safe ? S.safe[0] : -1e9), b = Math.min(cam + viewW() - m, S.safe ? S.safe[1] : 1e9); return a < b ? rnd(a, b) : (a + b) / 2; };
   const E = { tex, back, front, S, cam: getCam, viewW, owl: owlS, pump: pumpS, inSafe, safeX };
+  /* 부엉이 평소 깜빡임 (2.5~6초마다 0.15초 · 부엉이 요소가 도는 동안은 그쪽이 눈꺼풀을 쥔다) */
+  E.owlLids = owlS ? owlLids(E) : null;
+  /* 같은 땅 자리에 두 요소가 겹치지 않게 (대표님 «호박이 빛날 때 좀비 손이 겹쳐 나왔다» · 11/11) — 요소는 { zone: x } 로 자리를 잡는다 */
+  E.busy = (x, r = 100) => active.some((a) => a.ev.zone != null && Math.abs(a.ev.zone - x) < r) || (S.pumpkin && Math.abs(S.pumpkin.x - x) < 70);
+  E.freeX = (m) => { for (let i = 0; i < 10; i++) { const x = safeX(m); if (!E.busy(x)) return x; } return null; };
+  let blinkIn = 2 + Math.random() * 3;
   /** 이 월드 자리표로 나올 수 있는 요소만 (자리 규칙) */
   const usable = DEFS.filter((d) => d.needs.every((k) => S[k] != null && S[k] !== false));
   const active = [], rest = {};
@@ -62,7 +68,7 @@ export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, o
   function choose() {
     if (active.length >= 3) return;
     const bigOn = active.some((a) => a.d.big);
-    const pool = usable.filter((d) => !off.has(d.id) && !(rest[d.id] > 0) && d.id !== last && !active.some((a) => a.d.id === d.id) && !(d.big && bigOn));
+    const pool = usable.filter((d) => !off.has(d.id) && !(rest[d.id] > 0) && d.id !== last && !active.some((a) => a.d.id === d.id) && !(d.big && bigOn) && !(d.id === 'pumpkin' && active.some((a) => a.ev.zone != null && Math.abs(a.ev.zone - S.pumpkin.x) < 100)));
     if (!pool.length) return;
     let r = Math.random() * pool.reduce((s, d) => s + d.w, 0);
     for (const d of pool) { if ((r -= d.w) <= 0) { start(d); return; } }
@@ -74,6 +80,7 @@ export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, o
     update(dt) {
       hush = Math.max(0, hush - dt);
       for (const k in rest) rest[k] -= dt;
+      if (E.owlLids && !active.some((a) => a.d.id === 'owl')) { blinkIn -= dt; E.owlLids.set(blinkIn < 0 ? 1 : 0); if (blinkIn < -0.15) blinkIn = 2.5 + Math.random() * 3.5; }
       if ((next -= dt) <= 0) { next = gap * (0.8 + Math.random() * 0.4); if (!hush) choose(); }   // 기본 1.25초 → 1.0~1.5초
       for (let i = active.length - 1; i >= 0; i--) {
         const a = active[i]; a.t += dt;

@@ -322,8 +322,8 @@ html.idg-wide body { width: 100%; }
 
 /* 빠른 말 (멀티) */
 .idg-talk { position: absolute; left: 50%; top: 88px; transform: translateX(-50%); padding: 4px 14px; border-radius: 14px; background: #fff; color: #1a1033; font: 700 13px 'Neo둥근모', monospace; display: none; pointer-events: none; box-shadow: 0 2px 0 #0006; }
-.idg-talk.on { display: block; animation: idgPop .25s ease-out; } .idg-talk.mine { background: #ffe9b0; }
-@keyframes idgPop { from { transform: translateX(-50%) scale(.6); } to { transform: translateX(-50%) scale(1); } }
+.idg-talk.on { display: block; animation: idgTalkPop .25s ease-out; } .idg-talk.mine { background: #ffe9b0; }
+@keyframes idgTalkPop { from { transform: translateX(-50%) scale(.6); } to { transform: translateX(-50%) scale(1); } }   /* 이름이 부화 카드 idgPop 과 겹쳐 카드가 옆으로 밀렸다 (11/11 고침) */
 .idg-talk-drawer { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 6px; pointer-events: auto; }
 .idg-talk-open { min-width: 40px; min-height: 40px; font-size: 18px; }
 .idg-talk-list { display: none; flex-direction: column; gap: 4px; } .idg-talk-list.on { display: flex; }
@@ -334,3 +334,97 @@ html.idg-wide body { width: 100%; }
 .idg-multi-stage { display: flex; gap: 6px; justify-content: center; align-items: center; color: #ffe9b0; font: 700 14px 'Neo둥근모', monospace; }
 .idg-multi-stage .pbtn { min-width: 44px; min-height: 36px; padding: 0 8px; }
 .idg-intro-z .idg-attr { width: 26px; height: 26px; align-self: center; image-rendering: pixelated; }
+
+/* ════ 대표님 검토 반영 (2026-11-11 오후) — 정렬 · 크기 · 판 그림 ════ */
+/* ── 전투 위 띠 : 글씨 키움 · 일시정지 = 둥근 판 정가운데 큰 Ⅱ · 소리 단추 ── */
+.idg-title { font-size: 15px; max-width: 34%; }
+.idg-time { font-size: 14px; }
+.idg-money { font-size: 16px; padding: 4px 12px; } .idg-ico-ember { width: 20px; height: 20px; }
+.idg-hp { font-size: 15px; }
+.idg-hud .idg-pause, .idg-hud .idg-snd { width: 46px; height: 46px; min-width: 46px; padding: 0; border: 0; border-image: none; border-radius: 50%; flex: none;
+  background: url(/assets/iandragon_game/ui/hud_btn_round.png) center / contain no-repeat; display: grid; place-items: center; }
+.idg-hud .idg-pause { background: url(/assets/iandragon_game/ui/hud_pause.png) 50% 47% / 44% no-repeat, url(/assets/iandragon_game/ui/hud_btn_round.png) center / contain no-repeat; }   /* 판 안쪽 보라 원의 중심 = 그림 48% · 47% */
+.idg-hud .idg-pause:active { background: url(/assets/iandragon_game/ui/hud_pause.png) 50% 50% / 42% no-repeat, url(/assets/iandragon_game/ui/hud_btn_round_pressed.png) center / contain no-repeat; }
+.idg-hud .idg-snd { width: 40px; height: 40px; min-width: 40px; }
+.idg-hud .idg-snd .ico { width: 62%; height: 62%; object-fit: contain; image-rendering: pixelated; margin-top: -2px; }
+.idg-hud .idg-snd .ico-t { font-size: 10px; line-height: 1; margin-top: -2px; }
+.idg-hud .idg-snd.off { filter: grayscale(.7) brightness(.75); }
+.idg-hud .idg-snd.off .ico-t { text-decoration: line-through; }
+/* ── 아래 띠 : 세 무리(화로 · 덱 · 스킬/브레스)를 세로 가운데로 맞춤 ── */
+.idg-bot { align-items: center; gap: 8px; }
+.idg-hud .idg-wallet { width: 66px; height: 58px; border: 0; border-image: none; background: url(/assets/iandragon_game/ai/hud/slot.webp) center / 100% 100% no-repeat; gap: 1px; padding: 4px 0 6px; line-height: 1; }   /* 네모 돌 판 모서리의 검은 사각 그림자 → 덱 칸과 같은 판 */
+.idg-hud .idg-wallet.can { background-image: url(/assets/iandragon_game/ai/hud/slot_ready.webp); box-shadow: none; animation: idgGlowF 1s ease-in-out infinite alternate; }
+@keyframes idgGlowF { from { filter: drop-shadow(0 0 2px #ff9a2e); } to { filter: drop-shadow(0 0 8px #ff9a2e); } }
+.idg-hud .idg-wallet b { font-size: 14px; color: #ffe9b0; } .idg-hud .idg-wallet span { font-size: 12px; color: #FFD27a; }
+.idg-hud .idg-unit { height: 58px; }
+.idg-deck .idg-unit { flex: 0 1 56px; }
+.idg-hud .idg-unit img { position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: 76%; height: 33px; margin: 0; object-fit: contain; object-position: 50% 40%; }   /* 얼굴이 아래로 쏠려 있던 것 → 판 안쪽 위 가운데 */
+.idg-hud .idg-unit .cost { bottom: 5px; font-size: 12px; }
+.idg-right { position: static; flex-direction: row; align-items: center; gap: 6px; top: auto; right: auto; }
+.idg-hud .idg-skill, .idg-hud .idg-rage { position: relative; width: 58px; height: 58px; padding: 0; border: 0; border-image: none; border-radius: 50%; flex: none;
+  background: url(/assets/iandragon_game/ui/hud_btn_round.png) center / contain no-repeat; display: grid; place-items: center; opacity: 1; }
+.idg-hud .idg-skill::after { content: none; }
+.idg-hud .idg-skill .ico { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; margin-top: -10px; }
+.idg-hud .idg-skill .ico-t { font-size: 14px; margin-top: -10px; color: #ffd84a; }
+.idg-hud .idg-skill .nm { position: absolute; left: 0; right: 0; bottom: 9px; font-size: 10px; color: #ffe9b0; text-align: center; line-height: 1; }
+.idg-hud .idg-skill .n { position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; border: 2px solid #ffe9b0; background: #c2262e; color: #fff; font: 700 11px/16px 'Neo둥근모', monospace; font-style: normal; text-align: center; }
+.idg-hud .idg-skill .cd { position: absolute; inset: 6px; border-radius: 50%; background: conic-gradient(rgba(0, 0, 0, .6) calc(var(--p, 0) * 360deg), transparent 0); pointer-events: none; }
+.idg-hud .idg-skill:disabled { opacity: 1; cursor: default; }
+.idg-hud .idg-skill.used { filter: grayscale(1) brightness(.6); } .idg-hud .idg-skill.used .n { background: #555; }
+.idg-hud .idg-rage { display: none; color: #ffe08a; font-size: 11px; } .idg-hud .idg-rage.on { display: grid; animation: idgBreathPulse .6s ease-in-out infinite; }
+/* 브레스(필살기) : 크게 · 꽉 차면 맥박처럼 커졌다 작아지며 불빛 테 (대표님 «필살기 단추인데 임팩트가 없다») */
+.idg-hud .idg-breath { width: 72px; height: 72px; flex: none; transition: transform .15s; }
+.idg-hud .idg-breath b { width: 44px; height: 44px; }
+.idg-hud .idg-breath.can { animation: idgBreathPulse .9s ease-in-out infinite; box-shadow: 0 0 0 3px #ffd84a, 0 0 16px 6px rgba(255, 122, 26, .85); }
+@keyframes idgBreathPulse { 50% { transform: scale(1.09); filter: brightness(1.25) drop-shadow(0 0 10px #ff9a2e); } }
+/* 안내 말풍선 : 아래 띠 위로 · 화면 밖으로 잘리지 않게 */
+.idg-tip { max-width: calc(100% - 24px); text-align: center; line-height: 1.35; font-size: 15px; z-index: 2; }
+.idg-tip[data-at="deck"] { bottom: 100px; } .idg-tip[data-at="breath"] { right: 8px; bottom: 100px; } .idg-tip[data-at="wallet"] { left: 8px; bottom: 100px; }
+.idg-tip[data-at="skill"] { top: auto; right: 70px; bottom: 100px; }
+@media (max-height: 360px) { .idg-hud .idg-unit, .idg-hud .idg-wallet { height: 50px; } .idg-hud .idg-unit img { height: 28px; } .idg-hud .idg-skill, .idg-hud .idg-rage { width: 50px; height: 50px; } .idg-hud .idg-breath { width: 62px; height: 62px; } .idg-tip[data-at] { bottom: 86px; } }
+
+/* ── 결과 · 시작 · 일시정지 카드 : 호박 모서리가 안 잘리는 판(dialog9) · 버튼은 돌 판 / 불꽃 판 (노란 껍데기 없앰) ── */
+.idg-card { min-width: 300px; max-width: min(460px, 92vw); border-width: 34px 32px; border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 fill / 34px 32px stretch; padding: 0 6px 2px; }
+.idg-card h2 { margin: 0 0 6px; font-size: 22px; line-height: 1.2; text-align: center; text-shadow: 0 2px 0 #1a0c38; }
+.idg-stars { font-size: 30px; letter-spacing: 2px; line-height: 1; margin: 0 0 6px; }
+.idg-row { gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.idg-hud .idg-row .idg-btn { min-height: 50px; padding: 0 10px; border-style: solid; border-color: transparent; border-width: 10px 16px; border-image: url(/assets/iandragon_game/ai/lobby/btn_menu.webp) 58 80 fill / 10px 16px stretch;
+  background: none; color: #ffe9b0; font: 700 15px 'Neo둥근모', monospace; text-shadow: 0 2px 0 #1a0c38, 0 0 6px #000; line-height: 1; }
+.idg-hud .idg-row .idg-btn.main { border-width: 12px 28px; border-image: url(/assets/iandragon_game/ai/lobby/btn_start.webp) 70 150 fill / 12px 28px stretch; color: #fff; font-size: 17px; font-weight: 900; text-shadow: 0 2px 0 #7a1c00, 0 0 8px #ff8a2a; }
+.idg-hud .idg-row .idg-btn:active { filter: brightness(.85); border-image-source: url(/assets/iandragon_game/ai/lobby/btn_menu.webp); }
+.idg-hud .idg-row .idg-btn.main:active { border-image-source: url(/assets/iandragon_game/ai/lobby/btn_start.webp); }
+.idg-hud .idg-cons { min-height: 36px; pointer-events: auto; }
+/* 일시정지 소리 설정 */
+.idg-sound { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 2px; }
+.idg-sound-row { display: grid; grid-template-columns: 54px 58px 1fr; gap: 8px; align-items: center; color: #ffe9b0; font: 700 14px 'Neo둥근모', monospace; text-align: left; }
+.idg-sound-on { pointer-events: auto; min-height: 34px; border-radius: 17px; border: 2px solid #9fffb0; background: #2f8a4a; color: #fff; font: 700 13px 'Neo둥근모', monospace; cursor: pointer; }
+.idg-sound-on.off { border-color: #8a7aa0; background: #4a3a5e; color: #c8bcd8; }
+.idg-sound-row input[type=range] { pointer-events: auto; width: 100%; min-width: 120px; accent-color: #ff9a2e; height: 28px; }
+
+/* ── 로비 메뉴 판 : 글씨 · 아이콘 크게 (대표님 «글씨가 너무 작다 · 꽉 차게») ── */
+.idg-menu { gap: 8px; }
+.idg-tile { min-height: 62px; gap: 6px; padding: 0 2px; border-width: 10px 12px; }
+.idg-tile img { width: 42px; height: 42px; }
+.idg-tile span { font-size: 15px; letter-spacing: -.3px; white-space: normal; line-height: 1.15; overflow: visible; text-overflow: clip; word-break: keep-all; }
+/* 오락실로 돌아가기 : 글씨 · 아이콘을 판 정가운데 */
+.pbtn.idg-back { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 60px; padding: 0 10px; line-height: 1; font-size: 16px; }
+.pbtn.idg-back::before { margin: 0; vertical-align: 0; flex: none; }
+/* 난이도 단추 : 글씨와 자물쇠를 한 줄 가운데 */
+.idg-diff-btn { display: inline-flex; align-items: center; justify-content: center; gap: 3px; padding: 0 10px; min-height: 40px; line-height: 1; }
+.idg-diff-btn .idg-lock { font-size: 12px; line-height: 1; display: block; }
+
+/* ── 로비 창 : 호박 모서리가 안 잘리는 판(dialog9 · 박쥐 없는 판) · 제목은 위에 고정 · 글씨는 보라 안쪽에서만 ── */
+.dialog[class*="idg-"] { border-width: 34px 32px; border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 fill / 34px 32px stretch; padding: 0 6px 4px; overflow-x: hidden; }
+.dialog[class*="idg-"] > .idg-how-title { position: sticky; top: 0; z-index: 5; margin: 0 auto 6px; flex: none; }
+.dialog[class*="idg-"] > .idg-how-title::before { content: ''; position: absolute; left: -80px; right: -80px; top: 0; bottom: 4px; background: #3f2a5a; z-index: -1; }
+/* 음악 출처 : 제목 · 안내는 고정, 곡 목록만 굴러감 */
+.idg-credits { display: flex; flex-direction: column; overflow: hidden; max-height: 86vh; }
+.idg-credits > * { flex: none; }
+.idg-credits > .idg-credits-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
+/* 하는 법 : 번호 붙은 짧은 줄 */
+.idg-how-steps { margin: 0 0 6px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; text-align: left; counter-reset: step; }
+.idg-how-steps li { counter-increment: step; display: grid; grid-template-columns: 24px 1fr; gap: 6px; align-items: start; font-size: 14px; line-height: 1.4; color: #e8dcff; }
+.idg-how-steps li::before { content: counter(step); width: 22px; height: 22px; border-radius: 50%; background: #ff8a2a; color: #fff; font: 700 13px/22px 'Neo둥근모', monospace; text-align: center; box-shadow: 0 2px 0 #7a1c00; }
+.idg-hud .idg-pause { background-size: 32%, contain; background-position: 50% 46%, center; }
+.idg-hud .idg-pause:active { background-size: 30%, contain; }
+.idg-hud:has(.idg-panel-over.on) .idg-tip { display: none; }   /* 카드가 떠 있으면 안내 말풍선은 숨김 (승리 카드 위에 겹쳤다) */

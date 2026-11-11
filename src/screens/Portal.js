@@ -60,8 +60,8 @@ const idgPreview = () => /[?&]game=iandragon_game(&|$)/.test(location.search);
  * (신발은 모은 켤레, 드래곤은 최고 점수).
  */
 const CARDS = [
-  /* 7번째 게임 좀비와 드래곤 — 맨 위 신작 자리 · 오락실 메인 게임 (2026-11-10 대표님). 아직 제작 중이라 `ready: false` = 배너 + «NEW» · SOON */
-  { id: 'iandragon_game', banner: '/assets/ui/banner_iandragon.webp', title: S.idgTitle, sub: () => S.idgSoonLine, screen: () => IanDragonGameLobby, ready: false },
+  /* 7번째 게임 좀비와 드래곤 — 맨 위 신작 자리 · 오락실 메인 게임 (2026-11-10 대표님). 11/11 대표님 «누구나 들어와서 게임할 수 있게» → 열림(PLAY) */
+  { id: 'iandragon_game', banner: '/assets/ui/banner_iandragon.webp', title: S.idgTitle, sub: (p) => S.idgCardLine(p.idg?.cleared | 0, [...(p.idg?.stars || '')].reduce((a, c) => a + (Number(c) || 0), 0)), screen: () => IanDragonGameLobby, ready: true },
   { id: 'find_shoes', banner: '/assets/ui/banner_find_shoes.webp', title: S.gameTitle, sub: (p) => S.totalShoesCount(p.shoesOwned), screen: () => Lobby, ready: true },
   { id: 'dragon_striker', banner: '/assets/ui/banner_dragon_striker.webp', title: S.dragonTitle, sub: (p) => S.dragonTotalCoins(p.dragonCoins || 0), screen: () => DragonLobby, ready: true },
   { id: 'catchball', banner: '/assets/ui/banner_catchball.webp', title: S.catchTitle, sub: (p) => S.catchBestLine(p.catchBestEasy | 0, Math.max(p.catchBestNormal | 0, p.catchBest | 0), p.catchBestHard | 0), screen: () => CatchGame, ready: true },
@@ -208,7 +208,7 @@ export default function Portal(nav) {
           ])
         ),
         /* 다음 자리 — 준비 중 (7번째 좀비와 드래곤이 맨 위에 들어왔다, 2026-11-10) */
-        el('div.gc-soon', null, ['8번째 게임 준비 중',el('span.dots', null, [el('i', '.'), el('i', '.'), el('i', '.')])]),
+        el('div.gc-soon', null, ['8번째 게임 준비 중']),   // 점점점 뺌 (11/11 대표님)
         el('div.spacer'),
         // 이미 홈 화면 앱으로 돌고 있으면 바로가기가 무의미하므로 감춘다
         !isStandalone() ? button(S.installShortcut, onInstall) : null,

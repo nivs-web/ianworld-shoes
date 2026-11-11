@@ -96,6 +96,35 @@ export function bats(E) {
   };
 }
 
+/**
+ * 5b 검은 박쥐 떼 (대표님 11/11 «박쥐만 날아다니니 검은 그림자 박쥐 떼가 떼거지로») — 30마리 안팎이 물결치며 하늘을 가로지른다.
+ * 그림 = 보조 도트 실루엣(batswarm_a/b)이 있으면 그것, 없으면 제미나이 박쥐(bat_up/down)를 새까맣게 물들여 쓴다.
+ */
+export function swarm(E) {
+  const cam = E.cam(), W = E.viewW(), dir = Math.random() < 0.5 ? 1 : -1, c = new Container(); E.back.addChild(c);
+  const A = E.tex.batswarm_a || E.tex.bat_up, B = E.tex.batswarm_b || E.tex.bat_down, black = !E.tex.batswarm_a;
+  const [sy0, sy1] = E.S.sky || [50, 200], yMid = rnd(sy0 + 20, sy1 - 10), n = 26 + Math.floor(Math.random() * 10);
+  const bs = Array.from({ length: n }, () => {
+    const s = c.addChild(sp(A, 0, 0)); if (black) s.tint = 0x0a0612;
+    const k = rnd(0.32, 0.6); s.scale.set(k * dir, k);
+    return { s, k, ox: rnd(-150, 40), oy: rnd(-34, 34), ph: rnd(0, 6), sp: rnd(7, 12), amp: rnd(4, 12) };
+  });
+  const T = 4.6;
+  return {
+    update(t) {
+      const lead = dir > 0 ? cam - 120 + (W + 400) * (t / T) : cam + W + 120 - (W + 400) * (t / T);
+      for (const b of bs) {
+        const wave = Math.sin(t * 2.2 + b.ox * 0.03) * 22;   // 떼 전체가 물결치듯 오르내림
+        b.s.position.set(lead + dir * b.ox + Math.sin(t * 3 + b.ph) * 8, yMid + b.oy + wave + Math.sin(t * 5 + b.ph) * b.amp);
+        b.s.texture = Math.floor(t * b.sp + b.ph) % 2 ? A : B;
+      }
+      c.alpha = env(t, T, 0.5, 0.6) * 0.92;
+      return t < T;
+    },
+    destroy() { c.destroy({ children: true }); },
+  };
+}
+
 /** 6 · 6b 빗자루 마녀 좀비 / 빗자루 해골 좀비 — 하늘을 가로지르며 가루를 뿌리고 가끔 비틀 */
 export function broom(texName, dustColor) {
   return (E) => {
@@ -120,14 +149,22 @@ export function broom(texName, dustColor) {
 /** 7 달님 표정 — 웃음 · 윙크 · 하품 */
 export function moonFace(E) {
   const { moon } = E.S, which = pick(['moon_smile', 'moon_wink', 'moon_yawn']);
-  const s = sp(E.tex[which], moon.x, moon.y); s.scale.set(moon.d / 247); s.alpha = 0; E.back.addChildAt(s, 0);   // 맨 뒤 — 자전거 · 박쥐가 달 앞을 지나가게
+  /*
+   * 대표님 «달 얼굴이 달과 딱 맞지 않고 떠 보인다 · 약간 투명해야 무섭다» (11/11)
+   *  - 곱하기(multiply)로 겹친다 → 크림색 얼굴판은 달 색에 녹아 사라지고 눈 · 입 · 그늘만 달 표면에 «비쳐» 보인다.
+   *  - 얼굴판 테두리(검은 원)는 달보다 조금 작은 원으로 잘라 낸다 → 자리가 몇 칸 어긋나도 테두리가 따로 떠 보이지 않는다.
+   */
+  const box = new Container(); E.back.addChildAt(box, 0);   // 맨 뒤 — 자전거 · 박쥐가 달 앞을 지나가게
+  const s = box.addChild(sp(E.tex[which], moon.x, moon.y)); s.scale.set(moon.d / 247); s.blendMode = 'multiply';
+  const mask = box.addChild(new Graphics().circle(moon.x, moon.y, moon.d * 0.46).fill(0xffffff)); s.mask = mask;
+  box.alpha = 0;
   return {
     update(t) {
-      s.alpha = env(t, 2.6, 0.35, 0.45) * 0.95;
+      box.alpha = env(t, 2.6, 0.35, 0.45) * 0.6;
       if (which === 'moon_yawn') s.scale.set(moon.d / 247 * (1 + 0.025 * Math.sin(clamp(t / 2.6) * Math.PI)));
       return t < 2.6;
     },
-    destroy() { s.destroy(); },
+    destroy() { box.destroy({ children: true }); },
   };
 }
 
@@ -153,16 +190,27 @@ export function star(E) {
 
 /** 14 거미 — 화면 위에서 실 타고 내려와 대롱대롱, 다시 올라간다 */
 export function spider(E) {
-  const cam = E.cam(), x = rnd(cam + 80, cam + E.viewW() - 80), low = rnd(90, 140);
+  const cam = E.cam(), x = rnd(cam + 80, cam + E.viewW() - 80), low = rnd(110, 160);
   const c = new Container(); E.back.addChild(c);
-  const thread = c.addChild(new Graphics()), s = c.addChild(sp(E.tex.spider, x, -20, 0.5, 0.45));
+  const thread = c.addChild(new Graphics()), s = c.addChild(sp(E.tex.spider, x, -30, 0.5, 0.45));
+  /*
+   * 대표님 «거미줄 위에 하얀 줄이 겹쳐 보인다 · 그냥 사라지지 말고 리액션을» (11/11)
+   *  - 줄 : spider.png 안에 이미 진보라 줄(위 18칸)이 있다 → 같은 색 · 같은 굵기로 그림 위 끝까지만 이어 그려 한 줄로 보이게.
+   *  - 움직임 : 툭 떨어짐(줄 탱) → 번지점프 두 번 → 흔들흔들 + 다리 꼼지락 → 줄 타고 쏙
+   */
   return {
     update(t) {
-      const yy = t < 1 ? -20 + (low + 20) * outBack(t) : t < 2.6 ? low + Math.sin((t - 1) * 5) * 4 : low - (low + 30) * smooth((t - 2.6) / 0.9);
-      const sway = t > 1 && t < 2.6 ? Math.sin((t - 1) * 3.5) * 10 : 0;
+      let yy, sway = 0;
+      if (t < 0.9) yy = -30 + (low + 30) * outBack(t / 0.9);
+      else if (t < 2.2) { const k = (t - 0.9) / 1.3; yy = low - 38 * Math.abs(Math.sin(k * Math.PI * 2)) * (1 - k * 0.4); }
+      else if (t < 3.4) { yy = low + Math.sin((t - 2.2) * 6) * 3; sway = Math.sin((t - 2.2) * 4) * 14; }
+      else yy = low - (low + 60) * smooth((t - 3.4) / 1.0);
+      const wig = t > 2.2 && t < 3.4 ? 1 + 0.08 * Math.sin(t * 30) : 1;
+      s.scale.set(wig, 2 - wig);
       s.position.set(x + sway, yy); s.rotation = -sway * 0.02;
-      thread.clear().moveTo(x, -40).lineTo(x + sway, yy - 12).stroke({ width: 1, color: 0xd8d0f0, alpha: 0.7 });
-      return t < 3.5;
+      const top = 18 * s.scale.y;   // 그림 속 줄의 위 끝 (기준점에서 위로 18칸)
+      thread.clear().moveTo(x, -40).lineTo(s.x + Math.sin(s.rotation) * top, s.y - Math.cos(s.rotation) * top).stroke({ width: 1, color: 0x620064 });
+      return t < 4.4;
     },
     destroy() { c.destroy({ children: true }); },
   };

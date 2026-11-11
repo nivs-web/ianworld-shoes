@@ -9,6 +9,7 @@
 import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
 import { ENEMIES } from '../data/enemies.js';
+import { soundPrefs, setSoundOn, setSoundVol } from './soundPrefs.js';
 const ATTR_KO = { ghost: '유령', giant: '거대', shadow: '그림자', crystal: '수정' };
 
 const AI = '/assets/iandragon_game/ai/';
@@ -22,12 +23,18 @@ const GIM = {
 const ZART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant' };
 const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
+const UI = '/assets/iandragon_game/ui/';
+/** 아이콘 그림 (없으면 글자 fallback) */
+const ico = (name, alt) => { const i = h('img', 'ico'); i.src = `${UI}${name}.png`; i.alt = alt; i.draggable = false; i.onerror = () => { i.replaceWith(h('span', 'ico-t', alt)); }; return i; };
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
 export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null, talk = null, isNet = false }, cb) {
   let useCons = null;   // 시작 카드에서 고른 편의품
   const root = h('div', 'idg-hud'); host.appendChild(root);
+  /* 대표님 «PC 에서 위 글씨 · 숫자가 너무 작다» (11/11) : HUD 전체를 화면 크기에 맞춰 키운다 (폰 가로 = 1 · PC 1280×800 ≈ 1.33 · 최대 1.7) */
+  const fitHud = () => { const z = Math.max(1, Math.min(1.7, innerWidth / 960, innerHeight / 540)); root.style.zoom = String(Math.round(z * 100) / 100); };
+  fitHud(); window.addEventListener('resize', fitHud);
   /* 위 */
   const top = h('div', 'idg-top'); root.appendChild(top);
   const pauseB = h('button', 'idg-btn idg-pause', '⏸'); pauseB.type = 'button'; pauseB.onclick = () => cb.pause();
@@ -35,7 +42,13 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const time = h('div', 'idg-time', '0:00');
   const speedB = h('button', 'idg-btn idg-speed', '×1'); speedB.type = 'button'; speedB.onclick = () => cb.speed();
   const money = h('div', 'idg-money'); const moneyN = h('span', 'n', '0'); money.append(h('i', 'idg-ico-ember'), moneyN);
-  top.append(pauseB, title, time, speedB, money);
+  /* 소리 단추 (대표님 «게임하면서 배경음 · 효과음을 켜고 끄는 단추») */
+  const musicB = h('button', 'idg-btn idg-snd'), sfxB = h('button', 'idg-btn idg-snd'); musicB.type = sfxB.type = 'button';
+  const drawSnd = () => { const sp = soundPrefs(); musicB.replaceChildren(ico(sp.music ? 'hud_music_on' : 'hud_music_off', '음악')); sfxB.replaceChildren(ico(sp.sfx ? 'hud_sfx_on' : 'hud_sfx_off', '효과')); musicB.classList.toggle('off', !sp.music); sfxB.classList.toggle('off', !sp.sfx); musicB.title = sp.music ? '배경음 끄기' : '배경음 켜기'; sfxB.title = sp.sfx ? '효과음 끄기' : '효과음 켜기'; };
+  musicB.onclick = () => { const on = !soundPrefs().music; setSoundOn('bgm', on); cb.music?.(on); drawSnd(); };
+  sfxB.onclick = () => { setSoundOn('sfx', !soundPrefs().sfx); cb.soundRefresh?.(); drawSnd(); };
+  drawSnd();
+  top.append(pauseB, title, time, speedB, money, musicB, sfxB);
   if (speedMax < 2 || isNet) speedB.style.visibility = 'hidden';   // 멀티는 1배속 고정
   if (isNet) { pauseB.textContent = '✕'; pauseB.title = '나가기'; pauseB.onclick = () => { if (window.confirm('정말 나갈까요? 친구는 혼자 계속해요.')) cb.exit(); }; }   // 멀티는 멈출 수 없다 (기획 5장)
   const autoB = h('button', 'idg-btn idg-speed idg-auto', '자동'); autoB.type = 'button'; autoB.onclick = () => cb.auto(); if (canAuto) speedB.after(autoB);
@@ -77,19 +90,40 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     return { b, cd, ready: true };
   });
   const right = h('div', 'idg-right');
-  const sk = skills.map((id, i) => { const b = h('button', 'idg-btn idg-skill', SKILLS[id]?.name || id); b.type = 'button'; b.onclick = () => cb.cmd({ type: 'skill', i }); right.appendChild(b); return b; });
+  /* 스킬 (대표님 «운석 단추가 뭘 하는지 모르겠고 자리가 이상하다 · 다 쓰면 투명해져 뒤 숫자가 비친다» · 11/11)
+   *  → 아래 띠 안 브레스 왼쪽 둥근 단추 : 아이콘 + 이름 + 남은 횟수 배지 + 재충전 시계. 길게 누르거나 올려 두면 설명. 다 쓰면 «다 씀» 회색. */
+  const sk = skills.map((id, i) => {
+    const def = SKILLS[id] || {}, b = h('button', 'idg-btn idg-skill'); b.type = 'button'; b.title = `${def.name || id} : ${def.line || ''} (한 판에 ${def.charges || 1}번)`;
+    const cdI = h('i', 'cd'), n = h('em', 'n', String(def.charges || 1));
+    b.append(ico(`hud_skill_${id}`, (def.name || id).slice(0, 2)), cdI, h('b', 'nm', def.name || id), n);
+    b.onclick = () => cb.cmd({ type: 'skill', i }); right.appendChild(b); b._cd = cdI; b._n = n; return b;
+  });
   const rage = h('button', 'idg-btn idg-rage', '으르렁!'); rage.type = 'button'; rage.onclick = () => cb.cmd({ type: 'rage' }); right.appendChild(rage);
   const breath = h('button', 'idg-btn idg-breath'); breath.type = 'button'; breath.onclick = () => cb.cmd({ type: 'breath' });
   const bFill = h('i', 'fill'); breath.append(bFill, h('b', null, '브레스'));
-  bot.append(wallet, deckBox, breath);
-  root.appendChild(right);   // 스킬 · 포효 = 오른쪽 위 하늘 자리 (전장을 가리지 않게)
+  bot.append(wallet, deckBox, right, breath);   // 스킬 · 포효 = 아래 띠 안 브레스 왼쪽 (예전 오른쪽 위는 좀비 성 체력 숫자를 가렸다)
+
+  /** 일시정지 판의 소리 설정 : 배경음 · 효과음 각각 켜기 + 크기 */
+  function soundBox() {
+    const wrap = h('div', 'idg-sound');
+    const row = (label, bus, key) => {
+      const r = h('div', 'idg-sound-row'), on = h('button', 'idg-sound-on'); on.type = 'button';
+      const rg = h('input'); rg.type = 'range'; rg.min = '0'; rg.max = '150'; rg.step = '5';
+      const draw = () => { const sp = soundPrefs(), isOn = bus === 'bgm' ? sp.music : sp.sfx; on.textContent = isOn ? '켜짐' : '꺼짐'; on.classList.toggle('off', !isOn); rg.value = String(Math.round(sp[key] * 100)); rg.disabled = !isOn; };
+      on.onclick = () => { const sp = soundPrefs(), v = !(bus === 'bgm' ? sp.music : sp.sfx); setSoundOn(bus, v); if (bus === 'bgm') cb.music?.(v); else cb.soundRefresh?.(); draw(); drawSnd(); };
+      rg.oninput = () => { setSoundVol(key, Number(rg.value) / 100); cb.soundRefresh?.(); };
+      draw(); r.append(h('span', 'lb', label), on, rg); return r;
+    };
+    wrap.append(row('배경음', 'bgm', 'm'), row('효과음', 'sfx', 's'));
+    return wrap;
+  }
 
   /* 일시정지 · 결과 판 */
   const panel = h('div', 'idg-panel-over'); root.appendChild(panel);
   function showPanel(kind, info = {}) {
     panel.replaceChildren();
     const box = h('div', 'idg-card');
-    if (kind === 'pause') box.append(h('h2', null, '일시정지'));
+    if (kind === 'pause') { box.append(h('h2', null, '일시정지')); box.appendChild(soundBox()); }
     else if (kind === 'intro' && stage.raid) {   /* 주간 습격 카드 */
       box.append(h('h2', null, '주간 좀비 습격'), h('p', 'small', `${stage.raid} · 20초마다 웨이브 · 점점 세져요 · 5웨이브마다 보스`), h('p', 'small', '모두 같은 조건 : 내 덱 6칸 · 모두 Lv20 · 연구소/보물 없음'));
     }
@@ -179,7 +213,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       });
       const bc = Math.min(1, p.breathT / p.breathCharge);
       bFill.style.setProperty('--p', String(bc)); breath.classList.toggle('can', bc >= 1);
-      sk.forEach((b, i) => { const s = p.skills[i]; b.disabled = !s || s.left <= 0 || s.cdT > 0; b.dataset.left = s ? s.left : 0; });
+      sk.forEach((b, i) => { const s = p.skills[i], left = s ? s.left : 0; b.disabled = !s || left <= 0 || s.cdT > 0; b._n.textContent = String(left); b.classList.toggle('used', left <= 0); b._cd.style.setProperty('--p', s && left > 0 && s.cdT > 0 ? String(s.cdT / s.def.cd) : '0'); });
       rage.classList.toggle('on', p.rage >= 100);
       const bs = S.boss;
       boss.classList.toggle('on', !!(bs && bs.alive));
@@ -205,6 +239,6 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     },
     showPanel,
     hidePanel() { panel.classList.remove('on'); panel.replaceChildren(); },
-    destroy() { window.removeEventListener('keydown', onKey); root.remove(); },
+    destroy() { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', fitHud); root.remove(); },
   };
 }
