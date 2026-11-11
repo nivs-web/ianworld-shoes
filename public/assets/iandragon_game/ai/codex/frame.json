@@ -1,0 +1,12 @@
+{
+ "file": "ai/codex/frame.webp",
+ "w": 1200,
+ "h": 676,
+ "slice": [
+  138,
+  143,
+  138,
+  142
+ ],
+ "note": "border-image slice [위, 오른, 아래, 왼] · 가장자리 금 징은 되풀이(round)로 늘리기 · 가운데 투명"
+}

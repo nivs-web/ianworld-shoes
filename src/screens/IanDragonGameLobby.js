@@ -111,12 +111,12 @@ function mini(key, label, fn, dot = false) {
   ]);
 }
 /** «더보기» 창 : 도감 · 게임하는 법 · 음향 설정 · 명예의 전당 · 음악 출처 */
-function showMore() {
+function showMore(go = {}) {
   const pick = (fn) => () => { close(); fn(); };
   const box = el('div.dialog.idg-more', { onclick: (e) => e.stopPropagation() }, [
     el('div.idg-how-title', '더보기'),
     el('div.idg-menu', null, [
-      tile('codex', '도감', pick(showCodex)),
+      tile('codex', '도감', pick(() => showCodex(go))),
       tile('how', '게임하는 법', pick(showHow)),
       tile('sound', '음향 설정', pick(showSound)),
       tile('hall', '명예의 전당', pick(showHall)),
@@ -210,7 +210,7 @@ export default function IanDragonGameLobby(nav) {
           mini('quest', '도전 과제', () => showQuests(() => nav.refresh?.()), claimable(g) > 0),
           mini('shop', '용 시장', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           mini('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
-          mini('more', '더보기', () => showMore()),
+          mini('more', '더보기', () => showMore({ stage: () => showStages((no) => start(no)), hatch: () => (G.idg().cleared >= OPEN_AT ? showHatch(() => nav.refresh?.()) : toast('알 부화장은 2-5를 깨면 열려요', 2200)) })),
         ]),
         el('div.spacer'),
         (() => { const b = backButton(S.backToPortal, () => nav.reset(Portal)); b.classList.add('idg-back'); return b; })(),   // 돌 판 옷 (보조 의견)

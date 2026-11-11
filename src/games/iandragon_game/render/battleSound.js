@@ -23,6 +23,7 @@ export function createBattleSound(stage, me = 0) {
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
   if (musicOn) Audio.worldBgm(stage.w);   // 겜팀장 월드 곡 (월드 1 «죽음의 무도» … 월드 5 «마법사의 제자»)
   const was = { spawned: 0, wl: 0, breath: 0, breathReady: false, skill: 0, rage: 0, kills: 0, base0: null, base1: null, boss: null, bossHalf: false, fever: false, over: false, hits: 0, units: new Set(), spawnT: [], waveCd: 0, lastWave: false, bossSt: null, barrier: new Map(), corpse: new Set(), weak: new Set(), st: new Map(), dead: new Set(), gap: {} };
+  was.touchAt = performance.now();   /* 판 시작 = 마지막으로 누른 때 (전장 수다 기준) */
   /** 같은 소리를 너무 자주 내지 않기 (초) */
   /* 좀비 소리 (대표님 11/11 «좀비가 등장 · 가끔 중얼 · 쓰러지는 소리» · 겜팀장 녹음 zombie_* · 운영자 스위치 zdOpt.zombieSfx) — 파일이 없으면 조용히 */
   const zOn = isOn('zdOpt', 'zombieSfx');
@@ -39,7 +40,8 @@ export function createBattleSound(stage, me = 0) {
         const ids = new Set(S.units.filter((u) => u.side === 0).map((u) => u.id));
         for (const u of S.units) if (u.side === 0 && !was.units.has(u.id)) {
           Audio.play(deployFx(u.def.cost));
-          /* 이름 외침은 카드를 «누르는 순간» pressSpawn 에서 (기획 MENU_CODEX 4장) · 예전 deploy/<용> 40% 대사는 끔 («싸우는 중 아무 때나 난다») */
+          /* 이름 외침은 카드를 «누르는 순간» pressSpawn 에서. 사람이 안 누르고 나온 용(자동 전투)은 그 용의 출격 대사 (대표님 «아예 끄지 말고 버튼을 안 누르면 나오게») */
+          if (performance.now() - (was.touchAt ?? -1e9) > 1500 && performance.now() - (was.chatAt ?? -1e9) > 4000) { was.chatAt = performance.now(); Audio.voice(`deploy/${u.def._art}`); }
           break;
         }
         was.units = ids;
@@ -59,6 +61,15 @@ export function createBattleSound(stage, me = 0) {
           if (!zSeen.has(u.id)) { zSeen.add(u.id); const k = zKind(u.def); once(k ? zPick(k, 2) : zPick('spawn', 4), 0.8, S.t); }
         }
         if (S.t >= zIdleAt) { zIdleAt = S.t + 3 + Math.random() * 4; if (alive) Audio.play(zPick('idle', 4)); }   // 좀비가 있으면 3~7초에 한 번 중얼
+      }
+      {   /* 전장 수다 : 아무 단추도 안 누른 지 6초 · 마지막 수다 뒤 8~12초 · 보스 등장 중이 아니면 → 내 용 하나가 출격 대사 한 줄 */
+        const now = performance.now();
+        if (now - (was.touchAt ?? now) > 6000 && now >= (was.chatNext ?? now + 8000) && !S.boss?.alive) {
+          const mine = S.units.filter((u) => u.alive && u.side === p.side && u.def._art);
+          if (mine.length) { const u = mine[Math.floor(Math.random() * mine.length)]; Audio.voice(`deploy/${u.def._art}`); was.chatAt = now; }
+          was.chatNext = now + 8000 + Math.random() * 4000;
+        }
+        if (was.chatNext == null) was.chatNext = now + 8000;
       }
       if (view.hits > was.hits) Audio.play(view.bigHit ? 'hit_heavy' : 'hit_light'); was.hits = view.hits;
       for (const side of [0, 1]) {
@@ -106,6 +117,8 @@ export function createBattleSound(stage, me = 0) {
     stars(n) { for (let i = 0; i < n; i++) later(() => Audio.play('star'), 300 + i * 350); },
     /** 일시정지 · 앱 내림 : 곡까지 멈춤, 풀면 다시 (코드 검토 12) */
     /** 용 카드를 누른 바로 그 순간 (대표님 «탁 누르는 순간 리액션 · 본인 이름을 꼭») : 나갈 수 있으면 «탁» + 그 용 이름 외침(name/<용> · 0.6초 간격), 못 나가면 «붑» */
+    /** 아무 단추나 눌렀다 (전장 수다 멈춤 기준) */
+    touch() { was.touchAt = performance.now(); },
     pressSpawn(ok, art) {
       if (!ok) { Audio.play('button_deny'); return; }
       Audio.play('button');

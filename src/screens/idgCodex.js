@@ -14,11 +14,14 @@ import { UNITS } from '../games/iandragon_game/data/units.js';
 import { ENEMIES } from '../games/iandragon_game/data/enemies.js';
 import { STAGES } from '../games/iandragon_game/data/stages/index.js';
 import { unlockedBefore, LAST_STAGE, DRAGON_ORDER } from '../games/iandragon_game/render/battleSetup.js';
-import { RAR_KO } from '../services/iandragonHatch.js';
+import { RAR_KO, RATES } from '../services/iandragonHatch.js';
 
 const AI = '/assets/iandragon_game/ai/';
 const ART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant' };
 const RAR = { story: '스토리', ...RAR_KO };
+const CX = `${AI}codex/`;
+/** 카드 테두리 (그림 담당 ai/codex/card_*) : 등급 → 테두리 */
+const TIER = { story: 'card_tier_story', rare: 'card_tier_rare', super: 'card_tier_hero', legend: 'card_tier_legend', zombie: 'card_base', boss: 'card_tier_legend' };
 const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 쇠 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤 성'];
 const SEEN_KEY = 'idgCodexSeen';
 const seen = (() => { try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]')); } catch { return new Set(); } })();
@@ -38,7 +41,8 @@ async function bodyCanvas(art) {
   return c;
 }
 
-export function showCodex() {
+/** go = { stage(), hatch() } — «바로 가기» (로비가 넘겨 줌) */
+export function showCodex(go = {}) {
   Sfx.play('sfx_menu_select');
   Audio.init();
   const g = G.idg();
@@ -50,11 +54,17 @@ export function showCodex() {
   const allZ = [...new Set(STAGES.filter((s) => s.g <= LAST_STAGE).flatMap((s) => s.lines.map((l) => l.id)))];
   const DR = Object.keys(UNITS).filter((id) => UNITS[id].rar !== 'story' || DRAGON_ORDER.includes(id));
   const haveD = (id) => story.includes(id) || (UNITS[id].rar !== 'story' && !!g.units[id]);
+  const joinAt = {};   /* 스토리 용 : 몇 판을 깨면 함께하나 */
+  for (let n = 1; n <= LAST_STAGE + 1; n++) for (const id of unlockedBefore(n).dragons) if (!joinAt[id]) joinAt[id] = n;
+  const stLabel = (n) => STAGES.find((x) => x.g === n - 1)?.id || '1-1';
+  const poolN = (r) => Object.keys(UNITS).filter((k) => UNITS[k].rar === r).length || 1;
+  const howGet = (id) => { const u = UNITS[id]; return u.rar === 'story' ? (joinAt[id] > 1 ? `${stLabel(joinAt[id])} 을 깨면 함께해요` : '처음부터 함께해요') : `알 부화장 · ${RAR[u.rar]} ${(((RATES[u.rar] || 0) / poolN(u.rar)) * 100).toFixed(1)}%`; };
+  const shortGet = (id) => { const u = UNITS[id]; return u.rar === 'story' ? (joinAt[id] > 1 ? `${stLabel(joinAt[id])} 깨면 합류` : '처음부터') : `부화장 ${(((RATES[u.rar] || 0) / poolN(u.rar)) * 100).toFixed(1)}%`; };
   const worldOpen = (w) => (w - 1) * 10 + 1 <= Math.min(LAST_STAGE, g.cleared + 1);
   const TABS = {
-    dragon: { name: '드래곤', ids: DR, have: haveD, data: (id) => UNITS[id], art: (id) => id, sub: (id) => RAR[UNITS[id].rar], cls: (id) => UNITS[id].rar, hint: (id) => (UNITS[id].rar === 'story' ? '모험에서 만나요' : '알 부화장에서 만나요') },
-    zombie: { name: '좀비', ids: allZ.filter((id) => !ENEMIES[id].boss), have: (id) => met.has(id), data: (id) => ENEMIES[id], art: (id) => ART[id] || id, sub: () => '좀비', cls: () => 'zombie', hint: (id) => `${firstAt[id] || '?'} 에서 만나요` },
-    boss: { name: '보스', ids: allZ.filter((id) => ENEMIES[id].boss), have: (id) => met.has(id), data: (id) => ENEMIES[id], art: (id) => ART[id] || id, sub: () => '보스', cls: () => 'legend', hint: (id) => `${firstAt[id] || '?'} 에서 만나요` },
+    dragon: { name: '드래곤', ids: DR, have: haveD, data: (id) => UNITS[id], art: (id) => id, sub: (id) => RAR[UNITS[id].rar], cls: (id) => UNITS[id].rar, hint: howGet, short: shortGet, go: (id) => (UNITS[id].rar === 'story' ? go.stage : go.hatch) },
+    zombie: { name: '좀비', ids: allZ.filter((id) => !ENEMIES[id].boss), have: (id) => met.has(id), data: (id) => ENEMIES[id], art: (id) => ART[id] || id, sub: () => '좀비', cls: () => 'zombie', hint: (id) => `${firstAt[id] || '?'} 에서 만나요`, short: (id) => `${firstAt[id] || '?'} 에서`, go: () => go.stage },
+    boss: { name: '보스', ids: allZ.filter((id) => ENEMIES[id].boss), have: (id) => met.has(id), data: (id) => ENEMIES[id], art: (id) => ART[id] || id, sub: () => '보스', cls: () => 'boss', hint: (id) => `${firstAt[id] || '?'} 에서 만나요`, short: (id) => `${firstAt[id] || '?'} 에서`, go: () => go.stage },
     world: { name: '배경', ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], have: worldOpen },
   };
   let tab = 'dragon';
@@ -63,7 +73,7 @@ export function showCodex() {
   const maxOf = (ids, data, k) => Math.max(1, ...ids.map((id) => Number(data(id)[k]) || 0));
 
   function draw() {
-    tabsEl.replaceChildren(...Object.entries(TABS).map(([k, t]) => el('button.idg-cx-tab' + (k === tab ? '.on' : ''), { type: 'button', onclick: () => { Sfx.play('sfx_menu_move'); tab = k; draw(); } }, [el('img', { src: `${AI}lobby/cx_tab_${k}.png`, alt: '', onerror: (e) => e.target.remove() }), el('span', t.name)])));
+    tabsEl.replaceChildren(...Object.entries(TABS).map(([k, t]) => el('button.idg-cx-tab' + (k === tab ? '.on' : ''), { type: 'button', onclick: () => { Sfx.play('sfx_menu_move'); tab = k; draw(); } }, [el('img', { src: `${CX}tab_${k}.png`, alt: '', onerror: (e) => e.target.remove() }), el('span', t.name)])));
     const T = TABS[tab], n = T.ids.filter(T.have).length, all = Object.values(TABS).reduce((a, t) => a + t.ids.length, 0), got = Object.values(TABS).reduce((a, t) => a + t.ids.filter(t.have).length, 0);
     prog.replaceChildren(el('span', `${T.name} ${n} / ${T.ids.length}`), el('i', null, [el('b', { style: `width:${Math.round((got / all) * 100)}%` })]), el('span.all', `전체 ${got}/${all} · ${Math.round((got / all) * 100)}%`));
     grid.className = 'idg-cx-grid' + (tab === 'world' ? ' world' : '');
@@ -71,9 +81,10 @@ export function showCodex() {
   }
   function card(T, id, i) {
     const on = T.have(id), art = T.art(id), isNew = on && !seen.has(`${tab}:${id}`);
-    return el('button.idg-cx-card.' + T.cls(id) + (on ? '' : '.off'), { type: 'button', onclick: () => { if (!on) { Sfx.play('button_deny'); return; } detail(T, i); } }, [
+    /* 대표님 «수집은 못했지만 어떤 캐릭터인지 눌러볼 수 있게» : 못 모은 것 = 흑백 + «미수집» 도장 · 이름은 보임 · 눌러서 자세히 */
+    return el('button.idg-cx-card.' + T.cls(id) + (on ? '' : '.off'), { type: 'button', style: `background-image:url(${CX}${TIER[T.cls(id)] || 'card_base'}.png)`, onclick: () => detail(T, i) }, [
       el('img.breath', { src: `${AI}${art}/head.png`, alt: '', onerror: (e) => { if (!e.target.dataset.f) { e.target.dataset.f = 1; e.target.src = `${AI}${art}/torso.png`; } } }),
-      el('b', on ? T.data(id).name : '???'), el('span', on ? T.sub(id) : T.hint(id)), isNew ? el('em.new', 'NEW') : null,
+      el('b', T.data(id).name), el('span', on ? T.sub(id) : (T.short || T.hint)(id)), on ? null : el('em.stamp', '미수집'), isNew ? el('em.new', 'NEW') : null,
     ].filter(Boolean));
   }
   function worldCard(w) {
@@ -84,7 +95,7 @@ export function showCodex() {
   }
   /** 자세히 보기 */
   function detail(T, i) {
-    const ids = T.ids.filter(T.have); let k = Math.max(0, ids.indexOf(T.ids[i]));
+    const ids = T.ids; let k = i;
     const stage = el('div.idg-cx-stage'), info = el('div.idg-cx-info');
     const sound = (id) => {
       if (tab === 'dragon') Audio.voice(VOICE_LINES[`name/${id}`] ? `name/${id}` : `deploy/${id}`);
@@ -92,14 +103,16 @@ export function showCodex() {
       else Audio.play('zombie_spawn');
     };
     const show = () => {
-      const id = ids[k], d = T.data(id); markSeen(`${tab}:${id}`); sound(id);
+      const id = ids[k], d = T.data(id), on = T.have(id); if (on) markSeen(`${tab}:${id}`); Audio.play(on ? 'codex_open' : 'codex_locked'); sound(id);
+      stage.classList.toggle('off', !on);
       stage.replaceChildren(el('div.idg-cx-load', '…'));
       bodyCanvas(T.art(id)).then((c) => { if (ids[k] === id) { c.className = 'idg-cx-body'; stage.replaceChildren(c); } }).catch(() => stage.replaceChildren(el('img.idg-cx-body', { src: `${AI}${T.art(id)}/head.png`, alt: '' })));
-      const bar = (label, key) => el('div.idg-cx-bar', null, [el('span', label), el('i', null, [el('b', { style: `width:${Math.round(((Number(d[key]) || 0) / maxOf(T.ids, T.data, key)) * 100)}%` })])]);
+      const bar = (label, key) => el('div.idg-cx-bar' + (on ? '' : '.q'), null, [el('span', label), on ? el('i', null, [el('b', { style: `width:${Math.round(((Number(d[key]) || 0) / maxOf(T.ids, T.data, key)) * 100)}%` })]) : el('em', '???')]);
       info.replaceChildren(
         el('h3', d.name), el('div.sub', `${T.sub(id)}${d.role ? ' · ' + d.role : ''}`),
         bar('체력', 'hp'), bar('공격', 'atk'), bar('사거리', 'range'), bar('빠르기', 'speed'),
         el('div.first', tab === 'dragon' ? (d.rar === 'story' ? '모험에서 함께해요' : '알 부화장에서 태어나요') : `처음 만나는 판 : ${firstAt[id] || '?'}`),
+        on ? null : el('div.idg-cx-get', null, [el('span', `얻는 법 · ${T.hint(id)}`), T.go?.(id) ? button('바로 가기', () => { const f = T.go(id); closeAll(); f(); }) : null].filter(Boolean)),
       );
     };
     const step = (dlt) => { Sfx.play('sfx_menu_move'); k = (k + dlt + ids.length) % ids.length; show(); };
@@ -110,8 +123,11 @@ export function showCodex() {
     ]);
     const overlay = el('div.dialog-overlay', { onclick: () => { close(); draw(); } }, [box]);
     const close = presentOverlay(overlay);
+    closeD = close;
     show();
   }
+  let closeD = null;
+  const closeAll = () => { closeD?.(); closeMain?.(); };
   /** 배경 구경 : 끌어 보기 + 그 월드 곡 */
   function worldView(w) {
     const n = String(w).padStart(2, '0');
@@ -123,7 +139,9 @@ export function showCodex() {
   }
 
   draw();
+  let closeMain = null;
   const box = el('div.dialog.idg-codex.idg-cx', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '도감'), tabsEl, prog, grid, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
+  closeMain = close;
 }

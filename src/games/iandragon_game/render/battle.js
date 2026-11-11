@@ -80,6 +80,7 @@ export async function startBattle(ctx, opts) {
   const hud = createHud(ctx.host || opts.hudHost, { stage, isNet: !!net, deck: myDeck, leader: loads[me].leader, cons: net || raid ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) {
       if (S.over) return;
+      sound.touch();
       if (c.type === 'spawn' && !ui.intro && !ui.paused) {   /* 누르는 순간 소리 (계산과 같은 조건을 미리 봄 · 소리 전용) */
         const P = S.players[me], d = P?.deck[c.i];
         const ok = !!d && P.cd[c.i] <= 0 && P.money >= d.def.cost && !(S.stage.costMax && d.def.cost > S.stage.costMax);

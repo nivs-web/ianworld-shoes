@@ -711,3 +711,25 @@ html.idg-wide body { width: 100%; }
 .idg-cx-stage { height: 220px; }
 .idg-cx-body { width: 252px; height: 210px; }
 .idg-row2 .pbtn { white-space: nowrap; font-size: 15px; padding-left: 4px; padding-right: 4px; }
+/* 도감 2차 : 그림 담당 ai/codex/* — 카드 테두리(240×320) · 탭 · NEW · 책 틀 · 비율 막대 · 미수집 도장 */
+.idg-cx-card { aspect-ratio: 3 / 4; min-height: 0; border: 0; box-shadow: none; background: center / 100% 100% no-repeat; padding: 16% 10% 10%; justify-content: center; image-rendering: pixelated; }
+.idg-cx-card.story, .idg-cx-card.rare, .idg-cx-card.super, .idg-cx-card.legend, .idg-cx-card.zombie, .idg-cx-card.boss { border: 0; }
+.idg-cx-card img { width: 64%; height: auto; aspect-ratio: 1; }
+.idg-cx-card.off { background-color: transparent; cursor: pointer; }
+.idg-cx-card.off img { filter: grayscale(1) brightness(.75); opacity: .85; animation: none; }
+.idg-cx-card.off b { color: #c8bcd8; }
+.idg-cx-card .stamp { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%) rotate(-14deg); padding: 3px 7px; border: 2px solid #ff6a6a; color: #ff8a8a; background: rgba(40, 10, 20, .55); font: 700 12px/1 'Neo둥근모', monospace; font-style: normal; letter-spacing: 1px; }
+.idg-cx-card .new { top: -4px; right: -4px; width: 40px; height: 40px; padding: 0; display: grid; place-items: center; background: url(/assets/iandragon_game/ai/codex/badge_new.png) center / contain no-repeat; box-shadow: none; font-size: 10px; text-shadow: var(--idg-pxo-red); }
+.idg-cx-tab { background: url(/assets/iandragon_game/ai/codex/tab_dragon.png) center / 0 0 no-repeat, #2a1d48; }
+.idg-cx-tab img { width: 34px; height: 34px; }
+.idg-cx-prog i { height: 18px; background: url(/assets/iandragon_game/ai/codex/bar_frame.png) center / 100% 100% no-repeat; box-shadow: none; position: relative; }
+.idg-cx-prog i b { position: absolute; left: 9.6%; top: 21%; height: 65%; max-width: 80.6%; background: url(/assets/iandragon_game/ai/codex/bar_fill.png) left center / auto 100% no-repeat; }
+.dialog.idg-cx { border-width: 34px 35px; border-image: url(/assets/iandragon_game/ai/codex/frame.webp) 138 143 138 142 fill / 34px 35px round; }
+/* 자세히 : 미수집 */
+.idg-cx-stage.off .idg-cx-body { filter: grayscale(1) brightness(.75); }
+.idg-cx-bar.q em { font: 700 13px 'Neo둥근모', monospace; font-style: normal; color: #9a8fb0; letter-spacing: 2px; }
+.idg-cx-get { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; padding: 6px 8px; background: #1d1238; box-shadow: 0 0 0 2px #ffcf4a, 0 0 0 4px #1a0c38; color: #fff3cf; font: 700 12px 'Neo둥근모', monospace; }
+.idg-cx-get .pbtn { width: auto; min-height: 36px; padding: 0 10px; font-size: 13px; flex: none; }
+.dialog.idg-cx { border-image: url(/assets/iandragon_game/ai/codex/frame.webp) 138 143 138 142 / 34px 35px round; background: #2b1d4a padding-box; }   /* 책 틀 가운데는 투명 → 속은 단색 (로비가 비치지 않게) */
+.idg-cx-card.off { background-size: 100% 100%; background-position: center; background-repeat: no-repeat; }   /* 예전 단색 규칙이 그림 크기를 풀었다 */
+.idg-cx-card .stamp { white-space: nowrap; }
