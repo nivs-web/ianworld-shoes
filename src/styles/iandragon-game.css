@@ -663,3 +663,51 @@ html.idg-wide body { width: 100%; }
 .idg-sound-row .idg-sound-on { min-width: 78px; }
 .idg-pick span { white-space: nowrap; font-size: 12px; letter-spacing: -.3px; }
 .idg-pick { flex-basis: 88px; }
+
+/* ════ 도감 (11/11 대표님 · 기획 MENU_CODEX 2장) ════ */
+.dialog.idg-cx { max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.idg-cx-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 0 0 6px; }
+.idg-cx-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; background: #2a1d48; border: 2px solid #6a5a8a; color: #c8bcd8; font: 700 13px/1 'Neo둥근모', monospace; text-shadow: var(--idg-pxo); cursor: pointer; }
+.idg-cx-tab img { width: 28px; height: 28px; object-fit: contain; }
+.idg-cx-tab.on { background: #5a2a1a; border-color: #ffcf4a; color: #fff3cf; }
+.idg-cx-prog { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: center; font: 700 12px 'Neo둥근모', monospace; color: #ffe9b0; margin: 0 0 8px; }
+.idg-cx-prog i { display: block; height: 10px; background: #1a0c38; box-shadow: 0 0 0 2px #6a5a8a; }
+.idg-cx-prog i b { display: block; height: 100%; background: #ffcf4a; }
+.idg-cx-prog .all { color: #ffd84a; }
+.idg-cx-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 8px; }
+.idg-cx-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 3px 6px; min-height: 104px; background: #221548; border: 3px solid #6fb7ff; box-shadow: 0 0 0 2px #1a0c38; color: #fff; font: 700 12px 'Neo둥근모', monospace; cursor: pointer; }
+.idg-cx-card.story { border-color: #8bd16b; } .idg-cx-card.rare { border-color: #6fb7ff; } .idg-cx-card.super, .idg-cx-card.epic { border-color: #c08bff; } .idg-cx-card.legend { border-color: #ffd84a; } .idg-cx-card.zombie { border-color: #7fae6a; }
+.idg-cx-card img { width: 56px; height: 56px; object-fit: contain; image-rendering: pixelated; }
+.idg-cx-card img.breath { animation: idgCxBreath 1.6s steps(4) infinite; transform-origin: 50% 100%; }
+@keyframes idgCxBreath { 50% { transform: scale(1.04, 0.97); } }
+.idg-cx-card b { font-size: 12px; text-shadow: var(--idg-pxo); } .idg-cx-card span { font-size: 10px; color: #ffd84a; text-align: center; line-height: 1.2; }
+.idg-cx-card.off { border-color: #444; background: #160e2c; cursor: default; }
+.idg-cx-card.off img { filter: brightness(0); opacity: .6; animation: none; }
+.idg-cx-card.off span { color: #9a8fb0; }
+.idg-cx-card .new { position: absolute; top: -6px; right: -6px; padding: 2px 5px; background: #ff4d4d; color: #fff; font: 700 10px/1 'Neo둥근모', monospace; font-style: normal; box-shadow: 0 0 0 2px #1a0c38; }
+.idg-cx-grid.world { grid-template-columns: repeat(2, 1fr); }
+.idg-cx-world { display: flex; flex-direction: column; gap: 3px; padding: 4px 4px 6px; background: #221548; border: 3px solid #c9963a; box-shadow: 0 0 0 2px #1a0c38; color: #fff; font: 700 12px 'Neo둥근모', monospace; cursor: pointer; }
+.idg-cx-world img { width: 100%; height: 62px; object-fit: cover; object-position: left; image-rendering: pixelated; }
+.idg-cx-world span { font-size: 10px; color: #ffd84a; } .idg-cx-world.off { filter: grayscale(.8) brightness(.55); cursor: default; }
+/* 자세히 보기 */
+.dialog.idg-cx-detail { max-width: 400px; width: 100%; }
+.idg-cx-dwrap { display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; gap: 4px; }
+.idg-cx-stage { height: 190px; display: grid; place-items: center; background: radial-gradient(circle at 50% 70%, #3a2a6a 0 40%, #1a0c38 41%); box-shadow: 0 0 0 2px #6a5a8a; }
+.idg-cx-body { width: 200px; height: 180px; image-rendering: pixelated; animation: idgCxBreath 1.6s steps(4) infinite; transform-origin: 50% 95%; }
+.idg-cx-load { color: #c8bcd8; }
+.idg-cx-arrow { height: 54px; background: #2a1d48; border: 2px solid #c9963a; color: #ffe08a; font-size: 16px; cursor: pointer; }
+.idg-cx-info { display: flex; flex-direction: column; gap: 5px; margin: 8px 0; color: #e8dcff; font: 700 13px 'Neo둥근모', monospace; }
+.idg-cx-info h3 { margin: 0; font-size: 20px; color: #fff3cf; text-align: center; text-shadow: var(--idg-pxo); }
+.idg-cx-info .sub { text-align: center; color: #ffd84a; font-size: 12px; }
+.idg-cx-bar { display: grid; grid-template-columns: 54px 1fr; gap: 8px; align-items: center; }
+.idg-cx-bar i { display: block; height: 10px; background: #1a0c38; box-shadow: 0 0 0 2px #6a5a8a; } .idg-cx-bar b { display: block; height: 100%; background: #7ee08f; }
+.idg-cx-info .first { text-align: center; color: #c8bcd8; font-size: 12px; margin-top: 2px; }
+.idg-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+/* 배경 구경 */
+.dialog.idg-cx-wdetail { max-width: 96vw; width: 100%; }
+.idg-cx-tip { text-align: center; color: #c8bcd8; font: 12px 'Neo둥근모', monospace; }
+.idg-cx-strip { overflow-x: auto; overflow-y: hidden; touch-action: pan-x; box-shadow: 0 0 0 2px #6a5a8a; margin: 4px 0 8px; }
+.idg-cx-strip img { display: block; height: 220px; width: auto; max-width: none; image-rendering: pixelated; }
+.idg-cx-stage { height: 220px; }
+.idg-cx-body { width: 252px; height: 210px; }
+.idg-row2 .pbtn { white-space: nowrap; font-size: 15px; padding-left: 4px; padding-right: 4px; }
