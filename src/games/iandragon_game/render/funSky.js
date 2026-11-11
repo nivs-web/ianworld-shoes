@@ -106,7 +106,7 @@ export function swarm(E) {
   const [sy0, sy1] = E.S.sky || [50, 200], yMid = rnd(sy0 + 20, sy1 - 10), n = 26 + Math.floor(Math.random() * 10);
   const bs = Array.from({ length: n }, () => {
     const s = c.addChild(sp(A, 0, 0)); if (black) s.tint = 0x0a0612;
-    const k = rnd(0.32, 0.6); s.scale.set(k * dir, k);
+    const k = black ? rnd(0.32, 0.6) : rnd(0.6, 1.1); s.scale.set(k * dir, k);   // 실루엣 그림은 22칸이라 더 크게
     return { s, k, ox: rnd(-150, 40), oy: rnd(-34, 34), ph: rnd(0, 6), sp: rnd(7, 12), amp: rnd(4, 12) };
   });
   const T = 4.6;

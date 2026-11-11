@@ -34,11 +34,14 @@ export function fitView(cssW, cssH, dpr, ins = { t: 0, b: 0 }) {
    * 2026-11-11 대표님 «PC 에서 배경이 흐리다» : 예전엔 960×540 으로 그린 캔버스를 그대로 늘려서 제미나이 고해상도 그림이 뭉개졌다.
    * 이제 화면을 꽉 채우는 배율(kFit)로 맞추고, 캔버스 자체를 그 배율만큼 촘촘하게 그린다(res · 상한 RES_MAX — 태블릿 · 고밀도 폰 부담).
    */
-  const k = kFit;
+  /* 띠가 있을 때 : 좌우 빈칸이 생기면 안 된다(대표님 «양끝 여백 없이 · 확대된 듯한 화면이 좋다») → 가로를 꽉 채우는 배율보다 작아지지 않게 */
+  const k = ins.t || ins.b ? Math.max(kFit, pw / MAX_W) : kFit;
   const w = Math.max(BASE_W, Math.min(MAX_W, Math.floor(pw / k)));
   const res = Math.max(1, Math.min(RES_MAX, Math.round(k * 4) / 4));
   const cw = (w * k) / dpr, ch = (BASE_H * k) / dpr;
-  const top = ins.t || ins.b ? ins.t - (SKY_CUT * k) / dpr + ((cssH - ins.t - ins.b) - (band * k) / dpr) / 2 : (cssH - ch) / 2;
+  const avail = cssH - ins.t - ins.b, bandCss = (band * k) / dpr;
+  /* 띠 사이에 다 들어가면 가운데 · 모자라면 땅 줄(흙 위)을 아래 띠 바로 위에 붙이고 하늘 위쪽을 더 자른다 (땅 · 유닛은 항상 보이게) */
+  const top = !(ins.t || ins.b) ? (cssH - ch) / 2 : bandCss <= avail ? ins.t + (avail - bandCss) / 2 - (SKY_CUT * k) / dpr : cssH - ins.b - ((BASE_H - DIRT_CUT) * k) / dpr;
   return { w, h: BASE_H, k, res, cssW: cw, cssH: ch, left: (cssW - cw) / 2, top };
 }
 

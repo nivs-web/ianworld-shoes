@@ -44,6 +44,19 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     loadFun().catch(() => null),   // 재미 그림이 없어도 전투는 연다 (코드 검토 2)
   ]);
 
+  /* 체력 바 도트 그림 (그림 담당 hp_bars.json · 2026-11-11 대표님 «생명 게이지가 도트가 아니다») — 없으면 예전 막대 */
+  const [hpUF, hpUMe, hpUFoe, hpCF, hpCFill, hpMeta] = await Promise.all([...['hp_unit_frame', 'hp_unit_fill_me', 'hp_unit_fill_foe', 'hp_castle_frame', 'hp_castle_fill'].map((n) => tryLoad(`${AI}hud/${n}.png`)), fetch(`${AI}hud/hp_bars.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
+  const hpArt = !!(hpUF && hpUMe && hpUFoe && hpMeta);
+  /** 도트 체력 바 하나 : 테두리 + 채움(왼쪽 맞춤 · 비율만큼 가로로 줄임). W = 화면 너비 */
+  function makeBar(frameT, fillT, m, W) {
+    const c = new Container(), k = W / m.frame[0];
+    const fr = new Sprite(frameT); fr.scale.set(k); fr.x = -W / 2;
+    const fl = new Sprite(fillT); fl.position.set(-W / 2 + m.fill.x * k, m.fill.y * k);
+    c.addChild(fr, fl);   // 테두리 안쪽 홈이 칠해져 있어 채움을 위에
+    c.set = (f) => { fl.scale.set((m.fill.w * k * Math.max(0, Math.min(1, f))) / fillT.width, (m.fill.h * k) / fillT.height); };
+    c.set(1); return c;
+  }
+
   if (pvp) towerT.splice(0, 4, ...nestT);   // 대결 : 양쪽 다 용 둥지
   /* ── 층 : 배경 · 재미(뒤) · 성 · 유닛 · 효과 · 재미(앞) */
   const root = new Container(); app.stage.addChild(root);
@@ -67,6 +80,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, GY + 10);
   const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, GY + 10); if (pvp) tower.scale.x = -1;
   stage.addChild(nest, tower, units, fx);
+  const castleBars = hpCF && hpCFill && hpMeta ? [0, 1].map(() => stage.addChild(makeBar(hpCF, hpCFill, hpMeta.castle, 120))) : [];   // 양쪽 성 위 체력 바
   const shade = new Graphics().rect(-50, -50, FIELD + 100, 700).fill(0x000000); shade.alpha = 0; root.addChild(shade);
   /* 안개 기믹 : 내 맨 앞 + 260칸 너머를 짙은 안개로 (화면 전용) */
   const fog = new Graphics(); root.addChildAt(fog, root.getChildIndex(funFront));
@@ -211,9 +225,10 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       v.flash -= dt; R.root.filters = v.flash > 0 ? [white] : null;
       if (u.hp < u.maxHp && v.flash > 0) v.barT = 1.5;
       if ((v.barT = (v.barT || 0) - dt) > 0 && u.alive && !buried) {   // 체력바 : 맞으면 잠깐
-        if (!v.bar) { v.bar = new Graphics(); badges.addChild(v.bar); }
-        const w = u.boss ? 60 : 30, f = Math.max(0, u.hp / u.maxHp);
-        v.bar.clear().rect(-w / 2, 0, w, 4).fill({ color: 0x000000, alpha: 0.6 }).rect(-w / 2, 0, w * f, 4).fill(u.side === (mirror ? 1 : 0) ? 0x6bdc6b : 0xff5a4a);
+        const w = u.boss ? 72 : 38, f = Math.max(0, u.hp / u.maxHp), mine = u.side === (mirror ? 1 : 0);
+        if (!v.bar) { v.bar = hpArt ? makeBar(hpUF, mine ? hpUMe : hpUFoe, hpMeta.unit, w) : new Graphics(); badges.addChild(v.bar); }
+        if (hpArt) v.bar.set(f);
+        else v.bar.clear().rect(-w / 2, 0, w, 4).fill({ color: 0x000000, alpha: 0.6 }).rect(-w / 2, 0, w * f, 4).fill(mine ? 0x6bdc6b : 0xff5a4a);
         v.bar.visible = true; v.bar.alpha = Math.min(1, v.barT * 2); v.bar.position.set(Math.round(v.x), Math.round(v.y + dy - (v.h || 60) - 4));
       } else if (v.bar) v.bar.visible = false;
       const sk = u.alive && !buried ? stOf(u) : null, tx = sk && stTex[sk];
@@ -251,6 +266,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       if (T[i]) spr.texture = T[i];
       const key = side ? 'tower' : 'nest'; shakes[key] -= dt;
       spr.x = (side ? M + L + 40 : M - 40) + (shakes[key] > 0 ? (Math.random() * 4 - 2) : 0);
+      const cb = castleBars[side]; if (cb) { cb.set(r); cb.position.set(side ? M + L + 40 : M - 40, GY + 10 - spr.height - ((side ? lead2 : lead) ? 96 : 16)); cb.visible = !S.stage.raid || !side; cb.scale.x = mirror ? -1 : 1; }   /* 리더 용이 서 있으면 그 머리 위 */
     }
   }
   function effects(S, dt) {

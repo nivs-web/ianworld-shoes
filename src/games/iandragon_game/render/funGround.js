@@ -146,8 +146,8 @@ export function pumpkin(E) {
    * 빛은 제미나이 도트 후광(pumpkin_glow.png · 보조 제작 중)이 있을 때만 깐다. 없으면 눈에 불 들어온 그림(pumpkin_grin)만.
    */
   const p = E.pump, glowT = E.tex.pumpkin_glow;
-  const glow = glowT ? sp(glowT, p.x, p.y - 14) : null;
-  if (glow) { glow.alpha = 0; E.back.addChildAt(glow, E.back.getChildIndex(p)); }
+  const glow = glowT ? sp(glowT, p.x, p.y - p.height / 2) : null;   // 99칸 그림 가운데 33칸 = 호박 자리
+  if (glow) { glow.alpha = 0; glow.blendMode = 'add'; E.back.addChildAt(glow, E.back.getChildIndex(p)); }
   return {
     zone: p.x,
     update(t) {

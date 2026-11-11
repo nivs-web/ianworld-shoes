@@ -19,6 +19,8 @@ export async function loadFun() {
   const meta = await (await fetch(BASE + 'fun.json')).json();
   const tex = {};
   await Promise.all(Object.keys(meta.parts).map(async (n) => { tex[n] = await Assets.load(BASE + n + '.png'); tex[n].source.scaleMode = 'nearest'; }));
+  /* 나중에 더한 그림 (fun.json 밖 · 없으면 그 요소가 예전 방식) — 호박 빛 · 박쥐 떼 실루엣 (그림 담당 11/11) */
+  await Promise.all(['pumpkin_glow', 'batswarm_a', 'batswarm_b'].map((n) => Assets.load(BASE + n + '.png').then((t) => { t.source.scaleMode = 'nearest'; tex[n] = t; }).catch(() => {})));
   return tex;
 }
 
