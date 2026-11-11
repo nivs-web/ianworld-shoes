@@ -611,12 +611,18 @@
           "zombieSfx": {
             ".validate": "newData.isBoolean()"
           },
+          "speed2": {
+            ".validate": "newData.isBoolean()"
+          },
           "$other": {
             ".validate": false
           }
         },
         "zdBgm": {
           "orchestra": {
+            ".validate": "newData.isBoolean()"
+          },
+          "edmDefault": {
             ".validate": "newData.isBoolean()"
           },
           "$other": {

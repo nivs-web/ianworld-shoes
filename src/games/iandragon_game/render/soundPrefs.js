@@ -10,10 +10,14 @@
 import * as Audio from '../audio/index.js';
 import { isOn } from '../../../services/switches.js';
 
-/* 배경음악 풍 (대표님 11/11 «클래식 오케스트라 / 오케스트라 EDM 중 고르게 · 기본 오케스트라») — 기기 저장 · 운영자 «오락실» 스위치가 꺼져 있으면(=오락실) 그쪽이 우선 */
+/*
+ * 배경음악 풍 (대표님 11/11 «클래식 · EDM 중 고르게 · 기본은 클래식 · 관리자 페이지에서 기본 음악을 정하게»)
+ *  아이 선택(기기 저장) → 없으면 운영자 기본값(관리자 «기본 배경음악 EDM» 스위치 · 처음 꺼짐 = 클래식)
+ *  운영자 «오케스트라 풍» 스위치가 꺼져 있으면(오락실 시험) 모두 오락실
+ */
 const STYLE_KEY = 'idgBgmStyle';
-export const bgmPick = () => { try { return localStorage.getItem(STYLE_KEY) === 'edm' ? 'edm' : 'orchestra'; } catch { return 'orchestra'; } };
-/** 실제로 쓸 풍 : 운영자 오락실 > 아이 선택(오케스트라 / EDM) */
+export const bgmPick = () => { let v = null; try { v = localStorage.getItem(STYLE_KEY); } catch { /* */ } return v === 'edm' || v === 'orchestra' ? v : (isOn('zdBgm', 'edmDefault') ? 'edm' : 'orchestra'); };
+/** 실제로 쓸 풍 : 운영자 오락실 시험 > 아이 선택 > 운영자 기본값 */
 export const bgmStyleNow = () => (isOn('zdBgm', 'orchestra') ? bgmPick() : 'arcade');
 
 const MUTE_KEY = 'idgMute';
@@ -55,12 +59,12 @@ export function soundPanel(h, onChange = () => {}) {
   /* 배경음악 풍 고르기 (두 칸 단추) */
   const styleRow = h('div', 'idg-sound-row st'), pick = h('div', 'idg-sound-pick');
   const mkPick = (v, label) => { const b = h('button', 'idg-sound-opt', label); b.type = 'button'; b.onclick = () => { setBgmPick(v); drawPick(); onChange({ style: v }); }; return b; };
-  const bO = mkPick('orchestra', '클래식\n오케스트라'), bE = mkPick('edm', '오케스트라\nEDM');
+  const bO = mkPick('orchestra', '클래식'), bE = mkPick('edm', 'EDM');   /* 대표님 «클래식, EDM 중 고르는 걸로» */
   const drawPick = () => { const v = bgmPick(); bO.classList.toggle('on', v === 'orchestra'); bE.classList.toggle('on', v === 'edm'); };
-  pick.append(bO, bE); drawPick(); styleRow.append(h('span', 'lb', '음악 풍'), pick);
+  pick.append(bO, bE); drawPick(); styleRow.append(h('span', 'lb', '배경음악'), pick);
   wrap.append(
     styleRow,
-    slider('배경음악', 'music', () => {}),
+    slider('음악 크기', 'music', () => {}),
     slider('효과음', 'sfx', () => Audio.play('star')),
     slider('목소리', 'voice', () => Audio.voice('name/kkomul')),
     toggle('좀비 소리', () => Audio.getVolumes().zombie, (on) => { Audio.setZombieSound(on); if (on) Audio.play('zombie_spawn'); }),

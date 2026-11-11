@@ -739,3 +739,4 @@ html.idg-wide body { width: 100%; }
 .idg-sound-opt { min-height: 36px; padding: 0 4px; background: #2a1d48; border: 2px solid #6a5a8a; color: #c8bcd8; font: 700 12px/1.15 'Neo둥근모', monospace; text-shadow: var(--idg-pxo); cursor: pointer; word-spacing: -0.14em; }
 .idg-sound-opt.on { background: #5a2a1a; border-color: #ffcf4a; color: #fff3cf; }
 .idg-sound-opt { white-space: pre-line; min-height: 42px; }
+.idg-sound-opt { font-size: 15px; min-height: 40px; letter-spacing: .5px; }
