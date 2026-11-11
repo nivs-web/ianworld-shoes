@@ -10,6 +10,7 @@
  */
 
 import { Assets } from 'pixi.js';
+import { bgmStyleNow } from './render/soundPrefs.js';
 import { createApp } from './render/app.js';
 import { guardLandscape } from './render/orient.js';
 import { startDemo } from './render/demo.js';
@@ -39,7 +40,7 @@ export async function mount(host, opts) {
   me.ctx = ctx;
 
   Audio.init();
-  Audio.setBgmStyle(isOn('zdBgm', 'orchestra') ? 'orchestra' : 'arcade');   // 운영자 화면 «배경음악» 스위치
+  Audio.setBgmStyle(bgmStyleNow());   // 운영자 «배경음악» 스위치(오락실 우선) + 음향 설정의 오케스트라 / EDM (soundPrefs.js)
   /* 점검용 주소(?idgDemo · ?idgPilot · ?idgStage=N)는 개발 서버에서만 — 운영에서 순서 잠금을 건너뛰지 못하게 (코드 검토 3) */
   const q = import.meta.env.DEV ? location.search : '';
   /* 옛 장면(시트 기반)만 캐릭터 시트 · 배경 시트가 필요하다 — 전투는 ai/ 그림만 쓴다 (코드 검토 2) */

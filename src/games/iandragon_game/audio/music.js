@@ -546,25 +546,26 @@ function playNote(kind, v, len, stepDur, at, bell) {
  * public/assets/iandragon_game/music/music.json 에 있는 곡은 공개(PD · CC0) 녹음 파일로 튼다. 출처 = 같은 폴더 CREDITS.md.
  * 파일이 없거나 못 받으면 아래 합성 곡으로 그대로 나온다(이름 · 부르는 법 같음). */
 const MUSIC_BASE = '/assets/iandragon_game/music/';
-let fileList = null;                     // Promise<{ id: { file, loop, loopStart } }>
+const fileList = {};                     // 풍 → Promise<{ id: { file, loop, loopStart } }>  ('' = 오케스트라 · 'edm/' = 오케스트라 EDM)
 const bufCache = new Map();              // id → Promise<AudioBuffer | null>
 const musicExt = () => (typeof Audio !== 'undefined' && new Audio().canPlayType('audio/ogg; codecs="opus"') ? 'ogg' : 'm4a');
-const listFiles = () => (fileList ??= fetch(`${MUSIC_BASE}music.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
-function loadBuf(id, meta) {
-  if (!bufCache.has(id)) {
+const listFiles = (dir = '') => (fileList[dir] ??= fetch(`${MUSIC_BASE}${dir}music.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+function loadBuf(id, meta, dir = '') {
+  const key = dir + id;
+  if (!bufCache.has(key)) {
     const A = audio();
-    bufCache.set(id, fetch(`${MUSIC_BASE}${meta.file}.${musicExt()}`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+    bufCache.set(key, fetch(`${MUSIC_BASE}${dir}${meta.file}.${musicExt()}`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
       .then((b) => A.ctx.decodeAudioData(b)).catch(() => null));
   }
-  return bufCache.get(id);
+  return bufCache.get(key);
 }
 /** 자주 쓰는 곡을 미리 받아 둔다 (로비에서 한 번) */
-export async function preloadMusic(ids) { const L = await listFiles(); for (const id of ids) if (L[id]) loadBuf(id, L[id]); }
+export async function preloadMusic(ids) { const dir = style === 'edm' ? 'edm/' : ''; if (style === 'arcade') return; const L = await listFiles(dir); for (const id of ids) if (L[id]) loadBuf(id, L[id], dir); }
 
 let gen = 0, fileCur = null;             // gen = 곡을 바꿀 때마다 +1 (늦게 도착한 파일이 엉뚱하게 틀어지지 않게)
-function startFile(id, buf, meta, rate) {
+function startFile(id, buf, meta, rate, edm = false) {
   const A = audio(), T = COMPILED[id];
-  const g = A.ctx.createGain(); g.gain.value = 0.55; g.connect(A.musicBus);   // 녹음은 합성보다 커서 줄인다
+  const g = A.ctx.createGain(); g.gain.value = edm ? 0.6 : 0.55; g.connect(A.musicBus);   // 녹음은 합성보다 커서 줄인다 · EDM 풍은 10% 더 크게(대표님)
   const src = A.ctx.createBufferSource(); src.buffer = buf; src.loop = meta.loop !== false;
   if (src.loop) { src.loopStart = meta.loopStart ?? 0; src.loopEnd = buf.duration; }
   const maxR = Math.min(T?.maxRate ?? 1.25, 1.25);                            // 녹음은 너무 빠르게 하면 음이 올라가 어색 → 1.25배까지
@@ -583,12 +584,14 @@ function stopFile() {
   try { g.gain.setTargetAtTime(0, A.ctx.currentTime, 0.08); src.stop(A.ctx.currentTime + 0.4); } catch { /* */ }
 }
 
-/* 곡 풍 (2026-11-11 대표님: «운영자 화면에서 오케스트라 / 오락실 풍을 켜고 끄며 게임을 해 보고 정하겠다»)
- *   'orchestra' = 공개 오케스트라 녹음(없는 곡은 합성으로) · 'arcade' = 지금의 합성 곡(오락실 칩튠 풍) */
+/* 곡 풍 (2026-11-11 대표님: «운영자 화면에서 오케스트라 / 오락실 풍을 켜고 끄며 게임을 해 보고 정하겠다» ·
+ *   같은 날 «음향 설정에서 클래식 오케스트라 / 오케스트라 EDM 중 하나를 고르게 — 기본은 오케스트라»)
+ *   'orchestra' = 공개 오케스트라 녹음 · 'edm' = 같은 유명 곡을 빠른 비트 EDM 으로 편곡한 파일(music/edm/, 10% 크게)
+ *   · 'arcade' = 합성 오락실 풍.  파일이 없는 곡은 edm → orchestra → 합성 순으로 대신 나온다. */
 let style = 'orchestra';
 export const getMusicStyle = () => style;
 export function setMusicStyle(s) {
-  const next = s === 'arcade' ? 'arcade' : 'orchestra';
+  const next = s === 'arcade' || s === 'edm' ? s : 'orchestra';
   if (next === style) return;
   style = next;
   const playing = fileCur?.id ?? cur?.id, rate = fileCur?.base ?? cur?.base ?? 1;
@@ -604,10 +607,16 @@ export function startTrack(id, rate = 1) {
   stopTrack();
   const my = ++gen;
   if (style === 'arcade') { startSynth(id, rate); return; }
-  listFiles().then((L) => {
+  const orch = () => listFiles().then((L) => {
     if (my !== gen) return;
     if (!L[id]) { startSynth(id, rate); return; }
     loadBuf(id, L[id]).then((buf) => { if (my !== gen) return; if (buf) startFile(id, buf, L[id], rate); else startSynth(id, rate); });
+  });
+  if (style !== 'edm') { orch(); return; }
+  listFiles('edm/').then((E) => {
+    if (my !== gen) return;
+    if (!E[id]) { orch(); return; }
+    loadBuf(id, E[id], 'edm/').then((buf) => { if (my !== gen) return; if (buf) startFile(id, buf, E[id], rate, true); else orch(); });
   });
 }
 function startSynth(id, rate) {

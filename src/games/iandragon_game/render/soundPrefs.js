@@ -8,6 +8,13 @@
  * 같은 판(soundPanel)을 로비 «더보기 → 음향 설정»과 전투 «일시정지»에서 함께 쓴다.
  */
 import * as Audio from '../audio/index.js';
+import { isOn } from '../../../services/switches.js';
+
+/* 배경음악 풍 (대표님 11/11 «클래식 오케스트라 / 오케스트라 EDM 중 고르게 · 기본 오케스트라») — 기기 저장 · 운영자 «오락실» 스위치가 꺼져 있으면(=오락실) 그쪽이 우선 */
+const STYLE_KEY = 'idgBgmStyle';
+export const bgmPick = () => { try { return localStorage.getItem(STYLE_KEY) === 'edm' ? 'edm' : 'orchestra'; } catch { return 'orchestra'; } };
+/** 실제로 쓸 풍 : 운영자 오락실 > 아이 선택(오케스트라 / EDM) */
+export const bgmStyleNow = () => (isOn('zdBgm', 'orchestra') ? bgmPick() : 'arcade');
 
 const MUTE_KEY = 'idgMute';
 const isMuted = () => { try { return localStorage.getItem(MUTE_KEY) === '1'; } catch { return false; } };
@@ -21,6 +28,8 @@ export function applySound() {
   Audio.setMuted(isMuted());
   for (const k of ['music', 'sfx', 'voice']) Audio.setVolume(k, v[k]);
 }
+
+export function setBgmPick(v) { try { localStorage.setItem(STYLE_KEY, v === 'edm' ? 'edm' : 'orchestra'); } catch { /* */ } Audio.setBgmStyle(bgmStyleNow()); }
 
 export function setMuteAll(on) { try { localStorage.setItem(MUTE_KEY, on ? '1' : '0'); } catch { /* */ } Audio.setMuted(!!on); }
 
@@ -43,7 +52,14 @@ export function soundPanel(h, onChange = () => {}) {
     b.onclick = () => { set(!get()); draw(); };
     draw(); r.append(h('span', 'lb', label), b); return r;
   };
+  /* 배경음악 풍 고르기 (두 칸 단추) */
+  const styleRow = h('div', 'idg-sound-row st'), pick = h('div', 'idg-sound-pick');
+  const mkPick = (v, label) => { const b = h('button', 'idg-sound-opt', label); b.type = 'button'; b.onclick = () => { setBgmPick(v); drawPick(); onChange({ style: v }); }; return b; };
+  const bO = mkPick('orchestra', '클래식\n오케스트라'), bE = mkPick('edm', '오케스트라\nEDM');
+  const drawPick = () => { const v = bgmPick(); bO.classList.toggle('on', v === 'orchestra'); bE.classList.toggle('on', v === 'edm'); };
+  pick.append(bO, bE); drawPick(); styleRow.append(h('span', 'lb', '음악 풍'), pick);
   wrap.append(
+    styleRow,
     slider('배경음악', 'music', () => {}),
     slider('효과음', 'sfx', () => Audio.play('star')),
     slider('목소리', 'voice', () => Audio.voice('name/kkomul')),

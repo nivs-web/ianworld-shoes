@@ -733,3 +733,9 @@ html.idg-wide body { width: 100%; }
 .dialog.idg-cx { border-image: url(/assets/iandragon_game/ai/codex/frame.webp) 138 143 138 142 / 34px 35px round; background: #2b1d4a padding-box; }   /* 책 틀 가운데는 투명 → 속은 단색 (로비가 비치지 않게) */
 .idg-cx-card.off { background-size: 100% 100%; background-position: center; background-repeat: no-repeat; }   /* 예전 단색 규칙이 그림 크기를 풀었다 */
 .idg-cx-card .stamp { white-space: nowrap; }
+/* 음향 설정 : 배경음악 풍 고르기 (클래식 오케스트라 / 오케스트라 EDM) */
+.idg-sound-row.st { grid-template-columns: 70px 1fr; }
+.idg-sound-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.idg-sound-opt { min-height: 36px; padding: 0 4px; background: #2a1d48; border: 2px solid #6a5a8a; color: #c8bcd8; font: 700 12px/1.15 'Neo둥근모', monospace; text-shadow: var(--idg-pxo); cursor: pointer; word-spacing: -0.14em; }
+.idg-sound-opt.on { background: #5a2a1a; border-color: #ffcf4a; color: #fff3cf; }
+.idg-sound-opt { white-space: pre-line; min-height: 42px; }

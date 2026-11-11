@@ -90,6 +90,6 @@ export function setMuted(on) {
   if (muted) stopTrack();
 }
 
-/** 배경음악 풍 — 'orchestra'(공개 오케스트라 녹음, 기본) · 'arcade'(합성 오락실 풍). 운영자 화면 설정으로 부른다 */
+/** 배경음악 풍 — 'orchestra'(공개 오케스트라 녹음, 기본) · 'edm'(오케스트라 EDM 편곡) · 'arcade'(합성 오락실 풍) */
 export function setBgmStyle(s) { try { setMusicStyle(s); } catch { /* */ } }
 export const bgmStyle = () => getMusicStyle();
