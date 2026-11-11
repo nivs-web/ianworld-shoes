@@ -99,6 +99,31 @@ export const VOICE_LINES = {
   'duel/win': [L('용 대결 승리! 네가 최고의 조련사다!', 'caster', 'crowd'), L('이겼다아! 상대 용들이 깜짝 놀랐어!', 'caster', 'crowd'), L('완벽한 승리! 다음 상대 나와라!', 'caster', 'sparkle')],
   'duel/lose': [L('아깝다! 다음엔 꼭 이기자!', 'caster', 'sad_trombone'), L('좋은 승부였어! 덱을 바꿔서 다시 도전!', 'caster', 'sad_trombone'), L('으악, 졌다! 그래도 멋진 대결이었어!', 'caster')],
   'coop/start': [L('친구와 함께 출동! 둘이면 무섭지 않아!', 'caster', 'crowd', 'start'), L('같이 깨기 시작! 서로 도와줘!', 'caster', 'boing', 'start'), L('드래곤 듀오 등장! 좀비들아, 각오해라!', 'caster', 'whoosh', 'start')],
+
+  /* ───── 용 이름 외침 — 카드를 눌러 내보낼 때 그 용 목소리로 (2026-11-11 대표님 · 이름만 1 + 출격 말투 3) ───── */
+  'name/kkomul': [L('꼬물이!', 'babyHi'), L('꼬물이 출격!', 'babyHi'), L('꼬물이 출동한다!', 'babyHi'), L('꼬물이 출발하겠습니다!', 'babyHi'), L('꼬물이 준비 완료!', 'babyHi'), L('꼬물이 준비됐습니다!', 'babyHi')],
+  'name/doldeung': [L('돌등이!', 'babySleepy'), L('돌등이 출격!', 'babySleepy'), L('돌등이 출동한다!', 'babySleepy'), L('돌등이 출발하겠습니다!', 'babySleepy'), L('돌등이 준비 완료!', 'babySleepy'), L('돌등이 준비됐습니다!', 'babySleepy')],
+  'name/bulttong': [L('불똥이!', 'babyBold'), L('불똥이 출격!', 'babyBold'), L('불똥이 출동한다!', 'babyBold'), L('불똥이 출발하겠습니다!', 'babyBold'), L('불똥이 준비 완료!', 'babyBold'), L('불똥이 준비됐습니다!', 'babyBold')],
+  'name/twetwe': [L('퉤퉤!', 'babyGoofy'), L('퉤퉤 출격!', 'babyGoofy'), L('퉤퉤 출동한다!', 'babyGoofy'), L('퉤퉤 출발하겠습니다!', 'babyGoofy'), L('퉤퉤 준비 완료!', 'babyGoofy'), L('퉤퉤 준비됐습니다!', 'babyGoofy')],
+  'name/bangul': [L('방울이!', 'babySweet'), L('방울이 출격!', 'babySweet'), L('방울이 출동한다!', 'babySweet'), L('방울이 출발하겠습니다!', 'babySweet'), L('방울이 준비 완료!', 'babySweet'), L('방울이 준비됐습니다!', 'babySweet')],
+  'name/ssaeng': [L('쌩쌩이!', 'babyFast'), L('쌩쌩이 출격!', 'babyFast'), L('쌩쌩이 출동한다!', 'babyFast'), L('쌩쌩이 출발하겠습니다!', 'babyFast'), L('쌩쌩이 준비 완료!', 'babyFast'), L('쌩쌩이 준비됐습니다!', 'babyFast')],
+  'name/dungsil': [L('둥실이!', 'babyDreamy'), L('둥실이 출격!', 'babyDreamy'), L('둥실이 출동한다!', 'babyDreamy'), L('둥실이 출발하겠습니다!', 'babyDreamy'), L('둥실이 준비 완료!', 'babyDreamy'), L('둥실이 준비됐습니다!', 'babyDreamy')],
+  'name/giljjuk': [L('길쭉이!', 'babyProud'), L('길쭉이 출격!', 'babyProud'), L('길쭉이 출동한다!', 'babyProud'), L('길쭉이 출발하겠습니다!', 'babyProud'), L('길쭉이 준비 완료!', 'babyProud'), L('길쭉이 준비됐습니다!', 'babyProud')],
+  'name/eoreum': [L('얼음땡!', 'babyCool'), L('얼음땡 출격!', 'babyCool'), L('얼음땡 출동한다!', 'babyCool'), L('얼음땡 출발하겠습니다!', 'babyCool'), L('얼음땡 준비 완료!', 'babyCool'), L('얼음땡 준비됐습니다!', 'babyCool')],
+  'name/jjirit': [L('찌릿이!', 'babyZappy'), L('찌릿이 출격!', 'babyZappy'), L('찌릿이 출동한다!', 'babyZappy'), L('찌릿이 출발하겠습니다!', 'babyZappy'), L('찌릿이 준비 완료!', 'babyZappy'), L('찌릿이 준비됐습니다!', 'babyZappy')],
+  'name/banjjak': [L('반짝이!', 'babySparkle'), L('반짝이 출격!', 'babySparkle'), L('반짝이 출동한다!', 'babySparkle'), L('반짝이 출발하겠습니다!', 'babySparkle'), L('반짝이 준비 완료!', 'babySparkle'), L('반짝이 준비됐습니다!', 'babySparkle')],
+  'name/kungkwang': [L('쿵쾅이!', 'babyBig'), L('쿵쾅이 출격!', 'babyBig'), L('쿵쾅이 출동한다!', 'babyBig'), L('쿵쾅이 출발하겠습니다!', 'babyBig'), L('쿵쾅이 준비 완료!', 'babyBig'), L('쿵쾅이 준비됐습니다!', 'babyBig')],
+  'name/sapjil': [L('삽질이!', 'babyBold'), L('삽질이 출격!', 'babyBold'), L('삽질이 출동한다!', 'babyBold'), L('삽질이 출발하겠습니다!', 'babyBold'), L('삽질이 준비 완료!', 'babyBold'), L('삽질이 준비됐습니다!', 'babyBold')],
+  'name/pokjuk': [L('폭죽이!', 'babyGoofy'), L('폭죽이 출격!', 'babyGoofy'), L('폭죽이 출동한다!', 'babyGoofy'), L('폭죽이 출발하겠습니다!', 'babyGoofy'), L('폭죽이 준비 완료!', 'babyGoofy'), L('폭죽이 준비됐습니다!', 'babyGoofy')],
+  'name/sommung': [L('솜뭉치!', 'babyDreamy'), L('솜뭉치 출격!', 'babyDreamy'), L('솜뭉치 출동한다!', 'babyDreamy'), L('솜뭉치 출발하겠습니다!', 'babyDreamy'), L('솜뭉치 준비 완료!', 'babyDreamy'), L('솜뭉치 준비됐습니다!', 'babyDreamy')],
+  'name/dongjeon': [L('동전이!', 'babyProud'), L('동전이 출격!', 'babyProud'), L('동전이 출동한다!', 'babyProud'), L('동전이 출발하겠습니다!', 'babyProud'), L('동전이 준비 완료!', 'babyProud'), L('동전이 준비됐습니다!', 'babyProud')],
+  'name/gasigong': [L('가시공!', 'babyFast'), L('가시공 출격!', 'babyFast'), L('가시공 출동한다!', 'babyFast'), L('가시공 출발하겠습니다!', 'babyFast'), L('가시공 준비 완료!', 'babyFast'), L('가시공 준비됐습니다!', 'babyFast')],
+  'name/meari': [L('메아리!', 'babyCool'), L('메아리 출격!', 'babyCool'), L('메아리 출동한다!', 'babyCool'), L('메아리 출발하겠습니다!', 'babyCool'), L('메아리 준비 완료!', 'babyCool'), L('메아리 준비됐습니다!', 'babyCool')],
+  'name/geuneul': [L('그늘이!', 'babySleepy'), L('그늘이 출격!', 'babySleepy'), L('그늘이 출동한다!', 'babySleepy'), L('그늘이 출발하겠습니다!', 'babySleepy'), L('그늘이 준비 완료!', 'babySleepy'), L('그늘이 준비됐습니다!', 'babySleepy')],
+  'name/nunbora': [L('눈보라!', 'babyFast'), L('눈보라 출격!', 'babyFast'), L('눈보라 출동한다!', 'babyFast'), L('눈보라 출발하겠습니다!', 'babyFast'), L('눈보라 준비 완료!', 'babyFast'), L('눈보라 준비됐습니다!', 'babyFast')],
+  'name/byeolttong': [L('별똥별!', 'babySparkle'), L('별똥별 출격!', 'babySparkle'), L('별똥별 출동한다!', 'babySparkle'), L('별똥별 출발하겠습니다!', 'babySparkle'), L('별똥별 준비 완료!', 'babySparkle'), L('별똥별 준비됐습니다!', 'babySparkle')],
+  'name/hwanggeum': [L('황금알 대왕!', 'babyProud'), L('황금알 대왕 출격!', 'babyProud'), L('황금알 대왕 출동한다!', 'babyProud'), L('황금알 대왕 출발하겠습니다!', 'babyProud'), L('황금알 대왕 준비 완료!', 'babyProud'), L('황금알 대왕 준비됐습니다!', 'babyProud')],
+  'name/ssangdung': [L('쌍둥머리!', 'babyGoofy'), L('쌍둥머리 출격!', 'babyGoofy'), L('쌍둥머리 출동한다!', 'babyGoofy'), L('쌍둥머리 출발하겠습니다!', 'babyGoofy'), L('쌍둥머리 준비 완료!', 'babyGoofy'), L('쌍둥머리 준비됐습니다!', 'babyGoofy')],
 };
 
 /** 보이스 스튜디오 «목소리 설계» — 목소리마다 다르게 (반복 지루함 방지) */
