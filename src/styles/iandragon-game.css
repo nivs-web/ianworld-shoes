@@ -1225,3 +1225,16 @@ html.idg-rot.ccw .idg-hud.float .idg-boss { top: 96px; }
   html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-mini-btn img { width: clamp(26px, 6.5vh, 52px); height: clamp(26px, 6.5vh, 52px); }
   html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-mini-btn span { font-size: clamp(11px, 2.8vh, 18px); }
 }
+/* 프로필 카드 8차 : 위아래 여백 같게 · 용은 칸에 꼭 맞게(가운데) · 별 · 코인 · 젬 크게 · 젬은 밝은 형광 보라 */
+.screen.idg-lobby > .idg-panel.idg-prof { padding: 10px 14px; min-height: 0; height: auto; align-items: center; }
+.screen.idg-lobby .idg-prof-dragon { width: 100px; height: 92px; display: block; }
+.screen.idg-lobby .idg-prof-canvas { width: 100%; height: 100%; object-fit: contain; object-position: center center; display: block; }
+.screen.idg-lobby .idg-prof-text { justify-content: center; gap: 4px; }
+.screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 12px; margin-top: 4px; }
+.screen.idg-lobby .idg-prof-text .idg-stat img { width: 28px; height: 28px; }
+.screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 15px; }
+.idg-stat img[src*="icon_gem"] { filter: brightness(1.55) saturate(1.7) hue-rotate(-12deg) drop-shadow(0 0 0 #fff); }
+@media (max-width: 380px) { .screen.idg-lobby .idg-prof-dragon { width: 84px; height: 80px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 24px; height: 24px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 13px; } .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 8px; } }
+@media (orientation: portrait) and (min-width: 560px) { .screen.idg-lobby .idg-prof-dragon { width: 150px; height: 130px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 36px; height: 36px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 20px; } }
+@media (max-width: 480px) { .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 8px; } .screen.idg-lobby .idg-prof-text .idg-stat { gap: 3px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 25px; height: 25px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 14px; } }
+@media (max-width: 380px) { .screen.idg-lobby .idg-panel.idg-prof { grid-template-columns: 76px minmax(0, 1fr); padding: 10px 10px; } .screen.idg-lobby .idg-prof-dragon { width: 76px; height: 76px; } .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 5px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 21px; height: 21px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 12px; } }

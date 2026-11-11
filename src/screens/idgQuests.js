@@ -25,7 +25,7 @@ export function showQuests(onChange) {
     }));
   }
   draw();
-  const box = el('div.dialog.idg-nest', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '도전 과제'), head, list, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-nest', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '도전과제'), head, list, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }

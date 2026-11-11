@@ -199,7 +199,7 @@ export default function IanDragonGameLobby(nav) {
     dressedCanvas(ld, g.look, opt).then((c) => { c.className = cls; box.appendChild(c); }).catch(() => {});
     return box;
   }
-  const landStage = (g) => myDragon('button.idg-land-stage', g, 'idg-land-leader');
+  const landStage = (g) => myDragon('button.idg-land-stage', g, 'idg-land-leader', { fit: true, W: 240, H: 220, pad: 6 });
   return {
     onLeave() { document.documentElement.classList.remove('idg-lobby-on'); },
     destroy() { document.documentElement.classList.remove('idg-lobby-on'); },
@@ -214,7 +214,7 @@ export default function IanDragonGameLobby(nav) {
         el('div.idg-logo', null, [el('img.idg-lobby-banner', { src: '/assets/ui/banner_iandragon_lobby.webp', alt: `${S.idgTitle} ${S.idgTitleEn}` })]),
         /* 상태판 — 그림(겜부장 보조 · ui/lobby/*)이 있으면 그림, 없으면 글자만 (2026-11-11 대표님 «로비에 디자인 요소가 없다») */
         el('div.panel.idg-panel.idg-prof', null, [
-          myDragon('button.idg-prof-dragon', g, 'idg-prof-canvas', { K: 2.3, W: 230, H: 200 }),   /* 용이 카드 높이를 채우게 크게 (대표님 «용이 너무 작아») */
+          myDragon('button.idg-prof-dragon', g, 'idg-prof-canvas', { fit: true, W: 240, H: 220, pad: 6 }),   /* 칸에 꼭 맞게 통째로 (뿔 · 날개 · 모자 안 잘림) */   /* 용이 카드 높이를 채우게 크게 (대표님 «용이 너무 작아») */
           el('div.idg-prof-text', null, [
           /* 대표님 11/11 «아빠게임왕 · 화로 달인은 무슨 뜻이냐» → 닉네임 한 줄 · 칭호는 아래 작은 배지로 «칭호 화로 달인» */
           el('div.idg-player', p.nickname || '???'),
@@ -229,18 +229,18 @@ export default function IanDragonGameLobby(nav) {
         landStage(g),
         el('div.idg-start-row', null, [
           el('button.idg-start', { type: 'button', onclick: () => start() }, [el('span', S.idgLobbyStart)]),
-          el('button.idg-pick', { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); showStages((no) => start(no)); } }, [el('img', { src: `${AL}ico_stages.png`, alt: '', onerror: hideBad }), el('span', '판 고르기')]),
+          el('button.idg-pick', { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); showStages((no) => start(no)); } }, [el('img', { src: `${AL}ico_stages.png`, alt: '', onerror: hideBad }), el('span', '스테이지')]),
         ]),
         el('div.idg-menu.big', null, [
           tile('nest', '파워업', () => showNest(() => nav.refresh?.())),
           g.cleared >= OPEN_AT ? tile('hatch', '부화장', () => showHatch(() => nav.refresh?.())) : tile('hatch', '부화장', () => toast('부화장은 2-5를 깨면 열려요', 2200), true),
           tile('coop', '멀티게임', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
-          tile('raid', '좀비 습격', () => { if ((G.idg().cleared || 0) < 20) { toast('좀비 습격은 2-10을 깨면 열려요', 2200); return; } G.pickRaid(); start(); }, (G.idg().cleared || 0) < 20),
+          tile('raid', '좀비습격', () => { if ((G.idg().cleared || 0) < 20) { toast('좀비습격은 2-10을 깨면 열려요', 2200); return; } G.pickRaid(); start(); }, (G.idg().cleared || 0) < 20),
         ]),
         el('div.idg-icons', null, [
           mini('lab', '연구소', () => showLab(() => nav.refresh?.())),
-          mini('quest', '도전 과제', () => showQuests(() => nav.refresh?.()), claimable(g) > 0),
-          mini('shop', '용 시장', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
+          mini('quest', '도전과제', () => showQuests(() => nav.refresh?.()), claimable(g) > 0),
+          mini('shop', '드래곤마켓', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           mini('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           mini('more', '더보기', () => showMore({ stage: () => showStages((no) => start(no)), hatch: () => (G.idg().cleared >= OPEN_AT ? showHatch(() => nav.refresh?.()) : toast('부화장은 2-5를 깨면 열려요', 2200)) })),
         ]),

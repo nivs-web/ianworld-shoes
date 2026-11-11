@@ -14,7 +14,7 @@ let wearP = null;
 const wearJson = () => (wearP ||= fetch(`${BASE}ai/meta/wear.json`).then((r) => r.json()).catch(() => null));
 
 /** art = 리더 id · lookStr = 저장 글자('h3.n1…') · K = 확대 · W×H = 캔버스 크기 */
-export async function dressedCanvas(art, lookStr = '', { K = 1.7, W = 300, H = 250 } = {}) {
+export async function dressedCanvas(art, lookStr = '', { K = 1.7, W = 300, H = 250, fit = false, pad = 4 } = {}) {
   const lk = decodeLook(lookStr || '');
   const [rig, Wr] = await Promise.all([fetch(`${BASE}ai/${art}/rig.json`).then((r) => r.json()), wearJson()]);
   const L = Wr?.leaders?.[art], hk = lk.hat && `hat_${lk.hat}`, nk = lk.neck && `neck_${lk.neck}`;
@@ -28,8 +28,14 @@ export async function dressedCanvas(art, lookStr = '', { K = 1.7, W = 300, H = 2
   ]);
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
-  x.translate(W / 2, H - 14); x.scale(K, K); if (rig.face === -1) x.scale(-1, 1);
   const at = neckI ? (neckI.layer === 'behind' ? L.nape : L.neck) : null;
+  if (fit) {   /* 칸에 꼭 맞게 : 부품 · 모자 · 목 장식 전체 크기를 재서 가운데에 (뿔 · 날개 · 왕관이 잘리지 않게 · 대표님 11/11) */
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; const add = (ax, ay, w, h) => { x0 = Math.min(x0, ax); y0 = Math.min(y0, ay); x1 = Math.max(x1, ax + w); y1 = Math.max(y1, ay + h); };
+    rig.parts.forEach((q, k) => { const im = parts[k]; if (!im) return; const lx = q.flip ? q.p[0] - (1 - q.a[0]) * im.width : q.p[0] - q.a[0] * im.width; add(lx, q.p[1] - q.a[1] * im.height, im.width, im.height);
+      if (q.n === 'head' && hatImg) add(q.p[0] + hatE.x, q.p[1] + hatE.y, hatImg.width, hatImg.height); });
+    const kk = Math.min((W - pad * 2) / (x1 - x0), (H - pad * 2) / (y1 - y0)), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    x.translate(W / 2, H / 2); x.scale(kk, kk); if (rig.face === -1) x.scale(-1, 1); x.translate(-cx, -cy);
+  } else { x.translate(W / 2, H - 14); x.scale(K, K); if (rig.face === -1) x.scale(-1, 1); }
   const neckAt = (im, tp) => { if (!im || !at) return; x.drawImage(im, tp[0] + at.x - neckI.anchor[0] * im.width, tp[1] + at.y - neckI.anchor[1] * im.height); };
   rig.parts.forEach((q, k) => {
     const im = parts[k];
