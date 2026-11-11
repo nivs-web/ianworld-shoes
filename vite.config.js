@@ -1,4 +1,35 @@
 import { defineConfig } from 'vite';
+import fs from 'node:fs';
+import path from 'node:path';
+import { CONFIG as R2, liveBase, checkLive } from './tools/r2-assets.mjs';
+
+/**
+ * ★ 게임 그림 · 소리를 R2(oraksil.onstori.com)에서 내보낸다 (2026-11-11 · 설정 r2-assets.json · 도구 tools/r2-*.mjs)
+ * 운영 빌드에서만 : live=true 인 게임의 prefix(예 /assets/iandragon_game/)를 R2 판 주소로 바꿔 끼운다(코드 · CSS 전부 한 곳에서).
+ * strip=true 면 배포에서 그 파일을 빼는데, 빼기 전에 R2 에 하나도 빠짐없이 있는지 확인하고 없으면 빌드를 멈춘다.
+ * 개발 서버는 그대로 로컬 파일 — 보조 · 겜팀장 작업 방식이 안 바뀐다.
+ */
+function r2Assets() {
+  const live = Object.entries(R2.games).filter(([, g]) => g.live);
+  return {
+    name: 'r2-assets', apply: 'build', enforce: 'pre',
+    transform(code, id) {
+      if (!live.length || id.includes('node_modules') || !/\.(js|mjs|css|json)(\?|$)/.test(id)) return null;
+      let out = code, hit = false;
+      for (const [gid, g] of live) if (out.includes(g.prefix)) { out = out.split(g.prefix).join(liveBase(gid)); hit = true; }
+      return hit ? { code: out, map: null } : null;
+    },
+    async closeBundle() {
+      for (const [gid, g] of live) {
+        if (!g.strip) continue;
+        const c = await checkLive(gid);
+        if (!c.ok) throw new Error(`[r2] ${g.name} : R2 에 없는 파일 ${c.missing.length} · 크기 다름 ${c.badSize.length} · CORS 없음 ${c.noCors.length} → npm run r2:sync 먼저 (배포 멈춤)`);
+        fs.rmSync(path.join('dist', g.prefix), { recursive: true, force: true });
+        console.log(`[r2] ${g.name} : R2 ${c.total}개 확인 · 배포에서 뺌`);
+      }
+    },
+  };
+}
 
 /**
  * 배포마다 달라지는 값. 서비스 워커를 `sw.js?v=…` 로 등록할 때 쓴다 —
@@ -24,6 +55,7 @@ for (const [k, v] of Object.entries(process.env)) {
 
 export default defineConfig({
   base: '/',
+  plugins: [r2Assets()],
   define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   server: {
     host: true,

@@ -1,0 +1,8 @@
+{
+  "_설명": "게임 그림·소리를 Cloudflare R2(oraksil.onstori.com)에서 내보내는 설정. live=true 면 운영 빌드가 prefix 를 R2 주소로 바꿔 끼운다. strip=true 면 운영 배포에서 그 파일을 뺀다(빼기 전 R2 에 다 있는지 빌드가 확인). 그림을 고치면 ver 를 올리고 npm run r2:sync 로 올린다. 자세히 = tools/r2-assets.mjs",
+  "origin": "https://oraksil.onstori.com",
+  "bucket": "oraksil-assets",
+  "games": {
+    "idg": { "name": "좀비와 드래곤", "dir": "public/assets/iandragon_game", "prefix": "/assets/iandragon_game/", "ver": "20261111a", "live": false, "strip": false }
+  }
+}

@@ -83,7 +83,9 @@
     "preview:wear": "node tools/_wear-preview.mjs",
     "qa:idg-play": "node tools/idg-play-qa.mjs 50 3",
     "qa:idg-hatch": "node tools/idg-hatch-qa.mjs",
-    "qa:idg-lockstep": "node tools/idg-lockstep-qa.mjs 20"
+    "qa:idg-lockstep": "node tools/idg-lockstep-qa.mjs 20",
+    "r2:sync": "node tools/r2-sync.mjs",
+    "r2:check": "node tools/r2-check.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0",
