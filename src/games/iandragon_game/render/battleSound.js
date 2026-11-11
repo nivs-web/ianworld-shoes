@@ -7,16 +7,16 @@ import * as Audio from '../audio/index.js';
 import { isOn } from '../../../services/switches.js';
 import { hasTrait } from '../core/rules.js';
 import { getSettings } from '../../../audio/audio.js';
-import { applySound } from './soundPrefs.js';
+import { applySound, soundPrefs } from './soundPrefs.js';
 import { VOICE_LINES } from '../audio/voice-lines.js';
 
 const deployFx = (cost) => (cost < 150 ? 'deploy_s' : cost < 400 ? 'deploy_m' : 'deploy_l');
 
 export function createBattleSound(stage, me = 0) {
   const set = getSettings();
-  let musicOn = set.bgmEnabled !== false;
+  let musicOn = !soundPrefs().mute;   /* 전체 소리 끄기만 본다 (크기 0 이면 곡은 돌아도 안 들림) */
   Audio.init();
-  Audio.setMuted(false); applySound();   // 효과음 · 배경음 따로 켜고 끄기 + 크기 (soundPrefs.js · 대표님 11/11)
+  applySound();   // 음향 설정 (soundPrefs.js · 겜팀장 setVolume)
   let cur = null;   // 지금 곡 (일시정지 뒤 다시 틀기)
   const song = (id, rate) => { cur = id; if (musicOn) Audio.bgm(id, { rate }); };
   const timers = [];   // 나간 뒤에 소리가 나지 않게 모아 두었다가 지운다 (코드 검토 6)
@@ -39,10 +39,7 @@ export function createBattleSound(stage, me = 0) {
         const ids = new Set(S.units.filter((u) => u.side === 0).map((u) => u.id));
         for (const u of S.units) if (u.side === 0 && !was.units.has(u.id)) {
           Audio.play(deployFx(u.def.cost));
-          /* 대표님 11/11 «용을 내보내면 그 용 목소리로 자기 이름을 외치게 (세 가지 말투 돌아가며)» — 겜팀장 name/<용> 녹음이 있으면 매번(0.6초 간격), 없으면 예전 출격 대사 40% */
-          const nk = `name/${u.def._art}`;
-          if (VOICE_LINES[nk]) { if (S.t - (was.nameAt ?? -9) > 0.6) { was.nameAt = S.t; Audio.voice(nk); } }
-          else if (Math.random() < 0.4) Audio.voice(`deploy/${u.def._art}`);
+          /* 이름 외침은 카드를 «누르는 순간» pressSpawn 에서 (기획 MENU_CODEX 4장) · 예전 deploy/<용> 40% 대사는 끔 («싸우는 중 아무 때나 난다») */
           break;
         }
         was.units = ids;
@@ -108,14 +105,21 @@ export function createBattleSound(stage, me = 0) {
     /** 결과 판의 별 «탕 · 탕 · 탕» */
     stars(n) { for (let i = 0; i < n; i++) later(() => Audio.play('star'), 300 + i * 350); },
     /** 일시정지 · 앱 내림 : 곡까지 멈춤, 풀면 다시 (코드 검토 12) */
+    /** 용 카드를 누른 바로 그 순간 (대표님 «탁 누르는 순간 리액션 · 본인 이름을 꼭») : 나갈 수 있으면 «탁» + 그 용 이름 외침(name/<용> · 0.6초 간격), 못 나가면 «붑» */
+    pressSpawn(ok, art) {
+      if (!ok) { Audio.play('button_deny'); return; }
+      Audio.play('button');
+      const nk = `name/${art}`, now = performance.now();
+      if (VOICE_LINES[nk] && now - (was.namePress ?? -1e9) > 600) { was.namePress = now; Audio.voice(nk); }
+    },
     pause(on) {
       if (on) Audio.setMuted(true);
-      else { Audio.setMuted(false); applySound(); if (musicOn) { if (cur) Audio.bgm(cur); else Audio.worldBgm(stage.w); } }
+      else { applySound(); musicOn = !soundPrefs().mute; if (musicOn) { if (cur) Audio.bgm(cur); else Audio.worldBgm(stage.w); } }
     },
     /** 게임 중 배경음 켜고 끄기 (HUD 소리 단추) */
     setMusic(on) { musicOn = !!on; applySound(); if (musicOn) { if (cur) Audio.bgm(cur); else Audio.worldBgm(stage.w); } else Audio.stopBgm(); },
     /** 효과음 · 크기 바꾼 뒤 */
-    refresh() { applySound(); },
+    refresh() { applySound(); const m = !soundPrefs().mute; if (m && !musicOn) { musicOn = true; if (cur) Audio.bgm(cur); else Audio.worldBgm(stage.w); } else if (!m) musicOn = false; },
     destroy() { for (const t of timers) clearTimeout(t); Audio.stopBgm(); },
   };
 }

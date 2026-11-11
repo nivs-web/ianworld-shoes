@@ -17,6 +17,7 @@ import { enterFullscreen } from '../core/fullscreen.js';
 import { getSettings } from '../audio/audio.js';
 import * as Sfx from '../audio/sfx.js';
 import '../styles/iandragon-game.css';
+import { soundPanel } from '../games/iandragon_game/render/soundPrefs.js';
 import { showNest } from './idgNest.js';
 import { showHatch } from './idgHatch.js';
 import { showCodex } from './idgCodex.js';
@@ -96,12 +97,43 @@ function showStages(onPick) {
 /* 로비 그림 (겜부장 보조가 제미나이로 만든다 · 파일이 없으면 그림만 숨기고 글자로) */
 const UI = '/assets/iandragon_game/ui/lobby/';
 const AL = '/assets/iandragon_game/ai/lobby/';   // 보조 제미나이 2차 (2026-11-11) — 메뉴 아이콘 · 판
-const ICO = { stage: 'ico_stages', nest: 'ico_nest', hatch: 'ico_hatch', lab: 'ico_lab', quest: 'ico_quests', codex: 'ico_codex', how: 'ico_how', coop: 'ico_coop', raid: 'ico_raid' };
+const ICO = { stage: 'ico_stages', nest: 'ico_nest', hatch: 'ico_hatch', lab: 'ico_lab', quest: 'ico_quests', codex: 'ico_codex', how: 'ico_how', coop: 'ico_coop', raid: 'ico_raid', more: 'ico_more', sound: 'ico_sound', music: 'ico_music' };
 const hideBad = (e) => { e.target.style.display = 'none'; };
 function tile(key, label, fn, locked = false, dot = false) {
   return el('button.idg-tile' + (locked ? '.locked' : '') + (dot ? '.dot' : ''), { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); fn(); } }, [
     el('img', { src: `${UI}icon_${key}.png`, alt: '', onerror: (e) => { if (ICO[key] && !e.target.dataset.f) { e.target.dataset.f = 1; e.target.src = `${AL}${ICO[key]}.png`; } else hideBad(e); } }), el('span', label),
   ]);
+}
+/** 아래 작은 아이콘 칸 (그림 + 이름 · 빨간 점) */
+function mini(key, label, fn, dot = false) {
+  return el('button.idg-mini-btn' + (dot ? '.dot' : ''), { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); fn(); } }, [
+    el('img', { src: `${UI}icon_${key}.png`, alt: '', onerror: (e) => { if (ICO[key] && !e.target.dataset.f) { e.target.dataset.f = 1; e.target.src = `${AL}${ICO[key]}.png`; } else { e.target.replaceWith(el('b.ico-t', key === 'more' ? '⋯' : label.slice(0, 1))); } } }), el('span', label),
+  ]);
+}
+/** «더보기» 창 : 도감 · 게임하는 법 · 음향 설정 · 명예의 전당 · 음악 출처 */
+function showMore() {
+  const pick = (fn) => () => { close(); fn(); };
+  const box = el('div.dialog.idg-more', { onclick: (e) => e.stopPropagation() }, [
+    el('div.idg-how-title', '더보기'),
+    el('div.idg-menu', null, [
+      tile('codex', '도감', pick(showCodex)),
+      tile('how', '게임하는 법', pick(showHow)),
+      tile('sound', '음향 설정', pick(showSound)),
+      tile('hall', '명예의 전당', pick(showHall)),
+      tile('music', '음악 출처', pick(showCredits)),
+    ]),
+    button('닫기', () => close()),
+  ]);
+  const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
+  const close = presentOverlay(overlay);
+}
+/** «음향 설정» 창 (대표님 «설정 대신 음향 설정») — 전투 일시정지와 같은 판 */
+function showSound() {
+  Sfx.play('sfx_menu_select');
+  const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+  const box = el('div.dialog.idg-soundset', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '음향 설정'), soundPanel(mk), button('닫기', () => close(), { primary: true })]);
+  const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
+  const close = presentOverlay(overlay);
 }
 const stat = (key, n) => el('span.idg-stat', null, [el('img', { src: `${UI}icon_${key}.png`, alt: '', onerror: hideBad }), el('b', Number(n || 0).toLocaleString('en-US'))]);
 
@@ -162,22 +194,25 @@ export default function IanDragonGameLobby(nav) {
             el('div.idg-stat-row', null, [stat('star', G.totalStars(g)), stat('coin', g.coins), stat('gem', g.gems)]),
           ]),
         ]),
-        el('div.idg-menu', null, [
-          tile('stage', '스테이지 고르기', () => showStages((no) => start(no))),
+        /* 로비 메뉴 정리 (2026-11-11 대표님 · 기획 IAN_DRAGON_MENU_CODEX_PLAN.md 1장) : 큰 단추(매일 하는 것) + 아래 작은 아이콘 줄 + «더보기» */
+        el('div.idg-start-row', null, [
+          el('button.idg-start', { type: 'button', onclick: () => start() }, [el('span', S.idgLobbyStart)]),
+          el('button.idg-pick', { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); showStages((no) => start(no)); } }, [el('img', { src: `${AL}ico_stages.png`, alt: '', onerror: hideBad }), el('span', '판 고르기')]),
+        ]),
+        el('div.idg-menu.big', null, [
           tile('nest', '용 둥지', () => showNest(() => nav.refresh?.())),
           g.cleared >= OPEN_AT ? tile('hatch', '알 부화장', () => showHatch(() => nav.refresh?.())) : tile('hatch', '알 부화장', () => toast('알 부화장은 2-5를 깨면 열려요', 2200), true),
-          tile('lab', '연구소 · 리더', () => showLab(() => nav.refresh?.())),
-          tile('quest', claimable(g) ? `도전 과제 (${claimable(g)})` : '도전 과제', () => showQuests(() => nav.refresh?.()), false, claimable(g) > 0),
-          tile('codex', '도감', showCodex),
-          tile('shop', '용 시장', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
-          tile('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
-          tile('hall', '명예의 전당', showHall),
-          tile('raid', '주간 좀비 습격', () => { if ((G.idg().cleared || 0) < 20) return; G.pickRaid(); start(); }, (G.idg().cleared || 0) < 20),
-          tile('coop', '친구랑 같이 깨기', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
-          tile('how', S.idgLobbyHow, showHow),
+          tile('coop', '친구와 하기', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
+          tile('raid', '주간 좀비 습격', () => { if ((G.idg().cleared || 0) < 20) { toast('주간 좀비 습격은 2-10을 깨면 열려요', 2200); return; } G.pickRaid(); start(); }, (G.idg().cleared || 0) < 20),
+        ]),
+        el('div.idg-icons', null, [
+          mini('lab', '연구소', () => showLab(() => nav.refresh?.())),
+          mini('quest', '도전 과제', () => showQuests(() => nav.refresh?.()), claimable(g) > 0),
+          mini('shop', '용 시장', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
+          mini('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
+          mini('more', '더보기', () => showMore()),
         ]),
         el('div.spacer'),
-        el('button.idg-start', { type: 'button', onclick: () => start() }, [el('span', S.idgLobbyStart)]),
         (() => { const b = backButton(S.backToPortal, () => nav.reset(Portal)); b.classList.add('idg-back'); return b; })(),   // 돌 판 옷 (보조 의견)
       );
     },

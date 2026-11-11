@@ -636,3 +636,30 @@ html.idg-wide body { width: 100%; }
 .idg-hud .idg-breath { background-size: contain; background-position: center; border-radius: 0; overflow: visible; }
 .idg-hud .idg-breath .fill { inset: 14%; border-radius: 50%; }
 .idg-hud .idg-breath b { margin: 0 auto; }
+
+/* ════ 로비 메뉴 정리 (11/11 대표님 · 기획 MENU_CODEX 1장) : 모험 시작 + 판 고르기 / 큰 칸 4 / 작은 아이콘 5 / 더보기 ════ */
+.idg-start-row { display: flex; gap: 8px; align-items: stretch; margin: 10px 0 4px; }
+.idg-start-row .idg-start { flex: 1 1 auto; margin: 0; }
+.idg-pick { flex: 0 0 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0 4px; color: #ffe9b0; font: 700 13px/1.1 'Neo둥근모', monospace; text-shadow: var(--idg-pxo); background: none;
+  border: 10px solid transparent; border-image: url(/assets/iandragon_game/ai/lobby/btn_menu.webp) 58 80 fill / 10px 12px stretch; cursor: pointer; }
+.idg-pick img { width: 34px; height: 34px; object-fit: contain; }
+.idg-pick:active { filter: brightness(.85); }
+.idg-menu.big { gap: 8px; margin: 6px 0; }
+.idg-menu.big .idg-tile { min-height: 74px; }
+.idg-menu.big .idg-tile img { width: 50px; height: 50px; }
+.idg-menu.big .idg-tile span { font-size: 17px; }
+.idg-icons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 4px 0 6px; }
+.idg-mini-btn { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px 5px; background: rgba(22, 12, 48, .82); border: 2px solid #8a6a3a; box-shadow: 0 0 0 2px #1a0c38, 0 3px 0 2px #1a0c38; color: #ffe9b0; font: 700 12px/1 'Neo둥근모', monospace; text-shadow: var(--idg-pxo); cursor: pointer; word-spacing: -0.14em; }
+.idg-mini-btn img { width: 34px; height: 34px; object-fit: contain; }
+.idg-mini-btn .ico-t { display: grid; place-items: center; width: 34px; height: 34px; font-size: 22px; color: #ffd84a; }
+.idg-mini-btn:active { filter: brightness(.85); transform: translateY(1px); }
+.idg-mini-btn.dot::after { content: ''; position: absolute; top: 3px; right: 6px; width: 9px; height: 9px; background: #ff4d4d; box-shadow: 0 0 0 2px #1a0c38; }
+.dialog.idg-more .idg-menu { margin: 4px 0 8px; }
+/* 음향 설정 판 (막대 3 + 켜기/끄기 2) */
+.idg-sound { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 4px; }
+.idg-sound-row { display: grid; grid-template-columns: 70px 1fr 34px; gap: 8px; align-items: center; color: #ffe9b0; font: 700 14px 'Neo둥근모', monospace; text-align: left; }
+.idg-sound-row.tg { grid-template-columns: 70px auto; justify-content: start; }
+.idg-sound-row .val { text-align: right; font-size: 13px; color: #ffd84a; }
+.idg-sound-row .idg-sound-on { min-width: 78px; }
+.idg-pick span { white-space: nowrap; font-size: 12px; letter-spacing: -.3px; }
+.idg-pick { flex-basis: 88px; }

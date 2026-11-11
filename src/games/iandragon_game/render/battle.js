@@ -78,7 +78,15 @@ export async function startBattle(ctx, opts) {
   let acc = 0, bossSeen = false, gone = false, goldKills = 0;
   const goldSeen = new Set();   // 황금 좀비 쓰러뜨린 수 (판 끝 코인 +5% 씩)
   const hud = createHud(ctx.host || opts.hudHost, { stage, isNet: !!net, deck: myDeck, leader: loads[me].leader, cons: net || raid ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
-    cmd(c) { if (S.over) return; if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c }); },
+    cmd(c) {
+      if (S.over) return;
+      if (c.type === 'spawn' && !ui.intro && !ui.paused) {   /* 누르는 순간 소리 (계산과 같은 조건을 미리 봄 · 소리 전용) */
+        const P = S.players[me], d = P?.deck[c.i];
+        const ok = !!d && P.cd[c.i] <= 0 && P.money >= d.def.cost && !(S.stage.costMax && d.def.cost > S.stage.costMax);
+        sound.pressSpawn(ok, d?.def._art);
+      }
+      if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c });
+    },
     go(useCons) {
       ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '');
       /* 편의품 (META 3장 · 판마다 1개 · 혼자 하기만) — 판을 시작하며 1개 쓴다 · 도중에 나가도 돌려주지 않는다 */

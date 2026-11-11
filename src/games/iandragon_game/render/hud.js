@@ -9,7 +9,7 @@
 import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
 import { ENEMIES } from '../data/enemies.js';
-import { soundPrefs, setSoundOn, setSoundVol } from './soundPrefs.js';
+import { soundPanel } from './soundPrefs.js';
 const ATTR_KO = { ghost: '유령', giant: '거대', shadow: '그림자', crystal: '수정' };
 
 const AI = '/assets/iandragon_game/ai/';
@@ -61,12 +61,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const speedB = h('button', 'idg-btn idg-speed', '×1'); speedB.type = 'button'; speedB.onclick = () => cb.speed();
   const money = h('div', 'idg-money'); const moneyN = h('span', 'n', '0'); money.append(h('i', 'idg-ico-ember'), moneyN);
   /* 소리 단추 (대표님 «게임하면서 배경음 · 효과음을 켜고 끄는 단추») */
-  const musicB = h('button', 'idg-btn idg-snd'), sfxB = h('button', 'idg-btn idg-snd'); musicB.type = sfxB.type = 'button';
-  const drawSnd = () => { const sp = soundPrefs(); musicB.replaceChildren(ico(sp.music ? 'hud_music_on' : 'hud_music_off', '음악')); sfxB.replaceChildren(ico(sp.sfx ? 'hud_sfx_on' : 'hud_sfx_off', '효과')); musicB.classList.toggle('off', !sp.music); sfxB.classList.toggle('off', !sp.sfx); musicB.title = sp.music ? '배경음 끄기' : '배경음 켜기'; sfxB.title = sp.sfx ? '효과음 끄기' : '효과음 켜기'; };
-  musicB.onclick = () => { const on = !soundPrefs().music; setSoundOn('bgm', on); cb.music?.(on); drawSnd(); };
-  sfxB.onclick = () => { setSoundOn('sfx', !soundPrefs().sfx); cb.soundRefresh?.(); drawSnd(); };
-  drawSnd();
-  top.append(pauseB, title, time, speedB, money, musicB, sfxB);
+  /* 소리 단추는 화면에서 뺐다 — 일시정지 · 로비 «더보기 → 음향 설정» (대표님 11/11) */
+  top.append(pauseB, title, time, speedB, money);
   if (speedMax < 2 || isNet) speedB.style.visibility = 'hidden';   // 멀티는 1배속 고정
   if (isNet) { pauseB.textContent = '✕'; pauseB.title = '나가기'; pauseB.onclick = () => { if (window.confirm('정말 나갈까요? 친구는 혼자 계속해요.')) cb.exit(); }; }   // 멀티는 멈출 수 없다 (기획 5장)
   const autoB = h('button', 'idg-btn idg-speed idg-auto', '자동'); autoB.type = 'button'; autoB.onclick = () => cb.auto(); if (canAuto) speedB.after(autoB);
@@ -126,19 +122,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   sendIns(); setTimeout(sendIns, 300);   // 글꼴 · 그림이 늦게 와서 높이가 바뀔 수 있다   // 스킬 · 포효 = 아래 띠 안 브레스 왼쪽 (예전 오른쪽 위는 좀비 성 체력 숫자를 가렸다)
 
   /** 일시정지 판의 소리 설정 : 배경음 · 효과음 각각 켜기 + 크기 */
-  function soundBox() {
-    const wrap = h('div', 'idg-sound');
-    const row = (label, bus, key) => {
-      const r = h('div', 'idg-sound-row'), on = h('button', 'idg-sound-on'); on.type = 'button';
-      const rg = h('input'); rg.type = 'range'; rg.min = '0'; rg.max = '150'; rg.step = '5';
-      const draw = () => { const sp = soundPrefs(), isOn = bus === 'bgm' ? sp.music : sp.sfx; on.textContent = isOn ? '켜짐' : '꺼짐'; on.classList.toggle('off', !isOn); rg.value = String(Math.round(sp[key] * 100)); rg.disabled = !isOn; };
-      on.onclick = () => { const sp = soundPrefs(), v = !(bus === 'bgm' ? sp.music : sp.sfx); setSoundOn(bus, v); if (bus === 'bgm') cb.music?.(v); else cb.soundRefresh?.(); draw(); drawSnd(); };
-      rg.oninput = () => { setSoundVol(key, Number(rg.value) / 100); cb.soundRefresh?.(); };
-      draw(); r.append(h('span', 'lb', label), on, rg); return r;
-    };
-    wrap.append(row('배경음', 'bgm', 'm'), row('효과음', 'sfx', 's'));
-    return wrap;
-  }
+  /** 일시정지 판의 «음향 설정» (로비 더보기와 같은 판 · soundPrefs.js) */
+  const soundBox = () => soundPanel(h, () => cb.soundRefresh?.());
 
   /* 일시정지 · 결과 판 */
   const panel = h('div', 'idg-panel-over'); root.appendChild(panel);

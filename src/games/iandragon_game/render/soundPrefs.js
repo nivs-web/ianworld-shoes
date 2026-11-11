@@ -1,44 +1,54 @@
 /**
- * 좀비와 드래곤 소리 설정 (2026-11-11 대표님 «게임 중에도 배경음 · 효과음을 따로 켜고 끄고, 소리 크기도 따로 · 배경음은 10% 더 크게»)
+ * 좀비와 드래곤 «음향 설정» (2026-11-11 대표님 — 기획 IAN_DRAGON_MENU_CODEX_PLAN.md 3장)
+ *  배경음악 · 효과음 · 목소리 크기(막대 0~100) · 좀비 소리 켜기/끄기 · 전체 소리 끄기
  *
- * - 켜고 끄기는 오락실 공용 설정(audio/audio.js bgmEnabled · sfxEnabled)을 그대로 쓴다 → 로비 · 다른 게임과 같은 스위치.
- * - 크기는 이 게임만 (localStorage 'idgVol' = { m: 배경음 0~1.5, s: 효과음 0~1.5 }).
- * - 겜팀장 소리 엔진(audio/synth.js)의 세 버스 크기만 바꾼다 : 곡 = musicBus · 효과음 = sfxBus · 목소리 = voiceBus(효과음 쪽으로 묶음).
- *   예전엔 효과음을 끄면 setMuted 로 곡까지 꺼졌다 → 이제 버스 크기를 0 으로 해서 따로 끈다.
+ * - 크기 · 좀비 소리 = 겜팀장 소리 엔진(audio/index.js setVolume · getVolumes · setZombieSound — 기기에 저장)
+ * - 전체 끄기 = 이 게임만 (localStorage 'idgMute') → Audio.setMuted
+ * - 막대를 움직이면 그 자리에서 바로 들린다 : 효과음 막대는 놓을 때 «띵», 목소리 막대는 놓을 때 짧은 대사 한 줄.
+ * 같은 판(soundPanel)을 로비 «더보기 → 음향 설정»과 전투 «일시정지»에서 함께 쓴다.
  */
-import { audio } from '../audio/synth.js';
-import { getSettings, setEnabled } from '../../../audio/audio.js';
+import * as Audio from '../audio/index.js';
 
-/** 버스 기본 크기 (synth.js 처음 값) · 곡은 대표님 말씀대로 10% 키움 */
-const BASE = { music: 0.32 * 1.1, sfx: 0.55, voice: 0.95 };
-const KEY = 'idgVol';
+const MUTE_KEY = 'idgMute';
+const isMuted = () => { try { return localStorage.getItem(MUTE_KEY) === '1'; } catch { return false; } };
 
-function readVol() {
-  try { const v = JSON.parse(localStorage.getItem(KEY) || '{}'); return { m: num(v.m), s: num(v.s) }; } catch { return { m: 1, s: 1 }; }
-}
-const num = (x) => (Number.isFinite(x) ? Math.max(0, Math.min(1.5, x)) : 1);
+/** { mute, music, sfx, voice (0~1), zombie } */
+export function soundPrefs() { return { mute: isMuted(), ...Audio.getVolumes() }; }
 
-/** { music: 켜짐?, sfx: 켜짐?, m: 배경음 크기, s: 효과음 크기 } */
-export function soundPrefs() {
-  const set = getSettings(), v = readVol();
-  return { music: set.bgmEnabled !== false, sfx: set.sfxEnabled !== false, m: v.m, s: v.s };
-}
-
-/** 지금 설정을 소리 버스에 바로 반영 */
+/** 지금 설정을 소리 장치에 반영 (전투 시작 · 일시정지 풀 때) */
 export function applySound() {
-  const A = audio(); if (!A) return;
-  const p = soundPrefs(), t = A.ctx.currentTime;
-  A.musicBus.gain.setTargetAtTime(p.music ? BASE.music * p.m : 0, t, 0.03);
-  A.sfxBus.gain.setTargetAtTime(p.sfx ? BASE.sfx * p.s : 0, t, 0.03);
-  A.voiceBus.gain.setTargetAtTime(p.sfx ? BASE.voice * p.s : 0, t, 0.03);
+  const v = Audio.getVolumes();
+  Audio.setMuted(isMuted());
+  for (const k of ['music', 'sfx', 'voice']) Audio.setVolume(k, v[k]);
 }
 
-/** 켜고 끄기 (bus = 'bgm' | 'sfx') */
-export function setSoundOn(bus, on) { setEnabled(bus, !!on); applySound(); }
+export function setMuteAll(on) { try { localStorage.setItem(MUTE_KEY, on ? '1' : '0'); } catch { /* */ } Audio.setMuted(!!on); }
 
-/** 크기 (which = 'm' | 's', 0~1.5) */
-export function setSoundVol(which, val) {
-  const v = readVol(); v[which] = num(val);
-  try { localStorage.setItem(KEY, JSON.stringify(v)); } catch { /* 저장 못 해도 이번 판엔 적용 */ }
-  applySound();
+/**
+ * 음향 설정 판 (DOM). h = (tag, cls, text) 만드는 함수 · onChange({ mute }) = 전체 끄기가 바뀌면(곡 다시 틀기 등)
+ */
+export function soundPanel(h, onChange = () => {}) {
+  const wrap = h('div', 'idg-sound');
+  const slider = (label, kind, test) => {
+    const r = h('div', 'idg-sound-row'), rg = h('input'), val = h('b', 'val');
+    rg.type = 'range'; rg.min = '0'; rg.max = '100'; rg.step = '5';
+    rg.value = String(Math.round(Audio.getVolumes()[kind] * 100)); val.textContent = rg.value;
+    rg.oninput = () => { Audio.setVolume(kind, Number(rg.value) / 100); val.textContent = rg.value; };
+    rg.onchange = () => { if (!isMuted()) test(); };
+    r.append(h('span', 'lb', label), rg, val); return r;
+  };
+  const toggle = (label, get, set) => {
+    const r = h('div', 'idg-sound-row tg'), b = h('button', 'idg-sound-on'); b.type = 'button';
+    const draw = () => { const on = get(); b.textContent = on ? '켜짐' : '꺼짐'; b.classList.toggle('off', !on); };
+    b.onclick = () => { set(!get()); draw(); };
+    draw(); r.append(h('span', 'lb', label), b); return r;
+  };
+  wrap.append(
+    slider('배경음악', 'music', () => {}),
+    slider('효과음', 'sfx', () => Audio.play('star')),
+    slider('목소리', 'voice', () => Audio.voice('name/kkomul')),
+    toggle('좀비 소리', () => Audio.getVolumes().zombie, (on) => { Audio.setZombieSound(on); if (on) Audio.play('zombie_spawn'); }),
+    toggle('전체 소리', () => !isMuted(), (on) => { setMuteAll(!on); onChange({ mute: !on }); }),
+  );
+  return wrap;
 }
