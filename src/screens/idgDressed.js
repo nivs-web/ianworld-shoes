@@ -40,3 +40,25 @@ export async function dressedCanvas(art, lookStr = '', { K = 1.7, W = 300, H = 2
   });
   return c;
 }
+
+/**
+ * 머리만 (명예의 전당 줄 얼굴 · 11/11 대표님 «왕관이 공중에 떠 있다 · 얼굴이 오른쪽 아래로 치우쳤다»)
+ * 전투와 같은 자리표로 모자를 머리에 씌우고(덮는 모자 = 모자용 머리), 머리 + 모자 전체를 S×S 칸 가운데에 맞춰 그린다.
+ */
+export async function headCanvas(art, lookStr = '', S = 44) {
+  const lk = decodeLook(lookStr || '');
+  const [rig, Wr] = await Promise.all([fetch(`${BASE}ai/${art}/rig.json`).then((r) => r.json()), wearJson()]);
+  const q = rig.parts.find((p) => p.n === 'head'), L = Wr?.leaders?.[art], hk = lk.hat && `hat_${lk.hat}`;
+  const hatE = hk && Wr?.items?.[hk] && L?.hat?.[hk] ? L.hat[hk] : null;
+  const [head, hat] = await Promise.all([img(hatE?.head?.head ? BASE + hatE.head.head : `${BASE}ai/${art}/head.png`), hatE ? img(BASE + Wr.items[hk].file) : null]);
+  const c = document.createElement('canvas'); c.width = c.height = S * 2;
+  if (!head) return c;
+  const hx = -q.a[0] * head.width, hy = -q.a[1] * head.height;   /* 머리 기준점(목) = 0,0 */
+  let x0 = hx, y0 = hy, x1 = hx + head.width, y1 = hy + head.height;
+  if (hat) { x0 = Math.min(x0, hatE.x); y0 = Math.min(y0, hatE.y); x1 = Math.max(x1, hatE.x + hat.width); y1 = Math.max(y1, hatE.y + hat.height); }
+  const k = Math.min((S * 2 - 4) / (x1 - x0), (S * 2 - 4) / (y1 - y0)), x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  x.translate(S - ((x0 + x1) / 2) * k, S - ((y0 + y1) / 2) * k); x.scale(k, k);
+  if (rig.face === -1) { x.scale(-1, 1); }
+  x.drawImage(head, hx, hy); if (hat) x.drawImage(hat, hatE.x, hatE.y);
+  return c;
+}

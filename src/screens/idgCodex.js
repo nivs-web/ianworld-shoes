@@ -111,7 +111,7 @@ export function showCodex(go = {}) {
       info.replaceChildren(
         el('h3', d.name), el('div.sub', `${T.sub(id)}${d.role ? ' · ' + d.role : ''}`),
         bar('체력', 'hp'), bar('공격', 'atk'), bar('사거리', 'range'), bar('빠르기', 'speed'),
-        el('div.first', tab === 'dragon' ? (d.rar === 'story' ? '모험에서 함께해요' : '알 부화장에서 태어나요') : `처음 만나는 판 : ${firstAt[id] || '?'}`),
+        el('div.first', tab === 'dragon' ? (d.rar === 'story' ? '모험에서 함께해요' : '부화장에서 태어나요') : `처음 만나는 판 : ${firstAt[id] || '?'}`),
         on ? null : el('div.idg-cx-get', null, [el('span', `얻는 법 · ${T.hint(id)}`), T.go?.(id) ? button('바로 가기', () => { const f = T.go(id); closeAll(); f(); }) : null].filter(Boolean)),
       );
     };

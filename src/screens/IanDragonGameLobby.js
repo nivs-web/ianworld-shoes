@@ -22,6 +22,8 @@ import { showNest } from './idgNest.js';
 import { showHatch } from './idgHatch.js';
 import { showCodex } from './idgCodex.js';
 import { dressedCanvas } from './idgDressed.js';
+import { installIdgFrame } from './idgFrame.js';
+installIdgFrame();   /* 모든 창 고정 틀 (제목 · 단추 고정 · 가운데만 스크롤) */
 import { makeLoads, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
 import { showLab } from './idgLab.js';
 import { showMulti } from './idgMulti.js';
@@ -231,16 +233,16 @@ export default function IanDragonGameLobby(nav) {
         ]),
         el('div.idg-menu.big', null, [
           tile('nest', '파워업', () => showNest(() => nav.refresh?.())),
-          g.cleared >= OPEN_AT ? tile('hatch', '알 부화장', () => showHatch(() => nav.refresh?.())) : tile('hatch', '알 부화장', () => toast('알 부화장은 2-5를 깨면 열려요', 2200), true),
-          tile('coop', '친구와 하기', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
-          tile('raid', '주간 좀비 습격', () => { if ((G.idg().cleared || 0) < 20) { toast('주간 좀비 습격은 2-10을 깨면 열려요', 2200); return; } G.pickRaid(); start(); }, (G.idg().cleared || 0) < 20),
+          g.cleared >= OPEN_AT ? tile('hatch', '부화장', () => showHatch(() => nav.refresh?.())) : tile('hatch', '부화장', () => toast('부화장은 2-5를 깨면 열려요', 2200), true),
+          tile('coop', '멀티게임', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
+          tile('raid', '좀비 습격', () => { if ((G.idg().cleared || 0) < 20) { toast('좀비 습격은 2-10을 깨면 열려요', 2200); return; } G.pickRaid(); start(); }, (G.idg().cleared || 0) < 20),
         ]),
         el('div.idg-icons', null, [
           mini('lab', '연구소', () => showLab(() => nav.refresh?.())),
           mini('quest', '도전 과제', () => showQuests(() => nav.refresh?.()), claimable(g) > 0),
           mini('shop', '용 시장', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           mini('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
-          mini('more', '더보기', () => showMore({ stage: () => showStages((no) => start(no)), hatch: () => (G.idg().cleared >= OPEN_AT ? showHatch(() => nav.refresh?.()) : toast('알 부화장은 2-5를 깨면 열려요', 2200)) })),
+          mini('more', '더보기', () => showMore({ stage: () => showStages((no) => start(no)), hatch: () => (G.idg().cleared >= OPEN_AT ? showHatch(() => nav.refresh?.()) : toast('부화장은 2-5를 깨면 열려요', 2200)) })),
         ]),
         el('div.spacer'),
         (() => { const b = backButton(S.backToPortal, () => nav.reset(Portal)); b.classList.add('idg-back'); return b; })(),   // 돌 판 옷 (보조 의견)

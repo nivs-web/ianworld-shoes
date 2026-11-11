@@ -60,7 +60,7 @@ export function powerPage(h, o) {
       } else { b.append(h('b', null, '+')); b.onclick = () => { swapFor = null; draw(); }; }
       slots.appendChild(b);
     }
-    const hint = h('p', 'idg-pp-hint', swapFor ? `«${UNITS[swapFor].name}» 과 바꿀 칸을 고르세요` : '용을 누르면 출전 칸에 들어가요 · 칸을 누르면 빠져요');
+    const hint = h('p', 'idg-pp-hint', swapFor ? `«${UNITS[swapFor].name}» 과 바꿀 칸을 고르세요` : '카드를 누르면 출전 ↔ 대기가 바뀌어요');
 
     /* 용 목록 */
     const list = h('div', 'idg-pp-list');
@@ -73,9 +73,10 @@ export function powerPage(h, o) {
       const card = h('div', 'idg-pp-card' + (on ? ' on' : '') + (over ? ' over' : '') + (swapFor === id ? ' sel' : ''));
       const im = h('img'); im.src = `${AI}${lv >= 10 ? `${id}_2` : id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${id}/head.png`; };
       const bar = (lb, v, mx) => { const r = h('div', 'st'), i = h('i'), f = h('b'); f.style.width = `${Math.round(Math.max(0.05, Math.min(1, v / mx)) * 100)}%`; i.appendChild(f); r.append(h('span', null, lb), i); return r; };
-      const top = h('button', 'idg-pp-pick'); top.type = 'button';
+      const top = h('div', 'idg-pp-pick');
       top.append(im, h('b', 'nm', form?.name || U.name), h('span', 'lv', `Lv ${lv}${exp > lv ? ` (권장 ${exp})` : ''} · 비용 ${U.cost}`), on ? h('em', 'tag', '출전') : h('em', 'tag off', over ? '비용 초과' : '대기'));
-      top.onclick = () => {
+      /* 카드 전체(레벨업 단추만 빼고)를 누르면 출전 ↔ 대기 (대표님 11/11 «직관적으로 빠르게 넣고 빼게») */
+      card.onclick = () => {
         if (on) { if (deck.length <= 2) { play('button_deny'); return; } setDeck(deck.filter((x) => x !== id)); play('button_back'); draw(); return; }
         if (over) { play('button_deny'); return; }
         if (deck.length < un.deckCap) { setDeck([...deck, id]); play('deploy_s'); swapFor = null; draw(); return; }
@@ -83,7 +84,8 @@ export function powerPage(h, o) {
       };
       const up = h('button', 'idg-btn idg-pp-up' + (evo ? ' evo' : ''), max ? `최고 (상한 ${cap})` : `${evo ? '진화' : '레벨업'} ${fmt(cost)}`); up.type = 'button';
       if (max) up.disabled = true; else if (poor) up.classList.add('poor');
-      up.onclick = () => {
+      up.onclick = (e) => {
+        e.stopPropagation();
         const cur = o.save(), now = cur.units?.[id]?.[0] || 1, c = ECON.lvCost(now);
         if (now >= capOf(cur.cleared || 0)) return;
         if ((cur.coins || 0) < c) { play('button_deny'); return; }
@@ -100,7 +102,10 @@ export function powerPage(h, o) {
     const row = h('div', 'idg-row idg-pp-row');
     for (const [label, fn, cls] of o.buttons) { const b = h('button', 'idg-btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; row.appendChild(b); }
     const side = h('div', 'idg-pp-side'); side.append(lead, slots, hint);
+    /* 고정 틀 : 제목 · 띠는 위에 고정 · 가운데만 스크롤 · 단추 한 줄은 아래에 고정 (뒤 배경 상자 없음) */
+    const keep = box.querySelector('.idg-pp-body')?.scrollTop || 0;
     box.replaceChildren(h('h2', 'idg-pp-title', '파워업'), band, h('div', 'idg-pp-body', null), row);
+    requestAnimationFrame(() => { const bd = box.querySelector('.idg-pp-body'); if (bd) bd.scrollTop = keep; });
     box.querySelector('.idg-pp-body').append(side, list);
   }
   draw();

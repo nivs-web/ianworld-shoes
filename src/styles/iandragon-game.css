@@ -1096,3 +1096,132 @@ html.idg-rot.ccw .idg-hud.float .idg-unit img { max-height: none; height: 58%; w
 html.idg-rot.ccw .idg-hud.float .idg-right { position: absolute; right: 0; bottom: calc(100% + 84px); display: flex; flex-direction: column-reverse; gap: 8px; }
 html.idg-rot.ccw .idg-hud.float .idg-breath { position: absolute; right: 0; bottom: calc(100% + 8px); width: 70px; height: 70px; }
 html.idg-rot.ccw .idg-hud.float .idg-boss { top: 96px; }
+
+/* ════ 6차 (11/11 밤 대표님 캡처) — 창 «고정 틀» 규칙 (모든 창 공통 · 가로 · 세로 같음) ════
+ *  ① 창 = [제목] [가운데 내용 = 이 칸만 스크롤] [단추] 세 칸. 제목 · 단추는 고정, 뒤에 색 띠 · 음영 상자 없음 (창 그림의 바탕이 그대로)
+ *  ② 그림은 원본 비율 그대로 창 안쪽에 통째로 (잘림 · 넘침 금지) · 글씨는 그림 위에 올리지 않는다
+ *  ③ 단추 줄은 줄바꿈 없이 칸을 나눠 갖는다 (긴 단추 = 1fr)
+ */
+.dialog.idg-framed { display: flex; flex-direction: column; overflow: hidden; }
+.dialog.idg-framed > .idg-how-title { position: static; flex: none; }
+.dialog.idg-framed > .idg-how-title::before { display: none; }
+.dialog.idg-framed > .idg-dlg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: inherit; }
+.dialog.idg-framed > .pbtn:last-child, .dialog.idg-framed > button:last-child { position: static; flex: none; box-shadow: none; margin-top: 8px; }
+.dialog.idg-framed.pp > .idg-pp { flex: 1 1 auto; min-height: 0; }
+/* 파워업 페이지 고정 틀 (전투 안 · 로비) */
+.idg-hud .idg-card.idg-pp { display: flex; flex-direction: column; overflow: hidden; height: calc(100% - 24px); }
+.idg-pp { display: flex; flex-direction: column; min-height: 0; }
+.idg-pp-title, .idg-pp-band { flex: none; }
+.idg-pp-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y; padding-right: 2px; }
+.idg-pp-row { position: static !important; background: none !important; box-shadow: none !important; flex: none; flex-wrap: nowrap !important; margin-top: 8px; }
+.idg-pp-row .idg-btn.main { flex: 1 1 auto; } .idg-pp-row .idg-btn:not(.main) { flex: 0 0 auto; }
+.idg-pp-card { cursor: pointer; user-select: none; } .idg-pp-card:active { translate: 0 1px; }
+.dialog.idg-pp-dlg { height: min(92dvh, 900px); }
+/* 결과 창 : 단추 세 줄 · 그림 원본 비율 통째로 · «승리!»는 그림 아래 */
+.idg-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.idg-hud .idg-rows .idg-row { margin: 0; flex-wrap: nowrap; position: static; background: none; box-shadow: none; }
+.idg-hud .idg-rows .idg-row .idg-btn { flex: 1 1 0; min-width: 0; }
+.idg-hud .idg-card:has(h2.win)::before, .idg-hud .idg-card:has(h2.lose)::before { width: 100%; max-width: 420px; aspect-ratio: 800 / 447; background-size: cover; background-color: transparent; margin: 6px auto 0; box-sizing: border-box; }
+.idg-hud .idg-card:has(h2.win) > h2, .idg-hud .idg-card:has(h2.lose) > h2 { margin-top: 10px; position: static; }
+.idg-hud .idg-card:has(h2.win), .idg-hud .idg-card:has(h2.lose) { width: min(92%, 460px); }
+@media (orientation: landscape) and (max-height: 600px) {
+  .idg-hud .idg-card:has(h2.win), .idg-hud .idg-card:has(h2.lose) { width: min(94%, 760px); }
+  .idg-hud .idg-card:has(h2.win)::before, .idg-hud .idg-card:has(h2.lose)::before { max-width: none; margin: 0; }
+  .idg-hud .idg-card:has(h2.win) > h2, .idg-hud .idg-card:has(h2.lose) > h2 { margin-top: 0; }
+  .idg-rows { margin-top: 6px; gap: 6px; }
+}
+/* 위 띠 : 오른쪽 끝 동그라미 «2배속» · 그 왼쪽 전체 화면 (같은 판 · 같은 크기) */
+.idg-hud .idg-top .idg-speed { width: 42px; height: 42px; min-width: 42px; padding: 0; margin: 0; border: 0; border-image: none; border-radius: 50%; flex: none; position: relative;
+  background: url(/assets/iandragon_game/ui/hud_btn_round.png) center / contain no-repeat; color: #cbb9ee; font: 900 11px/1 'Neo둥근모', monospace; letter-spacing: -.5px; text-shadow: var(--idg-pxo); padding-bottom: 2px; }
+.idg-hud .idg-top .idg-speed.on { color: #ffd84a; filter: brightness(1.12); }
+.idg-hud .idg-top .idg-speed::after { content: ''; position: absolute; inset: -5px; }
+@media (max-height: 430px) { .idg-hud .idg-top .idg-speed { width: 36px; height: 36px; min-width: 36px; font-size: 10px; } }
+
+/* 명예의 전당 줄 : 왕관과 «1위» 사이 2px · 얼굴은 칸 정가운데(머리 + 모자 한 장) */
+.dialog.idg-hall .rank-place { gap: 2px; }
+.dialog.idg-hall .idg-hall-face { display: grid; place-items: center; overflow: visible; }
+.dialog.idg-hall .idg-hall-face canvas.f-head { width: 42px; height: 42px; margin: 0; image-rendering: pixelated; position: static; transform: none; }
+.dialog.idg-hall .idg-hall-face .f-frame { position: absolute; inset: 0; }
+/* 세로 전투 : 전장 위쪽 빈 곳 · 카드 줄 뒤는 밤하늘 색 (검정 X) */
+@media (orientation: portrait) { .dg-host, .idg-host { background: #150d32; } }
+/* 가로 = 높이와 상관없이 결과 창은 그림 왼쪽 · 내용 오른쪽 두 칸 (가로 태블릿에서 창이 길어져 단추가 잘리던 것) */
+@media (orientation: landscape) {
+  .idg-hud .idg-card:has(h2.win), .idg-hud .idg-card:has(h2.lose) { display: grid; grid-template-columns: minmax(0, 44%) minmax(0, 1fr); column-gap: 16px; align-items: center; align-content: center; width: min(94%, 860px); max-width: min(94%, 860px); }
+  .idg-hud .idg-card:has(h2.win)::before, .idg-hud .idg-card:has(h2.lose)::before { grid-column: 1; grid-row: 1 / span 8; width: 100%; max-width: none; margin: 0; align-self: center; }
+  .idg-hud .idg-card:has(h2.win) > *, .idg-hud .idg-card:has(h2.lose) > * { grid-column: 2; }
+  .idg-hud .idg-card:has(h2.win) > h2, .idg-hud .idg-card:has(h2.lose) > h2 { margin-top: 0; }
+}
+/* ════ 로비 정렬 (11/11 밤 대표님 «정렬 같은 거 어렵지 않잖아») ════
+ * 큰 단추 4개 : 그림은 모두 왼쪽 같은 자리(56칸) · 글씨는 남은 칸 가운데 · 한 줄 */
+.screen.idg-lobby > .idg-menu.big .idg-tile { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; justify-items: center; column-gap: 4px; padding: 0 10px 0 8px; text-align: center; }
+.screen.idg-lobby > .idg-menu.big .idg-tile img { width: 48px; height: 48px; object-fit: contain; justify-self: center; }
+.screen.idg-lobby > .idg-menu.big .idg-tile span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (orientation: portrait) and (min-width: 560px) { .screen.idg-lobby > .idg-menu.big .idg-tile { grid-template-columns: 84px minmax(0, 1fr); } .screen.idg-lobby > .idg-menu.big .idg-tile img { width: 68px; height: 68px; } }
+/* 받을 것 있음 표시 : 빨간 네모 → 도트 «N» 배지 */
+.idg-mini-btn.dot::after, .idg-tile.dot::after { content: 'N'; position: absolute; top: 3px; right: 4px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 0; background: #e8343a; color: #fff; font: 900 11px/1 'Neo둥근모', monospace; box-shadow: 0 0 0 2px #1a0c38, inset 0 -2px 0 #9e1d22; text-shadow: none; }
+/* 프로필 : 용은 칸 안에서만 (발 · 날개가 밖으로 안 나감) · 별 · 코인 · 젬 줄이 판 밖으로 안 넘침 */
+.screen.idg-lobby .idg-panel.idg-prof { grid-template-columns: 104px minmax(0, 1fr); min-height: 0; padding: 6px 10px; overflow: hidden; }
+.screen.idg-lobby .idg-prof-dragon { width: 104px; height: 96px; overflow: hidden; align-self: center; }
+.screen.idg-lobby .idg-prof-canvas { width: 100%; height: 100%; margin: 0; object-fit: contain; object-position: center; }
+.screen.idg-lobby .idg-prof-text { min-width: 0; overflow: hidden; }
+.screen.idg-lobby .idg-prof-text .idg-stat-row { flex-wrap: nowrap; gap: 10px; min-width: 0; }
+.screen.idg-lobby .idg-prof-text .idg-stat-row > * { white-space: nowrap; }
+@media (orientation: portrait) and (min-width: 560px) { .screen.idg-lobby .idg-panel.idg-prof { grid-template-columns: 150px minmax(0, 1fr); } .screen.idg-lobby .idg-prof-dragon { width: 150px; height: 132px; } }
+/* N 배지 : 글꼴에 따라 소문자처럼 보여 도트 그림 «N» 으로 */
+.idg-mini-btn.dot::after, .idg-tile.dot::after { content: ''; background: #e8343a url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%207%207%22%20shape-rendering%3D%22crispEdges%22%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M1%201h1v5H1zM5%201h1v5H5zM2%202h1v1H2zM3%203h1v1H3zM4%204h1v1H4z%22%2F%3E%3C%2Fsvg%3E") center / 12px 12px no-repeat; }
+/* 좁은 폰(≤ 380) : 프로필 판이 눌려 사라지지 않게 · 큰 단추 글씨가 잘리지 않게 */
+.screen.idg-lobby > .idg-panel.idg-prof, .screen.idg-lobby > .idg-logo, .screen.idg-lobby > .idg-start-row, .screen.idg-lobby > .idg-menu.big, .screen.idg-lobby > .idg-icons { flex: none; }
+@media (max-width: 380px) {
+  .screen.idg-lobby .idg-panel.idg-prof { grid-template-columns: 84px minmax(0, 1fr); }
+  .screen.idg-lobby .idg-prof-dragon { width: 84px; height: 80px; }
+  .screen.idg-lobby > .idg-menu.big .idg-tile { grid-template-columns: 40px minmax(0, 1fr); padding: 0 6px 0 4px; }
+  .screen.idg-lobby > .idg-menu.big .idg-tile img { width: 36px; height: 36px; }
+  .screen.idg-lobby > .idg-menu.big .idg-tile span { font-size: 14px; }
+}
+@media (max-width: 380px) { .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 6px; font-size: 11px; } .screen.idg-lobby .idg-prof-text .idg-stat-row img, .screen.idg-lobby .idg-prof-text .idg-stat-row i { width: 14px; height: 14px; } }
+
+/* ════ 가로 로비 7차 (11/11 밤 대표님 설계 그대로) — 폰 · 태블릿 · PC 가로 모두 같은 틀
+ *  타이틀 없음 · 왼쪽 절반 = [프로필 카드] [모험 시작 | 판 고르기] · 오른쪽 절반 = 큼직한 네모 단추 2×2 (그림 위 · 이름 아래)
+ *  아래 = 작은 아이콘 5칸 (위 단추들과 왼쪽 · 오른쪽 끝 · 간격이 같다) · 맨 아래 = 돌아가기
+ *  간격 규칙 : 칸 사이 12px · 바깥 여백 12px (안전 영역 더함) — 모든 줄의 왼쪽 · 오른쪽 끝이 한 선에 맞는다 */
+.idg-mini-btn { box-shadow: 0 0 0 1px #1a0c38; }   /* 아래로 튀어나온 3px 그림자 줄 없앰 */
+@media (orientation: landscape) and (min-width: 560px) {
+  html.idg-lobby-on .screen.idg-lobby { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto; column-gap: 12px; row-gap: 12px;
+    grid-template-areas: "panel menu" "start menu" "icons icons" "back back"; width: 100%; max-width: 1200px; height: 100dvh; margin: 0 auto; overflow: hidden; box-sizing: border-box; align-content: stretch;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-logo, html.idg-lobby-on .screen.idg-lobby > .idg-land-stage, html.idg-lobby-on .screen.idg-lobby > .spacer { display: none; }
+  /* 왼쪽 : 프로필 카드 (칸 높이를 채우고 안에서 가운데) */
+  html.idg-lobby-on .screen.idg-lobby > .idg-panel.idg-prof { grid-area: panel; margin: 0; min-height: 0; height: 100%; box-sizing: border-box; align-self: stretch; align-content: center; grid-template-columns: minmax(0, 42%) minmax(0, 1fr); padding: 8px 14px; }
+  html.idg-lobby-on .screen.idg-lobby .idg-prof-dragon { width: 100%; height: 100%; max-height: 180px; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row { grid-area: start; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: stretch; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row .idg-start { min-height: 64px; margin: 0; font-size: 22px; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row .idg-pick { min-height: 64px; min-width: 88px; margin: 0; }
+  /* 오른쪽 : 2×2 큼직한 네모 단추 (세로 로비처럼 그림 크게) */
+  html.idg-lobby-on .screen.idg-lobby > .idg-menu.big { grid-area: menu; margin: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; min-height: 0; height: 100%; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-menu.big .idg-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 0; height: 100%; padding: 8px 6px; text-align: center; box-sizing: border-box; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-menu.big .idg-tile img { width: clamp(40px, 9vh, 84px); height: clamp(40px, 9vh, 84px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-menu.big .idg-tile span { font-size: clamp(14px, 3.2vh, 22px); white-space: nowrap; }
+  /* 아래 : 아이콘 5칸 — 위 두 칸과 같은 끝선 · 같은 간격 */
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons { grid-area: icons; margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-mini-btn { min-height: 0; height: clamp(48px, 12vh, 84px); padding: 4px 2px; justify-content: center; box-sizing: border-box; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-mini-btn img { width: clamp(22px, 5.5vh, 40px); height: clamp(22px, 5.5vh, 40px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-mini-btn span { font-size: clamp(11px, 2.6vh, 15px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-back { grid-area: back; margin: 0 auto; width: min(520px, 100%); min-height: 0; padding-block: 4px; font-size: 13px; }
+}
+@media (orientation: landscape) and (min-width: 560px) and (max-height: 430px) {   /* 폰 가로 (낮은 화면) */
+  html.idg-lobby-on .screen.idg-lobby { row-gap: 8px; column-gap: 10px; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-menu.big, html.idg-lobby-on .screen.idg-lobby > .idg-icons, html.idg-lobby-on .screen.idg-lobby > .idg-start-row { gap: 8px; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row .idg-start, html.idg-lobby-on .screen.idg-lobby > .idg-start-row .idg-pick { min-height: 52px; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row .idg-start { font-size: 19px; }
+  html.idg-lobby-on .screen.idg-lobby .idg-prof-text .idg-player { font-size: 16px; }
+}
+@media (orientation: landscape) and (min-width: 560px) {
+  html.idg-lobby-on .screen.idg-lobby > .idg-menu.big .idg-tile img { width: clamp(48px, 15vh, 120px); height: clamp(48px, 15vh, 120px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-menu.big .idg-tile span { font-size: clamp(15px, 3.6vh, 30px); }
+  html.idg-lobby-on .screen.idg-lobby .idg-prof-text .idg-player { font-size: clamp(16px, 3.6vh, 30px); }
+  html.idg-lobby-on .screen.idg-lobby .idg-title-badge { font-size: clamp(12px, 2.4vh, 18px); }
+  html.idg-lobby-on .screen.idg-lobby .idg-prof-text .idg-stats { font-size: clamp(12px, 2.6vh, 20px); }
+  html.idg-lobby-on .screen.idg-lobby .idg-prof-dragon { max-height: none; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-mini-btn img { width: clamp(26px, 6.5vh, 52px); height: clamp(26px, 6.5vh, 52px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-mini-btn span { font-size: clamp(11px, 2.8vh, 18px); }
+}

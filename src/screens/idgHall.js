@@ -9,15 +9,17 @@
  */
 import S from '../config/strings.ko.js';
 import { decodeLook } from '../games/iandragon_game/data/looks.js';
+import { headCanvas } from './idgDressed.js';
 
 /** 줄 얼굴 : 대장 용 머리 + 모자 · 테두리 (꾸미기 글자) — 그림이 없으면 그 겹만 숨김 */
 const AIP = '/assets/iandragon_game/ai/';
 function face(look) {
+  /* 머리 + 모자를 전투와 같은 자리표로 한 장에 (idgDressed headCanvas) — 칸 가운데 · 모자가 머리 위에 붙는다 (대표님 11/11) */
   const L = decodeLook(look || ''), hide = (e) => { e.target.style.display = 'none'; };
-  const kids = [el('img.f-head', { src: AIP + 'novart/head.png', alt: '', onerror: hide })];
-  if (L.hat) kids.push(el('img.f-hat', { src: `${AIP}meta/hat_${L.hat}.png`, alt: '', onerror: hide }));
-  if (L.frame) kids.push(el('img.f-frame', { src: `${AIP}meta/frame_${L.frame}.png`, alt: '', onerror: hide }));
-  return el('span.idg-hall-face', { 'data-look': look || null }, kids);
+  const box = el('span.idg-hall-face', { 'data-look': look || null }, []);
+  headCanvas('novart', look).then((c) => { c.className = 'f-head'; box.prepend(c); }).catch(() => box.prepend(el('img.f-head', { src: AIP + 'novart/head.png', alt: '', onerror: hide })));
+  if (L.frame) box.append(el('img.f-frame', { src: `${AIP}meta/frame_${L.frame}.png`, alt: '', onerror: hide }));
+  return box;
 }
 import { el, button, segmented, presentOverlay } from './ui.js';
 import { crownSlot } from './crown.js';

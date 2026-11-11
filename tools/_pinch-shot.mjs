@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const b = await chromium.launch({ channel: 'chrome' });
-for (const [nm, w, h, d] of [['p209', 412, 915, 2.6], ['p169', 360, 640, 3], ['p209L', 915, 412, 2.6]]) {
+for (const [nm, w, h, d] of (process.argv[2] === 'p' ? [['p209', 412, 915, 2.6]] : [['p209', 412, 915, 2.6], ['p169', 360, 640, 3], ['p209L', 915, 412, 2.6]])) {
   const p = await (await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: d })).newPage(); const errs = []; p.on('pageerror', (e) => errs.push(String(e)));
   const click = (t) => p.evaluate((t) => { [...document.querySelectorAll('button')].find((y) => y.textContent.includes(t))?.click(); }, t);
   await p.goto('http://127.0.0.1:5320/tools/idg-gallery/lobby.html'); await sleep(1500); await click('모험 시작'); await sleep(4500); await click('출격'); await sleep(7500);

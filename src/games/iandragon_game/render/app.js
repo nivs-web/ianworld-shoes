@@ -44,7 +44,9 @@ export function fitView(cssW, cssH, dpr, ins = { t: 0, b: 0 }) {
     const w = Math.max(180, Math.min(MAX_W, Math.floor(pw / k)));
     const res = Math.max(1, Math.min(RES_MAX, Math.round(k * 4) / 4));
     const cw = (w * k) / dpr, ch = (BASE_H * k) / dpr;
-    return { w, h: BASE_H, k, res, cssW: cw, cssH: ch, left: (cssW - cw) / 2, top: cssH - bar - ((BASE_H - crop.bottom) * k) / dpr };
+    const topP = cssH - bar - ((BASE_H - crop.bottom) * k) / dpr;
+    /* 아래 용 카드 줄 뒤로는 전장을 그리지 않는다 (대표님 11/11 «아래 버튼까지는 침범하지 않게») — 캔버스 아랫부분을 잘라 낸다 */
+    return { w, h: BASE_H, k, res, cssW: cw, cssH: ch, left: (cssW - cw) / 2, top: topP, clipB: Math.max(0, topP + ch - (cssH - bar)) };
   }
   const minW = crop ? (portrait ? 420 : 760) / Math.max(1, crop.z || 0) ** 0.9 : BASE_W;   /* 손으로 더 확대(z > 1)하면 보이는 칸을 그만큼 줄인다 */   /* 떠 있는 HUD : 어느 기기든 화면을 꽉 채운다(태블릿 · PC 처럼 덜 긴 화면은 화면 너비를 760칸까지 줄여 위아래 검은 띠 없이) */
   const kFit = Math.min(pw / minW, ph / band);
@@ -103,6 +105,7 @@ export async function createApp(host) {
     cv.style.height = `${f.cssH}px`;
     cv.style.left = `${f.left}px`;
     cv.style.top = `${f.top}px`;
+    cv.style.clipPath = f.clipB ? `inset(0 0 ${f.clipB}px 0)` : '';
   };
   /* HUD 가 자기 띠 높이를 알려 준다 (hud.js · 'idg-insets' { t, b }) */
   const onIns = (e) => { const d = e.detail || {}; if (Math.abs((d.t || 0) - ins.t) < 1 && Math.abs((d.b || 0) - ins.b) < 1 && JSON.stringify(d.f || null) === JSON.stringify(ins.f || null)) return; ins.t = d.t || 0; ins.b = d.b || 0; ins.f = d.f || null; apply(); };

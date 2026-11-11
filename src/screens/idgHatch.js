@@ -55,7 +55,7 @@ export function showHatch(onChange) {
   }
   drawInfo();
   stage.appendChild(el('div.idg-egg', null, [el('img', { src: `${AI}eggs/egg_rare.png`, alt: '', onerror: (e) => e.target.remove() })]));
-  const box = el('div.dialog.idg-hatch', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '알 부화장'), info, stage, btns, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-hatch', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '부화장'), info, stage, btns, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }

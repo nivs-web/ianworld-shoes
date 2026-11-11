@@ -20,7 +20,7 @@ const fmt = (n) => n.toLocaleString('en-US');
 export function showNest(onChange) {
   Sfx.play('sfx_menu_select');
   const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-  const page = powerPage(h, { save: () => G.idg(), write: (part) => { const r = G.saveIdg(part); onChange?.(); return r; }, buttons: [['닫기', () => close()]], cls: 'idg-pp' });
+  const page = powerPage(h, { save: () => G.idg(), write: (part) => { const r = G.saveIdg(part); onChange?.(); return r; }, buttons: [['닫기', () => close(), 'pbtn']], cls: 'idg-pp' });
   const box = el('div.dialog.idg-pp-dlg', { onclick: (e) => e.stopPropagation() }, [page]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
