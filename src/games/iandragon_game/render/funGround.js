@@ -78,7 +78,7 @@ export function cat(E) {
  * 재미 감독(fun.js)이 하나 만들어 평소 깜빡임에 쓰고, 부엉이 요소(owl)도 같은 것을 쓴다 (E.owlLids).
  */
 export function owlLids(E) {
-  const o = E.owl, g = new Graphics(); E.back.addChildAt(g, E.back.getChildIndex(o) + 1);
+  const o = E.owl, g = new Graphics(); o.parent.addChildAt(g, o.parent.getChildIndex(o) + 1);   /* 부엉이가 있는 겹(하늘 겹일 수 있다) */
   const EYES = [[-4, -31], [10.5, -31]], R = 5;
   return {
     set(k) {
@@ -103,7 +103,7 @@ const zGlyph = (s) => new Graphics().moveTo(0, 0).lineTo(s, 0).lineTo(0, s).line
 export function owl(E) {
   const o = E.owl, x0 = o.x, y0 = o.y, lids = E.owlLids, mode = pick(['doze', 'doze', 'turn', 'blink']);
   const T = mode === 'doze' ? 6.4 : mode === 'turn' ? 2 : 1.8;
-  const zc = new Container(); E.back.addChild(zc);
+  const zc = new Container(); o.parent.addChild(zc);
   const zs = [];
   return {
     update(t, dt) {

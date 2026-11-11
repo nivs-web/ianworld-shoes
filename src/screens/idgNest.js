@@ -10,12 +10,24 @@ import { UNITS } from '../games/iandragon_game/data/units.js';
 import { ECON } from '../games/iandragon_game/data/econ.js';
 import { unlockedBefore, makeLoads, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
 import { breathStats } from '../games/iandragon_game/render/breathInfo.js';
+import { powerPage } from '../games/iandragon_game/render/powerPage.js';
 import { LEADERS } from '../games/iandragon_game/data/leaders.js';
 
 const capOf = (cleared) => ECON.capAt.reduce((c, [g, cap]) => (cleared >= g ? cap : c), 10);
 const fmt = (n) => n.toLocaleString('en-US');
 
+/* 로비 «파워업» = 전투 안과 같은 한 페이지 (powerPage.js · 대표님 11/11) */
 export function showNest(onChange) {
+  Sfx.play('sfx_menu_select');
+  const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const page = powerPage(h, { save: () => G.idg(), write: (part) => { const r = G.saveIdg(part); onChange?.(); return r; }, buttons: [['닫기', () => close()]], cls: 'idg-pp' });
+  const box = el('div.dialog.idg-pp-dlg', { onclick: (e) => e.stopPropagation() }, [page]);
+  const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
+  const close = presentOverlay(overlay);
+}
+
+/** (옛 둥지 목록 — 쓰지 않음 · 참고용) */
+export function showNestOld(onChange) {
   Sfx.play('sfx_menu_select');
   const list = el('div.idg-nest-list'), coins = el('div.idg-nest-coins'), deckInfo = el('div.idg-nest-deck'), breathInfo = el('div.idg-nest-breath');
   function draw() {

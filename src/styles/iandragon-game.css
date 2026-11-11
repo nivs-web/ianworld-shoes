@@ -919,3 +919,88 @@ html.idg-rot .dg-host { z-index: 5; }
   .dialog[class*="idg-"] > .pbtn:last-child { min-height: 40px; padding-block: 4px; }
 }
 @media (orientation: landscape) and (max-height: 560px) and (min-width: 860px) { .idg-nest-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* ════ 위 띠 두 단추 : 일시정지 · 전체 화면 (11/11 대표님 «가로에서 전체화면과 일시정지 단추가 이상하다 · 일괄 수정») ════
+ * 같은 판(hud_btn_round) · 같은 크기 · 그림은 판 안쪽 원의 가운데(세로 47%) · 누르는 자리는 ::after 로 사방 넓혀 44px 이상 · 안전 영역만큼 띄움 */
+.idg-hud.float .idg-top { padding-left: max(2px, env(safe-area-inset-left)); padding-right: max(2px, env(safe-area-inset-right)); }
+.idg-hud .idg-top .idg-pause, .idg-hud .idg-top .idg-fs { width: 42px; height: 42px; min-width: 42px; padding: 0; margin: 0; border: 0; border-image: none; border-radius: 50%; flex: none; position: relative; font-size: 0; color: transparent; }
+.idg-hud .idg-top .idg-pause { background: url(/assets/iandragon_game/ui/hud_pause.png) 50% 47% / 38% no-repeat, url(/assets/iandragon_game/ui/hud_btn_round.png) center / contain no-repeat; }
+.idg-hud .idg-top .idg-fs { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20shape-rendering%3D%22crispEdges%22%3E%3Cpath%20fill%3D%22%23ffe9b0%22%20d%3D%22M1%201h5v2H3v3H1zM10%201h5v5h-2V3h-3zM1%2010h2v3h3v2H1zM13%2010h2v5h-5v-2h3z%22%2F%3E%3C%2Fsvg%3E") 50% 47% / 42% no-repeat, url(/assets/iandragon_game/ui/hud_btn_round.png) center / contain no-repeat; image-rendering: pixelated; }
+.idg-hud .idg-top .idg-fs.on { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20shape-rendering%3D%22crispEdges%22%3E%3Cpath%20fill%3D%22%23ffe9b0%22%20d%3D%22M4%201h2v5H1V4h3zM10%201h2v3h3v2h-5zM1%2010h5v5H4v-3H1zM10%2010h5v2h-3v3h-2z%22%2F%3E%3C%2Fsvg%3E"), url(/assets/iandragon_game/ui/hud_btn_round.png); }
+.idg-hud .idg-top .idg-pause:active, .idg-hud .idg-top .idg-fs:active { translate: 0 1px; filter: brightness(.88); }
+.idg-hud .idg-top .idg-pause::after, .idg-hud .idg-top .idg-fs::after { content: ''; position: absolute; inset: -5px; }
+.idg-hud .idg-top .idg-fs svg { display: none; }
+@media (max-height: 430px) { .idg-hud .idg-top .idg-pause, .idg-hud .idg-top .idg-fs { width: 36px; height: 36px; min-width: 36px; } .idg-hud .idg-top .idg-pause::after, .idg-hud .idg-top .idg-fs::after { inset: -6px; } }
+.idg-hud:has(.idg-panel-over.on) .idg-top .idg-fs { visibility: hidden; }   /* 창이 열리면 겹쳐 남지 않게 */
+
+/* ════ 한 페이지 파워업 (powerPage.js · 11/11 대표님) — 전투 안(.idg-card.idg-pp) · 로비(.dialog.idg-pp-dlg) 같은 모양 ════ */
+.idg-hud .idg-card.idg-pp { width: min(96vw, 980px); max-width: min(96vw, 980px); max-height: calc(100% - 16px); }
+.dialog.idg-pp-dlg { width: min(96vw, 980px); max-width: min(96vw, 980px); }
+.idg-pp { display: flex; flex-direction: column; gap: 6px; text-align: left; color: #e8dcff; }
+.idg-pp-title { margin: 0; text-align: center; color: #FFC93C; font-size: 20px; text-shadow: var(--idg-pxo); }
+.idg-pp-band { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; font-size: 13px; text-shadow: var(--idg-pxo); }
+.idg-pp-band .coin { color: #FFD27a; } .idg-pp-band .gem { color: #ff9ad8; } .idg-pp-band .limit { color: #ff8a6a; }
+.idg-pp-body { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.idg-pp-side { display: flex; flex-direction: column; gap: 6px; }
+.idg-pp-lead { display: grid; grid-template-columns: 34px 1fr; column-gap: 8px; align-items: center; padding: 4px 8px; background: #241650; border: 3px solid #1b1030; font-size: 12px; }
+.idg-pp-lead img { grid-row: span 2; width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+.idg-pp-lead b { color: #ffb36a; font-size: 13px; text-shadow: var(--idg-pxo); }
+.idg-pp-slots { display: grid; grid-template-columns: repeat(5, minmax(0, 64px)); gap: 6px; justify-content: center; }
+.idg-pp-slots.pick .idg-pp-slot { animation: idgPick .5s steps(2) infinite; }
+@keyframes idgPick { 50% { border-color: #FFC93C; } }
+.idg-pp-slot { position: relative; aspect-ratio: 1; padding: 0; border: 3px solid #1b1030; background: #2d1d5e; box-shadow: inset 2px 2px 0 #4a36a0, inset -2px -2px 0 #1f1446; cursor: pointer; display: grid; place-items: center; }
+.idg-pp-slot img { width: 80%; height: 80%; object-fit: contain; image-rendering: pixelated; }
+.idg-pp-slot em { position: absolute; left: 0; right: 0; bottom: 1px; font-style: normal; font-size: 11px; color: #fff; text-align: center; text-shadow: var(--idg-pxo); }
+.idg-pp-slot.empty { background: #170d36; border-style: dashed; border-color: #5a46a0; }
+.idg-pp-slot.empty b { color: #8a76d0; font-size: 26px; }
+.idg-pp-hint { margin: 0; text-align: center; font-size: 12px; color: #b9a8ff; }
+.idg-pp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.idg-pp-card { display: flex; flex-direction: column; gap: 3px; padding: 6px; background: #241650; border: 3px solid #1b1030; box-shadow: inset 2px 2px 0 #3a2a78; }
+.idg-pp-card.on { border-color: #6bdc6b; } .idg-pp-card.sel { border-color: #FFC93C; } .idg-pp-card.over { filter: grayscale(.7) brightness(.8); }
+.idg-pp-card.pop { animation: idgPuPop .28s steps(3); }
+.idg-pp-pick { display: grid; grid-template-columns: 44px 1fr auto; grid-template-rows: auto auto; column-gap: 6px; align-items: center; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.idg-pp-pick img { grid-row: span 2; width: 44px; height: 44px; object-fit: contain; image-rendering: pixelated; background: #170d36; border: 2px solid #1b1030; }
+.idg-pp-pick .nm { color: #fff; font-size: 14px; text-shadow: var(--idg-pxo); overflow-wrap: anywhere; }
+.idg-pp-pick .lv { grid-column: 2; color: #FFC93C; font-size: 11px; }
+.idg-pp-pick .tag { grid-column: 3; grid-row: 1 / span 2; font-style: normal; font-size: 11px; padding: 2px 5px; background: #2f7a3a; color: #eaffea; border: 2px solid #12301a; }
+.idg-pp-pick .tag.off { background: #3b2a6e; color: #cdbfff; border-color: #1b1030; }
+.idg-pp-card .st { display: grid; grid-template-columns: 38px 1fr; align-items: center; gap: 4px; font-size: 11px; color: #d8ccff; }
+.idg-pp-card .st i { height: 8px; background: #120a28; border: 2px solid #0a0618; display: block; }
+.idg-pp-card .st i b { display: block; height: 100%; background: #ff9a3c; box-shadow: inset 0 -2px 0 #c45a14; }
+.idg-hud .idg-pp-card .idg-pp-up, .dialog .idg-pp-card .idg-pp-up { min-height: 34px; margin-top: 2px; font-size: 13px; border: 3px solid #1b1030; border-image: none; background: #FFC93C; color: #1a1033; text-shadow: none; box-shadow: inset 0 -3px 0 #c48a10; }
+.idg-pp-card .idg-pp-up.evo { background: #ff7ad0; box-shadow: inset 0 -3px 0 #b8408c; }
+.idg-pp-card .idg-pp-up.poor { background: #6a5a8a; color: #d8ccff; box-shadow: none; }
+.idg-pp-card .idg-pp-up:disabled { background: #3b2a6e; color: #8a7ab0; box-shadow: none; }
+.idg-pp-row { position: sticky; bottom: 0; z-index: 3; background: #2a1a4a; box-shadow: 0 0 0 6px #2a1a4a; margin-top: 4px; }
+/* 가로 : 왼쪽 슬롯(세로) · 오른쪽 목록 */
+@media (orientation: landscape) {
+  .idg-pp-body { display: grid; grid-template-columns: minmax(190px, 30%) minmax(0, 1fr); align-items: start; }
+  .idg-pp-side { position: sticky; top: 0; }
+  .idg-pp-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .idg-pp-list { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+}
+@media (orientation: landscape) and (max-height: 430px) { .idg-pp-slots { grid-template-columns: repeat(3, minmax(0, 1fr)); } .idg-pp-lead span { font-size: 11px; } .idg-pp-title { font-size: 16px; } }
+@media (max-width: 420px) { .idg-pp-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } .idg-pp-slots { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (orientation: landscape) { .idg-pp-slots { grid-template-columns: repeat(2, minmax(0, 70px)); } }
+@media (orientation: landscape) and (max-height: 430px) { .idg-pp-slots { grid-template-columns: repeat(3, minmax(0, 54px)); } }
+@media (max-width: 480px) {   /* 좁은 세로 폰 : 카드 머리를 그림 · 이름 위아래로 (이름이 세로로 꺾이지 않게) */
+  .idg-pp-pick { grid-template-columns: 34px 1fr; grid-template-rows: auto auto auto; }
+  .idg-pp-pick img { width: 34px; height: 34px; }
+  .idg-pp-pick .nm { font-size: 13px; white-space: nowrap; }
+  .idg-pp-pick .tag { grid-column: 1 / -1; grid-row: 3; justify-self: start; }
+  .idg-pp-card .st { grid-template-columns: 30px 1fr; font-size: 10px; }
+}
+
+/* ════ 로비 프로필 : 내가 꾸민 리더 드래곤 (11/11 대표님) — 왼쪽 드래곤(숨쉬기) · 오른쪽 이름 · 칭호 · 다음 판 · 별 · 코인 · 젬 ════ */
+.idg-panel.idg-prof { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px; }
+.idg-prof-dragon { padding: 0; border: 0; background: none; cursor: pointer; width: 96px; height: 80px; display: grid; place-items: end center; overflow: visible; }
+.idg-prof-canvas { width: 120px; height: 100px; margin: -14px -12px -6px; image-rendering: pixelated; animation: idgBreathe 1.6s steps(2) infinite; }
+.idg-prof-text { min-width: 0; text-align: left; }
+.idg-prof-dragon.hop .idg-prof-canvas, .idg-land-stage.hop .idg-land-leader { animation: idgHop .35s steps(3), idgBreathe 1.6s steps(2) infinite .35s; }
+@keyframes idgBreathe { 50% { translate: 0 -1px; scale: 1 1.015; } }
+.idg-land-leader { animation: idgBreathe 1.6s steps(2) infinite; }
+@media (max-width: 380px) { .idg-prof-dragon { width: 78px; height: 68px; } .idg-prof-canvas { width: 98px; height: 82px; } }
+/* 전투 창은 HUD 배율(scale)을 받으므로 vw 대신 % (세로 태블릿에서 파워업 창이 오른쪽 밖으로 넘치던 것) */
+.idg-hud .idg-card { max-width: min(92%, 640px); }
+.idg-hud .idg-card:has(.idg-btn.big), .idg-hud .idg-card:has(h2.win), .idg-hud .idg-card:has(h2.lose) { max-width: min(96%, 760px); }
+.idg-hud .idg-card.idg-pp { width: min(96%, 980px); max-width: min(96%, 980px); }

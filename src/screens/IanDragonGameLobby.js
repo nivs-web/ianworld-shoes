@@ -20,7 +20,8 @@ import '../styles/iandragon-game.css';
 import { soundPanel } from '../games/iandragon_game/render/soundPrefs.js';
 import { showNest } from './idgNest.js';
 import { showHatch } from './idgHatch.js';
-import { showCodex, bodyCanvas } from './idgCodex.js';
+import { showCodex } from './idgCodex.js';
+import { dressedCanvas } from './idgDressed.js';
 import { makeLoads, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
 import { showLab } from './idgLab.js';
 import { showMulti } from './idgMulti.js';
@@ -187,13 +188,16 @@ export default function IanDragonGameLobby(nav) {
    *  위 띠 = 짧은 배너(보조 banner_wide) + 상태판 · 왼쪽 = 리더 무대(stage_land + 리더 몸 그림, 누르면 이름 외침) · 오른쪽 = 모험 시작 + 2×2 · 아래 = 작은 아이콘 줄.
    *  html.idg-lobby-on : 로비가 떠 있는 동안 몸통 폭(오락실 450)을 화면 전체로 (가로에서만 · CSS).
    */
-  function landStage(g) {
-    let ld = 'novart'; try { ld = makeLoads(stageByNo(Math.min(100, (g.cleared || 0) + 1)), g).loads[0].leader || ld; } catch { /* */ }
-    const box = el('button.idg-land-stage', { type: 'button', 'aria-label': '리더 드래곤',
-      onclick: () => import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); A.voice(`name/${ld}`); box.classList.remove('hop'); void box.offsetWidth; box.classList.add('hop'); }).catch(() => {}) });
-    bodyCanvas(ld).then((c) => { c.className = 'idg-land-leader'; box.appendChild(c); }).catch(() => {});
+  const leaderOf = (g) => { try { return makeLoads(stageByNo(Math.min(100, (g.cleared || 0) + 1)), g).loads[0].leader || 'novart'; } catch { return 'novart'; } };
+  /* 내가 꾸민 리더 드래곤 (대표님 11/11 «왕관을 썼으면 왕관, 목도리를 골랐으면 목도리») — 누르면 이름 외침 + 깡충 */
+  function myDragon(tag, g, cls) {
+    const ld = leaderOf(g);
+    const box = el(tag, { type: 'button', 'aria-label': '내 리더 드래곤',
+      onclick: () => { box.classList.remove('hop'); void box.offsetWidth; box.classList.add('hop'); import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); A.voice(`name/${ld}`); }).catch(() => {}); } });
+    dressedCanvas(ld, g.look).then((c) => { c.className = cls; box.appendChild(c); }).catch(() => {});
     return box;
   }
+  const landStage = (g) => myDragon('button.idg-land-stage', g, 'idg-land-leader');
   return {
     onLeave() { document.documentElement.classList.remove('idg-lobby-on'); },
     destroy() { document.documentElement.classList.remove('idg-lobby-on'); },
@@ -207,11 +211,14 @@ export default function IanDragonGameLobby(nav) {
         /* 로비 맨 위 배너 (겜팀장 v2 · 신발 · 드래곤 로비와 같은 비율) — 결정 D4 */
         el('div.idg-logo', null, [el('img.idg-lobby-banner', { src: '/assets/ui/banner_iandragon_lobby.webp', alt: `${S.idgTitle} ${S.idgTitleEn}` })]),
         /* 상태판 — 그림(겜부장 보조 · ui/lobby/*)이 있으면 그림, 없으면 글자만 (2026-11-11 대표님 «로비에 디자인 요소가 없다») */
-        el('div.panel.idg-panel', null, [
+        el('div.panel.idg-panel.idg-prof', null, [
+          myDragon('button.idg-prof-dragon', g, 'idg-prof-canvas'),
+          el('div.idg-prof-text', null, [
           el('div.idg-player', (p.nickname || '???') + (titleOf(g.title) ? ` · ${titleOf(g.title).name}` : '')),
           el('div.idg-stats', null, [
             el('div', g.cleared >= 100 ? '모든 모험 끝! 좀비 드래곤 로드를 물리쳤어요!' : S.idgStatNext(G.stageLabel(G.nextStage(g)))),   // 코드 검토 7
             el('div.idg-stat-row', null, [stat('star', G.totalStars(g)), stat('coin', g.coins), stat('gem', g.gems)]),
+          ]),
           ]),
         ]),
         /* 로비 메뉴 정리 (2026-11-11 대표님 · 기획 IAN_DRAGON_MENU_CODEX_PLAN.md 1장) : 큰 단추(매일 하는 것) + 아래 작은 아이콘 줄 + «더보기» */

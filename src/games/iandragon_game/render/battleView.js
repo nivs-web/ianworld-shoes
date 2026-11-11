@@ -103,6 +103,15 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   if (layered && world === 1) spots.moon = { x: 779, y: 112, d: 222 };
   if (layered && world === 1) spots.fence = { x0: 1010, x1: 1250, y: 398 };   /* 대표님 11/11 «고양이가 공중에» : 앞 겹 울타리 실제 자리 (그림 픽셀로 잼) */
   if (layered && world === 1) spots.owl = { x: 300, y: 136 };   /* 확대하면 윗가지 부엉이가 위 HUD 글씨와 겹친다 → 아래 굵은 가지로 */   // 월드 1 하늘 겹은 다시 편집돼 달 자리가 통그림과 다르다 (그림 픽셀로 잼)
+  /*
+   * 앉는 재미 요소 자리 (11/11 대표님 «첫판부터 부엉이가 엉뚱한 곳») : 두 겹 배경의 앞 겹 그림에서 발밑 실제 윗면을 픽셀로 잼 (tools/_owl-layer.mjs).
+   * 월드 1 부엉이는 두 가지 사이 빈 곳(y 136)에 떠 있었다 → 아래 굵은 가지 윗면 159. 가지가 없거나(월드 7 부엉이) 울타리가 울퉁불퉁하면(월드 6 · 7 고양이) 끈다 (D2).
+   */
+  if (layered) {
+    const OWL_Y = { 1: 159, 2: 199, 3: 183, 4: 217, 5: 180, 6: 207, 8: 235, 9: 256, 10: 158 }, FENCE_Y = { 1: 386, 2: 335, 3: 390, 4: 351, 5: 324, 8: 306, 9: 378, 10: 368 };
+    if (spots.owl) { if (OWL_Y[world]) spots.owl = { ...spots.owl, y: OWL_Y[world] }; else delete spots.owl; }
+    if (spots.fence) { if (FENCE_Y[world]) spots.fence = { ...spots.fence, y: FENCE_Y[world] }; else delete spots.fence; }
+  }
   if (layered) delete spots.window;   /* 대표님 3차 «좀비 성 근처 갈색 네모 안 검은 사람» = 먼 성 창문 춤 — 두 겹 배경은 먼 성 자리가 달라 허공에 떴다 → 자리를 다시 잴 때까지 끔 */
   spots.safe = [260, FIELD - 260];
   if (spots.sky) spots.sky = [Math.max(spots.sky[0], 78), Math.max(spots.sky[1], 160)];   /* 확대해도 하늘 요소가 화면 위에 잘리지 않게 (위 HUD 아래부터) */

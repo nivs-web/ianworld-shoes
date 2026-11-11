@@ -10,7 +10,7 @@ import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
 import { ENEMIES } from '../data/enemies.js';
 import { rotated } from './rot.js';
-import { powerUpPanel } from './powerUp.js';
+import { powerPage } from './powerPage.js';
 import { soundPanel } from './soundPrefs.js';
 const ATTR_KO = { ghost: '유령', giant: '거대', shadow: '그림자', crystal: '수정' };
 
@@ -74,7 +74,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* 소리 단추는 화면에서 뺐다 — 일시정지 · 로비 «더보기 → 음향 설정» (대표님 11/11) */
   const fsB = h('button', 'idg-btn idg-fs'); fsB.type = 'button'; fsB.title = '꽉 찬 화면';
   /* 글자(⛶)는 글꼴마다 위로 쏠려 보였다 (대표님 3차) → 정사각 도트 그림(네 귀퉁이)을 단추 정가운데에 */
-  fsB.innerHTML = '<svg viewBox="0 0 16 16" width="55%" height="55%" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h5v2H3v3H1zM10 1h5v5h-2V3h-3zM1 10h2v3h3v2H1zM13 10h2v5h-5v-2h3z"/></svg>';
+  /* 그림은 CSS(일시정지와 같은 판 · 같은 자리) · 전체 화면이면 «나가기» 그림으로 (대표님 «가로에서 전체화면 · 일시정지 단추가 이상하다») */
+  const fsDraw = () => fsB.classList.toggle('on', !!(document.fullscreenElement || document.webkitFullscreenElement));
+  document.addEventListener('fullscreenchange', fsDraw); document.addEventListener('webkitfullscreenchange', fsDraw); fsDraw();
   fsB.onclick = () => { const d = document; try { if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else { const e = d.documentElement; (e.requestFullscreen || e.webkitRequestFullscreen)?.call(e)?.catch?.(() => {}); } } catch { /* 안 되는 기기 */ } };
   top.append(pauseB, title, time, speedB, money, fsB);   /* ⛶ 꽉 찬 화면 (대표님 «브라우저 아래 줄이 갑자기 나와 가린다») */
   if (speedMax < 2 || isNet) speedB.style.visibility = 'hidden';   // 멀티는 1배속 고정
@@ -143,8 +145,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const panel = h('div', 'idg-panel-over'); root.appendChild(panel);
   function showPanel(kind, info = {}) {
     panel.replaceChildren();
-    if (kind === 'powerup') {   /* 판 사이 파워 업 (powerUp.js) — 돌아가기 = 방금 결과 창 */
-      panel.appendChild(powerUpPanel(h, { save: cb.puSave, write: cb.puWrite, leader, onBack: () => showPanel(info.back, info.backInfo) }));
+    if (kind === 'powerup') {   /* 판 사이 파워업 (powerPage.js) — 돌아가기 = 방금 결과 창 */
+      /* 한 페이지 파워업 (powerPage.js · 대표님 «한 페이지에서 슬롯 끼고 빼고 업글») */
+      const back = () => showPanel(info.back, info.backInfo);
+      const btns = info.back === 'win' && info.backInfo?.hasNext ? [['전투 개시!', () => cb.next(), 'main big'], ['돌아가기', back]] : [['다시 하기', () => cb.retry(), 'main big'], ['돌아가기', back]];
+      panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, cls: 'idg-card idg-pp' }));
       panel.classList.add('on'); return;
     }
     const box = h('div', 'idg-card');
@@ -272,6 +277,6 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     },
     showPanel,
     hidePanel() { panel.classList.remove('on'); panel.replaceChildren(); },
-    destroy() { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', onRs); root.remove(); },
+    destroy() { document.removeEventListener('fullscreenchange', fsDraw); document.removeEventListener('webkitfullscreenchange', fsDraw); window.removeEventListener('keydown', onKey); window.removeEventListener('resize', onRs); root.remove(); },
   };
 }
