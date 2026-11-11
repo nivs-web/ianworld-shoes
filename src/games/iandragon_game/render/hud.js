@@ -26,8 +26,13 @@ const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const UI = '/assets/iandragon_game/ui/';
 /** 떠 있는 HUD : 위 · 아래 띠 판 없이 단추만 (CSS .idg-hud.float) */
 const FLOAT_HUD = true;
-/** 하늘 위를 잘라 낼 칸 = 확대 정도 (80 ≈ 1.17배). 개발 서버에서만 window.__idgCropTop 으로 A/B 비교 */
-const CROP_TOP = () => (import.meta.env?.DEV && window.__idgCropTop != null ? window.__idgCropTop : 80);
+/**
+ * 확대 (11/11 대표님 «시작은 전체 화면 → 캐릭터 · 좀비가 나오고 몇 초 뒤 1.1배로 · 바닥은 단추 높이만큼만»)
+ * 잘라 낼 칸 : 위 하늘 CROP.top · 아래 흙 CROP.bottom (합 49칸 = 540/491 ≈ 1.1배). 전투 ZOOM_AT 초부터 ZOOM_DUR 초 동안 부드럽게.
+ * 개발 서버에서만 window.__idgCropTop 으로 위쪽 칸을 바꿔 비교할 수 있다.
+ */
+const CROP = { top: 33, bottom: 16 }, ZOOM_AT = 5, ZOOM_DUR = 1.2;   /* 아래는 단추와 땅 줄 사이 여백이 남게 */
+const cropTop = () => (import.meta.env?.DEV && window.__idgCropTop != null ? window.__idgCropTop : CROP.top);
 /** 아이콘 그림 (없으면 글자 fallback) */
 const ico = (name, alt) => { const i = h('img', 'ico'); i.src = `${UI}${name}.png`; i.alt = alt; i.draggable = false; i.onerror = () => { i.replaceWith(h('span', 'ico-t', alt)); }; return i; };
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -39,11 +44,12 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* 대표님 «PC 에서 위 글씨 · 숫자가 너무 작다» (11/11) : HUD 전체를 화면 크기에 맞춰 키운다 (폰 가로 = 1 · PC 1280×800 ≈ 1.33 · 최대 1.7) */
   const fitHud = () => { const z = Math.max(1, Math.min(1.7, innerWidth / 960, innerHeight / 540)); root.style.zoom = String(Math.round(z * 100) / 100); };
   /* 위 · 아래 띠 높이를 캔버스에 알려 전장이 띠에 가리지 않게 한다 (app.js 'idg-insets') */
+  let zoomK = 0;   /* 0 = 전체 화면 · 1 = 확대 끝 */
   const sendIns = () => requestAnimationFrame(() => {
     const H = host.getBoundingClientRect(), tb = root.querySelector('.idg-top')?.getBoundingClientRect(), bb = root.querySelector('.idg-bot')?.getBoundingClientRect();
     if (!tb || !bb) return;
     /* 떠 있는 HUD (11/11 대표님 «위 · 아래 띠가 게임 화면을 가린다 · 단추는 공중에 떠 있게») : 띠 판이 없으니 캔버스는 화면 전체 — 띠 높이를 0 으로 알린다 */
-    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { top: CROP_TOP(), bottom: 0 } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
+    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { top: Math.round(cropTop() * zoomK), bottom: Math.round(CROP.bottom * zoomK) } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
   });
   const onRs = () => { fitHud(); sendIns(); };
   fitHud(); window.addEventListener('resize', onRs);
@@ -200,6 +206,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   return {
     update(S, ui) {
       const p = S.players[ui.me || 0], W = S.D.wallet;
+      if (FLOAT_HUD) { const z = Math.min(1, Math.max(0, (S.t - ZOOM_AT) / ZOOM_DUR)), e = z * z * (3 - 2 * z); if (Math.abs(e - zoomK) > 0.03 || (e === 1 && zoomK !== 1) || (e === 0 && zoomK !== 0)) { zoomK = e; sendIns(); } }
       if (ui.net && S.players.length > 1) {
         const o = S.players[(ui.me || 0) === 0 ? 1 : 0], foe = o.side !== p.side;
         mate.textContent = foe ? `상대 화로 Lv${o.wl + 1}` : `친구 화로 Lv${o.wl + 1}${o.breathT >= o.breathCharge ? ' · 브레스 준비!' : ''}`;

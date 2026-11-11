@@ -632,3 +632,7 @@ html.idg-wide body { width: 100%; }
   .idg-hud.float .idg-skill, .idg-hud.float .idg-rage { width: 50px; height: 50px; }
   .idg-hud.float .idg-tip[data-at] { top: 58px; font-size: 13px; padding: 5px 10px; }
 }
+/* 브레스 둥근 판 : 그림(287×299)을 정사각 칸에 100%로 늘려 넣고 둥글게 잘라 «찌그러진 원»이 됐다 → 비율 그대로(contain) · 잘라내지 않음 */
+.idg-hud .idg-breath { background-size: contain; background-position: center; border-radius: 0; overflow: visible; }
+.idg-hud .idg-breath .fill { inset: 14%; border-radius: 50%; }
+.idg-hud .idg-breath b { margin: 0 auto; }

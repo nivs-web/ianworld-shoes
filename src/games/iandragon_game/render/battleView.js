@@ -90,8 +90,10 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
 
   /* ── 재미있는 요소 (자리표가 없는 월드는 하늘 요소만) */
   const spots = { ...(SPOTS[world] || { sky: [50, 200], ground: 437, dirtY: 494 }) };
-  if (layered && world === 1) spots.moon = { x: 779, y: 112, d: 222 };   // 월드 1 하늘 겹은 다시 편집돼 달 자리가 통그림과 다르다 (그림 픽셀로 잼)
+  if (layered && world === 1) spots.moon = { x: 779, y: 112, d: 222 };
+  if (layered && world === 1) spots.owl = { x: 300, y: 136 };   /* 확대하면 윗가지 부엉이가 위 HUD 글씨와 겹친다 → 아래 굵은 가지로 */   // 월드 1 하늘 겹은 다시 편집돼 달 자리가 통그림과 다르다 (그림 픽셀로 잼)
   spots.safe = [260, FIELD - 260];
+  if (spots.sky) spots.sky = [Math.max(spots.sky[0], 78), Math.max(spots.sky[1], 160)];   /* 확대해도 하늘 요소가 화면 위에 잘리지 않게 (위 HUD 아래부터) */
   let camX = 0, viewW = view.w;
   const fun = funTex ? createFun(funTex, { back: funBack, sky: layered ? funSky : null, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && isOn('zdFunSound', id) && Audio.fun(FUN_SOUND[id]), every: nums('zdFunEvery') }) : { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
   if (import.meta.env.DEV) window.__idgFun = fun;   // 미리보기 점검용 (__idgFun.trigger('owl'))
@@ -111,8 +113,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     return { rig: data.rig, tex };
   }
   const ldRig = await wearRig(rigs[leader] || null, leader, look);
-  const lead = ldRig ? createRigged(ldRig, 1, 1) : null;
-  const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(await wearRig(rigs[foeLeader], foeLeader, lookR), 1, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
+  const LEAD_K = 0.74;   /* 리더 용을 일반 용 크기로 (대표님 «둥지 위 용이 너무 크다») */
+  const lead = ldRig ? createRigged(ldRig, LEAD_K, 1) : null;
+  const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(await wearRig(rigs[foeLeader], foeLeader, lookR), LEAD_K, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
   if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
   /* 착용 부품 (보조 2차 · 대표님 «상점 아이콘과 용이 쓴 모습은 달라야») — ai/meta/wear/ 옆모습 부품을 head · torso 부품에 붙인다.
