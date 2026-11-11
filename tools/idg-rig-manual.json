@@ -1,0 +1,30 @@
+{
+ "twetwe": {
+  "files": {
+   "wing": "wing_v2",
+   "tail": "tail_v2"
+  },
+  "wing": [
+   -3,
+   -35
+  ],
+  "tail": [
+   -7,
+   -22
+  ]
+ },
+ "twetwe_2": {
+  "files": {
+   "wing": "wing_v2",
+   "tail": "tail_v2"
+  },
+  "wing": [
+   -3,
+   -38
+  ],
+  "tail": [
+   -7,
+   -24
+  ]
+ }
+}

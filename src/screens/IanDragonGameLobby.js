@@ -143,7 +143,7 @@ function showSound() {
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }
-const stat = (key, n) => el('span.idg-stat', null, [el('img', { src: `${UI}icon_${key === 'gem' ? 'gem_v2' : key}.png`, alt: '', onerror: hideBad }), el('b', Number(n || 0).toLocaleString('en-US'))]);
+const stat = (key, n) => el('span.idg-stat', null, [el('img', { src: `${UI}icon_${key === 'gem' ? 'gem_v3' : key}.png`, alt: '', onerror: hideBad }), el('b', Number(n || 0).toLocaleString('en-US'))]);
 
 /** 새로 얻은 칭호 알림 (꾸미기에서 달 수 있음) */
 function checkTitles() {

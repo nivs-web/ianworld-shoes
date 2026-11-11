@@ -15,13 +15,26 @@ const BASE = '/assets/iandragon_game/ai/';
 /** 캐릭터 하나의 부품 텍스처 + rig 를 받는다 */
 /** 부품 자리 보정 (2026-11-11 대표님 «리더 용 날개가 등이 아니라 뒤통수에 붙은 것 같다») — { 캐릭터: { 부품: [x, y] } } */
 const RIG_FIX = { novart: { wing: [-10, -47] } };
+/*
+ * 날개 · 꼬리 자리 표 (11/11 밤 대표님 «노란 용 날개 · 꼬리가 이상하다 · 하나만 말고 전부 · 파란 리더 비율로») — 보조 ai/meta/rigfix.json (43종 · _2 진화형 포함)
+ *  { id: { wing: [x, y], tail: [x, y], files?: { wing: 'wing_v2', … } } } — files = 새로 그린 부품 그림 이름 (rig.json · 옛 그림은 R2 1년 캐시라 그대로 두고 새 이름)
+ * 전투(loadRig) · 로비 프로필 · 도감(idgDressed · idgCodex)이 같은 표를 쓴다.
+ */
+let fixP = null;
+export const rigFixTable = () => (fixP ||= fetch(`${BASE}meta/rigfix.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+/** rig 에 자리 보정을 넣고, 부품 그림 이름 바꾸기 표(n → 파일 이름)를 돌려준다 */
+export async function applyRigFix(id, rig) {
+  const F = { ...(RIG_FIX[id] || {}), ...((await rigFixTable())[id] || {}) }, files = F.files || {};
+  for (const [n, pos] of Object.entries(F)) { if (n === 'files' || !Array.isArray(pos)) continue; const q = rig.parts.find((x) => x.n === n); if (q) q.p = pos; }
+  return files;
+}
 
 export async function loadRig(id) {
   const rig = await (await fetch(`${BASE}${id}/rig.json`)).json();
-  for (const [n, pos] of Object.entries(RIG_FIX[id] || {})) { const q = rig.parts.find((x) => x.n === n); if (q) q.p = pos; }   // 자리 보정 (R2 1년 캐시라 rig.json 대신 여기서)
+  const files = await applyRigFix(id, rig);   // 자리 보정 (R2 1년 캐시라 rig.json 대신 여기서)
   const names = new Set(rig.parts.flatMap((p) => [p.n, p.blink, p.breath].filter(Boolean)));
   const tex = {};
-  await Promise.all([...names].map(async (n) => { tex[n] = await Assets.load(`${BASE}${id}/${n}.png`); tex[n].source.scaleMode = 'nearest'; }));
+  await Promise.all([...names].map(async (n) => { tex[n] = await Assets.load(`${BASE}${id}/${files[n] || n}.png`); tex[n].source.scaleMode = 'nearest'; }));
   return { rig, tex };
 }
 

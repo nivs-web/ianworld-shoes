@@ -6,6 +6,7 @@
  *  배경 : 월드 배경을 손가락으로 끌어 구경 + 그 월드 곡 · 못 간 월드는 흐리게 + 자물쇠
  */
 import { el, button, presentOverlay } from './ui.js';
+import { applyRigFix } from '../games/iandragon_game/render/rig.js';
 import * as G from '../services/iandragonGame.js';
 import * as Sfx from '../audio/sfx.js';
 import * as Audio from '../games/iandragon_game/audio/index.js';
@@ -30,7 +31,8 @@ const markSeen = (id) => { if (seen.has(id)) return; seen.add(id); try { localSt
 /** 부품 캐릭터 몸 전체를 한 장으로 (rig.json 의 기본 자세 · 기준점 a · 자리 p · flip) */
 export async function bodyCanvas(art) {
   const rig = await (await fetch(`${AI}${art}/rig.json`)).json();
-  const imgs = await Promise.all(rig.parts.map((q) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = `${AI}${art}/${q.n}.png`; })));
+  const files = await applyRigFix(art, rig);   /* 날개 · 꼬리 자리 표 (전투와 같게) */
+  const imgs = await Promise.all(rig.parts.map((q) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = `${AI}${art}/${files[q.n] || q.n}.png`; })));
   const K = 1.7, W = 300, H = 250, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.imageSmoothingEnabled = false;   /* 크게 (도트 그대로) */
   x.translate(W / 2, H - 14); x.scale(K, K); if (rig.face === -1) x.scale(-1, 1);   /* 좀비는 왼쪽을 본다 → 도감에서는 오른쪽 보게 */
   rig.parts.forEach((q, k) => {

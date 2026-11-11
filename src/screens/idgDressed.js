@@ -7,6 +7,7 @@
  * 로비 상태판(세로)과 가로 로비 «리더 무대»가 함께 쓴다.
  */
 import { decodeLook } from '../games/iandragon_game/data/looks.js';
+import { applyRigFix } from '../games/iandragon_game/render/rig.js';
 
 const BASE = '/assets/iandragon_game/';
 const img = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
@@ -17,9 +18,10 @@ const wearJson = () => (wearP ||= fetch(`${BASE}ai/meta/wear.json`).then((r) => 
 export async function dressedCanvas(art, lookStr = '', { K = 1.7, W = 300, H = 250, fit = false, pad = 4 } = {}) {
   const lk = decodeLook(lookStr || '');
   const [rig, Wr] = await Promise.all([fetch(`${BASE}ai/${art}/rig.json`).then((r) => r.json()), wearJson()]);
+  const files = await applyRigFix(art, rig);   /* 날개 · 꼬리 자리 표 (전투와 같게) */
   const L = Wr?.leaders?.[art], hk = lk.hat && `hat_${lk.hat}`, nk = lk.neck && `neck_${lk.neck}`;
   const hatE = hk && Wr?.items?.[hk] && L?.hat?.[hk] ? L.hat[hk] : null, neckI = nk && Wr?.items?.[nk] && L ? Wr.items[nk] : null;
-  const src = (n) => (hatE?.head?.[n] ? BASE + hatE.head[n] : `${BASE}ai/${art}/${n}.png`);   /* 덮는 모자 → 모자용 머리 */
+  const src = (n) => (hatE?.head?.[n] ? BASE + hatE.head[n] : `${BASE}ai/${art}/${files[n] || n}.png`);   /* 덮는 모자 → 모자용 머리 */
   const parts = await Promise.all(rig.parts.map((q) => img(src(q.n))));
   const [hatImg, neckFront, neckBack] = await Promise.all([
     hatE ? img(BASE + Wr.items[hk].file) : null,

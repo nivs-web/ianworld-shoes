@@ -1291,3 +1291,5 @@ html.idg-rot.ccw .idg-hud.float .idg-boss { top: 96px; }
   html.idg-lobby-on .screen.idg-lobby .idg-prof-dragon { width: 100%; height: 100%; max-height: none; }
   html.idg-lobby-on .screen.idg-lobby > .idg-start-row { height: clamp(110px, 30vh, 250px); }
 }
+@media (max-width: 480px) { .screen.idg-lobby > .idg-panel.idg-prof { grid-template-columns: 112px minmax(0, 1fr); column-gap: 8px; } .screen.idg-lobby .idg-prof-dragon { width: 112px; } .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 6px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 23px; height: 23px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 13px; } }
+@media (max-width: 380px) { .screen.idg-lobby > .idg-panel.idg-prof { grid-template-columns: 90px minmax(0, 1fr); } .screen.idg-lobby .idg-prof-dragon { width: 90px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 20px; height: 20px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 12px; } .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 4px; } }

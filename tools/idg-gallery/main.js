@@ -58,7 +58,7 @@ async function render() {
   state.funStage?.destroy(); state.funStage = null;
   const tab = TABS.find((t) => t.id === state.tab) || TABS[0];
   const main = $('#main'); main.replaceChildren(h('p', { class: 'hint' }, '불러오는 중…'));
-  const fn = { rig: renderRig, bg: renderBg, castle: renderCastle, fun: renderFun, egg: renderEgg, hud: renderHud, banner: renderBanner, lobby: renderLobby, meta: renderMeta, live: renderLive, sound: () => renderSound(h) }[tab.kind];
+  const fn = { rig: renderRig, bg: renderBg, castle: renderCastle, fun: renderFun, egg: renderEgg, hud: renderHud, banner: renderBanner, lobby: renderLobby, meta: renderMeta, live: renderLive, sound: () => renderSound(h), fix: renderFix }[tab.kind];
   const view = await fn(tab);
   main.replaceChildren(...[].concat(view));
   window.scrollTo(0, 0);
@@ -228,6 +228,18 @@ async function renderCastle(tab) {
   return [h('div', { class: 'tabhead' }, h('b', {}, '성(탑)'), h('span', { class: 'count' }, `그림 있음 ${have} / ${cards.length}`), h('span', { class: 'hint' }, 'hp0~3 네 단계 + 무너지는 장면(기울어짐 → 무너지는 중 → 잔해 · 11/11) · 그림을 누르면 크게')), grid,
     h('h3', { class: 'sec' }, '먼지 · 파편 · 깃대 (성 무너질 때 · 깃발은 리더 머리 위)'),
     h('div', { class: 'grid small' }, [...[0, 1, 2, 3].map((k) => `fx/dust_${k}.png`), ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => `fx/debris_${k}.png`), 'meta/flag_pole.png'].map((f) => h('div', { class: 'card' }, h('div', { class: 'thumb hud' }, img(A + f, 'pix')), h('div', { class: 'sub' }, 'ai/' + f))))];
+}
+
+/* ───────── 고친 것 (고치기 전 / 고친 뒤 나란히) — 대표님이 «바뀐 곳»을 한눈에 (11/11~) ───────── */
+const FIXES = [
+  { title: '용 · 리더 날개 · 꼬리 자리 전체 (11/11 · «하나만 말고 전부 · 파란 리더 비율로 · 리더 날개 조금 내리기»)', note: '퉤퉤 · 퉤퉤 진화는 날개 · 꼬리 그림을 새로(wing_v2 · tail_v2), 나머지는 자리만 (ai/meta/rigfix.json) · 초록 점 = 날개 뿌리 · 하늘 점 = 꼬리 뿌리 · 위 = 고치기 전 / 아래 = 고친 뒤', imgs: ['rig_twetwe_before', 'rig_twetwe_after', 'rig_before', 'rig_after'].map((n) => `/admin/idg-gallery-review/${n}.png`) },
+  { title: '용 날개 다시 그리기 (11/11 · «용 날개가 정상으로 보이니?»)', note: '날개 뿌리가 어깨에 붙고 뼈 3~4개 + 이어진 막(박쥐형)으로. 왼쪽 = 고치기 전 · 오른쪽 = 고친 뒤 (게임과 같은 조립)', imgs: ['aquantis', 'kkomul', 'kkomul_2'].map((id) => `/admin/idg-gallery-review/wing_${id}.png`) },
+];
+async function renderFix() {
+  const big = h('div', { class: 'grid small' }, ['novart', 'aquantis', 'forestia', 'crimsonde', 'volttail', 'solaris', 'kkomul', 'doldeung', 'bulttong', 'twetwe', 'ssaeng', 'bangul'].map((id) => h('div', { class: 'card' }, h('div', { class: 'thumb' }, img(`${A}${id}/head_big.png`, 'pix')), h('div', { class: 'name' }, id), h('div', { class: 'sub' }, `ai/${id}/head_big.png · 높이 256`))));
+  return [h('div', { class: 'tabhead' }, h('b', {}, '고친 것 (전/후)'), h('span', { class: 'hint' }, '대표님 지적으로 다시 그린 그림 — 고치기 전과 고친 뒤를 나란히')),
+    ...FIXES.flatMap((f) => [h('h3', { class: 'sec' }, f.title), h('p', { class: 'hint' }, f.note), ...f.imgs.map((src) => h('figure', { class: 'livefig' }, img(src)))]),
+    h('h3', { class: 'sec' }, '프로필 · 명예의 전당용 큰 머리 (11/11 · «프로필 카드의 용이 너무 작다»)'), h('p', { class: 'hint' }, '전투 부품 head.png(40칸 남짓) 대신 원본 시트에서 다시 자른 큰 판 — 용 · 리더 43종 모두 ai/<id>/head_big.png'), big];
 }
 
 /* ───────── 재미 요소 탭 ───────── */
