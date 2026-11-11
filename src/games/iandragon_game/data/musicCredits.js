@@ -122,3 +122,12 @@ export const SONGS = [
     "lic": "퍼블릭 도메인"
   }
 ];
+
+/* 오케스트라 EDM 편곡 (겜팀장 music/edm/CREDITS.md · 2026-11-11) — 음향 설정 «EDM» 일 때 나오는 곡. 아래 표기는 꼭 보여야 한다. */
+export const EDM_NOTE = '오케스트라 EDM 편곡 · 소리: 좀비와 드래곤 팀 (LMMS 신시사이저로 직접 합성 · 녹음 샘플 없음). 원곡은 모두 저작권이 끝난 클래식 곡이고, 선율은 Mutopia Project 공개 악보에서 옮겼습니다.';
+export const EDM_MUST = [
+  '선율: A. Vivaldi, 사계 중 여름 (악보 타이핑: Anonymous / Mutopia Project, CC-BY-SA 3.0 — https://creativecommons.org/licenses/by-sa/3.0/). 이 음원(w4 · w3)은 같은 조건(CC-BY-SA)으로 공유됩니다.',
+  "선율: G. Bizet, 카르멘 전주곡 (악보 타이핑: Alex O'S / Mutopia Project, CC-BY-SA 2.5 — https://creativecommons.org/licenses/by-sa/2.5/). 이 음원(w5 · w7)은 같은 조건(CC-BY-SA)으로 공유됩니다.",
+  'w2: Modest Mussorgsky, 피아노 편곡 Konstantin Chernov, 조판 Robert Clausecker, Mutopia Project, Creative Commons Attribution 3.0.',
+];
+export const EDM_SONGS = 'lobby 터키 행진곡 · w1 토카타 변주 · w2 민둥산 · w3 여름 변주 · w4 비발디 여름 · w5 카르멘 · w6 토카타 · w7 카르멘 변주 · w8 분노의 날 변주 · w9 터키 행진곡 변주 · w10 모차르트 분노의 날 · boss 산왕의 궁전 · battleA 캉캉 · battleB 왕벌의 비행 · win 환희의 송가 · ending 캉캉';

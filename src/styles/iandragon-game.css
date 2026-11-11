@@ -740,3 +740,4 @@ html.idg-wide body { width: 100%; }
 .idg-sound-opt.on { background: #5a2a1a; border-color: #ffcf4a; color: #fff3cf; }
 .idg-sound-opt { white-space: pre-line; min-height: 42px; }
 .idg-sound-opt { font-size: 15px; min-height: 40px; letter-spacing: .5px; }
+.idg-credits-h { color: #ffd84a !important; font-weight: 700; margin-top: 10px !important; font-size: 13px !important; }

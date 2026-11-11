@@ -1,0 +1,98 @@
+{
+ "lobby": {
+  "file": "lobby",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 83.2
+ },
+ "w1": {
+  "file": "w1",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 83.2
+ },
+ "w2": {
+  "file": "w2",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 83.2
+ },
+ "w3": {
+  "file": "w3",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 58.5
+ },
+ "w4": {
+  "file": "w4",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 62.4
+ },
+ "w5": {
+  "file": "w5",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 83.2
+ },
+ "w6": {
+  "file": "w6",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 83.2
+ },
+ "w7": {
+  "file": "w7",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 89.14
+ },
+ "w8": {
+  "file": "w8",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 89.14
+ },
+ "w9": {
+  "file": "w9",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 83.2
+ },
+ "w10": {
+  "file": "w10",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 83.2
+ },
+ "boss": {
+  "file": "boss",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 83.2
+ },
+ "battleA": {
+  "file": "battleA",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 83.2
+ },
+ "battleB": {
+  "file": "battleB",
+  "loop": true,
+  "loopStart": 0,
+  "seconds": 78
+ },
+ "win": {
+  "file": "win",
+  "loop": false,
+  "loopStart": 0,
+  "seconds": 4.9
+ },
+ "ending": {
+  "file": "ending",
+  "loop": false,
+  "loopStart": 0,
+  "seconds": 49.6
+ }
+}

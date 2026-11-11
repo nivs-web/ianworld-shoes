@@ -32,7 +32,7 @@ import { weekKey } from '../games/iandragon_game/render/battleSetup.js';
 import { currentUser } from '../services/auth.js';
 import { DIFF, hardOpen } from '../games/iandragon_game/render/battleSetup.js';
 import { isOn } from '../services/switches.js';
-import { MUST, SONGS } from '../games/iandragon_game/data/musicCredits.js';
+import { MUST, SONGS, EDM_NOTE, EDM_MUST, EDM_SONGS } from '../games/iandragon_game/data/musicCredits.js';
 import { showQuests } from './idgQuests.js';
 import { claimable } from '../services/iandragonQuests.js';
 import { OPEN_AT } from '../services/iandragonHatch.js';
@@ -58,7 +58,11 @@ function showCredits() {
     el('div.idg-how-title', '음악 출처'),
     el('p.idg-credits-small', '배경음악은 저작권이 끝난 클래식 곡의 공개 녹음입니다.'),
     ...MUST.map((t) => el('p.idg-credits-must', t)),
-    el('div.idg-credits-list', null, SONGS.map((x) => el('p', `${x.k.split(' — ')[1] || x.k} · ${x.title} — ${x.by} · ${x.perf} · ${x.lic}`))),
+    el('div.idg-credits-list', null, [
+      ...SONGS.map((x) => el('p', `${x.k.split(' — ')[1] || x.k} · ${x.title} — ${x.by} · ${x.perf} · ${x.lic}`)),
+      /* 오케스트라 EDM 편곡 (음향 설정 «EDM») — CC-BY-SA · CC-BY 표기 의무 */
+      el('p.idg-credits-h', '오케스트라 EDM 편곡'), el('p', EDM_NOTE), ...EDM_MUST.map((t) => el('p.idg-credits-must', t)), el('p', `곡 : ${EDM_SONGS}`),
+    ]),
     button('닫기', () => close(), { primary: true }),
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
