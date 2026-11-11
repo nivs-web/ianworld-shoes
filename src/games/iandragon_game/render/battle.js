@@ -56,7 +56,11 @@ export async function startBattle(ctx, opts) {
     if (last.uid !== net.uids?.[me] && Date.now() - (last.at || 0) < 8000) { ui.talk = last.text; ui.talkT = 2.5; }
   }) : null;
   const NET_GIVEUP = 12;   // 초 — 이만큼 아무 소식이 없으면 그 친구는 나간 것으로 보고 혼자 계속 (M4)
-  const leave = (s) => { ls.drop(s); ui.netNote = '친구가 나갔어요 — 혼자 계속해요!'; ui.netNoteT = 4; };
+  const leave = (s) => {
+    ls.drop(s);
+    if (pvp && !S.over) { S.over = { winner: me, forfeit: true }; return; }   // 대결 : 상대가 나가면 남은 사람 승 (멀티 기획 3.6)
+    ui.netNote = '친구가 나갔어요 — 혼자 계속해요!'; ui.netNoteT = 4;
+  };
   if (net) { net.transport.onMessage((from, str) => ls.receive(from, str)); net.transport.onLeave?.(leave); }
   let tickN = 0, sendT = 0, nextHash = 150, waitT = 0;
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
@@ -182,7 +186,7 @@ export async function startBattle(ctx, opts) {
     const r = opts.save?.pvp || pv;
     const info = { t: S.t, pvp: true, coins, title: win ? '승리!' : draw ? '무승부' : '아쉬워요…',
       rec: `전적 ${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''}${pv.n >= PVP_DAY && !bad ? ' · 오늘 보상은 다 받았어요' : ''}`,
-      hint: bad ? '연결이 어긋났어요 — 이 판은 기록하지 않아요.' : S.over.timeout ? '시간 끝 — 둥지 체력이 많은 쪽, 같으면 잃은 용이 적은 쪽이 이겨요.' : '' };
+      hint: bad ? '연결이 어긋났어요 — 이 판은 기록하지 않아요.' : S.over.forfeit ? '상대가 나갔어요 — 승리!' : S.over.timeout ? '시간 끝 — 둥지 체력이 많은 쪽, 같으면 잃은 용이 적은 쪽이 이겨요.' : '' };
     if (!bad) sound.say(win ? 'duel/win' : draw ? 'duel/win' : 'duel/lose');   // 대결 끝 대사 (진 쪽도 기죽지 않는 말투)
     setTimeout(() => { if (!gone) hud.showPanel(win ? 'win' : 'lose', info); }, 1400);
   }
