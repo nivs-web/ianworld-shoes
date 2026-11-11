@@ -717,91 +717,340 @@ service cloud.firestore {
         }
       }
     },
+    "friends": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        "$f": {
+          ".validate": "newData.hasChildren(['n', 'at']) && $f != $uid",
+          "n": {
+            ".validate": "newData.isString() && newData.val().length <= 16"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": false
+      }
+    },
+    "stats": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() == true",
+      "live": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200000"
+      },
+      "days": {
+        "$day": {
+          ".validate": "$day.matches(/^[0-9]{8}$/)",
+          "u": {
+            "$uid": {
+              ".read": "auth != null && auth.uid == $uid",
+              ".write": "auth != null && auth.uid == $uid && !data.exists()",
+              ".validate": "newData.val() == true"
+            }
+          },
+          "n": {
+            ".write": "auth != null",
+            ".validate": "newData.isNumber() && newData.val() == (data.exists() ? data.val() : 0) + 1 && !data.parent().child('u').child(auth.uid).exists() && newData.parent().child('u').child(auth.uid).val() == true"
+          },
+          "peak": {
+            ".read": "auth != null",
+            ".write": "auth != null",
+            ".validate": "newData.isNumber() && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= newData.parent().parent().parent().child('live').val()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "members": {
+        "$uid": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.hasChildren(['nick', 'joined']) && (!data.exists() || newData.child('joined').val() == data.child('joined').val())",
+          "nick": {
+            ".validate": "newData.isString() && newData.val().length <= 24"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length <= 100"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 60"
+          },
+          "joined": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+          },
+          "tot": {
+            "$game": {
+              ".validate": "$game.matches(/^(shoes|dragon|catch|catch3d|jump|piano|idragon)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "act": {
+        "$day": {
+          ".validate": "$day.matches(/^[0-9]{8}$/)",
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+            "nick": {
+              ".validate": "newData.isString() && newData.val().length <= 24"
+            },
+            "sec": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 90000"
+            },
+            "first": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+            },
+            "last": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+            },
+            "g": {
+              "$game": {
+                ".validate": "$game.matches(/^(shoes|dragon|catch|catch3d|jump|piano|idragon)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 5000"
+              }
+            },
+            "v": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+            },
+            "s": {
+              "$sid": {
+                ".validate": "$sid.matches(/^[a-z0-9]{6,12}$/)",
+                "a": {
+                  ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+                },
+                "b": {
+                  ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now + 60000"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    },
     "config": {
       "tuning": {
         ".read": "auth != null",
         ".write": "auth != null && root.child('admins').child(auth.uid).val() == true",
         "catch": {
-          "throw": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "catch": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "$other": { ".validate": false }
+          "throw": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "catch": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "speed": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "dragon": {
-          "enemy": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "hp": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "spawn": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "$other": { ".validate": false }
+          "enemy": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "hp": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "spawn": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "jump": {
-          "timing": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "density": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "damage": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
+          "timing": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "density": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "speed": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "damage": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
           "scroll": {
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
           },
-          "$other": { ".validate": false }
+          "$other": {
+            ".validate": false
+          }
         },
         "piano": {
-          "timing": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "density": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "speed": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "damage": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "scroll": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "$other": { ".validate": false }
+          "timing": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "density": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "speed": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "damage": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "scroll": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "zd": {
-          "hp": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "atk": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "ember": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "base": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0" },
-          "$other": { ".validate": false }
+          "hp": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "atk": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "ember": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "base": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99 && newData.val() % 1 == 0"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
-        "$other": { ".validate": false }
+        "$other": {
+          ".validate": false
+        }
       },
       "switches": {
         ".read": "auth != null",
         ".write": "auth != null && root.child('admins').child(auth.uid).val() == true",
         "zdFun": {
-          "bike": { ".validate": "newData.isBoolean()" },
-          "wisps": { ".validate": "newData.isBoolean()" },
-          "lightning": { ".validate": "newData.isBoolean()" },
-          "bats": { ".validate": "newData.isBoolean()" },
-          "hand": { ".validate": "newData.isBoolean()" },
-          "witch": { ".validate": "newData.isBoolean()" },
-          "skelBroom": { ".validate": "newData.isBoolean()" },
-          "moon": { ".validate": "newData.isBoolean()" },
-          "boo": { ".validate": "newData.isBoolean()" },
-          "star": { ".validate": "newData.isBoolean()" },
-          "cat": { ".validate": "newData.isBoolean()" },
-          "owl": { ".validate": "newData.isBoolean()" },
-          "pumpkin": { ".validate": "newData.isBoolean()" },
-          "cross": { ".validate": "newData.isBoolean()" },
-          "spider": { ".validate": "newData.isBoolean()" },
-          "window": { ".validate": "newData.isBoolean()" },
-          "mole": { ".validate": "newData.isBoolean()" },
-          "$other": { ".validate": false }
+          "bike": {
+            ".validate": "newData.isBoolean()"
+          },
+          "wisps": {
+            ".validate": "newData.isBoolean()"
+          },
+          "lightning": {
+            ".validate": "newData.isBoolean()"
+          },
+          "bats": {
+            ".validate": "newData.isBoolean()"
+          },
+          "hand": {
+            ".validate": "newData.isBoolean()"
+          },
+          "witch": {
+            ".validate": "newData.isBoolean()"
+          },
+          "skelBroom": {
+            ".validate": "newData.isBoolean()"
+          },
+          "moon": {
+            ".validate": "newData.isBoolean()"
+          },
+          "boo": {
+            ".validate": "newData.isBoolean()"
+          },
+          "star": {
+            ".validate": "newData.isBoolean()"
+          },
+          "cat": {
+            ".validate": "newData.isBoolean()"
+          },
+          "owl": {
+            ".validate": "newData.isBoolean()"
+          },
+          "pumpkin": {
+            ".validate": "newData.isBoolean()"
+          },
+          "cross": {
+            ".validate": "newData.isBoolean()"
+          },
+          "spider": {
+            ".validate": "newData.isBoolean()"
+          },
+          "window": {
+            ".validate": "newData.isBoolean()"
+          },
+          "mole": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "zdFunSound": {
-          "bike": { ".validate": "newData.isBoolean()" },
-          "wisps": { ".validate": "newData.isBoolean()" },
-          "lightning": { ".validate": "newData.isBoolean()" },
-          "bats": { ".validate": "newData.isBoolean()" },
-          "hand": { ".validate": "newData.isBoolean()" },
-          "witch": { ".validate": "newData.isBoolean()" },
-          "skelBroom": { ".validate": "newData.isBoolean()" },
-          "moon": { ".validate": "newData.isBoolean()" },
-          "boo": { ".validate": "newData.isBoolean()" },
-          "star": { ".validate": "newData.isBoolean()" },
-          "cat": { ".validate": "newData.isBoolean()" },
-          "owl": { ".validate": "newData.isBoolean()" },
-          "pumpkin": { ".validate": "newData.isBoolean()" },
-          "cross": { ".validate": "newData.isBoolean()" },
-          "spider": { ".validate": "newData.isBoolean()" },
-          "window": { ".validate": "newData.isBoolean()" },
-          "mole": { ".validate": "newData.isBoolean()" },
-          "$other": { ".validate": false }
+          "bike": {
+            ".validate": "newData.isBoolean()"
+          },
+          "wisps": {
+            ".validate": "newData.isBoolean()"
+          },
+          "lightning": {
+            ".validate": "newData.isBoolean()"
+          },
+          "bats": {
+            ".validate": "newData.isBoolean()"
+          },
+          "hand": {
+            ".validate": "newData.isBoolean()"
+          },
+          "witch": {
+            ".validate": "newData.isBoolean()"
+          },
+          "skelBroom": {
+            ".validate": "newData.isBoolean()"
+          },
+          "moon": {
+            ".validate": "newData.isBoolean()"
+          },
+          "boo": {
+            ".validate": "newData.isBoolean()"
+          },
+          "star": {
+            ".validate": "newData.isBoolean()"
+          },
+          "cat": {
+            ".validate": "newData.isBoolean()"
+          },
+          "owl": {
+            ".validate": "newData.isBoolean()"
+          },
+          "pumpkin": {
+            ".validate": "newData.isBoolean()"
+          },
+          "cross": {
+            ".validate": "newData.isBoolean()"
+          },
+          "spider": {
+            ".validate": "newData.isBoolean()"
+          },
+          "window": {
+            ".validate": "newData.isBoolean()"
+          },
+          "mole": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "zdOpt": {
           "diff": {
@@ -809,6 +1058,31 @@ service cloud.firestore {
           },
           "zombieSfx": {
             ".validate": "newData.isBoolean()"
+          },
+          "speed2": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "zdVoice": {
+          "nameOn": {
+            ".validate": "newData.isBoolean()"
+          },
+          "nameAlways": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "zdVoiceNum": {
+          "nameSec": {
+            ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 20"
+          },
+          "level": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5"
           },
           "$other": {
             ".validate": false
@@ -818,36 +1092,82 @@ service cloud.firestore {
           "orchestra": {
             ".validate": "newData.isBoolean()"
           },
+          "edmDefault": {
+            ".validate": "newData.isBoolean()"
+          },
           "$other": {
             ".validate": false
           }
         },
         "zdFunEvery": {
-          "all": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "bike": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "wisps": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "lightning": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "bats": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "hand": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "witch": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "skelBroom": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "moon": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "boo": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "star": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "cat": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "owl": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "pumpkin": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "cross": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "spider": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "window": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "mole": { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300" },
-          "$other": { ".validate": false }
+          "all": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "bike": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "wisps": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "lightning": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "bats": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "hand": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "witch": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "skelBroom": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "moon": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "boo": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "star": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "cat": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "owl": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "pumpkin": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "cross": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "spider": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "window": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "mole": {
+            ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 300"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
-        "$other": { ".validate": false }
+        "$other": {
+          ".validate": false
+        }
       }
     },
     "presence": {
       ".read": "auth != null",
+      ".indexOn": [
+        "lastActive"
+      ],
       "$uid": {
         ".write": "auth != null && auth.uid == $uid",
         ".validate": "!newData.exists() || newData.hasChildren(['nickname', 'state', 'at'])",
@@ -926,7 +1246,7 @@ service cloud.firestore {
             ".validate": "newData.isBoolean()"
           },
           "game": {
-            ".validate": "newData.val() == 'shoes' || newData.val() == 'dragon'"
+            ".validate": "newData.val() == 'shoes' || newData.val() == 'dragon' || newData.val() == 'catch' || newData.val() == 'idragon'"
           },
           "$other": {
             ".validate": false
