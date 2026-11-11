@@ -28,7 +28,7 @@ export function showNest(onChange) {
       const lv = g.units[id]?.[0] || 1, cost = ECON.lvCost(lv), max = lv >= cap, poor = g.coins < cost;
       return el('div.idg-nest-row', null, [
         el('img.idg-nest-face', { src: `/assets/iandragon_game/ai/${id}/head.png`, alt: '' }),
-        el('div.idg-nest-name', null, [el('b', UNITS[id].name + (g.units[id]?.[1] ? ` +${g.units[id][1]}` : '')), el('span', `Lv ${lv}${lv >= 10 && UNITS[id].forms?.[1] ? ` · ${UNITS[id].forms[1].name}` : ''}`)]),
+        el('div.idg-nest-name', null, [el('b', UNITS[id].name + (g.units[id]?.[1] ? ` +${g.units[id][1]} (힘 +${2 * Math.min(10, g.units[id][1])}%)` : '')), el('span', `Lv ${lv}${lv >= 10 && UNITS[id].forms?.[1] ? ` · ${UNITS[id].forms[1].name}` : ''}`)]),
         el('button.idg-nest-go' + (deck.includes(id) ? '.on' : ''), {
           type: 'button',
           onclick: () => {

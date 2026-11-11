@@ -47,6 +47,8 @@ export async function startBattle(ctx, opts) {
   const allDragons = pvp || net?.loads ? [...new Map(loads.flatMap((l) => l.deck).map((d) => [d.id, d])).values()] : deck;
   const mirror = pvp && me === 1;   // 대결 : 누구나 자기가 왼쪽 (오른쪽 편은 화면만 뒤집는다)
   const S = createBattle(stage, loads, D, net ? net.seed : (Date.now() % 1e9) | 0);
+  /* 부화장 «+» (겹친 용 하나당 체력 · 공격 +2% · 최대 +10 = +20%) — 혼자 하는 스테이지만 (멀티 · 습격은 모두 같은 조건) */
+  if (!net && !raid) for (const d of S.players[0].deck) { const p = opts.save?.units?.[d.id]?.[1] || 0; if (p > 0) d.mul *= 1 + 0.02 * Math.min(10, p); }
   const ls = net ? createLockstep({ seat: me, seats: net.seats }) : null;
   /* 빠른 말 : 서버 방에서만 (탭 시험은 code 없음) — 상대 말은 친구 띠 아래 말풍선 2.5초 */
   const talkOff = net?.code ? subscribeChat(net.code, (rows) => {
