@@ -1,0 +1,13 @@
+{
+ "file": "ai/fx/crumble.png",
+ "frames": 8,
+ "w": 300,
+ "h": 200,
+ "fps": 10,
+ "loop": false,
+ "anchor": [
+  0.5,
+  1
+ ],
+ "note": "가로 띠 · 한 번만 · anchor = 바닥 가운데(성 바닥 가운데에 맞춤) · 성 폭에 맞게 크기 조절 · 마지막 프레임 뒤 잔해(<성>_rubble)만 남김"
+}

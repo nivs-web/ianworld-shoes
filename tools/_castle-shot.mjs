@@ -25,6 +25,6 @@ await page.evaluate(() => { const B = window.__idgBattle; B.S.lines.push({ id: '
 await sleep(1500); await page.evaluate(() => { const B = window.__idgBattle; for (const u of B.S.units) if (u.boss && u.def.boss) u.x = B.S.L * 0.7; });
 await sleep(2500); await shot('03-boss');
 await page.evaluate((lose) => { const B = window.__idgBattle; B.S.base[lose ? 0 : 1].hp = 0; }, LOSE);
-for (const [ms, t] of [[550, '10-boom'], [450, '11-blink'], [500, '12-blink2'], [500, '13-crumble'], [500, '14-crumble2'], [700, '15-rubble']]) { await sleep(ms); await shot(t); }
+for (const [ms, t] of [[600, '10-boom'], [250, '11-blink'], [300, '12-blink2'], [450, '13-crumble'], [450, '14-crumble2'], [700, '15-rubble']]) { await sleep(ms); await shot(t); }
 console.log('오류', errs.length, errs.slice(0, 3).join('\n'));
 await browser.close();

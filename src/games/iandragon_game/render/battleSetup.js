@@ -169,6 +169,19 @@ export function ldToLoad(str) {
 }
 
 /** 별 : ★ 깨면 · ★★ star2 초 안 · ★★★ star3 초 안 (1배속 전투 시간) */
+/*
+ * 초반 좀비 성 체력 바닥 (대표님 11/11 «좀비 성이 초반에 너무 약하다 · 3판쯤에서 이미») — 월드 1~2(1~20판)만.
+ *  바닥 = 700 + 80 × 판 번호 (1-3 940 · 1-5 1100 · 1-10 1500 · 2-10 2300). 원래 더 높은 판은 그대로.
+ *  성이 단단해진 만큼 별 시간도 늘린다 (늘어난 체력 80 마다 1초 · 최대 25초). 멀티(같이 깨기)도 두 기기가 같은 식이라 맞는다.
+ */
+export function earlyCastle(st, skip) {
+  if (skip || !(st.g <= 20)) return {};
+  const floor = 700 + 80 * st.g, add = floor - st.baseHp;
+  if (add <= 0) return {};
+  const sec = Math.min(25, Math.round(add / 80));
+  return { baseHp: floor, star2: st.star2 + sec, star3: st.star3 + sec, par: st.par + sec };
+}
+
 export function starsFor(stage, t) {
   if (t <= stage.star3) return 3;
   if (t <= stage.star2) return 2;

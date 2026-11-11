@@ -75,7 +75,15 @@ export const SFX = {
   wallet_up: () => { arp([72, 76, 79, 84], 0.06, { vol: 0.16 }); FX.coin_jingle(0.22); },
   ready: () => { tone({ type: 'sine', f0: midi(88), dur: 0.3, vol: 0.2 }); tone({ type: 'sine', f0: midi(95), dur: 0.22, vol: 0.09, at: 0.01 }); },   // 띵!
   breath_ready: () => { arp([67, 71, 74, 79, 83], 0.05, { type: 'triangle', vol: 0.15 }); FX.sparkle(0.25); },
-  breath_fire: () => { noise({ dur: 0.9, vol: 0.38, f0: 600, f1: 2600, q: 0.7 }); tone({ type: 'sawtooth', f0: 120, f1: 60, dur: 0.8, vol: 0.24, trem: { rate: 18, depth: 0.4 } }); FX.rumble(0.1); },
+  /* 초강력 브레스 (2026-11-11 대표님: «냥코 대포처럼 거의 초강력이어야») — 들숨 «흐읍» → 쾅 → 화르르르 불길 1.6초 → 땅울림 · 잔불 */
+  breath_fire: () => {
+    noise({ dur: 0.22, vol: 0.18, filter: 'bandpass', f0: 600, f1: 2400, q: 1.2 });                                        // 흐읍 (들숨)
+    tone({ type: 'sawtooth', f0: 70, f1: 34, dur: 0.5, vol: 0.5, at: 0.2 }); noise({ dur: 0.35, vol: 0.5, f0: 2400, f1: 200, at: 0.2 });   // 쾅!
+    noise({ dur: 1.6, vol: 0.42, filter: 'bandpass', f0: 500, f1: 2800, q: 0.6, at: 0.24 });                                // 화르르르
+    noise({ dur: 1.5, vol: 0.2, filter: 'highpass', f0: 3000, at: 0.3 });                                                    // 불꽃 지글
+    tone({ type: 'sawtooth', f0: 110, f1: 55, dur: 1.4, vol: 0.28, at: 0.24, trem: { rate: 16, depth: 0.45 } });             // 불길 으르렁
+    FX.rumble(0.3); FX.stomp(0.22); FX.fire_pop(1.0); FX.fire_pop(1.3); FX.fire_pop(1.6);                                   // 땅울림 · 잔불 톡톡
+  },
   breath_charge: () => {                                                                              // 우우웅~ 점점 커지는 숨 모으기 (약 1초, breath_fire 직전에)
     tone({ type: 'sawtooth', f0: 70, f1: 460, dur: 1, vol: 0.2, attack: 0.9, trem: { rate: 14, depth: 0.5 } });
     tone({ type: 'triangle', f0: 140, f1: 920, dur: 1, vol: 0.12, attack: 0.9 });

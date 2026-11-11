@@ -9,13 +9,15 @@ import * as Sfx from '../audio/sfx.js';
 import { UNITS } from '../games/iandragon_game/data/units.js';
 import { ECON } from '../games/iandragon_game/data/econ.js';
 import { unlockedBefore, makeLoads, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
+import { breathStats } from '../games/iandragon_game/render/breathInfo.js';
+import { LEADERS } from '../games/iandragon_game/data/leaders.js';
 
 const capOf = (cleared) => ECON.capAt.reduce((c, [g, cap]) => (cleared >= g ? cap : c), 10);
 const fmt = (n) => n.toLocaleString('en-US');
 
 export function showNest(onChange) {
   Sfx.play('sfx_menu_select');
-  const list = el('div.idg-nest-list'), coins = el('div.idg-nest-coins'), deckInfo = el('div.idg-nest-deck');
+  const list = el('div.idg-nest-list'), coins = el('div.idg-nest-coins'), deckInfo = el('div.idg-nest-deck'), breathInfo = el('div.idg-nest-breath');
   function draw() {
     const g = G.idg(), cap = capOf(g.cleared);
     const un = unlockedBefore(g.cleared + 1);
@@ -24,6 +26,9 @@ export function showNest(onChange) {
     const deck = g.deck.length >= 2 ? g.deck : makeLoads(stageByNo(Math.min(50, g.cleared + 1)), g).deck.map((d) => d.id);
     deckInfo.textContent = `출전 ${deck.filter((id) => ids.includes(id)).length} / ${un.deckCap}칸 — «출전»을 눌러 덱을 바꿔요`;
     coins.textContent = `코인 ${fmt(g.coins)} · 레벨 상한 ${cap}`;
+    /* 리더 브레스 (대표님 11/11 «필살기 사거리가 보여야 레벨업할지 뽑을지 고른다») */
+    { const ldId = makeLoads(stageByNo(Math.min(100, g.cleared + 1)), g).loads[0].leader, bs = breathStats(ldId, g);
+      breathInfo.textContent = `리더 ${LEADERS[ldId]?.ko || ''} 브레스 · 사거리 ${bs.range} · 위력 ${fmt(bs.power)} · 밀어내기 ${bs.push} · 충전 ${bs.charge}초`; }
     list.replaceChildren(...ids.map((id) => {
       const lv = g.units[id]?.[0] || 1, cost = ECON.lvCost(lv), max = lv >= cap, poor = g.coins < cost;
       return el('div.idg-nest-row', null, [
@@ -53,7 +58,7 @@ export function showNest(onChange) {
   }
   draw();
   const box = el('div.dialog.idg-nest', { onclick: (e) => e.stopPropagation() }, [
-    el('div.idg-how-title', '용 둥지 (훈련소)'), coins, deckInfo,
+    el('div.idg-how-title', '용 둥지 (훈련소)'), coins, breathInfo, deckInfo,
     el('p.idg-nest-help', '코인으로 용을 키워요. Lv10이 되면 모습이 바뀌어요!'),
     list, button('닫기', () => close()),
   ]);

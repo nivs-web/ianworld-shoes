@@ -25,7 +25,7 @@ export const SWITCHES = {
   zdFunSound: { name: '좀비와 드래곤 · 재미 요소 (소리)', def: false, keys: FUN.map(([key, name]) => ({ key, name, def: SOUND_ON.includes(key) })) },
   /* 대표님 2026-11-11 «오락실 풍 / 오케스트라 풍을 토글로 켜고 끄며 해 보고 정하겠다» — 켜짐 = 오케스트라(공개 녹음) · 꺼짐 = 오락실(합성) */
   /* 대표님 2026-11-11 «난이도를 관리자 페이지에서 켜고 끄게» — 꺼지면 모두 보통 · 고르기 단추 숨김 / 좀비 소리도 여기서 */
-  zdOpt: { name: '좀비와 드래곤 · 기능', def: true, keys: [{ key: 'diff', name: '난이도 고르기 (쉬움 · 보통 · 어려움)' }, { key: 'zombieSfx', name: '좀비 소리 (등장 · 중얼 · 쓰러짐)' }, { key: 'speed2', name: '배속 단추 (×2 · ×3) — 기본 꺼짐 (11/11 대표님 «너무 어려워지고 의미가 적다 · 지우지 말고 꺼 두기»)', def: false }] },
+  zdOpt: { name: '좀비와 드래곤 · 기능', def: true, keys: [{ key: 'diff', name: '난이도 고르기 (쉬움 · 보통 · 어려움)' }, { key: 'zombieSfx', name: '좀비 소리 (등장 · 중얼 · 쓰러짐)' }, { key: 'speed2', name: '배속 단추 (×2) — 기본 켜짐 (11/11 대표님 «×2 배속 단추 다시 작동»)', def: true }] },
   /* 출격 이름 외침 (2026-11-11 대표님 «처음 15초만 이름, 그 뒤엔 다양한 출격 대사 · 관리자에서 10/15/20초 · 켜기/끄기/계속 켜기를 바꿔 보며 시험») */
   zdVoice: { name: '좀비와 드래곤 · 출격 이름 외침', def: true, keys: [{ key: 'nameOn', name: '이름 외침 켜기 (끄면 누를 때 옛 출격 대사만)' }, { key: 'nameAlways', name: '판 내내 이름 외침 (끄면 처음 몇 초만 · 시간은 아래 숫자)', def: false }] },
   zdBgm: { name: '좀비와 드래곤 · 배경음악', def: true, keys: [{ key: 'orchestra', name: '오케스트라 풍 (끄면 오락실 풍 — 운영자 시험용, 끄면 모두 오락실)' }, { key: 'edmDefault', name: '기본 배경음악 EDM (끄면 클래식) — 아이가 음향 설정에서 고르지 않았을 때', def: false }] },

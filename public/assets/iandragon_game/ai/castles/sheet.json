@@ -30,5 +30,159 @@
  "tower_hp3": {
   "w": 224,
   "h": 288
+ },
+ "nest_fall0": {
+  "w": 218,
+  "h": 291
+ },
+ "nest_fall1": {
+  "w": 359,
+  "h": 291,
+  "anchor": "bottom-center"
+ },
+ "nest_ruin": {
+  "w": 376,
+  "h": 291,
+  "anchor": "bottom-center"
+ },
+ "tower_fall0": {
+  "w": 224,
+  "h": 288
+ },
+ "tower_fall1": {
+  "w": 351,
+  "h": 288,
+  "anchor": "bottom-center"
+ },
+ "tower_ruin": {
+  "w": 357,
+  "h": 288,
+  "anchor": "bottom-center"
+ },
+ "tower_w02_fall0": {
+  "w": 299,
+  "h": 308
+ },
+ "tower_w02_fall1": {
+  "w": 396,
+  "h": 308,
+  "anchor": "bottom-center"
+ },
+ "tower_w02_ruin": {
+  "w": 396,
+  "h": 308,
+  "anchor": "bottom-center"
+ },
+ "tower_w03_fall0": {
+  "w": 309,
+  "h": 298
+ },
+ "tower_w03_fall1": {
+  "w": 311,
+  "h": 298,
+  "anchor": "bottom-center"
+ },
+ "tower_w03_ruin": {
+  "w": 309,
+  "h": 298,
+  "anchor": "bottom-center"
+ },
+ "tower_w04_fall0": {
+  "w": 288,
+  "h": 305
+ },
+ "tower_w04_fall1": {
+  "w": 361,
+  "h": 305,
+  "anchor": "bottom-center"
+ },
+ "tower_w04_ruin": {
+  "w": 366,
+  "h": 305,
+  "anchor": "bottom-center"
+ },
+ "tower_w05_fall0": {
+  "w": 317,
+  "h": 325
+ },
+ "tower_w05_fall1": {
+  "w": 425,
+  "h": 325,
+  "anchor": "bottom-center"
+ },
+ "tower_w05_ruin": {
+  "w": 416,
+  "h": 325,
+  "anchor": "bottom-center"
+ },
+ "tower_w06_fall0": {
+  "w": 218,
+  "h": 273
+ },
+ "tower_w06_fall1": {
+  "w": 319,
+  "h": 273,
+  "anchor": "bottom-center"
+ },
+ "tower_w06_ruin": {
+  "w": 334,
+  "h": 273,
+  "anchor": "bottom-center"
+ },
+ "tower_w07_fall0": {
+  "w": 295,
+  "h": 306
+ },
+ "tower_w07_fall1": {
+  "w": 380,
+  "h": 306,
+  "anchor": "bottom-center"
+ },
+ "tower_w07_ruin": {
+  "w": 297,
+  "h": 306,
+  "anchor": "bottom-center"
+ },
+ "tower_w08_fall0": {
+  "w": 272,
+  "h": 301
+ },
+ "tower_w08_fall1": {
+  "w": 358,
+  "h": 301,
+  "anchor": "bottom-center"
+ },
+ "tower_w08_ruin": {
+  "w": 274,
+  "h": 301,
+  "anchor": "bottom-center"
+ },
+ "tower_w09_fall0": {
+  "w": 285,
+  "h": 296
+ },
+ "tower_w09_fall1": {
+  "w": 322,
+  "h": 296,
+  "anchor": "bottom-center"
+ },
+ "tower_w09_ruin": {
+  "w": 385,
+  "h": 296,
+  "anchor": "bottom-center"
+ },
+ "tower_w10_fall0": {
+  "w": 299,
+  "h": 295
+ },
+ "tower_w10_fall1": {
+  "w": 375,
+  "h": 295,
+  "anchor": "bottom-center"
+ },
+ "tower_w10_ruin": {
+  "w": 367,
+  "h": 295,
+  "anchor": "bottom-center"
  }
 }

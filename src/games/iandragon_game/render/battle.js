@@ -11,7 +11,8 @@ import { D } from '../data/battleData.js';
 import { createBattleView, tagArt } from './battleView.js';
 import { createHud } from './hud.js';
 import { createBattleSound } from './battleSound.js';
-import { makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY, DIFF, diffFor, raidStage, raidWaves, weekKey } from './battleSetup.js';
+import { superData } from './breathInfo.js';
+import { earlyCastle, makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY, DIFF, diffFor, raidStage, raidWaves, weekKey } from './battleSetup.js';
 import { isOn } from '../../../services/switches.js';
 import { decodeLook, CONSUMABLES } from '../data/looks.js';
 import { sendChat, subscribeChat, leaveRoom } from '../../../services/multiplayer.js';
@@ -23,19 +24,6 @@ import { ECON } from '../data/econ.js';
 import { tunes } from '../../../services/tuning.js';
 
 tagArt(D);
-
-/*
- * 초반 좀비 성 체력 바닥 (대표님 11/11 «좀비 성이 초반에 너무 약하다 · 3판쯤에서 이미») — 월드 1~2(1~20판)만.
- *  바닥 = 700 + 80 × 판 번호 (1-3 940 · 1-5 1100 · 1-10 1500 · 2-10 2300). 원래 더 높은 판은 그대로.
- *  성이 단단해진 만큼 별 시간도 늘린다 (늘어난 체력 80 마다 1초 · 최대 25초). 멀티(같이 깨기)도 두 기기가 같은 식이라 맞는다.
- */
-function earlyCastle(st, skip) {
-  if (skip || !(st.g <= 20)) return {};
-  const floor = 700 + 80 * st.g, add = floor - st.baseHp;
-  if (add <= 0) return {};
-  const sec = Math.min(25, Math.round(add / 80));
-  return { baseHp: floor, star2: st.star2 + sec, star3: st.star3 + sec, par: st.par + sec };
-}
 
 /** opts = { stageNo, save, onSave(part), onExit(), restart(stageNo), text, net? }
  *  net = { seat, seats, seed, transport } — 멀티(3차 · 같이 깨기). 두 기기가 같은 씨앗 · 같은 편성으로 만들고 명령만 주고받는다(net/lockstep.js). */
@@ -60,7 +48,7 @@ export async function startBattle(ctx, opts) {
   const myDeck = pvp ? loads[me].deck : net?.loads?.[me]?.deck || deck;
   const allDragons = pvp || net?.loads ? [...new Map(loads.flatMap((l) => l.deck).map((d) => [d.id, d])).values()] : deck;
   const mirror = pvp && me === 1;   // 대결 : 누구나 자기가 왼쪽 (오른쪽 편은 화면만 뒤집는다)
-  const S = createBattle(stage, loads, D, net ? net.seed : (Date.now() % 1e9) | 0);
+  const S = createBattle(stage, loads, superData(D), net ? net.seed : (Date.now() % 1e9) | 0);   /* 초강력 브레스 (breathInfo.js · 대표님 11/11) */
   /* 부화장 «+» (겹친 용 하나당 체력 · 공격 +2% · 최대 +10 = +20%) — 혼자 하는 스테이지만 (멀티 · 습격은 모두 같은 조건) */
   if (!net && !raid) for (const d of S.players[0].deck) { const p = opts.save?.units?.[d.id]?.[1] || 0; if (p > 0) d.mul *= 1 + 0.02 * Math.min(10, p); }
   const ls = net ? createLockstep({ seat: me, seats: net.seats }) : null;
@@ -79,10 +67,11 @@ export async function startBattle(ctx, opts) {
   let tickN = 0, sendT = 0, nextHash = 150, waitT = 0;
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: allDragons, enemies: enemyIds, leader: loads[0].leader, pvp, mirror, foeLeader: pvp ? loads[1].leader : null, look: decodeLook(pvp ? (me === 0 ? opts.save?.look : net.loads?.[0]?.look) || '' : opts.save?.look || ''), lookR: decodeLook(pvp ? (me === 1 ? opts.save?.look : net.loads?.[1]?.look) || '' : '') });   // 내 대장 용 꾸미기 (모자 · 목 · 브레스 색)
+  view.onZoom = (d) => hud.zoomBy(d); view.me = me;   /* 맵 확대 · 축소 (두 손가락 · 휠) */
 
   const sound = createBattleSound(stage, me);
   /* 멀티는 1배속 고정 */
-  const speedMax = isOn('zdOpt', 'speed2') ? speedMax0 : 1;   /* 배속은 운영자 스위치가 켜졌을 때만 (기본 꺼짐) */
+  const speedMax = isOn('zdOpt', 'speed2') ? 2 : 1;   /* ×2 배속 단추 (대표님 11/11 «다시 작동») — 처음부터 ×2 까지 · 운영자 스위치로 끌 수 있다 */
   const ui = { me, side: pvp ? me : 0, net: !!net, speed: net ? 1 : Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
   /* 자동 전투 (B6) : 별을 1개 이상 딴 스테이지만 — 기준 AI(코어 aiCommands)가 대신 누른다 */
   const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
@@ -122,6 +111,10 @@ export async function startBattle(ctx, opts) {
     rejoin() { if (net?.code) pickRejoin(net.code); opts.onExit(); },   // 한 판 더 : 같은 방 대기실로
     retry() { opts.restart(raid ? 'raid' : stage.g, true); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
+    /* 판 사이 파워 업 : 저장 읽기 · 쓰기 (로비 «용 둥지»와 같은 저장) */
+    puSave: () => opts.save || {},
+    puWrite: (part) => { try { opts.save = opts.onSave?.(part) || { ...opts.save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); } return opts.save; },
+    aim(on) { view.aim = !!on; },   /* 브레스 단추를 누르고 있는 동안 사거리 */
     talk(t) { if (net?.code) { sendChat(net.code, t).catch?.(() => {}); ui.myTalk = t; ui.myTalkT = 1.6; } },
     look(f) { view.setCam((mirror ? 1 - f : f) * view.FIELD - ctx.view.w / 2); },
   });

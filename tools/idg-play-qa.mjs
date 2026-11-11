@@ -5,7 +5,11 @@
  */
 import { simulate } from '../src/games/iandragon_game/core/index.js';
 import { D } from '../src/games/iandragon_game/data/battleData.js';
-import { makeLoads, stageByNo, starsFor } from '../src/games/iandragon_game/render/battleSetup.js';
+import { makeLoads, stageByNo, starsFor, earlyCastle } from '../src/games/iandragon_game/render/battleSetup.js';
+import { superData } from '../src/games/iandragon_game/render/breathInfo.js';
+/* --live : 실제 게임과 같게 초강력 브레스(breathInfo.js) · 초반 성 체력 바닥(earlyCastle) 을 넣고 돌린다 (11/11) */
+const LIVE = process.argv.includes('--live'), DD = LIVE ? superData(D) : D;
+process.argv = process.argv.filter((a) => a !== '--live');
 
 const N = Number(process.argv[2] || 50), SEEDS = Number(process.argv[3] || 5);
 /* 계산기 tune.js 와 같게 : 화로 목표 1 · 3 · 5 중 가장 잘 깬 것 (잘하는 플레이어 기준) */
@@ -13,12 +17,12 @@ const POLS = [1, 3, 5].map((walletTarget) => ({ walletTarget, useSkills: true, u
 let bad = 0;
 const save = { units: {} };
 for (let g = 1; g <= N; g++) {
-  const st = stageByNo(g);
+  const st0 = stageByNo(g), st = LIVE ? { ...st0, ...earlyCastle(st0, false) } : st0;
   const { loads, deck, skills } = makeLoads(st, save);
   let win = 0, tSum = 0, stars = 0;
   for (const POL of POLS) {
     let w = 0, t = 0, sr = 0;
-    for (let s = 1; s <= SEEDS; s++) { const r = simulate(st, loads, D, [POL], 1000 + g * 7 + s); if (r.win) { w++; t += r.time; sr += starsFor(st, r.time); } }
+    for (let s = 1; s <= SEEDS; s++) { const r = simulate(st, loads, DD, [POL], 1000 + g * 7 + s); if (r.win) { w++; t += r.time; sr += starsFor(st, r.time); } }
     if (w > win || (w === win && t < tSum)) { win = w; tSum = t; stars = sr; }
   }
   const ok = win >= Math.ceil(SEEDS * 0.6);
