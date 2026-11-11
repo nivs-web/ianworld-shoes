@@ -24,6 +24,19 @@ import { tunes } from '../../../services/tuning.js';
 
 tagArt(D);
 
+/*
+ * 초반 좀비 성 체력 바닥 (대표님 11/11 «좀비 성이 초반에 너무 약하다 · 3판쯤에서 이미») — 월드 1~2(1~20판)만.
+ *  바닥 = 700 + 80 × 판 번호 (1-3 940 · 1-5 1100 · 1-10 1500 · 2-10 2300). 원래 더 높은 판은 그대로.
+ *  성이 단단해진 만큼 별 시간도 늘린다 (늘어난 체력 80 마다 1초 · 최대 25초). 멀티(같이 깨기)도 두 기기가 같은 식이라 맞는다.
+ */
+function earlyCastle(st, skip) {
+  if (skip || !(st.g <= 20)) return {};
+  const floor = 700 + 80 * st.g, add = floor - st.baseHp;
+  if (add <= 0) return {};
+  const sec = Math.min(25, Math.round(add / 80));
+  return { baseHp: floor, star2: st.star2 + sec, star3: st.star3 + sec, par: st.par + sec };
+}
+
 /** opts = { stageNo, save, onSave(part), onExit(), restart(stageNo), text, net? }
  *  net = { seat, seats, seed, transport } — 멀티(3차 · 같이 깨기). 두 기기가 같은 씨앗 · 같은 편성으로 만들고 명령만 주고받는다(net/lockstep.js). */
 export async function startBattle(ctx, opts) {
@@ -34,7 +47,7 @@ export async function startBattle(ctx, opts) {
   const base0 = pvp ? pvpStage() : raid ? raidStage(raid.key) : stageByNo(opts.stageNo);
   /* 난이도 : 혼자 할 때만 (멀티는 두 기기 숫자가 같아야 해서 보통) */
   const dk = opts.net || raid ? 'normal' : diffFor(base0.g, opts.save, isOn('zdOpt', 'diff')), DF = DIFF[dk];
-  const stage = { ...base0, mag: base0.mag * tz.hp * DF.mag, atkMag: (base0.atkMag || base0.mag) * tz.atk * DF.mag, diff: dk };
+  const stage = { ...base0, mag: base0.mag * tz.hp * DF.mag, atkMag: (base0.atkMag || base0.mag) * tz.atk * DF.mag, diff: dk, ...earlyCastle(base0, pvp || raid) };
   const { deck, skills, loads, speedMax: speedMax0 } = makeLoads(raid ? stageByNo(Math.max(20, Math.min(LAST_STAGE, opts.save?.cleared || 1))) : stage, opts.save);
   if (raid) { const one = pvpLoad(loads[0], 0); loads.length = 0; loads.push(one); }   // 습격 = 내 덱 6칸 · 모두 Lv20 · 보너스 없음
   loads[0].bonus = { ...loads[0].bonus, income: loads[0].bonus.income / tz.ember, baseHp: loads[0].bonus.baseHp / tz.base };
@@ -129,6 +142,7 @@ export async function startBattle(ctx, opts) {
     ui.tip = q.text; ui.tipAt = q.at;
   }
 
+  const END_MS = 3200;   /* 결과 창은 성 무너짐(폭발 → 깜박 → 와르르 → 잔해 2.1초)을 다 보여 준 뒤 (대표님 11/11) */
   function finish() {
     ui.done = true;
     if (pvp) { finishPvp(); return; }
@@ -155,7 +169,7 @@ export async function startBattle(ctx, opts) {
         info.coins = Math.round(base * (hOld ? ECON.replay : 1) * DF.coin); info.gems = hOld ? 0 : 5; info.red = true;
         const part = { hardStars: hs.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, stat };
         try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
-        setTimeout(() => { if (gone) return; hud.showPanel('win', info); sound.stars(info.stars); }, 1600);
+        setTimeout(() => { if (gone) return; hud.showPanel('win', info); sound.stars(info.stars); }, END_MS);
         return;
       }
       const stars = (save.stars || '').padEnd(stage.g, '0').split('');
@@ -174,7 +188,7 @@ export async function startBattle(ctx, opts) {
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     } else info.hint = loseHint(S, me);
     if (net && ls.mismatch() >= 0) info.hint = '연결이 어긋났어요 — 이 판은 기록하지 않아요. 한 판 더?';
-    setTimeout(() => { if (gone) return; hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, win ? 1600 : 900);
+    setTimeout(() => { if (gone) return; hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, END_MS);
   }
 
   /* 주간 습격 끝 : 버틴 웨이브 · 이번 주 최고면 웨이브당 코인 20 (늘어난 만큼만) · 명예의 전당 «주간 습격» */

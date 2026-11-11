@@ -89,6 +89,17 @@ export const SFX = {
   shockwave: () => { FX.stomp(); tone({ type: 'triangle', f0: 140, f1: 30, dur: 0.7, vol: 0.45 }); noise({ dur: 0.6, vol: 0.34, f0: 500, f1: 70 }); },
   base_hit: () => { FX.thud(); noise({ dur: 0.12, vol: 0.14, filter: 'highpass', f0: 3000 }); },
   base_break: () => { for (let i = 0; i < 5; i++) noise({ dur: 0.4, vol: 0.34, f0: 1000 - i * 150, f1: 90, at: i * 0.11 }); FX.stomp(0.05); FX.rumble(0.3); },
+  /* 성 무너짐 (2026-11-11 대표님: «바바바바박 하면서 상대 성에 먼지가 막 생겨» — 연달아 터지는 폭발 → 와르르 → 우르릉, 약 2.4초)
+   * 화면의 «펑 · 먼지 덩어리» 가 터지는 박자(0.09초 간격 14번)에 맞춰 부르면 된다. 끝에 잔해가 남는 «쿵» */
+  castle_collapse: () => {
+    for (let i = 0; i < 14; i++) {
+      const a = i * 0.09 + (i % 3) * 0.012;
+      noise({ dur: 0.22, vol: 0.3 - i * 0.008, filter: 'lowpass', f0: 1400 - (i % 4) * 220, f1: 120, at: a });            // 바
+      tone({ type: 'triangle', f0: 120 - (i % 3) * 15, f1: 40, dur: 0.16, vol: 0.28, at: a });                              // 박 (몸통 울림)
+    }
+    for (let i = 0; i < 8; i++) noise({ dur: 0.08, vol: 0.14, filter: 'bandpass', f0: 1800 + (i % 3) * 600, q: 3, at: 1.3 + i * 0.07 });   // 돌 조각 와르르
+    FX.stomp(1.25); FX.rumble(1.35); FX.thud(2.2);                                                                           // 무너짐 · 잔해 쿵
+  },
   star: () => { arp([79, 84, 88], 0.09, { type: 'square', vol: 0.16, dur: 0.2 }); FX.sparkle(0.25); },
   levelup: () => { arp([72, 76, 79, 84, 88, 91], 0.06, { vol: 0.15 }); FX.crowd(0.3); },
   evolve: () => { arp([60, 64, 67, 72, 76, 79, 84, 88, 91, 96], 0.06, { type: 'triangle', vol: 0.16 }); FX.sparkle(0.5); noise({ dur: 0.9, vol: 0.12, filter: 'highpass', f0: 4000, at: 0.3 }); },

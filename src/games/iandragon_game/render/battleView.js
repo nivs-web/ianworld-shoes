@@ -49,6 +49,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const hpArt = !!(hpUF && hpUMe && hpUFoe && hpMeta);
   /* 운석 · 폭발 그림 (그림 담당 ai/fx/meteor · boom — 없으면 입자로) */
   const [meteorT, boomFx] = await Promise.all([tryLoad(`${AI}fx/meteor.png`), fxFrames('boom').catch(() => null)]);
+  const [towerRubT, nestRubT, crumbleFx, torchFx] = await Promise.all([tryLoad(`${AI}castles/tower_w${wN}_rubble.png`).then((t) => t || tryLoad(`${AI}castles/tower_rubble.png`)), tryLoad(`${AI}castles/nest_rubble.png`), fxFrames('crumble').catch(() => null), fxFrames('fire_orange').catch(() => null)]);
   /** 도트 체력 바 하나 : 테두리 + 채움(왼쪽 맞춤 · 비율만큼 가로로 줄임). W = 화면 너비 */
   function makeBar(frameT, fillT, m, W) {
     const c = new Container(), k = W / m.frame[0];
@@ -82,6 +83,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, GY + 10);
   const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, GY + 10); if (pvp) tower.scale.x = -1;
   stage.addChild(nest, tower, units, fx);
+  const torches = [];
+  if (torchFx && !pvp) for (const lx of [28, 177]) { const a = new AnimatedSprite(torchFx.frames); a.anchor.set(0.5, 1); a.scale.set(0.62); a.animationSpeed = (torchFx.meta.fps / 60) * (0.9 + Math.random() * 0.2); a.gotoAndPlay((Math.random() * torchFx.frames.length) | 0); a.position.set(nest.x - nest.width / 2 + lx, GY + 10 - nest.height + 197); stage.addChildAt(a, stage.getChildIndex(nest) + 1); torches.push(a); }
   const castleBars = [];   /* 성 체력 게이지는 HUD 위 숫자 옆으로 옮김 (11/11 · 떠 있는 HUD) — 성 위 캔버스 바는 쓰지 않음 */
   const shade = new Graphics().rect(-50, -50, FIELD + 100, 700).fill(0x000000); shade.alpha = 0; root.addChild(shade);
   /* 안개 기믹 : 내 맨 앞 + 260칸 너머를 짙은 안개로 (화면 전용) */
@@ -91,6 +94,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   /* ── 재미있는 요소 (자리표가 없는 월드는 하늘 요소만) */
   const spots = { ...(SPOTS[world] || { sky: [50, 200], ground: 437, dirtY: 494 }) };
   if (layered && world === 1) spots.moon = { x: 779, y: 112, d: 222 };
+  if (layered && world === 1) spots.fence = { x0: 1010, x1: 1250, y: 398 };   /* 대표님 11/11 «고양이가 공중에» : 앞 겹 울타리 실제 자리 (그림 픽셀로 잼) */
   if (layered && world === 1) spots.owl = { x: 300, y: 136 };   /* 확대하면 윗가지 부엉이가 위 HUD 글씨와 겹친다 → 아래 굵은 가지로 */   // 월드 1 하늘 겹은 다시 편집돼 달 자리가 통그림과 다르다 (그림 픽셀로 잼)
   spots.safe = [260, FIELD - 260];
   if (spots.sky) spots.sky = [Math.max(spots.sky[0], 78), Math.max(spots.sky[1], 160)];   /* 확대해도 하늘 요소가 화면 위에 잘리지 않게 (위 HUD 아래부터) */
@@ -140,6 +144,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   async function dress(rig, lk, castle, art) {
     const flagT = lk.flag ? await tryLoad(`${AI}meta/flag_${lk.flag}.png`) : null;
     if (rig) await wear(rig, art, lk);
+    if (flagT && castle === nest && rig) { nestFlagT = flagT; return; }   /* 내 성 깃발은 리더 자리를 정한 뒤 머리 위에 (아래) */
     if (flagT && castle) {   // 성 깃발 : 깃대 + 펄럭이는 깃발 (성 뒤 왼쪽 위)
       const side = castle === tower ? -1 : 1, top = GY + 10 - castle.height;
       /* 대표님 «용이 깃발을 가린다 · 더 높고 크게» (11/11) : 깃대를 성 바깥쪽 끝 · 높게(98) · 깃발 크게(40×58) · 성 바깥으로 펄럭 */
@@ -148,9 +153,17 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       stage.addChildAt(pole, stage.getChildIndex(castle)); stage.addChildAt(f, stage.getChildIndex(castle)); flags.push(f);
     }
   }
-  const flags = [], follow = [];   // follow = 몸통 뒤 층 장식이 torso 를 따라가게 [상자, torso]
+  const flags = [], follow = []; let nestFlagT = null;   // follow = 몸통 뒤 층 장식이 torso 를 따라가게 [상자, torso]
   await Promise.all([dress(lead, look, nest, leader), dress(lead2, lookR, pvp ? tower : null, foeLeader)]);
-  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
+  /* 대표님 11/11 «성 깃발이 안 보인다 · 파란 리더 머리 위로 · 둥지와 용을 조금 아래로» : 리더 8px 아래 · 깃대는 성 뒤에서 리더 머리 위로 솟고 깃발은 머리 위 */
+  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 66); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
+  if (lead && nestFlagT) {
+    const lb = lead.root.getLocalBounds(), headY = lead.root.y + lb.y * Math.abs(lead.root.scale.y), top = GY + 10 - nest.height;
+    const px = nest.x - 6, poleTop = Math.round(headY - 50);   /* 확대 화면에서 위 체력 막대에 안 가리게 : 깃발 32×46 · 머리 바로 위 */
+    const pole = new Graphics().rect(-2, 0, 4, top + 30 - poleTop).fill(0x3a2410).rect(-1, 0, 2, top + 30 - poleTop).fill(0x6a4424); pole.position.set(px, poleTop);
+    const f = new Sprite(nestFlagT); f.anchor.set(0, 0); f.width = 32; f.height = 46; f.scale.x *= -1; f.position.set(px - 2, poleTop + 2);
+    stage.addChildAt(pole, stage.getChildIndex(nest)); stage.addChildAt(f, stage.getChildIndex(nest)); flags.push(f);
+  }
   if (lead2) lead2.baseY = lead2.root.y;
 
   const white = new ColorMatrixFilter();
@@ -203,9 +216,11 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       alive.add(u.id);
       let v = V.get(u.id);
       if (!v) {
-        const R = createRigged(rigFor(u), u.boss ? 1 : 1, u.side === 0 ? 1 : -1);
+        /* 대표님 11/11 «센 보스(고깔 대장 등)가 너무 작다 · 보스가 땅 위에 떠 있다» : 보통 좀비가 보스로 나오면 1.45배 · 보스는 발 밑 빈칸(그림 4px)만큼 내려 땅에 딛게 */
+        const mid = u.boss && !u.def.boss;
+        const R = createRigged(rigFor(u), mid ? 1.45 : 1, u.side === 0 ? 1 : -1);
         R.speed = u.side === 0 ? 1.1 : 0.9;
-        v = { R, x: M + u.x, hp: u.hp, st: u.state, hitT: 0, flash: 0, kbT: 0, y: GY + ((u.id * 37) % 13) - 6, dieT: -1 };
+        v = { R, x: M + u.x, hp: u.hp, st: u.state, hitT: 0, flash: 0, kbT: 0, y: u.boss ? GY + 6 : GY + ((u.id * 37) % 13) - 6, dieT: -1 };
         R.root.position.set(v.x, v.y); R.root.zIndex = v.y + (u.boss ? -20 : 0); units.addChild(R.root); V.set(u.id, v);
         v.h = Math.min(220, R.root.height || 60);
       }
@@ -344,13 +359,40 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       if (q.t >= q.life) { if (q.shot) puff(q.x1, q.y1, q.color, q.area ? 10 : 5, q.area ? 90 : 60, 0.3, 2); q.g.destroy(); parts.splice(i, 1); }
     }
   }
+  let colMask = null, colDone = false, colY0 = 0;
+  function collapse(spr, rubT, dt) {
+    const t = overT - 0.4, cx = spr.x, top = GY + 10 - spr.height;   /* 0.4초 : 카메라가 성으로 가는 동안 */
+    if (t < 0) return;
+    if (!colMask) { colY0 = spr.y; colMask = new Graphics().rect(cx - 260, -2000, 520, GY + 14 + 2000).fill(0xffffff); stage.addChild(colMask); spr.mask = colMask; }   /* 땅 아래로는 안 보이게(투명 아님 · 묻힘) */
+    if (t < 0.35) {   /* ① 폭발 */
+      if (t - dt <= 0) {
+        flashT = 0.18; flashC = 0xffb040; shakes.screen = 0.45;
+        if (boomFx) for (let i = 0; i < 3; i++) { const b = new AnimatedSprite(boomFx.frames); b.anchor.set(0.5); b.scale.set(2 + i * 0.4); b.position.set(cx + (i - 1) * 40, top + spr.height * (0.35 + i * 0.12)); b.loop = false; b.animationSpeed = boomFx.meta.fps / 60; b.onComplete = () => b.destroy(); fx.addChild(b); b.play(); }
+        puff(cx, top + spr.height * 0.4, 0xffb03a, 30, 260, 0.6, 3);
+      }
+    } else if (t < 1.1) {   /* ② 깜박깜박 */
+      spr.tint = Math.floor(t * 12) % 2 ? 0xffffff : 0xff6a50; shakes.screen = Math.max(shakes.screen, 0.06);
+    } else if (t < 2.1) {   /* ③ 와르르 : 흔들리며 땅으로 꺼지고 돌조각 · 먼지 */
+      spr.tint = 0xffffff;
+      const k = (t - 1.1) / 1.0; spr.y = colY0 + spr.height * 0.38 * k * k; spr.x += Math.sin(t * 60) * 0.8; shakes.screen = 0.12;
+      if (crumbleFx && t - dt < 1.1) { const c = new AnimatedSprite(crumbleFx.frames); c.anchor.set(0.5, 1); c.scale.set(spr.width / crumbleFx.meta.w); c.position.set(cx, GY + 12); c.loop = false; c.animationSpeed = crumbleFx.meta.fps / 60; c.onComplete = () => c.destroy(); fx.addChild(c); c.play(); }
+      if (Math.random() < 0.7) puff(cx + (Math.random() - 0.5) * spr.width * 0.8, GY - Math.random() * 30, 0x8c7c74, 3, 90, 0.9, 4);
+      if (Math.random() < 0.35) puff(cx + (Math.random() - 0.5) * spr.width * 0.6, top + spr.height * (0.2 + k * 0.6), 0x5a4c58, 2, 160, 0.7, 5);   /* 돌조각 */
+    } else if (!colDone) {   /* ④ 잔해가 남는다 */
+      colDone = true; spr.tint = 0xffffff; spr.x = cx;
+      if (rubT) { spr.mask = null; spr.texture = rubT; spr.y = colY0; }   /* 잔해 그림 (그림 담당) */
+      else spr.y = colY0 + spr.height * 0.38;   /* 잔해 그림이 오기 전 : 무너진 성을 반쯤 묻어 둔다 */
+      for (let i = 0; i < 14; i++) puff(cx + (Math.random() - 0.5) * spr.width, GY - Math.random() * 20, 0x9a8c80, 2, 40, 1.2, 4);
+    }
+  }
   function ending(S, dt) {
     if (!S.over) return;
     overT += dt;
     if (S.over.winner === 0 && !pvp) for (const u of S.units) { const v = V.get(u.id); if (v && u.side === 1 && u.alive) { v.flee = true; v.x += dt * 260; v.R.root.scale.x = Math.abs(v.R.root.scale.x); } }   // 좀비들 줄행랑 (오른쪽으로 도망)
-    if (S.over.winner === 0) {   // 좀비 탑이 무너지고 좀비들이 줄행랑
-      tower.y = GY + 10 + Math.min(60, overT * 40); tower.alpha = Math.max(0, 1 - overT / 1.6); if (overT < 1.2) { shakes.screen = 0.1; if (Math.random() < 0.5) puff(tower.x + (Math.random() - 0.5) * 80, GY - Math.random() * 60, 0x9a8c80, 2, 50, 0.6, 3); }
-    } else if (overT < 1) shakes.nest = 0.1;
+    /* 성 무너짐 (대표님 «폭발 → 깜박깜박 → 와르르 무너지며 먼지 → 잔해가 남는다 · 투명하게 사라지는 것 금지») */
+    if (S.over.winner === 0 && !pvp) collapse(tower, towerRubT, dt);
+    else if (S.over.winner === 1 && !pvp) { collapse(nest, nestRubT, dt); for (const t of torches) t.visible = false; if (lead) lead.root.visible = overT < 1.5; }
+    else if (overT < 1) shakes.nest = 0.1;
     /* 대결 : 이긴 쪽 리더가 깡충깡충 (멀티 기획 5장) */
     if (pvp && S.over.winner >= 0) { const w = S.over.winner === 0 ? lead : lead2; if (w) { w.root.y = w.baseY - Math.abs(Math.sin(overT * 7)) * 18; if (overT < 0.05) w.set('hit'); } }
   }
@@ -368,7 +410,10 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   function camera(S, dt) {
     viewW = view.w;
     if (!drag) handT -= dt;
-    if (!drag && handT <= 0) {
+    if (S.over && !pvp && S.over.winner >= 0) {   /* 끝 : 무너지는 성을 비춘다 */
+      const c = S.over.winner === 0 ? tower : nest, target = Math.max(0, Math.min(FIELD - view.w, c.x - view.w / 2));
+      camX += (target - camX) * Math.min(1, dt * 9);
+    } else if (!drag && handT <= 0) {
       let a = 0, b = L;
       for (const u of S.units) { if (!u.alive) continue; if (u.side === 0) a = Math.max(a, u.x); else b = Math.min(b, u.x); }
       const target = Math.max(0, Math.min(FIELD - view.w, M + (a + b) / 2 - view.w / 2));

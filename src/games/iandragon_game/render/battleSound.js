@@ -106,7 +106,11 @@ export function createBattleSound(stage, me = 0) {
       }
       if (S.over && !was.over) {
         was.over = true; Audio.stopBgm();
-        if (S.over.winner === 0) { Audio.play('base_break'); if (b && !b.alive) later(() => Audio.voice('bossdown'), was.bossDie ? 1600 : 0); later(() => { Audio.play(stage.g === 100 ? 'ending_sting' : 'win_fanfare'); Audio.voice(stage.g === 100 ? 'ending' : 'win'); if (stage.g === 100 && musicOn) later(() => Audio.bgm('ending'), 2800); }, 900); }   // 10-10 = 엔딩 대사
+        /* 성 무너짐 (대표님 11/11) : 화면 연출(0.4초 뒤 폭발 → 깜박 → 와르르 → 잔해)에 겜팀장 castle_collapse 를 맞추고, 팡파레 · 패배 소리는 잔해가 남은 뒤 */
+        const fall = !stage.pvp && S.over.winner >= 0, endAt = fall ? 2600 : 900;
+        if (fall) later(() => Audio.play('castle_collapse'), 400);
+        if (S.over.winner === 0) { if (!fall) Audio.play('base_break'); if (b && !b.alive) later(() => Audio.voice('bossdown'), was.bossDie ? 1600 : 0); later(() => { Audio.play(stage.g === 100 ? 'ending_sting' : 'win_fanfare'); Audio.voice(stage.g === 100 ? 'ending' : 'win'); if (stage.g === 100 && musicOn) later(() => Audio.bgm('ending'), 2800); }, endAt); }   // 10-10 = 엔딩 대사
+        else if (fall) later(() => { Audio.play('lose_womp'); Audio.voice('lose'); }, endAt);
         else { Audio.play('lose_womp'); Audio.voice('lose'); }
       }
     },

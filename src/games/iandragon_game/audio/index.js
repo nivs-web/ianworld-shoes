@@ -19,7 +19,7 @@ const lastAt = new Map();
 /* ───── 음향 설정 (2026-11-11 대표님: «더보기 → 음향 설정» — 배경음악 · 효과음 · 목소리 크기 · 좀비 소리) ─────
  * 기기에 저장(localStorage) · 서버 저장 없음. 0~1. 버스 기본 크기(synth.js)에 곱한다. */
 const VOL_KEY = 'idg_audio_v1';
-const BASE = { music: 0.32, sfx: 0.55, voice: 0.95 };
+const BASE = { music: 0.37, sfx: 0.55, voice: 0.95 };   // 배경음악 +15% (대표님 11/11 «배경음을 15% 키워 게임에 몰두하게»)
 const vol = { music: 0.8, sfx: 0.8, voice: 0.9, zombie: true };
 try { Object.assign(vol, JSON.parse(localStorage.getItem(VOL_KEY) || '{}')); } catch { /* 저장소가 없어도 기본값으로 */ }
 const saveVol = () => { try { localStorage.setItem(VOL_KEY, JSON.stringify(vol)); } catch { /* */ } };

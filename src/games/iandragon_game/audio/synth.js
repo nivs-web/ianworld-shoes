@@ -12,7 +12,7 @@ export function audio() {
   master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination);
   const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(master);
   sfxBus = ctx.createGain(); sfxBus.gain.value = 0.55; sfxBus.connect(comp);
-  musicBus = ctx.createGain(); musicBus.gain.value = 0.32; musicBus.connect(comp);
+  musicBus = ctx.createGain(); musicBus.gain.value = 0.37; musicBus.connect(comp);
   voiceBus = ctx.createGain(); voiceBus.gain.value = 0.95; voiceBus.connect(master);
   return { ctx, master, sfxBus, musicBus, voiceBus };
 }
