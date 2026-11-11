@@ -5,6 +5,7 @@
 import { TABS, FUN_INFO, A, RETOUCH } from './lists.js';
 import { makeThumb, getRig, createCharStage, createBgStage, createLineup } from './viewer.js';
 import { createLivingStage } from './living.js';
+import { renderSound } from './sound.js';
 
 const GAME = '/assets/iandragon_game/';
 const $ = (s, r = document) => r.querySelector(s);
@@ -17,7 +18,7 @@ function h(tag, attrs = {}, ...kids) {
     else if (k === 'html') el.innerHTML = v;
     else el.setAttribute(k, v === true ? '' : v);
   }
-  for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(c));
+  for (const c of kids.flat(Infinity)) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(c));
   return el;
 }
 const bust = Date.now();
@@ -57,7 +58,7 @@ async function render() {
   state.funStage?.destroy(); state.funStage = null;
   const tab = TABS.find((t) => t.id === state.tab) || TABS[0];
   const main = $('#main'); main.replaceChildren(h('p', { class: 'hint' }, '불러오는 중…'));
-  const fn = { rig: renderRig, bg: renderBg, castle: renderCastle, fun: renderFun, egg: renderEgg, hud: renderHud, banner: renderBanner, lobby: renderLobby, meta: renderMeta, live: renderLive }[tab.kind];
+  const fn = { rig: renderRig, bg: renderBg, castle: renderCastle, fun: renderFun, egg: renderEgg, hud: renderHud, banner: renderBanner, lobby: renderLobby, meta: renderMeta, live: renderLive, sound: () => renderSound(h) }[tab.kind];
   const view = await fn(tab);
   main.replaceChildren(...[].concat(view));
   window.scrollTo(0, 0);
@@ -138,20 +139,22 @@ async function openChar(it, rig) {
 async function renderLive() {
   const stages = [];
   const box = (label, sub) => { const host = h('div', { class: 'livehost' }); return { host, el: h('figure', { class: 'livefig' }, host, h('figcaption', {}, h('b', {}, label), ' — ', sub)) }; };
-  const still = box('지금 (정지)', '통그림 한 장 + 반딧불'), A = box('A안 · 코드 숨결 ($0)', '그림 그대로 · 달 빛무리 숨쉬기 · 초록 화로 깜빡 + 불티 · 창문 반짝 · 땅 안개 흐름 · 옅은 구름 자락'), B = box('B안 · AI 두 겹 (약 $0.4)', '하늘 겹이 0.35배로 느리게 움직여 깊이 + A안 숨결');
-  const one = h('div', { class: 'livegrid' }, still.el, A.el, B.el);
+  const still = box('지금 (정지)', '통그림 한 장 + 반딧불'), A = box('A안 · 코드 숨결 ($0)', '그림 그대로 · 달 빛무리 숨쉬기 · 초록 화로 깜빡 + 불티 · 창문 반짝 · 땅 안개 흐름 · 옅은 구름 자락'), B = box('★ 확정안 — B 두 겹 + A 숨결 + 움직이는 화로 불꽃', '하늘 겹 0.35배 느리게(깊이) · 달 빛무리 숨쉬기 · 먼 성 창문 반짝 · 구름 자락 · 안개 두 겹 · 초록 화로 = 8프레임 불꽃 애니메이션 + 불빛 깜빡 + 불티');
+  const one = h('div', { class: 'livegrid' }, B.el, still.el, A.el);
+  const flame = (name, frames, fw, fps, label) => { const k = 3, el = h('div', { style: `width:${fw * k}px;height:${72 * k}px;background:#1d1438 url(/assets/iandragon_game/ai/fx/${name}.png?v=${bust}) 0 0/${fw * frames * k}px ${72 * k}px;image-rendering:pixelated;border-radius:8px;animation:fx_${name} ${frames / fps}s steps(${frames}) infinite` }); return h('figure', { class: 'livefig', style: 'display:inline-block;margin-right:18px' }, el, h('style', {}, `@keyframes fx_${name}{to{background-position:-${fw * frames * k}px 0}}`), h('figcaption', {}, h('b', {}, label), ` — ai/fx/${name}.png (${frames}프레임 · ${fps}fps)`)); };
+  const gif = h('div', {}, flame('fire_green', 8, 72, 10, '초록 불꽃'), flame('fire_orange', 12, 49, 12, '주황 불꽃'));
   stages.push(await createLivingStage(still.host, 'still', 1), await createLivingStage(A.host, 'A', 1));
   try { stages.push(await createLivingStage(B.host, 'B', 1)); } catch { B.host.append(h('div', { class: 'hint' }, 'B안 두 겹 그림 준비 중 — 새로 고침')); }
   // 월드 고르기 : 넓힌 배경(거울 반복 없음) + 입자 (6~10 = 새 입자 제안)
   const pickHost = h('div', { class: 'livehost' }), info = h('div', { class: 'hint' });
   let cur = null;
-  const show = async (w) => { cur?.destroy(); pickHost.replaceChildren(); cur = await createLivingStage(pickHost, 'still', w); info.textContent = `월드 ${w} 배경 폭 ${Math.round(cur.bgW)}칸 (가장 긴 판 전장 1,710칸) ${cur.bgW >= 1710 ? '✔ 거울 반복 없음' : '✘ 아직 좁음'} · 입자 ${w >= 6 ? '새 제안' : '지금 게임 그대로'}`; };
+  const show = async (w) => { cur?.destroy(); pickHost.replaceChildren(); try { cur = await createLivingStage(pickHost, 'B', w); } catch { pickHost.replaceChildren(); cur = await createLivingStage(pickHost, 'still', w); } info.textContent = `월드 ${w} 배경 폭 ${Math.round(cur.bgW)}칸 (가장 긴 판 전장 1,710칸) ${cur.bgW >= 1710 ? '✔ 거울 반복 없음' : '✘ 아직 좁음'} · 입자 ${w >= 6 ? '새 제안' : '지금 게임 그대로'}`; };
   const btns = h('div', { class: 'btngroup' }, Array.from({ length: 10 }, (_, i) => h('button', { class: 'btn', onclick: () => show(i + 1) }, `월드 ${i + 1}`)));
-  await show(6);
+  await show(2);
   state.funStage = { destroy() { stages.forEach((s) => s.destroy()); cur?.destroy(); } };
   return [h('div', { class: 'tabhead' }, h('b', {}, '배경 살아있게'), h('span', { class: 'hint' }, '카메라가 게임처럼 좌우로 천천히 오갑니다 (약 25초 왕복)')),
-    h('h3', { class: 'sec' }, '월드 1 첫 판 — 지금 · A안 · B안'), one,
-    h('h3', { class: 'sec' }, '월드별 넓힌 배경 + 분위기 입자'), btns, info, pickHost];
+    h('h3', { class: 'sec' }, '월드 1 첫 판 — 확정안 · 지금 · A안'), one, gif,
+    h('h3', { class: 'sec' }, '월드별 확정안 (두 겹 + 숨결 + 불꽃 · 두 겹이 아직 없으면 넓힌 통그림)'), btns, info, pickHost];
 }
 
 /* ───────── 배경 탭 ───────── */

@@ -32,6 +32,7 @@ export const TABS = [
   { id: 'hud', label: 'HUD 아이콘', kind: 'hud' },
   { id: 'lobby', label: '로비', kind: 'lobby' },
   { id: 'meta', label: '꾸미기 · 상점', kind: 'meta' },
+  { id: 'sound', label: '소리 🔊', kind: 'sound' },
   { id: 'banner', label: '배너', kind: 'banner', items: () => [{ id: 'banner_iandragon', name: '배너 (게임 카드)' }, { id: 'banner_iandragon_lobby', name: '배너 (로비)' }] },
 ];
 
