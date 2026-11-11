@@ -3,6 +3,7 @@
  * 게임 코드는 아래 함수만 부른다 : init() · play(id) · bgm(id, {rate}) · worldBgm(world, {rate}) · stopBgm() · voice(id) ·
  *   fun(id) · setFun(on) · setBgmStyle('orchestra' | 'arcade') · bgmStyle() · setMuted(on) ·
  *   음향 설정: setVolume('music' | 'sfx' | 'voice', 0~1) · getVolumes() · setZombieSound(on)
+ *   말 많기: setVoiceLevel(0~5) · getVoiceLevel() · voiceLevelStats() · VOICE_LEVELS (관리자 페이지 · 음향 설정 창)
  * - 효과음 · 곡: 파형 합성(파일 없음). 음성: 보이스 스튜디오로 만든 한국어 파일(이 게임만 예외, 2026-11-10 대표님).
  * - 없는 id 는 조용히 무시한다. 같은 효과음은 0.05초 안에 한 번만. 소리는 화면 전용 — 전투 계산에 영향 없음.
  * - fun(id) = 배경 재미 요소 작은 소리 (FUN_SFX · 기본 꺼 둠 — 대표님이 고른 뒤 setFun(true)).
@@ -10,16 +11,20 @@
 import { audio } from './synth.js';
 import { SFX, playFun, setFunSfx } from './sfx.js';
 import { startTrack, stopTrack, trackForWorld, preloadMusic, setMusicStyle, getMusicStyle } from './music.js';
-import { playVoice, preloadVoices } from './voice.js';
+import { playVoice, preloadVoices, setVoiceLevel as setVL, getVoiceLevel, voiceLevelStats, hasUserVoiceLevel } from './voice.js';
 import { preloadSfxFiles, hasFileSfx, playFileSfx } from './sfxfile.js';
 
 let muted = false;
 const lastAt = new Map();
+const recent = [];
+let lastZombie = -1;
 
 /* ───── 음향 설정 (2026-11-11 대표님: «더보기 → 음향 설정» — 배경음악 · 효과음 · 목소리 크기 · 좀비 소리) ─────
  * 기기에 저장(localStorage) · 서버 저장 없음. 0~1. 버스 기본 크기(synth.js)에 곱한다. */
 const VOL_KEY = 'idg_audio_v1';
-const BASE = { music: 0.37, sfx: 0.55, voice: 0.95 };   // 배경음악 +15% (대표님 11/11 «배경음을 15% 키워 게임에 몰두하게»)
+/* 11/11 저녁 대표님 «소리가 전체적으로 넘 시끄럽고 귀가 아파서 주변 사람들이 다 끄고 한다» → 전부 낮춤
+ * (배경음악 0.37→0.30 · 효과음 0.55→0.40 · 목소리 0.95→0.80. 배경음악:효과음 비율은 +15% 때 그대로) */
+const BASE = { music: 0.30, sfx: 0.40, voice: 0.80 };
 const vol = { music: 0.8, sfx: 0.8, voice: 0.9, zombie: true };
 try { Object.assign(vol, JSON.parse(localStorage.getItem(VOL_KEY) || '{}')); } catch { /* 저장소가 없어도 기본값으로 */ }
 const saveVol = () => { try { localStorage.setItem(VOL_KEY, JSON.stringify(vol)); } catch { /* */ } };
@@ -57,12 +62,15 @@ export function play(id) {
   const f = SFX[id], file = !f && hasFileSfx(id); if (!f && !file) return;
   const A = audio(); if (!A) return;
   const now = A.ctx.currentTime;
-  if (now - (lastAt.get(id) ?? -1) < 0.05) return;
-  lastAt.set(id, now);
+  if (now - (lastAt.get(id) ?? -1) < (file ? 0.6 : 0.05)) return;          // 좀비 소리는 같은 종류 0.6초에 한 번
+  if (file && now - lastZombie < 0.25) return;                          // 좀비 소리끼리도 0.25초 간격
+  while (recent.length && now - recent[0] > 0.5) recent.shift();
+  if (recent.length >= 6) return;                                       // 0.5초에 효과음 6개까지 (떼로 몰려도 귀 안 아프게)
+  recent.push(now); lastAt.set(id, now); if (file) lastZombie = now;
   try { if (f) f(); else playFileSfx(id, FILE_VOL[id] ?? 0.8); } catch { /* 소리 실패는 게임과 무관 */ }
 }
 /* 좀비 소리 볼륨 (대표님 11/11 두 번째: «너무 은은하게 말고 일반 소리로» → 여기서 키우고 줄인다) */
-const FILE_VOL = { zombie_idle: 1.0, zombie_spawn: 0.95, zombie_die: 1.0, zombie_big: 1.0, zombie_ghost: 0.95 };
+const FILE_VOL = { zombie_idle: 0.8, zombie_spawn: 0.8, zombie_die: 0.85, zombie_big: 0.9, zombie_ghost: 0.8 };
 
 export function bgm(id, opt = {}) {
   if (muted) return;
@@ -82,6 +90,22 @@ export function voice(id) {
   if (muted) return;
   playVoice(id);
 }
+
+/* ───── 말 많기 6단계 (11/11 대표님 «관리자 페이지에 음성 메뉴 신설 · 6단계 · 하나씩 실험해 볼게») ───── */
+/** 단계 이름 · 설명 — 관리자 페이지 · 음향 설정 창이 그대로 보여 준다 */
+export const VOICE_LEVELS = [
+  { n: 0, name: '0단계 · 말 없음', desc: '목소리를 아예 안 냅니다. 효과음과 음악만.' },
+  { n: 1, name: '1단계 · 낱말만', desc: '용 이름 같은 가장 짧은 한두 마디만. (예: «꼬물이!»)' },
+  { n: 2, name: '2단계 · 아주 짧게', desc: '아주 짧은 문장만. (예: «꼬물이 출격!» · «퉤엣!») — 기본' },
+  { n: 3, name: '3단계 · 중요한 순간', desc: '보스 등장 · 보스 격파 · 브레스 · 부화 때 한 문장.' },
+  { n: 4, name: '4단계 · 대부분', desc: '진화 · 포효 · 좀비 떼 경고 · 습격 · 대결 말까지.' },
+  { n: 5, name: '5단계 · 전부', desc: '모든 대사 (예전 그대로 · 보스 중간 말까지).' },
+];
+/** 사용자가 고른 단계 (기기에 저장) */
+export function setVoiceLevel(n) { setVL(n); }
+/** 관리자 기본값 — 사용자가 직접 고른 적이 없을 때만 적용 (저장 안 함) */
+export function setDefaultVoiceLevel(n) { if (!hasUserVoiceLevel()) setVL(n, { save: false }); }
+export { getVoiceLevel, voiceLevelStats };
 
 export function setMuted(on) {
   muted = !!on;

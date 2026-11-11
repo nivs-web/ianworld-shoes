@@ -190,11 +190,11 @@ export default function IanDragonGameLobby(nav) {
    */
   const leaderOf = (g) => { try { return makeLoads(stageByNo(Math.min(100, (g.cleared || 0) + 1)), g).loads[0].leader || 'novart'; } catch { return 'novart'; } };
   /* 내가 꾸민 리더 드래곤 (대표님 11/11 «왕관을 썼으면 왕관, 목도리를 골랐으면 목도리») — 누르면 이름 외침 + 깡충 */
-  function myDragon(tag, g, cls) {
+  function myDragon(tag, g, cls, opt) {
     const ld = leaderOf(g);
     const box = el(tag, { type: 'button', 'aria-label': '내 리더 드래곤',
       onclick: () => { box.classList.remove('hop'); void box.offsetWidth; box.classList.add('hop'); import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); A.voice(`name/${ld}`); }).catch(() => {}); } });
-    dressedCanvas(ld, g.look).then((c) => { c.className = cls; box.appendChild(c); }).catch(() => {});
+    dressedCanvas(ld, g.look, opt).then((c) => { c.className = cls; box.appendChild(c); }).catch(() => {});
     return box;
   }
   const landStage = (g) => myDragon('button.idg-land-stage', g, 'idg-land-leader');
@@ -212,9 +212,11 @@ export default function IanDragonGameLobby(nav) {
         el('div.idg-logo', null, [el('img.idg-lobby-banner', { src: '/assets/ui/banner_iandragon_lobby.webp', alt: `${S.idgTitle} ${S.idgTitleEn}` })]),
         /* 상태판 — 그림(겜부장 보조 · ui/lobby/*)이 있으면 그림, 없으면 글자만 (2026-11-11 대표님 «로비에 디자인 요소가 없다») */
         el('div.panel.idg-panel.idg-prof', null, [
-          myDragon('button.idg-prof-dragon', g, 'idg-prof-canvas'),
+          myDragon('button.idg-prof-dragon', g, 'idg-prof-canvas', { K: 2.3, W: 230, H: 200 }),   /* 용이 카드 높이를 채우게 크게 (대표님 «용이 너무 작아») */
           el('div.idg-prof-text', null, [
-          el('div.idg-player', (p.nickname || '???') + (titleOf(g.title) ? ` · ${titleOf(g.title).name}` : '')),
+          /* 대표님 11/11 «아빠게임왕 · 화로 달인은 무슨 뜻이냐» → 닉네임 한 줄 · 칭호는 아래 작은 배지로 «칭호 화로 달인» */
+          el('div.idg-player', p.nickname || '???'),
+          titleOf(g.title) ? el('div.idg-title-badge', { title: titleOf(g.title).how || '' }, [el('i', '칭호'), el('span', titleOf(g.title).name)]) : null,
           el('div.idg-stats', null, [
             el('div', g.cleared >= 100 ? '모든 모험 끝! 좀비 드래곤 로드를 물리쳤어요!' : S.idgStatNext(G.stageLabel(G.nextStage(g)))),   // 코드 검토 7
             el('div.idg-stat-row', null, [stat('star', G.totalStars(g)), stat('coin', g.coins), stat('gem', g.gems)]),

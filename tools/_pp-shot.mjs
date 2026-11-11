@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const b = await chromium.launch({ channel: 'chrome' });
-const DEV = { p209: [412, 915, 2.6], p209L: [915, 412, 2.6], t43L: [1024, 768, 2], p169: [360, 640, 3] };
+const DEV = { p209: [412, 915, 2.6], p209L: [915, 412, 2.6], t43L: [1024, 768, 2], p169: [360, 640, 3], t1610: [800, 1280, 2], t1610L: [1280, 800, 2] };
 for (const nm of (process.argv[2] || 'p209,p209L,t43L,p169').split(',')) {
   const [w, h, d] = DEV[nm]; const p = await (await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: d })).newPage(); const errs = []; p.on('pageerror', (e) => errs.push(String(e)));
   const click = (t) => p.evaluate((t) => { const x = [...document.querySelectorAll('button')].find((y) => y.textContent.includes(t)); x?.click(); return !!x; }, t);

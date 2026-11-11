@@ -1004,3 +1004,95 @@ html.idg-rot .dg-host { z-index: 5; }
 .idg-hud .idg-card { max-width: min(92%, 640px); }
 .idg-hud .idg-card:has(.idg-btn.big), .idg-hud .idg-card:has(h2.win), .idg-hud .idg-card:has(h2.lose) { max-width: min(96%, 760px); }
 .idg-hud .idg-card.idg-pp { width: min(96%, 980px); max-width: min(96%, 980px); }
+
+/* ════ 5차 (11/11 저녁 대표님 캡처) ════ */
+/* 프로필 카드 : 용을 카드 높이 가득 · 닉네임 한 줄 · 칭호 배지 · 모든 줄 왼쪽 맞춤 */
+.idg-panel.idg-prof { grid-template-columns: 116px minmax(0, 1fr); column-gap: 10px; padding-block: 4px; min-height: 104px; }
+.idg-prof-dragon { width: 116px; height: 100px; align-self: stretch; }
+.idg-prof-canvas { width: 150px; height: 125px; margin: -18px -17px -8px; }
+.idg-prof-text { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; }
+.idg-prof-text .idg-player { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: left; margin: 0; }
+.idg-title-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #ffe9b0; background: #3b2a6e; border: 2px solid #1b1030; padding: 1px 6px; text-shadow: var(--idg-pxo); }
+.idg-title-badge i { font-style: normal; color: #1a1033; background: #FFC93C; padding: 0 4px; text-shadow: none; }
+.idg-prof-text .idg-stats { text-align: left; width: 100%; margin: 0; }
+.idg-prof-text .idg-stats > div:first-child { text-align: left; }
+.idg-prof-text .idg-stat-row { justify-content: flex-start; margin: 2px 0 0; }
+@media (max-width: 380px) { .idg-panel.idg-prof { grid-template-columns: 92px minmax(0, 1fr); } .idg-prof-dragon { width: 92px; height: 84px; } .idg-prof-canvas { width: 122px; height: 102px; margin: -14px -15px -6px; } .idg-prof-text .idg-player { font-size: 16px; } }
+/* 세로 로비 반응형 (대표님 «반응형 웹사이트처럼 · 폰이든 태블릿이든 세로는 버튼들 늘어나서 보이게 · 가운데 정렬») */
+@media (orientation: portrait) {
+  html.idg-lobby-on body { width: 100%; }
+  .screen.idg-lobby { width: 100%; max-width: 760px; margin: 0 auto; box-sizing: border-box; align-items: stretch; }
+  .screen.idg-lobby > .idg-logo { text-align: center; }
+  .screen.idg-lobby .idg-lobby-banner { max-width: 100%; margin: 0 auto; }
+  .screen.idg-lobby > .idg-menu.big .idg-tile { justify-content: center; text-align: center; }
+  .screen.idg-lobby > .idg-icons .idg-mini-btn { justify-content: center; text-align: center; }
+}
+@media (orientation: portrait) and (min-width: 560px) {   /* 세로 태블릿 : 단추 · 글씨를 화면 폭에 맞춰 크게 */
+  .screen.idg-lobby { gap: 14px; padding-inline: 20px; }
+  .screen.idg-lobby > .idg-start-row .idg-start { min-height: 84px; font-size: 26px; }
+  .screen.idg-lobby > .idg-start-row .idg-pick { min-width: 110px; min-height: 84px; }
+  .screen.idg-lobby > .idg-menu.big { gap: 12px; }
+  .screen.idg-lobby > .idg-menu.big .idg-tile { min-height: 96px; } .screen.idg-lobby > .idg-menu.big .idg-tile img { width: 64px; height: 64px; } .screen.idg-lobby > .idg-menu.big .idg-tile span { font-size: 22px; }
+  .screen.idg-lobby > .idg-icons { gap: 10px; } .screen.idg-lobby > .idg-icons .idg-mini-btn { min-height: 90px; } .screen.idg-lobby > .idg-icons .idg-mini-btn img { width: 44px; height: 44px; } .screen.idg-lobby > .idg-icons .idg-mini-btn span { font-size: 15px; }
+  .screen.idg-lobby > .idg-panel.idg-prof { grid-template-columns: 170px minmax(0, 1fr); min-height: 140px; }
+  .screen.idg-lobby .idg-prof-dragon { width: 170px; height: 140px; } .screen.idg-lobby .idg-prof-canvas { width: 210px; height: 175px; margin: -24px -20px -10px; }
+  .screen.idg-lobby .idg-prof-text .idg-player { font-size: 24px; } .screen.idg-lobby .idg-title-badge { font-size: 15px; } .screen.idg-lobby .idg-prof-text .idg-stats { font-size: 16px; }
+  .screen.idg-lobby > .idg-back { min-height: 56px; font-size: 18px; }
+}
+/* 가로 로비 다시 (대표님 «배치도 비율도 엉망 · 웹사이트라 생각하고 싹 바꿔») :
+ *  머리줄 = 짧은 배너 | 프로필 · 본문 = 왼쪽 리더 무대(정사각) | 오른쪽 단추 묶음(모험 시작 · 2×2 · 작은 아이콘 5) 세로 가운데 · 맨 아래 = 돌아가기 */
+@media (orientation: landscape) and (min-width: 600px) and (min-height: 421px) {
+  .screen.idg-lobby { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto auto minmax(0, 1fr) auto; row-gap: 10px; column-gap: 18px;
+    grid-template-areas: "logo panel" "stage ." "stage start" "stage menu" "stage icons" "stage ." "back back"; max-width: 1240px; }
+  .screen.idg-lobby > .idg-logo { justify-self: center; }
+  .screen.idg-lobby .idg-lobby-banner { max-height: 18vh; }
+  .screen.idg-lobby > .idg-land-stage { grid-row: 2 / 7; justify-self: center; align-self: center; height: 100%; max-height: 100%; }
+  .screen.idg-lobby > .idg-start-row .idg-start { min-height: 64px; font-size: 22px; }
+  .screen.idg-lobby > .idg-start-row .idg-pick { min-height: 64px; min-width: 84px; }
+  .screen.idg-lobby > .idg-menu.big .idg-tile { min-height: 64px; justify-content: center; } .screen.idg-lobby > .idg-menu.big .idg-tile span { font-size: 17px; }
+  .screen.idg-lobby > .idg-icons { gap: 6px; } .screen.idg-lobby > .idg-icons .idg-mini-btn { min-height: 64px; justify-content: center; }
+  .screen.idg-lobby > .idg-back { justify-self: center; width: min(560px, 100%); }
+}
+
+.idg-prof-dragon { overflow: hidden; } .idg-prof-canvas, .screen.idg-lobby .idg-prof-canvas { width: 100%; height: 100%; margin: 0; object-fit: contain; object-position: center bottom; }
+@media (orientation: portrait) and (min-width: 700px) {
+  .screen.idg-lobby > .idg-start-row .idg-start { min-height: 100px; font-size: 30px; } .screen.idg-lobby > .idg-start-row .idg-pick { min-height: 100px; min-width: 130px; }
+  .screen.idg-lobby > .idg-menu.big .idg-tile { min-height: 118px; } .screen.idg-lobby > .idg-menu.big .idg-tile img { width: 76px; height: 76px; } .screen.idg-lobby > .idg-menu.big .idg-tile span { font-size: 26px; }
+  .screen.idg-lobby > .idg-icons .idg-mini-btn { min-height: 110px; } .screen.idg-lobby > .idg-icons .idg-mini-btn img { width: 54px; height: 54px; } .screen.idg-lobby > .idg-icons .idg-mini-btn span { font-size: 18px; }
+}
+/* 판 카드 · 결과 창 : 단추 줄 뒤 보라 상자 없앰(대표님 «버튼 2개 뒤에 보라색 상자가 깔려 있음») · 노란 제목은 위로 쏠리지 않게 위아래 여백 고르게 */
+.idg-hud .idg-card > .idg-row:last-child { position: static; background: none; box-shadow: none; }
+.idg-hud .idg-card > h2 { padding: 8px 4px 4px; line-height: 1.25; }
+/* ×2 배속 : 상자 15% 작게 · 글씨 조금 크게 (대표님) */
+.idg-hud .idg-top .idg-speed { height: 36px; min-width: 37px; padding: 0 4px; font-size: 18px; font-weight: 900; line-height: 1; }
+@media (max-height: 430px) { .idg-hud .idg-top .idg-speed { height: 30px; min-width: 32px; font-size: 16px; } }
+/* 세로 전투 : 보스 게이지를 위 성 체력 줄 아래로 (9-10 겹침) */
+@media (orientation: portrait) { html:not(.idg-rot) .idg-hud.float .idg-boss { top: 96px; } html:not(.idg-rot) .idg-hud.float .idg-boss b { width: min(200px, 52vw); } }
+
+/* 명예의 전당 (대표님 캡처) : 탭 5개 한 줄 · 설명은 낱말 단위 줄바꿈 · 왕관과 «1위» 세로 가운데 · 순위 칸 폭 고정 · 모자가 칸 밖으로 안 나가게 */
+.dialog.idg-hall .idg-hall-seg .seg, .dialog.idg-hall .seg { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.dialog.idg-hall .seg .pbtn { font-size: 13px; padding: 0 1px; min-height: 40px; letter-spacing: -.5px; }
+@media (max-width: 420px) { .dialog.idg-hall .seg .pbtn { font-size: 11px; min-height: 36px; border-width: 6px 6px; border-image-width: 6px 6px; } }
+.dialog.idg-hall .idg-hall-note { word-break: keep-all; overflow-wrap: break-word; text-wrap: balance; text-align: center; }
+.dialog.idg-hall .rank-place { flex: 0 0 52px; align-items: center; height: 44px; }
+.dialog.idg-hall .rank-place .crown-slot, .dialog.idg-hall .rank-place .crown { align-self: center; }
+.dialog.idg-hall .rank-no { line-height: 18px; display: block; }
+.dialog.idg-hall .idg-hall-face { overflow: hidden; }
+.dialog.idg-hall .idg-hall-face .f-hat { top: 0; width: 22px; height: 16px; }
+.dialog.idg-hall .idg-hall-face .f-head { margin-top: 8px; }
+/* 창 뒤 로비 단추가 비쳐 보이지 않게 (어둡게 · 맨 위로) */
+.dialog-overlay:has(> .dialog[class*="idg-"]) { background: rgba(6, 3, 14, .88); z-index: 2000; }
+
+/* 설정 : 화면 방향 3칸 · 말 많기 6칸 */
+.idg-sound-pick.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.idg-sound-pick.six { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+.idg-sound-pick.three .idg-sound-opt, .idg-sound-pick.six .idg-sound-opt { min-width: 0; padding-inline: 2px; white-space: nowrap; }
+.idg-sound-desc { margin: -2px 0 4px; font-size: 12px; color: #b9a8ff; text-align: left; word-break: keep-all; }
+/* 세로 고정(가로 기기에서 전투를 세로로 돌려 그림 · html.idg-rot.ccw) : 세로 전투 배치를 그대로 */
+html.idg-rot.ccw .idg-hud.float .idg-bot { display: grid; grid-template-columns: repeat(6, minmax(0, 86px)); justify-content: start; gap: 4px; align-items: end; }
+html.idg-rot.ccw .idg-hud.float .idg-deck { display: contents; }
+html.idg-rot.ccw .idg-hud.float .idg-wallet, html.idg-rot.ccw .idg-hud.float .idg-deck .idg-unit { width: auto; min-width: 0; height: auto; aspect-ratio: 1 / 1.08; flex: none; padding: 4px 3px 5px; }
+html.idg-rot.ccw .idg-hud.float .idg-unit img { max-height: none; height: 58%; width: 80%; }
+html.idg-rot.ccw .idg-hud.float .idg-right { position: absolute; right: 0; bottom: calc(100% + 84px); display: flex; flex-direction: column-reverse; gap: 8px; }
+html.idg-rot.ccw .idg-hud.float .idg-breath { position: absolute; right: 0; bottom: calc(100% + 8px); width: 70px; height: 70px; }
+html.idg-rot.ccw .idg-hud.float .idg-boss { top: 96px; }

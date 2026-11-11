@@ -22,6 +22,45 @@ const fileExt = () => {
 const keyOf = (id) => (VOICE_LINES[id] ? id : VOICE_LINES[id.replace(/\/\d+$/, '')] ? id.replace(/\/\d+$/, '') : null);
 export const fileName = (key, i) => `${key.replace(/\//g, '_')}_${i}`;
 
+/* ───── 말 많기 6단계 (2026-11-11 대표님: «너무 시끄러워서 겜하는 사람들이 다 소리 끄고 한다 · 진짜 엄선») ─────
+ *  0 = 말 안 함 (효과음 · 음악만)
+ *  1 = 가장 짧은 낱말만 (용 이름 «꼬물이!» 같은 한두 마디)
+ *  2 = 아주 짧은 문장 (짧은 출격 말 · 짧은 승패 말)
+ *  3 = 중요한 순간만 (보스 등장 · 보스 격파 · 브레스 · 부화 · 튜토리얼)
+ *  4 = 대부분 (진화 · 포효 · 무리 경고 · 습격 · 대결 …)
+ *  5 = 전부 (예전 그대로 · 보스 중간 말까지)
+ * 줄마다 단계 = max(종류 단계, 길이 단계). 고른 단계보다 높은 줄은 안 나온다. 낮은 단계일수록 말 사이 쉬는 틈도 길다. */
+const CAT = [
+  [/^name\//, 1],
+  [/^(deploy\/|win$|lose$|title$|start$|tut\/)/, 2],
+  [/^(boss\/[^/]+$|bossdown$|breath$|hatch\/|ending$)/, 3],
+  [/^(evolve|roar|fever|star3|danger|wave\/|brazier|raid\/|duel\/|coop\/|boss\/[^/]+\/die)/, 4],
+];
+const catLevel = (key) => { for (const [re, lv] of CAT) if (re.test(key)) return lv; return 5; };
+const lenLevel = (text) => { const n = text.replace(/[\s.,!?~…—\-'"]/g, '').length; return n <= 4 ? 1 : n <= 8 ? 2 : n <= 14 ? 3 : n <= 22 ? 4 : 5; };
+export const lineLevel = (key, line) => Math.max(catLevel(key), lenLevel(line.text));
+const GAP = [0, 4.0, 3.0, 2.0, 1.2, 0];          // 단계별 말 사이 최소 쉬는 틈(초)
+const ALWAYS = /^(win|lose|ending|title)$/;      // 승패 · 엔딩 · 타이틀은 쉬는 틈 무시 (단계는 지킨다)
+const LV_KEY = 'idg_voice_level_v1';
+let level = 2;                                    // 기본 2단계 (조용하게 · 관리자 페이지에서 바꿈)
+try { const v = localStorage.getItem(LV_KEY); if (v !== null && v !== '') level = Math.max(0, Math.min(5, Number(v) | 0)); } catch { /* */ }
+let lastSaid = -99;
+/** 말 많기 단계 0~5 (기기에 저장). 관리자 기본값만 넣을 땐 setVoiceLevel(n, { save: false }) */
+export function setVoiceLevel(n, opt = {}) {
+  level = Math.max(0, Math.min(5, Number(n) | 0));
+  if (opt.save !== false) { try { localStorage.setItem(LV_KEY, String(level)); } catch { /* */ } }
+  if (level === 0) { try { playing?.stop(); } catch { /* */ } }
+}
+export const getVoiceLevel = () => level;
+/** 사용자가 직접 고른 적이 있나 — 없으면 관리자 기본값을 따른다 */
+export const hasUserVoiceLevel = () => { try { return localStorage.getItem(LV_KEY) !== null; } catch { return false; } };
+/** 단계마다 실제로 나올 수 있는 줄 수 [0단계, 1단계, …, 5단계] — 관리자 페이지 설명용 */
+export function voiceLevelStats() {
+  const out = [0, 0, 0, 0, 0, 0];
+  for (const [k, lines] of Object.entries(VOICE_LINES)) for (const l of lines) for (let lv = lineLevel(k, l); lv <= 5; lv++) out[lv]++;
+  return out;
+}
+
 function load(file) {
   if (cache.has(file)) return cache.get(file);
   const A = audio(); if (!A) return null;
@@ -36,16 +75,22 @@ function load(file) {
 
 /** 게임에 들어갈 때 자주 쓰는 줄만 미리 받는다 (출격 · 보스 · 승패) */
 export function preloadVoices() {
-  for (const [k, lines] of Object.entries(VOICE_LINES)) if (/^(title|deploy|boss|win|lose|roar|fever)/.test(k)) lines.forEach((_, i) => load(fileName(k, i)));
+  for (const [k, lines] of Object.entries(VOICE_LINES)) if (/^(title|deploy|boss|win|lose|roar|fever|name)/.test(k)) lines.forEach((l, i) => { if (level && lineLevel(k, l) <= level) load(fileName(k, i)); });
 }
 
 let playing = null;
 export function playVoice(id) {
   const key = keyOf(id); if (!key) return;
-  const lines = VOICE_LINES[key], A = audio(); if (!A || !lines.length) return;
-  let i = Math.floor(Math.random() * lines.length);
-  if (lines.length > 1 && i === lastIdx.get(key)) i = (i + 1) % lines.length;
+  const all = VOICE_LINES[key], A = audio(); if (!A || !all.length || level === 0) return;
+  const ok = all.map((l, j) => j).filter((j) => lineLevel(key, all[j]) <= level);
+  if (!ok.length) return;                                            // 이 단계에선 안 하는 말
+  const now = A.ctx.currentTime;
+  if (!ALWAYS.test(key) && now - lastSaid < GAP[level]) return;      // 말이 너무 잦으면 건너뜀
+  lastSaid = now;
+  let i = ok[Math.floor(Math.random() * ok.length)];
+  if (ok.length > 1 && i === lastIdx.get(key)) i = ok[(ok.indexOf(i) + 1) % ok.length];
   lastIdx.set(key, i);
+  const lines = all;
   const line = lines[i];
   const go = (buf) => {
     if (line.sfx && line.at === 'start') SFX[line.sfx]?.();

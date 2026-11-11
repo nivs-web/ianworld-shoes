@@ -96,7 +96,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* 미니맵 (기획서 11.1) : ▲ 내 맨 앞 · ▼ 적 맨 앞 · 네모 = 지금 보는 곳. 누르면 그 자리로 */
   const mini = h('div', 'idg-mini'), miniView = h('i', 'view'), miniMe = h('b', 'me', '▲'), miniFoe = h('b', 'foe', '▼');
   mini.append(miniView, miniMe, miniFoe); root.appendChild(mini);
-  mini.onpointerdown = (e) => { const r = mini.getBoundingClientRect(); cb.look?.(rotated() ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width); };
+  mini.onpointerdown = (e) => { const r = mini.getBoundingClientRect(); const rt = rotated(); cb.look?.(rt === 'cw' ? (e.clientY - r.top) / r.height : rt === 'ccw' ? (r.bottom - e.clientY) / r.height : (e.clientX - r.left) / r.width); };
   const tip = h('div', 'idg-tip'); root.appendChild(tip);
   const net = h('div', 'idg-net'); root.appendChild(net);   // 멀티 : 상대 기다리는 중
   const mate = h('div', 'idg-mate'); root.appendChild(mate);

@@ -35,7 +35,7 @@ export const SWITCHES = {
 const EVERY = { bike: 40, wisps: 8, lightning: 30, bats: 7, hand: 10, witch: 35, skelBroom: 35, moon: 25, boo: 9, star: 5, cat: 30, owl: 15, pumpkin: 12, cross: 28, spider: 25, window: 30, mole: 20 };
 /** 그룹 → { name, keys:[{key,name,def,min,max,step}] } — config/switches/{group}/{key} = 숫자 */
 export const NUMBERS = {
-  zdVoiceNum: { name: '좀비와 드래곤 · 이름 외침 시간 (초)', keys: [{ key: 'nameSec', name: '판 시작 뒤 몇 초까지 이름 외침 (10 · 15 · 20)', def: 15, min: 10, max: 20, step: 5 }] },
+  zdVoiceNum: { name: '좀비와 드래곤 · 목소리', keys: [{ key: 'nameSec', name: '판 시작 뒤 몇 초까지 이름 외침 (10 · 15 · 20)', def: 15, min: 10, max: 20, step: 5 }, { key: 'level', name: '음성(목소리) 말 많기 기본값 0~5 (0 말 없음 · 1 낱말만 · 2 아주 짧게 · 3 중요한 순간 · 4 대부분 · 5 전부) — 사용자가 고르면 그게 먼저', def: 2, min: 0, max: 5, step: 1 }] },
   zdFunEvery: {
     name: '좀비와 드래곤 · 재미 요소 등장 빈도 (초)',
     keys: [

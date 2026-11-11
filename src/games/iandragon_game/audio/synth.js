@@ -9,7 +9,11 @@ export function audio() {
   const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!AC) return null;
   ctx = new AC();
-  master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination);
+  master = ctx.createGain(); master.gain.value = 0.8;
+  /* 11/11 대표님 «귀가 아프다» — 쨍한 고음(네모파 · 쇳소리)을 6kHz 위로 5dB 깎고, 끝에 한 번 더 눌러 튀는 소리를 막는다 */
+  const soft = ctx.createBiquadFilter(); soft.type = 'highshelf'; soft.frequency.value = 6000; soft.gain.value = -5;
+  const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -10; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.2;
+  master.connect(soft); soft.connect(lim); lim.connect(ctx.destination);
   const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(master);
   sfxBus = ctx.createGain(); sfxBus.gain.value = 0.55; sfxBus.connect(comp);
   musicBus = ctx.createGain(); musicBus.gain.value = 0.37; musicBus.connect(comp);

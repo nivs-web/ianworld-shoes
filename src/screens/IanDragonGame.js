@@ -21,6 +21,7 @@ import { setGameGuard } from './router.js';
 import { stopLoop, startLoop, isRunning } from '../core/loop.js';
 import * as Scene from '../core/scene.js';
 import { lockLandscape, unlockOrientation } from '../core/fullscreen.js';
+import { keepOrient } from '../games/iandragon_game/render/rot.js';
 import * as G from '../services/iandragonGame.js';
 import '../styles/iandragon-game.css';
 
@@ -34,12 +35,14 @@ export default function IanDragonGame(nav) {
   let live = true;
   let stoppedArcadeLoop = false;
   document.documentElement.classList.add('idg-wide');
-  /* 가로 · 세로 둘 다 (11/11 대표님 3차 «세로 전투는 냥코처럼 크게 확대») — 잠그지도 돌리지도 않는다 (rot.js 돌리기는 쓰지 않음) */
+  /* 화면 방향 = 설정(자동 회전 기본 · 가로 고정 · 세로 고정 — rot.js · 대표님 11/11) */
+  let unRot = null;
 
   return {
     onLeave() {
       live = false;
       setGameGuard(null);
+      unRot?.(); unRot = null;
       if (mod) mod.unmount();
       document.documentElement.classList.remove('idg-wide');
       unlockOrientation();
@@ -47,6 +50,7 @@ export default function IanDragonGame(nav) {
     },
     render() {
       const host = el('div.dg-host');
+      unRot?.(); unRot = keepOrient(host);
       loadIanDragonGame().then((m) => {
         if (!live) return;
         if (isRunning()) { stopLoop(); stoppedArcadeLoop = true; }

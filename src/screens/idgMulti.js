@@ -1,7 +1,7 @@
 /**
  * 좀비와 드래곤 — «친구랑 같이 깨기» (3차 멀티 · 2026-11-11 · 멀티 기획 4장 · M3)
  * 방 만들기 → 방 번호를 친구에게 알려 줌 → 친구가 번호로 들어옴 → 방장이 «시작» → 카운트다운 → 둘 다 같은 판으로.
- * 오락실 방(services/multiplayer.js)을 그대로 쓴다 — game 'idragon' · 2인 · 비밀방 · idgStage.
+ * 오락실 방(services/multiplayer.js)을 그대로 쓴다 — game 'idragon' · 2인 · 공개방(대표님 11/11 «비밀번호 방 말고 공개 방») · idgStage.
  * ⏳ 서버 규칙 게시 전에는 방을 못 만든다 → «아직 준비 중» 안내.
  */
 import { el, button, presentOverlay } from './ui.js';
@@ -51,7 +51,7 @@ export function showMulti(onStart, rejoinCode = null) {
   }
   async function make(n) {
     msg('방을 만드는 중…');
-    const r = await Room.createRoom({ game: Room.GAME_IDRAGON, maxPlayers: 2, isPrivate: true, idgStage: n }).catch(() => null);
+    const r = await Room.createRoom({ game: Room.GAME_IDRAGON, maxPlayers: 2, isPrivate: false, idgStage: n }).catch(() => null);
     if (!r) { msg('아직 같이 하기를 준비 중이에요 (서버 설정 전). 조금만 기다려 주세요!'); return; }
     wait(r);
   }

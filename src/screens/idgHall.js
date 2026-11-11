@@ -93,6 +93,7 @@ export function showHall() {
     const p = getProfile();
     const [big, small] = valueOf(kind, { ...d, rate: d.pvpW + d.pvpL >= PVP_RATE_MIN ? Math.round((d.pvpW / (d.pvpW + d.pvpL)) * 100) : null });
     const place = state.rows.findIndex((r) => r.uid === myUid);
+    mineBox.hidden = place >= 0;   /* 대표님 11/11 «내 기록 상자가 4위 줄과 같은 내용 반복» — 순위표에 내 줄이 있으면(강조됨) 상자는 숨김 */
     mineBox.replaceChildren(
       el('b', `내 기록 — ${p.nickname || '나'}`),
       el('span', [big, small].filter(Boolean).join(' · ') + (place >= 0 ? ` · ${place + 1}위` : '')),

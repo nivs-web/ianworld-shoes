@@ -9,6 +9,7 @@
  */
 import * as Audio from '../audio/index.js';
 import { isOn } from '../../../services/switches.js';
+import { ORIENTS, orientPref, setOrientPref } from './rot.js';
 
 /*
  * 배경음악 풍 (대표님 11/11 «클래식 · EDM 중 고르게 · 기본은 클래식 · 관리자 페이지에서 기본 음악을 정하게»)
@@ -62,8 +63,18 @@ export function soundPanel(h, onChange = () => {}) {
   const bO = mkPick('orchestra', '클래식'), bE = mkPick('edm', 'EDM');   /* 대표님 «클래식, EDM 중 고르는 걸로» */
   const drawPick = () => { const v = bgmPick(); bO.classList.toggle('on', v === 'orchestra'); bE.classList.toggle('on', v === 'edm'); };
   pick.append(bO, bE); drawPick(); styleRow.append(h('span', 'lb', '배경음악'), pick);
+  /* 화면 방향 (대표님 11/11 «가로 고정 · 세로 고정 · 자동 회전 · 기본 자동») */
+  const orRow = h('div', 'idg-sound-row st'), orPick = h('div', 'idg-sound-pick three');
+  const orBtns = ORIENTS.map(({ v, label }) => { const b = h('button', 'idg-sound-opt', label); b.type = 'button'; b.onclick = () => { setOrientPref(v); drawOr(); }; return [v, b]; });
+  const drawOr = () => { const cur = orientPref(); for (const [v, b] of orBtns) b.classList.toggle('on', v === cur); };
+  orPick.append(...orBtns.map(([, b]) => b)); drawOr(); orRow.append(h('span', 'lb', '화면 방향'), orPick);
+  /* 목소리 말 많기 0~5 (겜팀장 VOICE_LEVELS · 대표님 «말 많기 6단계») */
+  const vlRow = h('div', 'idg-sound-row st vl'), vlPick = h('div', 'idg-sound-pick six'), vlDesc = h('p', 'idg-sound-desc');
+  const vlBtns = Audio.VOICE_LEVELS.map(({ n, name, desc }) => { const b = h('button', 'idg-sound-opt', String(n)); b.type = 'button'; b.title = name; b.onclick = () => { Audio.setVoiceLevel(n); drawVl(); if (n > 0 && !isMuted()) Audio.voice('name/kkomul'); }; return [n, b, name, desc]; });
+  const drawVl = () => { const cur = Audio.getVoiceLevel(); for (const [n, b, name, desc] of vlBtns) { b.classList.toggle('on', n === cur); if (n === cur) vlDesc.textContent = `${name} — ${desc}`; } };
+  vlPick.append(...vlBtns.map(([, b]) => b)); drawVl(); vlRow.append(h('span', 'lb', '말 많기'), vlPick);
   wrap.append(
-    styleRow,
+    styleRow, orRow, vlRow, vlDesc,
     slider('음악 크기', 'music', () => {}),
     slider('효과음', 'sfx', () => Audio.play('star')),
     slider('목소리', 'voice', () => Audio.voice('name/kkomul')),

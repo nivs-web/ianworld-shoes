@@ -38,7 +38,8 @@ export async function startBattle(ctx, opts) {
   const stage = { ...base0, mag: base0.mag * tz.hp * DF.mag, atkMag: (base0.atkMag || base0.mag) * tz.atk * DF.mag, diff: dk, ...earlyCastle(base0, pvp || raid) };
   const { deck, skills, loads, speedMax: speedMax0 } = makeLoads(raid ? stageByNo(Math.max(20, Math.min(LAST_STAGE, opts.save?.cleared || 1))) : stage, opts.save);
   if (raid) { const one = pvpLoad(loads[0], 0); loads.length = 0; loads.push(one); }   // 습격 = 내 덱 6칸 · 모두 Lv20 · 보너스 없음
-  loads[0].bonus = { ...loads[0].bonus, income: loads[0].bonus.income / tz.ember, baseHp: loads[0].bonus.baseHp / tz.base };
+  /* 습격 · 대결 편성은 보너스가 비어 있다({}) — 없는 값을 나누면 NaN 이 돼 불씨 «NaN/2800» · 성 체력이 사라졌다 (대표님 11/11 «주간 습격 안 죽어») */
+  loads[0].bonus = { ...loads[0].bonus, income: (loads[0].bonus.income ?? 1) / tz.ember, baseHp: (loads[0].bonus.baseHp ?? 1) / tz.base };
   /* 멀티 : 자리마다 같은 편성을 하나씩 (같이 깨기 = 모두 side 0) */
   const net = opts.net || null, me = net ? net.seat : 0;
   /* 같이 깨기 : 좀비 세기 1.5배 (멀티 기획 2.1 · 계산기 2인 자동 28판 = 26승 — 혼자 26승과 같은 손맛) */

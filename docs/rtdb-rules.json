@@ -633,6 +633,9 @@
           "nameSec": {
             ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 20"
           },
+          "level": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5"
+          },
           "$other": {
             ".validate": false
           }
