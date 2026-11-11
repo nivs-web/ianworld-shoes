@@ -154,7 +154,7 @@ export function pumpkin(E) {
       const flick = t < 0.5 ? Math.floor(t * 20) % 2 : 0, grin = t >= 0.5 && t < 1.9;
       p.texture = grin || flick ? E.tex.pumpkin_grin : E.tex.pumpkin;
       const b = grin ? 1 + 0.12 * Math.sin(clamp((t - 0.5) / 0.3) * Math.PI) : 1; p.scale.set(b, 2 - b);
-      if (glow) glow.alpha = grin ? 0.7 + 0.2 * Math.sin(t * 14) : flick * 0.4;
+      if (glow) glow.alpha = grin ? 0.28 + 0.06 * Math.sin(t * 14) : flick * 0.15;   /* 빛번짐은 아주 은은하게 (대표님 규칙) */
       return t < 2.1;
     },
     destroy() { p.texture = E.tex.pumpkin; p.scale.set(1); glow?.destroy(); },

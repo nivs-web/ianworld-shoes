@@ -26,6 +26,8 @@ const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const UI = '/assets/iandragon_game/ui/';
 /** 떠 있는 HUD : 위 · 아래 띠 판 없이 단추만 (CSS .idg-hud.float) */
 const FLOAT_HUD = true;
+/** 하늘 위를 잘라 낼 칸 = 확대 정도 (80 ≈ 1.17배). 개발 서버에서만 window.__idgCropTop 으로 A/B 비교 */
+const CROP_TOP = () => (import.meta.env?.DEV && window.__idgCropTop != null ? window.__idgCropTop : 80);
 /** 아이콘 그림 (없으면 글자 fallback) */
 const ico = (name, alt) => { const i = h('img', 'ico'); i.src = `${UI}${name}.png`; i.alt = alt; i.draggable = false; i.onerror = () => { i.replaceWith(h('span', 'ico-t', alt)); }; return i; };
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -41,7 +43,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     const H = host.getBoundingClientRect(), tb = root.querySelector('.idg-top')?.getBoundingClientRect(), bb = root.querySelector('.idg-bot')?.getBoundingClientRect();
     if (!tb || !bb) return;
     /* 떠 있는 HUD (11/11 대표님 «위 · 아래 띠가 게임 화면을 가린다 · 단추는 공중에 떠 있게») : 띠 판이 없으니 캔버스는 화면 전체 — 띠 높이를 0 으로 알린다 */
-    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0 } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
+    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { top: CROP_TOP(), bottom: 0 } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
   });
   const onRs = () => { fitHud(); sendIns(); };
   fitHud(); window.addEventListener('resize', onRs);

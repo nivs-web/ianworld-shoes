@@ -590,3 +590,45 @@ html.idg-wide body { width: 100%; }
   .idg-hud .idg-card p { margin: 2px 0; font-size: 12px; } .idg-hud .idg-card p.final { font-size: 13px; margin-top: 2px; }
   .idg-hud .idg-row { margin-top: 4px; flex-wrap: nowrap; } .idg-hud .idg-row .idg-btn { min-height: 38px; font-size: 13px; padding: 0 6px; }
 }
+
+/* ════ 5차 (11/11 대표님 폰 캡처 검토) ════ */
+/* 브레스 : 노란 테 없앰 — 빨간 원 판까지만 */
+.idg-hud .idg-breath.can { box-shadow: none; }
+/* 안내 말풍선 : 노란 알약 → 클래식 게임 글상자(진남색 바탕 · 2칸 금테 + 1칸 검은 테 · 둥근 모서리 없음 · 번짐 없음) */
+.idg-tip { background: #1d1238; color: #fff3cf; border-radius: 0; box-shadow: 0 0 0 2px #ffcf4a, 0 0 0 4px #1a0c38, 0 4px 0 2px #1a0c38; text-shadow: var(--idg-pxo); animation: idgTipBob 1s steps(2) infinite; }
+@keyframes idgTipBob { 50% { translate: 0 -2px; } }
+/* 위 글씨 · 숫자 크게 + 성 체력 게이지를 숫자와 가운데 정렬 · 겹치지 않게 */
+.idg-hud.float .idg-title { font-size: 16px; } .idg-hud.float .idg-time { font-size: 15px; }
+.idg-hud.float .idg-money { font-size: 16px; padding: 3px 10px; } .idg-hud.float .idg-ico-ember { width: 18px; height: 18px; }
+.idg-hud.float .idg-hp { font-size: 16px; line-height: 1; margin-top: 4px; }
+.idg-hp-me, .idg-hp-foe { display: inline-flex; align-items: center; gap: 3px; line-height: 1; }
+.idg-hp-me::before, .idg-hp-foe::after { width: 18px; height: 18px; vertical-align: 0; }
+.idg-hp-side { gap: 8px; align-items: center; }
+.idg-cbar { width: 120px; height: 20px; }
+/* 화로 · 용 카드 : 정사각형에 가깝게 키우고 얼굴 크게 · 화로/글씨 가운데 */
+.idg-hud.float .idg-unit { height: 62px; padding: 5px 4px 6px; }
+.idg-hud.float .idg-deck .idg-unit { flex: 0 1 58px; min-width: 52px; }
+.idg-hud.float .idg-unit img { max-height: 40px; width: 92%; }
+.idg-hud.float .idg-unit .cost { font-size: 17px; }
+.idg-hud.float .idg-wallet { width: 62px; height: 62px; padding: 6px 4px 7px 6px; justify-content: center; gap: 2px; }   /* 판 그림의 오른쪽 테가 얇아 글씨가 왼쪽으로 보였다 → 왼쪽 안쪽 여백 2px 더 */
+.idg-hud.float .idg-wallet .idg-ico-furnace { width: 26px; height: 22px; background-position: 64% 50%; margin: 0; }
+.idg-hud.float .idg-wallet b { font-size: 16px; margin: 0; } .idg-hud.float .idg-wallet span { font-size: 15px; margin-top: -1px; }
+.idg-hud.float .idg-breath { width: 64px; height: 64px; } .idg-hud.float .idg-breath b { width: 44px; height: 38px; }
+.idg-hud.float .idg-skill, .idg-hud.float .idg-rage { width: 58px; height: 58px; }
+@media (max-height: 430px) {
+  .idg-hud.float .idg-title { font-size: 14px; } .idg-hud.float .idg-time { font-size: 13px; }
+  .idg-hud.float .idg-money { font-size: 14px; padding: 2px 8px; } .idg-hud.float .idg-ico-ember { width: 16px; height: 16px; }
+  .idg-hud.float .idg-pause { width: 34px; height: 34px; min-width: 34px; }
+  .idg-hud.float .idg-hp { font-size: 14px; margin-top: 3px; }
+  .idg-hp-me::before, .idg-hp-foe::after { width: 16px; height: 16px; }
+  .idg-cbar { width: 100px; height: 17px; }
+  .idg-hud.float .idg-unit, .idg-hud.float .idg-wallet { height: 52px; }
+  .idg-hud.float .idg-deck .idg-unit { flex: 0 1 50px; min-width: 46px; }
+  .idg-hud.float .idg-wallet { width: 52px; padding: 4px 3px 5px 5px; }
+  .idg-hud.float .idg-unit img { max-height: 32px; }
+  .idg-hud.float .idg-unit .cost { font-size: 15px; }
+  .idg-hud.float .idg-wallet .idg-ico-furnace { width: 22px; height: 18px; } .idg-hud.float .idg-wallet b { font-size: 14px; } .idg-hud.float .idg-wallet span { font-size: 13px; }
+  .idg-hud.float .idg-breath { width: 54px; height: 54px; } .idg-hud.float .idg-breath b { width: 38px; height: 32px; }
+  .idg-hud.float .idg-skill, .idg-hud.float .idg-rage { width: 50px; height: 50px; }
+  .idg-hud.float .idg-tip[data-at] { top: 58px; font-size: 13px; padding: 5px 10px; }
+}

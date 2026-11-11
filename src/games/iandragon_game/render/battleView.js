@@ -113,7 +113,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const ldRig = await wearRig(rigs[leader] || null, leader, look);
   const lead = ldRig ? createRigged(ldRig, 1, 1) : null;
   const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(await wearRig(rigs[foeLeader], foeLeader, lookR), 1, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
-  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 16, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
+  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
   /* 착용 부품 (보조 2차 · 대표님 «상점 아이콘과 용이 쓴 모습은 달라야») — ai/meta/wear/ 옆모습 부품을 head · torso 부품에 붙인다.
      좌표 = ai/meta/wear.json (tools/idg-wear-fit.mjs 가 대장 용마다 계산) · 예시 tools/idg-gallery/viewer.js attachWear */
@@ -139,14 +139,15 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     if (rig) await wear(rig, art, lk);
     if (flagT && castle) {   // 성 깃발 : 깃대 + 펄럭이는 깃발 (성 뒤 왼쪽 위)
       const side = castle === tower ? -1 : 1, top = GY + 10 - castle.height;
-      const pole = new Graphics().rect(-1.5, -64, 3, 64).fill(0x5a3a1a); pole.position.set(castle.x - side * castle.width * 0.32, top + 18);
-      const f = new Sprite(flagT); f.anchor.set(0, 0); f.width = 30; f.height = 44; f.scale.x *= side; f.position.set(pole.x + side * 1.5, pole.y - 62);
+      /* 대표님 «용이 깃발을 가린다 · 더 높고 크게» (11/11) : 깃대를 성 바깥쪽 끝 · 높게(98) · 깃발 크게(40×58) · 성 바깥으로 펄럭 */
+      const pole = new Graphics().rect(-2, -98, 4, 98).fill(0x3a2410).rect(-1, -98, 2, 98).fill(0x6a4424); pole.position.set(castle.x - side * castle.width * 0.42, top + 22);
+      const f = new Sprite(flagT); f.anchor.set(0, 0); f.width = 40; f.height = 58; f.scale.x *= -side; f.position.set(pole.x - side * 2, pole.y - 96);
       stage.addChildAt(pole, stage.getChildIndex(castle)); stage.addChildAt(f, stage.getChildIndex(castle)); flags.push(f);
     }
   }
   const flags = [], follow = [];   // follow = 몸통 뒤 층 장식이 torso 를 따라가게 [상자, torso]
   await Promise.all([dress(lead, look, nest, leader), dress(lead2, lookR, pvp ? tower : null, foeLeader)]);
-  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 16, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
+  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
   if (lead2) lead2.baseY = lead2.root.y;
 
   const white = new ColorMatrixFilter();
