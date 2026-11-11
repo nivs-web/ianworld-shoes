@@ -44,14 +44,14 @@ const DEFS = [
 export const FUN_SOUND = { bike: 'bike_bell', wisps: 'firefly', lightning: 'thunder', bats: 'bat', swarm: 'bat', hand: 'grave_hand', witch: 'witch', skelBroom: 'skull_chatter', moon: 'moon_yawn', boo: 'ghost_pop', cat: 'ghost_cat', owl: 'owl', pumpkin: 'cauldron', cross: 'bones', spider: 'chain', window: 'wind', mole: 'grave_creak' };
 
 /** every = { all: 다음 요소까지 간격(초), [요소 id]: 다시 나오기까지(초) } — 운영자 «등장 빈도» (services/switches.js NUMBERS) */
-export function createFun(tex, { back, front, spots = W1_SPOTS, getCam, viewW, onStart, every = {} }) {
+export function createFun(tex, { back, sky = null, front, spots = W1_SPOTS, getCam, viewW, onStart, every = {} }) {
   const S = spots;
   const owlS = S.owl ? back.addChild(sp(tex.owl, S.owl.x, S.owl.y, 0.5, 1)) : null;
   const pumpS = S.pumpkin ? back.addChild(sp(tex.pumpkin, S.pumpkin.x, S.pumpkin.y, 0.5, 1)) : null;
   const inSafe = (x) => !S.safe || (x >= S.safe[0] && x <= S.safe[1]);
   /** 지금 화면 안 + 안전 범위 안에서 x 하나 (여백 m) */
   const safeX = (m) => { const cam = getCam(), a = Math.max(cam + m, S.safe ? S.safe[0] : -1e9), b = Math.min(cam + viewW() - m, S.safe ? S.safe[1] : 1e9); return a < b ? rnd(a, b) : (a + b) / 2; };
-  const E = { tex, back, front, S, cam: getCam, viewW, owl: owlS, pump: pumpS, inSafe, safeX };
+  const E = { tex, back, sky: sky || back, front, S, cam: getCam, viewW, owl: owlS, pump: pumpS, inSafe, safeX };
   /* 부엉이 평소 깜빡임 (2.5~6초마다 0.15초 · 부엉이 요소가 도는 동안은 그쪽이 눈꺼풀을 쥔다) */
   E.owlLids = owlS ? owlLids(E) : null;
   /* 같은 땅 자리에 두 요소가 겹치지 않게 (대표님 «호박이 빛날 때 좀비 손이 겹쳐 나왔다» · 11/11) — 요소는 { zone: x } 로 자리를 잡는다 */

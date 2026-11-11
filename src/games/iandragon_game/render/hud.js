@@ -34,7 +34,14 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const root = h('div', 'idg-hud'); host.appendChild(root);
   /* 대표님 «PC 에서 위 글씨 · 숫자가 너무 작다» (11/11) : HUD 전체를 화면 크기에 맞춰 키운다 (폰 가로 = 1 · PC 1280×800 ≈ 1.33 · 최대 1.7) */
   const fitHud = () => { const z = Math.max(1, Math.min(1.7, innerWidth / 960, innerHeight / 540)); root.style.zoom = String(Math.round(z * 100) / 100); };
-  fitHud(); window.addEventListener('resize', fitHud);
+  /* 위 · 아래 띠 높이를 캔버스에 알려 전장이 띠에 가리지 않게 한다 (app.js 'idg-insets') */
+  const sendIns = () => requestAnimationFrame(() => {
+    const H = host.getBoundingClientRect(), tb = root.querySelector('.idg-top')?.getBoundingClientRect(), bb = root.querySelector('.idg-bot')?.getBoundingClientRect();
+    if (!tb || !bb) return;
+    host.dispatchEvent(new CustomEvent('idg-insets', { detail: { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
+  });
+  const onRs = () => { fitHud(); sendIns(); };
+  fitHud(); window.addEventListener('resize', onRs);
   /* 위 */
   const top = h('div', 'idg-top'); root.appendChild(top);
   const pauseB = h('button', 'idg-btn idg-pause', '⏸'); pauseB.type = 'button'; pauseB.onclick = () => cb.pause();
@@ -101,7 +108,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const rage = h('button', 'idg-btn idg-rage', '으르렁!'); rage.type = 'button'; rage.onclick = () => cb.cmd({ type: 'rage' }); right.appendChild(rage);
   const breath = h('button', 'idg-btn idg-breath'); breath.type = 'button'; breath.onclick = () => cb.cmd({ type: 'breath' });
   const bFill = h('i', 'fill'); breath.append(bFill, h('b', null, '브레스'));
-  bot.append(wallet, deckBox, right, breath);   // 스킬 · 포효 = 아래 띠 안 브레스 왼쪽 (예전 오른쪽 위는 좀비 성 체력 숫자를 가렸다)
+  bot.append(wallet, deckBox, right, breath);
+  sendIns(); setTimeout(sendIns, 300);   // 글꼴 · 그림이 늦게 와서 높이가 바뀔 수 있다   // 스킬 · 포효 = 아래 띠 안 브레스 왼쪽 (예전 오른쪽 위는 좀비 성 체력 숫자를 가렸다)
 
   /** 일시정지 판의 소리 설정 : 배경음 · 효과음 각각 켜기 + 크기 */
   function soundBox() {
@@ -213,7 +221,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       });
       const bc = Math.min(1, p.breathT / p.breathCharge);
       bFill.style.setProperty('--p', String(bc)); breath.classList.toggle('can', bc >= 1);
-      sk.forEach((b, i) => { const s = p.skills[i], left = s ? s.left : 0; b.disabled = !s || left <= 0 || s.cdT > 0; b._n.textContent = String(left); b.classList.toggle('used', left <= 0); b._cd.style.setProperty('--p', s && left > 0 && s.cdT > 0 ? String(s.cdT / s.def.cd) : '0'); });
+      const foeOn = S.units.some((u) => u.alive && u.side !== p.side);   // 좀비가 없을 때 누르면 횟수만 날아간다 → 그때는 못 누름
+      sk.forEach((b, i) => { const s = p.skills[i], left = s ? s.left : 0; b.disabled = !s || left <= 0 || s.cdT > 0 || !foeOn; b._n.textContent = String(left); b.classList.toggle('used', left <= 0); b._cd.style.setProperty('--p', s && left > 0 && s.cdT > 0 ? String(s.cdT / s.def.cd) : '0'); });
       rage.classList.toggle('on', p.rage >= 100);
       const bs = S.boss;
       boss.classList.toggle('on', !!(bs && bs.alive));
@@ -239,6 +248,6 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     },
     showPanel,
     hidePanel() { panel.classList.remove('on'); panel.replaceChildren(); },
-    destroy() { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', fitHud); root.remove(); },
+    destroy() { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', onRs); root.remove(); },
   };
 }

@@ -428,3 +428,69 @@ html.idg-wide body { width: 100%; }
 .idg-hud .idg-pause { background-size: 32%, contain; background-position: 50% 46%, center; }
 .idg-hud .idg-pause:active { background-size: 30%, contain; }
 .idg-hud:has(.idg-panel-over.on) .idg-tip { display: none; }   /* 카드가 떠 있으면 안내 말풍선은 숨김 (승리 카드 위에 겹쳤다) */
+
+/* ── 폰 가로 (2026-11-11 대표님 «아래 단추 띠가 전장을 다 가린다 · 달 · 땅이 잘린다») ──
+ * 캔버스는 이제 위 · 아래 띠 사이에 맞춘다 (app.js fitView ins · 하늘 40칸 · 흙 40칸만 띠 밑). 띠는 낮은 화면에서 얇게. */
+/* (.idg-host 는 .dg-host 로 이미 position: absolute · inset 0 — 캔버스 자리의 기준) */
+.idg-canvas { position: absolute; }
+@media (max-height: 430px) {
+  .idg-hud { padding-top: max(2px, env(safe-area-inset-top)); }
+  .idg-top { border-width: 5px 10px 8px; gap: 6px; }
+  .idg-hud .idg-pause { width: 36px; height: 36px; min-width: 36px; }
+  .idg-hud .idg-snd { width: 32px; height: 32px; min-width: 32px; }
+  .idg-hud .idg-speed, .idg-hud .idg-auto { height: 34px; min-width: 38px; padding: 0 4px; }
+  .idg-title { font-size: 13px; } .idg-time { font-size: 12px; } .idg-money { font-size: 13px; padding: 2px 8px; } .idg-ico-ember { width: 16px; height: 16px; }
+  .idg-hp { font-size: 13px; margin-top: 2px; }
+  .idg-bot { bottom: max(2px, env(safe-area-inset-bottom)); border-width: 7px 10px 5px; padding: 0 4px; gap: 6px; }
+  .idg-hud .idg-unit, .idg-hud .idg-wallet { height: 48px; } .idg-hud .idg-wallet { width: 54px; padding: 3px 0 4px; }
+  .idg-deck .idg-unit { flex: 0 1 48px; min-width: 42px; }
+  .idg-hud .idg-unit img { top: 4px; height: 27px; } .idg-hud .idg-unit .cost { bottom: 3px; font-size: 11px; }
+  .idg-hud .idg-wallet b { font-size: 12px; } .idg-hud .idg-wallet span { font-size: 11px; } .idg-ico-furnace { width: 20px; height: 16px; }
+  .idg-hud .idg-skill, .idg-hud .idg-rage { width: 46px; height: 46px; }
+  .idg-hud .idg-skill .ico { width: 24px; height: 24px; margin-top: -8px; } .idg-hud .idg-skill .ico-t { font-size: 12px; margin-top: -8px; }
+  .idg-hud .idg-skill .nm { font-size: 9px; bottom: 6px; } .idg-hud .idg-skill .n { min-width: 17px; height: 17px; font-size: 10px; line-height: 13px; }
+  .idg-hud .idg-breath { width: 54px; height: 54px; } .idg-hud .idg-breath b { width: 34px; height: 34px; }
+  .idg-tip[data-at] { bottom: 66px; font-size: 13px; padding: 6px 12px; }
+  .idg-card { border-width: 26px 24px; border-image-width: 26px 24px; min-width: 260px; max-height: 92vh; overflow-y: auto; }
+  .idg-card:has(h2.win)::before, .idg-card:has(h2.lose)::before { width: min(240px, 50vw); }
+  .idg-hud .idg-row .idg-btn { min-height: 42px; font-size: 14px; }
+}
+@media (max-height: 430px) { .idg-tip[data-at] { top: 66px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); } }   /* 폰 가로 : 안내는 위로 (땅을 가리지 않게) */
+
+/* ── 로비 창 2차 (11/11 대표님) ── */
+/* 긴 창(연구소 · 도감 · 과제 · 상점 …) : 닫기 단추는 아래에 고정, 위 내용만 굴러감 */
+.dialog[class*="idg-"] > .pbtn:last-child { position: sticky; bottom: 0; z-index: 5; flex: none; box-shadow: 0 6px 0 4px #3f2a5a, 0 -10px 10px 2px #3f2a5a; }
+/* 어려움 안내 */
+.idg-diff-note { text-align: center; font: 12px/1.4 'Neo둥근모', monospace; color: #ffb3b3; margin: -2px 0 6px; }
+.idg-diff-note:empty { display: none; }
+/* 스테이지 칸 : 보스 칸(1-10)도 글씨가 다른 칸과 같은 높이 */
+.idg-stage-btn.boss { padding-top: 0; }
+/* 명예의 전당 : 탭 사이 띄우기 · 줄 얼굴(대장 용 머리 + 모자 · 테두리)을 이름 왼쪽 정사각 칸 가운데에 */
+.idg-hall .seg { gap: 6px; flex-wrap: wrap; justify-content: center; }
+.idg-hall .seg .pbtn { margin: 0; flex: 1 1 0; min-width: 0; padding: 8px 4px; font-size: 13px; line-height: 1.25; }
+.idg-hall-row { gap: 8px; min-height: 52px; }
+.idg-hall-face { position: relative; flex: 0 0 44px; width: 44px; height: 44px; display: block; overflow: visible; }
+.idg-hall-face img { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -54%); width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.idg-hall-face .f-hat { width: 30px; height: 30px; transform: translate(-50%, -112%); }
+.idg-hall-face .f-frame { width: 46px; height: 46px; transform: translate(-50%, -50%); }
+.idg-hall-who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.idg-hall-who .rank-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.idg-hall-title { font-size: 11px; color: #ffd84a; }
+.idg-hall-val { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+/* 창 제목 : 리본 그림이 «만들다 만 것 같다»(대표님) → 새 제목판(보조 제작 중)이 올 때까지 금빛 글씨 + 양옆 장식 줄 */
+.dialog .idg-how-title { background: none; padding: 6px 4px 8px; color: #ffe08a; font-size: 18px; letter-spacing: 1px; text-shadow: 0 2px 0 #7a1c00, 0 0 8px #ff9a2e88; display: flex; align-items: center; gap: 10px; width: 100%; justify-content: center; }
+.dialog .idg-how-title::after { content: none; }
+.dialog[class*="idg-"] > .idg-how-title { background: linear-gradient(90deg, transparent, #c9963a 18%, transparent 19%, transparent 81%, #c9963a 82%, transparent) center bottom / 100% 2px no-repeat, #3f2a5a; }
+/* 명예의 전당 탭 : 3칸 + 2칸 두 줄 · 글씨는 가로로 */
+.idg-hall .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.dialog.idg-hall .seg .pbtn { min-height: 44px; padding: 0 2px; border-width: 7px 10px; border-image-width: 7px 10px; font-size: 14px; white-space: nowrap; letter-spacing: -.3px; }
+.dialog.idg-hall .seg .pbtn.on { border-image-source: url(/assets/iandragon_game/ai/lobby/btn_start.webp); border-image-slice: 70 150 fill; color: #fff; }
+.idg-world-tab.on { background: url(/assets/iandragon_game/ai/lobby/badge_on.webp) center / 100% 100% no-repeat; }   /* 예전 노란 바탕 규칙이 그림 크기를 풀어 «사선 깨진 동그라미»로 보였다 */
+.dialog.idg-hall .idg-hall-seg .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+/* 명예의 전당 얼굴 2차 : 칸 가운데 정렬 (절대 위치를 쓰지 않음 → 줄 밖으로 삐져나오지 않게) */
+.idg-hall-face { display: flex; align-items: center; justify-content: center; flex: 0 0 44px; height: 44px; position: relative; }
+.idg-hall-face img { position: static; transform: none; }
+.idg-hall-face .f-head { width: 40px; height: 34px; object-fit: contain; object-position: center; display: block; }
+.idg-hall-face .f-hat { position: absolute; left: 50%; top: -6px; width: 26px; height: 22px; transform: translateX(-50%); }
+.idg-hall-face .f-frame { position: absolute; inset: 0; width: 44px; height: 44px; }
+.idg-hall-row { align-items: center; padding: 4px 8px; }

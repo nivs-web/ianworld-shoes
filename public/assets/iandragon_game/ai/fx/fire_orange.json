@@ -1,0 +1,12 @@
+{
+ "file": "ai/fx/fire_orange.png",
+ "frames": 12,
+ "w": 49,
+ "h": 72,
+ "fps": 12,
+ "anchor": [
+  0.5,
+  1
+ ],
+ "note": "가로 띠 · 왼쪽부터 차례로 · 고리(마지막 → 처음) · anchor = 밑동 가운데"
+}

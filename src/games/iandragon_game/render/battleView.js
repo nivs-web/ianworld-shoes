@@ -15,6 +15,7 @@ import { SPOTS } from './funSpots.js';
 import { createAmbient } from './ambient.js';
 import { createBossFx } from './bossFx.js';
 import { BREATH_COLORS } from '../data/looks.js';
+import { lightsFor, fxFrames, makeBreath, tileMirror } from './living.js';
 
 const AI = '/assets/iandragon_game/ai/';
 export const GY = 440;
@@ -33,8 +34,11 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const rigs = {};
   await Promise.all(ids.map((id) => loadRig(id).then((r) => { rigs[id] = r; }).catch(() => {})));
   const wN = String(world).padStart(2, '0');
+  /* 배경 : 살아 있는 두 겹(하늘 · 앞)이 있으면 그것, 없으면 예전 통그림 (2026-11-11 대표님 «배경이 밋밋하다» → 갤러리 확정안 연결) */
+  const [skyTex, frontTex] = await Promise.all([tryLoad(`${AI}bg/layers/w${wN}_sky.png`), tryLoad(`${AI}bg/layers/w${wN}_front.png`)]);
+  const layered = !!(skyTex && frontTex);
   const [bgTex, nestT, towerT, funTex] = await Promise.all([
-    tryLoad(`${AI}bg/w${wN}_panel.png`).then((t) => t || tryLoad(`${AI}bg/w01_panel.png`)),
+    layered ? null : tryLoad(`${AI}bg/w${wN}_panel.png`).then((t) => t || tryLoad(`${AI}bg/w01_panel.png`)),
     Promise.all([0, 1, 2, 3].map((i) => tryLoad(`${AI}castles/nest_hp${i}.png`))),
     Promise.all([0, 1, 2, 3].map((i) => tryLoad(`${AI}castles/tower_w${wN}_hp${i}.png`).then((t) => t || tryLoad(`${AI}castles/tower_hp${i}.png`)))),
     loadFun().catch(() => null),   // 재미 그림이 없어도 전투는 연다 (코드 검토 2)
@@ -46,8 +50,20 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const bgBox = new Container(), funBack = new Container(), stage = new Container(), units = new Container(), fx = new Container(), funFront = new Container();
   units.sortableChildren = true;
   root.addChild(bgBox, funBack, stage, funFront);
-  const k = bgTex ? 540 / bgTex.height : 1, bw = bgTex ? bgTex.width * k : FIELD;
-  if (bgTex) for (let i = 0; i * bw < FIELD + bw; i++) { const s = new Sprite(bgTex); s.scale.set(i % 2 ? -k : k, k); s.x = i % 2 ? (i + 1) * bw : i * bw; bgBox.addChild(s); }
+  const skyBox = new Container(), funSky = new Container(), frontBox = new Container();   // 하늘 겹은 카메라의 0.35배 (아래 update 에서 skyBox.x)
+  bgBox.addChild(skyBox, frontBox);
+  let living = null;
+  if (layered) {
+    tileMirror(skyBox, skyTex, FIELD); skyBox.addChild(funSky);
+    const fw = tileMirror(frontBox, frontTex, FIELD);
+    lightsFor(world).then(async (LB) => {
+      if (!LB || root.destroyed) return;
+      const fx0 = LB.front?.fire ? await fxFrames(LB.front.fire).catch(() => null) : null;
+      if (root.destroyed) return;
+      living = [LB.sky && makeBreath(skyBox, LB.sky, null, fw), LB.front && makeBreath(frontBox, LB.front, fx0, fw)].filter(Boolean);
+      skyBox.addChild(funSky);   // 달 얼굴 · 자전거 · 박쥐는 숨결 위
+    });
+  } else if (bgTex) tileMirror(frontBox, bgTex, FIELD);
   const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, GY + 10);
   const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, GY + 10); if (pvp) tower.scale.x = -1;
   stage.addChild(nest, tower, units, fx);
@@ -58,9 +74,10 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
 
   /* ── 재미있는 요소 (자리표가 없는 월드는 하늘 요소만) */
   const spots = { ...(SPOTS[world] || { sky: [50, 200], ground: 437, dirtY: 494 }) };
+  if (layered && world === 1) spots.moon = { x: 779, y: 112, d: 222 };   // 월드 1 하늘 겹은 다시 편집돼 달 자리가 통그림과 다르다 (그림 픽셀로 잼)
   spots.safe = [260, FIELD - 260];
   let camX = 0, viewW = view.w;
-  const fun = funTex ? createFun(funTex, { back: funBack, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && isOn('zdFunSound', id) && Audio.fun(FUN_SOUND[id]), every: nums('zdFunEvery') }) : { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
+  const fun = funTex ? createFun(funTex, { back: funBack, sky: layered ? funSky : null, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && isOn('zdFunSound', id) && Audio.fun(FUN_SOUND[id]), every: nums('zdFunEvery') }) : { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
   if (import.meta.env.DEV) window.__idgFun = fun;   // 미리보기 점검용 (__idgFun.trigger('owl'))
   fun.setOff(offKeys('zdFun'));   // 운영자가 끈 재미 요소 (관리자 화면 · services/switches.js)
   Audio.setFun(offKeys('zdFunSound').length < 17);   // 재미 소리 — 하나라도 켜져 있으면 소리 장치를 연다(켜진 것만 난다)
@@ -123,6 +140,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const shakes = { nest: 0, tower: 0, screen: 0 };
   const seen = { breath: 0, bossAt: null, baseHp: [null, null], over: false };
   let breathFx = 0, overT = 0, bSide = 0, bP = null, bBS = null;
+  const mets = [];   // 떨어지는 운석들
   seen.by = [];
   const bx = (x) => (bSide ? FIELD - x : x);   // 오른쪽 편 브레스는 좌우 반대로
   /* 리더마다 다른 브레스 (화면 전용) : 색 · 위로/아래로 · 크기 · 특수(번개 줄기 · 햇살 기둥) */
@@ -265,13 +283,31 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     }
     { const rg = S.players.reduce((a, q) => a + q.st.rageUse, 0), sk = S.players.reduce((a, q) => a + q.st.skill, 0);
       if (rg > (seen.rage || 0)) { flashT = 0.35; flashC = 0xffd84a; shakes.screen = Math.max(shakes.screen, 0.2); }   // 포효 : 금빛 번쩍 (GDD 660)
-      if (sk > (seen.skill || 0)) { flashT = 0.25; flashC = 0x9fd8ff; shakes.screen = Math.max(shakes.screen, 0.15); }   // 스킬 : 푸른 번쩍
+      if (sk > (seen.skill || 0)) {   // 스킬 : 푸른 번쩍 · 운석은 하늘에서 떨어져 쾅 (대표님 11/11 «운석을 눌러도 아무 반응이 없다»)
+        flashT = 0.25; flashC = 0x9fd8ff; shakes.screen = Math.max(shakes.screen, 0.15);
+        const who = S.players.find((q) => q.skills.some((k) => k.id === 'meteor' && k.cdT > k.def.cd - 0.2));
+        if (who) { let fx0 = null; for (const u of S.units) if (u.alive && u.side !== who.side && (fx0 == null || (who.side ? u.x > fx0 : u.x < fx0))) fx0 = u.x; if (fx0 != null) mets.push({ x: M + fx0, t: 0 }); flashT = 0; }
+      }
       seen.rage = rg; seen.skill = sk;
       if (flashT > 0) { flashT -= dt; flashG.clear().rect(-50, -50, FIELD + 100, 700).fill({ color: flashC, alpha: Math.max(0, flashT) * 0.9 }); } else if (flashG.width) flashG.clear(); }
     if (S.st.bossAt != null && seen.bossAt == null) {
       seen.bossAt = S.st.bossAt; fun.hush(4); shakes.screen = 0.5;
       const ring = new Graphics().circle(0, 0, 20).stroke({ width: 6, color: 0xffe08a }); ring.position.set(M + L - 20, GY - 30); fx.addChild(ring);
       parts.push({ g: ring, ring: true, life: 0.7, t: 0 });
+    }
+    /* 운석 : 0.5초 동안 왼쪽 위에서 비스듬히 떨어지고(불꼬리) → 땅에 닿으면 주황 번쩍 · 흔들 · 불똥 · 먼지 고리 */
+    for (let i = mets.length - 1; i >= 0; i--) {
+      const m = mets[i]; m.t += dt; const k = Math.min(1, m.t / 0.5);
+      if (!m.g) { m.g = new Graphics().circle(0, 0, 13).fill(0xffe08a).circle(0, 0, 9).fill(0xff7a1a).circle(-3, -3, 4).fill(0xfff6d0); m.g.blendMode = 'add'; fx.addChild(m.g); }
+      const px = m.x - 220 * (1 - k), py = -40 + (GY - 10 + 40) * k * k;
+      m.g.position.set(px, py); m.g.scale.set(1 + k * 0.6);
+      if (k < 1) puff(px, py, Math.random() < 0.5 ? 0xff9a2e : 0xffd84a, 2, 30, 0.35, 3);
+      else {
+        m.g.destroy(); mets.splice(i, 1);
+        flashT = 0.3; flashC = 0xff8a2a; shakes.screen = Math.max(shakes.screen, 0.4);
+        puff(m.x, GY - 6, 0xffb03a, 26, 260, 0.6, 3); puff(m.x, GY - 6, 0x8a6a5a, 14, 120, 0.8, 4);
+        const ring = new Graphics().circle(0, 0, 20).stroke({ width: 4, color: 0xffd84a }); ring.position.set(m.x, GY - 4); ring.blendMode = 'add'; fx.addChild(ring); parts.push({ g: ring, ring: true, life: 0.5, t: 0 });
+      }
     }
     for (let i = parts.length - 1; i >= 0; i--) {
       const q = parts[i]; q.t += dt; const k2 = q.t / q.life;
@@ -315,6 +351,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     const sx = shakes.screen > 0 ? Math.round(Math.random() * 4 - 2) : 0, sy = shakes.screen > 0 ? Math.round(Math.random() * 2 - 1) : 0;
     if (mirror) { root.scale.x = -1; root.position.set(Math.round(camX + view.w) + sx, sy); }   // 오른쪽 편 = 좌우 뒤집어 그린다
     else root.position.set(-Math.round(camX) + sx, sy);
+    skyBox.x = Math.round(camX * 0.65);   // 하늘 겹 = 카메라의 0.35배 (뒤집힌 편도 같은 식)
   }
 
   const api = {
@@ -323,7 +360,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       lastS = S;
       if (S.stage.fog) { let a = 0; for (const u of S.units) if (u.alive && u.side === 0) a = Math.max(a, u.x); const fx0 = M + a + 260; fog.clear(); for (let i = 0; i < 6; i++) fog.rect(fx0 + i * 30, 0, FIELD, 540).fill({ color: 0x8a90b8, alpha: 0.16 }); }
       syncUnits(S, dt); bases(S, dt); effects(S, dt); ending(S, dt); camera(S, dt);
-      fun.update(dt); amb.update(dt); bossFx.update(S, dt, V);
+      fun.update(dt); amb.update(dt); bossFx.update(S, dt, V); if (living) for (const b of living) b.update(dt);
       if (lead) lead.update(dt);
       if (lead2) lead2.update(dt);
       for (const [b, t] of follow) { if (b.destroyed || t.destroyed) continue; b.position.copyFrom(t.position); b.rotation = t.rotation; }

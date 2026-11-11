@@ -1,0 +1,12 @@
+{
+ "file": "ai/fx/fire_green.png",
+ "frames": 8,
+ "w": 72,
+ "h": 72,
+ "fps": 10,
+ "anchor": [
+  0.5,
+  1
+ ],
+ "note": "가로 띠 · 왼쪽부터 차례로 · 고리(마지막 → 처음) · anchor = 밑동 가운데"
+}

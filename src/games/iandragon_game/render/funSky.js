@@ -10,7 +10,7 @@ import { clamp, smooth, outBack, rnd, pick, env, sp, maskedBox, bits, dot } from
 
 /** 1 달 앞 자전거 — 그림자로 달을 가로지르며 가운데서 붕 뜬다 */
 export function bike(E) {
-  const { moon } = E.S, c = new Container(); E.back.addChild(c);
+  const { moon } = E.S, c = new Container(); E.sky.addChild(c);   // 달 따라 하늘 겹에
   const SIL = 0x1a0f30, dir = Math.random() < 0.8 ? 1 : -1;
   const wr = sp(E.tex.wheel, -33, 30), wf = sp(E.tex.wheel, 31, 28), body = sp(E.tex.bike, 0, 0);
   for (const s of [wr, wf, body]) { s.tint = SIL; c.addChild(s); }
@@ -74,7 +74,7 @@ export function lightning(E) {
 
 /** 4 박쥐 떼 — V자로 달을 건너고 한 마리가 늦게 허둥지둥 */
 export function bats(E) {
-  const { moon } = E.S, dir = Math.random() < 0.5 ? 1 : -1, c = new Container(); E.back.addChild(c);
+  const { moon } = E.S, dir = Math.random() < 0.5 ? 1 : -1, c = new Container(); E.sky.addChild(c);
   const form = [[0, 0], [-30, -16], [-30, 16], [-60, -32], [-60, 32], [-90, -46]];
   const bs = form.map(([fx, fy]) => ({ s: c.addChild(sp(E.tex.bat_up, 0, 0)), fx, fy, ph: Math.random() * 6 }));
   const late = { s: c.addChild(sp(E.tex.bat_down, 0, 0)), fx: -170, fy: 6, ph: 0, late: true };
@@ -154,7 +154,7 @@ export function moonFace(E) {
    *  - 곱하기(multiply)로 겹친다 → 크림색 얼굴판은 달 색에 녹아 사라지고 눈 · 입 · 그늘만 달 표면에 «비쳐» 보인다.
    *  - 얼굴판 테두리(검은 원)는 달보다 조금 작은 원으로 잘라 낸다 → 자리가 몇 칸 어긋나도 테두리가 따로 떠 보이지 않는다.
    */
-  const box = new Container(); E.back.addChildAt(box, 0);   // 맨 뒤 — 자전거 · 박쥐가 달 앞을 지나가게
+  const box = new Container(); E.sky.addChildAt(box, 0);   // 맨 뒤 — 자전거 · 박쥐가 달 앞을 지나가게
   const s = box.addChild(sp(E.tex[which], moon.x, moon.y)); s.scale.set(moon.d / 247); s.blendMode = 'multiply';
   const mask = box.addChild(new Graphics().circle(moon.x, moon.y, moon.d * 0.46).fill(0xffffff)); s.mask = mask;
   box.alpha = 0;

@@ -15,6 +15,7 @@ const DEV = {
   pcfhd: { lobby: { width: 1920, height: 1080 }, game: { width: 1920, height: 1080 }, dpr: 1 },
   tab: { lobby: { width: 820, height: 1180 }, game: { width: 1180, height: 820 }, dpr: 2 },
   phone: { lobby: { width: 390, height: 844 }, game: { width: 844, height: 390 }, dpr: 3 },
+  phonebar: { lobby: { width: 360, height: 780 }, game: { width: 780, height: 340 }, dpr: 3 },   // 주소창이 보이는 폰 가로 (대표님 캡처 비율)
 };
 fs.mkdirSync(OUT, { recursive: true });
 const URL = 'http://127.0.0.1:5320/tools/idg-gallery/lobby.html';
@@ -37,6 +38,8 @@ for (const name of WANT) {
   if (await clickText('음악 출처')) { await sleep(500); await shot('credits'); await page.evaluate(() => { const l = document.querySelector('.idg-credits-list'); if (l) l.scrollTop = 9999; }); await sleep(200); await shot('credits-scrolled'); await closeTop(); }
   if (await clickText('스테이지 고르기')) { await sleep(500); await shot('stages'); await closeTop(); }
   if (await clickText('연구소')) { await sleep(700); await shot('lab'); await page.evaluate(() => { const l = document.querySelector('.idg-lab'); if (l) l.scrollTop = 400; }); await sleep(200); await shot('lab-scrolled'); await closeTop(); }
+  if (await clickText('명예의 전당')) { await sleep(1500); await shot('hall'); await closeTop(); }
+  if (process.env.LOBBY_ONLY) { await ctx.close(); continue; }
   /* 전투 */
   await page.setViewportSize(d.game); await sleep(300);
   await clickText('모험 시작'); await sleep(4000);
