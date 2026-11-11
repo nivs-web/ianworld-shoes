@@ -101,8 +101,30 @@ export function makeBreath(layer, L, fx = null, width = 3200) {
 }
 
 /** 그림 한 장을 540 높이로 맞춰 좌우 거울로 이어 깔기 (전장이 그림보다 길 때) → 깐 너비 */
+/*
+ * 큰 배경 조각내기 (11/11 긴급 · 대표님 «내 태블릿에서 배경이 안 보여») : 월드 3 · 8 · 9 · 10 배경은 폭 4060~4698px 이라
+ * 태블릿 GPU 의 텍스처 한도(MAX_TEXTURE_SIZE 4096 · 기기에 따라 더 작음)를 넘어 아무 말 없이 까맣게 나왔다.
+ * → 폭 SLICE(2048) 넘는 그림은 캔버스로 잘라 여러 장의 텍스처로 올리고 나란히 붙인다 (그림 하나당 한 번만 자름).
+ */
+const SLICE = 2048, sliced = new WeakMap();
+function slicesOf(tex) {
+  if (tex.width <= SLICE) return null;
+  if (sliced.has(tex)) return sliced.get(tex);
+  const img = tex.source.resource, out = [];
+  for (let x = 0; x < tex.width; x += SLICE) {
+    const w = Math.min(SLICE, tex.width - x), c = document.createElement('canvas'); c.width = w; c.height = tex.height;
+    c.getContext('2d').drawImage(img, x, 0, w, tex.height, 0, 0, w, tex.height);
+    const t = Texture.from(c); t.source.scaleMode = 'nearest'; out.push([t, x]);
+  }
+  sliced.set(tex, out); return out;
+}
 export function tileMirror(box, tex, width) {
-  const k = 540 / tex.height, bw = tex.width * k;
-  for (let i = 0; i * bw < width + bw; i++) { const s = new Sprite(tex); s.scale.set(i % 2 ? -k : k, k); s.x = i % 2 ? (i + 1) * bw : i * bw; box.addChild(s); }
+  const k = 540 / tex.height, bw = tex.width * k, parts = slicesOf(tex);
+  for (let i = 0; i * bw < width + bw; i++) {
+    let s;
+    if (parts) { s = new Container(); for (const [t, x] of parts) { const q = new Sprite(t); q.x = x; s.addChild(q); } }
+    else s = new Sprite(tex);
+    s.scale.set(i % 2 ? -k : k, k); s.x = i % 2 ? (i + 1) * bw : i * bw; box.addChild(s);
+  }
   return bw;
 }
