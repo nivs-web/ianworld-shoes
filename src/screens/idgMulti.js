@@ -11,8 +11,9 @@ import * as Sfx from '../audio/sfx.js';
 import { seatsOf } from '../games/iandragon_game/net/roomBridge.js';
 import { makeLoads, stageByNo, loadToLd, ldToLoad, PVP_OPEN, PVP_DAY, NET_V } from '../games/iandragon_game/render/battleSetup.js';
 import { currentUser } from '../services/auth.js';
+import { decodeLook, titleOf } from '../games/iandragon_game/data/looks.js';
 
-export function showMulti(onStart) {
+export function showMulti(onStart, rejoinCode = null) {
   Sfx.play('sfx_menu_select');
   const body = el('div.idg-multi');
   let code = null, off = null, started = false;
@@ -46,14 +47,18 @@ export function showMulti(onStart) {
   function wait(c) {
     code = c;
     let sentLd = false;
-    const who = el('div.idg-multi-who'), startB = el('div');
-    body.replaceChildren(el('div.idg-multi-code', null, [el('span', '방 번호'), el('b', String(c))]), el('p.idg-multi-msg', '친구에게 방 번호를 알려 주세요.'), who, startB);
+    const who = el('div.idg-multi-who'), startB = el('div'), stageRow = el('div.idg-multi-stage');
+    body.replaceChildren(el('div.idg-multi-code', null, [el('span', '방 번호'), el('b', String(c))]), el('p.idg-multi-msg', '친구에게 방 번호를 알려 주세요.'), stageRow, who, startB);
     off = Room.subscribeRoom(c, async (room) => {
       if (!room || started) return;
       const uids = seatsOf(room);
+      if (room.idgStage === 0 && (G.idg().cleared || 0) < PVP_OPEN) { off?.(); Room.leaveRoom(c).catch?.(() => {}); msg(`용 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 할 수 있어요.`); return; }
       /* 내 편성을 한 번 올린다 (방 스테이지 기준 — 둘이 같은 판) */
       if (!sentLd) { sentLd = true; Room.publishIdg(c, { ld: loadToLd(makeLoads(stageByNo(room.idgStage || PVP_OPEN), G.idg()).loads[0], G.idg().look) }); }   // 대결(0)은 덱 6칸 판 기준
-      who.replaceChildren(...uids.map((u, i) => el('div', `${i + 1}. ${room.players[u]?.nickname || '친구'}${u === room.hostUid ? ' (방장)' : ''}`)));
+      who.replaceChildren(...uids.map((u, i) => { const t = titleOf(decodeLook(ldToLoad(room.players[u]?.ld || '')?.look || '').title); return el('div', `${i + 1}. ${room.players[u]?.nickname || '친구'}${t ? ` · ${t.name}` : ''}${u === room.hostUid ? ' (방장)' : ''}`); }));
+      /* O. 방장이 스테이지 고르기 (같이 깨기 · 내가 깬 것 + 바로 다음까지) */
+      const st = room.idgStage || 0, mine = Math.min(100, (G.idg().cleared || 0) + 1);
+      stageRow.replaceChildren(...(st > 0 ? [el('span', `스테이지 ${G.stageLabel(st)}`), ...(room.hostUid === currentUser()?.uid && uids.length < 2 ? [button('‹', () => Room.setRoomIdgStage(c, Math.max(1, st - 1))), button('›', () => Room.setRoomIdgStage(c, Math.min(mine, st + 1)))] : [])] : [el('span', '용 대결')]));
       const me = uids.indexOf(currentUser()?.uid ?? '');
       const host = room.hostUid === currentUser()?.uid;   // 시작 단추는 방장 화면에만
       const loads = uids.map((u) => ldToLoad(room.players[u]?.ld || ''));
@@ -68,7 +73,7 @@ export function showMulti(onStart) {
     });
   }
 
-  menu();
+  if (rejoinCode) { Room.resetRoom(rejoinCode).catch?.(() => {}); wait(rejoinCode); } else menu();   // 한 판 더 : 같은 방을 대기 상태로 되돌리고 대기실로
   const box = el('div.dialog.idg-nest', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '친구랑 같이 깨기'), body, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const closeO = presentOverlay(overlay);

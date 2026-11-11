@@ -23,7 +23,7 @@ const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
-export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null, talk = null }, cb) {
+export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null, talk = null, isNet = false }, cb) {
   let useCons = null;   // 시작 카드에서 고른 편의품
   const root = h('div', 'idg-hud'); host.appendChild(root);
   /* 위 */
@@ -34,7 +34,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const speedB = h('button', 'idg-btn idg-speed', '×1'); speedB.type = 'button'; speedB.onclick = () => cb.speed();
   const money = h('div', 'idg-money'); const moneyN = h('span', 'n', '0'); money.append(h('i', 'idg-ico-ember'), moneyN);
   top.append(pauseB, title, time, speedB, money);
-  if (speedMax < 2) speedB.style.visibility = 'hidden';
+  if (speedMax < 2 || isNet) speedB.style.visibility = 'hidden';   // 멀티는 1배속 고정
+  if (isNet) { pauseB.textContent = '✕'; pauseB.title = '나가기'; pauseB.onclick = () => { if (window.confirm('정말 나갈까요? 친구는 혼자 계속해요.')) cb.exit(); }; }   // 멀티는 멈출 수 없다 (기획 5장)
   const autoB = h('button', 'idg-btn idg-speed idg-auto', '자동'); autoB.type = 'button'; autoB.onclick = () => cb.auto(); if (canAuto) speedB.after(autoB);
   const hp = h('div', 'idg-hp'); root.appendChild(hp);
   const myHp = h('div', 'idg-hp-me'), foeHp = h('div', 'idg-hp-foe');
@@ -120,9 +121,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       draw(); box.appendChild(cr);
     }
     if (kind === 'intro') { add('출격!', () => cb.go(useCons), 'main'); add(text.exit, () => cb.exit()); box.appendChild(row); panel.appendChild(box); panel.classList.add('on'); return; }
+    if (info.unlocks) box.append(h('p', 'final', `새로 열림 : ${info.unlocks.join(' · ')}`));
     if (info.final) box.append(h('p', 'final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요! 🐉'));
-    if (kind === 'win' && info.hasNext && !info.pvp) add('다음 스테이지', () => cb.next(), 'main');
-    if (!info.pvp || stage.raid) add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main' : '');
+    if (kind === 'win' && info.hasNext && !info.pvp && !isNet) add('다음 스테이지', () => cb.next(), 'main');
+    if (isNet) add('한 판 더 (같은 방)', () => cb.rejoin(), 'main');
+    else if (!info.pvp || stage.raid) add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main' : '');
     add(text.exit, () => cb.exit());
     box.appendChild(row); panel.appendChild(box); panel.classList.add('on');
   }

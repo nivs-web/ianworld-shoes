@@ -25,7 +25,7 @@ import { showMulti } from './idgMulti.js';
 import { showShop } from './idgShop.js';
 import { showLook } from './idgLook.js';
 import { showHall } from './idgHall.js';
-import { TITLES } from '../games/iandragon_game/data/looks.js';
+import { TITLES, titleOf } from '../games/iandragon_game/data/looks.js';
 import { fetchIdgBoard } from '../services/idgRank.js';
 import { weekKey } from '../games/iandragon_game/render/battleSetup.js';
 import { currentUser } from '../services/auth.js';
@@ -121,12 +121,13 @@ async function checkRaidFrame(onGot) {
   const rows = r.rows.filter((x) => Math.floor((x.raid || 0) / 100) === prev.idx).sort((a, b) => (b.raid % 100) - (a.raid % 100));
   const place = rows.findIndex((x) => x.uid === uid);
   const frame = ['gold', 'silver', 'wood'][place];
-  G.saveIdg({ frameW: prev.idx, ...(frame ? { owned: [...G.idg().owned, `frame:${frame}`] } : {}) });
+  G.saveIdg({ frameW: prev.idx, ...(place >= 0 && place < 10 ? { weekTop: prev.idx } : {}), ...(frame ? { owned: [...G.idg().owned, `frame:${frame}`] } : {}) });
   if (frame) { Sfx.play('sfx_purchase'); toast(`지난주 주간 습격 ${place + 1}위! ${frame === 'gold' ? '금' : frame === 'silver' ? '은' : '나무'} 테두리를 받았어요`, 3600); onGot?.(); }
 }
 
 export default function IanDragonGameLobby(nav) {
   setTimeout(checkTitles, 900);
+  { const rj = G.takeRejoin(); if (rj) setTimeout(() => showMulti((room) => { G.pickNet(room); start(room.stageNo); }, rj), 300); }   // 멀티 «한 판 더»
   setTimeout(() => checkRaidFrame(() => nav.refresh?.()), 1500);
   setTimeout(() => IanDragonGame.prefetch?.(), 1200);   // 한가할 때 게임 코드를 미리 받아 둔다
   /* 타이틀 콜 «좀비와 드래곤!» (겜팀장 음성 · 오락실 효과음 설정을 따른다) */
@@ -154,7 +155,7 @@ export default function IanDragonGameLobby(nav) {
         el('div.idg-logo', null, [el('img.idg-lobby-banner', { src: '/assets/ui/banner_iandragon_lobby.webp', alt: `${S.idgTitle} ${S.idgTitleEn}` })]),
         /* 상태판 — 그림(겜부장 보조 · ui/lobby/*)이 있으면 그림, 없으면 글자만 (2026-11-11 대표님 «로비에 디자인 요소가 없다») */
         el('div.panel.idg-panel', null, [
-          el('div.idg-player', p.nickname || '???'),
+          el('div.idg-player', (p.nickname || '???') + (titleOf(g.title) ? ` · ${titleOf(g.title).name}` : '')),
           el('div.idg-stats', null, [
             el('div', g.cleared >= 100 ? '모든 모험 끝! 좀비 드래곤 로드를 물리쳤어요!' : S.idgStatNext(G.stageLabel(G.nextStage(g)))),   // 코드 검토 7
             el('div.idg-stat-row', null, [stat('star', G.totalStars(g)), stat('coin', g.coins), stat('gem', g.gems)]),

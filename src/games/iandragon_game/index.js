@@ -59,6 +59,7 @@ export async function mount(host, opts) {
   const netQ = /[?&]idgNet=(coop|pvp)/.test(q) ? { seat: Number((q.match(/[?&]seat=(\d)/) || [])[1] || 0), seats: 2, pvp: /idgNet=pvp/.test(q) } : null;   // 점검용 : 탭 두 개 (?idgNet=pvp&seat=1)
   const begin = async (stageNo) => {
     me.scene?.destroy(); me.scene = null;
+    import('../../services/stats.js').then((St) => St.countPlay('idragon')).catch(() => {});   // 운영자 판 수 집계
     try {
       const rm = opts.room;   // 친구랑 같이 깨기 (서버 방)
       const net = rm && rm.seat >= 0 ? { seat: rm.seat, seats: rm.uids.length, seed: rm.seed, loads: rm.loads, pvp: rm.stageNo === 0, code: rm.code, uids: rm.uids, transport: createRoomTransport(rm.code, rm.uids, rm.seat) }

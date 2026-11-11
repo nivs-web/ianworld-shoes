@@ -37,6 +37,10 @@ export const takePickedStage = () => { const n = picked; picked = null; return n
 let pickedNet = null;
 export const pickNet = (n) => { pickedNet = n; };
 export const takePickedNet = () => { const n = pickedNet; pickedNet = null; return n; };
+/** 멀티 «한 판 더» — 판이 끝나고 같은 방 대기실로 돌아갈 때 방 번호 */
+let rejoin = null;
+export const pickRejoin = (c) => { rejoin = c; };
+export const takeRejoin = () => { const c = rejoin; rejoin = null; return c; };
 /** 주간 습격으로 들어갈 때 (명예의 전당 · 로비 타일) */
 let pickedRaid = false;
 export const pickRaid = () => { pickedRaid = true; };

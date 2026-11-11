@@ -328,3 +328,8 @@ html.idg-wide body { width: 100%; }
 .idg-talk-open { min-width: 40px; min-height: 40px; font-size: 18px; }
 .idg-talk-list { display: none; flex-direction: column; gap: 4px; } .idg-talk-list.on { display: flex; }
 .idg-talk-list .idg-btn { min-height: 34px; padding: 0 10px; font: 700 12px 'Neo둥근모', monospace; white-space: nowrap; }
+
+/* 용 시장 : 좀비 상인 · 상점 배경 (보조 그림) */
+.idg-shopkeeper { display: block; width: 110px; height: 110px; object-fit: contain; margin: -8px auto -4px; }
+.idg-multi-stage { display: flex; gap: 6px; justify-content: center; align-items: center; color: #ffe9b0; font: 700 14px 'Neo둥근모', monospace; }
+.idg-multi-stage .pbtn { min-width: 44px; min-height: 36px; padding: 0 8px; }

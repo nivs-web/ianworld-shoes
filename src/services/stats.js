@@ -173,7 +173,7 @@ export async function readStats(days = 7) {
  * sec = 그날 사이트를 켜 둔 시간(화면을 보고 있을 때만, 30초마다 +30). first · last = 그날 처음 · 마지막 신호 시각.
  * 쓰기는 본인 칸만, 읽기는 운영자만(규칙 `stats/.read`). 실패해도 게임에는 아무 영향이 없다.
  */
-export const GAME_NAMES = { shoes: '신발을 찾아서', dragon: '드래곤 스트라이커', catch: '캐치볼', catch3d: '3D캐치볼', jump: '줄넘기 챔피언', piano: '점프 피아노' };
+export const GAME_NAMES = { shoes: '신발을 찾아서', dragon: '드래곤 스트라이커', catch: '캐치볼', catch3d: '3D캐치볼', jump: '줄넘기 챔피언', piano: '점프 피아노', idragon: '좀비와 드래곤' };
 const BEAT_SEC = 30;
 let beatTimer = 0, actDay = '', memberFor = '', sessDay = '';
 const SID = (Date.now().toString(36) + Math.random().toString(36).slice(2, 5)).slice(0, 12);   // 이번 접속(페이지 열기) 하나

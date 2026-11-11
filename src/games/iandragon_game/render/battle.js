@@ -14,7 +14,8 @@ import { createBattleSound } from './battleSound.js';
 import { makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY, DIFF, diffFor, raidStage, raidWaves, weekKey } from './battleSetup.js';
 import { isOn } from '../../../services/switches.js';
 import { decodeLook, CONSUMABLES } from '../data/looks.js';
-import { sendChat, subscribeChat } from '../../../services/multiplayer.js';
+import { sendChat, subscribeChat, leaveRoom } from '../../../services/multiplayer.js';
+import { pickRejoin } from '../../../services/iandragonGame.js';
 
 /** 빠른 말 4개 (멀티 기획 2.1 · 글자 입력 없음 · 오락실 방 채팅을 그대로 쓴다) */
 const TALK = { coop: ['방패 부탁!', '브레스 간다!', '화로 올릴게!', '최고!'], pvp: ['잘 부탁해!', '간다~!', '앗 따가워!', '최고!'] };
@@ -55,7 +56,7 @@ export async function startBattle(ctx, opts) {
     const last = rows && rows[rows.length - 1]; if (!last || last.id === ui.talkSeen) return; ui.talkSeen = last.id;
     if (last.uid !== net.uids?.[me] && Date.now() - (last.at || 0) < 8000) { ui.talk = last.text; ui.talkT = 2.5; }
   }) : null;
-  const NET_GIVEUP = 12;   // 초 — 이만큼 아무 소식이 없으면 그 친구는 나간 것으로 보고 혼자 계속 (M4)
+  const NET_GIVEUP = 10;   // 초 — 이만큼 아무 소식이 없으면 그 친구는 나간 것으로 보고 혼자 계속 (M4)
   const leave = (s) => {
     ls.drop(s);
     if (pvp && !S.over) { S.over = { winner: me, forfeit: true }; return; }   // 대결 : 상대가 나가면 남은 사람 승 (멀티 기획 3.6)
@@ -74,13 +75,13 @@ export async function startBattle(ctx, opts) {
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
   const cmds = [];
   let acc = 0, bossSeen = false, gone = false;
-  const hud = createHud(ctx.host || opts.hudHost, { stage, deck: myDeck, leader: loads[me].leader, cons: net ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
+  const hud = createHud(ctx.host || opts.hudHost, { stage, isNet: !!net, deck: myDeck, leader: loads[me].leader, cons: net || raid ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (S.over) return; if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c }); },
     go(useCons) {
       ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '');
       /* 편의품 (META 3장 · 판마다 1개 · 혼자 하기만) — 판을 시작하며 1개 쓴다 · 도중에 나가도 돌려주지 않는다 */
       const have = opts.save?.cons?.[useCons] || 0;
-      if (!net && useCons && have > 0) {
+      if (!net && !raid && useCons && have > 0) {
         const P = S.players[0];
         if (useCons === 'ember50') P.money += 50;
         else if (useCons === 'brazier') P.wl = Math.max(P.wl, Math.min(1, S.D.wallet.length - 1));
@@ -91,7 +92,8 @@ export async function startBattle(ctx, opts) {
     pause() { if (ui.done || ui.intro || net) return; ui.paused = !ui.paused; sound.pause(ui.paused); if (ui.paused) hud.showPanel('pause'); else hud.hidePanel(); },
     speed() { if (net) return; ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
     auto() { if (canAuto) ui.auto = !ui.auto; },
-    exit() { opts.onExit(); },
+    exit() { if (net?.code) leaveRoom(net.code).catch?.(() => {}); opts.onExit(); },   // 멀티 : 방에서도 나간다 (방 정리)
+    rejoin() { if (net?.code) pickRejoin(net.code); opts.onExit(); },   // 한 판 더 : 같은 방 대기실로
     retry() { opts.restart(raid ? 'raid' : stage.g); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
     talk(t) { if (net?.code) { sendChat(net.code, t).catch?.(() => {}); ui.myTalk = t; ui.myTalkT = 1.6; } },
@@ -118,6 +120,7 @@ export async function startBattle(ctx, opts) {
     ui.done = true;
     if (pvp) { finishPvp(); return; }
     if (raid) { finishRaid(); return; }
+    if (net && ls.mismatch() >= 0) { setTimeout(() => { if (!gone) hud.showPanel('lose', { t: S.t, pvp: true, coins: 0, title: '판이 어긋났어요', rec: '이 판은 기록하지 않아요', hint: '연결이 어긋났어요 — 한 판 더 해요!' }); }, 900); return; }   // 기획 3.6 : 무효
     const win = S.over.winner === 0;
     const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE };
     /* 쌓인 기록 (도전 과제) — 이겨도 져도 */
@@ -147,6 +150,7 @@ export async function startBattle(ctx, opts) {
       stars[stage.g - 1] = String(Math.max(old, info.stars));
       /* 보상 (기획서 10장 ECON) : 첫 클리어 코인 · 다시 깨면 40% · 새 별 하나마다 +25% / 젬 : 새 별 5 · 중간 보스 20 · 월드 보스 50 (첫 클리어) */
       const base = ECON.coin(stage.g);
+      if (first && Array.isArray(stage.unlocks) && stage.unlocks.length) info.unlocks = stage.unlocks;   // 결과 창에 «새로 열림»
       info.coins = Math.round((base * (first ? 1 : ECON.replay) + base * ECON.starBonus * newStars) * (coop ? 1.1 : 1) * DF.coin);
       info.gems = newStars * ECON.gem.star + (first && stage.s === 5 ? ECON.gem.mid : 0) + (first && stage.s === 10 ? ECON.gem.boss : 0);
       /* 매일 첫 승리 : 젬 10 (한국 날짜) */
@@ -164,8 +168,9 @@ export async function startBattle(ctx, opts) {
     const waves = S.over.winner === 0 || S.over.timeout ? 40 : raidWaves(S.t);
     const save = opts.save || {}, old = save.raid?.w === raid.idx ? save.raid.best || 0 : 0;
     const coins = Math.max(0, waves - old) * 20;
-    try { opts.save = opts.onSave?.({ raid: { w: raid.idx, best: Math.max(old, waves) }, coins: (save.coins || 0) + coins }) || opts.save; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
-    const info = { t: S.t, pvp: true, coins, title: waves >= 40 ? '끝까지 버텼다!' : `${waves} 웨이브!`, rec: `${raid.key} · 이번 주 최고 ${Math.max(old, waves)} 웨이브${waves > old ? ' (새 기록!)' : ''}`, hint: '명예의 전당 «주간 습격»에서 순위를 볼 수 있어요.' };
+    const fire = waves >= 40 && !(save.owned || []).includes('frame:fire');   // 끝까지 버티면 불꽃 테두리 (META 2장)
+    try { opts.save = opts.onSave?.({ raid: { w: raid.idx, best: Math.max(old, waves) }, coins: (save.coins || 0) + coins, ...(fire ? { owned: [...(save.owned || []), 'frame:fire'] } : {}) }) || opts.save; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
+    const info = { t: S.t, pvp: true, coins, title: waves >= 40 ? '끝까지 버텼다!' : `${waves} 웨이브!`, rec: `${raid.key} · 이번 주 최고 ${Math.max(old, waves)} 웨이브${waves > old ? ' (새 기록!)' : ''}${fire ? ' · 불꽃 테두리 획득!' : ''}`, hint: '명예의 전당 «주간 습격»에서 순위를 볼 수 있어요.' };
     if (waves > old) sound.say('raid/record');
     setTimeout(() => { if (!gone) hud.showPanel(waves > old ? 'win' : 'lose', info); }, 1200);
   }

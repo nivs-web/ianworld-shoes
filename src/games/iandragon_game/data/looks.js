@@ -83,17 +83,18 @@ export const TITLES = [
   { id: 'hundred_dragon', name: '백 판의 용', how: '스테이지 100개 모두 깨기', has: (g) => (g?.cleared || 0) >= 100 },
   { id: 'hard_conqueror', name: '어려움 정복자', how: '어려움 붉은 별 50판 이상', has: (g) => [...(g?.hardStars || '')].filter((c) => c !== '0').length >= 50 },
   { id: 'coop_friend', name: '같이 깨기 친구', how: '친구랑 같이 10판 이기기', has: (g) => st(g, 'coop') >= 10 },
-  { id: 'boss_slayer', name: '보스 사냥꾼', how: '보스 50마리 쓰러뜨리기', has: (g) => st(g, 'boss') >= 50 },
+  { id: 'boss_slayer', name: '보스 사냥꾼', how: '보스 판 50번 이기기', has: (g) => st(g, 'boss') >= 50 },
   { id: 'breath_master', name: '브레스 달인', how: '브레스 1,000번 뿜기', has: (g) => st(g, 'breath') >= 1000 },
   { id: 'egg_rich', name: '알 부자', how: '알 50개 부화하기', has: (g) => st(g, 'hatch') >= 50 },
   { id: 'brazier_master', name: '화로 달인', how: '화로 Lv8 만들기', has: (g) => st(g, 'maxWl') >= 8 },
   { id: 'duelist', name: '용 대결 용사', how: '용 대결 10번 이기기', has: (g) => (Number(g?.pvp?.w) || 0) >= 10 },
   { id: 'first_world', name: '첫 모험가', how: '월드 1 깨기 (스테이지 10)', has: (g) => (g?.cleared || 0) >= 10 },
   { id: 'hundred_wins', name: '백전백승', how: '100판 이기기', has: (g) => st(g, 'wins') >= 100 },
+  { id: 'week_hero', name: '이번 주 용사', how: '주간 좀비 습격 10위 안에 들기', has: (g) => (g?.weekTop || 0) > 0 },   // 맨 뒤에만 더한다 (꾸미기 번호)
 ];
 LOOKS.title = TITLES.map((t) => ({ id: t.id, name: t.name }));
 /** 그림 경로 — 보조 파일 이름과 다른 것만 따로 (브레스 기본 = breath_default · 칭호 = badge_<그림 이름>) */
-const BADGE = { zombie_hunter: 'hunter', star_collector: 'stars', hundred_dragon: 'hundred', hard_conqueror: 'hard', coop_friend: 'buddies', boss_slayer: 'boss', breath_master: 'breath', egg_rich: 'egg', brazier_master: 'nest', duelist: 'duel', first_world: 'explorer', hundred_wins: 'weekhero' };
+const BADGE = { zombie_hunter: 'hunter', star_collector: 'stars', hundred_dragon: 'hundred', hard_conqueror: 'hard', coop_friend: 'buddies', boss_slayer: 'boss', breath_master: 'breath', egg_rich: 'egg', brazier_master: 'nest', duelist: 'duel', first_world: 'explorer', hundred_wins: 'wins', week_hero: 'weekhero' };
 export const artOf = (slot, id) => `/assets/iandragon_game/ai/meta/${slot === 'title' ? `badge_${BADGE[id] || id}` : slot === 'breath' && id === 'basic' ? 'breath_default' : `${slot}_${id}`}.png`;
 export const titleOf = (id) => TITLES.find((t) => t.id === id) || null;
 

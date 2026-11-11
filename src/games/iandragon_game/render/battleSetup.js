@@ -11,6 +11,7 @@ import { SKILLS } from '../data/skills.js';
 import { STAGES } from '../data/stages/index.js';
 import { LEADERS } from '../data/leaders.js';
 import { ENEMIES } from '../data/enemies.js';
+import { step, createBattle } from '../core/index.js';
 
 /** 용이 열리는 차례 (기획서 9.5) */
 export const DRAGON_ORDER = ['kkomul', 'doldeung', 'bulttong', 'twetwe', 'ssaeng', 'bangul', 'dungsil', 'giljjuk', 'eoreum', 'jjirit', 'banjjak', 'kungkwang'];
@@ -148,7 +149,7 @@ export function pvpLoad(ld, side) {
 }
 
 /** 멀티 버전 (멀티 기획 3.5) — 전투 숫자(데이터)의 짧은 해시. 두 기기가 다르면 계산이 어긋나므로 시작하지 않는다 */
-export const NET_V = (() => { const s = JSON.stringify([UNITS, ENEMIES, LEADERS, SKILLS, STAGES.length]); let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); })();
+export const NET_V = (() => { const s = JSON.stringify([UNITS, ENEMIES, LEADERS, SKILLS, STAGES.length, String(step).length, String(createBattle).length]); /* 데이터 + 코어 코드 길이 */ let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); })();
 
 /** 멀티 편성 → 글자 (방 `players/$uid/ld` · 500자 이하) */
 export function loadToLd(load, look = '') {
