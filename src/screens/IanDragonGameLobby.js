@@ -240,7 +240,7 @@ export default function IanDragonGameLobby(nav) {
         el('div.idg-icons', null, [
           mini('lab', '연구소', () => showLab(() => nav.refresh?.())),
           mini('quest', '도전과제', () => showQuests(() => nav.refresh?.()), claimable(g) > 0),
-          mini('shop', '드래곤마켓', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
+          mini('shop', '드래곤샵', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           mini('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           mini('more', '더보기', () => showMore({ stage: () => showStages((no) => start(no)), hatch: () => (G.idg().cleared >= OPEN_AT ? showHatch(() => nav.refresh?.()) : toast('부화장은 2-5를 깨면 열려요', 2200)) })),
         ]),

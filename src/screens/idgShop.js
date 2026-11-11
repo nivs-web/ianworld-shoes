@@ -107,7 +107,7 @@ export function showShop({ idg, save, onClose }) {
   }
   draw();
 
-  const box = el('div.dialog.idg-shop.idg-lab', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '드래곤마켓'), el('img.idg-shopkeeper', { src: '/assets/iandragon_game/ai/meta/shopkeeper.png', alt: '', onerror: (e) => { e.target.style.display = 'none'; } }), head, tabs, body, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-shop.idg-lab', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '드래곤샵'), el('img.idg-shopkeeper', { src: '/assets/iandragon_game/ai/meta/shopkeeper.png', alt: '', onerror: (e) => { e.target.style.display = 'none'; } }), head, tabs, body, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const closeO = presentOverlay(overlay);
   const close = () => { closeO(); onClose?.(); };   // 닫으면 로비 코인 · 젬 다시 그리기

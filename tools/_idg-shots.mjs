@@ -52,8 +52,8 @@ for (const name of WANT) {
   if (await clickText('연구소')) { await sleep(700); await shot('lab'); await page.evaluate(() => { const l = document.querySelector('.idg-lab'); if (l) l.scrollTop = 400; }); await sleep(200); await shot('lab-scrolled'); await closeTop(); }
   if (await clickText('명예의 전당')) { await sleep(1500); await shot('hall'); await closeTop(); }
   /* 로비 창 전부 (창 공통 규칙 점검) */
-  if (process.env.WINDOWS) for (const t of ['파워업', '알 부화장', '친구와 하기', '주간 좀비 습격', '도전 과제', '용 시장', '꾸미기']) { if (await clickText(t)) { await sleep(700); await shot('win-' + t.replace(/s/g, '')); await closeTop(); await sleep(200); } }
-  if (process.env.WINDOWS && await clickText('더보기')) { await sleep(500); await shot('win-더보기'); for (const t of ['도감', '음향 설정']) { if (await clickText(t)) { await sleep(800); await shot('win-' + t.replace(/s/g, '')); await closeTop(); await sleep(200); } } await closeTop(); }
+  if (process.env.WINDOWS) for (const t of ['파워업', '부화장', '멀티게임', '좀비습격', '도전과제', '드래곤샵', '꾸미기', '스테이지']) { if (await clickText(t)) { await sleep(700); await shot('win-' + t.replace(/s/g, '')); await closeTop(); await sleep(200); } }
+  if (process.env.WINDOWS && await clickText('더보기')) { await sleep(500); await shot('win-더보기'); for (const t of ['도감', '음향 설정', '명예의 전당', '게임하는 법']) { if (await clickText(t)) { await sleep(800); await shot('win-' + t.replace(/s/g, '')); await closeTop(); await sleep(200); } } await closeTop(); }
   if (process.env.LOBBY_ONLY) { await ctx.close(); continue; }
   /* 전투 */
   await page.setViewportSize(d.game); await sleep(300);

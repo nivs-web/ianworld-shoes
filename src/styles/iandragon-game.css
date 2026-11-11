@@ -1103,7 +1103,7 @@ html.idg-rot.ccw .idg-hud.float .idg-boss { top: 96px; }
  *  ③ 단추 줄은 줄바꿈 없이 칸을 나눠 갖는다 (긴 단추 = 1fr)
  */
 .dialog.idg-framed { display: flex; flex-direction: column; overflow: hidden; }
-.dialog.idg-framed > .idg-how-title { position: static; flex: none; }
+.dialog.idg-framed > .idg-how-title { position: relative; flex: none; }   /* relative 유지 : 리본 그림(::after)이 제목 칸 안에만 (static 이면 창 전체를 빨갛게 덮었다 — 11/11 사고) */
 .dialog.idg-framed > .idg-how-title::before { display: none; }
 .dialog.idg-framed > .idg-dlg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: inherit; }
 .dialog.idg-framed > .pbtn:last-child, .dialog.idg-framed > button:last-child { position: static; flex: none; box-shadow: none; margin-top: 8px; }
