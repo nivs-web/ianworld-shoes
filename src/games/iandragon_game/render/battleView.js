@@ -467,16 +467,17 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const canvas = app.canvas;
   const toWorld = (dx) => dx * (view.w / canvas.clientWidth);
   /* 냥코처럼 (대표님 11/11) : 한 손가락 끌기 = 옆으로 이동 · 두 손가락 오므리기 · 벌리기 = 확대 · 축소 (PC 는 휠) → api.onZoom (HUD 가 확대 정도를 맡는다) */
-  const fingers = new Map(); let pinch = 0;
+  const fingers = new Map(); let pinch = 0, zoomF = 0.5, lastW = view.w;   /* zoomF = 확대 · 축소 기준점 (캔버스 가로 비율 · 두 손가락 가운데 / 휠은 마우스 자리) */
+  const fracX = (clientX) => { const r = canvas.getBoundingClientRect(); return r.width ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0.5; };
   const gap = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
   const onDown = (e) => { fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (fingers.size === 2) { drag = null; pinch = gap(); } else drag = { x: px(e), cam: camX }; handT = 3; };
   const onMove = (e) => {
     if (fingers.has(e.pointerId)) fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (fingers.size >= 2 && pinch) { const g = gap(); if (g > 0 && Math.abs(Math.log(g / pinch)) > 0.02) { api.onZoom?.(Math.log(g / pinch) * 3); pinch = g; } handT = 3; return; }
+    if (fingers.size >= 2 && pinch) { const g = gap(); if (g > 0 && Math.abs(Math.log(g / pinch)) > 0.02) { const [a, b] = [...fingers.values()]; zoomF = fracX((a.x + b.x) / 2); api.onZoom?.(Math.log(g / pinch) * 3); pinch = g; } handT = 3; return; }
     if (!drag) return; camX = Math.max(0, Math.min(FIELD - view.w, drag.cam - (mirror ? -1 : 1) * toWorld(px(e) - drag.x))); handT = 3;
   };
   const onUp = (e) => { if (e?.pointerId != null) fingers.delete(e.pointerId); else fingers.clear(); if (fingers.size < 2) pinch = 0; drag = null; };
-  const onWheel = (e) => { e.preventDefault(); api.onZoom?.(-Math.sign(e.deltaY) * Math.min(1, Math.abs(e.deltaY) / 100) * 0.25); handT = 3; };
+  const onWheel = (e) => { e.preventDefault(); zoomF = fracX(e.clientX); api.onZoom?.(-Math.sign(e.deltaY) * Math.min(1, Math.abs(e.deltaY) / 100) * 0.25); handT = 3; };
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.style.touchAction = 'none';
   canvas.addEventListener('pointerdown', onDown); window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
@@ -484,6 +485,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
 
   function camera(S, dt) {
     viewW = view.w;
+    /* 보이는 폭이 바뀌면(확대 · 축소) 기준점 아래의 땅이 그대로 있게 카메라를 옮긴다 (예전엔 왼쪽 끝 기준이라 한쪽으로 쏠렸다) */
+    if (view.w !== lastW) { camX = Math.max(0, Math.min(FIELD - view.w, camX + (mirror ? 1 - zoomF : zoomF) * (lastW - view.w))); lastW = view.w; }
     if (!drag) handT -= dt;
     if (S.over && !pvp && S.over.winner >= 0) {   /* 끝 : 무너지는 성을 비춘다 */
       const c = S.over.winner === 0 ? tower : nest, target = Math.max(0, Math.min(FIELD - view.w, c.x - view.w / 2));

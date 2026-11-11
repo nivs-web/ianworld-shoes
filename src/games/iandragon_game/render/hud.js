@@ -215,7 +215,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
 
   return {
     /** 맵 확대 · 축소 (전장 두 손가락 · 휠) : d > 0 확대 */
-    zoomBy(d) { if (!FLOAT_HUD) return; userZ = Math.max(0, Math.min(ZMAX, (userZ ?? zoomK) + d)); },
+    /* 세로 : 최소 = 전장 높이가 아래 단추 줄 위를 꽉 채우는 배율(z 1) — 더 작게 줄면 손톱만 해지고 아래에 붙었다 (대표님 11/11) */
+    zoomBy(d) { if (!FLOAT_HUD) return; const zMin = host.clientHeight > host.clientWidth * 1.05 ? 1 : 0; userZ = Math.max(zMin, Math.min(ZMAX, (userZ ?? zoomK) + d)); },
     update(S, ui) {
       const p = S.players[ui.me || 0], W = S.D.wallet;
       if (FLOAT_HUD) { const z = Math.min(1, Math.max(0, (S.t - ZOOM_AT) / ZOOM_DUR)), e = userZ ?? (host.clientHeight > host.clientWidth * 1.05 ? 1 : z * z * (3 - 2 * z));   /* 세로 : 처음부터 크게 (대표님 3차) */ if (Math.abs(e - zoomK) > 0.03 || (e === 1 && zoomK !== 1) || (e === 0 && zoomK !== 0)) { zoomK = e; sendIns(); } }
