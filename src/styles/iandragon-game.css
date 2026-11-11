@@ -582,3 +582,11 @@ html.idg-wide body { width: 100%; }
 .idg-tre-steps { display: inline-flex; gap: 3px; margin-left: 4px; vertical-align: 1px; }
 .idg-tre-steps i { font: 700 10px/1 'Neo둥근모', monospace; font-style: normal; padding: 2px 4px 3px; border-radius: 4px; background: #2a1d48; color: #7d6f9a; word-spacing: 0; }
 .idg-tre-steps i.on { background: #ffcf4a; color: #4a2a00; }
+/* 폰 가로 승리 · 패배 카드 : 아래 단추가 잘리지 않게 그림 · 글씨를 줄인다 */
+@media (max-height: 430px) {
+  .idg-hud .idg-card:has(h2.win)::before, .idg-hud .idg-card:has(h2.lose)::before { width: min(190px, 40vw); margin: -10px auto 4px; }
+  .idg-hud .idg-card { padding: 0 4px; max-height: calc(100vh - 8px); }
+  .idg-hud .idg-card h2 { font-size: 18px; margin: 0 0 2px; } .idg-hud .idg-stars { font-size: 22px; margin: 0 0 2px; }
+  .idg-hud .idg-card p { margin: 2px 0; font-size: 12px; } .idg-hud .idg-card p.final { font-size: 13px; margin-top: 2px; }
+  .idg-hud .idg-row { margin-top: 4px; flex-wrap: nowrap; } .idg-hud .idg-row .idg-btn { min-height: 38px; font-size: 13px; padding: 0 6px; }
+}
