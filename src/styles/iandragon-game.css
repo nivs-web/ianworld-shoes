@@ -1233,7 +1233,7 @@ html.idg-rot.ccw .idg-hud.float .idg-boss { top: 96px; }
 .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 12px; margin-top: 4px; }
 .screen.idg-lobby .idg-prof-text .idg-stat img { width: 28px; height: 28px; }
 .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 15px; }
-.idg-stat img[src*="icon_gem"] { filter: brightness(1.55) saturate(1.7) hue-rotate(-12deg) drop-shadow(0 0 0 #fff); }
+/* 젬 = 새 그림 icon_gem_v2 (밝은 형광 보라 · 보조 a23e46c) — 예전 CSS 밝게 하기는 뺐다 */
 @media (max-width: 380px) { .screen.idg-lobby .idg-prof-dragon { width: 84px; height: 80px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 24px; height: 24px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 13px; } .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 8px; } }
 @media (orientation: portrait) and (min-width: 560px) { .screen.idg-lobby .idg-prof-dragon { width: 150px; height: 130px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 36px; height: 36px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 20px; } }
 @media (max-width: 480px) { .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 8px; } .screen.idg-lobby .idg-prof-text .idg-stat { gap: 3px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 25px; height: 25px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 14px; } }
