@@ -65,9 +65,19 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const amb = createAmbient(funBack, world, () => camX, () => viewW);   // 월드 분위기 입자 (불티 · 눈 · 구름 · 불꽃)
 
   /* ── 리더 (내 기지 위) */
-  const ldRig = rigs[leader] || null;
+  /* 덮는 모자(cover) : 그 대장 용의 머리 텍스처(head · blink · breath)를 뿔 · 볏을 지운 그림으로 바꿔 끼운다 (보조 3차 · 대표님 «모자가 이마를 덮고 뿔이 뚫으면 안 됨») */
+  const WEARP = fetch('/assets/iandragon_game/ai/meta/wear.json').then((r) => r.json()).catch(() => null);
+  async function wearRig(data, art, lk) {
+    if (!data || !lk?.hat) return data;
+    const e = (await WEARP)?.leaders?.[art]?.hat?.['hat_' + lk.hat];
+    if (!e?.head) return data;
+    const tex = { ...data.tex };
+    for (const [n, file] of Object.entries(e.head)) { const t = await tryLoad('/assets/iandragon_game/' + file); if (t) tex[n] = t; }
+    return { rig: data.rig, tex };
+  }
+  const ldRig = await wearRig(rigs[leader] || null, leader, look);
   const lead = ldRig ? createRigged(ldRig, 1, 1) : null;
-  const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(rigs[foeLeader], 1, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
+  const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(await wearRig(rigs[foeLeader], foeLeader, lookR), 1, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
   if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
   /* 착용 부품 (보조 2차 · 대표님 «상점 아이콘과 용이 쓴 모습은 달라야») — ai/meta/wear/ 옆모습 부품을 head · torso 부품에 붙인다.
@@ -100,7 +110,6 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     }
   }
   const flags = [], follow = [];   // follow = 몸통 뒤 층 장식이 torso 를 따라가게 [상자, torso]
-  const WEARP = fetch('/assets/iandragon_game/ai/meta/wear.json').then((r) => r.json()).catch(() => null);
   await Promise.all([dress(lead, look, nest, leader), dress(lead2, lookR, pvp ? tower : null, foeLeader)]);
   if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 58); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
   if (lead2) lead2.baseY = lead2.root.y;
