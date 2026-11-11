@@ -60,8 +60,8 @@ export const VOICE_LINES = {
   'tut/6': [L('보스다! 튼튼한 용을 앞에 세워!', 'caster')],
   /* 타이틀 콜 (첫 화면 · 2026-11-10 대표님: 게임 이름 «좀비와 드래곤») */
   title: [L('좀비와아… 드래고오온!', 'caster', 'growl', 'start'), L('좀비와 드래곤! 지금 시작합니다!', 'caster', 'crowd'), L('크르르… 좀비와… 드래곤…', 'bossDeep', 'rumble', 'start'),
-    /* 2026-11-11 대표님: «더 긴장감 있고 웅장하게» — 영화 예고편 성우 · 마지막 보스 목소리 */
-    L('어둠이 깨어난다… 좀비와… 드래곤!', 'trailer', 'rumble', 'start'), L('불꽃이냐, 어둠이냐… 좀비와 드래곤!', 'trailer', 'organ', 'start'), L('마지막 전쟁이 시작된다… 좀비와 드래곤!', 'bossLord', 'lord_roar', 'start')],
+    /* 2026-11-11 대표님: 예고편 성우 3종은 «별로» → 취소, 처음 3종 말투를 살짝만 바꾼 3종으로 */
+    L('자, 간다아! 좀비와… 드래고오온!', 'caster', 'growl', 'start'), L('좀비와 드래곤! 모험을 시작합니다!', 'caster', 'crowd'), L('으르르… 좀비… 와… 드래곤…', 'bossDeep', 'growl', 'start')],
   /* 전투 진행 · 부화장 (2026-11-11 야간 추가) */
   start: [L('좀비들이 몰려온다! 준비해!', 'caster', 'alarm', 'start'), L('전투 시작! 둥지를 지켜라!', 'caster'), L('온다, 온다! 좀비 떼다!', 'caster', 'groan')],
   'wave/big': [L('큰 무리가 온다! 버텨!', 'caster', 'alarm', 'start'), L('우와, 엄청 많이 몰려온다!', 'caster', 'alarm', 'start'), L('좀비 떼 등장! 정신 바짝!', 'caster', 'groan', 'start')],
@@ -92,6 +92,13 @@ export const VOICE_LINES = {
   'boss/bossLord/half': [L('크아아앙! 제법이구나!', 'bossLord', 'growl'), L('이제 진짜 힘을 보여 주마!', 'bossLord', 'rumble'), L('아기 용 주제에… 뜨겁구나!', 'bossLord', 'fire_pop')],
   'boss/bossLord/die': [L('이 따뜻함은… 뭐지…? 불꽃이… 좋구나…', 'bossLord', 'sad_trombone'), L('졌다… 너희가… 진짜 드래곤이다…', 'bossLord', 'power_down'), L('좀비 드래곤 성은… 이제 너희 것이다…', 'bossLord', 'rumble')],
   ending: [L('해냈다아아! 좀비 드래곤 성을 되찾았다! 아기 용들, 최고야!', 'caster', 'crowd'), L('모든 좀비를 물리쳤다! 우리가 최고의 드래곤 팀이야!', 'caster', 'crowd')],
+
+  /* ───── 주간 좀비 습격 · 멀티 (2026-11-11) ───── */
+  'raid/start': [L('주간 좀비 습격이다! 끝없이 몰려온다!', 'caster', 'alarm', 'start'), L('이번 주 좀비 떼가 왔다! 얼마나 버틸 수 있을까?', 'caster', 'groan', 'start'), L('끝없는 습격 시작! 정신 바짝 차려!', 'caster', 'alarm', 'start')],
+  'raid/record': [L('새 기록이다아! 명예의 전당에 이름을 올려라!', 'caster', 'crowd'), L('대단해! 지금까지 중에 최고 기록!', 'caster', 'crowd'), L('기록 경신! 좀비들이 벌벌 떤다!', 'caster', 'sparkle')],
+  'duel/win': [L('용 대결 승리! 네가 최고의 조련사다!', 'caster', 'crowd'), L('이겼다아! 상대 용들이 깜짝 놀랐어!', 'caster', 'crowd'), L('완벽한 승리! 다음 상대 나와라!', 'caster', 'sparkle')],
+  'duel/lose': [L('아깝다! 다음엔 꼭 이기자!', 'caster', 'sad_trombone'), L('좋은 승부였어! 덱을 바꿔서 다시 도전!', 'caster', 'sad_trombone'), L('으악, 졌다! 그래도 멋진 대결이었어!', 'caster')],
+  'coop/start': [L('친구와 함께 출동! 둘이면 무섭지 않아!', 'caster', 'crowd', 'start'), L('같이 깨기 시작! 서로 도와줘!', 'caster', 'boing', 'start'), L('드래곤 듀오 등장! 좀비들아, 각오해라!', 'caster', 'whoosh', 'start')],
 };
 
 /** 보이스 스튜디오 «목소리 설계» — 목소리마다 다르게 (반복 지루함 방지) */
