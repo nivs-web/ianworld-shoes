@@ -8,7 +8,7 @@ for (const [name, vp, dpr] of [['pc', { width: 1280, height: 800 }, 1], ['phone'
   const shot = (t) => p.screenshot({ path: `tools/_out/pu/${name}-${t}.png` });
   await p.goto('http://127.0.0.1:5320/tools/idg-gallery/lobby.html'); await sleep(2000);
   await p.evaluate(async () => { const L = await import('/src/services/storageLocal.js'); const q = L.loadProfile(); L.patchProfile({ idg: { ...(q.idg || {}), coins: 9000 } }); });
-  await click('모험 시작'); await sleep(4000); await click('출격'); await sleep(7000);
+  await click('모험'); await sleep(4000); await click('출격'); await sleep(7000);
   await p.evaluate(() => { const B = window.__idgBattle; const P = B.S.players[0]; P.breathT = P.breathCharge; B.S.lines.push({ id: 'walker', count: 8, left: 8, next: 0, armed: true, every: 0.3 }); });
   await sleep(2500); await shot('1-ready');
   await p.evaluate(() => window.__idgBattle.cmds.push({ p: 0, type: 'breath' })); await sleep(250); await shot('2-breath'); await sleep(250); await shot('3-breath2');

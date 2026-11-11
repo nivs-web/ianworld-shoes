@@ -211,7 +211,8 @@ export default function IanDragonGameLobby(nav) {
         el('div.idg-lobby-bg'),   // 로비 배경 그림 (ui/lobby/bg.webp · 없으면 어두운 바탕)
         /* 로고 그림(겜팀장 · 540×150 도트) — 좀비와 드래곤 / ZOMBIE & DRAGON */
         /* 로비 맨 위 배너 (겜팀장 v2 · 신발 · 드래곤 로비와 같은 비율) — 결정 D4 */
-        el('div.idg-logo', null, [el('img.idg-lobby-banner', { src: '/assets/ui/banner_iandragon_lobby.webp', alt: `${S.idgTitle} ${S.idgTitleEn}` })]),
+        /* 타이틀 = 글씨만 (대표님 11/11 밤 «배너 상자 없애고 좀비와 드래곤 · ZOMBIE & DRAGON 글씨만 심플하게») — 가로 로비에서는 숨김 */
+        el('div.idg-logo', null, [el('h1.idg-title-text', null, [el('span.ko', null, [el('b.z', '좀비와'), ' ', el('b.d', '드래곤')]), el('span.en', 'ZOMBIE & DRAGON')])]),
         /* 상태판 — 그림(겜부장 보조 · ui/lobby/*)이 있으면 그림, 없으면 글자만 (2026-11-11 대표님 «로비에 디자인 요소가 없다») */
         el('div.panel.idg-panel.idg-prof', null, [
           myDragon('button.idg-prof-dragon', g, 'idg-prof-canvas', { fit: true, W: 240, H: 220, pad: 6 }),   /* 칸에 꼭 맞게 통째로 (뿔 · 날개 · 모자 안 잘림) */   /* 용이 카드 높이를 채우게 크게 (대표님 «용이 너무 작아») */
@@ -243,6 +244,8 @@ export default function IanDragonGameLobby(nav) {
           mini('shop', '드래곤샵', () => showShop({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           mini('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           mini('more', '더보기', () => showMore({ stage: () => showStages((no) => start(no)), hatch: () => (G.idg().cleared >= OPEN_AT ? showHatch(() => nav.refresh?.()) : toast('부화장은 2-5를 깨면 열려요', 2200)) })),
+          /* 가로 로비 : 아이콘 줄 맨 오른쪽 6번째 칸 = 오락실 화면으로 돌아가기 (대표님 11/11 밤 · 세로에서는 숨기고 아래 긴 단추) */
+          (() => { const b = backButton(S.backToPortal, () => nav.reset(Portal)); b.classList.add('idg-back', 'idg-back-tile'); return b; })(),
         ]),
         el('div.spacer'),
         (() => { const b = backButton(S.backToPortal, () => nav.reset(Portal)); b.classList.add('idg-back'); return b; })(),   // 돌 판 옷 (보조 의견)

@@ -92,7 +92,7 @@ export async function startBattle(ctx, opts) {
       if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c });
     },
     go(useCons) {
-      ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '');
+      ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '', myDeck.map((d) => d.id));
       /* 편의품 (META 3장 · 판마다 1개 · 혼자 하기만) — 판을 시작하며 1개 쓴다 · 도중에 나가도 돌려주지 않는다 */
       const have = opts.save?.cons?.[useCons] || 0;
       if (!net && !raid && useCons && have > 0) {
@@ -253,8 +253,8 @@ export async function startBattle(ctx, opts) {
   };
   ctx.app.ticker.add(tick);
   ui.paused = true; hud.showPanel('intro');   // 스테이지 카드 → «출격!»
-  if (opts.quick && !net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : ''); } }, 50);   // 다시 하기 = 1터치 (기획 GDD 137)
-  if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : ''); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
+  if (opts.quick && !net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : '', myDeck.map((d) => d.id)); } }, 50);   // 다시 하기 = 1터치 (기획 GDD 137)
+  if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '', myDeck.map((d) => d.id)); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
   const onHide = () => { if (document.hidden && !net && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);
   if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };

@@ -25,7 +25,7 @@ const VOL_KEY = 'idg_audio_v1';
 /* 11/11 저녁 대표님 «소리가 전체적으로 넘 시끄럽고 귀가 아파서 주변 사람들이 다 끄고 한다» → 전부 낮춤
  * (배경음악 0.37→0.30 · 효과음 0.55→0.40 · 목소리 0.95→0.80. 배경음악:효과음 비율은 +15% 때 그대로) */
 const BASE = { music: 0.30, sfx: 0.40, voice: 0.80 };
-const vol = { music: 0.8, sfx: 0.8, voice: 0.9, zombie: true };
+const vol = { music: 1, sfx: 1, voice: 1, zombie: true };   /* 처음 기본 = 모두 100 (대표님 11/11 밤 · 줄이는 건 자유) */
 try { Object.assign(vol, JSON.parse(localStorage.getItem(VOL_KEY) || '{}')); } catch { /* 저장소가 없어도 기본값으로 */ }
 const saveVol = () => { try { localStorage.setItem(VOL_KEY, JSON.stringify(vol)); } catch { /* */ } };
 function applyVol() {
@@ -50,8 +50,8 @@ export function init() {
   const A = audio(); if (!A) return;
   if (A.ctx.state === 'suspended') A.ctx.resume().catch(() => {});
   applyVol();
-  preloadVoices();
-  preloadMusic(['lobby', 'w1', 'boss', 'win']).catch(() => {});   // 녹음 곡이 있으면 미리 받기
+  preloadVoices();   /* 시작 멘트만 — 용 이름은 전투 시작 때 덱만 (preloadBattleVoices) */
+  preloadMusic(['lobby']).catch(() => {});   /* 로비 곡만 (예전엔 로비 · 월드1 · 보스 · 승리 2.8MB 를 한꺼번에 받아 첫 화면이 느렸다 — 11/11 밤) */
   preloadSfxFiles().catch(() => {});                                 // 좀비 소리 같은 파일 효과음
 }
 
@@ -95,12 +95,14 @@ export function voice(id) {
 /** 단계 이름 · 설명 — 관리자 페이지 · 음향 설정 창이 그대로 보여 준다 */
 export const VOICE_LEVELS = [
   { n: 0, name: '0단계 · 말 없음', desc: '목소리를 아예 안 냅니다. 효과음과 음악만.' },
-  { n: 1, name: '1단계 · 낱말만', desc: '용 이름 같은 가장 짧은 한두 마디만. (예: «꼬물이!»)' },
-  { n: 2, name: '2단계 · 아주 짧게', desc: '아주 짧은 문장만. (예: «꼬물이 출격!» · «퉤엣!») — 기본' },
+  { n: 1, name: '1단계 · 이름만', desc: '시작 멘트 한 줄 + 용을 누르면 그 용이 자기 이름을 말해요. (예: «꼬물이!») — 기본' },
+  { n: 2, name: '2단계 · 아주 짧게', desc: '이름과 «꼬물이 출격!»을 번갈아 · 시작 · 승패 같은 짧은 해설도 조금.' },
   { n: 3, name: '3단계 · 중요한 순간', desc: '보스 등장 · 보스 격파 · 브레스 · 부화 때 한 문장.' },
   { n: 4, name: '4단계 · 대부분', desc: '진화 · 포효 · 좀비 떼 경고 · 습격 · 대결 말까지.' },
   { n: 5, name: '5단계 · 전부', desc: '모든 대사 (예전 그대로 · 보스 중간 말까지).' },
 ];
+/** 전투가 시작된 뒤 : 내 덱 용 이름 · 출격 말과 승리 · 보스 곡을 뒤에서 받아 둔다 */
+export function preloadBattle(arts = []) { preloadVoices(arts.flatMap((a) => [`name/${a}`, `deploy/${a}`])); setTimeout(() => preloadMusic(['win', 'boss']).catch(() => {}), 4000); }
 /** 사용자가 고른 단계 (기기에 저장) */
 export function setVoiceLevel(n) { setVL(n); }
 /** 관리자 기본값 — 사용자가 직접 고른 적이 없을 때만 적용 (저장 안 함) */

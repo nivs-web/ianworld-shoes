@@ -14,7 +14,7 @@ const shot = async (t) => { await page.screenshot({ path: path.join(OUT, t + '.p
 const clickText = (t) => page.evaluate((t) => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.includes(t)); if (b) b.click(); return !!b; }, t);
 await page.goto('http://127.0.0.1:5320/tools/idg-gallery/lobby.html'); await sleep(2500);
 await page.evaluate(async () => { const L = await import('/src/services/storageLocal.js'); const p = L.loadProfile(); L.patchProfile({ idg: { ...(p.idg || {}), look: 'f2' } }); });   /* 깃발 꾸미기 */
-await clickText('모험 시작'); await sleep(4000); await clickText('출격'); await sleep(8000);   /* 확대 끝날 때까지 */
+await clickText('모험'); await sleep(4000); await clickText('출격'); await sleep(8000);   /* 확대 끝날 때까지 */
 await page.evaluate(() => { const f = window.__idgFun; if (f) { f.setOff(f.ids); f.trigger('owl'); f.trigger('cat'); } });
 await sleep(1500); await shot('01-castle-flag-cat-owl');
 /* 고양이 (울타리 = 오른쪽) */ await page.evaluate(() => { const V = window.__idgBattle?.view; if (V) V.setCam(700); const f = window.__idgFun; if (f) f.trigger('window'); }); await sleep(1500); await shot('01b-cat');

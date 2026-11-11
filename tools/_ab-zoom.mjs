@@ -6,7 +6,7 @@ for (const [tag, crop, cam] of [['A', 0, 0], ['B', 80, 0], ['C', 150, 0], ['A-mi
   const p = await (await b.newContext({ viewport: { width: 800, height: 369 }, deviceScaleFactor: 2.5 })).newPage();
   await p.addInitScript((c) => { window.__idgCropTop = c; }, crop);
   await p.goto('http://127.0.0.1:5320/tools/idg-gallery/lobby.html'); await new Promise((r) => setTimeout(r, 2500));
-  await p.evaluate(() => [...document.querySelectorAll('button')].find((x) => x.textContent.includes('모험 시작')).click());
+  await p.evaluate(() => [...document.querySelectorAll('button')].find((x) => x.textContent.includes('모험')).click());
   await p.waitForFunction(() => [...document.querySelectorAll('button')].some((x) => x.textContent.includes('출격')), null, { timeout: 20000 });
   await p.evaluate(() => [...document.querySelectorAll('button')].find((x) => x.textContent.includes('출격')).click());
   await new Promise((r) => setTimeout(r, 1500));

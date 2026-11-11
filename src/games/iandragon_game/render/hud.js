@@ -59,7 +59,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     const H = host.getBoundingClientRect(), tb = root.querySelector('.idg-top')?.getBoundingClientRect(), bb = root.querySelector('.idg-bot')?.getBoundingClientRect();
     if (!tb || !bb) return;
     /* 떠 있는 HUD (11/11 대표님 «위 · 아래 띠가 게임 화면을 가린다 · 단추는 공중에 떠 있게») : 띠 판이 없으니 캔버스는 화면 전체 — 띠 높이를 0 으로 알린다 */
-    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { ...cropOf(zoomK), bar: Math.round(Math.max(0, H.bottom - bb.top)) } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
+    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { ...cropOf(zoomK), bar: Math.round(Math.max(0, H.bottom - bb.top)), hudTop: Math.round(Math.max(0, (root.querySelector('.idg-hp')?.getBoundingClientRect().bottom ?? H.top) - H.top) + 12) } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
   });
   const onRs = () => { fitHud(); sendIns(); };
   fitHud(); window.addEventListener('resize', onRs);
@@ -149,7 +149,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     if (kind === 'powerup') {   /* 판 사이 파워업 (powerPage.js) — 돌아가기 = 방금 결과 창 */
       /* 한 페이지 파워업 (powerPage.js · 대표님 «한 페이지에서 슬롯 끼고 빼고 업글») */
       const back = () => showPanel(info.back, info.backInfo);
-      const btns = info.back === 'win' && info.backInfo?.hasNext ? [['전투 개시!', () => cb.next(), 'main big'], ['돌아가기', back]] : [['다시 하기', () => cb.retry(), 'main big'], ['돌아가기', back]];
+      const btns = info.back === 'win' && info.backInfo?.hasNext ? [['전투 개시!', () => cb.next(), 'main big'], ['돌아가기', back]] : [['다시하기', () => cb.retry(), 'main big'], ['돌아가기', back]];
       panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, cls: 'idg-card idg-pp' }));
       panel.classList.add('on'); return;
     }
@@ -182,6 +182,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     }
     const row = h('div', 'idg-row');
     const add = (label, fn, cls = '') => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
+    if (kind === 'pause' && !info.pvp && !isNet) {   /* 일시정지 단추 (대표님 11/11 밤) : «계속» 한 줄 꽉 · 아래 «다시하기 · 나가기» */
+      const rows = h('div', 'idg-rows'), line = (...bs) => { const r = h('div', 'idg-row'); for (const [label, fn, cls] of bs) { const b = h('button', 'idg-btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; r.appendChild(b); } rows.appendChild(r); };
+      line(['계속', () => cb.pause(), 'main big']); line(['다시하기', () => cb.retry()], [text.exit, () => cb.exit()]);
+      box.appendChild(rows); panel.appendChild(box); panel.classList.add('on'); return;
+    }
     if (kind === 'pause') add('계속', () => cb.pause(), 'main');
     if (kind === 'intro' && cons && cons.length) {   /* 편의품 (판마다 1개) */
       const cr = h('div', 'idg-cons-row');
@@ -196,14 +201,14 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     if (base) {
       const rows = h('div', 'idg-rows'), line = (...bs) => { const r = h('div', 'idg-row'); for (const [label, fn, cls] of bs) { const b = h('button', 'idg-btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; r.appendChild(b); } rows.appendChild(r); };
       const win = kind === 'win' && info.hasNext;
-      line(win ? ['전투 개시!', () => cb.next(), 'main big'] : ['다시 하기', () => cb.retry(), 'main big']);
+      line(win ? ['전투 개시!', () => cb.next(), 'main big'] : ['다시하기', () => cb.retry(), 'main big']);
       if (cb.puSave) line(['파워 업', () => showPanel('powerup', { back: kind, backInfo: info }), 'pu big']);
-      line(...(win ? [['다시 하기', () => cb.retry()], [text.exit, () => cb.exit()]] : [[text.exit, () => cb.exit()]]));
+      line(...(win ? [['다시하기', () => cb.retry()], [text.exit, () => cb.exit()]] : [[text.exit, () => cb.exit()]]));
       box.appendChild(rows); panel.appendChild(box); panel.classList.add('on'); return;
     }
     if (kind === 'win' && info.hasNext && !info.pvp && !isNet) add('전투 개시!', () => cb.next(), 'main big');   /* 다음 판 */
     if (isNet) add('한 판 더 (같은 방)', () => cb.rejoin(), 'main');
-    else if (!info.pvp || stage.raid) add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main big' : '');
+    else if (!info.pvp || stage.raid) add('다시하기', () => cb.retry(), kind === 'lose' ? 'main big' : '');
     add(text.exit, () => cb.exit());
     box.appendChild(row); panel.appendChild(box); panel.classList.add('on');
   }
@@ -226,10 +231,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     /** 맵 확대 · 축소 (전장 두 손가락 · 휠) : d > 0 확대 */
     /* 세로 : 최소 = 전장 높이가 아래 단추 줄 위를 꽉 채우는 배율(z 1) — 더 작게 줄면 손톱만 해지고 아래에 붙었다 (대표님 11/11) */
     /* 세로 (대표님 11/11 밤) : 줄이기는 넓게(0)까지 · 키우기는 조금만(1.35) — 너무 크게 키우면 전혀 다른 게임 같다 */
-    zoomBy(d) { if (!FLOAT_HUD) return; const port = host.clientHeight > host.clientWidth * 1.05; userZ = Math.max(0, Math.min(port ? 1.35 : ZMAX, (userZ ?? zoomK) + d)); },
+    /* 세로 (대표님 11/11 밤 다시) : 가장 작게 = 성 체력 게이지 아래 여백 ~ 용 카드 줄 위를 꽉 채우는 크기(z 1) · 키우기는 예전처럼 크게 */
+    zoomBy(d) { if (!FLOAT_HUD) return; const port = host.clientHeight > host.clientWidth * 1.05; userZ = Math.max(port ? 1 : 0, Math.min(ZMAX, (userZ ?? zoomK) + d)); },
     update(S, ui) {
       const p = S.players[ui.me || 0], W = S.D.wallet;
-      if (FLOAT_HUD) { const z = Math.min(1, Math.max(0, (S.t - ZOOM_AT) / ZOOM_DUR)), e = userZ ?? (host.clientHeight > host.clientWidth * 1.05 ? 0.5 : z * z * (3 - 2 * z));   /* 세로 : 처음부터 중간 확대 (대표님 11/11 밤 «꽉 차게 크게 하니 전체 그림이 안 나와 다른 게임 같다») */ if (Math.abs(e - zoomK) > 0.03 || (e === 1 && zoomK !== 1) || (e === 0 && zoomK !== 0)) { zoomK = e; sendIns(); } }
+      if (FLOAT_HUD) { const z = Math.min(1, Math.max(0, (S.t - ZOOM_AT) / ZOOM_DUR)), e = userZ ?? (host.clientHeight > host.clientWidth * 1.05 ? 1 : z * z * (3 - 2 * z));   /* 세로 : 처음부터 중간 확대 (대표님 11/11 밤 «꽉 차게 크게 하니 전체 그림이 안 나와 다른 게임 같다») */ if (Math.abs(e - zoomK) > 0.03 || (e === 1 && zoomK !== 1) || (e === 0 && zoomK !== 0)) { zoomK = e; sendIns(); } }
       if (ui.net && S.players.length > 1) {
         const o = S.players[(ui.me || 0) === 0 ? 1 : 0], foe = o.side !== p.side;
         mate.textContent = foe ? `상대 화로 Lv${o.wl + 1}` : `친구 화로 Lv${o.wl + 1}${o.breathT >= o.breathCharge ? ' · 브레스 준비!' : ''}`;

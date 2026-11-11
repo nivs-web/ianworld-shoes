@@ -51,11 +51,13 @@ export function soundPanel(h, onChange = () => {}) {
     rg.onchange = () => { if (!isMuted()) test(); };
     r.append(h('span', 'lb', label), rg, val); return r;
   };
+  /* 켜짐 | 꺼짐 두 칸 (대표님 11/11 밤 «클래식 · EDM 처럼») */
   const toggle = (label, get, set) => {
-    const r = h('div', 'idg-sound-row tg'), b = h('button', 'idg-sound-on'); b.type = 'button';
-    const draw = () => { const on = get(); b.textContent = on ? '켜짐' : '꺼짐'; b.classList.toggle('off', !on); };
-    b.onclick = () => { set(!get()); draw(); };
-    draw(); r.append(h('span', 'lb', label), b); return r;
+    const r = h('div', 'idg-sound-row st'), pk = h('div', 'idg-sound-pick');
+    const bOn = h('button', 'idg-sound-opt', '켜짐'), bOff = h('button', 'idg-sound-opt', '꺼짐'); bOn.type = bOff.type = 'button';
+    const draw = () => { const on = get(); bOn.classList.toggle('on', on); bOff.classList.toggle('on', !on); };
+    bOn.onclick = () => { if (!get()) set(true); draw(); }; bOff.onclick = () => { if (get()) set(false); draw(); };
+    pk.append(bOn, bOff); draw(); r.append(h('span', 'lb', label), pk); return r;
   };
   /* 배경음악 풍 고르기 (두 칸 단추) */
   const styleRow = h('div', 'idg-sound-row st'), pick = h('div', 'idg-sound-pick');

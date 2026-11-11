@@ -36,14 +36,18 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   await Promise.all(ids.map((id) => loadRig(id).then((r) => { rigs[id] = r; }).catch(() => {})));
   const wN = String(world).padStart(2, '0');
   /* 배경 : 살아 있는 두 겹(하늘 · 앞)이 있으면 그것, 없으면 예전 통그림 (2026-11-11 대표님 «배경이 밋밋하다» → 갤러리 확정안 연결) */
-  const [skyTex, frontTex] = await Promise.all([tryLoad(`${AI}bg/layers/w${wN}_sky.png`), tryLoad(`${AI}bg/layers/w${wN}_front.png`)]);
+  /* WebP 먼저 (11/11 밤 «로딩이 엄청 느려졌다» — 배경 · 성 PNG 33MB → WebP 9MB · 하늘 한 장 1.1MB → 0.14MB · tools/idg-webp-bg.mjs), 없으면 PNG */
+  const img = (base) => tryLoad(`${base}.webp`).then((t) => t || tryLoad(`${base}.png`));
+  const towerImg = (n) => (wN === '01' ? img(`${AI}castles/tower_${n}`) : img(`${AI}castles/tower_w${wN}_${n}`).then((t) => t || img(`${AI}castles/tower_${n}`)));
+  const [skyTex, frontTex] = await Promise.all([img(`${AI}bg/layers/w${wN}_sky`), img(`${AI}bg/layers/w${wN}_front`)]);
   const layered = !!(skyTex && frontTex);
-  const [bgTex, nestT, towerT, funTex] = await Promise.all([
+  const [bgTex, nestT, towerT] = await Promise.all([
     layered ? null : tryLoad(`${AI}bg/w${wN}_panel.png`).then((t) => t || tryLoad(`${AI}bg/w01_panel.png`)),
-    Promise.all([0, 1, 2, 3].map((i) => tryLoad(`${AI}castles/nest_hp${i}.png`))),
-    Promise.all([0, 1, 2, 3].map((i) => tryLoad(`${AI}castles/tower_w${wN}_hp${i}.png`).then((t) => t || tryLoad(`${AI}castles/tower_hp${i}.png`)))),
-    loadFun().catch(() => null),   // 재미 그림이 없어도 전투는 연다 (코드 검토 2)
+    img(`${AI}castles/nest_hp0`).then((t) => [t, null, null, null]),   /* 성은 멀쩡한 그림만 먼저 · 부서진 그림(hp1~3)은 전투가 뜬 뒤 뒤에서 */
+    towerImg('hp0').then((t) => [t, null, null, null]),
   ]);
+  const funP = loadFun().catch(() => null);   /* 재미 요소 그림(약 0.4MB)은 기다리지 않는다 — 전투가 뜬 뒤 오면 그때부터 (11/11 밤 속도) */
+  setTimeout(() => { for (const i of [1, 2, 3]) { img(`${AI}castles/nest_hp${i}`).then((t) => { nestT[i] = t; if (pvp) towerT[i] = t; }); if (!pvp) towerImg(`hp${i}`).then((t) => { towerT[i] = t; }); } }, 800);
 
   /* 체력 바 도트 그림 (그림 담당 hp_bars.json · 2026-11-11 대표님 «생명 게이지가 도트가 아니다») — 없으면 예전 막대 */
   const [hpUF, hpUMe, hpUFoe, hpCF, hpCFill, hpMeta] = await Promise.all([...['hp_unit_frame', 'hp_unit_fill_me', 'hp_unit_fill_foe', 'hp_castle_frame', 'hp_castle_fill'].map((n) => tryLoad(`${AI}hud/${n}.png`)), fetch(`${AI}hud/hp_bars.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
@@ -51,12 +55,20 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   /* 운석 · 폭발 그림 (그림 담당 ai/fx/meteor · boom — 없으면 입자로) */
   const [meteorT, boomFx] = await Promise.all([tryLoad(`${AI}fx/meteor.png`), fxFrames('boom').catch(() => null)]);
   /* 무너지는 중간 그림 (보조 11/11 : fall0 기울어짐 · fall1 무너지는 중) · 도트 연기 6종 */
-  const [towerFallT, nestFallT, smokeT] = await Promise.all([
-    Promise.all([0, 1].map((i) => tryLoad(`${AI}castles/tower_w${wN}_fall${i}.png`).then((t) => t || tryLoad(`${AI}castles/tower_fall${i}.png`)))),
-    Promise.all([0, 1].map((i) => tryLoad(`${AI}castles/nest_fall${i}.png`))),
-    Promise.all([0, 1, 2, 3, 4, 5].map((i) => tryLoad(`${AI}fx/smoke_${i}.png`))).then((a) => a.filter(Boolean)),
-  ]);
-  const [towerRubT, nestRubT, crumbleFx, torchFx] = await Promise.all([tryLoad(`${AI}castles/tower_w${wN}_rubble.png`).then((t) => t || tryLoad(`${AI}castles/tower_rubble.png`)), tryLoad(`${AI}castles/nest_rubble.png`), fxFrames('crumble').catch(() => null), fxFrames('fire_orange').catch(() => null)]);
+  /*
+   * 판이 끝날 때만 쓰는 무너짐 그림(기울어짐 · 무너지는 중 · 잔해 · 먼지 띠 · 연기 약 2MB)은 전투를 띄운 뒤 뒤에서 받는다
+   * (11/11 밤 대표님 «로딩이 엄청 느려졌다» — 전투 시작 전에 다 받느라 늦었다). 오기 전에 판이 끝나면 hp3 · 그림 연기 없이 진행.
+   */
+  let towerFallT = [], nestFallT = [], smokeT = [], towerRubT = null, nestRubT = null, crumbleFx = null;
+  const torchFx = await fxFrames('fire_orange').catch(() => null);
+  setTimeout(() => {
+    Promise.all([
+      Promise.all([0, 1].map((i) => towerImg(`fall${i}`))),
+      Promise.all([0, 1].map((i) => img(`${AI}castles/nest_fall${i}`))),
+      Promise.all([0, 1, 2, 3, 4, 5].map((i) => tryLoad(`${AI}fx/smoke_${i}.png`))).then((a) => a.filter(Boolean)),
+      towerImg('rubble'), img(`${AI}castles/nest_rubble`), fxFrames('crumble').catch(() => null),
+    ]).then(([a, b2, c, d, e, f]) => { towerFallT = a; nestFallT = b2; smokeT = c; towerRubT = d; nestRubT = e; crumbleFx = f; }).catch(() => {});
+  }, 1500);
   /** 도트 체력 바 하나 : 테두리 + 채움(왼쪽 맞춤 · 비율만큼 가로로 줄임). W = 화면 너비 */
   function makeBar(frameT, fillT, m, W) {
     const c = new Container(), k = W / m.frame[0];
@@ -116,9 +128,10 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   spots.safe = [260, FIELD - 260];
   if (spots.sky) spots.sky = [Math.max(spots.sky[0], 78), Math.max(spots.sky[1], 160)];   /* 확대해도 하늘 요소가 화면 위에 잘리지 않게 (위 HUD 아래부터) */
   let camX = 0, viewW = view.w;
-  const fun = funTex ? createFun(funTex, { back: funBack, sky: layered ? funSky : null, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && isOn('zdFunSound', id) && Audio.fun(FUN_SOUND[id]), every: nums('zdFunEvery') }) : { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
-  if (import.meta.env.DEV) window.__idgFun = fun;   // 미리보기 점검용 (__idgFun.trigger('owl'))
-  fun.setOff(offKeys('zdFun'));   // 운영자가 끈 재미 요소 (관리자 화면 · services/switches.js)
+  const funStub = { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
+  let fun = funStub;
+  const makeFun = (funTex) => createFun(funTex, { back: funBack, sky: layered ? funSky : null, front: funFront, spots, getCam: () => camX, viewW: () => viewW, onStart: (id) => FUN_SOUND[id] && isOn('zdFunSound', id) && Audio.fun(FUN_SOUND[id]), every: nums('zdFunEvery') });
+  funP.then((t) => { if (!t || root.destroyed) return; fun = makeFun(t); fun.setOff(offKeys('zdFun')); if (import.meta.env.DEV) window.__idgFun = fun; });   // 운영자가 끈 재미 요소 (관리자 화면) · 미리보기 점검용 __idgFun
   Audio.setFun(offKeys('zdFunSound').length < 17);   // 재미 소리 — 하나라도 켜져 있으면 소리 장치를 연다(켜진 것만 난다)
   const amb = createAmbient(funBack, world, () => camX, () => viewW);   // 월드 분위기 입자 (불티 · 눈 · 구름 · 불꽃)
 
@@ -519,7 +532,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     /** 미니맵 · 시작 위치 */
     setCam(x) { camX = Math.max(0, Math.min(FIELD - view.w, x)); handT = 3; },
     get cam() { return camX; },
-    fun,
+    get fun() { return fun; },
     destroy() {
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('wheel', onWheel); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp); window.removeEventListener('blur', onUp);

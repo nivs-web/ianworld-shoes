@@ -41,7 +41,7 @@ export function createBattleSound(stage, me = 0) {
         for (const u of S.units) if (u.side === 0 && !was.units.has(u.id)) {
           Audio.play(deployFx(u.def.cost));
           /* 이름 외침은 카드를 «누르는 순간» pressSpawn 에서. 사람이 안 누르고 나온 용(자동 전투)은 그 용의 출격 대사 (대표님 «아예 끄지 말고 버튼을 안 누르면 나오게») */
-          if (performance.now() - (was.touchAt ?? -1e9) > 1500 && performance.now() - (was.chatAt ?? -1e9) > 4000) { was.chatAt = performance.now(); Audio.voice(`deploy/${u.def._art}`); }
+          if (Audio.getVoiceLevel() >= 2 && performance.now() - (was.touchAt ?? -1e9) > 1500 && performance.now() - (was.chatAt ?? -1e9) > 4000) { was.chatAt = performance.now(); Audio.voice(`deploy/${u.def._art}`); }
           break;
         }
         was.units = ids;
@@ -64,7 +64,7 @@ export function createBattleSound(stage, me = 0) {
       }
       {   /* 전장 수다 : 아무 단추도 안 누른 지 6초 · 마지막 수다 뒤 8~12초 · 보스 등장 중이 아니면 → 내 용 하나가 출격 대사 한 줄 */
         const now = performance.now();
-        if (now - (was.touchAt ?? now) > 6000 && now >= (was.chatNext ?? now + 8000) && !S.boss?.alive) {
+        if (Audio.getVoiceLevel() >= 2 && now - (was.touchAt ?? now) > 6000 && now >= (was.chatNext ?? now + 8000) && !S.boss?.alive) {   /* 수다는 2단계부터 */
           const mine = S.units.filter((u) => u.alive && u.side === p.side && u.def._art);
           if (mine.length) { const u = mine[Math.floor(Math.random() * mine.length)]; Audio.voice(`deploy/${u.def._art}`); was.chatAt = now; }
           was.chatNext = now + 8000 + Math.random() * 4000;
@@ -115,7 +115,11 @@ export function createBattleSound(stage, me = 0) {
       }
     },
     /** 출격! (스테이지 카드에서) */
-    start(kind) { was.startAt = performance.now(); Audio.voice(kind === 'raid' ? 'raid/start' : kind === 'coop' ? 'coop/start' : 'start'); },   // 겜팀장 새 상황 대사 (습격 · 같이 깨기)
+    start(kind, arts = []) {
+      was.startAt = performance.now(); Audio.preloadBattle?.(arts);
+      /* 1단계 = 시작 멘트 «좀비와 드래곤! 지금 시작합니다!» 한 줄 · 2단계부터 상황 시작 말 */
+      Audio.voice(Audio.getVoiceLevel() <= 1 ? 'title' : kind === 'raid' ? 'raid/start' : kind === 'coop' ? 'coop/start' : 'start');
+    },   // 겜팀장 새 상황 대사 (습격 · 같이 깨기)
     say(id) { Audio.voice(id); },
     /** 결과 판의 별 «탕 · 탕 · 탕» */
     stars(n) { for (let i = 0; i < n; i++) later(() => Audio.play('star'), 300 + i * 350); },
@@ -130,6 +134,11 @@ export function createBattleSound(stage, me = 0) {
       if (now - (was.namePress ?? -1e9) <= 600) return;   /* 간격 제한 */
       was.namePress = now;
       /* 이름 외침 모드 (관리자 «출격 이름 외침») : 끔 → 옛 출격 대사 · 판 내내 → 이름 · 기본 → 처음 N초(10/15/20)만 이름, 그 뒤 옛 출격 대사 */
+      /* 말 많기 (대표님 11/11 밤) : 0 = 말 없음 · 1 = 누를 때마다 꼭 자기 이름 · 2 = 이름 ↔ «○○ 출격!» 번갈아 · 3~5 = 예전 방식(처음 N초 이름 · 뒤로 출격 말) */
+      const lv = Audio.getVoiceLevel();
+      if (lv <= 0) return;
+      if (lv === 1) { Audio.voice(VOICE_LINES[nk] ? nk : `deploy/${art}`); return; }
+      if (lv === 2) { was.alt = !was.alt; Audio.voice(was.alt && VOICE_LINES[nk] ? nk : `deploy/${art}`); return; }
       const sec = (performance.now() - (was.startAt ?? now)) / 1000, nameSec = nums('zdVoiceNum').nameSec || 15;
       const useName = VOICE_LINES[nk] && isOn('zdVoice', 'nameOn') && (isOn('zdVoice', 'nameAlways') || sec < nameSec);
       Audio.voice(useName ? nk : `deploy/${art}`);

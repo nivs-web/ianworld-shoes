@@ -57,7 +57,7 @@ for (const name of WANT) {
   if (process.env.LOBBY_ONLY) { await ctx.close(); continue; }
   /* 전투 */
   await page.setViewportSize(d.game); await sleep(300);
-  await clickText('모험 시작'); await sleep(4000);
+  await clickText('모험'); await sleep(4000);
   await shot('intro');
   await clickText('출격'); await sleep(2500);
   await page.evaluate(() => { const f = window.__idgFun; if (f) { f.setOff(f.ids); f.trigger('owl'); f.trigger('moon'); f.trigger('spider'); f.trigger('cat'); } });

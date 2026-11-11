@@ -5,7 +5,7 @@ const b = await chromium.launch({ channel: 'chrome' });
 for (const [nm, w, h, d] of (process.argv[2] === 'p' ? [['p209', 412, 915, 2.6]] : [['p209', 412, 915, 2.6], ['p169', 360, 640, 3], ['p209L', 915, 412, 2.6]])) {
   const p = await (await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: d })).newPage(); const errs = []; p.on('pageerror', (e) => errs.push(String(e)));
   const click = (t) => p.evaluate((t) => { [...document.querySelectorAll('button')].find((y) => y.textContent.includes(t))?.click(); }, t);
-  await p.goto('http://127.0.0.1:5320/tools/idg-gallery/lobby.html'); await sleep(1500); await click('모험 시작'); await sleep(4500); await click('출격'); await sleep(7500);
+  await p.goto('http://127.0.0.1:5320/tools/idg-gallery/lobby.html'); await sleep(1500); await click('모험'); await sleep(4500); await click('출격'); await sleep(7500);
   await p.evaluate(() => window.__idgFun?.setOff(window.__idgFun.ids));
   const pinch = (cx, cy, from, to) => p.evaluate(async ([cx, cy, from, to]) => {
     const cv = document.querySelector('canvas.idg-canvas'), ev = (type, id, x, y, tgt) => tgt.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true }));

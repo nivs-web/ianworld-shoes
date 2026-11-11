@@ -38,7 +38,7 @@ export function fitView(cssW, cssH, dpr, ins = { t: 0, b: 0 }) {
    * 땅 줄은 언제나 단추 줄 바로 위에 붙인다 (줄이면 위쪽이 빈다).
    */
   if (crop && portrait) {
-    const bar = (crop.bar || 90) + 6, availPh = Math.max(1, (cssH - bar) * dpr);
+    const bar = (crop.bar || 90) + 6, availPh = Math.max(1, (cssH - bar - (crop.hudTop || 0)) * dpr);   /* 위 = 성 체력 게이지 아래 여백까지 (그 위는 하늘이 HUD 뒤로 이어짐) */
     const kFill = availPh / band, kWide = pw / 760, t = Math.max(0, Math.min(1, crop.z ?? 1));
     const k = Math.max(kWide, kWide + (kFill - kWide) * t);
     const w = Math.max(180, Math.min(MAX_W, Math.floor(pw / k)));

@@ -13,7 +13,7 @@ for (const nm of (process.argv[2] || 'p209,p209L,t43L,p169').split(',')) {
   await p.evaluate(() => document.querySelector('.idg-pp-card .idg-pp-pick')?.click()); await sleep(300);
   await p.evaluate(() => [...document.querySelectorAll('.idg-pp-up')].find((x) => !x.disabled)?.click()); await sleep(400); await p.screenshot({ path: `tools/_out/pp/${nm}-lobby2.png` });
   await p.evaluate(() => document.querySelector('.dialog-overlay:last-of-type')?.click()); await sleep(300);
-  await click('모험 시작'); await sleep(4500); await click('출격'); await sleep(3000);
+  await click('모험'); await sleep(4500); await click('출격'); await sleep(3000);
   await p.evaluate(() => { window.__idgBattle.S.base[1].hp = 0; }); await sleep(4200);
   await click('파워 업'); await sleep(700); await p.screenshot({ path: `tools/_out/pp/${nm}-game.png` });
   console.log(nm, '오류', errs.length, errs[0] || '');

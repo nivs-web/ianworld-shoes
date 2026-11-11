@@ -1238,3 +1238,56 @@ html.idg-rot.ccw .idg-hud.float .idg-boss { top: 96px; }
 @media (orientation: portrait) and (min-width: 560px) { .screen.idg-lobby .idg-prof-dragon { width: 150px; height: 130px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 36px; height: 36px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 20px; } }
 @media (max-width: 480px) { .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 8px; } .screen.idg-lobby .idg-prof-text .idg-stat { gap: 3px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 25px; height: 25px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 14px; } }
 @media (max-width: 380px) { .screen.idg-lobby .idg-panel.idg-prof { grid-template-columns: 76px minmax(0, 1fr); padding: 10px 10px; } .screen.idg-lobby .idg-prof-dragon { width: 76px; height: 76px; } .screen.idg-lobby .idg-prof-text .idg-stat-row { gap: 5px; } .screen.idg-lobby .idg-prof-text .idg-stat img { width: 21px; height: 21px; } .screen.idg-lobby .idg-prof-text .idg-stat b { font-size: 12px; } }
+
+/* ════ 로비 9차 (11/11 밤 대표님) ════ */
+/* 타이틀 = 글씨만 (배너 상자 없음) */
+.idg-title-text { margin: 4px 0 0; display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1; font-family: 'Neo둥근모', monospace; text-shadow: var(--idg-pxo); }
+.idg-title-text .ko { font-size: clamp(30px, 9vw, 54px); font-weight: 900; letter-spacing: 1px; }
+.idg-title-text .ko .z { color: #8cf25c; } .idg-title-text .ko .d { color: #5ad8ff; }
+.idg-title-text .en { font-size: clamp(13px, 3.4vw, 22px); color: #ffb52e; letter-spacing: 2px; }
+/* 프로필 : 위아래 여백 같게 · 닉네임 크게 · 용은 닉네임 윗줄부터 별 · 코인 · 젬 줄까지 (글 칸 높이 = 용 칸 높이) */
+.screen.idg-lobby > .idg-panel.idg-prof { padding: 13px 14px 11px; align-items: stretch; }
+.screen.idg-lobby .idg-prof-dragon { height: auto; min-height: 0; align-self: stretch; }
+.screen.idg-lobby .idg-prof-canvas { height: 100%; }
+.screen.idg-lobby .idg-prof-text { align-self: center; }
+.screen.idg-lobby .idg-prof-text .idg-player { font-size: 21px; }
+@media (max-width: 380px) { .screen.idg-lobby .idg-prof-text .idg-player { font-size: 18px; } }
+@media (orientation: portrait) and (min-width: 560px) { .screen.idg-lobby .idg-prof-text .idg-player { font-size: 28px; } .screen.idg-lobby .idg-prof-dragon { height: auto; } }
+/* 세로 : 모험시작 · 스테이지 크게 (프로필보다 중요) */
+@media (orientation: portrait) {
+  .screen.idg-lobby > .idg-start-row .idg-start { min-height: 76px; font-size: 26px; }
+  .screen.idg-lobby > .idg-start-row .idg-pick { min-height: 76px; min-width: 96px; }
+  .screen.idg-lobby > .idg-start-row .idg-pick img { width: 40px; height: 40px; }
+  .screen.idg-lobby > .idg-icons .idg-back-tile { display: none; }
+}
+@media (orientation: portrait) and (min-width: 560px) { .screen.idg-lobby > .idg-start-row .idg-start { min-height: 108px; font-size: 34px; } .screen.idg-lobby > .idg-start-row .idg-pick { min-height: 108px; min-width: 150px; } .screen.idg-lobby > .idg-start-row .idg-pick img { width: 58px; height: 58px; } }
+/* 가로 : 아이콘 줄 6칸(맨 오른쪽 = 오락실 화면으로 돌아가기) · 칸은 거의 정사각형 · 아래 긴 돌아가기 단추는 숨김 */
+@media (orientation: landscape) and (min-width: 560px) {
+  html.idg-lobby-on .screen.idg-lobby { grid-template-rows: minmax(0, 1fr) auto auto; grid-template-areas: "panel menu" "start menu" "icons icons"; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-back { display: none; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-mini-btn, html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-back-tile { height: clamp(64px, 19vh, 132px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-back-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: auto; min-width: 0; min-height: 0; margin: 0; padding: 4px 6px; font-size: clamp(11px, 2.4vh, 16px); line-height: 1.2; text-align: center; white-space: normal; word-break: keep-all; box-sizing: border-box; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-back-tile img, html.idg-lobby-on .screen.idg-lobby > .idg-icons .idg-back-tile svg { width: clamp(22px, 6vh, 44px); height: clamp(22px, 6vh, 44px); }
+}
+/* 4:3 · 16:10 태블릿 가로 : 모험시작 훨씬 크게 · 스테이지 2배 · 프로필은 작게 */
+@media (orientation: landscape) and (min-width: 560px) and (max-aspect-ratio: 17/10) {
+  html.idg-lobby-on .screen.idg-lobby { grid-template-rows: auto minmax(0, 1fr) auto; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-panel.idg-prof { height: auto; }
+  html.idg-lobby-on .screen.idg-lobby .idg-prof-dragon { height: clamp(80px, 16vh, 150px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row { height: 100%; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row .idg-start { height: 100%; min-height: 0; font-size: clamp(26px, 6vh, 48px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row .idg-pick { height: 100%; min-width: clamp(130px, 18vw, 220px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row .idg-pick img { width: clamp(48px, 9vh, 90px); height: clamp(48px, 9vh, 90px); }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row .idg-pick span { font-size: clamp(14px, 2.6vh, 22px); }
+}
+.screen.idg-lobby > .idg-panel.idg-prof { grid-template-columns: 128px minmax(0, 1fr); padding: 10px 12px 8px; }
+.screen.idg-lobby .idg-prof-dragon { width: 128px; }
+@media (max-width: 380px) { .screen.idg-lobby > .idg-panel.idg-prof { grid-template-columns: 96px minmax(0, 1fr); } .screen.idg-lobby .idg-prof-dragon { width: 96px; } }
+@media (orientation: portrait) and (min-width: 560px) { .screen.idg-lobby > .idg-panel.idg-prof { grid-template-columns: 190px minmax(0, 1fr); } .screen.idg-lobby .idg-prof-dragon { width: 190px; } }
+@media (orientation: landscape) and (min-width: 560px) and (max-aspect-ratio: 17/10) {
+  html.idg-lobby-on .screen.idg-lobby { grid-template-rows: minmax(0, 1fr) auto auto; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-panel.idg-prof { height: 100%; grid-template-columns: minmax(0, 40%) minmax(0, 1fr); }
+  html.idg-lobby-on .screen.idg-lobby .idg-prof-dragon { width: 100%; height: 100%; max-height: none; }
+  html.idg-lobby-on .screen.idg-lobby > .idg-start-row { height: clamp(110px, 30vh, 250px); }
+}

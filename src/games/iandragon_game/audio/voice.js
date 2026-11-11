@@ -38,11 +38,13 @@ const CAT = [
 ];
 const catLevel = (key) => { for (const [re, lv] of CAT) if (re.test(key)) return lv; return 5; };
 const lenLevel = (text) => { const n = text.replace(/[\s.,!?~…—\-'"]/g, '').length; return n <= 4 ? 1 : n <= 8 ? 2 : n <= 14 ? 3 : n <= 22 ? 4 : 5; };
-export const lineLevel = (key, line) => Math.max(catLevel(key), lenLevel(line.text));
+/* 11/11 밤 대표님 «1단계 = 시작 멘트 «좀비와 드래곤! 지금 시작합니다!» 한 줄 + 용이 자기 이름만 — 랜덤으로 안 하면 안 됨 · 이름은 꼭» :
+ * 용 이름(name/*)은 길이와 상관없이 1단계 · 타이틀 중 «지금 시작합니다» 줄도 1단계 */
+export const lineLevel = (key, line) => (key.startsWith('name/') ? 1 : key === 'title' && /지금 시작합니다/.test(line.text) ? 1 : Math.max(catLevel(key), lenLevel(line.text)));
 const GAP = [0, 4.0, 3.0, 2.0, 1.2, 0];          // 단계별 말 사이 최소 쉬는 틈(초)
-const ALWAYS = /^(win|lose|ending|title)$/;      // 승패 · 엔딩 · 타이틀은 쉬는 틈 무시 (단계는 지킨다)
+const ALWAYS = /^(win|lose|ending|title|name[/].+)$/;      /* 용 이름은 쉬는 틈 무시 — 누를 때마다 꼭 말한다 (겹치면 앞 말을 끊고) */      // 승패 · 엔딩 · 타이틀은 쉬는 틈 무시 (단계는 지킨다)
 const LV_KEY = 'idg_voice_level_v1';
-let level = 2;                                    // 기본 2단계 (조용하게 · 관리자 페이지에서 바꿈)
+let level = 1;                                    // 기본 1단계 (대표님 11/11 밤 · 관리자 페이지에서 바꿈)
 try { const v = localStorage.getItem(LV_KEY); if (v !== null && v !== '') level = Math.max(0, Math.min(5, Number(v) | 0)); } catch { /* */ }
 let lastSaid = -99;
 /** 말 많기 단계 0~5 (기기에 저장). 관리자 기본값만 넣을 땐 setVoiceLevel(n, { save: false }) */
@@ -73,9 +75,12 @@ function load(file) {
   return pr;
 }
 
-/** 게임에 들어갈 때 자주 쓰는 줄만 미리 받는다 (출격 · 보스 · 승패) */
-export function preloadVoices() {
-  for (const [k, lines] of Object.entries(VOICE_LINES)) if (/^(title|deploy|boss|win|lose|roar|fever|name)/.test(k)) lines.forEach((l, i) => { if (level && lineLevel(k, l) <= level) load(fileName(k, i)); });
+/**
+ * 미리 받기 (11/11 밤 «로딩이 엄청 느려졌다» — 예전엔 로비에서 목소리 180개를 한꺼번에 받았다)
+ *  keys 를 주면 그 종류만 (전투 시작 때 내 덱 용 이름 · 출격), 안 주면 시작 멘트만.
+ */
+export function preloadVoices(keys = ['title']) {
+  for (const k of keys) { const lines = VOICE_LINES[k]; if (lines) lines.forEach((l, i) => { if (level && lineLevel(k, l) <= level) load(fileName(k, i)); }); }
 }
 
 let playing = null;
