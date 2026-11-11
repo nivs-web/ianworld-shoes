@@ -24,6 +24,8 @@ const ZART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant' };
 const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const UI = '/assets/iandragon_game/ui/';
+/** 떠 있는 HUD : 위 · 아래 띠 판 없이 단추만 (CSS .idg-hud.float) */
+const FLOAT_HUD = true;
 /** 아이콘 그림 (없으면 글자 fallback) */
 const ico = (name, alt) => { const i = h('img', 'ico'); i.src = `${UI}${name}.png`; i.alt = alt; i.draggable = false; i.onerror = () => { i.replaceWith(h('span', 'ico-t', alt)); }; return i; };
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -31,14 +33,15 @@ const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStar
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
 export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null, talk = null, isNet = false }, cb) {
   let useCons = null;   // 시작 카드에서 고른 편의품
-  const root = h('div', 'idg-hud'); host.appendChild(root);
+  const root = h('div', 'idg-hud' + (FLOAT_HUD ? ' float' : '')); host.appendChild(root);
   /* 대표님 «PC 에서 위 글씨 · 숫자가 너무 작다» (11/11) : HUD 전체를 화면 크기에 맞춰 키운다 (폰 가로 = 1 · PC 1280×800 ≈ 1.33 · 최대 1.7) */
   const fitHud = () => { const z = Math.max(1, Math.min(1.7, innerWidth / 960, innerHeight / 540)); root.style.zoom = String(Math.round(z * 100) / 100); };
   /* 위 · 아래 띠 높이를 캔버스에 알려 전장이 띠에 가리지 않게 한다 (app.js 'idg-insets') */
   const sendIns = () => requestAnimationFrame(() => {
     const H = host.getBoundingClientRect(), tb = root.querySelector('.idg-top')?.getBoundingClientRect(), bb = root.querySelector('.idg-bot')?.getBoundingClientRect();
     if (!tb || !bb) return;
-    host.dispatchEvent(new CustomEvent('idg-insets', { detail: { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
+    /* 떠 있는 HUD (11/11 대표님 «위 · 아래 띠가 게임 화면을 가린다 · 단추는 공중에 떠 있게») : 띠 판이 없으니 캔버스는 화면 전체 — 띠 높이를 0 으로 알린다 */
+    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0 } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
   });
   const onRs = () => { fitHud(); sendIns(); };
   fitHud(); window.addEventListener('resize', onRs);
@@ -61,7 +64,10 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const autoB = h('button', 'idg-btn idg-speed idg-auto', '자동'); autoB.type = 'button'; autoB.onclick = () => cb.auto(); if (canAuto) speedB.after(autoB);
   const hp = h('div', 'idg-hp'); root.appendChild(hp);
   const myHp = h('div', 'idg-hp-me'), foeHp = h('div', 'idg-hp-foe');
-  hp.append(myHp, foeHp);
+  /* 성 체력 게이지 (그림 담당 hp_castle_* · 숫자 옆) */
+  const myBar = h('i', 'idg-cbar'), foeBar = h('i', 'idg-cbar'); myBar.appendChild(h('b')); foeBar.appendChild(h('b'));
+  const myWrap = h('div', 'idg-hp-side me'), foeWrap = h('div', 'idg-hp-side foe'); myWrap.append(myHp, myBar); foeWrap.append(foeBar, foeHp);
+  hp.append(myWrap, foeWrap);
   const boss = h('div', 'idg-boss'); const bossFill = h('i'); boss.append(h('span', null, '보스'), h('b', null, '')); boss.lastChild.appendChild(bossFill); root.appendChild(boss);
   const warn = h('div', 'idg-warn', 'WARNING'); root.appendChild(warn);
   /* 보스 이름 띠 : 보스가 새로 나오면 1.2초(bossFx.js CUT_TIME) 보여 주고, 그 뒤에 WARNING 을 켠다 (처음 보스만) */
@@ -205,7 +211,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       moneyN.textContent = `${fmt(p.money)} / ${fmt(W[p.wl].max * p.B.walletMax)}`;
       const sd = ui.side || 0;   // 대결 오른쪽 편 = 내 둥지는 1번
       myHp.textContent = ` ${fmt(Math.max(0, S.base[sd].hp))}`;
-      foeHp.textContent = S.stage.raid ? '∞ ' : `${fmt(Math.max(0, S.base[1 - sd].hp))} `;   // 습격 : 좀비 성은 무너지지 않음
+      foeHp.textContent = S.stage.raid ? '∞ ' : `${fmt(Math.max(0, S.base[1 - sd].hp))} `;
+      const bm = S.base[sd], bf = S.base[1 - sd];
+      myBar.style.setProperty('--p', String(Math.max(0, bm.hp / (bm.maxHp || 1)))); foeBar.style.setProperty('--p', S.stage.raid ? '1' : String(Math.max(0, bf.hp / (bf.maxHp || 1))));   // 습격 : 좀비 성은 무너지지 않음
       const top1 = p.wl >= W.length - 1;
       wLv.textContent = `Lv${p.wl + 1}`; wCost.textContent = top1 ? 'MAX' : fmt(W[p.wl].cost);
       wallet.classList.toggle('can', !top1 && p.money >= W[p.wl].cost && S.stage.walletLock == null);

@@ -549,3 +549,36 @@ html.idg-wide body { width: 100%; }
 .idg-hud .idg-rage.on { animation: idgBreathSoft 1s steps(2) infinite; }
 .idg-hud .idg-wallet.can { animation: none; filter: none; }
 @media (max-height: 430px) { .idg-hud .idg-breath b { width: 32px; height: 28px; } }
+/* 창 제목판 (그림 담당 새 리본 · 9조각 : 양 끝 72칸 장식 · 위아래 30칸 · 가운데 늘림) — 대표님 «만들다 만 것 같다» 고침 */
+.dialog[class*="idg-"] > .idg-how-title { width: auto; align-self: center; min-width: 62%; margin: 0 auto 8px; padding: 1px 8px 3px; border: solid transparent; border-width: 11px 26px; border-image: url(/assets/iandragon_game/ai/lobby/ribbon.webp) 30 72 fill / 11px 26px stretch; background: none; color: #fff; font-size: 17px; line-height: 1.2; text-shadow: var(--idg-pxo-fire); }
+.dialog[class*="idg-"] > .idg-how-title::before { left: -120px; right: -120px; top: -12px; bottom: -6px; }
+/* 리본 2차 : 고정 제목 뒤 띠(::before)가 테두리 그림 위에 그려져 리본을 가렸다 → 리본은 ::after 겹으로 띠 위에 */
+.dialog[class*="idg-"] > .idg-how-title { border: 0; border-image: none; padding: 12px 34px 14px; }
+.dialog[class*="idg-"] > .idg-how-title::after { content: ''; position: absolute; inset: 0; z-index: -1; border: solid transparent; border-width: 11px 26px; border-image: url(/assets/iandragon_game/ai/lobby/ribbon.webp) 30 72 fill / 11px 26px stretch; }
+
+/* ════ 떠 있는 HUD (2026-11-11 대표님 «위 · 아래 띠가 게임 화면을 가리고 몰입을 방해 · 단추는 공중에 떠 있게 · 소리 단추는 설정으로») ════
+ * 띠 판 없음 → 전장이 화면 전체. 위 = 하늘 위 작은 단추 · 글씨(도트 외곽선) / 아래 = 흙 띠 위에 떠 있는 화로 · 카드 · 스킬 · 브레스. */
+.idg-hud.float .idg-top { border: 0; border-image: none; background: none; margin: 0; padding: 0 2px; gap: 6px; }
+.idg-hud.float .idg-snd { display: none; }   /* 소리는 일시정지 창 «소리 설정»에서 */
+.idg-hud.float .idg-bot { border: 0; border-image: none; background: none; padding: 0; bottom: max(4px, env(safe-area-inset-bottom)); gap: 6px; }
+.idg-hud.float .idg-money { background: rgba(14, 6, 32, .55); }
+.idg-hud.float .idg-hp { margin-top: 2px; }
+@media (max-height: 430px) {
+  .idg-hud.float { padding: max(3px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) 0 max(6px, env(safe-area-inset-left)); }
+  .idg-hud.float .idg-bot { bottom: max(3px, env(safe-area-inset-bottom)); left: max(6px, env(safe-area-inset-left)); right: max(6px, env(safe-area-inset-right)); }
+  .idg-hud.float .idg-tip[data-at] { top: 54px; }
+}
+/* 성 체력 게이지 : 위 숫자 옆 (♥ 1,500 [■■■] … [■■■] 1,000 ♥) — 그림 hp_castle_frame/fill · 채움 자리 x13.3% y50% w80.8% h30% */
+.idg-hp-side { display: flex; align-items: center; gap: 4px; }
+.idg-cbar { position: relative; display: block; width: 120px; height: 20px; background: url(/assets/iandragon_game/ai/hud/hp_castle_frame.png) center / 100% 100% no-repeat; image-rendering: pixelated; flex: none; }
+.idg-cbar b { position: absolute; left: 13.3%; top: 35%; height: 30%; width: calc(80.8% * var(--p, 1)); background: url(/assets/iandragon_game/ai/hud/hp_castle_fill.png) left center / auto 100% no-repeat; image-rendering: pixelated; }
+.idg-hp-side.foe .idg-cbar { transform: scaleX(-1); }   /* 좀비 쪽은 거울 — 오른쪽 끝에서 줄어든다 */
+@media (max-height: 430px) { .idg-cbar { width: 96px; height: 16px; } }
+/* 띄어쓰기 간격 (대표님 «글자 간격은 딱 좋은데 띄어쓰기가 과도하게 벌어졌다 · 한 칸 정도 줄여») — 도트 글꼴의 빈칸이 넓다 → 좀비와 드래곤 화면 전체에서 빈칸만 줄임 */
+.idg-hud, .dialog[class*="idg-"], .dialog[class*="idg-"] button, .idg-hud button, .idg-panel, .idg-menu, .idg-tile, .idg-start, .pbtn.idg-back, .idg-stat-row { word-spacing: -0.14em; }
+/* 연구소 «월드 1을 깬 뒤 · 올리기» 단추 : 좌우 여백 */
+.idg-nest-up { padding: 0 12px; letter-spacing: 0; }
+/* 보물 단계 칸 ★10 ★20 ★30 */
+.idg-tre-steps { display: inline-flex; gap: 3px; margin-left: 4px; vertical-align: 1px; }
+.idg-tre-steps i { font: 700 10px/1 'Neo둥근모', monospace; font-style: normal; padding: 2px 4px 3px; border-radius: 4px; background: #2a1d48; color: #7d6f9a; word-spacing: 0; }
+.idg-tre-steps i.on { background: #ffcf4a; color: #4a2a00; }

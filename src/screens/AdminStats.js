@@ -32,7 +32,7 @@ export default function AdminStats(nav) {
   load();
   const tuningBtn = () => [button('신규 회원 가입 현황', () => nav.push(AdminMembers), { primary: true }), button(S.adminTuningTitle, () => nav.push(AdminTuning), { primary: true }),
     /* 좀비와 드래곤 에셋 갤러리 (2026-11-11 대표님 «가끔 보고 고칠 곳을 알려 주려고») — 그림 담당이 정적 페이지로 빌드해 public/admin/idg-gallery/ 에 둔다 */
-    button('좀비와 드래곤 에셋', () => window.open('/admin/idg-gallery/', '_blank', 'noopener'), { primary: true })];
+    button('좀비와 드래곤 에셋', () => window.open('/admin/idg-gallery/index.html', '_blank', 'noopener'), { primary: true })];
 
   return {
     onLeave() { live = false; },

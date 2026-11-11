@@ -6,7 +6,7 @@
  * 유닛 = 부품 캐릭터(rig.js). 코어 상태 walk · fore · back · kb → 그림 상태 walk · fore · hit(0.12초) · back · kb.
  * 연출(맞음 번쩍 · 불꽃 · 쓰러짐 별가루 · 기지 흔들림/금 · 브레스 불줄기 · 보스 충격파 · 승리 때 탑 무너짐)은 전부 화면 전용.
  */
-import { Assets, Container, Sprite, Graphics, ColorMatrixFilter } from 'pixi.js';
+import { Assets, AnimatedSprite, Container, Sprite, Graphics, ColorMatrixFilter } from 'pixi.js';
 import { loadRig, createRigged } from './rig.js';
 import { loadFun, createFun, FUN_SOUND } from './fun.js';
 import * as Audio from '../audio/index.js';
@@ -47,6 +47,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   /* 체력 바 도트 그림 (그림 담당 hp_bars.json · 2026-11-11 대표님 «생명 게이지가 도트가 아니다») — 없으면 예전 막대 */
   const [hpUF, hpUMe, hpUFoe, hpCF, hpCFill, hpMeta] = await Promise.all([...['hp_unit_frame', 'hp_unit_fill_me', 'hp_unit_fill_foe', 'hp_castle_frame', 'hp_castle_fill'].map((n) => tryLoad(`${AI}hud/${n}.png`)), fetch(`${AI}hud/hp_bars.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
   const hpArt = !!(hpUF && hpUMe && hpUFoe && hpMeta);
+  /* 운석 · 폭발 그림 (그림 담당 ai/fx/meteor · boom — 없으면 입자로) */
+  const [meteorT, boomFx] = await Promise.all([tryLoad(`${AI}fx/meteor.png`), fxFrames('boom').catch(() => null)]);
   /** 도트 체력 바 하나 : 테두리 + 채움(왼쪽 맞춤 · 비율만큼 가로로 줄임). W = 화면 너비 */
   function makeBar(frameT, fillT, m, W) {
     const c = new Container(), k = W / m.frame[0];
@@ -80,7 +82,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, GY + 10);
   const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, GY + 10); if (pvp) tower.scale.x = -1;
   stage.addChild(nest, tower, units, fx);
-  const castleBars = hpCF && hpCFill && hpMeta ? [0, 1].map(() => stage.addChild(makeBar(hpCF, hpCFill, hpMeta.castle, 120))) : [];   // 양쪽 성 위 체력 바
+  const castleBars = [];   /* 성 체력 게이지는 HUD 위 숫자 옆으로 옮김 (11/11 · 떠 있는 HUD) — 성 위 캔버스 바는 쓰지 않음 */
   const shade = new Graphics().rect(-50, -50, FIELD + 100, 700).fill(0x000000); shade.alpha = 0; root.addChild(shade);
   /* 안개 기믹 : 내 맨 앞 + 260칸 너머를 짙은 안개로 (화면 전용) */
   const fog = new Graphics(); root.addChildAt(fog, root.getChildIndex(funFront));
@@ -314,15 +316,20 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     /* 운석 : 0.5초 동안 왼쪽 위에서 비스듬히 떨어지고(불꼬리) → 땅에 닿으면 주황 번쩍 · 흔들 · 불똥 · 먼지 고리 */
     for (let i = mets.length - 1; i >= 0; i--) {
       const m = mets[i]; m.t += dt; const k = Math.min(1, m.t / 0.5);
-      if (!m.g) { m.g = new Graphics().circle(0, 0, 13).fill(0xffe08a).circle(0, 0, 9).fill(0xff7a1a).circle(-3, -3, 4).fill(0xfff6d0); m.g.blendMode = 'add'; fx.addChild(m.g); }
-      const px = m.x - 220 * (1 - k), py = -40 + (GY - 10 + 40) * k * k;
-      m.g.position.set(px, py); m.g.scale.set(1 + k * 0.6);
-      if (k < 1) puff(px, py, Math.random() < 0.5 ? 0xff9a2e : 0xffd84a, 2, 30, 0.35, 3);
+      if (!m.g) {
+        if (meteorT) { m.g = new Sprite(meteorT); m.g.anchor.set(0.25, 0.72); }   // 불꼬리가 오른쪽 위 → 오른쪽 위에서 왼쪽 아래로
+        else { m.g = new Graphics().circle(0, 0, 13).fill(0xffe08a).circle(0, 0, 9).fill(0xff7a1a); }
+        fx.addChild(m.g);
+      }
+      const px = m.x + 220 * (1 - k), py = -40 + (GY - 10 + 40) * k * k;
+      m.g.position.set(px, py); m.g.scale.set(meteorT ? 0.55 + k * 0.25 : 1 + k * 0.6);
+      if (k < 1 && !meteorT) puff(px, py, Math.random() < 0.5 ? 0xff9a2e : 0xffd84a, 2, 30, 0.35, 3);
       else {
         m.g.destroy(); mets.splice(i, 1);
-        flashT = 0.3; flashC = 0xff8a2a; shakes.screen = Math.max(shakes.screen, 0.4);
-        puff(m.x, GY - 6, 0xffb03a, 26, 260, 0.6, 3); puff(m.x, GY - 6, 0x8a6a5a, 14, 120, 0.8, 4);
-        const ring = new Graphics().circle(0, 0, 20).stroke({ width: 4, color: 0xffd84a }); ring.position.set(m.x, GY - 4); ring.blendMode = 'add'; fx.addChild(ring); parts.push({ g: ring, ring: true, life: 0.5, t: 0 });
+        flashT = 0.12; flashC = 0xff8a2a; shakes.screen = Math.max(shakes.screen, 0.4);   /* 번쩍은 짧고 약하게 (빛번짐 규칙) */
+        if (boomFx) { const b = new AnimatedSprite(boomFx.frames); b.anchor.set(0.5, 0.5); b.scale.set(1.5); b.position.set(m.x, GY - 40); b.loop = false; b.animationSpeed = boomFx.meta.fps / 60; b.onComplete = () => b.destroy(); fx.addChild(b); b.play(); puff(m.x, GY - 6, 0x8a6a5a, 8, 110, 0.6, 3); }
+        else { puff(m.x, GY - 6, 0xffb03a, 26, 260, 0.6, 3); puff(m.x, GY - 6, 0x8a6a5a, 14, 120, 0.8, 4); }
+        if (!boomFx) { const ring = new Graphics().circle(0, 0, 20).stroke({ width: 4, color: 0xffd84a }); ring.position.set(m.x, GY - 4); ring.blendMode = 'add'; fx.addChild(ring); parts.push({ g: ring, ring: true, life: 0.5, t: 0 }); }
       }
     }
     for (let i = parts.length - 1; i >= 0; i--) {

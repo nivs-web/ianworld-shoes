@@ -41,7 +41,7 @@ export function showLab(onChange) {
     for (let w = 1; w <= LAST_STAGE / 10; w++) {
       let st = 0; for (let i = (w - 1) * 10; i < w * 10; i++) st += Number(g.stars[i]) || 0;
       const T = TREASURE[w - 1], n = treasureLv(g.stars, w);
-      tre.appendChild(el('div.idg-nest-row', null, [el('div.idg-nest-name', null, [el('b', `월드 ${w} 보물 ${'◆'.repeat(n)}${'◇'.repeat(3 - n)}`), el('span', `별 ${st}/30 · ${T.name} ${n ? eff(T, n, T.flat) : '+0'}`)])]));
+      tre.appendChild(el('div.idg-nest-row', null, [el('div.idg-nest-name', null, [el('b', null, [`월드 ${w} 보물 `, el('span.idg-tre-steps', null, [10, 20, 30].map((t, i) => el('i' + (i < n ? '.on' : ''), `★${t}`)))]), el('span', `별 ${st}/30 · ${T.name} ${n ? eff(T, n, T.flat) : '+0'}`)])]));
     }
     const ld = el('div.idg-lab-sec', null, [el('div.idg-codex-h', '리더 (성 위에서 브레스를 뿜어요)')]);
     const row = el('div.idg-leader-row');

@@ -15,6 +15,7 @@ const DEV = {
   pcfhd: { lobby: { width: 1920, height: 1080 }, game: { width: 1920, height: 1080 }, dpr: 1 },
   tab: { lobby: { width: 820, height: 1180 }, game: { width: 1180, height: 820 }, dpr: 2 },
   phone: { lobby: { width: 390, height: 844 }, game: { width: 844, height: 390 }, dpr: 3 },
+  phone2k: { lobby: { width: 369, height: 800 }, game: { width: 800, height: 369 }, dpr: 2.5 },   // 대표님 폰 캡처 2000×923 과 같은 비율 · 크기
   phonebar: { lobby: { width: 360, height: 780 }, game: { width: 780, height: 340 }, dpr: 3 },   // 주소창이 보이는 폰 가로 (대표님 캡처 비율)
 };
 fs.mkdirSync(OUT, { recursive: true });

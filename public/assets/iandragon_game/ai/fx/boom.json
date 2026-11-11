@@ -1,0 +1,13 @@
+{
+ "file": "ai/fx/boom.png",
+ "frames": 8,
+ "w": 86,
+ "h": 96,
+ "fps": 14,
+ "anchor": [
+  0.5,
+  0.5
+ ],
+ "note": "가로 띠 · 왼쪽부터 차례로 · 한 번만(고리 아님) · anchor = 가운데 (터지는 자리)",
+ "loop": false
+}
