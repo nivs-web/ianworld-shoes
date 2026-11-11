@@ -49,7 +49,7 @@ export async function checkLive(id, { origin = 'https://ianworld.vercel.app', lo
   const files = localFiles(id), missing = [], badSize = [], noCors = [];
   await pool(files, 24, async (f, k) => {
     let r = null;
-    for (let t = 0; t < 3 && !r; t++) { try { r = await fetch(urlOf(id, f.rel), { method: 'HEAD', headers: { Origin: origin } }); } catch { await new Promise((ok) => setTimeout(ok, 500)); } }
+    for (let t = 0; t < 3 && !r; t++) { try { r = await fetch(urlOf(id, f.rel), { method: 'HEAD', headers: { Origin: origin, 'Accept-Encoding': 'identity' } }); /* JSON 은 Cloudflare 가 압축해 보내 길이가 달라 보인다 → 압축 없이 */ } catch { await new Promise((ok) => setTimeout(ok, 500)); } }
     if (!r || r.status !== 200) missing.push(f.rel);
     else {
       if (Number(r.headers.get('content-length')) !== f.size) badSize.push(f.rel);

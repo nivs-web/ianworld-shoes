@@ -10,9 +10,11 @@ import { CONFIG as R2, liveBase, checkLive } from './tools/r2-assets.mjs';
  * 개발 서버는 그대로 로컬 파일 — 보조 · 겜팀장 작업 방식이 안 바뀐다.
  */
 function r2Assets() {
-  const live = Object.entries(R2.games).filter(([, g]) => g.live);
+  /* 시험용 : R2_LIVE=idg 면 설정과 상관없이 그 게임을 R2 로 · R2_DEV=1 이면 개발 서버에서도 (실제 화면으로 R2 확인할 때만) */
+  const force = (process.env.R2_LIVE || '').split(',').filter(Boolean);
+  const live = Object.entries(R2.games).filter(([gid, g]) => g.live || force.includes(gid));
   return {
-    name: 'r2-assets', apply: 'build', enforce: 'pre',
+    name: 'r2-assets', apply: (_, { command }) => command === 'build' || process.env.R2_DEV === '1', enforce: 'pre',
     transform(code, id) {
       if (!live.length || id.includes('node_modules') || !/\.(js|mjs|css|json)(\?|$)/.test(id)) return null;
       let out = code, hit = false;

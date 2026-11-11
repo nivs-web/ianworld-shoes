@@ -58,6 +58,10 @@ async function syncGame(env, id) {
   const g = CONFIG.games[id], files = localFiles(id);
   const remote = await listRemote(env, `${id}/${g.ver}/`);
   const todo = files.filter((f) => remote[keyOf(id, f.rel)] !== crypto.createHash('md5').update(fs.readFileSync(f.abs)).digest('hex'));
+  /* ★ 같은 판 번호에 «이미 있는 파일을 다른 내용으로» 덮어쓰면 1년 캐시 때문에 사람들은 옛 그림을 계속 본다 → 판 번호(ver)를 올리라고 멈춘다 */
+  const changed = todo.filter((f) => remote[keyOf(id, f.rel)]);
+  if (changed.length && !process.argv.includes('--force')) { console.error(`✘ ${g.name} : 판 ${g.ver} 에 이미 올라간 파일 ${changed.length}개가 바뀌었습니다(예: ${changed.slice(0, 3).map((f) => f.rel).join(', ')}).
+  r2-assets.json 의 ver 를 올린 뒤 다시 돌리세요 (같은 판에 덮어쓰면 1년 캐시 때문에 옛 그림이 보임).`); return false; }
   const mb = (n) => (n / 1048576).toFixed(1) + ' MB';
   console.log(`▶ ${g.name} (${id}) 판 ${g.ver} : 로컬 ${files.length}개 · R2 에 이미 ${Object.keys(remote).length}개 · 올릴 것 ${todo.length}개 (${mb(todo.reduce((a, f) => a + f.size, 0))})`);
   let done = 0, fail = [];
