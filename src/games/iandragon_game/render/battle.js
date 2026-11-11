@@ -253,6 +253,8 @@ function loseHint(S, me = 0) {
   const p = S.players[me];
   if (p.st.walletUps === 0) return '화로를 올리면 불씨가 더 빨리 모여요!';
   if (p.st.breath === 0) return '브레스가 차면 꾹 눌러요! 앞에 있는 좀비를 한꺼번에 태워요.';
+  if (p.skills?.length && p.st.skill === 0) return '스킬 단추(오른쪽 위)를 눌러 봐요! 좀비가 몰려올 때 한 번에 쓸어요.';
+  if (p.st.rageUse === 0 && S.t > 40) return '«으르렁!» 게이지가 차면 눌러요 — 잠깐 모든 용이 세져요.';
   if (p.st.spawned < 15) return '용을 더 자주 내보내 보세요. 싼 꼬물이로 앞을 막아요.';
-  return '돌등이처럼 튼튼한 용으로 앞을 막고, 뒤에서 퉤퉤로 공격해요.';
+  return Math.random() < 0.5 ? '돌등이처럼 튼튼한 용으로 앞을 막고, 뒤에서 퉤퉤로 공격해요.' : '둥지에서 용을 레벨업하거나, 별을 딴 판을 «자동»으로 돌려 코인을 모아 봐요.';
 }

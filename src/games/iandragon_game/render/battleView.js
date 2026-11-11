@@ -170,7 +170,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
         R.root.position.set(v.x, v.y); R.root.zIndex = v.y + (u.boss ? -20 : 0); units.addChild(R.root); V.set(u.id, v);
         v.h = Math.min(220, R.root.height || 60);
       }
-      v.x += (M + u.x - v.x) * Math.min(1, dt * 18);
+      if (!v.flee) v.x += (M + u.x - v.x) * Math.min(1, dt * 18);   // 도망치는 좀비는 코어 위치를 안 따름
       const R = v.R;
       if (u.hp < v.hp) { api.hits++; api.bigHit = v.hp - u.hp > u.maxHp * 0.25; v.flash = 0.08; if (u.hp > 0) puff(v.x, v.y - 30, u.side ? 0xfff0a0 : 0xffffff, 4, 60, 0.25, 1.6); }
       v.hp = u.hp;
@@ -190,6 +190,13 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       R.root.rotation = corpse ? (u.side ? -1.3 : 1.3) : 0;
       R.root.position.set(Math.round(v.x), Math.round(v.y + dy));
       v.flash -= dt; R.root.filters = v.flash > 0 ? [white] : null;
+      if (u.hp < u.maxHp && v.flash > 0) v.barT = 1.5;
+      if ((v.barT = (v.barT || 0) - dt) > 0 && u.alive && !buried) {   // 체력바 : 맞으면 잠깐
+        if (!v.bar) { v.bar = new Graphics(); badges.addChild(v.bar); }
+        const w = u.boss ? 60 : 30, f = Math.max(0, u.hp / u.maxHp);
+        v.bar.clear().rect(-w / 2, 0, w, 4).fill({ color: 0x000000, alpha: 0.6 }).rect(-w / 2, 0, w * f, 4).fill(u.side === (mirror ? 1 : 0) ? 0x6bdc6b : 0xff5a4a);
+        v.bar.visible = true; v.bar.alpha = Math.min(1, v.barT * 2); v.bar.position.set(Math.round(v.x), Math.round(v.y + dy - (v.h || 60) - 4));
+      } else if (v.bar) v.bar.visible = false;
       const sk = u.alive && !buried ? stOf(u) : null, tx = sk && stTex[sk];
       if (tx) {
         if (!v.badge) { v.badge = new Sprite(tx); v.badge.anchor.set(0.5, 1); v.badge.width = v.badge.height = 20; badges.addChild(v.badge); }
@@ -201,8 +208,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       if (alive.has(id) && v.dieT < 0) continue;
       if (v.dieT < 0) { v.dieT = 0; puff(v.x, v.y - 30, 0xfff6c0, 10, 110, 0.5, 2); }
       if (v.badge) v.badge.visible = false;
+      if (v.bar) v.bar.visible = false;
       v.dieT += dt; v.R.root.alpha = Math.max(0, 1 - v.dieT / 0.35); v.R.root.y = v.y - v.dieT * 30;
-      if (v.dieT > 0.35) { v.R.root.destroy({ children: true }); v.badge?.destroy(); V.delete(id); }
+      if (v.dieT > 0.35) { v.R.root.destroy({ children: true }); v.badge?.destroy(); v.bar?.destroy(); V.delete(id); }
     }
   }
   /** 원거리 : 가장 가까운 상대에게 불덩이 / 침을 날린다 (그림 전용) */
@@ -275,6 +283,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   function ending(S, dt) {
     if (!S.over) return;
     overT += dt;
+    if (S.over.winner === 0 && !pvp) for (const u of S.units) { const v = V.get(u.id); if (v && u.side === 1 && u.alive) { v.flee = true; v.x += dt * 260; v.R.root.scale.x = Math.abs(v.R.root.scale.x); } }   // 좀비들 줄행랑 (오른쪽으로 도망)
     if (S.over.winner === 0) {   // 좀비 탑이 무너지고 좀비들이 줄행랑
       tower.y = GY + 10 + Math.min(60, overT * 40); tower.alpha = Math.max(0, 1 - overT / 1.6); if (overT < 1.2) { shakes.screen = 0.1; if (Math.random() < 0.5) puff(tower.x + (Math.random() - 0.5) * 80, GY - Math.random() * 60, 0x9a8c80, 2, 50, 0.6, 3); }
     } else if (overT < 1) shakes.nest = 0.1;
