@@ -3,6 +3,6 @@
   "origin": "https://oraksil.onstori.com",
   "bucket": "oraksil-assets",
   "games": {
-    "idg": { "name": "좀비와 드래곤", "dir": "public/assets/iandragon_game", "prefix": "/assets/iandragon_game/", "ver": "20261111a", "live": false, "strip": false }
+    "idg": { "name": "좀비와 드래곤", "dir": "public/assets/iandragon_game", "prefix": "/assets/iandragon_game/", "ver": "20261111a", "live": true, "strip": false }
   }
 }
