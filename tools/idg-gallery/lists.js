@@ -21,6 +21,7 @@ export const TABS = [
   { id: 'zombie', label: '좀비', kind: 'rig', items: () => entries(ENEMIES).filter(([, e]) => !e.boss).map(([id, e]) => unit(id, e, ART[id] || id, e.name, `${ART[id] ? id + ' → ' + ART[id] : id} · 월드 ${e.w || '-'}`, { facing: -1 })) },
   { id: 'boss', label: '보스', kind: 'rig', items: () => entries(ENEMIES).filter(([, e]) => e.boss).map(([id, e]) => unit(id, e, ART[id] || id, e.name, `${ART[id] ? id + ' → ' + ART[id] : id} · 월드 ${e.w}`, { facing: -1 })) },
   { id: 'hatch', label: '부화장 용', kind: 'rig', items: () => entries(UNITS).filter(([, u]) => u.rar !== 'story').map(([id, u]) => unit(id, u, id, u.name, `${id} · ${RAR[u.rar]}`, { facing: 1, rar: u.rar })) },
+  { id: 'live', label: '배경 살아있게', kind: 'live' },
   { id: 'bg', label: '배경', kind: 'bg', items: () => Array.from({ length: 10 }, (_, i) => ({ id: 'w' + String(i + 1).padStart(2, '0'), world: i + 1, name: `월드 ${i + 1} 배경` })) },
   { id: 'castle', label: '성(탑)', kind: 'castle', items: () => [
     { id: 'nest', name: '부화 둥지 (내 성)', prefix: 'nest', world: 0 },
