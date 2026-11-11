@@ -8,6 +8,7 @@ import { isOn } from '../../../services/switches.js';
 import { hasTrait } from '../core/rules.js';
 import { getSettings } from '../../../audio/audio.js';
 import { applySound } from './soundPrefs.js';
+import { VOICE_LINES } from '../audio/voice-lines.js';
 
 const deployFx = (cost) => (cost < 150 ? 'deploy_s' : cost < 400 ? 'deploy_m' : 'deploy_l');
 
@@ -36,7 +37,14 @@ export function createBattleSound(stage, me = 0) {
       const p = S.players[me];
       if (p.st.spawned > was.spawned) {
         const ids = new Set(S.units.filter((u) => u.side === 0).map((u) => u.id));
-        for (const u of S.units) if (u.side === 0 && !was.units.has(u.id)) { Audio.play(deployFx(u.def.cost)); if (Math.random() < 0.4) Audio.voice(`deploy/${u.def._art}`); break; }
+        for (const u of S.units) if (u.side === 0 && !was.units.has(u.id)) {
+          Audio.play(deployFx(u.def.cost));
+          /* 대표님 11/11 «용을 내보내면 그 용 목소리로 자기 이름을 외치게 (세 가지 말투 돌아가며)» — 겜팀장 name/<용> 녹음이 있으면 매번(0.6초 간격), 없으면 예전 출격 대사 40% */
+          const nk = `name/${u.def._art}`;
+          if (VOICE_LINES[nk]) { if (S.t - (was.nameAt ?? -9) > 0.6) { was.nameAt = S.t; Audio.voice(nk); } }
+          else if (Math.random() < 0.4) Audio.voice(`deploy/${u.def._art}`);
+          break;
+        }
         was.units = ids;
       } else was.units = new Set(S.units.filter((u) => u.side === 0).map((u) => u.id));
       was.spawned = p.st.spawned;

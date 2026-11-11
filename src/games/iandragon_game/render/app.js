@@ -31,7 +31,7 @@ export function fitView(cssW, cssH, dpr, ins = { t: 0, b: 0 }) {
   const crop = ins.f || null;
   const band = crop ? BASE_H - crop.top - crop.bottom : ins.t || ins.b ? BASE_H - SKY_CUT - DIRT_CUT : BASE_H;
   const ph = Math.max(1, Math.floor((cssH - ins.t - ins.b) * dpr));
-  const minW = crop ? 820 : BASE_W;   /* 확대 모드는 화면 너비를 820칸까지 줄여도 된다 (전장 최소 1240 보다 충분히 작음) */
+  const minW = crop ? 760 : BASE_W;   /* 떠 있는 HUD : 어느 기기든 화면을 꽉 채운다(태블릿 · PC 처럼 덜 긴 화면은 화면 너비를 760칸까지 줄여 위아래 검은 띠 없이) */
   const kFit = Math.min(pw / minW, ph / band);
   /*
    * 2026-11-11 대표님 «PC 에서 배경이 흐리다» : 예전엔 960×540 으로 그린 캔버스를 그대로 늘려서 제미나이 고해상도 그림이 뭉개졌다.
