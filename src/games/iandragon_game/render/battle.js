@@ -74,7 +74,8 @@ export async function startBattle(ctx, opts) {
   const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
   const cmds = [];
-  let acc = 0, bossSeen = false, gone = false;
+  let acc = 0, bossSeen = false, gone = false, goldKills = 0;
+  const goldSeen = new Set();   // 황금 좀비 쓰러뜨린 수 (판 끝 코인 +5% 씩)
   const hud = createHud(ctx.host || opts.hudHost, { stage, isNet: !!net, deck: myDeck, leader: loads[me].leader, cons: net || raid ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) { if (S.over) return; if (net) { if (!ui.intro) ls.press(c, tickN); } else if (!ui.paused) cmds.push({ p: 0, ...c }); },
     go(useCons) {
@@ -94,7 +95,7 @@ export async function startBattle(ctx, opts) {
     auto() { if (canAuto) ui.auto = !ui.auto; },
     exit() { if (net?.code) leaveRoom(net.code).catch?.(() => {}); opts.onExit(); },   // 멀티 : 방에서도 나간다 (방 정리)
     rejoin() { if (net?.code) pickRejoin(net.code); opts.onExit(); },   // 한 판 더 : 같은 방 대기실로
-    retry() { opts.restart(raid ? 'raid' : stage.g); },
+    retry() { opts.restart(raid ? 'raid' : stage.g, true); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
     talk(t) { if (net?.code) { sendChat(net.code, t).catch?.(() => {}); ui.myTalk = t; ui.myTalkT = 1.6; } },
     look(f) { view.setCam((mirror ? 1 - f : f) * view.FIELD - ctx.view.w / 2); },
@@ -151,7 +152,8 @@ export async function startBattle(ctx, opts) {
       /* 보상 (기획서 10장 ECON) : 첫 클리어 코인 · 다시 깨면 40% · 새 별 하나마다 +25% / 젬 : 새 별 5 · 중간 보스 20 · 월드 보스 50 (첫 클리어) */
       const base = ECON.coin(stage.g);
       if (first && Array.isArray(stage.unlocks) && stage.unlocks.length) info.unlocks = stage.unlocks;   // 결과 창에 «새로 열림»
-      info.coins = Math.round((base * (first ? 1 : ECON.replay) + base * ECON.starBonus * newStars) * (coop ? 1.1 : 1) * DF.coin);
+      if (goldKills) info.gold = Math.round(base * ECON.goldBonus * goldKills);   // 황금 좀비
+      info.coins = (info.gold || 0) + Math.round((base * (first ? 1 : ECON.replay) + base * ECON.starBonus * newStars) * (coop ? 1.1 : 1) * DF.coin);
       info.gems = newStars * ECON.gem.star + (first && stage.s === 5 ? ECON.gem.mid : 0) + (first && stage.s === 10 ? ECON.gem.boss : 0);
       /* 매일 첫 승리 : 젬 10 (한국 날짜) */
       const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
@@ -216,6 +218,7 @@ export async function startBattle(ctx, opts) {
         if (acc > TICK * 6) acc = 0;
       }
       if (S.boss && !bossSeen) { bossSeen = true; ui.warn = 0.9; }
+      for (const u of S.units) if (u.side !== (pvp ? me : 0) && !u.alive && u.def._art === 'gold' && !goldSeen.has(u.id)) { goldSeen.add(u.id); goldKills++; }
       ui.warn -= dt;
       if (S.over && !ui.done) finish();
       tips(dt);
@@ -230,6 +233,7 @@ export async function startBattle(ctx, opts) {
   };
   ctx.app.ticker.add(tick);
   ui.paused = true; hud.showPanel('intro');   // 스테이지 카드 → «출격!»
+  if (opts.quick && !net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : ''); } }, 50);   // 다시 하기 = 1터치 (기획 GDD 137)
   if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : ''); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
   const onHide = () => { if (document.hidden && !net && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);

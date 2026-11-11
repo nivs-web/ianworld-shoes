@@ -8,6 +8,8 @@
  */
 import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
+import { ENEMIES } from '../data/enemies.js';
+const ATTR_KO = { ghost: '유령', giant: '거대', shadow: '그림자', crystal: '수정' };
 
 const AI = '/assets/iandragon_game/ai/';
 /** 기믹 설명 (아이 말투 · 계산기 GIM_KO 와 같은 뜻) */
@@ -102,6 +104,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       if (stage.diff && stage.diff !== 'normal') box.append(h('p', 'idg-diff ' + stage.diff, stage.diff === 'hard' ? '어려움 — 좀비가 1.35배 세요 · 붉은 별' : '쉬움 — 좀비가 약해요 · 별은 2개까지'));
       if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
       const zs = h('div', 'idg-intro-z');
+      for (const tr of [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))]) { const ic = h('img', 'idg-attr'); ic.src = `/assets/iandragon_game/ui/hud_attr_${tr}_s.png`; ic.alt = ''; ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; zs.appendChild(ic); }   // 이 판의 특별한 좀비 (유령 · 거대 · 그림자 · 수정)
       for (const id of [...new Set(stage.lines.map((l) => l.id))]) { const im = h('img'); im.src = `${AI}${ZART[id] || id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${ZART[id] || id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
       box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안에 · ★★★ ${stage.star3}초 안에`));
     }
@@ -109,7 +112,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       box.append(h('h2', kind === 'win' ? 'win' : 'lose', info.title || (kind === 'win' ? '승리!' : '아쉬워요…')));
       if (info.pvp) { box.append(h('p', null, `${clock(info.t || 0)} · 코인 +${fmt(info.coins || 0)}`), h('p', 'small', info.rec || '')); if (info.hint) box.append(h('p', 'hint', info.hint)); }
       else if (kind === 'win') { const st = h('div', 'idg-stars' + (info.red ? ' red' : '')); for (let i = 0; i < 3; i++) { const s = h('span', i < info.stars ? 'on' : '', '★'); s.style.animationDelay = `${0.3 + i * 0.35}s`; st.appendChild(s); } box.appendChild(st); }
-      if (!info.pvp) box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}${kind === 'win' && info.gems ? ` · 젬 +${info.gems}` : ''}${info.daily ? ' (오늘 첫 승리 +10)' : ''}`));
+      if (!info.pvp) box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}${kind === 'win' && info.gems ? ` · 젬 +${info.gems}` : ''}${info.daily ? ' (오늘 첫 승리 +10)' : ''}${info.gold ? ` · 황금 좀비 +${fmt(info.gold)}` : ''}`));
       if (kind === 'lose' && info.hint && !info.pvp) box.append(h('p', 'hint', info.hint));
     }
     const row = h('div', 'idg-row');
@@ -194,7 +197,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       speedB.textContent = `×${ui.speed}`; autoB.classList.toggle('on', !!ui.auto);
       if (ui.mini) {
         const { a, b, cam, w, F } = ui.mini;
-        miniMe.style.left = `${(a / F) * 100}%`; miniFoe.style.left = `${(b / F) * 100}%`;
+        miniMe.style.left = `${(a / F) * 100}%`; miniFoe.style.left = `${(b / F) * 100}%`; miniFoe.style.visibility = S.stage.fog ? 'hidden' : '';
         miniView.style.left = `${(cam / F) * 100}%`; miniView.style.width = `${(w / F) * 100}%`;
       }
       tip.textContent = ui.tip || ''; tip.classList.toggle('on', !!ui.tip); tip.dataset.at = ui.tipAt || '';

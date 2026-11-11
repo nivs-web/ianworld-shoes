@@ -3,7 +3,7 @@
  * 연 용 목록 · 레벨 · 코인으로 레벨업 (기획서 10장 ECON.lvCost) · 레벨 상한(ECON.capAt — 깬 스테이지에 따라 10 → 15 → 20).
  * 전투는 «저장 레벨»과 «권장 레벨» 중 큰 값으로 나가므로(결정 D1) 훈련하면 권장보다 세게 나간다.
  */
-import { el, button, presentOverlay } from './ui.js';
+import { el, button, presentOverlay, toast } from './ui.js';
 import * as G from '../services/iandragonGame.js';
 import * as Sfx from '../audio/sfx.js';
 import { UNITS } from '../games/iandragon_game/data/units.js';
@@ -43,7 +43,9 @@ export function showNest(onChange) {
             const cur = G.idg(), now = cur.units[id]?.[0] || 1, c = ECON.lvCost(now);
             if (cur.coins < c || now >= capOf(cur.cleared)) return;
             G.saveIdg({ coins: cur.coins - c, units: { ...cur.units, [id]: [now + 1, cur.units[id]?.[1] || 0] } });
-            Sfx.play('sfx_menu_select'); draw(); onChange?.();
+            import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); A.play(now + 1 === 10 || now + 1 === 20 ? 'evolve' : 'levelup'); }).catch(() => Sfx.play('sfx_menu_select'));   // 레벨업 소리 · Lv10/20 = 진화 소리
+            if (now + 1 === 10 || now + 1 === 20) toast(`${UNITS[id].name} 진화! — ${UNITS[id].forms?.[now + 1 === 10 ? 1 : 2]?.name || '새 모습'}`, 2600);
+            draw(); onChange?.();
           },
         }, [max ? 'MAX' : `레벨업 ${fmt(cost)}`]),
       ]);

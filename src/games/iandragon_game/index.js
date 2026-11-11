@@ -57,7 +57,7 @@ export async function mount(host, opts) {
   /* B2 (2026-11-11 야간) — 진짜 전투. 옛 장면 : ?idgDemo(기준 장면) · ?idgPilot(그림 공장 시험판) */
   /* 멀티 시험 (개발 서버 · 같은 컴퓨터 탭 둘) : ?idgNet=coop&seat=0 · seat=1 */
   const netQ = /[?&]idgNet=(coop|pvp)/.test(q) ? { seat: Number((q.match(/[?&]seat=(\d)/) || [])[1] || 0), seats: 2, pvp: /idgNet=pvp/.test(q) } : null;   // 점검용 : 탭 두 개 (?idgNet=pvp&seat=1)
-  const begin = async (stageNo) => {
+  const begin = async (stageNo, quick = false) => {
     me.scene?.destroy(); me.scene = null;
     import('../../services/stats.js').then((St) => St.countPlay('idragon')).catch(() => {});   // 운영자 판 수 집계
     try {
@@ -67,10 +67,10 @@ export async function mount(host, opts) {
       if (rm) opts.room = null;   // 다시 하기 · 다음 판은 혼자
       me.scene = await startBattle({ ...ctx, host }, {
         net,
-      stageNo, raid: stageNo === 'raid', save: opts.save, text: opts.text,
+      stageNo, quick, raid: stageNo === 'raid', save: opts.save, text: opts.text,
       onSave: (part) => { opts.save = opts.onSave(part); syncIdgPlayerSoon(); return opts.save; },   // 명예의 전당 (몇 초 모아 한 번)
       onExit: () => opts.onExit(),
-      restart: (no) => { if (me.alive) begin(no); },
+      restart: (no, quick) => { if (me.alive) begin(no, quick); },
       });
     } catch (e) {   /* 못 열면 갇히지 않게 로비로 (코드 검토 1) */
       console.warn('[좀비와 드래곤] 전투를 열지 못했다', e);

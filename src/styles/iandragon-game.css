@@ -333,3 +333,4 @@ html.idg-wide body { width: 100%; }
 .idg-shopkeeper { display: block; width: 110px; height: 110px; object-fit: contain; margin: -8px auto -4px; }
 .idg-multi-stage { display: flex; gap: 6px; justify-content: center; align-items: center; color: #ffe9b0; font: 700 14px 'Neo둥근모', monospace; }
 .idg-multi-stage .pbtn { min-width: 44px; min-height: 36px; padding: 0 8px; }
+.idg-intro-z .idg-attr { width: 26px; height: 26px; align-self: center; image-rendering: pixelated; }

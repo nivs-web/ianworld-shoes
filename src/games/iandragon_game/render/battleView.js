@@ -54,6 +54,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const shade = new Graphics().rect(-50, -50, FIELD + 100, 700).fill(0x000000); shade.alpha = 0; root.addChild(shade);
   /* 안개 기믹 : 내 맨 앞 + 260칸 너머를 짙은 안개로 (화면 전용) */
   const fog = new Graphics(); root.addChildAt(fog, root.getChildIndex(funFront));
+  const flashG = new Graphics(); flashG.blendMode = 'add'; root.addChild(flashG); let flashT = 0, flashC = 0xffffff;   // 포효 · 스킬 번쩍
 
   /* ── 재미있는 요소 (자리표가 없는 월드는 하늘 요소만) */
   const spots = { ...(SPOTS[world] || { sky: [50, 200], ground: 437, dirtY: 494 }) };
@@ -253,6 +254,11 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       }
       if (breathFx > 1.2) { breathFx = 0; if (lead) lead.set('idle'); if (lead2) lead2.set('idle'); }
     }
+    { const rg = S.players.reduce((a, q) => a + q.st.rageUse, 0), sk = S.players.reduce((a, q) => a + q.st.skill, 0);
+      if (rg > (seen.rage || 0)) { flashT = 0.35; flashC = 0xffd84a; shakes.screen = Math.max(shakes.screen, 0.2); }   // 포효 : 금빛 번쩍 (GDD 660)
+      if (sk > (seen.skill || 0)) { flashT = 0.25; flashC = 0x9fd8ff; shakes.screen = Math.max(shakes.screen, 0.15); }   // 스킬 : 푸른 번쩍
+      seen.rage = rg; seen.skill = sk;
+      if (flashT > 0) { flashT -= dt; flashG.clear().rect(-50, -50, FIELD + 100, 700).fill({ color: flashC, alpha: Math.max(0, flashT) * 0.9 }); } else if (flashG.width) flashG.clear(); }
     if (S.st.bossAt != null && seen.bossAt == null) {
       seen.bossAt = S.st.bossAt; fun.hush(4); shakes.screen = 0.5;
       const ring = new Graphics().circle(0, 0, 20).stroke({ width: 6, color: 0xffe08a }); ring.position.set(M + L - 20, GY - 30); fx.addChild(ring);

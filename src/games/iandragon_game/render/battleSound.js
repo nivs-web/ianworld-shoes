@@ -76,7 +76,8 @@ export function createBattleSound(stage, me = 0) {
       }
       if (b && !b.alive && !was.bossDie) { was.bossDie = true; Audio.voice(`boss/${b.def._art}/die`); }   // 겜팀장 2차 : 보스마다 쓰러지는 대사
       if (b && !was.bossHalf && b.hp <= b.maxHp / 2) { was.bossHalf = true; Audio.voice(`boss/${b.def._art}/half`); }
-      if (!was.fever && S.t >= S.feverAt) { was.fever = true; Audio.voice('fever'); }
+      if (!was.fever && S.t >= S.feverAt) { was.fever = true; Audio.voice('fever'); if (musicOn && !S.boss) Audio.worldBgm(stage.w, { rate: 1.12 }); }   // 불꽃 타임 = 음악 빨라짐 (GDD 449)
+      { const B = S.base[p.side], low = B.maxHp > 0 && B.hp > 0 && B.hp / B.maxHp < 0.25; if (low && !was.low) { Audio.play('alarm'); was.lowT = 0; } if (low && (was.lowT = (was.lowT || 0) + 1 / 60) > 1.1) { was.lowT = 0; Audio.play('heartbeat'); } was.low = low; }   // 둥지 25% 아래 : 경보 + 심장 소리
       /* 무리 대사 (겜팀장) : 1.5초 안에 좀비 4마리 이상 = 큰 무리(20초에 한 번) · 정해진 무리 줄이 하나 남고 그것이 나오기 시작 = 마지막 무리(한 번) */
       while (was.spawnT.length && S.t - was.spawnT[0] > 1.5) was.spawnT.shift();
       for (let k = was.enemies ?? S.st.enemySpawned; k < S.st.enemySpawned; k++) was.spawnT.push(S.t);
