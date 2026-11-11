@@ -103,6 +103,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   if (layered && world === 1) spots.moon = { x: 779, y: 112, d: 222 };
   if (layered && world === 1) spots.fence = { x0: 1010, x1: 1250, y: 398 };   /* 대표님 11/11 «고양이가 공중에» : 앞 겹 울타리 실제 자리 (그림 픽셀로 잼) */
   if (layered && world === 1) spots.owl = { x: 300, y: 136 };   /* 확대하면 윗가지 부엉이가 위 HUD 글씨와 겹친다 → 아래 굵은 가지로 */   // 월드 1 하늘 겹은 다시 편집돼 달 자리가 통그림과 다르다 (그림 픽셀로 잼)
+  if (layered) delete spots.window;   /* 대표님 3차 «좀비 성 근처 갈색 네모 안 검은 사람» = 먼 성 창문 춤 — 두 겹 배경은 먼 성 자리가 달라 허공에 떴다 → 자리를 다시 잴 때까지 끔 */
   spots.safe = [260, FIELD - 260];
   if (spots.sky) spots.sky = [Math.max(spots.sky[0], 78), Math.max(spots.sky[1], 160)];   /* 확대해도 하늘 요소가 화면 위에 잘리지 않게 (위 HUD 아래부터) */
   let camX = 0, viewW = view.w;

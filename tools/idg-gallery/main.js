@@ -220,12 +220,14 @@ async function renderCastle(tab) {
     grid.append(card); return { it, row, card };
   });
   await Promise.all(cards.map(async ({ it, row, card }) => {
-    const ims = await Promise.all([0, 1, 2, 3].map((i) => probeImg(`${A}castles/${it.prefix}_hp${i}.png`)));
+    const ims = await Promise.all([...[0, 1, 2, 3].map((i) => `${A}castles/${it.prefix}_hp${i}.png`), ...['fall0', 'fall1', 'ruin'].map((k) => `${A}castles/${it.prefix}_${k}.png`)].map((u) => probeImg(u)));
     if (!ims.some(Boolean)) { row.replaceChildren(soon()); card.classList.add('missing'); return; }
     have++; card.classList.add('ready');
-    row.replaceChildren(...ims.map((im, i) => h('figure', {}, im ? h('img', { src: im.src, class: 'zoomable' }) : soon('없음'), h('figcaption', {}, ['튼튼', '조금 금', '많이 금', '무너짐'][i] + ` hp${i}`))));
+    row.replaceChildren(...ims.map((im, i) => h('figure', {}, im ? h('img', { src: im.src, class: 'zoomable' }) : soon('없음'), h('figcaption', {}, ['튼튼 hp0', '조금 금 hp1', '많이 금 hp2', '무너짐 hp3', '기울어짐 fall0', '무너지는 중 fall1', '잔해 ruin'][i]))));
   }));
-  return [h('div', { class: 'tabhead' }, h('b', {}, '성(탑)'), h('span', { class: 'count' }, `그림 있음 ${have} / ${cards.length}`), h('span', { class: 'hint' }, 'hp0~3 네 단계 나란히 · 그림을 누르면 크게')), grid];
+  return [h('div', { class: 'tabhead' }, h('b', {}, '성(탑)'), h('span', { class: 'count' }, `그림 있음 ${have} / ${cards.length}`), h('span', { class: 'hint' }, 'hp0~3 네 단계 + 무너지는 장면(기울어짐 → 무너지는 중 → 잔해 · 11/11) · 그림을 누르면 크게')), grid,
+    h('h3', { class: 'sec' }, '먼지 · 파편 · 깃대 (성 무너질 때 · 깃발은 리더 머리 위)'),
+    h('div', { class: 'grid small' }, [...[0, 1, 2, 3].map((k) => `fx/dust_${k}.png`), ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => `fx/debris_${k}.png`), 'meta/flag_pole.png'].map((f) => h('div', { class: 'card' }, h('div', { class: 'thumb hud' }, img(A + f, 'pix')), h('div', { class: 'sub' }, 'ai/' + f))))];
 }
 
 /* ───────── 재미 요소 탭 ───────── */
@@ -333,9 +335,22 @@ async function renderLobby() {
   const dlg = plates('lobby', [['dialog.webp', '창 테두리 (결과 · 일시정지 · 로비 창)'], ['ribbon.webp', '창 제목 리본'], ['tile.webp', '스테이지 칸'], ['tile_boss.webp', '스테이지 칸 (보스)'], ['tile_locked.webp', '스테이지 칸 (잠김)'], ['badge.webp', '월드 탭'], ['badge_on.webp', '월드 탭 (고름)']]);
   const small = h('div', { class: 'grid small' }, ['ico_star_empty', 'ico_lock', 'ico_gift', 'ico_check', 'ico_seal', 'ico_marker', 'ico_key'].map((id) => h('div', { class: 'card' }, h('div', { class: 'thumb hud' }, img(`${LOBBY}${id}.png`, 'pix')), h('div', { class: 'name' }, id.replace('ico_', '')), h('div', { class: 'sub' }, `ai/lobby/${id}.png`))));
   const result = plates('result', [['win.webp', '승리 그림'], ['lose.webp', '패배 그림 (귀엽게)']]);
+  /* 로비 메뉴 정리 · 도감 · 더보기 · 음향 설정 (11/11 · IAN_DRAGON_MENU_CODEX_PLAN.md · tools/idg-menu-cut.mjs) */
+  const pic = (src, name, sub, cls = 'thumb hud') => h('div', { class: 'card' }, h('div', { class: cls }, img('/assets/iandragon_game/' + src, 'pix')), h('div', { class: 'name' }, name), h('div', { class: 'sub' }, sub || src));
+  const menu = [
+    h('h4', {}, '가로 로비 (11/11 · IAN_DRAGON_LOBBY_ORIENTATION_PLAN.md)'),
+    h('div', { class: 'grid wide' }, [['ai/lobby/banner_wide.webp', '가로용 짧은 배너 (로고 그대로)'], ['ai/lobby/banner_wide_plate.webp', '짧은 배너 빈 판'], ['ai/lobby/btn_wide.webp', '가로 2×2 큰 버튼 판'], ['ai/lobby/stage_land.webp', '가로 왼쪽 무대 (둥지 = 리더 자리)']].map(([src, n]) => pic(src, n, src, 'thumb plate'))),
+    h('p', { class: 'hint' }, '로비 아래 작은 아이콘 = 연구소(ui/lobby/icon_lab) · 도전 과제(icon_quest) · 꾸미기(icon_look) · 더보기(새) — 더보기 칸 = 도감(icon_codex) · 게임하는 법(icon_how) · 명예의 전당(icon_hall)은 있던 그림 그대로, 나머지 3칸만 새로'),
+    h('div', { class: 'grid small' }, [['icon_more', '더보기 (⋯)'], ['icon_sound', '음향 설정'], ['icon_music', '음악 출처'], ['icon_admin', '운영자']].map(([id, n]) => pic(`ui/lobby/${id}.png`, n, `ui/lobby/${id}.png · 256`))),
+    h('div', { class: 'grid small' }, [['tab_dragon', '도감 탭 · 드래곤'], ['tab_zombie', '도감 탭 · 좀비'], ['tab_boss', '도감 탭 · 보스'], ['tab_world', '도감 탭 · 배경']].map(([id, n]) => pic(`ai/codex/${id}.png`, n, `ai/codex/${id}.png · 128`))),
+    h('div', { class: 'grid wide' }, pic('ai/codex/frame.webp', '도감 책 표지 틀 (9조각 · 가운데 투명)', 'ai/codex/frame.webp · 1200×676 · frame.json', 'thumb plate')),
+    h('div', { class: 'grid small' }, ['tier_story', 'tier_rare', 'tier_hero', 'tier_legend', 'attr_red', 'attr_wing', 'attr_ice', 'attr_metal', 'attr_ghost', 'attr_giant', 'attr_shadow', 'attr_crystal', 'attr_all'].map((id) => pic(`ai/codex/card_${id}.png`, '카드 ' + id, `ai/codex/card_${id}.png · 240×320`)).concat([pic('ai/codex/card_unknown.png', '못 만난 카드', 'ai/codex/card_unknown.png · 240×320'), pic('ai/codex/badge_new.png', 'NEW 딱지 (글자는 화면이)', 'ai/codex/badge_new.png · 96')])),
+    h('div', { class: 'grid wide' }, [['ai/codex/bar_frame.png', '모은 비율 막대 틀 (bar.json)'], ['ai/codex/bar_fill.png', '막대 채움'], ['ai/settings/slider_track.png', '음향 미끄럼 홈'], ['ai/settings/slider_knob.png', '미끄럼 손잡이'], ['ai/settings/switch_on.png', '스위치 켜짐'], ['ai/settings/switch_off.png', '스위치 꺼짐']].map(([src, n]) => pic(src, n, src, 'thumb plate'))),
+    h('div', { class: 'grid small' }, [['ui/hud_music_on.png', '배경음악 (있던 것)'], ['ui/hud_sfx_on.png', '효과음 (있던 것)'], ['ai/settings/ico_voice.png', '목소리'], ['ai/settings/ico_zombie.png', '좀비 소리'], ['ai/settings/ico_mute.png', '전체 끄기']].map(([src, n]) => pic(src, n))),
+  ];
   return [h('div', { class: 'tabhead' }, h('b', {}, '로비 · 전투 UI'), h('span', { class: 'hint' }, '진짜 로비 화면(IanDragonGameLobby.js)에 새 그림을 입혀 본 것 — 게임 코드는 그대로, 미리보기에서만 CSS 를 덧씌움 (lobby-skin.css · battle-skin.css). «새 창» → 모험 시작 → 전투 HUD 도 새 옷')),
     phones, h('h3', { class: 'sec' }, '배경 (대표님이 하나 고르기)'), bgs, h('h3', { class: 'sec' }, '버튼 판 · 테두리'), parts, h('h3', { class: 'sec' }, '메뉴 아이콘'), icons,
-    h('h3', { class: 'sec' }, '전투 HUD 판'), hud, h('h3', { class: 'sec' }, '창 · 스테이지 고르기'), dlg, h('h3', { class: 'sec' }, '작은 아이콘'), small, h('h3', { class: 'sec' }, '결과 그림'), result];
+    h('h3', { class: 'sec' }, '전투 HUD 판'), hud, h('h3', { class: 'sec' }, '창 · 스테이지 고르기'), dlg, h('h3', { class: 'sec' }, '작은 아이콘'), small, h('h3', { class: 'sec' }, '결과 그림'), result, h('h3', { class: 'sec' }, '도감 · 더보기 · 음향 설정 (새 · 11/11)'), ...menu];
 }
 
 /* ───────── 꾸미기 · 상점 · 명예의 전당 (IAN_DRAGON_META.md §7) ───────── */

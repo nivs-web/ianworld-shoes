@@ -759,7 +759,7 @@ html.idg-wide body { width: 100%; }
 @media (max-height: 430px) { .idg-hud .idg-fs { width: 30px; height: 30px; min-width: 30px; font-size: 15px; } }
 /* 세로 화면 : 아래 단추 줄은 화면 맨 아래 (캔버스 아래 빈자리) · 카드 크게 */
 /* 전투는 항상 가로 (세로 화면이면 틀을 돌린다 · rot.js) → 세로 전용 HUD 규칙은 돌리지 않은(=진짜 세로로 그리는) 경우에만 */
-@media (orientation: portrait) { html:not(.idg-rot) .idg-hud.float .idg-bot { bottom: max(10px, env(safe-area-inset-bottom)); } html:not(.idg-rot) .idg-hud.float .idg-unit, html:not(.idg-rot) .idg-hud.float .idg-wallet { height: 64px; } html:not(.idg-rot) .idg-hud.float .idg-breath { width: 70px; height: 70px; } }
+/* (세로 전투 규칙은 파일 끝 «세로 전투 3차») */
 html.idg-rot .dg-host { z-index: 5; }
 /* 멀티 : 방 번호 «들어가기» 단추가 안 보이던 것 (입력칸이 자리를 다 먹었다) · 빠른 시작 아래 작은 제목 */
 .idg-multi-join { display: flex; gap: 6px; align-items: stretch; }
@@ -811,3 +811,111 @@ html.idg-rot .dg-host { z-index: 5; }
 }
 .idg-hud .idg-card:has(.idg-btn.big) { max-width: min(640px, 96vw); }   /* 판 사이 기지 단추 4개가 한 줄에 */
 @media (max-height: 430px) { .idg-hud .idg-card:has(h2.win)::before, .idg-hud .idg-card:has(h2.lose)::before { margin-top: 0; width: min(170px, 36vw); } }   /* 결과 그림 윗부분이 창 테에 잘리지 않게 */
+
+/* ════ 세로 전투 3차 (11/11 대표님) : 아래 줄 = 화로 + 용 카드 같은 크기 · 동그란 단추는 오른쪽 벽에 세로로(아래에서 위로 브레스 → 스킬) · 안내 문구는 화면 안 가운데 ════ */
+@media (orientation: portrait) {
+  html:not(.idg-rot) .idg-hud.float .idg-bot { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; align-items: end; left: max(6px, env(safe-area-inset-left)); right: max(6px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); }
+  html:not(.idg-rot) .idg-hud.float .idg-deck { display: contents; }
+  html:not(.idg-rot) .idg-hud.float .idg-wallet, html:not(.idg-rot) .idg-hud.float .idg-deck .idg-unit { width: auto; min-width: 0; height: auto; aspect-ratio: 1 / 1.08; flex: none; padding: 4px 3px 5px; }
+  html:not(.idg-rot) .idg-hud.float .idg-unit img { max-height: none; height: 58%; width: 80%; }
+  html:not(.idg-rot) .idg-hud.float .idg-right { position: absolute; right: 0; bottom: calc(100% + 84px); display: flex; flex-direction: column-reverse; gap: 8px; }
+  html:not(.idg-rot) .idg-hud.float .idg-breath { position: absolute; right: 0; bottom: calc(100% + 8px); width: 70px; height: 70px; }
+  html:not(.idg-rot) .idg-hud.float .idg-skill, html:not(.idg-rot) .idg-hud.float .idg-rage { width: 60px; height: 60px; }
+  html:not(.idg-rot) .idg-hud .idg-tip[data-at] { left: 12px; right: 12px; top: auto; bottom: 34%; transform: none; max-width: none; width: auto; white-space: normal; word-break: keep-all; }
+}
+.idg-hud .idg-fs svg { display: block; margin: auto; }   /* 전체 화면 그림 정가운데 (3차) */
+.idg-hud .idg-row .idg-btn.idg-pu-go.on { color: #9dffb0; }   /* 출전 중 */
+
+/* ════ 창 공통 규칙 (11/11 대표님 3차 «창들을 디자인 규칙을 만들어 정리») — 로비 창(.dialog.idg-*) · 전투 창(.idg-card) 모두
+ *  ① 화면 안전 영역의 최대 92% · 바깥 여백 최소 12px
+ *  ② 그림은 틀 안쪽에 통째로(contain) · 틀과 그림 사이 여백 — 잘림 금지
+ *  ③ 제목 리본은 창 위 가운데 고정 · 본문만 창 안에서 스크롤 (끌기 · 휠)
+ *  ④ 단추 줄은 늘 창 맨 아래에 보인다
+ *  ⑤ 가로(낮은 화면)에서는 그림 왼쪽 · 내용 오른쪽 두 칸, 세로에서는 위아래
+ *  ⑥ 글자는 줄바꿈만 하고 잘리지 않는다
+ * ════ */
+.dialog-overlay:has(> .dialog[class*="idg-"]) { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); box-sizing: border-box; }
+.dialog[class*="idg-"] { max-width: min(92vw, 640px); max-height: min(92dvh, calc(100dvh - 24px)); box-sizing: border-box; overflow-wrap: anywhere; word-break: keep-all; }
+.dialog[class*="idg-"] img { max-width: 100%; object-fit: contain; }
+.idg-hud .idg-panel-over { padding: 12px; box-sizing: border-box; }
+.idg-hud .idg-card { max-width: min(92vw, 640px); max-height: min(92%, calc(100% - 24px)); overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; overflow-wrap: anywhere; word-break: keep-all; }
+.idg-hud .idg-card > .idg-row:last-child { position: sticky; bottom: 0; z-index: 3; background: #2a1a4a; box-shadow: 0 0 0 6px #2a1a4a; }
+/* 결과 그림 : 틀 안쪽으로 내리고(잘림 없음 · 통째로) «승리!» 글씨가 그림 아래 끝을 살짝 덮는다 */
+.idg-hud .idg-card:has(h2.win)::before, .idg-hud .idg-card:has(h2.lose)::before { margin: 8px auto 0; background-size: contain; background-color: #120a28; width: min(380px, 74vw); }
+.idg-hud .idg-card:has(h2.win) > h2, .idg-hud .idg-card:has(h2.lose) > h2 { position: relative; z-index: 1; margin-top: -16px; }
+.idg-hud .idg-card:has(h2.win), .idg-hud .idg-card:has(h2.lose) { min-width: min(420px, 92vw); }
+@media (orientation: landscape) and (max-height: 600px) {   /* ⑤ 가로 : 그림 왼쪽 · 내용 오른쪽 */
+  .idg-hud .idg-card:has(h2.win), .idg-hud .idg-card:has(h2.lose) { display: grid; grid-template-columns: minmax(0, 40%) minmax(0, 1fr); column-gap: 14px; align-items: center; align-content: center; max-width: min(92vw, 760px); }
+  .idg-hud .idg-card:has(h2.win)::before, .idg-hud .idg-card:has(h2.lose)::before { grid-column: 1; grid-row: 1 / span 8; width: 100%; margin: 4px 0; align-self: center; }
+  .idg-hud .idg-card:has(h2.win) > *, .idg-hud .idg-card:has(h2.lose) > * { grid-column: 2; }
+  .idg-hud .idg-card:has(h2.win) > h2, .idg-hud .idg-card:has(h2.lose) > h2 { margin-top: 0; }
+  .idg-hud .idg-card:has(h2.win) > .idg-row, .idg-hud .idg-card:has(h2.lose) > .idg-row { flex-wrap: wrap; position: static; box-shadow: none; background: none; }
+  .idg-hud .idg-card:has(.idg-btn.big) { max-width: min(92vw, 760px); }
+}
+@media (max-width: 480px) {   /* 좁은 세로 폰 : 파워 업 카드는 그림 위 · 글 아래 */
+  .idg-pu-card { flex-direction: column; text-align: center; gap: 6px; padding: 8px; }
+  .idg-pu-info { width: 100%; }
+  .idg-pu-arrow { flex-basis: 32px; height: 56px; }
+}
+
+/* ════ 가로 로비 (11/11 대표님 · 기획 LOBBY_ORIENTATION 2장) ════ */
+.idg-land-stage { display: none; }
+@keyframes idgHop { 40% { translate: 0 -10px; } }
+@media (orientation: landscape) and (min-width: 600px) {
+  html.idg-lobby-on body { width: 100%; }
+  .screen.idg-lobby { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); grid-template-rows: auto auto minmax(0, 1fr) auto auto; column-gap: 14px; row-gap: 6px;
+    grid-template-areas: "logo panel" "stage start" "stage menu" "icons icons" "back back"; height: 100dvh; min-height: 0; max-width: 1180px; width: 100%; margin: 0 auto; box-sizing: border-box; overflow: hidden; padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  .screen.idg-lobby > .spacer { display: none; }
+  .screen.idg-lobby > .idg-logo { grid-area: logo; margin: 0; align-self: center; }
+  .screen.idg-lobby .idg-lobby-banner { content: url(/assets/iandragon_game/ai/lobby/banner_wide.webp); max-height: 19vh; width: auto; max-width: 100%; margin: 0 auto; }
+  .screen.idg-lobby > .idg-panel { grid-area: panel; margin: 0; align-self: center; }
+  .screen.idg-lobby > .idg-land-stage { grid-area: stage; display: grid; place-items: end center; min-height: 0; border: 0; padding: 0 0 6%; cursor: pointer;
+    background: url(/assets/iandragon_game/ai/lobby/stage_land.webp) center / contain no-repeat; image-rendering: pixelated; }
+  .idg-land-stage.hop .idg-land-leader { animation: idgHop .35s steps(3); }
+  .idg-land-leader { width: auto; height: min(58%, 210px); image-rendering: pixelated; margin-bottom: 18%; }
+  .screen.idg-lobby > .idg-start-row { grid-area: start; margin: 0; align-self: end; }
+  .screen.idg-lobby > .idg-menu.big { grid-area: menu; margin: 0; display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 8px; }
+  .screen.idg-lobby > .idg-menu.big .idg-tile { min-height: 58px; }
+  .screen.idg-lobby > .idg-icons { grid-area: icons; margin: 0; }
+  .screen.idg-lobby > .idg-back { grid-area: back; margin: 0 auto; min-height: 0; padding-block: 4px; }
+}
+@media (orientation: landscape) and (min-width: 600px) and (max-height: 420px) {   /* 아주 납작 : 무대 접고 단추만 */
+  .screen.idg-lobby { grid-template-areas: "logo panel" "start start" "menu menu" "icons icons" "back back"; grid-template-columns: 1fr 1fr; }
+  .screen.idg-lobby > .idg-land-stage { display: none; }
+  .screen.idg-lobby > .idg-menu.big { grid-template-columns: repeat(4, 1fr); }
+  .screen.idg-lobby > .idg-menu.big .idg-tile { min-height: 50px; }
+  .screen.idg-lobby .idg-lobby-banner { max-height: 22vh; }
+}
+@media (orientation: landscape) and (min-width: 600px) {
+  .screen.idg-lobby > .idg-land-stage { position: relative; aspect-ratio: 1; height: 100%; max-width: 100%; justify-self: center; background-size: 100% 100%; padding: 0; }
+  .idg-land-leader { position: absolute; left: 50%; bottom: 57%; height: 30%; margin: 0; translate: -50% 0; }   /* 무대 그림의 둥지 위 */
+}
+@media (orientation: landscape) and (min-width: 600px) and (max-height: 420px) {
+  .screen.idg-lobby { grid-template-rows: auto auto auto auto auto; align-content: space-between; overflow-y: auto; }
+  .screen.idg-lobby > .idg-start-row .idg-start { min-height: 48px; }
+  .screen.idg-lobby > .idg-icons .idg-mini-btn { min-height: 0; }
+}
+@media (orientation: landscape) and (min-width: 600px) and (max-height: 380px) {   /* 16:9 폰 가로 (360 높이) : 모든 단추가 한 화면에 */
+  .screen.idg-lobby { row-gap: 4px; }
+  .screen.idg-lobby .idg-lobby-banner { max-height: 17vh; }
+  .screen.idg-lobby > .idg-panel { padding-block: 2px; }
+  .screen.idg-lobby > .idg-panel .idg-player { font-size: 14px; } .screen.idg-lobby > .idg-panel .idg-stats { font-size: 11px; }
+  .screen.idg-lobby > .idg-start-row .idg-start { min-height: 40px; font-size: 16px; }
+  .screen.idg-lobby > .idg-start-row .idg-pick { min-height: 40px; }
+  .screen.idg-lobby > .idg-menu.big .idg-tile { min-height: 42px; } .screen.idg-lobby > .idg-menu.big .idg-tile img { width: 30px; height: 30px; } .screen.idg-lobby > .idg-menu.big .idg-tile span { font-size: 13px; white-space: nowrap; }
+  .screen.idg-lobby > .idg-icons .idg-mini-btn img { width: 26px; height: 26px; } .screen.idg-lobby > .idg-icons .idg-mini-btn span { font-size: 11px; }
+  .screen.idg-lobby > .idg-back { font-size: 12px; padding-block: 2px; }
+}
+@media (orientation: portrait) { html:not(.idg-rot) .idg-hud.float .idg-bot { grid-template-columns: repeat(6, minmax(0, 86px)); justify-content: start; } }   /* 세로 태블릿 : 카드가 너무 커지지 않게 (같은 크기 · 왼쪽부터) */
+/* 창 공통 규칙 ⑤ (가로 · 낮은 화면) : 창을 넓게 · 목록은 2~3열로 펴서 스크롤을 줄인다 (기획 LOBBY_ORIENTATION 3장) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .dialog[class*="idg-"] { width: min(92vw, 900px); max-width: min(92vw, 900px); border-width: 24px 24px; border-image-width: 24px 24px; }
+  .dialog[class*="idg-"] > .idg-how-title { padding: 9px 30px 7px; font-size: 14px; margin-bottom: 4px; }
+  .dialog[class*="idg-"] p, .idg-nest-coins, .idg-nest-deck, .idg-nest-help, .idg-nest-breath { margin-block: 1px; font-size: 12px; }
+  .idg-nest-list, .idg-hall-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .idg-nest-row { margin: 0; }
+  .idg-cx-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
+  .idg-hatch-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+  .dialog[class*="idg-"] > .pbtn:last-child { min-height: 40px; padding-block: 4px; }
+}
+@media (orientation: landscape) and (max-height: 560px) and (min-width: 860px) { .idg-nest-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

@@ -11,7 +11,7 @@ import { UNITS } from '../data/units.js';
 import { LEADERS } from '../data/leaders.js';
 import { ECON } from '../data/econ.js';
 import { powerMul } from '../core/rules.js';
-import { unlockedBefore, stageByNo, LAST_STAGE } from './battleSetup.js';
+import { unlockedBefore, stageByNo, LAST_STAGE, makeLoads } from './battleSetup.js';
 import { breathStats } from './breathInfo.js';
 import { px } from './rot.js';
 
@@ -38,10 +38,13 @@ export function powerUpPanel(h, o) {
   function draw() {
     const g = o.save(), cap = capOf(g.cleared || 0), list = ids(), n = list.length + 1;
     at = (at + n) % n;
-    const coins = h('div', 'idg-pu-coins', `코인 ${fmt(g.coins || 0)}`);
+    /* 출전 덱 (대표님 3차 «파워업 창에서 레벨업과 5칸 출전 덱 장착을 같이») — 로비 파워업(idgNest)과 같은 규칙 */
+    const un = unlockedBefore((g.cleared || 0) + 1);
+    const deck = (g.deck || []).length >= 2 ? g.deck.filter((id) => list.includes(id)) : makeLoads(stageByNo(Math.min(LAST_STAGE, (g.cleared || 0) + 1)), g).deck.map((d) => d.id);
+    const coins = h('div', 'idg-pu-coins', `코인 ${fmt(g.coins || 0)} · 출전 ${deck.length} / ${un.deckCap}칸`);
     const card = h('div', 'idg-pu-card'), face = h('img', 'idg-pu-face'); face.alt = '';
     const info = h('div', 'idg-pu-info');
-    let up = null;
+    let up = null, go = null;
     if (at === 0) {   /* 리더 · 브레스 */
       const L = LEADERS?.[o.leader] || {}, bs = breathStats(o.leader, g);
       face.src = `${AI}${o.leader}/head.png`;
@@ -61,6 +64,12 @@ export function powerUpPanel(h, o) {
       if (lv < 10 && U.forms?.[1]) info.append(h('p', 'idg-pu-help', `Lv10 이 되면 «${U.forms[1].name}» 으로 진화!`));
       up = h('button', 'idg-btn main idg-pu-up', max ? `최고 레벨 (상한 ${cap})` : poor ? `코인 ${fmt(cost)} 필요` : `파워 업!! ${fmt(cost)}`);
       up.type = 'button'; up.disabled = max || poor;
+      go = h('button', 'idg-btn idg-pu-go' + (deck.includes(id) ? ' on' : ''), deck.includes(id) ? '출전 중' : '대기'); go.type = 'button';
+      go.onclick = () => {
+        const cur = deck.slice(), i = cur.indexOf(id);
+        if (i >= 0) { if (cur.length <= 2) return; cur.splice(i, 1); } else { if (cur.length >= un.deckCap) return; cur.push(id); }
+        o.write({ deck: cur }); Audio.play('button'); draw();
+      };
       up.onclick = () => {
         const cur = o.save(), now = cur.units?.[id]?.[0] || 1, c = ECON.lvCost(now);
         if ((cur.coins || 0) < c || now >= capOf(cur.cleared || 0)) return;
@@ -77,7 +86,7 @@ export function powerUpPanel(h, o) {
     const nav = h('div', 'idg-pu-nav'); nav.append(prev, card, next);
     let sx = null; card.onpointerdown = (e) => { sx = px(e); }; card.onpointerup = (e) => { if (sx == null) return; const d = px(e) - sx; sx = null; if (Math.abs(d) > 40) { at += d < 0 ? 1 : -1; draw(); } };
     const dots = h('div', 'idg-pu-dots', `${at + 1} / ${n}`);
-    const row = h('div', 'idg-row'); if (up) row.appendChild(up);
+    const row = h('div', 'idg-row'); if (up) row.appendChild(up); if (go) row.appendChild(go);
     const back = h('button', 'idg-btn', '돌아가기'); back.type = 'button'; back.onclick = () => o.onBack(); row.appendChild(back);
     box.replaceChildren(h('h2', null, '파워 업'), coins, nav, dots, row);
   }

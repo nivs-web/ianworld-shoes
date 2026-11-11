@@ -31,7 +31,21 @@ export function fitView(cssW, cssH, dpr, ins = { t: 0, b: 0 }) {
   const crop = ins.f || null;
   const band = crop ? BASE_H - crop.top - crop.bottom : ins.t || ins.b ? BASE_H - SKY_CUT - DIRT_CUT : BASE_H;
   const ph = Math.max(1, Math.floor((cssH - ins.t - ins.b) * dpr));
-  const portrait = cssH > cssW * 1.05;   /* 세로 : 화면 너비를 480칸까지 (전장을 확대해 보인다) */
+  const portrait = cssH > cssW * 1.05;
+  /*
+   * 세로 전투 (11/11 대표님 3차 «냥코처럼 훨씬 확대 · 아래 단추 줄 뒤까지는 안 돼도 나머지는 크게») :
+   * 확대 끝(z ≥ 1)이면 전장 띠가 화면 위 끝 ~ 아래 단추 줄 바로 위를 꽉 채운다. 두 손가락으로 줄이면(z → 0) 가로 760칸까지 넓게.
+   * 땅 줄은 언제나 단추 줄 바로 위에 붙인다 (줄이면 위쪽이 빈다).
+   */
+  if (crop && portrait) {
+    const bar = (crop.bar || 90) + 6, availPh = Math.max(1, (cssH - bar) * dpr);
+    const kFill = availPh / band, kWide = pw / 760, t = Math.max(0, Math.min(1, crop.z ?? 1));
+    const k = Math.max(kWide, kWide + (kFill - kWide) * t);
+    const w = Math.max(180, Math.min(MAX_W, Math.floor(pw / k)));
+    const res = Math.max(1, Math.min(RES_MAX, Math.round(k * 4) / 4));
+    const cw = (w * k) / dpr, ch = (BASE_H * k) / dpr;
+    return { w, h: BASE_H, k, res, cssW: cw, cssH: ch, left: (cssW - cw) / 2, top: cssH - bar - ((BASE_H - crop.bottom) * k) / dpr };
+  }
   const minW = crop ? (portrait ? 420 : 760) / Math.max(1, crop.z || 0) ** 0.9 : BASE_W;   /* 손으로 더 확대(z > 1)하면 보이는 칸을 그만큼 줄인다 */   /* 떠 있는 HUD : 어느 기기든 화면을 꽉 채운다(태블릿 · PC 처럼 덜 긴 화면은 화면 너비를 760칸까지 줄여 위아래 검은 띠 없이) */
   const kFit = Math.min(pw / minW, ph / band);
   /*

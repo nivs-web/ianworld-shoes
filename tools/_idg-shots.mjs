@@ -19,6 +19,15 @@ const DEV = {
   phoneport: { lobby: { width: 390, height: 844 }, game: { width: 390, height: 844 }, dpr: 3 },   // 폰 세로로 게임
   tab16: { lobby: { width: 800, height: 1280 }, game: { width: 1280, height: 800 }, dpr: 2 },   // 16:10 태블릿 가로
   phonebar: { lobby: { width: 360, height: 780 }, game: { width: 780, height: 340 }, dpr: 3 },   // 주소창이 보이는 폰 가로 (대표님 캡처 비율)
+  /* 11/11 대표님 3차 점검표 : 세로 · 가로 × 폰 20:9 · 16:9 · 태블릿 4:3 · 16:10 (로비 · 전투 같은 방향) */
+  p209: { lobby: { width: 412, height: 915 }, game: { width: 412, height: 915 }, dpr: 2.6 },
+  p209L: { lobby: { width: 915, height: 412 }, game: { width: 915, height: 412 }, dpr: 2.6 },
+  p169: { lobby: { width: 360, height: 640 }, game: { width: 360, height: 640 }, dpr: 3 },
+  p169L: { lobby: { width: 640, height: 360 }, game: { width: 640, height: 360 }, dpr: 3 },
+  t43: { lobby: { width: 768, height: 1024 }, game: { width: 768, height: 1024 }, dpr: 2 },
+  t43L: { lobby: { width: 1024, height: 768 }, game: { width: 1024, height: 768 }, dpr: 2 },
+  t1610: { lobby: { width: 800, height: 1280 }, game: { width: 800, height: 1280 }, dpr: 2 },
+  t1610L: { lobby: { width: 1280, height: 800 }, game: { width: 1280, height: 800 }, dpr: 2 },
 };
 fs.mkdirSync(OUT, { recursive: true });
 const URL = 'http://127.0.0.1:5320/tools/idg-gallery/lobby.html';
@@ -42,6 +51,9 @@ for (const name of WANT) {
   if (await clickText('스테이지 고르기')) { await sleep(500); await shot('stages'); await closeTop(); }
   if (await clickText('연구소')) { await sleep(700); await shot('lab'); await page.evaluate(() => { const l = document.querySelector('.idg-lab'); if (l) l.scrollTop = 400; }); await sleep(200); await shot('lab-scrolled'); await closeTop(); }
   if (await clickText('명예의 전당')) { await sleep(1500); await shot('hall'); await closeTop(); }
+  /* 로비 창 전부 (창 공통 규칙 점검) */
+  if (process.env.WINDOWS) for (const t of ['파워업', '알 부화장', '친구와 하기', '주간 좀비 습격', '도전 과제', '용 시장', '꾸미기']) { if (await clickText(t)) { await sleep(700); await shot('win-' + t.replace(/s/g, '')); await closeTop(); await sleep(200); } }
+  if (process.env.WINDOWS && await clickText('더보기')) { await sleep(500); await shot('win-더보기'); for (const t of ['도감', '음향 설정']) { if (await clickText(t)) { await sleep(800); await shot('win-' + t.replace(/s/g, '')); await closeTop(); await sleep(200); } } await closeTop(); }
   if (process.env.LOBBY_ONLY) { await ctx.close(); continue; }
   /* 전투 */
   await page.setViewportSize(d.game); await sleep(300);
@@ -56,6 +68,7 @@ for (const name of WANT) {
   await page.evaluate(() => { const B = window.__idgBattle; if (B) B.S.base[1].hp = 0; });
   await sleep(1200); await shot('win-anim');
   await sleep(2500); await shot('win');
+  if (await clickText('파워 업')) { await sleep(500); await shot('powerup'); }
   console.log(`${name} 끝 · 오류 ${errs.length}${errs.length ? '\n   ' + errs.slice(0, 5).join('\n   ') : ''}`);
   await ctx.close();
 }

@@ -17,7 +17,7 @@ await page.evaluate(async () => { const L = await import('/src/services/storageL
 await clickText('모험 시작'); await sleep(4000); await clickText('출격'); await sleep(8000);   /* 확대 끝날 때까지 */
 await page.evaluate(() => { const f = window.__idgFun; if (f) { f.setOff(f.ids); f.trigger('owl'); f.trigger('cat'); } });
 await sleep(1500); await shot('01-castle-flag-cat-owl');
-/* 고양이 (울타리 = 오른쪽) */ await page.evaluate(() => { const V = window.__idgBattle?.view; if (V) V.setCam(700); }); await sleep(900); await shot('01b-cat');
+/* 고양이 (울타리 = 오른쪽) */ await page.evaluate(() => { const V = window.__idgBattle?.view; if (V) V.setCam(700); const f = window.__idgFun; if (f) f.trigger('window'); }); await sleep(1500); await shot('01b-cat');
 await page.evaluate(() => { const B = window.__idgBattle; B.S.lines.push({ id: 'chubby', count: 1, left: 1, next: 0, armed: true, boss: true, every: 999 }, { id: 'walker', count: 2, left: 2, next: 0, armed: true, every: 0.4 }); });
 await sleep(1200); await page.evaluate(() => { const B = window.__idgBattle; for (const u of B.S.units) if (u.side === 1) { u.x = Math.min(u.x, B.S.L * 0.75); } });
 await sleep(1500); await shot('02-midboss');

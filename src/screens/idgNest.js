@@ -58,7 +58,7 @@ export function showNest(onChange) {
   }
   draw();
   const box = el('div.dialog.idg-nest', { onclick: (e) => e.stopPropagation() }, [
-    el('div.idg-how-title', '용 둥지 (훈련소)'), coins, breathInfo, deckInfo,
+    el('div.idg-how-title', '파워업'), coins, breathInfo, deckInfo,
     el('p.idg-nest-help', '코인으로 용을 키워요. Lv10이 되면 모습이 바뀌어요!'),
     list, button('닫기', () => close()),
   ]);

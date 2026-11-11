@@ -28,7 +28,7 @@ const seen = (() => { try { return new Set(JSON.parse(localStorage.getItem(SEEN_
 const markSeen = (id) => { if (seen.has(id)) return; seen.add(id); try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen])); } catch { /* */ } };
 
 /** 부품 캐릭터 몸 전체를 한 장으로 (rig.json 의 기본 자세 · 기준점 a · 자리 p · flip) */
-async function bodyCanvas(art) {
+export async function bodyCanvas(art) {
   const rig = await (await fetch(`${AI}${art}/rig.json`)).json();
   const imgs = await Promise.all(rig.parts.map((q) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = `${AI}${art}/${q.n}.png`; })));
   const K = 1.7, W = 300, H = 250, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.imageSmoothingEnabled = false;   /* 크게 (도트 그대로) */

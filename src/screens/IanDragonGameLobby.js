@@ -20,7 +20,8 @@ import '../styles/iandragon-game.css';
 import { soundPanel } from '../games/iandragon_game/render/soundPrefs.js';
 import { showNest } from './idgNest.js';
 import { showHatch } from './idgHatch.js';
-import { showCodex } from './idgCodex.js';
+import { showCodex, bodyCanvas } from './idgCodex.js';
+import { makeLoads, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
 import { showLab } from './idgLab.js';
 import { showMulti } from './idgMulti.js';
 import { showShop } from './idgShop.js';
@@ -181,11 +182,26 @@ export default function IanDragonGameLobby(nav) {
     nav.push(IanDragonGame);
   }
 
+  /*
+   * 가로 로비 (11/11 대표님 · 기획 IAN_DRAGON_LOBBY_ORIENTATION_PLAN.md 2장) : 같은 단추 · 같은 순서, 배치만 CSS 로 바꾼다.
+   *  위 띠 = 짧은 배너(보조 banner_wide) + 상태판 · 왼쪽 = 리더 무대(stage_land + 리더 몸 그림, 누르면 이름 외침) · 오른쪽 = 모험 시작 + 2×2 · 아래 = 작은 아이콘 줄.
+   *  html.idg-lobby-on : 로비가 떠 있는 동안 몸통 폭(오락실 450)을 화면 전체로 (가로에서만 · CSS).
+   */
+  function landStage(g) {
+    let ld = 'novart'; try { ld = makeLoads(stageByNo(Math.min(100, (g.cleared || 0) + 1)), g).loads[0].leader || ld; } catch { /* */ }
+    const box = el('button.idg-land-stage', { type: 'button', 'aria-label': '리더 드래곤',
+      onclick: () => import('../games/iandragon_game/audio/index.js').then((A) => { A.init(); A.voice(`name/${ld}`); box.classList.remove('hop'); void box.offsetWidth; box.classList.add('hop'); }).catch(() => {}) });
+    bodyCanvas(ld).then((c) => { c.className = 'idg-land-leader'; box.appendChild(c); }).catch(() => {});
+    return box;
+  }
   return {
+    onLeave() { document.documentElement.classList.remove('idg-lobby-on'); },
+    destroy() { document.documentElement.classList.remove('idg-lobby-on'); },
     render() {
       const p = getProfile();
       const g = G.idg();
-      return screen(
+      document.documentElement.classList.add('idg-lobby-on');
+      const scr = screen(
         el('div.idg-lobby-bg'),   // 로비 배경 그림 (ui/lobby/bg.webp · 없으면 어두운 바탕)
         /* 로고 그림(겜팀장 · 540×150 도트) — 좀비와 드래곤 / ZOMBIE & DRAGON */
         /* 로비 맨 위 배너 (겜팀장 v2 · 신발 · 드래곤 로비와 같은 비율) — 결정 D4 */
@@ -199,12 +215,13 @@ export default function IanDragonGameLobby(nav) {
           ]),
         ]),
         /* 로비 메뉴 정리 (2026-11-11 대표님 · 기획 IAN_DRAGON_MENU_CODEX_PLAN.md 1장) : 큰 단추(매일 하는 것) + 아래 작은 아이콘 줄 + «더보기» */
+        landStage(g),
         el('div.idg-start-row', null, [
           el('button.idg-start', { type: 'button', onclick: () => start() }, [el('span', S.idgLobbyStart)]),
           el('button.idg-pick', { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); showStages((no) => start(no)); } }, [el('img', { src: `${AL}ico_stages.png`, alt: '', onerror: hideBad }), el('span', '판 고르기')]),
         ]),
         el('div.idg-menu.big', null, [
-          tile('nest', '용 둥지', () => showNest(() => nav.refresh?.())),
+          tile('nest', '파워업', () => showNest(() => nav.refresh?.())),
           g.cleared >= OPEN_AT ? tile('hatch', '알 부화장', () => showHatch(() => nav.refresh?.())) : tile('hatch', '알 부화장', () => toast('알 부화장은 2-5를 깨면 열려요', 2200), true),
           tile('coop', '친구와 하기', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
           tile('raid', '주간 좀비 습격', () => { if ((G.idg().cleared || 0) < 20) { toast('주간 좀비 습격은 2-10을 깨면 열려요', 2200); return; } G.pickRaid(); start(); }, (G.idg().cleared || 0) < 20),
@@ -219,6 +236,8 @@ export default function IanDragonGameLobby(nav) {
         el('div.spacer'),
         (() => { const b = backButton(S.backToPortal, () => nav.reset(Portal)); b.classList.add('idg-back'); return b; })(),   // 돌 판 옷 (보조 의견)
       );
+      scr.classList.add('idg-lobby');
+      return scr;
     },
   };
 }

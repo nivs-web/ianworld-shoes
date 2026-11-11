@@ -47,7 +47,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* 2026-11-11 대표님 태블릿 «아래 단추가 사라진다» : CSS zoom 은 옛 크롬 · 삼성 인터넷에서 크기 계산이 달라 HUD 가 화면보다 커지며 아래가 잘렸다
    * → 어느 브라우저든 같은 transform 확대 (상자 크기를 1/z 로 줄이고 z 배로 키움 = 늘 화면에 꼭 맞음) */
   const fitHud = () => {
-    const z = Math.round(Math.max(1, Math.min(1.7, host.clientWidth / 960, host.clientHeight / 540)) * 100) / 100;
+    const port = host.clientHeight > host.clientWidth * 1.05;   /* 세로 : 폭 520 · 높이 900 기준 (세로 태블릿에서 창 · 단추가 너무 작지 않게) */
+    const z = Math.round(Math.max(1, Math.min(1.7, host.clientWidth / (port ? 520 : 960), host.clientHeight / (port ? 900 : 540))) * 100) / 100;
     Object.assign(root.style, { zoom: '', transformOrigin: '0 0', transform: z === 1 ? '' : `scale(${z})`, width: z === 1 ? '' : `${100 / z}%`, height: z === 1 ? '' : `${100 / z}%`, right: z === 1 ? '' : 'auto', bottom: z === 1 ? '' : 'auto' });
   };
   /* 위 · 아래 띠 높이를 캔버스에 알려 전장이 띠에 가리지 않게 한다 (app.js 'idg-insets') */
@@ -58,7 +59,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     const H = host.getBoundingClientRect(), tb = root.querySelector('.idg-top')?.getBoundingClientRect(), bb = root.querySelector('.idg-bot')?.getBoundingClientRect();
     if (!tb || !bb) return;
     /* 떠 있는 HUD (11/11 대표님 «위 · 아래 띠가 게임 화면을 가린다 · 단추는 공중에 떠 있게») : 띠 판이 없으니 캔버스는 화면 전체 — 띠 높이를 0 으로 알린다 */
-    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: cropOf(zoomK) } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
+    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { ...cropOf(zoomK), bar: Math.round(Math.max(0, H.bottom - bb.top)) } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
   });
   const onRs = () => { fitHud(); sendIns(); };
   fitHud(); window.addEventListener('resize', onRs);
@@ -71,7 +72,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const money = h('div', 'idg-money'); const moneyN = h('span', 'n', '0'); money.append(h('i', 'idg-ico-ember'), moneyN);
   /* 소리 단추 (대표님 «게임하면서 배경음 · 효과음을 켜고 끄는 단추») */
   /* 소리 단추는 화면에서 뺐다 — 일시정지 · 로비 «더보기 → 음향 설정» (대표님 11/11) */
-  const fsB = h('button', 'idg-btn idg-fs', '⛶'); fsB.type = 'button'; fsB.title = '꽉 찬 화면';
+  const fsB = h('button', 'idg-btn idg-fs'); fsB.type = 'button'; fsB.title = '꽉 찬 화면';
+  /* 글자(⛶)는 글꼴마다 위로 쏠려 보였다 (대표님 3차) → 정사각 도트 그림(네 귀퉁이)을 단추 정가운데에 */
+  fsB.innerHTML = '<svg viewBox="0 0 16 16" width="55%" height="55%" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h5v2H3v3H1zM10 1h5v5h-2V3h-3zM1 10h2v3h3v2H1zM13 10h2v5h-5v-2h3z"/></svg>';
   fsB.onclick = () => { const d = document; try { if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else { const e = d.documentElement; (e.requestFullscreen || e.webkitRequestFullscreen)?.call(e)?.catch?.(() => {}); } } catch { /* 안 되는 기기 */ } };
   top.append(pauseB, title, time, speedB, money, fsB);   /* ⛶ 꽉 찬 화면 (대표님 «브라우저 아래 줄이 갑자기 나와 가린다») */
   if (speedMax < 2 || isNet) speedB.style.visibility = 'hidden';   // 멀티는 1배속 고정
@@ -184,7 +187,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     if (info.final) box.append(h('p', 'final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요! 🐉'));
     /* 판 사이 기지 (대표님 11/11 «냥코처럼 전투 개시 · 파워 업 두 개 · 로비로 안 나가도 바로 파워 업») */
     if (kind === 'win' && info.hasNext && !info.pvp && !isNet) add('전투 개시!', () => cb.next(), 'main big');   /* 다음 판 */
-    if (!info.pvp && !isNet && !stage.raid && cb.puSave) add('파워 업', () => showPanel('powerup', { back: kind, backInfo: info }), 'pu big');
+    if ((kind === 'win' || kind === 'lose') && !info.pvp && !isNet && !stage.raid && cb.puSave) add('파워 업', () => showPanel('powerup', { back: kind, backInfo: info }), 'pu big');
     if (isNet) add('한 판 더 (같은 방)', () => cb.rejoin(), 'main');
     else if (!info.pvp || stage.raid) add('다시 하기', () => cb.retry(), kind === 'lose' ? 'main big' : '');
     add(text.exit, () => cb.exit());
@@ -210,7 +213,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     zoomBy(d) { if (!FLOAT_HUD) return; userZ = Math.max(0, Math.min(ZMAX, (userZ ?? zoomK) + d)); },
     update(S, ui) {
       const p = S.players[ui.me || 0], W = S.D.wallet;
-      if (FLOAT_HUD) { const z = Math.min(1, Math.max(0, (S.t - ZOOM_AT) / ZOOM_DUR)), e = userZ ?? z * z * (3 - 2 * z); if (Math.abs(e - zoomK) > 0.03 || (e === 1 && zoomK !== 1) || (e === 0 && zoomK !== 0)) { zoomK = e; sendIns(); } }
+      if (FLOAT_HUD) { const z = Math.min(1, Math.max(0, (S.t - ZOOM_AT) / ZOOM_DUR)), e = userZ ?? (host.clientHeight > host.clientWidth * 1.05 ? 1 : z * z * (3 - 2 * z));   /* 세로 : 처음부터 크게 (대표님 3차) */ if (Math.abs(e - zoomK) > 0.03 || (e === 1 && zoomK !== 1) || (e === 0 && zoomK !== 0)) { zoomK = e; sendIns(); } }
       if (ui.net && S.players.length > 1) {
         const o = S.players[(ui.me || 0) === 0 ? 1 : 0], foe = o.side !== p.side;
         mate.textContent = foe ? `상대 화로 Lv${o.wl + 1}` : `친구 화로 Lv${o.wl + 1}${o.breathT >= o.breathCharge ? ' · 브레스 준비!' : ''}`;
