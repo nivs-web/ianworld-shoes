@@ -1,10 +1,10 @@
 {
- "note": "착용 부품 (상점 아이콘 ai/meta/hat_*.png 와 따로). 모자 = head 부품의 자식, leaders[id].hat[이름] (x, y) 에 그림 왼쪽 위. 목 = torso 부품 기준: layer split 은 _back 을 몸통 뒤 · _front 를 몸통 앞(머리보다 뒤)에, anchor 점을 neck 에. 망토(behind)는 anchor 점을 nape 에, 몸통 뒤 층(몸통과 같이 움직이게). 좌표 단위 = 부품 칸(rig 배율 전).",
+ "note": "착용 부품 (상점 아이콘 ai/meta/hat_*.png 와 따로). 모자 = head 부품의 자식, leaders[id].hat[이름] (x, y) 에 그림 왼쪽 위. cover 모자를 쓰면 그 용의 head 텍스처들(head · head_blink · head_breath)을 leaders[id].hat[이름].head[원래 이름] 그림으로 바꾼다 (덮는 선 위 뿔 · 볏을 지운 머리 — 뿔이 모자를 뚫고 나오지 않게). 목 = torso 부품 기준: layer split 은 _back 을 몸통 뒤 · _front 를 몸통 앞(머리보다 뒤)에, anchor 점을 neck 에. 망토(behind)는 anchor 점을 nape 에, 몸통 뒤 층(몸통과 같이 움직이게). 좌표 단위 = 부품 칸(rig 배율 전).",
  "items": {
   "hat_crown": {
    "file": "ai/meta/wear/hat_crown.png",
-   "w": 22,
-   "h": 15,
+   "w": 37,
+   "h": 25,
    "slot": "hat",
    "part": "head",
    "layer": "front",
@@ -12,39 +12,16 @@
     0,
     0
    ],
-   "rel": {
-    "left": -0.31308016877637124,
-    "top": -0.350210970464135
-   },
-   "bottom": [
-    6,
-    11,
-    12,
-    13,
-    14,
-    14,
-    14,
-    14,
-    14,
-    14,
-    14,
-    14,
-    14,
-    14,
-    14,
-    14,
-    14,
-    13,
-    14,
-    14,
-    13,
-    12
+   "cover": true,
+   "brim": [
+    0,
+    37
    ]
   },
   "hat_pirate": {
    "file": "ai/meta/wear/hat_pirate.png",
-   "w": 51,
-   "h": 26,
+   "w": 37,
+   "h": 19,
    "slot": "hat",
    "part": "head",
    "layer": "front",
@@ -52,342 +29,15 @@
     0,
     0
    ],
-   "rel": {
-    "left": -0.7483253588516745,
-    "top": -0.24880382775119617
-   },
-   "bottom": [
-    21,
-    22,
-    23,
-    24,
-    25,
-    25,
-    23,
-    22,
-    22,
-    22,
-    22,
-    22,
-    22,
-    22,
-    21,
-    20,
-    20,
-    20,
-    19,
-    19,
-    18,
-    18,
-    18,
-    18,
-    18,
-    17,
-    17,
-    17,
-    17,
-    19,
-    19,
-    20,
-    20,
-    20,
-    20,
-    20,
-    20,
-    20,
-    20,
-    20,
-    20,
-    19,
-    20,
-    19,
-    19,
-    19,
-    19,
-    19,
-    19,
-    18,
-    17
+   "cover": true,
+   "brim": [
+    0,
+    37
    ]
   },
   "hat_wizard": {
    "file": "ai/meta/wear/hat_wizard.png",
-   "w": 56,
-   "h": 39,
-   "slot": "hat",
-   "part": "head",
-   "layer": "front",
-   "anchor": [
-    0,
-    0
-   ],
-   "rel": {
-    "left": -0.8358490566037738,
-    "top": -0.6320754716981132
-   },
-   "bottom": [
-    37,
-    37,
-    37,
-    38,
-    38,
-    38,
-    38,
-    38,
-    38,
-    38,
-    38,
-    38,
-    34,
-    34,
-    33,
-    32,
-    32,
-    32,
-    31,
-    30,
-    30,
-    30,
-    29,
-    29,
-    29,
-    29,
-    28,
-    28,
-    28,
-    28,
-    28,
-    27,
-    26,
-    26,
-    26,
-    26,
-    26,
-    26,
-    25,
-    25,
-    25,
-    25,
-    25,
-    25,
-    25,
-    28,
-    28,
-    30,
-    32,
-    32,
-    29,
-    29,
-    29,
-    28,
-    28,
-    26
-   ]
-  },
-  "hat_pumpkin": {
-   "file": "ai/meta/wear/hat_pumpkin.png",
-   "w": 46,
-   "h": 31,
-   "slot": "hat",
-   "part": "head",
-   "layer": "front",
-   "anchor": [
-    0,
-    0
-   ],
-   "rel": {
-    "left": -0.7549295774647888,
-    "top": -0.6901408450704225
-   },
-   "bottom": [
-    18,
-    19,
-    21,
-    22,
-    23,
-    24,
-    24,
-    25,
-    25,
-    26,
-    30,
-    30,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    29,
-    28,
-    27,
-    27,
-    27,
-    27,
-    26,
-    26,
-    28,
-    29,
-    29
-   ]
-  },
-  "hat_helmet": {
-   "file": "ai/meta/wear/hat_helmet.png",
-   "w": 60,
-   "h": 41,
-   "slot": "hat",
-   "part": "head",
-   "layer": "front",
-   "anchor": [
-    0,
-    0
-   ],
-   "rel": {
-    "left": -1.0449760765550238,
-    "top": -0.3397129186602871
-   },
-   "bottom": [
-    15,
-    16,
-    16,
-    17,
-    17,
-    17,
-    17,
-    17,
-    17,
-    17,
-    17,
-    17,
-    18,
-    20,
-    21,
-    23,
-    23,
-    33,
-    35,
-    36,
-    37,
-    38,
-    40,
-    40,
-    40,
-    35,
-    30,
-    35,
-    35,
-    34,
-    33,
-    33,
-    33,
-    32,
-    32,
-    31,
-    31,
-    31,
-    31,
-    30,
-    29,
-    29,
-    29,
-    30,
-    29,
-    28,
-    28,
-    28,
-    28,
-    28,
-    28,
-    28,
-    28,
-    28,
-    28,
-    28,
-    29,
-    30,
-    30,
-    27
-   ]
-  },
-  "hat_ribbon": {
-   "file": "ai/meta/wear/hat_ribbon.png",
-   "w": 41,
-   "h": 41,
-   "slot": "hat",
-   "part": "head",
-   "layer": "front",
-   "anchor": [
-    0,
-    0
-   ],
-   "rel": {
-    "left": -0.7831683168316834,
-    "top": -0.42574257425742573
-   },
-   "bottom": [
-    15,
-    18,
-    17,
-    16,
-    29,
-    31,
-    33,
-    39,
-    39,
-    39,
-    38,
-    38,
-    36,
-    36,
-    38,
-    39,
-    40,
-    40,
-    40,
-    26,
-    23,
-    22,
-    20,
-    18,
-    18,
-    18,
-    18,
-    17,
-    17,
-    17,
-    17,
-    17,
-    17,
-    17,
-    17,
-    18,
-    19,
-    20,
-    20,
-    19,
-    17
-   ]
-  },
-  "hat_party": {
-   "file": "ai/meta/wear/hat_party.png",
-   "w": 21,
+   "w": 37,
    "h": 26,
    "slot": "hat",
    "part": "head",
@@ -396,37 +46,49 @@
     0,
     0
    ],
-   "rel": {
-    "left": -0.36229508196721316,
-    "top": -0.45081967213114754
-   },
-   "bottom": [
-    21,
-    21,
-    22,
-    22,
-    23,
-    24,
-    25,
-    24,
-    24,
-    24,
-    24,
-    23,
-    23,
-    23,
-    23,
-    23,
-    23,
-    23,
-    24,
-    24,
-    25
+   "cover": true,
+   "brim": [
+    0,
+    37
    ]
   },
-  "hat_viking": {
-   "file": "ai/meta/wear/hat_viking.png",
-   "w": 43,
+  "hat_pumpkin": {
+   "file": "ai/meta/wear/hat_pumpkin.png",
+   "w": 39,
+   "h": 27,
+   "slot": "hat",
+   "part": "head",
+   "layer": "front",
+   "anchor": [
+    0,
+    0
+   ],
+   "cover": true,
+   "brim": [
+    2,
+    39
+   ]
+  },
+  "hat_helmet": {
+   "file": "ai/meta/wear/hat_helmet.png",
+   "w": 53,
+   "h": 36,
+   "slot": "hat",
+   "part": "head",
+   "layer": "front",
+   "anchor": [
+    0,
+    0
+   ],
+   "cover": true,
+   "brim": [
+    15,
+    52
+   ]
+  },
+  "hat_ribbon": {
+   "file": "ai/meta/wear/hat_ribbon.png",
+   "w": 32,
    "h": 32,
    "slot": "hat",
    "part": "head",
@@ -435,60 +97,16 @@
     0,
     0
    ],
-   "rel": {
-    "left": -0.6829493087557605,
-    "top": -0.23963133640552994
-   },
-   "bottom": [
-    15,
-    16,
-    17,
-    29,
-    29,
-    30,
-    31,
-    31,
-    31,
-    31,
-    30,
-    30,
-    29,
-    28,
-    28,
-    28,
-    28,
-    27,
-    23,
-    21,
-    27,
-    27,
-    27,
-    26,
-    26,
-    26,
-    21,
-    26,
-    26,
-    26,
-    26,
-    26,
-    26,
-    26,
-    26,
-    26,
-    26,
-    26,
-    26,
-    27,
-    29,
-    30,
-    30
+   "cover": false,
+   "brim": [
+    3,
+    15
    ]
   },
-  "hat_tophat": {
-   "file": "ai/meta/wear/hat_tophat.png",
-   "w": 47,
-   "h": 35,
+  "hat_party": {
+   "file": "ai/meta/wear/hat_party.png",
+   "w": 37,
+   "h": 46,
    "slot": "hat",
    "part": "head",
    "layer": "front",
@@ -496,58 +114,44 @@
     0,
     0
    ],
-   "rel": {
-    "left": -0.717924528301887,
-    "top": -0.7216981132075472
-   },
-   "bottom": [
-    33,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    32,
-    31,
-    31,
-    31,
-    31,
-    31,
-    31,
-    31,
-    30,
-    29,
-    29,
-    29,
-    29,
-    29,
-    28,
-    28,
-    28,
-    28,
-    27,
-    23,
-    23,
-    29,
-    31,
-    31,
-    33,
-    34,
-    34,
-    24
+   "cover": true,
+   "brim": [
+    0,
+    37
+   ]
+  },
+  "hat_viking": {
+   "file": "ai/meta/wear/hat_viking.png",
+   "w": 41,
+   "h": 30,
+   "slot": "hat",
+   "part": "head",
+   "layer": "front",
+   "anchor": [
+    0,
+    0
+   ],
+   "cover": true,
+   "brim": [
+    4,
+    41
+   ]
+  },
+  "hat_tophat": {
+   "file": "ai/meta/wear/hat_tophat.png",
+   "w": 37,
+   "h": 28,
+   "slot": "hat",
+   "part": "head",
+   "layer": "front",
+   "anchor": [
+    0,
+    0
+   ],
+   "cover": true,
+   "brim": [
+    0,
+    37
    ]
   },
   "neck_cape": {
@@ -696,40 +300,80 @@
   "novart": {
    "hat": {
     "hat_crown": {
-     "x": -4,
-     "y": -35
+     "x": -14,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/novart/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/novart/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/novart/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -22,
-     "y": -43
+     "x": -14,
+     "y": -32,
+     "head": {
+      "head": "ai/meta/wear/heads/novart/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/novart/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/novart/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -26,
-     "y": -53
+     "x": -14,
+     "y": -36,
+     "head": {
+      "head": "ai/meta/wear/heads/novart/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/novart/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/novart/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -23,
-     "y": -50
+     "x": -16,
+     "y": -43,
+     "head": {
+      "head": "ai/meta/wear/heads/novart/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/novart/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/novart/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -35,
-     "y": -56
+     "x": -29,
+     "y": -43,
+     "head": {
+      "head": "ai/meta/wear/heads/novart/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/novart/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/novart/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -24,
-     "y": -60
+     "x": -14,
+     "y": -39
     },
     "hat_party": {
-     "x": -6,
-     "y": -45
+     "x": -14,
+     "y": -60,
+     "head": {
+      "head": "ai/meta/wear/heads/novart/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/novart/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/novart/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
-     "x": -20,
-     "y": -51
+     "x": -18,
+     "y": -42,
+     "head": {
+      "head": "ai/meta/wear/heads/novart/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/novart/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/novart/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -21,
-     "y": -53
+     "x": -14,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/novart/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/novart/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/novart/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -739,45 +383,97 @@
    "nape": {
     "x": -4,
     "y": -17
+   },
+   "measure": {
+    "eye": [
+     25,
+     20
+    ],
+    "browTop": 4,
+    "coverY": 12,
+    "span": [
+     4,
+     37
+    ]
    }
   },
   "aquantis": {
    "hat": {
     "hat_crown": {
-     "x": -3,
-     "y": -31
+     "x": -14,
+     "y": -39,
+     "head": {
+      "head": "ai/meta/wear/heads/aquantis/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/aquantis/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/aquantis/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -21,
-     "y": -39
+     "x": -14,
+     "y": -30,
+     "head": {
+      "head": "ai/meta/wear/heads/aquantis/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/aquantis/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/aquantis/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -25,
-     "y": -49
+     "x": -14,
+     "y": -34,
+     "head": {
+      "head": "ai/meta/wear/heads/aquantis/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/aquantis/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/aquantis/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -22,
-     "y": -46
+     "x": -16,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/aquantis/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/aquantis/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/aquantis/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -34,
-     "y": -47
+     "x": -29,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/aquantis/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/aquantis/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/aquantis/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -23,
-     "y": -56
+     "x": -14,
+     "y": -37
     },
     "hat_party": {
-     "x": -5,
-     "y": -42
+     "x": -14,
+     "y": -58,
+     "head": {
+      "head": "ai/meta/wear/heads/aquantis/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/aquantis/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/aquantis/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
      "x": -18,
-     "y": -47
+     "y": -40,
+     "head": {
+      "head": "ai/meta/wear/heads/aquantis/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/aquantis/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/aquantis/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -20,
-     "y": -49
+     "x": -14,
+     "y": -39,
+     "head": {
+      "head": "ai/meta/wear/heads/aquantis/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/aquantis/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/aquantis/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -787,45 +483,97 @@
    "nape": {
     "x": -3,
     "y": -17
+   },
+   "measure": {
+    "eye": [
+     27,
+     20
+    ],
+    "browTop": 5,
+    "coverY": 13,
+    "span": [
+     5,
+     34
+    ]
    }
   },
   "forestia": {
    "hat": {
     "hat_crown": {
-     "x": -3,
-     "y": -37
+     "x": -15,
+     "y": -39,
+     "head": {
+      "head": "ai/meta/wear/heads/forestia/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/forestia/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/forestia/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -20,
-     "y": -44
+     "x": -15,
+     "y": -30,
+     "head": {
+      "head": "ai/meta/wear/heads/forestia/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/forestia/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/forestia/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -23,
-     "y": -60
+     "x": -15,
+     "y": -34,
+     "head": {
+      "head": "ai/meta/wear/heads/forestia/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/forestia/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/forestia/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -20,
-     "y": -52
+     "x": -17,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/forestia/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/forestia/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/forestia/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -31,
-     "y": -60
+     "x": -30,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/forestia/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/forestia/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/forestia/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -21,
-     "y": -61
+     "x": -15,
+     "y": -37
     },
     "hat_party": {
-     "x": -5,
-     "y": -47
+     "x": -15,
+     "y": -58,
+     "head": {
+      "head": "ai/meta/wear/heads/forestia/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/forestia/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/forestia/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
-     "x": -17,
-     "y": -51
+     "x": -19,
+     "y": -40,
+     "head": {
+      "head": "ai/meta/wear/heads/forestia/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/forestia/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/forestia/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -18,
-     "y": -54
+     "x": -15,
+     "y": -39,
+     "head": {
+      "head": "ai/meta/wear/heads/forestia/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/forestia/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/forestia/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -835,45 +583,97 @@
    "nape": {
     "x": -3,
     "y": -17
+   },
+   "measure": {
+    "eye": [
+     24,
+     18
+    ],
+    "browTop": 3,
+    "coverY": 11,
+    "span": [
+     2,
+     32
+    ]
    }
   },
   "crimsonde": {
    "hat": {
     "hat_crown": {
-     "x": -3,
-     "y": -35
+     "x": -16,
+     "y": -40,
+     "head": {
+      "head": "ai/meta/wear/heads/crimsonde/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/crimsonde/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/crimsonde/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -21,
-     "y": -41
+     "x": -16,
+     "y": -31,
+     "head": {
+      "head": "ai/meta/wear/heads/crimsonde/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/crimsonde/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/crimsonde/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -25,
-     "y": -52
+     "x": -16,
+     "y": -35,
+     "head": {
+      "head": "ai/meta/wear/heads/crimsonde/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/crimsonde/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/crimsonde/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -22,
-     "y": -50
+     "x": -18,
+     "y": -42,
+     "head": {
+      "head": "ai/meta/wear/heads/crimsonde/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/crimsonde/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/crimsonde/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -34,
-     "y": -54
+     "x": -31,
+     "y": -42,
+     "head": {
+      "head": "ai/meta/wear/heads/crimsonde/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/crimsonde/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/crimsonde/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -23,
-     "y": -59
+     "x": -17,
+     "y": -38
     },
     "hat_party": {
-     "x": -5,
-     "y": -45
+     "x": -16,
+     "y": -59,
+     "head": {
+      "head": "ai/meta/wear/heads/crimsonde/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/crimsonde/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/crimsonde/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
-     "x": -18,
-     "y": -49
+     "x": -20,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/crimsonde/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/crimsonde/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/crimsonde/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -20,
-     "y": -52
+     "x": -16,
+     "y": -40,
+     "head": {
+      "head": "ai/meta/wear/heads/crimsonde/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/crimsonde/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/crimsonde/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -883,45 +683,97 @@
    "nape": {
     "x": -3,
     "y": -18
+   },
+   "measure": {
+    "eye": [
+     30,
+     17
+    ],
+    "browTop": 6,
+    "coverY": 12,
+    "span": [
+     0,
+     34
+    ]
    }
   },
   "volttail": {
    "hat": {
     "hat_crown": {
-     "x": -3,
-     "y": -32
+     "x": -17,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/volttail/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/volttail/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/volttail/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -20,
-     "y": -38
+     "x": -17,
+     "y": -32,
+     "head": {
+      "head": "ai/meta/wear/heads/volttail/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/volttail/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/volttail/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -23,
-     "y": -44
+     "x": -17,
+     "y": -36,
+     "head": {
+      "head": "ai/meta/wear/heads/volttail/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/volttail/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/volttail/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -20,
-     "y": -47
+     "x": -19,
+     "y": -43,
+     "head": {
+      "head": "ai/meta/wear/heads/volttail/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/volttail/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/volttail/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -31,
-     "y": -48
+     "x": -32,
+     "y": -43,
+     "head": {
+      "head": "ai/meta/wear/heads/volttail/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/volttail/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/volttail/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -21,
-     "y": -35
+     "x": -17,
+     "y": -39
     },
     "hat_party": {
-     "x": -5,
-     "y": -41
+     "x": -17,
+     "y": -60,
+     "head": {
+      "head": "ai/meta/wear/heads/volttail/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/volttail/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/volttail/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
-     "x": -17,
-     "y": -44
+     "x": -21,
+     "y": -42,
+     "head": {
+      "head": "ai/meta/wear/heads/volttail/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/volttail/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/volttail/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -18,
-     "y": -47
+     "x": -17,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/volttail/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/volttail/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/volttail/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -931,45 +783,97 @@
    "nape": {
     "x": -4,
     "y": -16
+   },
+   "measure": {
+    "eye": [
+     26,
+     14
+    ],
+    "browTop": 8,
+    "coverY": 11,
+    "span": [
+     1,
+     29
+    ]
    }
   },
   "solaris": {
    "hat": {
     "hat_crown": {
-     "x": -3,
-     "y": -39
+     "x": -14,
+     "y": -44,
+     "head": {
+      "head": "ai/meta/wear/heads/solaris/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/solaris/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/solaris/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -20,
-     "y": -45
+     "x": -14,
+     "y": -35,
+     "head": {
+      "head": "ai/meta/wear/heads/solaris/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/solaris/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/solaris/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -23,
-     "y": -60
+     "x": -14,
+     "y": -39,
+     "head": {
+      "head": "ai/meta/wear/heads/solaris/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/solaris/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/solaris/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -20,
-     "y": -54
+     "x": -16,
+     "y": -46,
+     "head": {
+      "head": "ai/meta/wear/heads/solaris/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/solaris/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/solaris/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -31,
-     "y": -60
+     "x": -29,
+     "y": -46,
+     "head": {
+      "head": "ai/meta/wear/heads/solaris/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/solaris/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/solaris/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -21,
-     "y": -65
+     "x": -14,
+     "y": -42
     },
     "hat_party": {
-     "x": -5,
-     "y": -48
+     "x": -14,
+     "y": -63,
+     "head": {
+      "head": "ai/meta/wear/heads/solaris/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/solaris/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/solaris/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
-     "x": -17,
-     "y": -54
+     "x": -18,
+     "y": -45,
+     "head": {
+      "head": "ai/meta/wear/heads/solaris/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/solaris/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/solaris/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -18,
-     "y": -57
+     "x": -14,
+     "y": -44,
+     "head": {
+      "head": "ai/meta/wear/heads/solaris/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/solaris/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/solaris/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -979,45 +883,97 @@
    "nape": {
     "x": -3,
     "y": -15
+   },
+   "measure": {
+    "eye": [
+     23,
+     20
+    ],
+    "browTop": 6,
+    "coverY": 13,
+    "span": [
+     3,
+     33
+    ]
    }
   },
   "sandscale": {
    "hat": {
     "hat_crown": {
-     "x": -3,
-     "y": -33
+     "x": -14,
+     "y": -42,
+     "head": {
+      "head": "ai/meta/wear/heads/sandscale/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/sandscale/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/sandscale/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -20,
-     "y": -39
+     "x": -14,
+     "y": -33,
+     "head": {
+      "head": "ai/meta/wear/heads/sandscale/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/sandscale/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/sandscale/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -23,
-     "y": -45
+     "x": -14,
+     "y": -37,
+     "head": {
+      "head": "ai/meta/wear/heads/sandscale/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/sandscale/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/sandscale/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -20,
-     "y": -48
+     "x": -16,
+     "y": -44,
+     "head": {
+      "head": "ai/meta/wear/heads/sandscale/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/sandscale/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/sandscale/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -31,
-     "y": -49
+     "x": -29,
+     "y": -44,
+     "head": {
+      "head": "ai/meta/wear/heads/sandscale/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/sandscale/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/sandscale/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -21,
-     "y": -36
+     "x": -13,
+     "y": -40
     },
     "hat_party": {
-     "x": -5,
-     "y": -42
+     "x": -14,
+     "y": -61,
+     "head": {
+      "head": "ai/meta/wear/heads/sandscale/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/sandscale/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/sandscale/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
-     "x": -17,
-     "y": -45
+     "x": -18,
+     "y": -43,
+     "head": {
+      "head": "ai/meta/wear/heads/sandscale/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/sandscale/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/sandscale/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -18,
-     "y": -48
+     "x": -14,
+     "y": -42,
+     "head": {
+      "head": "ai/meta/wear/heads/sandscale/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/sandscale/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/sandscale/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -1027,45 +983,97 @@
    "nape": {
     "x": -4,
     "y": -17
+   },
+   "measure": {
+    "eye": [
+     24,
+     14
+    ],
+    "browTop": 6,
+    "coverY": 10,
+    "span": [
+     6,
+     31
+    ]
    }
   },
   "shadowfen": {
    "hat": {
     "hat_crown": {
-     "x": -3,
-     "y": -37
+     "x": -15,
+     "y": -46,
+     "head": {
+      "head": "ai/meta/wear/heads/shadowfen/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/shadowfen/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/shadowfen/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -20,
-     "y": -43
+     "x": -15,
+     "y": -37,
+     "head": {
+      "head": "ai/meta/wear/heads/shadowfen/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/shadowfen/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/shadowfen/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -23,
-     "y": -53
+     "x": -15,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/shadowfen/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/shadowfen/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/shadowfen/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -20,
-     "y": -52
+     "x": -17,
+     "y": -48,
+     "head": {
+      "head": "ai/meta/wear/heads/shadowfen/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/shadowfen/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/shadowfen/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -31,
-     "y": -58
+     "x": -30,
+     "y": -48,
+     "head": {
+      "head": "ai/meta/wear/heads/shadowfen/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/shadowfen/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/shadowfen/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -21,
-     "y": -63
+     "x": -15,
+     "y": -44
     },
     "hat_party": {
-     "x": -5,
-     "y": -46
+     "x": -15,
+     "y": -65,
+     "head": {
+      "head": "ai/meta/wear/heads/shadowfen/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/shadowfen/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/shadowfen/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
-     "x": -17,
-     "y": -51
+     "x": -19,
+     "y": -47,
+     "head": {
+      "head": "ai/meta/wear/heads/shadowfen/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/shadowfen/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/shadowfen/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -18,
-     "y": -55
+     "x": -15,
+     "y": -46,
+     "head": {
+      "head": "ai/meta/wear/heads/shadowfen/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/shadowfen/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/shadowfen/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -1075,45 +1083,97 @@
    "nape": {
     "x": -4,
     "y": -16
+   },
+   "measure": {
+    "eye": [
+     24,
+     14
+    ],
+    "browTop": 4,
+    "coverY": 9,
+    "span": [
+     3,
+     32
+    ]
    }
   },
   "frostwing": {
    "hat": {
     "hat_crown": {
-     "x": -3,
-     "y": -38
+     "x": -11,
+     "y": -45,
+     "head": {
+      "head": "ai/meta/wear/heads/frostwing/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/frostwing/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/frostwing/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -20,
-     "y": -45
+     "x": -11,
+     "y": -36,
+     "head": {
+      "head": "ai/meta/wear/heads/frostwing/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/frostwing/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/frostwing/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -23,
-     "y": -55
+     "x": -11,
+     "y": -40,
+     "head": {
+      "head": "ai/meta/wear/heads/frostwing/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/frostwing/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/frostwing/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -20,
-     "y": -54
+     "x": -13,
+     "y": -47,
+     "head": {
+      "head": "ai/meta/wear/heads/frostwing/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/frostwing/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/frostwing/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -31,
-     "y": -60
+     "x": -26,
+     "y": -47,
+     "head": {
+      "head": "ai/meta/wear/heads/frostwing/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/frostwing/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/frostwing/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -21,
-     "y": -65
+     "x": -11,
+     "y": -43
     },
     "hat_party": {
-     "x": -5,
-     "y": -48
+     "x": -11,
+     "y": -64,
+     "head": {
+      "head": "ai/meta/wear/heads/frostwing/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/frostwing/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/frostwing/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
-     "x": -17,
-     "y": -53
+     "x": -15,
+     "y": -46,
+     "head": {
+      "head": "ai/meta/wear/heads/frostwing/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/frostwing/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/frostwing/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -19,
-     "y": -57
+     "x": -11,
+     "y": -45,
+     "head": {
+      "head": "ai/meta/wear/heads/frostwing/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/frostwing/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/frostwing/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -1123,45 +1183,97 @@
    "nape": {
     "x": -3,
     "y": -15
+   },
+   "measure": {
+    "eye": [
+     24,
+     17
+    ],
+    "browTop": 3,
+    "coverY": 10,
+    "span": [
+     9,
+     33
+    ]
    }
   },
   "goldrex": {
    "hat": {
     "hat_crown": {
-     "x": -3,
-     "y": -35
+     "x": -14,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/goldrex/hat_crown_head.png",
+      "head_blink": "ai/meta/wear/heads/goldrex/hat_crown_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/goldrex/hat_crown_head_breath.png"
+     }
     },
     "hat_pirate": {
-     "x": -19,
-     "y": -43
+     "x": -14,
+     "y": -32,
+     "head": {
+      "head": "ai/meta/wear/heads/goldrex/hat_pirate_head.png",
+      "head_blink": "ai/meta/wear/heads/goldrex/hat_pirate_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/goldrex/hat_pirate_head_breath.png"
+     }
     },
     "hat_wizard": {
-     "x": -23,
-     "y": -53
+     "x": -14,
+     "y": -36,
+     "head": {
+      "head": "ai/meta/wear/heads/goldrex/hat_wizard_head.png",
+      "head_blink": "ai/meta/wear/heads/goldrex/hat_wizard_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/goldrex/hat_wizard_head_breath.png"
+     }
     },
     "hat_pumpkin": {
-     "x": -20,
-     "y": -50
+     "x": -16,
+     "y": -43,
+     "head": {
+      "head": "ai/meta/wear/heads/goldrex/hat_pumpkin_head.png",
+      "head_blink": "ai/meta/wear/heads/goldrex/hat_pumpkin_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/goldrex/hat_pumpkin_head_breath.png"
+     }
     },
     "hat_helmet": {
-     "x": -30,
-     "y": -61
+     "x": -29,
+     "y": -43,
+     "head": {
+      "head": "ai/meta/wear/heads/goldrex/hat_helmet_head.png",
+      "head_blink": "ai/meta/wear/heads/goldrex/hat_helmet_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/goldrex/hat_helmet_head_breath.png"
+     }
     },
     "hat_ribbon": {
-     "x": -21,
-     "y": -61
+     "x": -14,
+     "y": -39
     },
     "hat_party": {
-     "x": -5,
-     "y": -44
+     "x": -14,
+     "y": -60,
+     "head": {
+      "head": "ai/meta/wear/heads/goldrex/hat_party_head.png",
+      "head_blink": "ai/meta/wear/heads/goldrex/hat_party_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/goldrex/hat_party_head_breath.png"
+     }
     },
     "hat_viking": {
-     "x": -17,
-     "y": -52
+     "x": -18,
+     "y": -42,
+     "head": {
+      "head": "ai/meta/wear/heads/goldrex/hat_viking_head.png",
+      "head_blink": "ai/meta/wear/heads/goldrex/hat_viking_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/goldrex/hat_viking_head_breath.png"
+     }
     },
     "hat_tophat": {
-     "x": -18,
-     "y": -53
+     "x": -14,
+     "y": -41,
+     "head": {
+      "head": "ai/meta/wear/heads/goldrex/hat_tophat_head.png",
+      "head_blink": "ai/meta/wear/heads/goldrex/hat_tophat_head_blink.png",
+      "head_breath": "ai/meta/wear/heads/goldrex/hat_tophat_head_breath.png"
+     }
     }
    },
    "neck": {
@@ -1171,6 +1283,18 @@
    "nape": {
     "x": -4,
     "y": -16
+   },
+   "measure": {
+    "eye": [
+     23,
+     19
+    ],
+    "browTop": 6,
+    "coverY": 13,
+    "span": [
+     5,
+     31
+    ]
    }
   }
  }

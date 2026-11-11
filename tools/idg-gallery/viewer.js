@@ -63,6 +63,16 @@ export async function attachWear(R, data, art, look) {
   return follow;
 }
 
+/** 덮는 모자를 쓰면 그 용의 머리 텍스처(head · head_blink · head_breath)를 «모자용 머리»(뿔 · 볏을 지운 것)로 바꾼 rig 자료 */
+export async function wearRigData(data, art, look) {
+  if (!look?.hat) return data;
+  const W = await getWear(), e = W.leaders[art]?.hat?.[look.hat];
+  if (!e?.head) return data;
+  const tex = { ...data.tex };
+  for (const [n, file] of Object.entries(e.head)) tex[n] = await wtex(file);
+  return { rig: data.rig, tex };
+}
+
 /** 대장 용 여러 마리를 한 줄로 (같은 꾸미기) — 착용 확인용 */
 export async function createLineup(host, arts, W = 1100, H = 460, scale = 2, perRow = 5) {
   const app = new Application();
@@ -78,7 +88,7 @@ export async function createLineup(host, arts, W = 1100, H = 460, scale = 2, per
       const my = ++token;
       const next = [], nf = [];
       for (let i = 0; i < arts.length; i++) {
-        const data = await getRig(arts[i]);
+        const data = await wearRigData(await getRig(arts[i]), arts[i], look);
         const R = createRigged(data, scale, 1); R.set('idle');
         R.root.position.set((W / perRow) * ((i % perRow) + 0.5), GY(Math.floor(i / perRow)));
         nf.push(...await attachWear(R, data, arts[i], look));
@@ -103,11 +113,15 @@ export async function createCharStage(host, W = 640, H = 380) {
   app.stage.addChild(floor);
   const holder = new Container(); app.stage.addChild(holder);
   const S = { art: null, data: null, R: null, scale: 3, want: 1, base: 'walk', move: false, x: W / 2, seq: null, timing: { fore: 0.3, back: 0.6, kb: 0.45 } };
-  const build = () => {
+  let buildNo = 0;
+  const build = async () => {
     if (!S.data) return;
+    const my = ++buildNo;
+    const data = await wearRigData(S.data, S.art, S.look);
+    if (my !== buildNo) return;
     S.follow = [];
     S.R?.root.destroy({ children: true });
-    S.R = createRigged(S.data, S.scale, S.want);
+    S.R = createRigged(data, S.scale, S.want);
     holder.addChild(S.R.root);
     S.R.set(S.base);
     attachLook();
@@ -137,7 +151,7 @@ export async function createCharStage(host, W = 640, H = 380) {
     async load(art, want, timing = {}) {
       S.art = art; S.data = await getRig(art); S.want = want; S.timing = { ...S.timing, ...timing }; S.seq = null; S.x = W / 2;
       S.scale = /^boss/.test(art) ? 2 : 3;
-      build();
+      await build();
       return S;
     },
     get scale() { return S.scale; },

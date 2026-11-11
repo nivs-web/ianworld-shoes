@@ -34,7 +34,8 @@ const NECK = {
 };
 /** 대장 용별 보정 (칸) — 10마리 확인 그림을 보고 고친다 */
 const NUDGE = {};
-const SINK = 4;                                                                  // 모자가 머리에 파묻히는 칸 (털 · 비늘 위에 살짝 눌러 쓴 느낌)
+const COVER = 0.5;                                                                // 챙 높이 = 이마 꼭대기 → 눈 사이 이 비율 (대표님 «눈과 이마 사이 절반»)
+const SINK = 1;                                                                  // 모자가 머리에 파묻히는 칸 (털 · 비늘 위에 살짝 눌러 쓴 느낌)
 
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -66,21 +67,60 @@ async function headRuler(file) {
   return { w: info.width, h: info.height, hw, top, skullX: x0 + hw * 0.6, skullY: xs[Math.floor(xs.length / 2)] + 1, browY: bs[Math.floor(bs.length / 2)] };
 }
 
-/* 1. 모자 — 노바트 머리 기준 칸 굵기 */
-const NOV = await headRuler(path.join(AI, 'novart/head.png'));
+/* 1. 대장 용 머리 재기 — 눈 · 이마 · «덮는 선»(이마 꼭대기와 눈 사이 절반) · 그 높이의 머리 폭 */
+const EYE_FIX = { volttail: 14 };                                                  // 눈 찾기가 입선을 잡은 용 — 손으로 (눈 윗줄)
+async function measure(id) {
+  const { data, info } = await sharp(path.join(AI, id, 'head.png')).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const W = info.width, H = info.height, a = (x, y) => x >= 0 && y >= 0 && x < W && y < H && data[(y * W + x) * 4 + 3] > 128;
+  const v = (x, y) => { const i = (y * W + x) * 4; return Math.max(data[i], data[i + 1], data[i + 2]) / 255; };
+  const dark = new Uint8Array(W * H);
+  for (let y = Math.floor(H * 0.28); y < H * 0.7; y++) for (let x = Math.floor(W * 0.48); x < W * 0.82; x++) {
+    if (!a(x, y) || v(x, y) > 0.32) continue;
+    let inner = true; for (let d = -2; d <= 2 && inner; d++) for (let e = -2; e <= 2; e++) if (!a(x + d, y + e)) { inner = false; break; }
+    if (inner) dark[y * W + x] = 1;
+  }
+  const seen = new Uint8Array(W * H); let best = [];
+  for (let i = 0; i < W * H; i++) {
+    if (!dark[i] || seen[i]) continue;
+    const c = [i], st = [i]; seen[i] = 1;
+    while (st.length) { const p = st.pop(), x = p % W, y = (p / W) | 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const q = (y + dy) * W + x + dx; if (x + dx >= 0 && x + dx < W && y + dy >= 0 && y + dy < H && dark[q] && !seen[q]) { seen[q] = 1; c.push(q); st.push(q); } } }
+    if (c.length > best.length) best = c;
+  }
+  const eyeX = best.length ? Math.round(best.reduce((t, p) => t + (p % W), 0) / best.length) : Math.round(W * 0.6);
+  const eyeTop = EYE_FIX[id] ?? (best.length ? Math.min(...best.map((p) => (p / W) | 0)) : Math.round(H * 0.45));
+  const top = []; for (let x = 0; x < W; x++) { let y = 0; while (y < H && !a(x, y)) y++; top.push(y); }
+  const tops = []; for (let x = Math.max(0, eyeX - 3); x <= Math.min(W - 1, eyeX + 3); x++) tops.push(top[x]);
+  tops.sort((p, q) => p - q);
+  const browTop = tops[Math.floor(tops.length / 2)];                              // 눈 위 이마 꼭대기 (뿔 끝이 아니라 가운데 값)
+  const coverY = Math.round(browTop + COVER * (eyeTop - browTop));               // 모자 챙이 내려오는 선
+  let L = W, R = -1; for (let x = 0; x < W; x++) if (a(x, coverY)) { L = Math.min(L, x); R = Math.max(R, x); }
+  return { W, H, eyeX, eyeTop, browTop, coverY, L, R };
+}
+const M = {}; for (const id of LEADERS) M[id] = await measure(id);
+const SPAN = Math.max(...LEADERS.map((id) => M[id].R - M[id].L + 1)) + 2;          // 챙이 덮어야 할 가장 넓은 머리 폭 (+양쪽 1칸)
+
+/* 2. 모자 — 고해상 원본에서 «챙 폭 = SPAN» 이 되게 바로 줄인다 (칸 굵기 유지) · 리본은 꽂는 장식(덮지 않음) */
 const items = {};
+async function brimOf(file) {                                                      // 챙(밑동) = 아래쪽 30% 높이에 칸이 있는 열 전체 — 깃털 · 고깔 끝은 위쪽이라 빠진다
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let x0 = info.width, x1 = -1;
+  for (let y = Math.floor(info.height * 0.7); y < info.height; y++) for (let x = 0; x < info.width; x++) if (data[(y * info.width + x) * 4 + 3] >= 128) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+  return { x0, x1, w: info.width, h: info.height };
+}
 for (const [name, f] of Object.entries(FIT)) {
   if (f.kind !== 'hat' || !fs.existsSync(path.join(SRC, name + '.png'))) continue;
-  const w = Math.max(6, Math.round(f.w * NOV.hw));
-  const img = await toNative(path.join(SRC, name + '.png'), w);
+  const clip = name === 'hat_ribbon';
+  const B = await brimOf(path.join(SRC, name + '.png'));
+  const w = clip ? Math.round(f.w * M.novart.R * 0.9) : Math.round(B.w * SPAN / (B.x1 - B.x0 + 1));
+  const img = await toNative(path.join(SRC, name + '.png'), Math.max(8, w));
   await save(img, name);
-  // 정수리 기준 자리 → 붙는 점은 «장식 왼쪽 위» 로 두고, 대장 용마다 정수리 + (left, top) × 머리 폭
-  const bottom = [];                                                            // 칸(열)마다 모자 맨 아래 칸
-  for (let x = 0; x < img.w; x++) { let y = img.h - 1; while (y >= 0 && !img.data[(y * img.w + x) * 4 + 3]) y--; bottom.push(y); }
-  items[name] = { file: `ai/meta/wear/${name}.png`, w: img.w, h: img.h, slot: 'hat', part: 'head', layer: 'front', anchor: [0, 0], rel: { left: f.left, top: f.top }, bottom };
+  const bottom = []; for (let x = 0; x < img.w; x++) { let y = img.h - 1; while (y >= 0 && !img.data[(y * img.w + x) * 4 + 3]) y--; bottom.push(y); }
+  const k = img.w / B.w, bx0 = Math.round(B.x0 * k), bx1 = Math.round(B.x1 * k);
+  const bs = bottom.slice(bx0, bx1 + 1).filter((b) => b >= 0).sort((p, q) => p - q);
+  items[name] = { file: `ai/meta/wear/${name}.png`, w: img.w, h: img.h, slot: 'hat', part: 'head', layer: 'front', anchor: [0, 0], cover: !clip, brim: [bx0, bx1], brimY: bs[Math.floor(bs.length * 0.3)] ?? img.h - 1 };
 }
 
-/* 2. 목 장식 */
+/* 3. 목 장식 */
 for (const [name, def] of Object.entries(NECK)) {
   const file = path.join(SRC, name + '.png'); if (!fs.existsSync(file)) continue;
   const img = await toNative(file, def.w);
@@ -97,36 +137,46 @@ for (const [name, def] of Object.entries(NECK)) {
   items[name] = { files: { back: `ai/meta/wear/${name}_back.png`, front: `ai/meta/wear/${name}_front.png` }, w: img.w, h: img.h, slot: 'neck', part: 'torso', at: 'neck', layer: 'split', anchor: def.anchor };
 }
 
-/* 3. 대장 용별 붙는 자리 (그 부품 원점 = anchor 점 기준 칸) */
+/* 4. 대장 용별 붙는 자리 + «모자용 머리» (덮는 선 위 뿔 · 볏을 지운 머리 · 깜빡 · 브레스) */
 const leaders = {};
+fs.mkdirSync(path.join(OUT, 'heads'), { recursive: true });
 for (const id of LEADERS) {
   const rig = JSON.parse(fs.readFileSync(path.join(AI, id, 'rig.json'), 'utf8'));
   const P = Object.fromEntries(rig.parts.map((p) => [p.n, p]));
-  const R = await headRuler(path.join(AI, id, 'head.png'));
-  const T = await sharp(path.join(AI, id, 'torso.png')).metadata();
+  const m = M[id], T = await sharp(path.join(AI, id, 'torso.png')).metadata();
   const n = NUDGE[id] || {};
   const hat = {};
   for (const [name, it] of Object.entries(items)) {
     if (it.slot !== 'hat') continue;
-    const x = Math.round(R.skullX + it.rel.left * R.hw);                         // 장식 왼쪽 위 (머리 그림 좌표) — 가로는 비율대로
-    /* 세로는 «얹기» : 모자 아랫선 칸마다 그 아래 머리 윗선까지 거리 → 뿔이 아닌 자리(정수리 높이 근처) 중 가장 먼저 닿는 곳에 SINK 칸 파묻힘 */
-    let y = R.skullY + it.rel.top * R.hw, best = Infinity;
-    for (let c = 0; c < it.w; c++) {
-      const X = x + c, b = it.bottom[c];
-      if (b < 0 || X < 0 || X >= R.w || R.top[X] >= R.h) continue;              // 모자 칸 없음 · 머리 밖(챙)
-      if (R.top[X] < R.browY - 2) continue;                                      // 뿔 · 볏 · 갈기 끝 (이마 선보다 높이 솟은 칸)
-      best = Math.min(best, R.top[X] - b);
+    let x, y;
+    if (it.cover) {                                                               // 챙 가운데 = 덮는 선의 머리 가운데 · 챙 바닥 = 덮는 선 + SINK
+      x = Math.round((m.L + m.R) / 2 - (it.brim[0] + it.brim[1]) / 2);
+      y = m.coverY + SINK - it.brimY;
+    } else {                                                                      // 꽂는 장식 (리본) : 덮지 않는다 (뿔 그대로)
+      x = Math.round(m.L + (m.R - m.L) * 0.42 - it.w / 2); y = Math.round(m.coverY - it.h * 0.62);   // 뿔 밑동 · 이마 옆에 반쯤 걸린 머리핀
     }
-    if (best < Infinity) y = best + SINK;
-    hat[name] = { x: Math.round(x - P.head.a[0] * R.w + (n.hat?.[0] || 0)), y: Math.round(y - P.head.a[1] * R.h + (n.hat?.[1] || 0)) };
+    x += n.hat?.[0] || 0; y += n.hat?.[1] || 0;
+    const e = { x: Math.round(x - P.head.a[0] * m.W), y: Math.round(y - P.head.a[1] * m.H) };
+    if (it.cover) {                                                               // 모자용 머리 : 덮는 선 위(= 모자 밖으로 삐져나올 뿔 · 볏 · 정수리)를 지운다
+      const cut = m.coverY - 1, dir = path.join(OUT, 'heads', id);
+      fs.mkdirSync(dir, { recursive: true });
+      e.head = {};
+      for (const tn of [P.head.n, P.head.blink, P.head.breath].filter(Boolean)) {
+        const { data, info } = await sharp(path.join(AI, id, tn + '.png')).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+        for (let yy = 0; yy < Math.min(cut, info.height); yy++) for (let xx = 0; xx < info.width; xx++) data[(yy * info.width + xx) * 4 + 3] = 0;
+        await sharp(data, { raw: info }).png({ compressionLevel: 9 }).toFile(path.join(dir, `${name}_${tn}.png`));
+        e.head[tn] = `ai/meta/wear/heads/${id}/${name}_${tn}.png`;
+      }
+    }
+    hat[name] = e;
   }
-  // 목 점 = 머리 회전축(몸통 원점 기준) · 목 뒤 점 = 목 점에서 몸통 폭 22% 뒤
   const neck = { x: Math.round(P.head.p[0] - P.torso.p[0] - 2 + (n.neck?.[0] || 0)), y: Math.round(P.head.p[1] - P.torso.p[1] + 2 + (n.neck?.[1] || 0)) };
   const nape = { x: Math.round(neck.x - T.width * 0.22 + (n.nape?.[0] || 0)), y: neck.y - 1 + (n.nape?.[1] || 0) };
-  leaders[id] = { hat, neck, nape };
+  leaders[id] = { hat, neck, nape, measure: { eye: [m.eyeX, m.eyeTop], browTop: m.browTop, coverY: m.coverY, span: [m.L, m.R] } };
 }
+for (const it of Object.values(items)) delete it.brimY;
 const out = {
-  note: '착용 부품 (상점 아이콘 ai/meta/hat_*.png 와 따로). 모자 = head 부품의 자식, leaders[id].hat[이름] (x, y) 에 그림 왼쪽 위. 목 = torso 부품 기준: layer split 은 _back 을 몸통 뒤 · _front 를 몸통 앞(머리보다 뒤)에, anchor 점을 neck 에. 망토(behind)는 anchor 점을 nape 에, 몸통 뒤 층(몸통과 같이 움직이게). 좌표 단위 = 부품 칸(rig 배율 전).',
+  note: '착용 부품 (상점 아이콘 ai/meta/hat_*.png 와 따로). 모자 = head 부품의 자식, leaders[id].hat[이름] (x, y) 에 그림 왼쪽 위. cover 모자를 쓰면 그 용의 head 텍스처들(head · head_blink · head_breath)을 leaders[id].hat[이름].head[원래 이름] 그림으로 바꾼다 (덮는 선 위 뿔 · 볏을 지운 머리 — 뿔이 모자를 뚫고 나오지 않게). 목 = torso 부품 기준: layer split 은 _back 을 몸통 뒤 · _front 를 몸통 앞(머리보다 뒤)에, anchor 점을 neck 에. 망토(behind)는 anchor 점을 nape 에, 몸통 뒤 층(몸통과 같이 움직이게). 좌표 단위 = 부품 칸(rig 배율 전).',
   items, leaders,
 };
 fs.writeFileSync(path.join(AI, 'meta/wear.json'), JSON.stringify(out, null, 1) + '\n');
