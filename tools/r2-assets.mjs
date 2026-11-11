@@ -21,6 +21,7 @@ const SKIP = (rel) => /(^|\/)\./.test(rel) || /\.(md|txt)$/i.test(rel) && !/CRED
 export function localFiles(id) {
   const g = CONFIG.games[id]; if (!g) throw new Error('설정에 없는 게임 ' + id);
   const base = path.join(ROOT, g.dir), out = [];
+  if (Array.isArray(g.only)) return g.only.map((rel) => ({ rel, abs: path.join(base, rel), size: fs.statSync(path.join(base, rel)).size }));   // 폴더 통째가 아니라 파일 몇 개만 (예: /assets/ 바로 아래 로고)
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const a = path.join(d, e.name); if (e.isDirectory()) walk(a); else { const rel = path.relative(base, a).split(path.sep).join('/'); if (!SKIP(rel)) out.push({ rel, abs: a, size: fs.statSync(a).size }); } } };
   walk(base);
   return out.sort((a, b) => a.rel.localeCompare(b.rel));

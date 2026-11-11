@@ -18,7 +18,10 @@ function r2Assets() {
     transform(code, id) {
       if (!live.length || id.includes('node_modules') || !/\.(js|mjs|css|json)(\?|$)/.test(id)) return null;
       let out = code, hit = false;
-      for (const [gid, g] of live) if (out.includes(g.prefix)) { out = out.split(g.prefix).join(liveBase(gid)); hit = true; }
+      for (const [gid, g] of live) {
+        if (Array.isArray(g.only)) { for (const rel of g.only) if (out.includes(g.prefix + rel)) { out = out.split(g.prefix + rel).join(liveBase(gid) + rel); hit = true; } }   // 파일 몇 개만
+        else if (out.includes(g.prefix)) { out = out.split(g.prefix).join(liveBase(gid)); hit = true; }
+      }
       return hit ? { code: out, map: null } : null;
     },
     async closeBundle() {
@@ -26,7 +29,8 @@ function r2Assets() {
         if (!g.strip) continue;
         const c = await checkLive(gid);
         if (!c.ok) throw new Error(`[r2] ${g.name} : R2 에 없는 파일 ${c.missing.length} · 크기 다름 ${c.badSize.length} · CORS 없음 ${c.noCors.length} → npm run r2:sync 먼저 (배포 멈춤)`);
-        fs.rmSync(path.join('dist', g.prefix), { recursive: true, force: true });
+        if (Array.isArray(g.only)) for (const rel of g.only) fs.rmSync(path.join('dist', g.prefix, rel), { force: true });
+        else fs.rmSync(path.join('dist', g.prefix), { recursive: true, force: true });
         console.log(`[r2] ${g.name} : R2 ${c.total}개 확인 · 배포에서 뺌`);
       }
     },

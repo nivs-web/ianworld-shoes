@@ -3,6 +3,13 @@
   "origin": "https://oraksil.onstori.com",
   "bucket": "oraksil-assets",
   "games": {
-    "idg": { "name": "좀비와 드래곤", "dir": "public/assets/iandragon_game", "prefix": "/assets/iandragon_game/", "ver": "20261111a", "live": true, "strip": false }
+    "idg": {"name": "좀비와 드래곤", "dir": "public/assets/iandragon_game", "prefix": "/assets/iandragon_game/", "ver": "20261111a", "live": true, "strip": false},
+    "ui": {"name": "오락실 공용 UI(배너 · 버튼 · 왕관)", "dir": "public/assets/ui", "prefix": "/assets/ui/", "ver": "20261111a", "live": true, "strip": false},
+    "bg": {"name": "신발을 찾아서 배경", "dir": "public/assets/bg", "prefix": "/assets/bg/", "ver": "20261111a", "live": true, "strip": false},
+    "shoes": {"name": "신발 그림", "dir": "public/assets/shoes", "prefix": "/assets/shoes/", "ver": "20261111a", "live": true, "strip": false},
+    "chars": {"name": "캐릭터 그림", "dir": "public/assets/characters", "prefix": "/assets/characters/", "ver": "20261111a", "live": true, "strip": false},
+    "items": {"name": "아이템 그림", "dir": "public/assets/items", "prefix": "/assets/items/", "ver": "20261111a", "live": true, "strip": false},
+    "fonts": {"name": "도트 글꼴", "dir": "public/assets/fonts", "prefix": "/assets/fonts/", "ver": "20261111a", "live": true, "strip": false},
+    "logo": {"name": "게임 로고", "dir": "public/assets", "prefix": "/assets/", "only": ["dragon-logo.png", "jumprope-logo.png", "jumppiano-logo.png", "iandragon-logo.png"], "ver": "20261111a", "live": true, "strip": false}
   }
 }

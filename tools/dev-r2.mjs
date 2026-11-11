@@ -4,8 +4,8 @@
  */
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import { ROOT } from './r2-assets.mjs';
+import { ROOT, CONFIG } from './r2-assets.mjs';
 
 const vite = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
-const child = spawn(process.execPath, [vite, ROOT, ...process.argv.slice(2)], { stdio: 'inherit', env: { ...process.env, R2_DEV: '1', R2_LIVE: process.env.R2_LIVE || 'idg' } });
+const child = spawn(process.execPath, [vite, ROOT, ...process.argv.slice(2)], { stdio: 'inherit', env: { ...process.env, R2_DEV: '1', R2_LIVE: process.env.R2_LIVE || Object.keys(CONFIG.games).join(',') } });
 child.on('exit', (code) => process.exit(code ?? 0));
