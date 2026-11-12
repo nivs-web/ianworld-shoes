@@ -106,7 +106,8 @@
 </head>
 <body>
 <header>
-  <h1>🐉 좀비와 드래곤 · 에셋 갤러리 <small>그림 담당 도구 · 새로 고침하면 새로 만든 그림이 보여요</small><button class="btn" id="reload">⟳ 다시 불러오기</button></h1>
+  <h1>🐉 좀비와 드래곤 · 에셋 갤러리 <small>그림 담당 도구 · 새로 고침하면 새로 만든 그림이 보여요</small><a class="btn" id="rigcheckLink" href="/tools/idg-gallery/rigcheck.html" style="margin-left:auto;text-decoration:none">🦴 조립 점검 (보스 · 좀비 · 용)</a><button class="btn" id="reload" style="margin-left:8px">⟳ 다시 불러오기</button></h1>
+<script>if (location.pathname.startsWith('/admin/')) document.getElementById('rigcheckLink').href = './rigcheck.html';</script>
   <nav id="tabs"></nav>
 </header>
 <main id="main"></main>

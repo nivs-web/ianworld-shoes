@@ -144,6 +144,42 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
 
   /* 일시정지 · 결과 판 */
   const panel = h('div', 'idg-panel-over'); root.appendChild(panel);
+
+  /* ── 새 결과 창 (대표님 11/12 · 부품 조립판 3차) ──
+   *  틀 = 우리 창 테(dialog9 · 호박 모서리) · 위 = 장면 그림 칸(용들이 트로피 들고 환호 · 가리지 않게) · 날개 현판이 그림 아래 끝에 걸침
+   *  단추 · 판 = 대표님 시안을 글자 없이 다시 그린 제미나이 부품(btn_red · btn_green · btn_purple · plate_reward · plate_new)
+   *  아이콘 = 칼 · 화살표 하나(제미나이) · 다시하기 · 나가기(흰 SVG) · 코인(새 금화) · 젬(우리 icon_gem_v3) · 글씨 = 굵은 글꼴 + 단단한 외곽선 */
+  const RES = '/assets/iandragon_game/ai/result/';
+  const fontOnce = () => { if (document.getElementById('idg-res-font')) return; const l = document.createElement('link'); l.id = 'idg-res-font'; l.rel = 'stylesheet'; l.href = 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css'; document.head.appendChild(l); };
+  function resultCard(kind, info) {
+    fontOnce();
+    const win = kind === 'win', card = h('div', `idg-card idg-res ${win ? 'win' : 'lose'}`);
+    const img = (src, cls, alt = '') => { const i = h('img', cls); i.src = src; i.alt = alt; i.draggable = false; return i; };
+    /* 11/12 대표님 : 그림이 창의 절반 넘게 · 현판은 용 머리 위 · 별은 용 아래 · 그림은 보상 판 가운데 줄(양 끝 뾰족한 곳)까지 내려와 금 줄로 끝남 */
+    const scene = h('div', 'idg-res-scene'), body = h('div', 'idg-res-body');
+    scene.appendChild(img(`${RES}${win ? 'banner_win' : 'banner_lose'}.webp`, 'idg-res-banner', win ? '승리!' : '패배'));
+    { const st = h('div', 'idg-res-stars'); for (let i = 0; i < 3; i++) { const on = win && i < info.stars,   /* 패배 = 꺼진 별 3개 (11/12 대표님) */ w = h('span', 'star' + (on ? ' on' : '')), s = img(`${RES}${on ? 'star_on' : 'star_off'}.webp`); w.style.animationDelay = `${0.25 + i * 0.3}s`; w.appendChild(s); st.appendChild(w); } scene.appendChild(st); }
+    /* 보상 판 (칸막이 2개 = 3칸) */
+    const bar = h('div', 'idg-res-bar'), cell = (src, txt) => { const c = h('div', 'cell'); c.append(img(src), h('b', null, txt)); return c; };
+    bar.append(cell(`${RES}timer.webp`, clock(info.t || 0)), cell(`${RES}coin_crown.webp`, `+${fmt(info.coins || 0)}`), cell('/assets/iandragon_game/ui/lobby/icon_gem_v3.png', `+${info.gems || 0}`));   /* 승리 · 패배 모두 : 시간 → 동전 → 젬 (11/12 대표님 «다른 배치는 없어») */
+    body.appendChild(bar);
+    /* 새로 열림 판 (승리) · 도움말 판 (패배) */
+    const extra = win ? (info.unlocks ? info.unlocks.join(' · ') : info.daily ? '오늘 첫 승리 보너스 : 젬 +10' : '') : (info.hint || '파워업에서 용을 키우면 더 쉬워져요!');
+    if (extra) { const nw = h('div', 'idg-res-new' + (win ? '' : ' is-tip')); nw.append(h('em', null, win ? (info.unlocks ? '새로 열림 :' : '보너스 :') : '도움말 :'), h('span', null, extra)); bar.appendChild(nw); bar.classList.add('has-new'); }   /* 보상 판 바로 아래에 붙은 꼬리표 (따로 떨어진 칸 아님) */
+    if (info.final) body.appendChild(h('p', 'idg-res-final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요!'));
+    /* 단추 규칙 (대표님 11/11) : 승리 = 전투개시! + 파워업 / 다시하기 · 나가기 (작고 밋밋하게) · 패배 = 다시하기 + 파워업 / 나가기 */
+    const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(`${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
+    const r1 = h('div', 'idg-res-row big'), r2 = h('div', 'idg-res-row');
+    const next = win && info.hasNext;
+    r1.appendChild(next ? btn('전투개시!', 'ico_fight.webp', () => cb.next(), 'red') : btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'red'));
+    if (cb.puSave) r1.appendChild(btn('파워업', 'ico_power_n.webp', () => showPanel('powerup', { back: kind, backInfo: info }), 'green'));
+    if (next) r2.appendChild(btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'purple'));
+    r2.appendChild(btn(text.exit, 'ico_exit.svg', () => cb.exit(), 'purple'));
+    body.append(r1, r2);
+    card.append(scene, body);
+    return card;
+  }
+
   function showPanel(kind, info = {}) {
     panel.replaceChildren();
     if (kind === 'powerup') {   /* 판 사이 파워업 (powerPage.js) — 돌아가기 = 방금 결과 창 */
@@ -172,6 +208,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       for (const tr of [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))]) { const ic = h('img', 'idg-attr'); ic.src = `/assets/iandragon_game/ui/hud_attr_${tr}_s.png`; ic.alt = ''; ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; zs.appendChild(ic); }   // 이 판의 특별한 좀비 (유령 · 거대 · 그림자 · 수정)
       for (const id of [...new Set(stage.lines.map((l) => l.id))]) { const im = h('img'); im.src = `${AI}${ZART[id] || id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${ZART[id] || id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
       box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안에 · ★★★ ${stage.star3}초 안에`));
+    }
+    else if ((kind === 'win' || kind === 'lose') && !info.pvp && !isNet && !stage.raid) {   /* 새 결과 창 (대표님 11/12 시안) */
+      panel.appendChild(resultCard(kind, info)); panel.classList.add('on'); return;
     }
     else {
       box.append(h('h2', kind === 'win' ? 'win' : 'lose', info.title || (kind === 'win' ? '승리!' : '아쉬워요…')));

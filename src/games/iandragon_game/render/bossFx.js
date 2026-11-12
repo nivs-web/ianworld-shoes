@@ -6,7 +6,8 @@
  *  2) 큰 공격 경고 : 보스가 'fore'(공격 준비)에 들어가면 보스 앞 땅에(def.range 만큼) 빨간 띠를 깔고, 준비 시간(def.fore)
  *     동안 점점 진해지다가 공격 순간(fore → back) 사라지며 작게 흔든다. 일반 좀비에는 하지 않는다.
  *
- * createBossFx({ layer, fx, M, GY, view, artOf, shake }) → { update(S, dt, V), destroy() }
+ * createBossFx({ layer, fx, M, GY, band, view, artOf, shake }) → { update(S, dt, V), destroy() }
+ *   band = [위, 아래] 경고 띠 높이 (11/12 · 월드마다 발 높이 범위가 달라서 · 없으면 GY 기준 예전 띠)
  *   layer = 화면 고정 층(카메라를 따라가지 않는 곳, 보통 app.stage) · fx = 전장 효과 층(카메라를 따라감)
  *   artOf(def) = 그림 id · shake(초) = 화면 흔들림 요청 · V = 코어 유닛 id → 그림(사용 안 해도 됨)
  */
@@ -18,7 +19,7 @@ const SCALE = 3;                             // 얼굴 크기 (게임 속 크기
 const ease = (k) => 1 - (1 - k) * (1 - k) * (1 - k);
 const clamp01 = (k) => Math.max(0, Math.min(1, k));
 
-export function createBossFx({ layer, fx, M, GY, view, artOf, shake }) {
+export function createBossFx({ layer, fx, M, GY, band = null, view, artOf, shake }) {
   /* ── 컷인 : 어두운 막 + 얼굴 */
   const cut = new Container(); cut.visible = false;
   const dim = new Graphics(); dim.alpha = 0;
@@ -51,7 +52,7 @@ export function createBossFx({ layer, fx, M, GY, view, artOf, shake }) {
   /* ── 큰 공격 경고 : 보스 앞 땅의 빨간 띠 */
   const warn = new Graphics(); fx.addChild(warn);
   const prev = new Map();                    // 보스 id → 지난 상태
-  const BAND_TOP = 12, BAND_H = 34;          // 땅(GY) 위아래로 깔리는 띠 높이
+  const BAND_Y = band ? band[0] : GY - 12, BAND_H = band ? band[1] - band[0] : 34;   // 땅 위아래로 깔리는 띠 (위 y · 높이)
 
   function drawWarn(S) {
     warn.clear();
@@ -65,9 +66,9 @@ export function createBossFx({ layer, fx, M, GY, view, artOf, shake }) {
       const total = u.def.fore || 0.5, k = clamp01(1 - u.t / total);      // 준비 시간 진행 0 → 1
       const range = u.def.range || 60, right = M + u.x, left = right - range;
       const a = 0.12 + 0.4 * k, pulse = 0.5 + 0.5 * Math.sin(k * 14);
-      warn.rect(left, GY - BAND_TOP, range, BAND_H).fill({ color: 0xff2a2a, alpha: a });
-      warn.rect(left, GY - BAND_TOP, range, 3).fill({ color: 0xff8a8a, alpha: 0.35 + 0.4 * pulse * k });
-      warn.rect(left, GY - BAND_TOP + BAND_H - 3, range, 3).fill({ color: 0xff8a8a, alpha: 0.35 + 0.4 * pulse * k });
+      warn.rect(left, BAND_Y, range, BAND_H).fill({ color: 0xff2a2a, alpha: a });
+      warn.rect(left, BAND_Y, range, 3).fill({ color: 0xff8a8a, alpha: 0.35 + 0.4 * pulse * k });
+      warn.rect(left, BAND_Y + BAND_H - 3, range, 3).fill({ color: 0xff8a8a, alpha: 0.35 + 0.4 * pulse * k });
     }
     for (const id of prev.keys()) if (!seen.has(id)) prev.delete(id);
   }

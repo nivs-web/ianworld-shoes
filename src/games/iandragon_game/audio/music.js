@@ -545,16 +545,18 @@ function playNote(kind, v, len, stepDur, at, bell) {
 /* ───── 녹음 파일 곡 (2026-11-11 대표님: «무료로 공개된 오케스트라 음원이 있으면 그걸 써라») ─────
  * public/assets/iandragon_game/music/music.json 에 있는 곡은 공개(PD · CC0) 녹음 파일로 튼다. 출처 = 같은 폴더 CREDITS.md.
  * 파일이 없거나 못 받으면 아래 합성 곡으로 그대로 나온다(이름 · 부르는 법 같음). */
+/* 11/12 대표님 «속도» — 옛날 폰(느린 LTE)은 대역폭이 한정이라 곡(0.5MB)이 그림과 같이 받으면 그림이 늦게 뜬다 → 곡은 «낮은 우선»으로 받아 그림 먼저 (Fetch Priority · 모르는 브라우저는 무시) */
+const LOW = { priority: 'low' };
 const MUSIC_BASE = '/assets/iandragon_game/music/';
 const fileList = {};                     // 풍 → Promise<{ id: { file, loop, loopStart } }>  ('' = 오케스트라 · 'edm/' = 오케스트라 EDM)
 const bufCache = new Map();              // id → Promise<AudioBuffer | null>
 const musicExt = () => (typeof Audio !== 'undefined' && new Audio().canPlayType('audio/ogg; codecs="opus"') ? 'ogg' : 'm4a');
-const listFiles = (dir = '') => (fileList[dir] ??= fetch(`${MUSIC_BASE}${dir}music.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+const listFiles = (dir = '') => (fileList[dir] ??= fetch(`${MUSIC_BASE}${dir}music.json`, LOW).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
 function loadBuf(id, meta, dir = '') {
   const key = dir + id;
   if (!bufCache.has(key)) {
     const A = audio();
-    bufCache.set(key, fetch(`${MUSIC_BASE}${dir}${meta.file}.${musicExt()}`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+    bufCache.set(key, fetch(`${MUSIC_BASE}${dir}${meta.file}.${musicExt()}`, LOW).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
       .then((b) => A.ctx.decodeAudioData(b)).catch(() => null));
   }
   return bufCache.get(key);

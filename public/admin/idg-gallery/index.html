@@ -103,11 +103,19 @@
   #lightbox { position:fixed; inset:0; background:#000d; z-index:80; display:none; align-items:center; justify-content:center; cursor:zoom-out; padding:20px; }
   #lightbox.open { display:flex; } #lightbox img { max-width:96vw; max-height:94vh; image-rendering:pixelated; background:repeating-conic-gradient(#2a2147 0 25%, #1f1838 0 50%) 0 0/16px 16px; border-radius:8px; }
 </style>
-  <script type="module" crossorigin src="/admin/idg-gallery/assets/idg-gallery-DAj7mjez.js"></script>
+  <script type="module" crossorigin src="/admin/idg-gallery/assets/gallery-o7sGvXfK.js"></script>
+  <link rel="modulepreload" crossorigin href="/admin/idg-gallery/assets/rig-v69DYKRy.js">
+  <link rel="modulepreload" crossorigin href="/admin/idg-gallery/assets/CanvasPool-5SpHpALR.js">
+  <link rel="modulepreload" crossorigin href="/admin/idg-gallery/assets/canvasUtils-Bt3DLW8O.js">
+  <link rel="modulepreload" crossorigin href="/admin/idg-gallery/assets/TextStyle-C4453v_O.js">
+  <link rel="modulepreload" crossorigin href="/admin/idg-gallery/assets/BatchableSprite-qOYjpB38.js">
+  <link rel="modulepreload" crossorigin href="/admin/idg-gallery/assets/getPo2TextureFromSource-xIOmTvOA.js">
+  <link rel="modulepreload" crossorigin href="/admin/idg-gallery/assets/localUniformBit-BOGrcT1E.js">
 </head>
 <body>
 <header>
-  <h1>🐉 좀비와 드래곤 · 에셋 갤러리 <small>그림 담당 도구 · 새로 고침하면 새로 만든 그림이 보여요</small><button class="btn" id="reload">⟳ 다시 불러오기</button></h1>
+  <h1>🐉 좀비와 드래곤 · 에셋 갤러리 <small>그림 담당 도구 · 새로 고침하면 새로 만든 그림이 보여요</small><a class="btn" id="rigcheckLink" href="/tools/idg-gallery/rigcheck.html" style="margin-left:auto;text-decoration:none">🦴 조립 점검 (보스 · 좀비 · 용)</a><button class="btn" id="reload" style="margin-left:8px">⟳ 다시 불러오기</button></h1>
+<script>if (location.pathname.startsWith('/admin/')) document.getElementById('rigcheckLink').href = './rigcheck.html';</script>
   <nav id="tabs"></nav>
 </header>
 <main id="main"></main>

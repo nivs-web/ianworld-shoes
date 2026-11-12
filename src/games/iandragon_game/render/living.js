@@ -22,12 +22,18 @@ export async function lightsFor(world) {
 }
 
 const fxCache = {};
-export async function fxFrames(name) {
-  if (fxCache[name]) return fxCache[name];
-  const meta = await (await fetch(`${BASE}ai/fx/${name}.json`)).json();
-  const tex = await Assets.load(`${BASE}${meta.file}`); tex.source.scaleMode = 'nearest';
-  const frames = Array.from({ length: meta.frames }, (_, k) => new Texture({ source: tex.source, frame: new Rectangle(k * meta.w, 0, meta.w, meta.h) }));
-  return (fxCache[name] = { frames, meta });
+/* 11/12 속도 : 표(json)와 그림을 동시에 받는다 — 그림 이름은 늘 ai/fx/<이름>.png 라 미리 받고, 표가 다른 이름을 말하면 그걸 받는다. 같은 효과를 동시에 불러도 한 번만 */
+export function fxFrames(name) {
+  if (!fxCache[name]) {
+    const guess = `ai/fx/${name}.png`, early = Assets.load(`${BASE}${guess}`).catch(() => null);
+    fxCache[name] = fetch(`${BASE}ai/fx/${name}.json`).then((r) => r.json()).then(async (meta) => {
+      const tex = (meta.file === guess && await early) || await Assets.load(`${BASE}${meta.file}`); tex.source.scaleMode = 'nearest';
+      const frames = Array.from({ length: meta.frames }, (_, k) => new Texture({ source: tex.source, frame: new Rectangle(k * meta.w, 0, meta.w, meta.h) }));
+      return { frames, meta };
+    });
+    fxCache[name].catch(() => { delete fxCache[name]; });
+  }
+  return fxCache[name];
 }
 
 let glowTex = null;

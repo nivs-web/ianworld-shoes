@@ -39,7 +39,7 @@ let lightsP = null;
 /** 월드 2~10 자리표 = ai/bg/layers/lights.json (tools/idg-bg-lights.mjs 가 만듦) · 월드 1 = 위 LIGHTS_B */
 async function lightsFor(world) {
   if (LIGHTS_B[world]) return LIGHTS_B[world];
-  lightsP ||= fetch('/assets/iandragon_game/ai/bg/layers/lights.json?v=' + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  lightsP ||= fetch('/assets/iandragon_game/ai/bg/layers/lights.json' + (import.meta.env.DEV ? '?v=' + Date.now() : '')).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
   return (await lightsP)[String(world).padStart(2, '0')] || null;
 }
 

@@ -9,12 +9,12 @@ const BASE = '/assets/iandragon_game/sfx/';
 let groups = null, counts = null;          // groups = 목록 받는 Promise · counts = 받은 { id: 개수 }
 const cache = new Map(), last = new Map();
 const ext = () => (typeof Audio !== 'undefined' && new Audio().canPlayType('audio/ogg; codecs="opus"') ? 'ogg' : 'm4a');
-const list = () => (groups ??= (typeof fetch === 'function' ? fetch(`${BASE}sfx.json`).then((r) => (r.ok ? r.json() : {})) : Promise.resolve({}))
+const list = () => (groups ??= (typeof fetch === 'function' ? fetch(`${BASE}sfx.json`, { priority: 'low' }).then((r) => (r.ok ? r.json() : {})) : Promise.resolve({}))
   .catch(() => ({})).then((L) => (counts = L)));
 function load(name) {
   if (!cache.has(name)) {
     const A = audio();
-    cache.set(name, fetch(`${BASE}${name}.${ext()}`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+    cache.set(name, fetch(`${BASE}${name}.${ext()}`, { priority: 'low' }).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
       .then((b) => A.ctx.decodeAudioData(b)).then((buf) => { cache.set(name, buf); return buf; }).catch(() => { cache.set(name, null); return null; }));
   }
   return cache.get(name);

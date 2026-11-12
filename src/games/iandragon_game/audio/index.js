@@ -52,14 +52,19 @@ export function init() {
   applyVol();
   preloadVoices();   /* 시작 멘트만 — 용 이름은 전투 시작 때 덱만 (preloadBattleVoices) */
   preloadMusic(['lobby']).catch(() => {});   /* 로비 곡만 (예전엔 로비 · 월드1 · 보스 · 승리 2.8MB 를 한꺼번에 받아 첫 화면이 느렸다 — 11/11 밤) */
-  preloadSfxFiles().catch(() => {});                                 // 좀비 소리 같은 파일 효과음
+  /* 좀비 소리 파일(29개 · 약 0.3MB)은 로비에서 받지 않는다 — 전투 화면이 뜰 때 preloadSfx() (battleView) · 11/12 속도 */
 }
+
+/** 좀비 소리 같은 파일 효과음을 받아 둔다 (한 번만 · 전투 화면이 그림을 다 받은 뒤 부른다) */
+let sfxP = null;
+export function preloadSfx() { if (!audio()) return Promise.resolve(); return (sfxP ||= preloadSfxFiles().catch(() => { sfxP = null; })); }
 
 /** 효과음 — 합성(SFX) 또는 파일 묶음(zombie_spawn · zombie_idle · zombie_die · zombie_big · zombie_ghost) */
 export function play(id) {
   if (muted) return;
   if (!vol.zombie && id.startsWith('zombie_')) return;
-  const f = SFX[id], file = !f && hasFileSfx(id); if (!f && !file) return;
+  const f = SFX[id], file = !f && hasFileSfx(id);
+  if (!f && !file) { if (id.startsWith('zombie_')) preloadSfx(); return; }   // 목록을 아직 안 받았으면 지금 받기 시작 (다음 소리부터 난다)
   const A = audio(); if (!A) return;
   const now = A.ctx.currentTime;
   if (now - (lastAt.get(id) ?? -1) < (file ? 0.6 : 0.05)) return;          // 좀비 소리는 같은 종류 0.6초에 한 번
@@ -95,14 +100,14 @@ export function voice(id) {
 /** 단계 이름 · 설명 — 관리자 페이지 · 음향 설정 창이 그대로 보여 준다 */
 export const VOICE_LEVELS = [
   { n: 0, name: '0단계 · 말 없음', desc: '목소리를 아예 안 냅니다. 효과음과 음악만.' },
-  { n: 1, name: '1단계 · 이름만', desc: '시작 멘트 한 줄 + 용을 누르면 그 용이 자기 이름을 말해요. (예: «꼬물이!») — 기본' },
-  { n: 2, name: '2단계 · 아주 짧게', desc: '이름과 «꼬물이 출격!»을 번갈아 · 시작 · 승패 같은 짧은 해설도 조금.' },
+  { n: 1, name: '1단계 · 이름만', desc: '시작 멘트 한 줄 + 용을 누르면 그 용이 자기 이름을 말해요. (예: «꼬물이!»)' },
+  { n: 2, name: '2단계 · 아주 짧게', desc: '이름과 «꼬물이 출격!»을 번갈아 · 시작 · 승패 같은 짧은 해설도 조금. — 기본' },
   { n: 3, name: '3단계 · 중요한 순간', desc: '보스 등장 · 보스 격파 · 브레스 · 부화 때 한 문장.' },
   { n: 4, name: '4단계 · 대부분', desc: '진화 · 포효 · 좀비 떼 경고 · 습격 · 대결 말까지.' },
   { n: 5, name: '5단계 · 전부', desc: '모든 대사 (예전 그대로 · 보스 중간 말까지).' },
 ];
 /** 전투가 시작된 뒤 : 내 덱 용 이름 · 출격 말과 승리 · 보스 곡을 뒤에서 받아 둔다 */
-export function preloadBattle(arts = []) { preloadVoices(arts.flatMap((a) => [`name/${a}`, `deploy/${a}`])); setTimeout(() => preloadMusic(['win', 'boss']).catch(() => {}), 4000); }
+export function preloadBattle(arts = []) { preloadSfx(); preloadVoices(arts.flatMap((a) => [`name/${a}`, `deploy/${a}`])); setTimeout(() => preloadMusic(['win', 'boss']).catch(() => {}), 4000); }
 /** 사용자가 고른 단계 (기기에 저장) */
 export function setVoiceLevel(n) { setVL(n); }
 /** 관리자 기본값 — 사용자가 직접 고른 적이 없을 때만 적용 (저장 안 함) */

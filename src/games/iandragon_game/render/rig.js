@@ -11,6 +11,11 @@
 import { Assets, Container, Sprite } from 'pixi.js';
 
 const BASE = '/assets/iandragon_game/ai/';
+/*
+ * 11/12 속도 : Pixi 기본은 그림을 워커(CPU 코어 수만큼 · 폰은 보통 8)로 받고 줄을 거꾸로(LIFO) 처리해, 전투 그림 100여 장이 코어 수씩 끊겨 받혔다.
+ * 메인 스레드 fetch + createImageBitmap 으로 받으면 브라우저가 한꺼번에 받는다(해독은 그래도 다른 스레드). 받는 그림 · 결과 텍스처는 같다.
+ */
+Assets.setPreferences({ preferWorkers: false });
 
 /** 캐릭터 하나의 부품 텍스처 + rig 를 받는다 */
 /** 부품 자리 보정 (2026-11-11 대표님 «리더 용 날개가 등이 아니라 뒤통수에 붙은 것 같다») — { 캐릭터: { 부품: [x, y] } } */
@@ -26,11 +31,47 @@ export const rigFixTable = () => (fixP ||= fetch(`${BASE}meta/rigfix.json`).then
 export async function applyRigFix(id, rig) {
   const F = { ...(RIG_FIX[id] || {}), ...((await rigFixTable())[id] || {}) }, files = F.files || {};
   for (const [n, pos] of Object.entries(F)) { if (n === 'files' || !Array.isArray(pos)) continue; const q = rig.parts.find((x) => x.n === n); if (q) q.p = pos; }
+  /* 보스 조립 보정 (11/12 겜보조 2 · ai/meta/rigfix_boss.json · 규칙 = tools/idg-rigcheck.mjs applyFix)
+   *  { id: { order?: [뒤→앞], parts: { 이름: { p?, a?, flip? } } } } — 부품 값 덮어쓰기 → order 로 다시 줄 세움(order 에 없는 부품은 뒤에 원래 순서) */
+  /* 일반 좀비 · 용 보정 (11/12 겜보조 · ai/meta/rigfix_zombie.json · 34종) 도 같은 형식 — 순서 : rigfix.json → rigfix_boss → rigfix_zombie (표끼리 같은 키 없음) */
+  const [TB, TZ] = await Promise.all([id.startsWith('boss') ? rigFixBossTable() : {}, rigFixZombieTable()]);
+  for (const B of [TB[id], TZ[id]]) if (B) {
+    for (const [n, o] of Object.entries(B.parts || {})) { const q = rig.parts.find((x) => x.n === n); if (q) Object.assign(q, o); }
+    if (Array.isArray(B.order)) rig.parts = [...B.order.map((n) => rig.parts.find((p) => p.n === n)).filter(Boolean), ...rig.parts.filter((p) => !B.order.includes(p.n))];
+  }
   return files;
 }
+let bossP = null;
+export const rigFixBossTable = () => (bossP ||= fetch(`${BASE}meta/rigfix_boss.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+let zombP = null;
+export const rigFixZombieTable = () => (zombP ||= fetch(`${BASE}meta/rigfix_zombie.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
 
-export async function loadRig(id) {
-  const rig = await (await fetch(`${BASE}${id}/rig.json`)).json();
+/*
+ * rig.json 은 캐릭터마다 한 번만 받는다 (11/12 속도 — 로비 프로필 · 도감 · 전투가 같은 rig 를 몇 번씩 받았다).
+ * applyRigFix 는 같은 값을 다시 넣을 뿐이라 여러 번 불러도 안전하다. 실패하면 기억을 지워 다음에 다시 받는다.
+ */
+const rigJsonP = new Map();
+export function rigJson(id) {
+  if (!rigJsonP.has(id)) {
+    const p = fetch(`${BASE}${id}/rig.json`).then((r) => r.json());
+    p.catch(() => rigJsonP.delete(id));
+    rigJsonP.set(id, p);
+  }
+  return rigJsonP.get(id);
+}
+
+const rigP = new Map();
+export function loadRig(id) {
+  if (!rigP.has(id)) {
+    const p = loadRigNow(id);
+    p.catch(() => rigP.delete(id));
+    rigP.set(id, p);
+  }
+  return rigP.get(id);
+}
+async function loadRigNow(id) {
+  /* rig.json 과 자리 보정 표(rigfix.json)를 동시에 받는다 (예전엔 rig → 표 → 부품 그림 세 번 기다렸다) */
+  const [rig] = await Promise.all([rigJson(id), rigFixTable()]);
   const files = await applyRigFix(id, rig);   // 자리 보정 (R2 1년 캐시라 rig.json 대신 여기서)
   const names = new Set(rig.parts.flatMap((p) => [p.n, p.blink, p.breath].filter(Boolean)));
   const tex = {};

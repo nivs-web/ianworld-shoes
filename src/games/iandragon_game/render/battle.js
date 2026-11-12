@@ -72,7 +72,7 @@ export async function startBattle(ctx, opts) {
 
   const sound = createBattleSound(stage, me);
   /* 멀티는 1배속 고정 */
-  const speedMax = isOn('zdOpt', 'speed2') ? 2 : 1;   /* ×2 배속 단추 (대표님 11/11 «다시 작동») — 처음부터 ×2 까지 · 운영자 스위치로 끌 수 있다 */
+  const speedMax = 2;   /* ×2 배속 단추 (대표님 11/11 «다시 작동») — 처음부터 ×2 까지 · 운영자 스위치로 끌 수 있다 */
   const ui = { me, side: pvp ? me : 0, net: !!net, speed: net ? 1 : Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
   /* 자동 전투 (B6) : 별을 1개 이상 딴 스테이지만 — 기준 AI(코어 aiCommands)가 대신 누른다 */
   const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
@@ -144,6 +144,7 @@ export async function startBattle(ctx, opts) {
     if (net && ls.mismatch() >= 0) { setTimeout(() => { if (!gone) hud.showPanel('lose', { t: S.t, pvp: true, coins: 0, title: '판이 어긋났어요', rec: '이 판은 기록하지 않아요', hint: '연결이 어긋났어요 — 한 판 더 해요!' }); }, 900); return; }   // 기획 3.6 : 무효
     const win = S.over.winner === 0;
     const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE };
+    { const fb = S.base[1]; if (fb && fb.maxHp) info.foeHp = Math.max(0, Math.round((fb.hp / fb.maxHp) * 100)); }   // 결과 창 «좀비 성 남은 체력» (11/12)
     /* 쌓인 기록 (도전 과제) — 이겨도 져도 */
     const P0 = S.players[me], st0 = opts.save?.stat || {};
     const stat = { ...st0, kills: (st0.kills || 0) + S.st.kills, breath: (st0.breath || 0) + P0.st.breath, maxWl: Math.max(st0.maxWl || 0, P0.wl + 1),

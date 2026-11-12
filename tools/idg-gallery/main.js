@@ -4,6 +4,7 @@
  */
 import { TABS, FUN_INFO, A, RETOUCH } from './lists.js';
 import { makeThumb, getRig, createCharStage, createBgStage, createLineup } from './viewer.js';
+import { rigJson } from '/src/games/iandragon_game/render/rig.js';
 import { createLivingStage } from './living.js';
 import { renderSound } from './sound.js';
 
@@ -21,10 +22,17 @@ function h(tag, attrs = {}, ...kids) {
   for (const c of kids.flat(Infinity)) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(c));
   return el;
 }
-const bust = Date.now();
-const probeJson = async (url) => { try { const r = await fetch(url + '?v=' + bust); if (!r.ok) return null; return JSON.parse(await r.text()); } catch { return null; } };
-const probeImg = (url) => new Promise((res) => { const i = new Image(); i.onload = () => res(i.naturalWidth > 0 ? i : null); i.onerror = () => res(null); i.src = url + '?v=' + bust; });
-const img = (src, cls = '') => h('img', { src: src + '?v=' + bust, class: ('zoomable ' + cls).trim(), loading: 'lazy' });
+/*
+ * ?v=시각 은 개발 서버에서만 (11/12 속도). 운영은 R2 판 번호 폴더(idg/<ver>/)라 같은 주소 = 같은 그림 → 브라우저 캐시를 그대로 쓴다.
+ * (예전엔 운영에서도 매번 붙여 캐시가 안 먹었다.) 개발 서버는 no-cache 라 붙이지 않아도 새 그림을 받지만, 예전 습관대로 둔다.
+ */
+const bust = import.meta.env.DEV ? Date.now() : '';
+const V = (url) => (bust ? url + '?v=' + bust : url);
+const probeJson = async (url) => { try { const r = await fetch(V(url)); if (!r.ok) return null; return JSON.parse(await r.text()); } catch { return null; } };
+const probeImg = (url) => new Promise((res) => { const i = new Image(); i.onload = () => res(i.naturalWidth > 0 ? i : null); i.onerror = () => res(null); i.src = V(url); });
+const img = (src, cls = '') => h('img', { src: V(src), class: ('zoomable ' + cls).trim(), loading: 'lazy' });
+/* 캐릭터 썸네일 = 3배로 뽑은 캔버스를 칸에 꽉 맞게 (도트 그대로) */
+document.head.append(h('style', {}, '.thumb > canvas.rigthumb { width:100%; height:100%; object-fit:contain; image-rendering:pixelated; display:block; }'));
 const soon = (txt = '아직 없음') => h('div', { class: 'soon' }, h('div', { class: 'soon-ic' }, '🥚'), txt);
 
 /* ───────── 큰 창 ───────── */
@@ -82,15 +90,15 @@ async function renderRig(tab) {
     return { it, thumb, card };
   });
   const head = h('div', { class: 'tabhead' }, h('b', {}, `${tab.label} ${items.length}종`), h('span', { class: 'count' }, ''), h('span', { class: 'hint' }, '카드를 누르면 실제 게임처럼 움직여 볼 수 있어요'));
-  await Promise.all(cards.map(async ({ it, thumb, card }) => {
-    const rig = await probeJson(`${A}${it.art}/rig.json`);
+  /* 격자는 바로 보여 주고(11/12 속도) 카드마다 준비되는 대로 채운다 — 예전엔 34종을 다 두드려 본 뒤에야 격자가 떴다 */
+  Promise.all(cards.map(async ({ it, thumb, card }) => {
+    const rig = await rigJson(it.art).catch(() => null);   /* 있는지 보기 = 게임이 받는 그 rig.json (한 번만 받는다 · 11/12 속도) */
     if (!rig) { thumb.replaceChildren(soon()); card.classList.add('missing'); return; }
     have++;
     card.classList.add('ready');
     card.addEventListener('click', () => openChar(it, rig));
-    makeThumb(it.art, it.facing).then((url) => thumb.replaceChildren(h('img', { src: url })), () => thumb.replaceChildren(soon('그림 오류')));
-  }));
-  $('.count', head).textContent = `그림 있음 ${have} / ${items.length}`;
+    makeThumb(it.art, it.facing).then((cv) => thumb.replaceChildren(cv), () => thumb.replaceChildren(soon('그림 오류')));
+  })).then(() => { $('.count', head).textContent = `그림 있음 ${have} / ${items.length}`; });
   return [head, grid];
 }
 
@@ -129,7 +137,7 @@ async function openChar(it, rig) {
     const si = new Image();
     si.onload = () => sheet.append(Object.assign(si, { className: 'zoomable sheet' }));
     si.onerror = () => sheet.append(h('div', { class: 'hint' }, '원본 시트 서버가 꺼져 있어요 (갤러리 전용 설정으로 열면 보입니다)'));
-    si.src = `/idg-sheets/${pj.src}?v=${bust}`;
+    si.src = `/idg-sheets/${pj.src}${bust ? '?v=' + bust : ''}`;
     info.append(h('h4', {}, '원본 시트'), sheet);
   }
   openModal(it.name, it.sub, body, () => stage.destroy());
@@ -141,7 +149,7 @@ async function renderLive() {
   const box = (label, sub) => { const host = h('div', { class: 'livehost' }); return { host, el: h('figure', { class: 'livefig' }, host, h('figcaption', {}, h('b', {}, label), ' — ', sub)) }; };
   const still = box('지금 (정지)', '통그림 한 장 + 반딧불'), A = box('A안 · 코드 숨결 ($0)', '그림 그대로 · 달 빛무리 숨쉬기 · 초록 화로 깜빡 + 불티 · 창문 반짝 · 땅 안개 흐름 · 옅은 구름 자락'), B = box('★ 확정안 — B 두 겹 + A 숨결 + 움직이는 화로 불꽃', '하늘 겹 0.35배 느리게(깊이) · 달 빛무리 숨쉬기 · 먼 성 창문 반짝 · 구름 자락 · 안개 두 겹 · 초록 화로 = 8프레임 불꽃 애니메이션 + 불빛 깜빡 + 불티');
   const one = h('div', { class: 'livegrid' }, B.el, still.el, A.el);
-  const flame = (name, frames, fw, fps, label) => { const k = 3, el = h('div', { style: `width:${fw * k}px;height:${72 * k}px;background:#1d1438 url(/assets/iandragon_game/ai/fx/${name}.png?v=${bust}) 0 0/${fw * frames * k}px ${72 * k}px;image-rendering:pixelated;border-radius:8px;animation:fx_${name} ${frames / fps}s steps(${frames}) infinite` }); return h('figure', { class: 'livefig', style: 'display:inline-block;margin-right:18px' }, el, h('style', {}, `@keyframes fx_${name}{to{background-position:-${fw * frames * k}px 0}}`), h('figcaption', {}, h('b', {}, label), ` — ai/fx/${name}.png (${frames}프레임 · ${fps}fps)`)); };
+  const flame = (name, frames, fw, fps, label) => { const k = 3, el = h('div', { style: `width:${fw * k}px;height:${72 * k}px;background:#1d1438 url(/assets/iandragon_game/ai/fx/${name}.png${bust ? '?v=' + bust : ''}) 0 0/${fw * frames * k}px ${72 * k}px;image-rendering:pixelated;border-radius:8px;animation:fx_${name} ${frames / fps}s steps(${frames}) infinite` }); return h('figure', { class: 'livefig', style: 'display:inline-block;margin-right:18px' }, el, h('style', {}, `@keyframes fx_${name}{to{background-position:-${fw * frames * k}px 0}}`), h('figcaption', {}, h('b', {}, label), ` — ai/fx/${name}.png (${frames}프레임 · ${fps}fps)`)); };
   const gif = h('div', {}, flame('fire_green', 8, 72, 10, '초록 불꽃'), flame('fire_orange', 12, 49, 12, '주황 불꽃'));
   stages.push(await createLivingStage(still.host, 'still', 1), await createLivingStage(A.host, 'A', 1));
   try { stages.push(await createLivingStage(B.host, 'B', 1)); } catch { B.host.append(h('div', { class: 'hint' }, 'B안 두 겹 그림 준비 중 — 새로 고침')); }
@@ -154,7 +162,17 @@ async function renderLive() {
   state.funStage = { destroy() { stages.forEach((s) => s.destroy()); cur?.destroy(); } };
   return [h('div', { class: 'tabhead' }, h('b', {}, '배경 살아있게'), h('span', { class: 'hint' }, '카메라가 게임처럼 좌우로 천천히 오갑니다 (약 25초 왕복)')),
     h('h3', { class: 'sec' }, '월드 1 첫 판 — 확정안 · 지금 · A안'), one, gif,
-    h('h3', { class: 'sec' }, '월드별 확정안 (두 겹 + 숨결 + 불꽃 · 두 겹이 아직 없으면 넓힌 통그림)'), btns, info, pickHost];
+    h('h3', { class: 'sec' }, '월드별 확정안 (두 겹 + 숨결 + 불꽃 · 두 겹이 아직 없으면 넓힌 통그림)'), btns, info, pickHost,
+    h('h3', { class: 'sec', style: 'color:#5ff0c8' }, '월드 1~10 한 번에 전부 보기'),
+    h('p', { class: 'hint' }, '움직임 없이 정지 그림 (하늘 겹 + 앞 겹 · 카메라 맨 왼쪽) · 민트 점선 = 캐릭터 발 줄(높이 440 / 540) · 그 아래 땅 띠의 두께가 «위아래로 퍼져 나오기»에 쓸 수 있는 자리'),
+    h('div', { class: 'allworlds' }, Array.from({ length: 10 }, (_, i) => { const n = String(i + 1).padStart(2, '0'), H = 270, k = H / 540;
+      return h('figure', { class: 'livefig', style: 'margin:0 0 14px' },
+        h('div', { style: `position:relative;height:${H}px;overflow-x:auto;overflow-y:hidden;background:#140e26;border-radius:8px` },
+          h('div', { style: `position:relative;height:${H}px;width:max-content` },
+            h('img', { src: `/assets/iandragon_game/ai/bg/layers/w${n}_sky.png?v=${bust}`, style: `height:${H}px;display:block`, loading: 'lazy' }),
+            h('img', { src: `/assets/iandragon_game/ai/bg/layers/w${n}_front.png?v=${bust}`, style: `height:${H}px;position:absolute;left:0;top:0`, loading: 'lazy' }),
+            h('div', { style: `position:absolute;left:0;right:0;top:${Math.round(440 * k)}px;border-top:2px dashed #5ff0c8;opacity:.85` }))),
+        h('figcaption', {}, h('b', { style: 'color:#5ff0c8' }, `월드 ${i + 1}`), ` — ai/bg/layers/w${n}_sky.png + w${n}_front.png`)); }))];
 }
 
 /* ───────── 배경 탭 ───────── */
@@ -173,7 +191,12 @@ async function renderBg(tab) {
     box.replaceChildren(h('img', { src: im.src, class: 'bgimg' }), h('span', { class: 'dim' }, `${im.naturalWidth}×${im.naturalHeight}`));
     card.addEventListener('click', () => openBg(it));
   }));
-  return [h('div', { class: 'tabhead' }, h('b', {}, '배경'), h('span', { class: 'count' }, `그림 있음 ${have} / ${cards.length}`), h('span', { class: 'hint' }, '카드를 누르면 540 높이로 크게 · 재미 요소 자리 겹쳐 보기')), grid];
+  return [h('div', { class: 'tabhead' }, h('b', {}, '배경'), h('span', { class: 'count' }, `그림 있음 ${have} / ${cards.length}`), h('span', { class: 'hint' }, '카드를 누르면 540 높이로 크게 · 재미 요소 자리 겹쳐 보기')), grid,
+    h('h3', { class: 'sec', style: 'color:#5ff0c8' }, '월드 1~10 한 번에 전부 보기 — 땅 띠 통일 · 캐릭터 나오는 자리'),
+    h('p', { class: 'hint' }, '움직임 없이 전장 전체 폭(그 월드 가장 긴 판)을 한 장씩 · 땅 띠는 월드 7(사막) 두께 = 높이 430~480 (노란 점선) · 캐릭터는 세 줄(발 높이 438 · 452 · 466, 민트 점선) 중 하나에 차례로 나와 위아래로 퍼짐 · 발이 아래인 캐릭터가 앞에 그려짐 · ▲초록 = 용 나오는 자리 · ▲빨강 = 좀비 나오는 자리 · 규칙 = ai/meta/lanes.json · 그림 = ai/bg/layers/wNN_front_v2.png'),
+    ...Array.from({ length: 10 }, (_, i) => { const n = String(i + 1).padStart(2, '0');
+      return h('figure', { class: 'livefig', style: 'margin:0 0 16px' }, h('div', { style: 'overflow-x:auto;background:#140e26;border-radius:8px' }, h('img', { src: `/admin/idg-gallery-review/lanes_w${n}.webp?v=${bust}`, style: 'height:360px;display:block;image-rendering:pixelated', loading: 'lazy' })),
+        h('figcaption', {}, h('b', { style: 'color:#5ff0c8' }, `월드 ${i + 1}`), ` — 전장 폭 ${1440 + i * 30} · admin/idg-gallery-review/lanes_w${n}.webp`)); })];
 }
 
 /** 재미 요소 버튼줄 (배경 창 · 재미 요소 탭에서 같이 쓴다) */
@@ -270,7 +293,7 @@ async function renderFun() {
   // 원본 시트
   const fj = await probeJson(`${A}fun/fun.json`);
   const sheets = h('div', { class: 'sheets' });
-  for (const s of fj?.src || []) { const si = new Image(); si.className = 'zoomable sheet'; si.onload = () => sheets.append(h('figure', {}, si, h('figcaption', {}, '원본 시트 ' + s))); si.src = `/idg-sheets/${s}?v=${bust}`; }
+  for (const s of fj?.src || []) { const si = new Image(); si.className = 'zoomable sheet'; si.onload = () => sheets.append(h('figure', {}, si, h('figcaption', {}, '원본 시트 ' + s))); si.src = `/idg-sheets/${s}${bust ? '?v=' + bust : ''}`; }
   return [h('div', { class: 'tabhead' }, h('b', {}, '재미 요소 17종'), h('span', { class: 'hint' }, '카드의 «재생»을 누르면 위 배경에서 실제 게임 코드(fun.js)로 띄웁니다')), top, grid, sheets];
 }
 
@@ -286,14 +309,14 @@ async function renderEgg(tab) {
   }));
   const pj = await probeJson(`${A}eggs/parts.json`);
   const sheets = h('div', { class: 'sheets' });
-  if (pj?.src) { const si = new Image(); si.className = 'zoomable sheet'; si.onload = () => sheets.append(h('figure', {}, si, h('figcaption', {}, '원본 시트 ' + pj.src))); si.src = `/idg-sheets/${pj.src}?v=${bust}`; }
+  if (pj?.src) { const si = new Image(); si.className = 'zoomable sheet'; si.onload = () => sheets.append(h('figure', {}, si, h('figcaption', {}, '원본 시트 ' + pj.src))); si.src = `/idg-sheets/${pj.src}${bust ? '?v=' + bust : ''}`; }
   return [h('div', { class: 'tabhead' }, h('b', {}, '알'), h('span', { class: 'count' }, `그림 있음 ${have} / ${tab.items().length}`)), grid, sheets];
 }
 /** 옛 도트판(tools/idg-gallery/old/) 과 바이트가 다르면 «새 그림» */
 const OLD = '/tools/idg-gallery/old/';
 async function changed(file) {
   try {
-    const [a, b] = await Promise.all([GAME + file, OLD + file].map((u) => fetch(u + '?v=' + bust).then((r) => (r.ok && /image/.test(r.headers.get('content-type') || '') ? r.arrayBuffer() : null))));
+    const [a, b] = await Promise.all([GAME + file, OLD + file].map((u) => fetch(u + (bust ? '?v=' + bust : '')).then((r) => (r.ok && /image/.test(r.headers.get('content-type') || '') ? r.arrayBuffer() : null))));
     if (!a || !b) return null;
     if (a.byteLength !== b.byteLength) return true;
     const x = new Uint8Array(a), y = new Uint8Array(b);
@@ -320,7 +343,7 @@ async function renderHud() {
       h('div', { class: 'sub' }, sizes.map((s) => `hud_${b}${s}.png`).join(' · ')));
     card.dataset.b = b;
     grid.append(card);
-    strip.append(h('img', { src: GAME + e.file + '?v=' + bust, title: b }));
+    strip.append(h('img', { src: GAME + e.file + (bust ? '?v=' + bust : ''), title: b }));
   }));
   [...grid.children].sort((p, q) => bases.indexOf(p.dataset.b) - bases.indexOf(q.dataset.b)).forEach((c) => grid.append(c));
   [...strip.children].sort((p, q) => bases.indexOf(p.title) - bases.indexOf(q.title)).forEach((c) => strip.append(c));
@@ -389,7 +412,7 @@ async function renderMeta() {
   const apply = () => { stage.setLook(look); lineup.setLook(look); };
   apply();
   const pick = (slot, list, prefix) => h('div', { class: 'lookrow' }, h('button', { class: 'btn', onclick: () => { look[slot] = null; apply(); } }, '없음'),
-    list.map(([id, name]) => h('button', { class: 'lookbtn', title: name, onclick: () => { look[slot] = `${prefix}_${id}`; apply(); } }, h('img', { src: `${META}${prefix}_${id}.png?v=${bust}` }))));
+    list.map(([id, name]) => h('button', { class: 'lookbtn', title: name, onclick: () => { look[slot] = `${prefix}_${id}`; apply(); } }, h('img', { src: `${META}${prefix}_${id}.png${bust ? '?v=' + bust : ''}` }))));
   const tryOn = h('div', { class: 'charwin' }, h('div', { class: 'left' }, host, h('div', { class: 'btngroup' }, h('span', { class: 'lbl' }, '대장 용'), sel, h('button', { class: 'btn act', onclick: () => stage.attack() }, '⚔ 브레스 자세'), h('button', { class: 'btn', onclick: () => stage.base('walk') }, '걷기'), h('button', { class: 'btn', onclick: () => stage.base('idle') }, '쉬기'))),
     h('div', { class: 'info' }, h('h4', {}, '모자 (눌러서 씌우기)'), pick('hat', HATS, 'hat'), h('h4', {}, '목 장식'), pick('neck', NECKS, 'neck'),
       h('div', { class: 'hint' }, '단추 = 상점 아이콘(정면 상품 그림) · 용이 쓴 모습 = 착용 부품(옆모습 · 게임 칸 굵기). 붙는 자리는 tools/idg-wear-fit.mjs 가 대장 용마다 머리 · 목 픽셀을 재서 계산 → ai/meta/wear.json')));

@@ -14,14 +14,16 @@ NC(비상업)·ND(변경 금지)·SA(동일조건) 조건의 음원은 쓰지 �
 
 ## 곡별 기록
 
-### lobby — 로비
-- 곡명: 경기병 서곡 (Light Cavalry Overture)
-- 작곡가: 프란츠 폰 주페 (1819–1895)
-- 연주자: 미국 해병대 군악대 (United States Marine Band), 음반 «Overtures, Volume Two»
-- 출처 주소: https://commons.wikimedia.org/wiki/File:Overture_to_Light_Cavalry_-_U.S._Marine_Band.ogg
-- 라이선스: 퍼블릭 도메인 (미국 연방정부 저작물로 위키미디어 커먼즈에 표시됨)
-- 자른 구간: 14.23초 – 88.32초 (길이 74.08초, 고리)
-- 음질 한 줄: 관악 합주, 원본 ogg 약 500kbps 스테레오라 음질 좋음. 풀 오케스트라는 아님
+### lobby — 로비 (2026-11-12 교체 · 대표님 «무섭고 으스스한 오케스트라 곡으로»)
+- 곡명: 환상 교향곡 5악장 «마녀들의 밤의 꿈» (Symphonie fantastique, op. 14 – V. Songe d'une nuit du Sabbat)
+- 작곡가: 엑토르 베를리오즈 (1803–1869)
+- 연주자: 이고르 마르케비치 지휘, 라무뢰 관현악단 (Igor Markevitch, Orchestre Lamoureux), 1962년 녹음
+- 출처 주소: https://commons.wikimedia.org/wiki/File:Hector_Berlioz_-_Symphonie_fantastique,_op._14_-_5._Songe_d%27une_nuit_du_Sabbat_(Igor_Markevitch,_Orchestre_Lamoureux,_1962).ogg
+- 라이선스: 퍼블릭 도메인 (위키미디어 커먼즈 표시)
+- 자른 구간: 176.5초 – 261.7초 (길이 85.2초, 고리) — 장례 종소리와 «진노의 날(Dies irae)» 주제, 마녀들의 춤으로 넘어가는 부분. 이음매는 tools/idg-music-loop.mjs 가 끝 2초가 시작 직전 2초와 가장 닮은 곳으로 골랐음
+- 처리: 끝 0.3초 크로스페이드 → loudnorm → -16 LUFS 맞춤 → ogg(opus 48k) · m4a(aac 64k)
+- 음질 한 줄: 풀 오케스트라 실연(1962 스테레오), 원본 ogg 약 89kbps라 아주 맑지는 않지만 폰 스피커로는 충분
+- 이전 로비 곡: 주페 «경기병 서곡» (미국 해병대 군악대 · PD) — 11/12 교체
 
 ### w1 — 달밤 언덕
 - 곡명: 죽음의 무도 (Danse Macabre)

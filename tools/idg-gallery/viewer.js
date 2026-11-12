@@ -2,7 +2,7 @@
  * 갤러리 뷰어 — 게임 코드(rig.js · fun.js · funSpots.js)를 그대로 import 해서 실제 게임처럼 움직여 본다. (src 는 읽기만)
  *  createCharStage : 캐릭터 한 마리 (걷기 · 공격 · 맞음 · 쉬기 · 방향 · 배율)
  *  createBgStage   : 배경 + 재미 요소 (자리표 겹쳐 보기 · 하나씩 띄우기 · 카메라)
- *  makeThumb       : 카드용 정지 그림 (같은 rig 를 쉬는 자세로 한 번 그려 dataURL 로)
+ *  makeThumb       : 카드용 정지 그림 (같은 rig 를 쉬는 자세로 한 번 그려 캔버스로)
  */
 import { Application, Assets, Container, Graphics, Sprite, Text } from 'pixi.js';
 import { loadRig, createRigged } from '/src/games/iandragon_game/render/rig.js';
@@ -10,29 +10,52 @@ import { createFun, loadFun } from '/src/games/iandragon_game/render/fun.js';
 import { SPOTS } from '/src/games/iandragon_game/render/funSpots.js';
 import { A } from './lists.js';
 
+/*
+ * Pixi 기본은 그림을 워커(CPU 코어 수만큼)로 받고 줄을 거꾸로(LIFO) 처리한다 — 좀비 탭 부품 300장이 코어 수씩 끊겨 받혔다 (11/12 속도).
+ * 메인 스레드 fetch + createImageBitmap 으로 받으면 브라우저가 한꺼번에 받는다 (해독은 그래도 다른 스레드).
+ */
+Assets.setPreferences({ preferWorkers: false });
+
+/*
+ * 캐릭터 받기 (11/12 속도 · 대표님 «캐릭터가 바로 떠야») — 예전엔 썸네일 줄 안에서 rig 를 하나씩 받아(rig.json → rigfix → 부품 9장)
+ * 좀비 탭 34종이 차례로 떴다. 이제 받기는 동시에 12마리까지(카드 순서대로 = 화면 위부터), 그리기만 차례로.
+ */
+const RIG_LIMIT = 12;
+let rigActive = 0;
+const rigWait = [];
+async function rigSlot(fn) {
+  while (rigActive >= RIG_LIMIT) await new Promise((ok) => rigWait.push(ok));
+  rigActive++;
+  try { return await fn(); } finally { rigActive--; rigWait.shift()?.(); }
+}
 const rigCache = new Map();
-export const getRig = (art) => { if (!rigCache.has(art)) rigCache.set(art, loadRig(art)); return rigCache.get(art); };
+export const getRig = (art) => {
+  if (!rigCache.has(art)) { const p = rigSlot(() => loadRig(art)); p.catch(() => rigCache.delete(art)); rigCache.set(art, p); }
+  return rigCache.get(art);
+};
 
 /* ───────── 카드 썸네일 ───────── */
-let thumbApp = null, thumbQueue = Promise.resolve();
-export function makeThumb(art, want, scale = 3) {
-  const job = thumbQueue.then(async () => {
-    if (!thumbApp) { thumbApp = new Application(); await thumbApp.init({ width: 4, height: 4, backgroundAlpha: 0, antialias: false }); }
-    const data = await getRig(art);
-    const R = createRigged(data, scale, want);
-    R.set('idle'); R.update(0.01);
-    const canvas = thumbApp.renderer.extract.canvas({ target: R.root, resolution: 1, antialias: false });
-    const url = canvas.toDataURL('image/png');
-    R.root.destroy({ children: true });
-    return url;
-  });
-  thumbQueue = job.catch(() => {});
-  return job;
+let thumbAppP = null;
+const thumbApp = () => (thumbAppP ||= (async () => { const app = new Application(); await app.init({ width: 4, height: 4, backgroundAlpha: 0, antialias: false }); return app; })());
+/**
+ * 쉬는 자세 한 장을 캔버스로. root 를 그릇에 넣어 그린다 — Pixi v8 extract 는 target 자신의 scale(뒤집기 · rig.scale)을 무시해서
+ * 예전 썸네일은 배율 3 이 빠진 작은 그림이었다. 배율은 1 로 두고 resolution 으로 res 배 선명하게 뽑아 CSS 로 칸에 맞춘다(도트 그대로).
+ */
+export async function makeThumb(art, want, res = 3) {
+  const [data, app] = await Promise.all([getRig(art), thumbApp()]);
+  const R = createRigged(data, 1, want);
+  R.set('idle'); R.update(0.01);
+  const wrap = new Container(); wrap.addChild(R.root);
+  try {
+    const canvas = app.renderer.extract.canvas({ target: wrap, resolution: res, antialias: false });
+    canvas.classList?.add('rigthumb');
+    return canvas;
+  } finally { wrap.destroy({ children: true }); }
 }
 
 /* ───────── 꾸미기 착용 (ai/meta/wear.json — tools/idg-wear-fit.mjs 가 계산) ───────── */
 let wearP = null;
-export const getWear = () => (wearP ||= fetch('/assets/iandragon_game/ai/meta/wear.json?v=' + Date.now()).then((r) => r.json()));
+export const getWear = () => (wearP ||= fetch('/assets/iandragon_game/ai/meta/wear.json' + (import.meta.env.DEV ? '?v=' + Date.now() : '')).then((r) => r.json()));
 const wtex = async (file) => { const t = await Assets.load('/assets/iandragon_game/' + file); t.source.scaleMode = 'nearest'; return t; };
 /**
  * 모자 = 머리 부품의 자식 (표의 x, y 에 그림 왼쪽 위) · 고리 = 뒤 반쪽은 몸통 뒤 층, 앞 반쪽은 몸통의 자식 · 망토 = 몸통 뒤 층.

@@ -17,7 +17,7 @@ import { ORIENTS, orientPref, setOrientPref } from './rot.js';
  *  운영자 «오케스트라 풍» 스위치가 꺼져 있으면(오락실 시험) 모두 오락실
  */
 const STYLE_KEY = 'idgBgmStyle';
-export const bgmPick = () => { let v = null; try { v = localStorage.getItem(STYLE_KEY); } catch { /* */ } return v === 'edm' || v === 'orchestra' ? v : (isOn('zdBgm', 'edmDefault') ? 'edm' : 'orchestra'); };
+export const bgmPick = () => { let v = null; try { v = localStorage.getItem(STYLE_KEY); } catch { /* */ } return v === 'edm' || v === 'orchestra' ? v : 'orchestra'; };
 /** 실제로 쓸 풍 : 운영자 오락실 시험 > 아이 선택 > 운영자 기본값 */
 export const bgmStyleNow = () => (isOn('zdBgm', 'orchestra') ? bgmPick() : 'arcade');
 

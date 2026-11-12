@@ -20,7 +20,6 @@ import { LAST_STAGE } from './render/battleSetup.js';
 import { createLocalTransport } from './net/localTransport.js';
 import { createRoomTransport } from './net/roomBridge.js';
 import * as Audio from './audio/index.js';
-import { isOn, nums } from '../../services/switches.js';
 import { syncIdgPlayerSoon } from '../../services/idgRank.js';
 
 export const ATLAS_URL = '/assets/iandragon_game/atlas.json';
@@ -40,7 +39,6 @@ export async function mount(host, opts) {
   me.ctx = ctx;
 
   Audio.init();
-  Audio.setDefaultVoiceLevel(nums('zdVoiceNum').level ?? 1);   /* 관리자 «말 많기» 기본값 (사용자가 고른 적 없을 때만 · 겜팀장 소리 엔진) */
   Audio.setBgmStyle(bgmStyleNow());   // 운영자 «배경음악» 스위치(오락실 우선) + 음향 설정의 오케스트라 / EDM (soundPrefs.js)
   /* 점검용 주소(?idgDemo · ?idgPilot · ?idgStage=N)는 개발 서버에서만 — 운영에서 순서 잠금을 건너뛰지 못하게 (코드 검토 3) */
   const q = import.meta.env.DEV ? location.search : '';

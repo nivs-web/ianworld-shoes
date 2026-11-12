@@ -40,7 +40,7 @@ export async function renderSound(h) {
   const out = [css, h('div', { class: 'tabhead' }, h('b', {}, '소리'), h('span', { class: 'hint' }, '단추를 누르면 바로 들립니다 · 배경음은 재생 막대로 · 파일 소리는 다른 소리를 누르면 멈춥니다'))];
 
   /* 배경음 */
-  const music = await fetch(BASE + 'music/music.json?v=' + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  const music = await fetch(BASE + 'music/music.json' + (import.meta.env.DEV ? '?v=' + Date.now() : '')).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
   const trk = Object.entries(music).map(([id, m]) => {
     const name = MUSIC_NAME[id] || (/^w\d+$/.test(id) ? `월드 ${id.slice(1)}` : id);
     const au = h('audio', { controls: true, preload: 'none' }, h('source', { src: `${BASE}music/${m.file || id}.m4a`, type: 'audio/mp4' }), h('source', { src: `${BASE}music/${m.file || id}.ogg`, type: 'audio/ogg' }));
@@ -50,7 +50,7 @@ export async function renderSound(h) {
   out.push(h('section', { class: 'sndsec' }, h('h3', {}, `🎵 배경음 (${trk.length})`), trk.length ? trk : h('p', { class: 'hint' }, 'music.json 을 읽지 못했습니다')));
 
   /* 효과음 */
-  const sfxFiles = await fetch(BASE + 'sfx/sfx.json?v=' + Date.now()).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  const sfxFiles = await fetch(BASE + 'sfx/sfx.json' + (import.meta.env.DEV ? '?v=' + Date.now() : '')).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
   const synthBtns = (obj) => h('div', { class: 'sndgrid' }, Object.entries(obj).map(([id, fn]) => h('button', { class: 'snd', onclick: () => playSynth(() => fn()) }, '▶ ' + id)));
   out.push(h('section', { class: 'sndsec' }, h('h3', {}, `🔊 효과음`),
     h('h4', {}, `게임 효과음 (${Object.keys(SFX).length} · 합성)`), synthBtns(SFX),

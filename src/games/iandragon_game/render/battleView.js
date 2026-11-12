@@ -17,8 +17,10 @@ import { createAmbient } from './ambient.js';
 import { createBossFx } from './bossFx.js';
 import { BREATH_COLORS } from '../data/looks.js';
 import { lightsFor, fxFrames, makeBreath, tileMirror } from './living.js';
+import { lanesFor, laneY } from './lanes.js';
 
 const AI = '/assets/iandragon_game/ai/';
+/** 예전 한 줄 땅 높이 (11/12 부터 전투는 월드마다 lanes.js — 발 높이 spawnY · 성 밑동 castleY). 밖에서 쓰는 곳을 위해 남겨 둠 */
 export const GY = 440;
 export const M = 170;
 /** 코어 id → 그림 id (이름이 다른 것만) */
@@ -33,34 +35,69 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   /* ── 그림 받기 */
   const ids = [...new Set([...dragons.flatMap((d) => (d.lv >= 10 ? [d.id, d.id + '_2'] : [d.id])), ...enemies.map(artOf), leader, ...(foeLeader ? [foeLeader] : []), 'kkomul', 'walker'])];
   const rigs = {};
-  await Promise.all(ids.map((id) => loadRig(id).then((r) => { rigs[id] = r; }).catch(() => {})));
   const wN = String(world).padStart(2, '0');
   /* 배경 : 살아 있는 두 겹(하늘 · 앞)이 있으면 그것, 없으면 예전 통그림 (2026-11-11 대표님 «배경이 밋밋하다» → 갤러리 확정안 연결) */
   /* WebP 먼저 (11/11 밤 «로딩이 엄청 느려졌다» — 배경 · 성 PNG 33MB → WebP 9MB · 하늘 한 장 1.1MB → 0.14MB · tools/idg-webp-bg.mjs), 없으면 PNG */
   const img = (base) => tryLoad(`${base}.webp`).then((t) => t || tryLoad(`${base}.png`));
   const towerImg = (n) => (wN === '01' ? img(`${AI}castles/tower_${n}`) : img(`${AI}castles/tower_w${wN}_${n}`).then((t) => t || img(`${AI}castles/tower_${n}`)));
-  const [skyTex, frontTex] = await Promise.all([img(`${AI}bg/layers/w${wN}_sky`), img(`${AI}bg/layers/w${wN}_front`)]);
+  /*
+   * 11/12 속도 : 서로 기다릴 필요 없는 것은 한꺼번에 받기 시작한다. 예전엔 캐릭터 → 배경 → 성 → 체력 바 → 운석 → 횃불 → 꾸미기 → 상태 아이콘을
+   * 하나씩 기다려(차례 12번) R2 첫 방문 때 전투가 뜨기까지 오래 걸렸다. 받는 그림 · 쓰는 자리 · 없을 때 대신하는 방법은 그대로.
+   */
+  const rigsP = Promise.all(ids.map((id) => loadRig(id).then((r) => { rigs[id] = r; }).catch(() => {})));
+  /* 앞 겹 = lanes.json 의 그 월드 front (1 · 3 · 6 · 10 = 다시 그린 _v3 · 11/12 대표님 확정) — 못 받으면 원래 wNN_front */
+  const lanesP = lanesFor(world);
+  const layersP = Promise.all([img(`${AI}bg/layers/w${wN}_sky`), lanesP.then((ln) => img(`${AI}bg/layers/${ln.front.replace(/\.(png|webp)$/, '')}`)).then((t) => t || img(`${AI}bg/layers/w${wN}_front`))]);
+  const nestP = img(`${AI}castles/nest_hp0`), towerP = towerImg('hp0');
+  const hpP = Promise.all([...['hp_unit_frame', 'hp_unit_fill_me', 'hp_unit_fill_foe', 'hp_castle_frame', 'hp_castle_fill'].map((n) => tryLoad(`${AI}hud/${n}.png`)), fetch(`${AI}hud/hp_bars.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
+  const fxP = Promise.all([tryLoad(`${AI}fx/meteor.png`), fxFrames('boom').catch(() => null)]);
+  const torchP = fxFrames('fire_orange').catch(() => null);
+  const WEARP = fetch('/assets/iandragon_game/ai/meta/wear.json').then((r) => r.json()).catch(() => null);
+  const ST = ['weaken', 'revive', 'shield', 'noknock', 'poison', 'purify'];
+  const stP = Promise.all(ST.map(async (k) => [k, await tryLoad(`/assets/iandragon_game/ui/hud_st_${k}_xs.png`)]));
+  /* 꾸미기 그림(깃발 · 모자 · 모자용 머리 · 목 장식)도 미리 받아 둔다 — 아래 wearRig · dress 가 같은 주소를 부르면 이미 받은 것을 쓴다 */
+  const prefetchLook = (art, lk) => {
+    if (!lk) return;
+    if (lk.flag) tryLoad(`${AI}meta/flag_${lk.flag}.png`);
+    WEARP.then((W) => {
+      const Lw = W?.leaders?.[art]; if (!Lw) return;
+      const hk = 'hat_' + lk.hat, nk = 'neck_' + lk.neck, it = lk.neck && W.items?.[nk], fs = [];
+      if (lk.hat && W.items?.[hk] && Lw.hat?.[hk]) fs.push(W.items[hk].file, ...Object.values(Lw.hat[hk].head || {}));
+      if (it) fs.push(it.file, it.files?.front, it.files?.back);
+      for (const f of fs) if (typeof f === 'string' && f) tryLoad('/assets/iandragon_game/' + f);
+    });
+  };
+  prefetchLook(leader, look);
+  if (pvp && foeLeader) prefetchLook(foeLeader, lookR);
+  await rigsP;
+  const [skyTex, frontTex] = await layersP;
   const layered = !!(skyTex && frontTex);
+  /*
+   * 땅 (11/12 · 예전 한 줄 GY 440 대신 월드마다) : S0~S1 = 발 높이 범위 · CY = 성 밑동 · GC = 가운데(땅 효과 기준 · 예전 GY 자리).
+   * 발 높이는 화면 전용(코어는 x 만) · 유닛 id 해시라 멀티 · 다시 보기에서도 같은 자리 (lanes.js).
+   */
+  const LN = await lanesP;
+  const [S0, S1] = LN.spawnY, CY = LN.castleY, GC = Math.round((S0 + S1) / 2);
   const [bgTex, nestT, towerT] = await Promise.all([
     layered ? null : tryLoad(`${AI}bg/w${wN}_panel.png`).then((t) => t || tryLoad(`${AI}bg/w01_panel.png`)),
-    img(`${AI}castles/nest_hp0`).then((t) => [t, null, null, null]),   /* 성은 멀쩡한 그림만 먼저 · 부서진 그림(hp1~3)은 전투가 뜬 뒤 뒤에서 */
-    towerImg('hp0').then((t) => [t, null, null, null]),
+    nestP.then((t) => [t, null, null, null]),   /* 성은 멀쩡한 그림만 먼저 · 부서진 그림(hp1~3)은 전투가 뜬 뒤 뒤에서 */
+    towerP.then((t) => [t, null, null, null]),
   ]);
   const funP = loadFun().catch(() => null);   /* 재미 요소 그림(약 0.4MB)은 기다리지 않는다 — 전투가 뜬 뒤 오면 그때부터 (11/11 밤 속도) */
   setTimeout(() => { for (const i of [1, 2, 3]) { img(`${AI}castles/nest_hp${i}`).then((t) => { nestT[i] = t; if (pvp) towerT[i] = t; }); if (!pvp) towerImg(`hp${i}`).then((t) => { towerT[i] = t; }); } }, 800);
 
   /* 체력 바 도트 그림 (그림 담당 hp_bars.json · 2026-11-11 대표님 «생명 게이지가 도트가 아니다») — 없으면 예전 막대 */
-  const [hpUF, hpUMe, hpUFoe, hpCF, hpCFill, hpMeta] = await Promise.all([...['hp_unit_frame', 'hp_unit_fill_me', 'hp_unit_fill_foe', 'hp_castle_frame', 'hp_castle_fill'].map((n) => tryLoad(`${AI}hud/${n}.png`)), fetch(`${AI}hud/hp_bars.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
+  const [hpUF, hpUMe, hpUFoe, hpCF, hpCFill, hpMeta] = await hpP;
   const hpArt = !!(hpUF && hpUMe && hpUFoe && hpMeta);
   /* 운석 · 폭발 그림 (그림 담당 ai/fx/meteor · boom — 없으면 입자로) */
-  const [meteorT, boomFx] = await Promise.all([tryLoad(`${AI}fx/meteor.png`), fxFrames('boom').catch(() => null)]);
+  const [meteorT, boomFx] = await fxP;
   /* 무너지는 중간 그림 (보조 11/11 : fall0 기울어짐 · fall1 무너지는 중) · 도트 연기 6종 */
   /*
    * 판이 끝날 때만 쓰는 무너짐 그림(기울어짐 · 무너지는 중 · 잔해 · 먼지 띠 · 연기 약 2MB)은 전투를 띄운 뒤 뒤에서 받는다
    * (11/11 밤 대표님 «로딩이 엄청 느려졌다» — 전투 시작 전에 다 받느라 늦었다). 오기 전에 판이 끝나면 hp3 · 그림 연기 없이 진행.
    */
   let towerFallT = [], nestFallT = [], smokeT = [], towerRubT = null, nestRubT = null, crumbleFx = null;
-  const torchFx = await fxFrames('fire_orange').catch(() => null);
+  const torchFx = await torchP;
   setTimeout(() => {
     Promise.all([
       Promise.all([0, 1].map((i) => towerImg(`fall${i}`))),
@@ -99,11 +136,11 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       skyBox.addChild(funSky);   // 달 얼굴 · 자전거 · 박쥐는 숨결 위
     });
   } else if (bgTex) tileMirror(frontBox, bgTex, FIELD);
-  const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, GY + 10);
-  const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, GY + 10); if (pvp) tower.scale.x = -1;
+  const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, CY);
+  const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, CY); if (pvp) tower.scale.x = -1;
   stage.addChild(nest, tower, units, fx);
   const torches = [];
-  if (torchFx && !pvp) for (const lx of [28, 177]) { const a = new AnimatedSprite(torchFx.frames); a.anchor.set(0.5, 1); a.scale.set(0.62); a.animationSpeed = (torchFx.meta.fps / 60) * (0.9 + Math.random() * 0.2); a.gotoAndPlay((Math.random() * torchFx.frames.length) | 0); a.position.set(nest.x - nest.width / 2 + lx, GY + 10 - nest.height + 197); stage.addChildAt(a, stage.getChildIndex(nest) + 1); torches.push(a); }
+  if (torchFx && !pvp) for (const lx of [28, 177]) { const a = new AnimatedSprite(torchFx.frames); a.anchor.set(0.5, 1); a.scale.set(0.62); a.animationSpeed = (torchFx.meta.fps / 60) * (0.9 + Math.random() * 0.2); a.gotoAndPlay((Math.random() * torchFx.frames.length) | 0); a.position.set(nest.x - nest.width / 2 + lx, CY - nest.height + 197); stage.addChildAt(a, stage.getChildIndex(nest) + 1); torches.push(a); }
   const castleBars = [];   /* 성 체력 게이지는 HUD 위 숫자 옆으로 옮김 (11/11 · 떠 있는 HUD) — 성 위 캔버스 바는 쓰지 않음 */
   const shade = new Graphics().rect(-50, -50, FIELD + 100, 700).fill(0x000000); shade.alpha = 0; root.addChild(shade);
   /* 안개 기믹 : 내 맨 앞 + 260칸 너머를 짙은 안개로 (화면 전용) */
@@ -124,6 +161,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     if (spots.owl) { if (OWL_Y[world]) spots.owl = { ...spots.owl, y: OWL_Y[world] }; else delete spots.owl; }
     if (spots.fence) { if (FENCE_Y[world]) spots.fence = { ...spots.fence, y: FENCE_Y[world] }; else delete spots.fence; }
   }
+  if (layered) spots.ground = S0 - 3;   /* 땅에서 나오는 재미(손 · 유령) = 발 높이 범위 바로 뒤 (월드 1 · 7 은 예전 437 그대로 · 2 · 4 처럼 바닥이 높은 월드는 그 바닥 위) */
   if (layered) delete spots.window;   /* 대표님 3차 «좀비 성 근처 갈색 네모 안 검은 사람» = 먼 성 창문 춤 — 두 겹 배경은 먼 성 자리가 달라 허공에 떴다 → 자리를 다시 잴 때까지 끔 */
   spots.safe = [260, FIELD - 260];
   if (spots.sky) spots.sky = [Math.max(spots.sky[0], 78), Math.max(spots.sky[1], 160)];   /* 확대해도 하늘 요소가 화면 위에 잘리지 않게 (위 HUD 아래부터) */
@@ -136,8 +174,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const amb = createAmbient(funBack, world, () => camX, () => viewW);   // 월드 분위기 입자 (불티 · 눈 · 구름 · 불꽃)
 
   /* ── 리더 (내 기지 위) */
-  /* 덮는 모자(cover) : 그 대장 용의 머리 텍스처(head · blink · breath)를 뿔 · 볏을 지운 그림으로 바꿔 끼운다 (보조 3차 · 대표님 «모자가 이마를 덮고 뿔이 뚫으면 안 됨») */
-  const WEARP = fetch('/assets/iandragon_game/ai/meta/wear.json').then((r) => r.json()).catch(() => null);
+  /* 덮는 모자(cover) : 그 대장 용의 머리 텍스처(head · blink · breath)를 뿔 · 볏을 지운 그림으로 바꿔 끼운다 (보조 3차 · 대표님 «모자가 이마를 덮고 뿔이 뚫으면 안 됨») · WEARP = 위에서 미리 받기 시작 */
   async function wearRig(data, art, lk) {
     if (!data || !lk?.hat) return data;
     const e = (await WEARP)?.leaders?.[art]?.hat?.['hat_' + lk.hat];
@@ -150,7 +187,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const LEAD_K = 0.74;   /* 리더 용을 일반 용 크기로 (대표님 «둥지 위 용이 너무 크다») */
   const lead = ldRig ? createRigged(ldRig, LEAD_K, 1) : null;
   const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(await wearRig(rigs[foeLeader], foeLeader, lookR), LEAD_K, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
-  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, GY + 10 - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
+  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, CY - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
   /* 착용 부품 (보조 2차 · 대표님 «상점 아이콘과 용이 쓴 모습은 달라야») — ai/meta/wear/ 옆모습 부품을 head · torso 부품에 붙인다.
      좌표 = ai/meta/wear.json (tools/idg-wear-fit.mjs 가 대장 용마다 계산) · 예시 tools/idg-gallery/viewer.js attachWear */
@@ -176,20 +213,28 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     if (rig) await wear(rig, art, lk);
     if (flagT && castle === nest && rig) { nestFlagT = flagT; return; }   /* 내 성 깃발은 리더 자리를 정한 뒤 머리 위에 (아래) */
     if (flagT && castle) {   // 성 깃발 : 깃대 + 펄럭이는 깃발 (성 뒤 왼쪽 위)
-      const side = castle === tower ? -1 : 1, top = GY + 10 - castle.height;
+      const side = castle === tower ? -1 : 1, top = CY - castle.height;
       /* 대표님 «용이 깃발을 가린다 · 더 높고 크게» (11/11) : 깃대를 성 바깥쪽 끝 · 높게(98) · 깃발 크게(40×58) · 성 바깥으로 펄럭 */
-      const pole = new Graphics().rect(-2, -98, 4, 98).fill(0x3a2410).rect(-1, -98, 2, 98).fill(0x6a4424); pole.position.set(castle.x - side * castle.width * 0.42, top + 22);
+      const pole = new Graphics().rect(-2, -98, 4, 98).fill(0x3a2410).rect(-1, -98, 2, 98).fill(0x6a4424); pole.position.set(castle.x - side * castle.width * 0.42, top + 22 + Math.max(0, FLAG_TOP - (top + 22 - 96)));   /* 위 체력 막대 밑에 숨지 않게 (11/12) */
       const f = new Sprite(flagT); f.anchor.set(0, 0); f.width = 40; f.height = 58; f.scale.x *= -side; f.position.set(pole.x - side * 2, pole.y - 96);
       stage.addChildAt(pole, stage.getChildIndex(castle)); stage.addChildAt(f, stage.getChildIndex(castle)); flags.push(f);
     }
   }
   const flags = [], follow = [], nestFlag = []; let nestFlagT = null;   // follow = 몸통 뒤 층 장식이 torso 를 따라가게 [상자, torso]
+  /* 깃발 위 끝 최소 높이 (11/12 대표님 «깃발은 게임에서도 가리더니») : 떠 있는 HUD 의 위 체력 막대가 폰 가로 · PC 에서 땅 y 약 105 까지 덮는다 */
+  const FLAG_TOP = 112;
   await Promise.all([dress(lead, look, nest, leader), dress(lead2, lookR, pvp ? tower : null, foeLeader)]);
   /* 대표님 11/11 «성 깃발이 안 보인다 · 파란 리더 머리 위로 · 둥지와 용을 조금 아래로» : 리더 8px 아래 · 깃대는 성 뒤에서 리더 머리 위로 솟고 깃발은 머리 위 */
-  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, GY + 10 - nest.height + 66); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
+  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, CY - nest.height + 66); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
   if (lead && nestFlagT) {
-    const lb = lead.root.getLocalBounds(), headY = lead.root.y + lb.y * Math.abs(lead.root.scale.y), top = GY + 10 - nest.height;
-    const px = nest.x - 6, poleTop = Math.round(headY - 50);   /* 확대 화면에서 위 체력 막대에 안 가리게 : 깃발 32×46 · 머리 바로 위 */
+    const lb = lead.root.getLocalBounds(), headY = lead.root.y + lb.y * Math.abs(lead.root.scale.y), top = CY - nest.height;
+    /*
+     * 깃발 32×46 · 머리 바로 위. 11/12 대표님 «깃발은 게임에서도 가리더니» : 키 큰 리더 · 바닥이 높은 월드(2 · 4 · lanes castleY)에서 머리 위 깃발이
+     * 위 체력 막대 밑으로 숨었다 → 위 끝을 FLAG_TOP 아래로 내리고, 그러면 머리에 닿을 때는 깃대를 용 왼쪽 옆(날개 · 꼬리 바깥)으로 비켜 세운다.
+     */
+    const poleTop = Math.max(Math.round(headY - 50), FLAG_TOP - 2), above = poleTop + 50 <= headY;
+    const leftX = lead.root.x - (Math.abs(lead.root.scale.x) * (lead.root.scale.x < 0 ? lb.x + lb.width : -lb.x));
+    const px = above ? nest.x - 6 : Math.round(Math.min(nest.x - 6, leftX - 4));
     const pole = new Graphics().rect(-2, 0, 4, top + 30 - poleTop).fill(0x3a2410).rect(-1, 0, 2, top + 30 - poleTop).fill(0x6a4424); pole.position.set(px, poleTop);
     const f = new Sprite(nestFlagT); f.anchor.set(0, 0); f.width = 32; f.height = 46; f.scale.x *= -1; f.position.set(px - 2, poleTop + 2);
     stage.addChildAt(pole, stage.getChildIndex(nest)); stage.addChildAt(f, stage.getChildIndex(nest)); flags.push(f); nestFlag.push(pole, f);
@@ -217,11 +262,11 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     solaris: { c: [0xfff6c0, 0xffd84a], vy: -20, g: 0, r: 5, ray: true },
   };
   const BS = BREATH[leader] || BREATH.novart;
-  const bossFx = createBossFx({ layer: app.stage, fx, M, GY, view, artOf: (def) => artOf(def._art), shake: (t) => { shakes.screen = Math.max(shakes.screen, t); } });   // 보스 컷인 · 큰 공격 경고 (bossFx.js)
+  const bossFx = createBossFx({ layer: app.stage, fx, M, GY: GC, band: [S0 - 10, S1 + 8], view, artOf: (def) => artOf(def._art), shake: (t) => { shakes.screen = Math.max(shakes.screen, t); } });   // 보스 컷인 · 큰 공격 경고 (bossFx.js)
 
   /* 상태 아이콘 : 약해짐(보라) > 되살아날 유령 > 방패 > 안 밀림 > 독 공격 > 정화 공격 */
-  const ST = ['weaken', 'revive', 'shield', 'noknock', 'poison', 'purify'];
-  const stTex = Object.fromEntries(await Promise.all(ST.map(async (k) => [k, await tryLoad(`/assets/iandragon_game/ui/hud_st_${k}_xs.png`)])));
+  const stTex = Object.fromEntries(await stP);   // ST · stP = 위에서 미리 받기 시작
+  Audio.preloadSfx?.();   /* 좀비 소리 파일은 로비가 아니라 여기서 (전투 그림을 다 받은 뒤 · 11/12 속도) */
   const badges = new Container(); stage.addChild(badges);
   const stOf = (u) => (u.weakT > 0 ? 'weaken' : u.def.revive && !u.revived ? 'revive' : u.barrier > 0 ? 'shield' : u.def.kbImmune ? 'noknock' : u.def.poison ? 'poison' : u.def.purify ? 'purify' : null);
   const rigFor = (u) => {
@@ -251,7 +296,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
         const mid = u.boss && !u.def.boss;
         const R = createRigged(rigFor(u), mid ? 1.45 : 1, u.side === 0 ? 1 : -1);
         R.speed = u.side === 0 ? 1.1 : 0.9;
-        v = { R, x: M + u.x, hp: u.hp, st: u.state, hitT: 0, flash: 0, kbT: 0, y: u.boss ? GY + 6 : GY + ((u.id * 37) % 13) - 6, dieT: -1 };
+        /* 발 높이 (11/12 대표님 «냥코처럼 위아래로 퍼져 나오게») : 그 월드 spawnY 사이 고르게 · 걷는 동안 그대로 · 아래(y 큼)일수록 앞(zIndex) · 판정은 코어가 x 만 */
+        v = { R, x: M + u.x, hp: u.hp, st: u.state, hitT: 0, flash: 0, kbT: 0, y: laneY(u.id, world, LN.spawnY) + (u.boss ? 6 : 0), dieT: -1 };
         R.root.position.set(v.x, v.y); R.root.zIndex = v.y + (u.boss ? -20 : 0); units.addChild(R.root); V.set(u.id, v);
         v.h = Math.min(220, R.root.height || 60);
       }
@@ -319,7 +365,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       if (T[i]) spr.texture = T[i];
       const key = side ? 'tower' : 'nest'; shakes[key] -= dt;
       spr.x = (side ? M + L + 40 : M - 40) + (shakes[key] > 0 ? (Math.random() * 4 - 2) : 0);
-      const cb = castleBars[side]; if (cb) { cb.set(r); cb.position.set(side ? M + L + 40 : M - 40, GY + 10 - spr.height - ((side ? lead2 : lead) ? 96 : 16)); cb.visible = !S.stage.raid || !side; cb.scale.x = mirror ? -1 : 1; }   /* 리더 용이 서 있으면 그 머리 위 */
+      const cb = castleBars[side]; if (cb) { cb.set(r); cb.position.set(side ? M + L + 40 : M - 40, CY - spr.height - ((side ? lead2 : lead) ? 96 : 16)); cb.visible = !S.stage.raid || !side; cb.scale.x = mirror ? -1 : 1; }   /* 리더 용이 서 있으면 그 머리 위 */
     }
   }
   function effects(S, dt) {
@@ -339,7 +385,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
         flashT = 0.22; flashC = bBS.c[0]; shakes.screen = 0.6;
         if (torchFx) for (let i = 0; i < 12; i++) {
           const f = new AnimatedSprite(torchFx.frames); f.anchor.set(0.5, 1); f.scale.set(1.3 + Math.random() * 0.5); f.tint = bBS.c[i % bBS.c.length]; f.loop = false;
-          f.animationSpeed = torchFx.meta.fps / 60 * 1.6; f.position.set(bx(M + 30 + ((reach - M - 30) * (i + Math.random() * 0.6)) / 12), GY + 14); f.onComplete = () => f.destroy(); fx.addChild(f); f.gotoAndPlay((Math.random() * 3) | 0);
+          f.animationSpeed = torchFx.meta.fps / 60 * 1.6; f.position.set(bx(M + 30 + ((reach - M - 30) * (i + Math.random() * 0.6)) / 12), S1 + 6); f.onComplete = () => f.destroy(); fx.addChild(f); f.gotoAndPlay((Math.random() * 3) | 0);
         }
       }
       if (breathFx < 0.9) for (let i = 0; i < 14; i++) {
@@ -347,14 +393,14 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
         const col = bBS.c[(Math.random() * bBS.c.length) | 0];
         const sz = bBS.r + Math.round(Math.random() * 8);   /* 도트 불티 (네모) */
         const g = bBS.spin ? new Graphics().ellipse(0, 0, bBS.r + 3, bBS.r - 1).fill(col) : new Graphics().rect(-sz / 2, -sz / 2, sz, sz).fill(col);
-        g.blendMode = 'add'; g.position.set(bx(x), GY - 10 - Math.random() * 110); fx.addChild(g);
+        g.blendMode = 'add'; g.position.set(bx(x), GC - 10 - Math.random() * 110); fx.addChild(g);
         parts.push({ g, vx: bSide ? -120 : 120, vy: bBS.vy * (0.6 + Math.random() * 0.8), life: 0.55, t: 0, grav: bBS.g });
       }
       if (breathFx < 0.5 && (bBS.bolt || bBS.ray) && Math.random() < 0.35) {   // 번개 줄기 · 햇살 기둥
         const x = M + 40 + (reach - M - 40) * Math.random();
         const g = new Graphics();
-        if (bBS.bolt) { let px = bx(x), py = 30; g.moveTo(px, py); while (py < GY) { px += Math.random() * 24 - 12; py += 26 + Math.random() * 20; g.lineTo(px, py); } g.stroke({ width: 3, color: 0xfffbe0 }).stroke({ width: 8, color: 0xc08bff, alpha: 0.35 }); }
-        else g.rect(bx(x) - 10, 0, 20, GY).fill({ color: 0xfff1a0, alpha: 0.35 });
+        if (bBS.bolt) { let px = bx(x), py = 30; g.moveTo(px, py); while (py < S1) { px += Math.random() * 24 - 12; py += 26 + Math.random() * 20; g.lineTo(px, py); } g.stroke({ width: 3, color: 0xfffbe0 }).stroke({ width: 8, color: 0xc08bff, alpha: 0.35 }); }
+        else g.rect(bx(x) - 10, 0, 20, S1).fill({ color: 0xfff1a0, alpha: 0.35 });
         g.blendMode = 'add'; fx.addChild(g); parts.push({ g, vx: 0, vy: 0, life: 0.22, t: 0, grav: 0 });
       }
       if (breathFx > 1.4) { breathFx = 0; if (lead) lead.set('idle'); if (lead2) lead2.set('idle'); }
@@ -367,9 +413,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     rangeG.clear(); rangeG.visible = !S.over && (ready || api.aim) && !pvp;
     if (rangeG.visible) {
       const R = M + me.leader.range, ph = Math.floor(performance.now() / 140) % 2, cols = BREATH_COLORS[look.breath] || BS.c;
-      for (let x = M - 20, i = 0; x < R; x += 12, i++) { const on = (i + ph) % 2 === 0; rangeG.rect(x, GY + 8, 8, 4).fill(on ? cols[0] : cols[cols.length - 1]); if (on) rangeG.rect(x + 2, GY + 4, 4, 4).fill(cols[1] || cols[0]); }
-      for (let y = GY - 60; y < GY + 12; y += 8) rangeG.rect(R - 3, y, 6, 4).fill(((y / 8 + ph) | 0) % 2 ? cols[0] : 0xffffff);   /* 끝 말뚝 */
-      rangeG.rect(R - 9, GY - 66, 18, 8).fill(cols[0]).rect(R - 5, GY - 74, 10, 8).fill(cols[1] || cols[0]);
+      for (let x = M - 20, i = 0; x < R; x += 12, i++) { const on = (i + ph) % 2 === 0; rangeG.rect(x, S1 + 2, 8, 4).fill(on ? cols[0] : cols[cols.length - 1]); if (on) rangeG.rect(x + 2, S1 - 2, 4, 4).fill(cols[1] || cols[0]); }
+      for (let y = S1 - 68; y < S1 + 6; y += 8) rangeG.rect(R - 3, y, 6, 4).fill(((y / 8 + ph) | 0) % 2 ? cols[0] : 0xffffff);   /* 끝 말뚝 */
+      rangeG.rect(R - 9, S1 - 74, 18, 8).fill(cols[0]).rect(R - 5, S1 - 82, 10, 8).fill(cols[1] || cols[0]);
     }
     { const rg = S.players.reduce((a, q) => a + q.st.rageUse, 0), sk = S.players.reduce((a, q) => a + q.st.skill, 0);
       if (rg > (seen.rage || 0)) { flashT = 0.35; flashC = 0xffd84a; shakes.screen = Math.max(shakes.screen, 0.2); }   // 포효 : 금빛 번쩍 (GDD 660)
@@ -382,7 +428,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       if (flashT > 0) { flashT -= dt; flashG.clear().rect(-50, -50, FIELD + 100, 700).fill({ color: flashC, alpha: Math.max(0, flashT) * 0.9 }); } else if (flashG.width) flashG.clear(); }
     if (S.st.bossAt != null && seen.bossAt == null) {
       seen.bossAt = S.st.bossAt; fun.hush(4); shakes.screen = 0.5;
-      const ring = new Graphics().circle(0, 0, 20).stroke({ width: 6, color: 0xffe08a }); ring.position.set(M + L - 20, GY - 30); fx.addChild(ring);
+      const ring = new Graphics().circle(0, 0, 20).stroke({ width: 6, color: 0xffe08a }); ring.position.set(M + L - 20, GC - 30); fx.addChild(ring);
       parts.push({ g: ring, ring: true, life: 0.7, t: 0 });
     }
     /* 운석 : 0.5초 동안 왼쪽 위에서 비스듬히 떨어지고(불꼬리) → 땅에 닿으면 주황 번쩍 · 흔들 · 불똥 · 먼지 고리 */
@@ -393,15 +439,15 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
         else { m.g = new Graphics().circle(0, 0, 13).fill(0xffe08a).circle(0, 0, 9).fill(0xff7a1a); }
         fx.addChild(m.g);
       }
-      const px = m.x + 220 * (1 - k), py = -40 + (GY - 10 + 40) * k * k;
+      const px = m.x + 220 * (1 - k), py = -40 + (GC - 10 + 40) * k * k;
       m.g.position.set(px, py); m.g.scale.set(meteorT ? 0.55 + k * 0.25 : 1 + k * 0.6);
       if (k < 1 && !meteorT) puff(px, py, Math.random() < 0.5 ? 0xff9a2e : 0xffd84a, 2, 30, 0.35, 3);
       else {
         m.g.destroy(); mets.splice(i, 1);
         flashT = 0.12; flashC = 0xff8a2a; shakes.screen = Math.max(shakes.screen, 0.4);   /* 번쩍은 짧고 약하게 (빛번짐 규칙) */
-        if (boomFx) { const b = new AnimatedSprite(boomFx.frames); b.anchor.set(0.5, 0.5); b.scale.set(1.5); b.position.set(m.x, GY - 40); b.loop = false; b.animationSpeed = boomFx.meta.fps / 60; b.onComplete = () => b.destroy(); fx.addChild(b); b.play(); puff(m.x, GY - 6, 0x8a6a5a, 8, 110, 0.6, 3); }
-        else { puff(m.x, GY - 6, 0xffb03a, 26, 260, 0.6, 3); puff(m.x, GY - 6, 0x8a6a5a, 14, 120, 0.8, 4); }
-        if (!boomFx) { const ring = new Graphics().circle(0, 0, 20).stroke({ width: 4, color: 0xffd84a }); ring.position.set(m.x, GY - 4); ring.blendMode = 'add'; fx.addChild(ring); parts.push({ g: ring, ring: true, life: 0.5, t: 0 }); }
+        if (boomFx) { const b = new AnimatedSprite(boomFx.frames); b.anchor.set(0.5, 0.5); b.scale.set(1.5); b.position.set(m.x, GC - 40); b.loop = false; b.animationSpeed = boomFx.meta.fps / 60; b.onComplete = () => b.destroy(); fx.addChild(b); b.play(); puff(m.x, GC - 6, 0x8a6a5a, 8, 110, 0.6, 3); }
+        else { puff(m.x, GC - 6, 0xffb03a, 26, 260, 0.6, 3); puff(m.x, GC - 6, 0x8a6a5a, 14, 120, 0.8, 4); }
+        if (!boomFx) { const ring = new Graphics().circle(0, 0, 20).stroke({ width: 4, color: 0xffd84a }); ring.position.set(m.x, GC - 4); ring.blendMode = 'add'; fx.addChild(ring); parts.push({ g: ring, ring: true, life: 0.5, t: 0 }); }
       }
     }
     for (let i = parts.length - 1; i >= 0; i--) {
@@ -435,9 +481,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
    */
   function collapse(spr, rubT, dt, fallT = []) {
     for (let i = smokes.length - 1; i >= 0; i--) { const m = smokes[i]; m.t += dt; m.g.scale.set(Math.min(1, 0.55 + m.t * 6) * m.k); m.g.y -= dt * 6; if (m.t > m.life) { m.g.destroy(); smokes.splice(i, 1); } }
-    const t = overT - 0.4, cx = colX0 ?? spr.x, top = GY + 10 - spr.height;   /* 0.4초 : 카메라가 성으로 가는 동안 */
+    const t = overT - 0.4, cx = colX0 ?? spr.x, top = CY - spr.height;   /* 0.4초 : 카메라가 성으로 가는 동안 */
     if (t < 0) return;
-    if (!colMask) { colY0 = spr.y; colX0 = spr.x; colMask = new Graphics().rect(cx - 260, -2000, 520, GY + 14 + 2000).fill(0xffffff); stage.addChild(colMask); spr.mask = colMask; }   /* 땅 아래로는 안 보이게(투명 아님 · 묻힘) */
+    if (!colMask) { colY0 = spr.y; colX0 = spr.x; colMask = new Graphics().rect(cx - 260, -2000, 520, CY + 4 + 2000).fill(0xffffff); stage.addChild(colMask); spr.mask = colMask; }   /* 땅 아래로는 안 보이게(투명 아님 · 묻힘) */
     while (colN < 14 && t >= colN * 0.09 + (colN % 3) * 0.012) {   /* ① 바바바박 */
       for (let j = 0; j < 2; j++) {   /* 한 번에 두 덩이 · 앞 덩이가 남아 있는 동안 쌓인다 */
         const g = smokeBlob(18 + Math.random() * 14), k = 0.9 + Math.random() * 0.4;
@@ -452,15 +498,15 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       spr.tint = 0xffffff;
       if (fallT[1] && spr.texture !== fallT[1]) spr.texture = fallT[1];   /* 무너지는 중 */
       const k = (t - 1.25) / 0.95; if (!rubT) spr.y = colY0 + spr.height * 0.38 * k * k; spr.x = cx + Math.sin(t * 60) * 1.2; shakes.screen = 0.12;   /* 잔해 그림이 없을 때만 묻는다 */
-      if (crumbleFx && t - dt < 1.25) { const c = new AnimatedSprite(crumbleFx.frames); c.anchor.set(0.5, 1); c.scale.set(spr.width / crumbleFx.meta.w); c.position.set(cx, GY + 12); c.loop = false; c.animationSpeed = crumbleFx.meta.fps / 60; c.onComplete = () => c.destroy(); fx.addChild(c); c.play(); }
-      if (Math.random() < 0.6) puff(cx + (Math.random() - 0.5) * spr.width * 0.8, GY - Math.random() * 30, 0x8c7c74, 3, 90, 0.9, 4);
+      if (crumbleFx && t - dt < 1.25) { const c = new AnimatedSprite(crumbleFx.frames); c.anchor.set(0.5, 1); c.scale.set(spr.width / crumbleFx.meta.w); c.position.set(cx, CY + 2); c.loop = false; c.animationSpeed = crumbleFx.meta.fps / 60; c.onComplete = () => c.destroy(); fx.addChild(c); c.play(); }
+      if (Math.random() < 0.6) puff(cx + (Math.random() - 0.5) * spr.width * 0.8, CY - 10 - Math.random() * 30, 0x8c7c74, 3, 90, 0.9, 4);
       if (Math.random() < 0.3) puff(cx + (Math.random() - 0.5) * spr.width * 0.6, top + spr.height * (0.2 + k * 0.6), 0x5a4c58, 2, 160, 0.7, 5);   /* 돌조각 */
-      if (Math.random() < 0.25) { const g = smokeBlob(10 + Math.random() * 8); g.position.set(Math.round(cx + (Math.random() - 0.5) * spr.width), GY - 6); fx.addChild(g); smokes.push({ g, t: 0, k: 1, life: 0.35 }); }   /* 땅 먼지 */
+      if (Math.random() < 0.25) { const g = smokeBlob(10 + Math.random() * 8); g.position.set(Math.round(cx + (Math.random() - 0.5) * spr.width), CY - 16); fx.addChild(g); smokes.push({ g, t: 0, k: 1, life: 0.35 }); }   /* 땅 먼지 */
     } else if (!colDone) {   /* ③ 잔해가 남는다 */
       colDone = true; spr.tint = 0xffffff; spr.x = cx;
       if (rubT) { spr.mask = null; colMask.visible = false; spr.texture = rubT; spr.y = colY0; }   /* 잔해 그림 (그림 담당) */
       else spr.y = colY0 + spr.height * 0.38;   /* 잔해 그림이 오기 전 : 무너진 성을 반쯤 묻어 둔다 */
-      for (let i = 0; i < 4; i++) { const g = smokeBlob(12 + i * 3); g.position.set(Math.round(cx + (i - 1.5) * spr.width * 0.25), GY - 4); fx.addChild(g); smokes.push({ g, t: 0, k: 1, life: 0.3 + i * 0.05 }); }
+      for (let i = 0; i < 4; i++) { const g = smokeBlob(12 + i * 3); g.position.set(Math.round(cx + (i - 1.5) * spr.width * 0.25), CY - 14); fx.addChild(g); smokes.push({ g, t: 0, k: 1, life: 0.3 + i * 0.05 }); }
     }
   }
   function ending(S, dt) {

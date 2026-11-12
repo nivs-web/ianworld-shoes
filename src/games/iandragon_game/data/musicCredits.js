@@ -11,9 +11,9 @@ export const MUST = [
 export const SONGS = [
   {
     "k": "lobby — 로비",
-    "title": "경기병 서곡 (Light Cavalry Overture)",
-    "by": "프란츠 폰 주페 (1819–1895)",
-    "perf": "미국 해병대 군악대 (United States Marine Band), 음반 «Overtures, Volume Two»",
+    "title": "환상 교향곡 5악장 «마녀들의 밤의 꿈» (Symphonie fantastique – Songe d'une nuit du Sabbat)",
+    "by": "엑토르 베를리오즈 (1803–1869)",
+    "perf": "이고르 마르케비치 지휘, 라무뢰 관현악단 (Igor Markevitch, Orchestre Lamoureux), 1962년 녹음",
     "lic": "퍼블릭 도메인"
   },
   {

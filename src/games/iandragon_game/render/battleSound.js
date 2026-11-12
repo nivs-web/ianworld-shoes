@@ -4,7 +4,7 @@
  * 오락실 소리 설정을 따른다 : 효과음 끔 → 전부 끔 · 배경음 끔 → 곡만 안 튼다. 소리는 화면 전용(계산 영향 없음).
  */
 import * as Audio from '../audio/index.js';
-import { isOn, nums } from '../../../services/switches.js';
+import { isOn } from '../../../services/switches.js';
 import { hasTrait } from '../core/rules.js';
 import { getSettings } from '../../../audio/audio.js';
 import { applySound, soundPrefs } from './soundPrefs.js';
@@ -118,7 +118,7 @@ export function createBattleSound(stage, me = 0) {
     start(kind, arts = []) {
       was.startAt = performance.now(); Audio.preloadBattle?.(arts);
       /* 1단계 = 시작 멘트 «좀비와 드래곤! 지금 시작합니다!» 한 줄 · 2단계부터 상황 시작 말 */
-      Audio.voice(Audio.getVoiceLevel() <= 1 ? 'title' : kind === 'raid' ? 'raid/start' : kind === 'coop' ? 'coop/start' : 'start');
+      Audio.voice(Audio.getVoiceLevel() <= 2 ? 'title' : kind === 'raid' ? 'raid/start' : kind === 'coop' ? 'coop/start' : 'start');
     },   // 겜팀장 새 상황 대사 (습격 · 같이 깨기)
     say(id) { Audio.voice(id); },
     /** 결과 판의 별 «탕 · 탕 · 탕» */
@@ -139,8 +139,8 @@ export function createBattleSound(stage, me = 0) {
       if (lv <= 0) return;
       if (lv === 1) { Audio.voice(VOICE_LINES[nk] ? nk : `deploy/${art}`); return; }
       if (lv === 2) { was.alt = !was.alt; Audio.voice(was.alt && VOICE_LINES[nk] ? nk : `deploy/${art}`); return; }
-      const sec = (performance.now() - (was.startAt ?? now)) / 1000, nameSec = nums('zdVoiceNum').nameSec || 15;
-      const useName = VOICE_LINES[nk] && isOn('zdVoice', 'nameOn') && (isOn('zdVoice', 'nameAlways') || sec < nameSec);
+      const sec = (performance.now() - (was.startAt ?? now)) / 1000, nameSec = 15;
+      const useName = VOICE_LINES[nk] && sec < nameSec;
       Audio.voice(useName ? nk : `deploy/${art}`);
     },
     pause(on) {

@@ -7,17 +7,23 @@
  * 로비 상태판(세로)과 가로 로비 «리더 무대»가 함께 쓴다.
  */
 import { decodeLook } from '../games/iandragon_game/data/looks.js';
-import { applyRigFix } from '../games/iandragon_game/render/rig.js';
+import { applyRigFix, rigFixTable, rigJson } from '../games/iandragon_game/render/rig.js';
 
 const BASE = '/assets/iandragon_game/';
-const img = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
+/* 같은 그림은 한 번만 받는다 (로비가 세로 · 가로 프로필을 다시 그릴 때 · 11/12 속도) — 실패는 기억하지 않아 다음에 다시 시도 */
+const imgs = new Map();
+const img = (src) => {
+  if (!imgs.has(src)) imgs.set(src, new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => { imgs.delete(src); ok(null); }; i.src = src; }));
+  return imgs.get(src);
+};
 let wearP = null;
 const wearJson = () => (wearP ||= fetch(`${BASE}ai/meta/wear.json`).then((r) => r.json()).catch(() => null));
 
 /** art = 리더 id · lookStr = 저장 글자('h3.n1…') · K = 확대 · W×H = 캔버스 크기 */
 export async function dressedCanvas(art, lookStr = '', { K = 1.7, W = 300, H = 250, fit = false, pad = 4 } = {}) {
   const lk = decodeLook(lookStr || '');
-  const [rig, Wr] = await Promise.all([fetch(`${BASE}ai/${art}/rig.json`).then((r) => r.json()), wearJson()]);
+  /* rig.json · wear.json · 자리 보정 표를 동시에 (11/12 속도) — rig.json 은 캐릭터마다 한 번만 받아 전투 · 로비가 같이 쓴다 (rig.js rigJson) */
+  const [rig, Wr] = await Promise.all([rigJson(art), wearJson(), rigFixTable()]);
   const files = await applyRigFix(art, rig);   /* 날개 · 꼬리 자리 표 (전투와 같게) */
   const L = Wr?.leaders?.[art], hk = lk.hat && `hat_${lk.hat}`, nk = lk.neck && `neck_${lk.neck}`;
   const hatE = hk && Wr?.items?.[hk] && L?.hat?.[hk] ? L.hat[hk] : null, neckI = nk && Wr?.items?.[nk] && L ? Wr.items[nk] : null;
@@ -55,7 +61,7 @@ export async function dressedCanvas(art, lookStr = '', { K = 1.7, W = 300, H = 2
  */
 export async function headCanvas(art, lookStr = '', S = 44) {
   const lk = decodeLook(lookStr || '');
-  const [rig, Wr] = await Promise.all([fetch(`${BASE}ai/${art}/rig.json`).then((r) => r.json()), wearJson()]);
+  const [rig, Wr] = await Promise.all([rigJson(art), wearJson()]);
   const q = rig.parts.find((p) => p.n === 'head'), L = Wr?.leaders?.[art], hk = lk.hat && `hat_${lk.hat}`;
   const hatE = hk && Wr?.items?.[hk] && L?.hat?.[hk] ? L.hat[hk] : null;
   const [head, hat] = await Promise.all([img(hatE?.head?.head ? BASE + hatE.head.head : `${BASE}ai/${art}/head.png`), hatE ? img(BASE + Wr.items[hk].file) : null]);

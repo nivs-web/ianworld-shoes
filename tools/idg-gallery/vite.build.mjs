@@ -16,6 +16,6 @@ export default mergeConfig(base, {
   build: {
     outDir: path.join(ROOT, 'public/admin/idg-gallery'),
     emptyOutDir: true,
-    rollupOptions: { input: path.join(ROOT, 'tools/idg-gallery.html') },
+    rollupOptions: { input: { gallery: path.join(ROOT, 'tools/idg-gallery.html'), rigcheck: path.join(ROOT, 'tools/idg-gallery/rigcheck.html') } },   // 조립 점검 화면도 같이 (11/12)
   },
 });

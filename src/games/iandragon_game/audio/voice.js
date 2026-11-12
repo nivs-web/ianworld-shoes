@@ -44,7 +44,7 @@ export const lineLevel = (key, line) => (key.startsWith('name/') ? 1 : key === '
 const GAP = [0, 4.0, 3.0, 2.0, 1.2, 0];          // 단계별 말 사이 최소 쉬는 틈(초)
 const ALWAYS = /^(win|lose|ending|title|name[/].+)$/;      /* 용 이름은 쉬는 틈 무시 — 누를 때마다 꼭 말한다 (겹치면 앞 말을 끊고) */      // 승패 · 엔딩 · 타이틀은 쉬는 틈 무시 (단계는 지킨다)
 const LV_KEY = 'idg_voice_level_v1';
-let level = 1;                                    // 기본 1단계 (대표님 11/11 밤 · 관리자 페이지에서 바꿈)
+let level = 2;                                    // 기본 2단계 (11/12 대표님 «1단계 말고 2로» · 관리자 설정은 없앰)
 try { const v = localStorage.getItem(LV_KEY); if (v !== null && v !== '') level = Math.max(0, Math.min(5, Number(v) | 0)); } catch { /* */ }
 let lastSaid = -99;
 /** 말 많기 단계 0~5 (기기에 저장). 관리자 기본값만 넣을 땐 setVoiceLevel(n, { save: false }) */
@@ -66,7 +66,7 @@ export function voiceLevelStats() {
 function load(file) {
   if (cache.has(file)) return cache.get(file);
   const A = audio(); if (!A) return null;
-  const pr = fetch(`${BASE}${file}.${fileExt()}`)
+  const pr = fetch(`${BASE}${file}.${fileExt()}`, { priority: 'low' })   // 11/12 겜팀장 : 그림이 먼저
     .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('없음'))))
     .then((b) => A.ctx.decodeAudioData(b))
     .then((buf) => { cache.set(file, buf); return buf; })
@@ -106,5 +106,6 @@ export function playVoice(id) {
     if (line.sfx && line.at !== 'start') setTimeout(() => SFX[line.sfx]?.(), Math.max(0, buf.duration - 0.08) * 1000);
   };
   const c = load(fileName(key, i));
-  if (c instanceof Promise) c.then(go); else go(c);
+  if (c instanceof Promise) return;   /* 11/12 겜팀장 «아직 안 받은 대사는 기다렸다 늦게 말하지 말고 이번엔 건너뛰기» — 받기만 시작해 두고 다음에 말한다 */
+  go(c);
 }
