@@ -9,7 +9,10 @@
 import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
 import { ENEMIES } from '../data/enemies.js';
-import { rotated } from './rot.js';
+import { rotated, lockPref } from './rot.js';
+import { enterFullscreen, exitFullscreen, isFullscreen } from '../../../core/fullscreen.js';
+/** 이 브라우저에서 전체 화면을 쓸 수 있나 (아이폰 = API 없음 · 허락 없는 iframe = fullscreenEnabled false) */
+const fsOk = () => { const e = document.documentElement; return !!(e.requestFullscreen || e.webkitRequestFullscreen) && document.fullscreenEnabled !== false && document.webkitFullscreenEnabled !== false; };
 import { powerPage } from './powerPage.js';
 import { soundPanel } from './soundPrefs.js';
 const ATTR_KO = { ghost: '유령', giant: '거대', shadow: '그림자', crystal: '수정' };
@@ -77,7 +80,12 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* 그림은 CSS(일시정지와 같은 판 · 같은 자리) · 전체 화면이면 «나가기» 그림으로 (대표님 «가로에서 전체화면 · 일시정지 단추가 이상하다») */
   const fsDraw = () => fsB.classList.toggle('on', !!(document.fullscreenElement || document.webkitFullscreenElement));
   document.addEventListener('fullscreenchange', fsDraw); document.addEventListener('webkitfullscreenchange', fsDraw); fsDraw();
-  fsB.onclick = () => { const d = document; try { if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else { const e = d.documentElement; (e.requestFullscreen || e.webkitRequestFullscreen)?.call(e)?.catch?.(() => {}); } } catch { /* 안 되는 기기 */ } };
+  /* 누르는 그 순간(사용자 누름 안)에 바로 요청 · 들어가면 가로 잠금(안드로이드는 전체 화면이어야 잠금이 먹는다) · 실패해도 게임은 그대로 (11/12)
+   * 전체 화면 API 가 아예 없는 곳(아이폰 사파리 · 아이폰 크롬/네이버 = 웹킷)이나 막힌 곳(document.fullscreenEnabled === false : 허락 없는 iframe · 일부 앱 안 브라우저)은 단추를 숨긴다 (눌러도 아무 일이 없어 «안 된다»로 보였다) */
+  fsB.onclick = () => { if (isFullscreen()) exitFullscreen(); else enterFullscreen().then((ok) => { if (ok) lockPref(); }); };
+  if (!fsOk()) fsB.style.visibility = 'hidden';
+  /* 전투로 들어가는 단추(출격! · 다시하기 · 전투개시! · 다음 판 — 결과 창 · 파워업 · 일시정지 모두 cb 를 부른다) = 누르는 순간 전체 화면 요청 (11/12 대표님 «무조건 전체 화면» · 이미 전체 화면이면 그대로) */
+  for (const k of ['go', 'retry', 'next']) { const f = cb[k]; if (typeof f === 'function') cb[k] = (...a) => { if (!isFullscreen()) enterFullscreen().then((ok) => { if (ok) lockPref(); }); return f(...a); }; }
   /* 오른쪽 위 끝 = 2배속 · 그 왼쪽 = 전체 화면 (대표님 11/11 «가운데 배속 단추는 별로 · 맨 오른쪽 위를 2배속으로») */
   top.append(pauseB, title, time, money, fsB, speedB);   /* ⛶ 꽉 찬 화면 (대표님 «브라우저 아래 줄이 갑자기 나와 가린다») */
   if (speedMax < 2 || isNet) speedB.style.visibility = 'hidden';   // 멀티는 1배속 고정
@@ -136,6 +144,19 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const breath = h('button', 'idg-btn idg-breath'); breath.type = 'button'; breath.onclick = () => cb.cmd({ type: 'breath' }); breath.onpointerdown = () => cb.aim?.(true); breath.onpointerleave = breath.onpointerup = () => cb.aim?.(false);   /* 누르고 있는 동안 전장에 브레스 사거리 (대표님 11/11) */
   const bFill = h('i', 'fill'); breath.append(bFill, h('b', null, '브레스'));
   bot.append(wallet, deckBox, right, breath);
+  /*
+   * 세로 전투 (11/12 대표님 «단추가 싸움을 가리면 안 된다») : 둥근 단추(브레스 · 스킬 · 으르렁)를 전장 위 오른쪽 벽에 띄우지 않고 카드 줄 안으로.
+   * 6칸 격자 — 카드(화로 + 용) 뒤 마지막 줄의 빈 칸을 오른쪽부터 [브레스(카드 한 칸 크기 · 가장 크게) → 스킬 → 으르렁] 순서로 채우고,
+   * 모자라면 남은 것은 카드 줄 위 얇은 한 줄(오른쪽부터)로. 자리는 판마다 한 번 정한다(으르렁은 꺼져도 자리를 비워 둬 줄 높이가 출렁이지 않게).
+   * 값은 CSS 변수(--gr 줄 · --gc 칸)로만 주고 세로 CSS(iandragon-game.css «세로 전투 4차»)에서만 쓴다 — 가로는 예전 그대로.
+   */
+  {
+    const COLS = 6, cards = [wallet, ...dbtn.map((q) => q.b)], rows = Math.ceil(cards.length / COLS), free = rows * COLS - cards.length;
+    const round = [breath, ...sk.slice().reverse(), rage], top = round.length > free ? 1 : 0;
+    cards.forEach((e, k) => { e.style.setProperty('--gr', String(top + 1 + Math.floor(k / COLS))); e.style.setProperty('--gc', String((k % COLS) + 1)); });
+    round.forEach((e, j) => { const inGrid = j < free; e.style.setProperty('--gr', String(inGrid ? top + rows : 1)); e.style.setProperty('--gc', String(COLS - (inGrid ? j : j - free))); e.classList.toggle('in-row', !inGrid); });
+    bot.classList.toggle('has-act', !!top);
+  }
   sendIns(); setTimeout(sendIns, 300);   // 글꼴 · 그림이 늦게 와서 높이가 바뀔 수 있다   // 스킬 · 포효 = 아래 띠 안 브레스 왼쪽 (예전 오른쪽 위는 좀비 성 체력 숫자를 가렸다)
 
   /** 일시정지 판의 소리 설정 : 배경음 · 효과음 각각 켜기 + 크기 */

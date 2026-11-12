@@ -68,7 +68,7 @@
 |---|---|---|---|
 | 빨강 큰 단추 | `.idg-k-btn.red` · `kitBtn({kind:'red'})` | `ai/result/btn_red3.webp` (slice 92 140) | **앞으로 가는 주 행동** 하나: 전투 개시 · 시작 · 도전 |
 | 초록 큰 단추 | `.idg-k-btn.green` · `kitBtn({kind:'green'})` | `ai/result/btn_green3.webp` (slice 92 140) | 좋은 일: 강화 · 받기 · 사기 · 확인 |
-| 가격 단추 | `.idg-k-btn.price` · `kitPriceBtn({coin\|gem, label?})` | 초록(또는 빨강) 큰 단추 + 재화 아이콘+숫자 | 무언가를 살 때 **항상** |
+| 가격 단추 | `.idg-k-btn.price` · `kitPriceBtn({coin\|gem, label?, wide?})` | 초록(또는 빨강) 큰 단추 + 재화 아이콘+숫자 | 무언가를 살 때 **항상** |
 | 보라 평범한 단추 | `.idg-k-btn.purple` · `kitBtn({kind:'purple'})` | CSS (결과 창 «다시하기 · 나가기» 와 같음) | 보조: 다시 · 닫기 · 나가기 · 뒤로 |
 | 작은 닫기 X | `.idg-k-close` · `kitClose()` | `ai/kit/btn_close.webp` | 현판 오른쪽 (단추 줄이 없을 때) |
 
@@ -99,13 +99,17 @@
 | 슬라이더 | `kitSlider({value, min, max, step, onInput, onChange, label})` · `.set(v)` | `.idg-k-slider` | `kit/slider_groove`(30) · `kit/slider_fill`(32) · `kit/slider_knob` | 진짜 `input[type=range]` |
 | 탭 (보라) | `kitTabs({tabs:[{id,label,icon?}], value, onPick})` · `.set(id)` | `.idg-k-tabs` `.idg-k-tab` | `kit/tab_on` · `kit/tab_off` (36) | `role=tablist/tab` `aria-selected` · ←→ 키 |
 | 탭 (고풍 · 상점) | `kitTabs({..., old:true})` | `.idg-k-tabs.old` | `kit/tab2_on` 빨간 비단 · `kit/tab2_off` (42) | 같음 |
-| 목록 줄 | `kitRow({icon, title, sub, right, hi, locked, onClick})` | `.idg-k-row` (`.hi` `.locked`) | `kit/row` · `kit/row_hi` (26) | `role=group` / 누르면 button |
+| 목록 줄 | `kitRow({icon, title, sub, right, hi, locked, onClick})` | `.idg-k-row` (`.hi` `.locked`) | `kit/row2` · `kit/row2_hi` (14) — 11/12 바깥 보라 테 없앤 판 | `role=group` / 누르면 button |
+| 게이지 | `kitGauge({value, max, color, size, floor, label})` · `.set(v, max?)` | `.idg-k-gauge` (`.green` `.orange` `.gold` `.red` `.blue` `.purple` · `.sm` `.lg`) | `kit/gauge` (16) 금테 홈 · 양 끝 마감 + CSS 채움 3단 · 끝 1px 마감선 | `role=progressbar` `aria-valuenow/max` |
 | 소제목 | `kitSection('모자')` | `.idg-k-sec` | — | `h3` |
 | 스크롤 목록 상자 | `kitScroll(rows, {height:'16em'})` · `.inner` `.refresh()` | `.idg-k-scroll` (`.more`) | `kit/scroll_edge` 위아래 · `kit/more_arrow` 더 있음 | 키보드로 스크롤 (`tabindex=0`) |
 | 잠금 | `kitLock()` | `.idg-k-lock` | `lobby/ico_lock.png` | `aria-label=잠김` |
 | 알림 점 | `kitBadge(target, on)` | `.idg-k-badge` | `lobby2/alert.webp` | `aria-label=새 소식` |
 
-- 설정 화면 = 목록 줄 하나에 [아이콘] 이름 ……… [토글 또는 슬라이더].
+- 설정 화면 = 목록 줄 하나에 [아이콘] 이름 ……… [토글 또는 슬라이더]. 줄 사이는 `.3em` (row2 는 바깥 테가 없어 줄 사이가 곧 금테 사이).
+- 게이지 색 약속 : 체력 초록 · 공격 주황 · 사거리 파랑 · 빠르기 보라 · 진행(아직) 금 · 다 됨 초록. 게임 안 막대는 전부 `kitGauge` (도감 · 파워업 카드 · 도전과제 · 도감 모은 비율). 다른 색은 `color:'#hex'` (밝음 · 어두움 저절로).
+- **누르면 다시 그리는 창은 스크롤을 지킨다** : 줄만 바꾸거나(`도전과제`) `kitKeepScroll(node, draw)` 로 감싼다. 로비 창(`.dialog.idg-*`)은 `idgFrame` 이 «누른 순간의 scrollTop» 을 저장했다가 본문이 바뀌면 되살린다(연구소 · 상점 · 꾸미기 포함). 스크롤 칸은 `overflow-anchor: none`.
+- 받을 것이 2개 이상인 목록은 맨 위에 초록 `kitPriceBtn({gem: 합계, label: '모두 받기 (n개)', wide: true})`, 받을 수 있는 줄을 맨 위 · 받은 줄을 맨 아래로.
 - 상점 화면 = 지갑 판 → 고풍 탭 → 종이 안내 → 소제목 → 스크롤 목록(줄 끝에 가격 단추) → 보라 «닫기».
 
 ## 9. 부품 그림 · 9-slice 값
@@ -127,6 +131,9 @@
 | `kit/wallet.webp` | 662×122 | 26 60 | `.idg-k-wallet` 테 .52em 1.15em |
 | `kit/scroll_edge.webp` | 532×58 | 통그림(가로로 늘림) | `.idg-k-scroll::before/::after` |
 | `kit/more_arrow.webp` | 84×64 | 통그림 | `.idg-k-more` |
+| `kit/row2.webp` · `row2_hi.webp` (11/12) | 638×105 · 638×107 | 14 | `.idg-k-row` 테 .3em .32em (row · row_hi 에서 바깥 보라 테를 잘라 냄 · `tools/_kit2-make.py`) |
+| `kit/gauge.webp` (11/12) | 160×56 (원본 40×14 ×4) | 16 | `.idg-k-gauge` 높이 1em · 테 .286em (`tools/_kit2-make.py` 로 직접 그림) |
+| `kit/cx_card.webp` · `cx_card_off.webp` (11/12) | 278×366 | 통그림 / 9-slice 44 | 도감 카드(금테 · 미수집 은테) · 도감 자세히 판 · 배경 카드 (제미나이 `cx_card2_403`) |
 
 재사용 (새로 안 그림):
 
@@ -150,6 +157,13 @@
 - px 고정 크기 · 화면마다 다른 글씨 크기 (5단계 밖).
 - 창 바탕에 맨글씨 안내문 (→ 종이 판).
 - 시키지 않은 디자인 교체 — 바꾸고 싶으면 후보를 먼저 보여 드리고 대표님이 고른 뒤.
+- 누를 때마다 창 전체를 다시 그려 스크롤이 맨 위로 가는 것 (→ 줄만 바꾸기 · `kitKeepScroll`).
+- 끝이 잘린 막대(마감 없는 CSS 막대) — 게이지는 `kitGauge` 만.
+
+## 12. 큰 그림 보기 (11/12)
+
+- 배경 · 큰 그림은 작은 미리보기를 누르면 **전체 덮개**(`.idg-cx-big`)로 연다 : 처음 = 화면 높이에 꽉 · 한 손가락/마우스 끌기 · 두 손가락/휠 확대 · 두 번 누르면 2배 ↔ 원래 · 오른쪽 위 `kitClose` · Esc.
+- 미리보기에는 오른쪽 아래 작은 돋보기 표(`.idg-cx-zoom`), 안내는 «그림을 눌러서 크게 보기».
 
 ## 11. 쓰는 예
 

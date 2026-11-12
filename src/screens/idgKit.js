@@ -75,14 +75,14 @@ export { moneyIcon as kitMoneyIcon, fmtMoney as kitFmt };
 
 /**
  * 가격 단추 : 초록 고급 단추 + (작은 글씨) + 재화 아이콘 + 숫자
- * @param {{coin?:number, gem?:number, label?:string, onClick?:Function, poor?:boolean, disabled?:boolean, kind?:'green'|'red', tag?:string, size?:'sm'}} o
+ * @param {{coin?:number, gem?:number, label?:string, onClick?:Function, poor?:boolean, disabled?:boolean, kind?:'green'|'red', tag?:string, size?:'sm', wide?:boolean}} o
  *   poor = 모자람(숫자 빨강 · 눌리지 않음). label 예 «사기» — 없으면 아이콘 + 숫자만
  */
 export function kitPriceBtn(o = {}) {
   const cur = o.gem != null ? 'gem' : 'coin';
   const n = o.gem != null ? o.gem : o.coin;
   const name = cur === 'gem' ? '젬' : '금화';
-  const b = el(`button.idg-k-btn.price.${o.kind || 'green'}${o.size ? '.' + o.size : ''}${o.poor ? '.poor' : ''}`, {
+  const b = el(`button.idg-k-btn.price.${o.kind || 'green'}${o.size ? '.' + o.size : ''}${o.wide ? '.wide' : ''}${o.poor ? '.poor' : ''}`, {
     type: 'button', disabled: !!(o.disabled || o.poor),
     'aria-label': `${o.label ? o.label + ' ' : ''}${name} ${fmtMoney(n)}${o.poor ? ` (${name}이 모자라요)` : ''}`,
     title: o.poor ? `${name}이 모자라요` : null,
@@ -219,6 +219,45 @@ export function kitScroll(children, opt = {}) {
   return box;
 }
 
+/**
+ * 픽셀 게이지 (11/12 서브창2 · 대표님 «게이지 끝이 잘려 보인다 → 금테 홈 + 양 끝 마감 + 채움 끝도 딱 떨어지게»)
+ *  홈 = kit/gauge.webp (금테 · 양 끝 금 마감 · 9-slice) · 채움 = 색 3단(밝음 · 본색 · 어두움) + 끝 1px 마감선
+ * @param {{value:number, max?:number, color?:'green'|'orange'|'gold'|'red'|'blue'|'purple'|string, label?:string, size?:'sm'|'lg', floor?:number}} o
+ *   color = 이름(미리 정한 색) 또는 CSS 색(#5fd35f 처럼 — 밝음 · 어두움은 저절로) · floor = 값이 있으면 최소로 보일 비율(예 .05)
+ * 반환 요소에 .set(value, max?) 가 붙는다. role=progressbar · aria-valuenow/max.
+ */
+const GAUGE_COLORS = ['green', 'orange', 'gold', 'red', 'blue', 'purple'];
+export function kitGauge(o = {}) {
+  let max = o.max ?? 100;
+  const col = o.color || 'green', named = GAUGE_COLORS.includes(col);
+  const g = el(`div.idg-k-gauge${named ? '.' + col : '.custom'}${o.size ? '.' + o.size : ''}`, { role: 'progressbar', 'aria-label': o.label || null, 'aria-valuemin': '0' }, [el('i.idg-k-gauge-fill', { 'aria-hidden': 'true' })]);
+  if (!named) g.style.setProperty('--g-c', col);
+  g.set = (v, m) => {
+    if (m != null) max = m;
+    let p = max > 0 ? Math.max(0, Math.min(1, (Number(v) || 0) / max)) : 0;
+    if (p > 0 && o.floor) p = Math.max(p, o.floor);
+    g.style.setProperty('--v', p.toFixed(4));
+    g.classList.toggle('empty', p <= 0); g.classList.toggle('full', p >= 1);
+    g.setAttribute('aria-valuenow', String(Math.round(Number(v) || 0))); g.setAttribute('aria-valuemax', String(Math.round(max)));
+  };
+  g.set(o.value ?? 0, max);
+  return g;
+}
+
+/**
+ * 스크롤 위치 지키기 (11/12 서브창2 · 대표님 «받기를 누르면 목록이 맨 위로 올라간다»)
+ *  fn() 이 창 안 내용을 바꾸어도 node 를 감싼 스크롤 칸의 scrollTop 을 그대로 되살린다 (바로 · 다음 그림 직전 rAF).
+ */
+export function kitKeepScroll(node, fn) {
+  let sc = node;
+  while (sc && sc !== document.body) { const s = getComputedStyle(sc); if (/(auto|scroll)/.test(s.overflowY) && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; }
+  if (!sc || sc === document.body) { fn(); return; }
+  const top = sc.scrollTop;
+  fn();
+  sc.scrollTop = top;
+  requestAnimationFrame(() => { sc.scrollTop = top; });
+}
+
 /** 잠금 자물쇠 아이콘 */
 export const kitLock = () => el('i.idg-k-lock', { role: 'img', 'aria-label': '잠김' });
 
@@ -235,7 +274,8 @@ export function kitBadge(target, on = true) {
 export const KIT_IMG = {
   toggleOn: IMG + 'kit/toggle_on.webp', toggleOff: IMG + 'kit/toggle_off.webp', checkOn: IMG + 'kit/check_on.webp', checkOff: IMG + 'kit/check_off.webp',
   close: IMG + 'kit/btn_close.webp', tabOn: IMG + 'kit/tab_on.webp', tabOff: IMG + 'kit/tab_off.webp', tab2On: IMG + 'kit/tab2_on.webp', tab2Off: IMG + 'kit/tab2_off.webp',
-  groove: IMG + 'kit/slider_groove.webp', fill: IMG + 'kit/slider_fill.webp', knob: IMG + 'kit/slider_knob.webp', row: IMG + 'kit/row.webp', rowHi: IMG + 'kit/row_hi.webp',
+  groove: IMG + 'kit/slider_groove.webp', fill: IMG + 'kit/slider_fill.webp', knob: IMG + 'kit/slider_knob.webp', row: IMG + 'kit/row2.webp', rowHi: IMG + 'kit/row2_hi.webp',
+  gauge: IMG + 'kit/gauge.webp', cxCard: IMG + 'kit/cx_card.webp', cxCardOff: IMG + 'kit/cx_card_off.webp',
   paper: IMG + 'kit/paper.webp', wallet: IMG + 'kit/wallet.webp', scrollEdge: IMG + 'kit/scroll_edge.webp', more: IMG + 'kit/more_arrow.webp',
   ribbon: IMG + 'lobby/ribbon.webp', dialog: IMG + 'lobby/dialog9.webp', btnRed: IMG + 'result/btn_red3.webp', btnGreen: IMG + 'result/btn_green3.webp',
   lock: IMG + 'lobby/ico_lock.png', alert: IMG + 'lobby2/alert.webp',

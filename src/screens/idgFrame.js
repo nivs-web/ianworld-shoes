@@ -26,7 +26,20 @@ export function watchMore(box, body, after = body) {
   body.addEventListener('scroll', upd, { passive: true });
   body.addEventListener('load', upd, true);   // 그림이 늦게 들어와 길어질 때
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(upd).observe(body);
-  new MutationObserver(() => requestAnimationFrame(upd)).observe(body, { childList: true, subtree: true });
+  /* 스크롤 위치 지키기 (11/12 서브창2 · 대표님 «받기 · 올리기 · 사기 · 고르기를 누르면 목록이 맨 위로 올라간다»)
+   *  «누르면 본문을 통째로 다시 그리는» 창(연구소 · 상점 · 꾸미기 — 다른 파일)을 고치지 않고 여기서 막는다 :
+   *  창 안을 누르는 순간의 scrollTop 을 적어 두고, 그 누름 때문에 본문이 바뀌면(MutationObserver) 바로 · 다음 그림 직전 · 조금 뒤 · 그림이 늦게 들어올 때 되살린다.
+   *  다시 손가락을 대거나(pointerdown) 휠을 굴리면 되살리기를 멈춘다. */
+  let keep = null;
+  const restore = () => { if (keep && performance.now() - keep.t < 900 && body.isConnected && Math.abs(body.scrollTop - keep.top) > 1) body.scrollTop = keep.top; };
+  box.addEventListener('pointerdown', () => { keep = null; }, true);
+  box.addEventListener('wheel', () => { keep = null; }, { passive: true, capture: true });
+  box.addEventListener('click', () => { keep = { top: body.scrollTop, t: performance.now() }; }, true);
+  body.addEventListener('load', restore, true);
+  new MutationObserver(() => {
+    if (keep) { restore(); requestAnimationFrame(() => { restore(); requestAnimationFrame(restore); }); setTimeout(restore, 120); setTimeout(restore, 350); }
+    requestAnimationFrame(upd);
+  }).observe(body, { childList: true, subtree: true });
   requestAnimationFrame(upd); setTimeout(upd, 400);
 }
 /* 글자 그림(이모지 🔒 · ★☆) → 도트 그림 (11/12 대표님 «픽셀 아트가 아닌 부분은 모두 픽셀 아트로»)

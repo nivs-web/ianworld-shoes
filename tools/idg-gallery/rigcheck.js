@@ -2,7 +2,7 @@
  * 조립 점검 화면 (그림 담당 겜보조 2 · 2026-11-12 · 대표님 «보스 조립이 피카소 그림 같다 — 캐릭터를 하나하나 점검하는 걸 만들어»)
  *
  * 게임 render/rig.js 의 createRigged 를 그대로 import 해서 움직인다 (src 는 읽기만).
- *  왼쪽 = 원래 rig.json · 오른쪽 = 보정 표(ai/meta/ rigfix.json 날개 · 꼬리 → rigfix_boss.json → rigfix_zombie.json 을 겹침) + 이 화면에서 고친 것.
+ *  왼쪽 = 원래 rig.json · 오른쪽 = 보정 표(ai/meta/ rigfix.json 날개 · 꼬리 → rigfix_boss.json → rigfix_zombie.json → rigfix_dragon.json 을 겹침) + 이 화면에서 고친 것.
  *  부품 표 : 그리는 순서(1 = 맨 뒤) · 켜고 끄기 · ▲▼ 순서 바꾸기 · 기준점 a · 자리 p · 뒤집기. 줄에 마우스를 올리면 그 부품 상자가 두 화면에 뜬다.
  *  고친 값은 이 브라우저에만 임시로 남고(localStorage), «보정 표 JSON» 을 복사해 보스는 rigfix_boss.json, 일반은 rigfix_zombie.json 에 붙인다.
  */
@@ -15,14 +15,14 @@ const BASE = '/assets/iandragon_game/ai/';
 const $ = (s) => document.querySelector(s);
 const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) k.startsWith('on') ? e.addEventListener(k.slice(2), v) : k === 'cls' ? (e.className = v) : e.setAttribute(k, v); e.append(...kids.filter((x) => x != null)); return e; };
 const DRAFT_KEY = 'idg_rigcheck_draft_v1';
-const S = { list: [], table: {}, id: null, rig: null, draft: null, state: 'idle', paused: false, step: false, scale: 3, gameDir: false, boxes: true, hover: null, sel: null };
+const S = { list: [], table: {}, prev: {}, beforeMode: 'raw', id: null, rig: null, draft: null, state: 'idle', paused: false, step: false, scale: 3, gameDir: true, boxes: true, hover: null, sel: null };
 
 /** 보정 표 한 줄을 rig 에 얹는다 (tools/idg-rigcheck.mjs applyFix 와 같은 규칙) */
 export function applyFix(rig, F = {}) {
   let parts = rig.parts.map((p) => ({ ...p, a: [...p.a], p: [...p.p], file: p.n, ...structuredClone(F.parts?.[p.n] || {}) }));
-  for (const p of parts) { if (F.files?.[p.n]) p.file = F.files[p.n]; p.hidden = (F.hidden || []).includes(p.n); }
+  for (const p of parts) { if (F.files?.[p.n]) p.file = F.files[p.n]; if (p.blink && F.files?.[p.blink]) p.blinkFile = F.files[p.blink]; p.hidden = (F.hidden || []).includes(p.n); }
   if (F.order) parts = [...F.order.map((n) => parts.find((p) => p.n === n)).filter(Boolean), ...parts.filter((p) => !F.order.includes(p.n))];
-  return { ...rig, parts };
+  return { ...rig, parts, ...(F.scale > 0 ? { scale: (rig.scale || 1) * F.scale } : {}) };
 }
 /** 세 표를 캐릭터마다 겹친다 (tools/idg-rigcheck.mjs mergeFix · wingTailFix 와 같은 규칙) */
 function mergeFix(wingTail, ...tables) {
@@ -37,6 +37,7 @@ function mergeFix(wingTail, ...tables) {
     const M = (out[id] ||= {});
     if (F.order) M.order = [...F.order];
     if (F.files) M.files = { ...M.files, ...F.files };
+    if (typeof F.scale === 'number') M.scale = F.scale;
     for (const [n, d] of Object.entries(F.parts || {})) (M.parts ||= {})[n] = { ...M.parts?.[n], ...d };
   }
   return out;
@@ -57,7 +58,7 @@ async function makeStage(key, host) {
 
 async function texFor(rig) {
   const tex = {};
-  await Promise.all(rig.parts.flatMap((p) => [[p.n, p.file || p.n], p.blink && [p.blink, p.blink], p.breath && [p.breath, p.breath]]).filter(Boolean).map(async ([n, f]) => {
+  await Promise.all(rig.parts.flatMap((p) => [[p.n, p.file || p.n], p.blink && [p.blink, p.blinkFile || p.blink], p.breath && [p.breath, p.breath]]).filter(Boolean).map(async ([n, f]) => {
     const t = await Assets.load(`${BASE}${S.id}/${f}.png`); t.source.scaleMode = 'nearest'; tex[n] = t;
   }));
   return tex;
@@ -149,6 +150,7 @@ function exportFix() {
     if (Object.keys(d).length) (out.parts ||= {})[p.n] = d;
     if (p.file !== p.n) (out.files ||= {})[p.n] = p.file;
   }
+  if (S.draft.scale) out.scale = S.draft.scale;
   return out;
 }
 
@@ -174,7 +176,7 @@ async function pick(id) {
   S.rig = await (await fetch(`${BASE}${id}/rig.json`, { cache: 'no-store' })).json();
   S.draft = loadDrafts()[id] || structuredClone(S.table[id] || {});
   $('#title').textContent = `${id} · ${S.rig.kind} · 그림 방향 ${S.rig.face > 0 ? '오른쪽' : '왼쪽'} · 부품 ${S.rig.parts.length}`;
-  await Promise.all([build('before', applyFix(S.rig)), build('after', draftRig())]);
+  await Promise.all([build('before', applyFix(S.rig, S.beforeMode === 'prev' ? S.prev[id] : undefined)), build('after', draftRig())]);
   renderTable(); refreshWarn();
 }
 
@@ -200,11 +202,12 @@ async function auditAll() {
 
 async function main() {
   const table = (n) => fetch(`${BASE}meta/${n}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
-  const [list, wt, boss, zombie] = await Promise.all([
+  const [list, wt, boss, zombie, dragon] = await Promise.all([
     IDS,
-    table('rigfix.json'), table('rigfix_boss.json'), table('rigfix_zombie.json'),
+    table('rigfix.json'), table('rigfix_boss.json'), table('rigfix_zombie.json'), table('rigfix_dragon.json'),
   ]);
-  S.list = list; S.table = mergeFix(wt, boss, zombie);
+  S.list = list; S.table = mergeFix(wt, boss, zombie, dragon);
+  S.prev = mergeFix(wt, boss, zombie);   // «용 표 전» = 11/12 용 보정 직전 게임 모습 (자세 사진 --before prev)
   $('#back').href = location.pathname.startsWith('/admin/') ? './' : '/tools/idg-gallery.html';   // 웹 = /admin/idg-gallery/ · 개발 서버 = /tools/
   await makeStage('before', $('#stBefore'));
   await makeStage('after', $('#stAfter'));
@@ -228,6 +231,7 @@ async function main() {
   /* 자세 고정 (tools/idg-rigcheck-poses.mjs 가 자세별 전/후 사진을 찍을 때 씀) — t 초 · 상태 시작 뒤 st 초의 모습으로 멈춘다 */
   window.__rigcheck = {
     pick, ready: true,
+    setBefore(m) { S.beforeMode = m; },
     pose(state, t, st = t) { S.paused = true; for (const o of Object.values(stages)) if (o.R) { o.R.set(state); o.R.t = t; o.R.st = st; o.R.update(0.0001); } },
   };
   auditAll();

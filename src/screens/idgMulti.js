@@ -12,6 +12,7 @@ import { seatsOf } from '../games/iandragon_game/net/roomBridge.js';
 import { makeLoads, stageByNo, loadToLd, ldToLoad, PVP_OPEN, PVP_DAY, NET_V } from '../games/iandragon_game/render/battleSetup.js';
 import { currentUser } from '../services/auth.js';
 import { decodeLook, titleOf } from '../games/iandragon_game/data/looks.js';
+import { enterFullscreen } from '../core/fullscreen.js';   /* 11/12 대표님 «전투로 들어가는 단추는 무조건 전체 화면» — 판은 서버 응답 뒤에 열려 그때는 못 켜므로 누르는 순간에 켠다 */
 
 export function showMulti(onStart, rejoinCode = null) {
   Sfx.play('sfx_menu_select');
@@ -34,6 +35,7 @@ export function showMulti(onStart, rejoinCode = null) {
       (g.cleared || 0) >= PVP_OPEN ? button(`용 대결 방 만들기 (오늘 보상 ${Math.max(0, PVP_DAY - (g.pvp?.day === new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) ? g.pvp.n : 0))}/${PVP_DAY}판 · 전적 ${g.pvp?.w || 0}승 ${g.pvp?.l || 0}패)`, () => make(0)) : el('p.idg-multi-msg', `용 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 열려요.`),
       el('div.idg-multi-join', null, [input, button('들어가기', async () => {
         const c = input.value.trim(); if (!c) return;
+        enterFullscreen();
         msg('들어가는 중…');
         const r = await Room.joinRoom(c, null, Room.GAME_IDRAGON).catch(() => 'error');
         if (r === 'ok') wait(c);
@@ -43,6 +45,7 @@ export function showMulti(onStart, rejoinCode = null) {
   }
 
   async function quick(pvp, n) {
+    enterFullscreen();
     msg('같이 할 친구를 찾는 중…');
     const accept = (r) => (pvp ? (r.idgStage | 0) === 0 : (r.idgStage | 0) > 0);
     const r = await Room.quickJoin({ game: Room.GAME_IDRAGON, maxPlayers: 2, accept, idgStage: n }).catch(() => null);
@@ -50,6 +53,7 @@ export function showMulti(onStart, rejoinCode = null) {
     wait(r);
   }
   async function make(n) {
+    enterFullscreen();
     msg('방을 만드는 중…');
     const r = await Room.createRoom({ game: Room.GAME_IDRAGON, maxPlayers: 2, isPrivate: false, idgStage: n }).catch(() => null);
     if (!r) { msg('아직 같이 하기를 준비 중이에요 (서버 설정 전). 조금만 기다려 주세요!'); return; }
@@ -76,7 +80,7 @@ export function showMulti(onStart, rejoinCode = null) {
       const loads = uids.map((u) => ldToLoad(room.players[u]?.ld || ''));
       const oldV = loads.some((l) => l && l.v !== NET_V);   // 한쪽이 옛 버전 (오락실은 PWA 라 실제로 생긴다)
       const allLd = loads.every(Boolean) && !oldV;
-      startB.replaceChildren(uids.length >= 2 && allLd && host ? button('시작!', () => Room.startCountdown(c), { primary: true }) : el('p.idg-multi-msg', oldV ? '게임 버전이 서로 달라요 — 둘 다 새로고침 해 주세요!' : uids.length < 2 ? '친구를 기다리는 중…' : '방장이 시작하기를 기다려요'));
+      startB.replaceChildren(uids.length >= 2 && allLd && host ? button('시작!', () => { enterFullscreen(); Room.startCountdown(c); }, { primary: true }) : el('p.idg-multi-msg', oldV ? '게임 버전이 서로 달라요 — 둘 다 새로고침 해 주세요!' : uids.length < 2 ? '친구를 기다리는 중…' : '방장이 시작하기를 기다려요'));
       if ((room.state === 'countdown' || room.state === 'playing') && allLd) {
         started = true; off?.(); close();
         const ms = room.startAt ? await Room.msUntilStart(room.startAt) : 0;

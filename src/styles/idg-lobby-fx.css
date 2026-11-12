@@ -60,46 +60,92 @@
   85% { translate: calc(var(--rx) * -.5 * var(--sc)) calc(var(--ry) * .2 * var(--sc)); }
 }
 
-/* ── 무덤 좀비 (6.4초 · 전투 무덤 좀비와 같은 rise.png · mound.png · 먼지 dust_*) : --y = 땅(발밑) · --k = 크기 ── */
-.lfx-gz { --u: calc(var(--k, 1) * var(--sc)); width: calc(96 * var(--u)); height: calc(110 * var(--u)); margin: calc(110 * var(--u) * -1) 0 0 calc(48 * var(--u) * -1); }
-.lfx-gz > i { animation: 6.4s steps(1, end) forwards; }
-.lfx-gz .lfx-gz-crack { left: 50%; bottom: calc(-6 * var(--u)); width: calc(66 * var(--u)); height: calc(14 * var(--u)); margin-left: calc(-33 * var(--u)); border-radius: 50%; background: #1a0c1f;
+/* ── 성문 앞 해골 좀비 (6초 · lobbyFx.js gateZombie) : --y = 땅(발밑) · --k = 크기 (1u = 그림 1px × k)
+ *    0~10% 흙 들썩 → 10% 갈라짐 · 흙 튐 → 11~15% 초록 손 쑥 → 15~30% 손 꿈틀(손가락 쥐었다 폈다) → 30~33% 손 쏙
+ *    → 33~39% 해골 좀비 솟음(먼지) → 39~61% 만세 콩콩 · 흔들 → 62% 와르르(뼈 더미 · 해골 · 뼈 튐 · 먼지) → 82~96% 뼈 · 흙이 땅속으로 가라앉음
+ *    땅 밑으로 들어가는 것은 .lfx-gz-box(바닥 = 땅 줄) 가 잘라서 가린다 — 투명해지는 것 없음 ── */
+.lfx-gz { --u: calc(var(--k, 1) * var(--sc)); width: calc(150 * var(--u)); height: calc(120 * var(--u)); margin: calc(120 * var(--u) * -1) 0 0 calc(75 * var(--u) * -1); }
+.lfx-gz i { animation: 6s steps(1, end) forwards; }
+.lfx-gz .lfx-gz-crack { left: 50%; bottom: calc(-5 * var(--u)); width: calc(50 * var(--u)); height: calc(11 * var(--u)); margin-left: calc(-25 * var(--u)); border-radius: 50%; background: #1a0c1f;
   transform: scale(0); animation-name: lfxGzHole; }
-.lfx-gz-box { left: 0; right: 0; top: 0; bottom: 0; overflow: hidden; }
-.lfx-gz-z { left: 50%; bottom: 0; width: calc(63 * 1.25 * var(--u)); height: calc(57 * 1.25 * var(--u)); margin-left: calc(-31.5 * 1.25 * var(--u));
-  background: url(/assets/iandragon_game/ai/fun/rise.png) center bottom / 100% 100% no-repeat; transform-origin: 50% 100%; transform: translateY(105%);
-  animation: lfxGzRise 6.4s steps(1, end) forwards; }
-.lfx-gz .lfx-gz-mound { left: 50%; bottom: calc(-8 * var(--u)); width: calc(43 * 1.7 * var(--u)); height: calc(20 * 1.7 * var(--u)); margin-left: calc(-21.5 * 1.7 * var(--u));
+.lfx-gz .lfx-gz-box { left: 0; right: 0; top: 0; bottom: 0; overflow: hidden; animation: none; }
+.lfx-gz-box > i { left: 50%; bottom: 0; transform-origin: 50% 100%; background-position: center bottom; background-repeat: no-repeat; }
+/* 초록 손 (전투 무덤 손 hand_open · hand_wave 36×57 → 0.62배) */
+.lfx-gz .lfx-gz-hand { width: calc(24 * var(--u)); height: calc(35 * var(--u)); margin-left: calc(-12 * var(--u)); bottom: calc(-2 * var(--u));
+  background-image: url(/assets/iandragon_game/ai/fun/hand_open.png); background-size: auto 100%; transform: translateY(110%); animation-name: lfxGzHand; }
+/* 만세 해골 (rise 63×57 → 1.25배) */
+.lfx-gz .lfx-gz-z { width: calc(78.75 * var(--u)); height: calc(71.25 * var(--u)); margin-left: calc(-39.4 * var(--u));
+  background-image: url(/assets/iandragon_game/ai/fun/rise.png); background-size: 100% 100%; transform: translateY(105%); animation-name: lfxGzRise; }
+/* 뼈 더미 (bonepile 63×46 → 0.85배) */
+.lfx-gz .lfx-gz-pile { width: calc(53.5 * var(--u)); height: calc(39 * var(--u)); margin-left: calc(-26.8 * var(--u)); bottom: calc(3 * var(--u)); visibility: hidden;
+  background-image: url(/assets/iandragon_game/ai/fun/bonepile.png); background-size: 100% 100%; animation-name: lfxGzPile; }
+/* 튀는 뼈 · 해골 */
+.lfx-gz .lfx-gz-b { width: calc(12.6 * var(--u)); height: calc(13.3 * var(--u)); margin-left: calc(-6.3 * var(--u)); transform-origin: 50% 50%; visibility: hidden;
+  background-image: url(/assets/iandragon_game/ai/fun/bone.png); background-size: 100% 100%; animation-name: lfxGzBone; animation-timing-function: linear; }
+.lfx-gz .lfx-gz-b.skull { width: calc(15.2 * var(--u)); height: calc(15.2 * var(--u)); margin-left: calc(-7.6 * var(--u)); background-image: url(/assets/iandragon_game/ai/fun/skull.png); }
+.lfx-gz .lfx-gz-mound { left: 50%; bottom: calc(-7 * var(--u)); width: calc(43 * 1.5 * var(--u)); height: calc(20 * 1.5 * var(--u)); margin-left: calc(-21.5 * 1.5 * var(--u));
   background: url(/assets/iandragon_game/ai/fun/mound.png) center bottom / 100% 100% no-repeat; transform-origin: 50% 100%; transform: scale(.2, 0); animation-name: lfxGzMound; }
-.lfx-gz .lfx-gz-dust { left: 50%; bottom: calc(-6 * var(--u)); width: calc(84 * var(--u)); height: calc(64 * var(--u)); margin-left: calc(-42 * var(--u)); visibility: hidden;
+.lfx-gz .lfx-gz-dust { left: 50%; bottom: calc(-6 * var(--u)); width: calc(56 * var(--u)); height: calc(43 * var(--u)); margin-left: calc(-28 * var(--u)); visibility: hidden;
   background: url(/assets/iandragon_game/ai/fx/dust_0.png) center bottom / contain no-repeat; animation-name: lfxGzDust; }
-.lfx-gz .lfx-gz-d { left: 50%; bottom: 0; width: calc(6 * var(--u)); height: calc(6 * var(--u)); background: #5a3a2a; box-shadow: inset calc(-2 * var(--u)) calc(-2 * var(--u)) 0 #3a2218; visibility: hidden; animation-name: lfxGzBit; }
-.lfx-gz .lfx-gz-d:nth-child(2n) { background: #6e4a30; width: calc(8 * var(--u)); height: calc(5 * var(--u)); }
-@keyframes lfxGzHole { 0% { transform: scale(0); } 9% { transform: scale(.5, .6); } 12% { transform: scale(1); } 90% { transform: scale(1); } 94% { transform: scale(.55, .6); } 97%, 100% { transform: scale(0); } }
+.lfx-gz .lfx-gz-d { left: 50%; bottom: 0; width: calc(5 * var(--u)); height: calc(5 * var(--u)); background: #5a3a2a; box-shadow: inset calc(-2 * var(--u)) calc(-2 * var(--u)) 0 #3a2218; visibility: hidden;
+  animation-name: lfxGzBit; animation-timing-function: linear; }
+.lfx-gz .lfx-gz-d:nth-of-type(2n) { background: #6e4a30; width: calc(7 * var(--u)); height: calc(4 * var(--u)); }
+@keyframes lfxGzHole { 0% { transform: scale(0); } 9% { transform: scale(.45, .6); } 11% { transform: scale(1); } 92% { transform: scale(1); } 95% { transform: scale(.55, .6); } 98%, 100% { transform: scale(0); } }
+/* 흙 : 들썩들썩 커짐 → 그대로 → 와르르 때 눌려 낮아짐(뼈 더미가 보이게) → 끝에 납작하게 가라앉음 */
 @keyframes lfxGzMound {
-  0% { transform: scale(.2, 0); } 3% { transform: scale(.45, .4); } 5% { transform: scale(.6, .7) translateX(-3%); } 7% { transform: scale(.7, .85) translateX(3%); }
-  9% { transform: scale(.8, .95) translateX(-3%); } 11% { transform: scale(1.05, 1.1); } 13% { transform: scale(1); }
-  88% { transform: scale(1); } 92% { transform: scale(1, .55); } 96%, 100% { transform: scale(1, 0); }
+  0% { transform: scale(.2, 0); } 2% { transform: scale(.4, .35); } 4% { transform: scale(.55, .6) translateX(-4%); } 6% { transform: scale(.65, .75) translateX(4%); }
+  8% { transform: scale(.78, .9) translateX(-4%); } 10% { transform: scale(1.08, 1.12); } 12% { transform: scale(1); }
+  33% { transform: scale(1.1, .85); } 35% { transform: scale(1); } 62% { transform: scale(1.12, .5); } 64% { transform: scale(1.1, .55); }
+  84% { transform: scale(1.1, .55); } 88% { transform: scale(1.1, .4); } 92% { transform: scale(1.1, .26); } 95% { transform: scale(1.1, .12); } 97%, 100% { transform: scale(1, 0); }
 }
+/* 손 : 흙더미 위로 팔목까지 쑥 튀어나와 → 손가락 쥐었다 폈다 꿈틀 → 쏙 */
+@keyframes lfxGzHand {
+  0%, 10% { transform: translateY(110%); } 11% { transform: translateY(50%); } 12% { transform: translateY(-10%); } 13% { transform: translateY(-62%); } 14% { transform: translateY(-52%) rotate(6deg); }
+  15% { transform: translateY(-50%) rotate(-6deg); background-image: url(/assets/iandragon_game/ai/fun/hand_wave.png); } 17% { transform: translateY(-50%) rotate(8deg); background-image: url(/assets/iandragon_game/ai/fun/hand_open.png); }
+  19% { transform: translateY(-54%) rotate(-8deg); background-image: url(/assets/iandragon_game/ai/fun/hand_wave.png); } 21% { transform: translateY(-50%) rotate(6deg); background-image: url(/assets/iandragon_game/ai/fun/hand_open.png); }
+  23% { transform: translateY(-53%) rotate(-7deg); background-image: url(/assets/iandragon_game/ai/fun/hand_wave.png); } 25% { transform: translateY(-50%) rotate(8deg); background-image: url(/assets/iandragon_game/ai/fun/hand_open.png); }
+  27% { transform: translateY(-55%) rotate(-5deg); background-image: url(/assets/iandragon_game/ai/fun/hand_wave.png); } 29% { transform: translateY(-50%); background-image: url(/assets/iandragon_game/ai/fun/hand_open.png); }
+  30% { transform: translateY(0%); } 31% { transform: translateY(55%); } 32%, 100% { transform: translateY(110%); }
+}
+/* 해골 좀비 : 쑥 솟음 → 만세 콩콩 · 좌우 흔들 → 부들부들 → 와르르 (사라지는 순간 뼈 더미가 그 자리에) */
 @keyframes lfxGzRise {
-  0% { transform: translateY(105%); } 13% { transform: translateY(80%); } 15% { transform: translateY(58%); } 17% { transform: translateY(38%); } 19% { transform: translateY(20%); } 21% { transform: translateY(6%); } 23% { transform: translateY(-4%); }
-  25% { transform: none; } 32% { transform: rotate(-6deg); } 39% { transform: rotate(5deg); } 46% { transform: rotate(-6deg); } 53% { transform: rotate(6deg) scale(1.04); } 60% { transform: rotate(-3deg); } 66% { transform: none; }
-  72% { transform: translateY(12%); } 74% { transform: translateY(30%); } 76% { transform: translateY(50%); } 78% { transform: translateY(70%); } 80% { transform: translateY(88%); } 82%, 100% { transform: translateY(105%); }
+  0%, 32% { transform: translateY(105%); } 33% { transform: translateY(78%); } 34% { transform: translateY(52%); } 35% { transform: translateY(28%); } 36% { transform: translateY(8%); } 37% { transform: translateY(-6%); } 38% { transform: translateY(-2%); }
+  39% { transform: none; } 41% { transform: scale(1.08, .92); } 42% { transform: translateY(-9%); } 44% { transform: translateY(-12%); } 45% { transform: scale(1.1, .9); } 46% { transform: none; }
+  47% { transform: translateY(-9%); } 49% { transform: translateY(-12%); } 50% { transform: scale(1.1, .9); } 51% { transform: none; }
+  53% { transform: rotate(-6deg); } 55% { transform: rotate(6deg); } 57% { transform: rotate(-5deg); } 59% { transform: translateX(3%); } 60% { transform: translateX(-3%) scale(1.04, .96); } 61% { transform: translateX(3%) scale(1.1, .82); }
+  62%, 100% { transform: translateY(105%); visibility: hidden; }
+}
+/* 뼈 더미 : 와르르 내려앉아 출렁 → 누워 있다가 → 땅속으로 가라앉음 */
+@keyframes lfxGzPile {
+  0%, 61% { visibility: hidden; transform: none; } 62% { visibility: visible; transform: scale(1.15, .55); } 63% { transform: scale(.94, 1.1); } 64% { transform: scale(1.04, .96); } 65% { transform: none; }
+  82% { transform: none; } 85% { transform: translateY(14%); } 88% { transform: translateY(34%); } 91% { transform: translateY(58%); } 94% { transform: translateY(84%); } 96%, 100% { transform: translateY(115%); visibility: hidden; }
+}
+/* 뼈 · 해골 : 몸통 높이에서 튀어 올라 떨어져 → 통 튀고 누움 → 땅속으로 */
+@keyframes lfxGzBone {
+  0%, 61% { visibility: hidden; transform: translate(0, calc(-30 * var(--u))); }
+  62% { visibility: visible; transform: translate(0, calc(-30 * var(--u))) rotate(0deg); }
+  64% { transform: translate(calc(var(--vx) * .3 * var(--u)), calc((-30 - var(--vh) * .8) * var(--u))) rotate(calc(var(--r) * .25)); }
+  66% { transform: translate(calc(var(--vx) * .55 * var(--u)), calc((-30 - var(--vh)) * var(--u))) rotate(calc(var(--r) * .5)); }
+  68% { transform: translate(calc(var(--vx) * .75 * var(--u)), calc((-30 - var(--vh) * .55) * var(--u))) rotate(calc(var(--r) * .75)); }
+  70% { transform: translate(calc(var(--vx) * .92 * var(--u)), calc(-11 * var(--u))) rotate(calc(var(--r) * .95)); }
+  71% { transform: translate(calc(var(--vx) * var(--u)), calc(-1 * var(--u))) rotate(var(--r)); }
+  72% { transform: translate(calc(var(--vx) * 1.04 * var(--u)), calc(-5 * var(--u))) rotate(var(--r)); }
+  73%, 82% { transform: translate(calc(var(--vx) * 1.08 * var(--u)), calc(-1 * var(--u))) rotate(var(--r)); }
+  96% { visibility: visible; transform: translate(calc(var(--vx) * 1.08 * var(--u)), calc(16 * var(--u))) rotate(var(--r)); } 97%, 100% { visibility: hidden; }
 }
 @keyframes lfxGzDust {
-  0%, 11% { visibility: hidden; } 12% { visibility: visible; background-image: url(/assets/iandragon_game/ai/fx/dust_0.png); } 15% { background-image: url(/assets/iandragon_game/ai/fx/dust_1.png); }
-  18% { background-image: url(/assets/iandragon_game/ai/fx/dust_2.png); } 21% { background-image: url(/assets/iandragon_game/ai/fx/dust_3.png); } 23% { visibility: hidden; }
-  74% { visibility: visible; background-image: url(/assets/iandragon_game/ai/fx/dust_0.png); } 77% { background-image: url(/assets/iandragon_game/ai/fx/dust_1.png); } 80% { visibility: hidden; } 100% { visibility: hidden; }
+  0%, 9% { visibility: hidden; } 10% { visibility: visible; background-image: url(/assets/iandragon_game/ai/fx/dust_0.png); } 12% { background-image: url(/assets/iandragon_game/ai/fx/dust_1.png); } 14% { visibility: hidden; }
+  33% { visibility: visible; background-image: url(/assets/iandragon_game/ai/fx/dust_2.png); } 34% { background-image: url(/assets/iandragon_game/ai/fx/dust_3.png); } 35% { visibility: hidden; }
+  62% { visibility: visible; background-image: url(/assets/iandragon_game/ai/fx/dust_1.png); } 63% { background-image: url(/assets/iandragon_game/ai/fx/dust_2.png); } 64% { background-image: url(/assets/iandragon_game/ai/fx/dust_3.png); } 65%, 100% { visibility: hidden; }
 }
-/* 흙 조각 : 튀어 올랐다가 떨어져 남아 있다가 → 흙이 가라앉을 때 같이 땅속으로 */
+/* 흙 조각 : 손이 뚫을 때 튀어 올랐다가 떨어져 남아 있다가 → 흙이 가라앉을 때 같이 땅속으로 */
 @keyframes lfxGzBit {
-  0%, 10% { visibility: hidden; transform: none; } 11% { visibility: visible; transform: translate(0, 0); }
-  14% { transform: translate(calc(var(--vx) * .5 * var(--u)), calc(var(--vy) * .8 * var(--u))); } 17% { transform: translate(calc(var(--vx) * 1 * var(--u)), calc(var(--vy) * var(--u))); }
-  20% { transform: translate(calc(var(--vx) * 1.3 * var(--u)), calc(var(--vy) * .6 * var(--u))); } 23% { transform: translate(calc(var(--vx) * 1.5 * var(--u)), calc(var(--vy) * .1 * var(--u))); }
-  25%, 88% { visibility: visible; transform: translate(calc(var(--vx) * 1.6 * var(--u)), calc(2 * var(--u))); }
-  92% { transform: translate(calc(var(--vx) * 1.6 * var(--u)), calc(6 * var(--u))); } 95%, 100% { visibility: hidden; transform: translate(calc(var(--vx) * 1.6 * var(--u)), calc(9 * var(--u))); }
+  0%, 9% { visibility: hidden; transform: none; } 10% { visibility: visible; transform: translate(0, 0); }
+  12% { transform: translate(calc(var(--vx) * .5 * var(--u)), calc(var(--vy) * .8 * var(--u))); } 14% { transform: translate(calc(var(--vx) * 1 * var(--u)), calc(var(--vy) * var(--u))); }
+  16% { transform: translate(calc(var(--vx) * 1.3 * var(--u)), calc(var(--vy) * .6 * var(--u))); } 18% { transform: translate(calc(var(--vx) * 1.5 * var(--u)), calc(var(--vy) * .1 * var(--u))); }
+  20%, 86% { visibility: visible; transform: translate(calc(var(--vx) * 1.6 * var(--u)), calc(2 * var(--u))); }
+  91% { transform: translate(calc(var(--vx) * 1.6 * var(--u)), calc(5 * var(--u))) scaleY(.6); } 95%, 100% { visibility: hidden; transform: translate(calc(var(--vx) * 1.6 * var(--u)), calc(7 * var(--u))) scaleY(.3); }
 }
-.lfx-gz .lfx-gz-d { animation-timing-function: linear !important; }
 
 /* ── 하늘 손님 · 박쥐 떼 : 화면 밖에서 들어와 밖으로 나간다 ── */
 .lfx-fly { left: 0; top: calc(50cqh + (var(--y) + var(--dy, 0) - var(--ih) / 2) * var(--sc)); width: calc(var(--w) * var(--sc)); height: calc(var(--h) * var(--sc));

@@ -9,8 +9,8 @@
  */
 import * as Audio from '../audio/index.js';
 import { isOn } from '../../../services/switches.js';
-import { ORIENTS, orientPref, setOrientPref } from './rot.js';
-import { el } from '../../../screens/ui.js';
+import { ORIENTS, lobbyOrientPref, setLobbyOrientPref, GAME_ORIENT } from './rot.js';
+import { el, toast } from '../../../screens/ui.js';
 import { kitRow, kitSlider, kitToggle, kitTabs } from '../../../screens/idgKit.js';   /* UI 키트 (11/12) */
 
 /*
@@ -59,8 +59,12 @@ export function soundPanel(h, onChange = () => {}) {
   const toggle = (label, get, set) => row(label, kitToggle({ on: get(), label, onChange: (on) => set(on) }));
   /* 배경음악 풍 (대표님 «클래식, EDM 중 고르는 걸로») */
   const styleTabs = kitTabs({ label: '배경음악', tabs: [{ id: 'orchestra', label: '클래식' }, { id: 'edm', label: 'EDM' }], value: bgmPick(), onPick: (v) => { setBgmPick(v); onChange({ style: v }); } });
-  /* 화면 방향 (대표님 11/11 «가로 고정 · 세로 고정 · 자동 회전 · 기본 자동») */
-  const orTabs = kitTabs({ label: '화면 방향', tabs: ORIENTS.map(({ v, label }) => ({ id: v, label })), value: orientPref(), onPick: (v) => setOrientPref(v) });
+  /* 화면 방향 = 로비화면 · 게임화면 두 줄 (11/12 대표님 · rot.js)
+   *  로비화면 : 기본 세로 · 자동 · 가로 고를 수 있음 / 게임화면 : 지금은 가로만 — «자동» · «세로» 는 흐린 잠금 모양, 누르면 안내만 */
+  const lobbyTabs = kitTabs({ label: '로비화면 방향', tabs: ORIENTS.map(({ v, label }) => ({ id: v, label })), value: lobbyOrientPref(), onPick: (v) => setLobbyOrientPref(v) });
+  const gameTabs = kitTabs({ label: '게임화면 방향', tabs: ORIENTS.map(({ v, label }) => ({ id: v, label })), value: GAME_ORIENT,
+    onPick: (v) => { if (v !== GAME_ORIENT) { gameTabs.set(GAME_ORIENT); toast('지금은 가로만 할 수 있어요', 1800); } } });
+  gameTabs.querySelectorAll('.idg-k-tab').forEach((b) => { if (b.dataset.id !== GAME_ORIENT) { b.classList.add('locked'); b.setAttribute('aria-disabled', 'true'); b.title = '지금은 가로만 할 수 있어요'; } });
   /* 목소리 말 많기 0~5 (겜팀장 VOICE_LEVELS · 대표님 «말 많기 6단계») */
   const vlDesc = el('p.idg-sound-desc.idg-k-t4');
   const descOf = (n) => { const L = Audio.VOICE_LEVELS.find((x) => x.n === n); vlDesc.textContent = L ? `${L.name} — ${L.desc}` : ''; };
@@ -68,7 +72,7 @@ export function soundPanel(h, onChange = () => {}) {
     onPick: (id) => { const n = Number(id); Audio.setVoiceLevel(n); descOf(n); if (n > 0 && !isMuted()) Audio.voice('name/kkomul'); } });
   descOf(Audio.getVoiceLevel());
   wrap.append(
-    row('배경음악', styleTabs, 'pick'), row('화면 방향', orTabs, 'pick'), row('말 많기', vlTabs, 'pick'), vlDesc,
+    row('배경음악', styleTabs, 'pick'), row('로비화면', lobbyTabs, 'pick'), row('게임화면', gameTabs, 'pick'), row('말 많기', vlTabs, 'pick'), vlDesc,
     slider('음악 크기', 'music', () => {}),
     slider('효과음', 'sfx', () => Audio.play('star')),
     slider('목소리', 'voice', () => Audio.voice('name/kkomul')),

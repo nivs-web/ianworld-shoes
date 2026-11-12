@@ -54,33 +54,41 @@ html.idg-lobby-on body { width: 100%; }
 .l2-face { position: relative; z-index: 2; flex: none; width: var(--fs); height: calc(var(--fs) * 1.073); }   /* 얼굴 동그라미 = 맨 위 · 아무것도 안 덮음 */
 .l2-face::before { content: ''; position: absolute; left: 10%; width: 80%; top: 16%; height: 74.5%; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #7a48c0 0 40%, #4a2380 70%, #2a1250 100%); }
 .l2-face::after { content: ''; position: absolute; inset: 0; background: url(/assets/iandragon_game/ai/lobby2/ring.webp) center / 100% 100% no-repeat; image-rendering: pixelated; }
-.l2-face-c { position: absolute; z-index: 1; left: 17%; width: 66%; top: 22.6%; height: 61.5%; image-rendering: pixelated; }
+.l2-face-c { position: absolute; z-index: 1; left: 17%; width: 66%; top: 21.4%;   /* 6차 : 얼굴이 아래로 쏠려 보여 살짝 위로 (22.6 → 21.4%) */ height: 61.5%; image-rendering: pixelated; }
 /* 이름 판 (얼굴 오른쪽 · 왼쪽 끝은 금 고리 뒤로 살짝) : 위 = 칭호 리본 · 가운데 = [Lv 알약 | 닉네임] · 아래 = 경험치 막대 (11/12 대표님 «얼굴을 가린다») */
 /* 4차 (11/12 대표님) : 이름 판 폭 = [Lv 배지 + 닉네임 6글자] 에 딱 맞게 (판은 내용 폭 · Lv 자릿수가 늘면 같이 길어짐) */
 .l2-plate { position: relative; z-index: 1; flex: none; box-sizing: border-box; width: max-content; height: calc(var(--fs) * .96); margin-left: calc(var(--fs) * -.16); }
 .l2-name { --h: calc(var(--fs) * .5); position: relative; width: max-content; margin-top: calc(var(--fs) * .21); height: var(--h); display: flex; align-items: center; gap: calc(var(--fs) * .06); box-sizing: border-box; min-width: 0; padding-left: calc(var(--fs) * .13);
   border: solid transparent; border-width: calc(var(--h) * .12) calc(var(--h) * .52) calc(var(--h) * .12) calc(var(--h) * .12);
   border-image: url(/assets/iandragon_game/ai/lobby2/nameplate.webp) 18 78 18 18 fill / calc(var(--h) * .12) calc(var(--h) * .52) calc(var(--h) * .12) calc(var(--h) * .12) stretch; }
-.l2-nick { position: relative; top: 1px; flex: none; width: 5.4em; font-size: calc(var(--fs) * .23); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: var(--t1); }
+.l2-nick { position: relative; top: 0; flex: none; width: 5.4em; font-size: calc(var(--fs) * .23); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: var(--t1); }
 .l2-ttl { --h: calc(var(--fs) * .29); position: absolute; z-index: 2; top: 0; margin: 0; background: none; color: inherit; font: inherit; cursor: pointer; gap: .3em; left: calc(var(--fs) * .3); height: var(--h); display: flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: calc(var(--fs) * 1.3); max-width: calc(100% - var(--fs) * .55);
   padding: 0 calc(var(--fs) * .04) calc(var(--h) * .12);
   border: solid transparent; border-width: calc(var(--h) * .2) calc(var(--h) * .55) calc(var(--h) * .27); border-image: url(/assets/iandragon_game/ai/lobby2/ribbon_v3.webp) 20 52 26 fill / calc(var(--h) * .2) calc(var(--h) * .55) calc(var(--h) * .27) stretch; }
 .l2-ttl:active { filter: brightness(.88); }
-.l2-ttl i { flex: none; font-style: normal; font-size: calc(var(--fs) * .1); font-weight: 900; line-height: 1; color: #f2b34a;
+.l2-ttl i { flex: none; font-style: normal; font-size: calc(var(--fs) * .116); font-weight: 900; line-height: 1; color: #f2b34a;
   --ob: #4a2200; text-shadow: 1px 0 var(--ob), -1px 0 var(--ob), 0 1px var(--ob), 0 -1px var(--ob), 1px 1px var(--ob), -1px 1px var(--ob), 1px -1px var(--ob), -1px -1px var(--ob); }   /* 앞의 작은 «칭호» (무엇인지 알게 · 11/12 대표님) */
 .l2-ttl span { font-size: calc(var(--fs) * .13); font-weight: 800; line-height: 1; color: #ffe7a6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   --ob: #4a2200; text-shadow: 1px 0 var(--ob), -1px 0 var(--ob), 0 1px var(--ob), 0 -1px var(--ob), 1px 1px var(--ob), -1px 1px var(--ob), 1px -1px var(--ob), -1px -1px var(--ob); }
-/* Lv 알약 = 이름 판 안 왼쪽 (닉네임 바로 옆) */
-/* 4차 : 9조각 border-image (양 끝 뾰족한 금 테는 그대로 · 가운데만 늘어남) → Lv.8 · Lv.10 · Lv.99 모두 가운데 · 배지가 글자 수만큼 길어짐
-   그림의 안쪽 면이 살짝 위(15~80/102)라 위 .2 · 아래 .27 로 글씨 가운데를 면 가운데에 맞춤 */
-.l2-lv { --h: calc(var(--fs) * .28); position: relative; flex: none; display: flex; align-items: center; justify-content: center; height: var(--h); min-width: calc(var(--h) * 1.59); padding: 0; box-sizing: border-box;
-  border: solid transparent; border-width: calc(var(--h) * .2) calc(var(--h) * .44) calc(var(--h) * .27); border-image: url(/assets/iandragon_game/ai/lobby2/lv_pill.webp) 20 45 27 fill / calc(var(--h) * .2) calc(var(--h) * .44) calc(var(--h) * .27) stretch;
-  font-size: calc(var(--fs) * .115); line-height: 1; color: #fff; white-space: nowrap; --ob: #3a1800; text-shadow: 1px 0 var(--ob), -1px 0 var(--ob), 0 1px var(--ob), 0 -1px var(--ob), 1px 1px var(--ob), -1px 1px var(--ob), 1px -1px var(--ob), -1px -1px var(--ob); }
-/* 경험치 막대 = 이름 판 바로 아래 (얼굴 오른쪽에서 시작) */
-.l2-xp { --h: calc(var(--fs) * .17); position: absolute; left: calc(var(--fs) * .22); right: calc(var(--fs) * .34); top: calc(var(--fs) * .74); height: var(--h); box-sizing: border-box;
-  border: solid transparent; border-width: calc(var(--h) * .28) calc(var(--h) * .26) calc(var(--h) * .28) calc(var(--h) * .08);
-  border-image: url(/assets/iandragon_game/ai/lobby2/xp_bar_v3.webp) 22 20 22 6 fill / calc(var(--h) * .28) calc(var(--h) * .26) calc(var(--h) * .28) calc(var(--h) * .08) stretch; }
-.l2-xp i { position: absolute; left: 0; top: 0; bottom: 0; max-width: 100%; background: linear-gradient(180deg, #fff3b0 0 30%, #ffc93a 30% 72%, #d9890f 72%); }
+/* Lv 배지 = 이름 판 안 왼쪽 (닉네임 바로 옆)
+   6차 (11/12 대표님 «Lv 글씨 · 배지가 안 어울린다») : 속이 빈 갈색 알약 → 꽉 찬 금 배지(lv_badge · 9조각 · 모서리 30px 그대로 · 가운데만 늘어남)
+   글씨 = 작은 «Lv.» + 굵고 큰 숫자 · 흰 글씨 + 짙은 갈색 1px 8방향 외곽선 · 배지 높이 가운데 = 닉네임 가운데 (이름 판 flex 가운데) · Lv.8 · 31 · 99 모두 배지 안 */
+.l2-lv { --h: calc(var(--fs) * .3); --ob: #4a2200; position: relative; top: 1px; flex: none; display: flex; align-items: baseline; justify-content: center; gap: .08em; height: var(--h); min-width: calc(var(--h) * 1.7); padding: 0 calc(var(--h) * .04); box-sizing: border-box;
+  border: solid transparent; border-width: calc(var(--h) * .22) calc(var(--h) * .24); border-image: url(/assets/iandragon_game/ai/lobby2/lv_badge.webp) 30 fill / calc(var(--h) * .22) calc(var(--h) * .24) stretch; image-rendering: pixelated;
+  font-size: calc(var(--fs) * .165); font-weight: 900; line-height: 1; color: #fff; white-space: nowrap;
+  text-shadow: 1px 0 var(--ob), -1px 0 var(--ob), 0 1px var(--ob), 0 -1px var(--ob), 1px 1px var(--ob), -1px 1px var(--ob), 1px -1px var(--ob), -1px -1px var(--ob); }
+.l2-lv small { font-size: .66em; font-weight: 900; color: #fff4c8; }
+.l2-lv b { font-weight: 900; letter-spacing: .01em; }
+.l2-lv small, .l2-lv b { position: relative; top: 1px; }   /* 6차 : 배지 금 면 안 위아래 여백 같게 (잰 값 · 위가 좁았음) */
+/* 경험치 게이지 (다 차면 레벨업) = 이름 판 아래 테에 붙은 얇은 픽셀 게이지 — 위 테는 이름 판 뒤로 살짝 숨어 한 덩어리로 보임
+   6차 (11/12 대표님 «공중에 떠 있다 · 더 작게») : 그림 = 키트 공용 게이지(.idg-k-gauge)와 같은 kit/gauge.webp(금테 홈 · 양 끝 마감 · slice 16 = 원본 4px)
+   채움 = 키트 gold 와 같은 노랑 → 금 딱딱한 3단 + 끝 2px 어두운 마감선 · 0 이면 숨김 · 다 차면 마감선 없음 */
+.l2-xp { --h: calc(var(--fs) * .14); position: absolute; z-index: 0; left: calc(var(--fs) * .2); right: calc(var(--fs) * .3); top: calc(var(--fs) * .675); height: var(--h); box-sizing: border-box; overflow: hidden;
+  border: solid transparent; border-width: calc(var(--h) * .286); border-image: url(/assets/iandragon_game/ai/kit/gauge.webp) 16 fill / calc(var(--h) * .286) stretch; image-rendering: pixelated; }
+.l2-xp i { position: absolute; left: 0; top: 0; bottom: 0; max-width: 100%; background: linear-gradient(180deg, #fff0a0 0 34%, #ffc93c 34% 68%, #c8861a 68% 100%); box-shadow: inset -2px 0 0 #7a4a0a; }
+.l2-xp i[style^="width:0%"] { display: none; }
+.l2-xp i[style^="width:100%"] { box-shadow: none; }
+.l2-name { z-index: 1; }
 
 /* ── 위 띠 : 재화 판 (왼쪽 큰 아이콘 · 숫자 · 오른쪽 끝 금 «+» = 드래곤샵) ── */
 .l2-cur { flex: none; display: flex; gap: var(--cg); }
@@ -113,10 +121,14 @@ html.idg-lobby-on body { width: 100%; }
 @keyframes l2Dot { 50% { transform: translateY(-2px); } }
 
 /* ── 다음 스테이지 카드 (호박 모서리 창 틀 dialog9) ── */
-.l2-nextwrap { display: flex; align-items: center; justify-content: center; min-height: 0; }
+/* 6차 (11/12 대표님 «글씨가 위로 쏠렸다 · 위아래 여백이 항상 달라») : 카드가 자리(낮은 세로)에 눌려 --cardH 보다 낮아지면 테 · 글씨 · 별도 같이 줄어들게
+ *  --cardPx = --cardH 를 카드 자리(.l2-nextwrap) 에서 px 로 굳힘 (@property) → 카드 안 --c = min(그 값, 자리 높이 100cqh)
+ *  세로 레이아웃 테두리(border-width) 위 · 아래 = dialog9 금줄 안쪽 면(원본 위 81px · 아래 54px / 조각 104px) → 내용 상자 = 테 안쪽 면 · 가운데 맞춤이 곧 면 가운데 */
+@property --cardPx { syntax: '<length>'; inherits: true; initial-value: 60px; }
+.l2-nextwrap { --cardPx: var(--cardH); container-type: size; display: flex; align-items: center; justify-content: center; min-height: 0; }
 /* 4차 (11/12 대표님 «카드가 너무 길다») : 폭 = 글씨 + 별에 딱 맞게 (호박 테 · 반투명 그대로) */
-.l2-next { --c: var(--cardH); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--c) * .05); box-sizing: border-box; width: max-content; height: min(100%, var(--c)); padding: 0 calc(var(--c) * .14); text-align: center;
-  border: solid transparent; border-width: calc(var(--c) * .2) calc(var(--c) * .2); border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / calc(var(--c) * .2) calc(var(--c) * .193) stretch;
+.l2-next { --c: min(var(--cardPx), 100cqh); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--c) * .05); box-sizing: border-box; width: max-content; height: var(--c); padding: 0 calc(var(--c) * .14); text-align: center;
+  border: solid transparent; border-width: calc(var(--c) * .1558) calc(var(--c) * .2) calc(var(--c) * .1038); border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / calc(var(--c) * .2) calc(var(--c) * .193) stretch;
   background: rgba(26, 10, 46, .5); background-clip: padding-box; }   /* 호박 테는 그대로 · 안쪽 바탕만 반투명 (뒤가 살짝 비침 · 11/12 대표님) */
 .l2-next-t { display: block; font-size: calc(var(--c) * .25); font-weight: 900; line-height: 1; white-space: nowrap; letter-spacing: .02em; text-shadow: var(--t2); }
 .l2-stars { display: flex; justify-content: center; gap: calc(var(--c) * .04); height: calc(var(--c) * .3); }
@@ -159,9 +171,11 @@ html.idg-lobby-on body { width: 100%; }
 .l2-pico { position: relative; display: block; flex: none; line-height: 0; }
 .l2-pico::after { content: ''; position: absolute; inset: 0; pointer-events: none;
   -webkit-mask: url(/assets/iandragon_game/ai/lobby2/ico_power_clean.webp) 0 0 / 100% 100% no-repeat; mask: url(/assets/iandragon_game/ai/lobby2/ico_power_clean.webp) 0 0 / 100% 100% no-repeat;
-  background: linear-gradient(118deg, transparent 0 43%, rgba(255, 255, 255, .26) 43% 45.5%, rgba(255, 255, 255, .58) 45.5% 50%, rgba(255, 255, 255, .26) 50% 52.5%, transparent 52.5%) 100% 0 / 300% 100% no-repeat;
-  animation: l2Glint 3.6s infinite; }
-@keyframes l2Glint { 0%, 72% { background-position: 100% 0; animation-timing-function: steps(1); } 74% { background-position: 100% 0; animation-timing-function: steps(7); } 100% { background-position: 0 0; } }
+  /* 5차 (11/12 대표님) : 빛이 «아래에서 위로» — 가로로 누운 밝은 띠(앞 = 굵은 띠 · 뒤 = 가는 꼬리 띠)가 화살표 모양 안에서 계단식으로 쓱 올라감 · 2.6초마다
+     띠 그림 = 세로 300% · 위치 0 0%(띠가 화살표 아래 밖) → 0 100%(위 밖) · 딱딱한 경계(흐림 없음) */
+  background: linear-gradient(180deg, transparent 0 40%, rgba(255, 250, 214, .3) 40% 42.5%, rgba(255, 255, 255, .7) 42.5% 47.5%, rgba(255, 250, 214, .3) 47.5% 50%, transparent 50% 53%, rgba(255, 255, 255, .34) 53% 55%, transparent 55%) 0 0 / 100% 300% no-repeat;
+  animation: l2Glint 2.6s infinite; }
+@keyframes l2Glint { 0%, 52% { background-position: 0 0; animation-timing-function: steps(1); } 54% { background-position: 0 10%; animation-timing-function: steps(10); } 94% { background-position: 0 84%; animation-timing-function: steps(1); } 96%, 100% { background-position: 0 100%; } }
 .l2-spark { --sp: round(calc(var(--bh) * .04), 1px); position: absolute; z-index: 2; overflow: hidden; pointer-events: none; width: calc(13 * var(--sp)); height: calc(13 * var(--sp)); }
 @supports not (width: round(1.5px, 1px)) { .l2-spark { --sp: calc(var(--bh) * .04); } }
 .l2-spark i { display: block; width: 1200%; height: 100%; background: url(/assets/iandragon_game/ai/lobby2/spark_big.svg) 0 0 / 100% 100% no-repeat; animation: l2Spark 1.56s steps(12) infinite; }
@@ -180,12 +194,38 @@ html.idg-lobby-on body { width: 100%; }
 @keyframes l2Hint { 50% { translate: 0 calc(var(--bh) * .1); } }
 
 /* ── 박쥐 날개 긴 단추 (이안오락실) ── */
-.l2-back { --h: var(--backH); display: block; box-sizing: border-box; width: max-content; height: var(--h);   /* 4차 : 폭 = 아이콘 + «이안오락실로» 에 맞게 (날개는 양 끝 그대로) */
-  margin: 0; padding: 0; cursor: pointer; background: none; color: #ffe9b0;
-  border: solid transparent; border-width: calc(var(--h) * .18) calc(var(--h) * .8) calc(var(--h) * .22); border-image: url(/assets/iandragon_game/ai/lobby2/backbtn.webp) 32 143 40 fill / calc(var(--h) * .18) calc(var(--h) * .8) calc(var(--h) * .22) stretch; }
-.l2-back-in { display: flex; align-items: center; justify-content: center; gap: .4em; height: 100%; margin: 0 calc(var(--h) * -.1); font-size: calc(var(--h) * .36); font-weight: 900; line-height: 1; letter-spacing: .03em; white-space: nowrap; text-shadow: var(--t2); }
-.l2-back-in img { display: block; height: 1.55em; width: auto; image-rendering: pixelated; }
-.l2-back:active { filter: brightness(.85); }
+/* 6차 (11/12 대표님 «디자인이 너무 별로») : 오락실 기계 아이콘 없이 글씨 «이안오락실로» 만 · 더 작게 · 단추 몸 = 키트 보라 평범 단추(.idg-k-btn.purple · 결과 창 «다시하기 · 나가기») 양식
+ *  --h = 보라 몸 높이 · 폭 = 글씨 + 양쪽 여백(글씨가 늘 몸 안 가운데) · 박쥐 날개 = 옛 backbtn 에서 좌우 따로 떼어 낸 그림(back_wing_l · _r)
+ *  날개 = 몸 뒤에서 뿌리(안쪽 가운데)를 축으로 계단식 퍼덕 (위 · 가운데 · 아래 3장 · 한 번 0.5초 × 3번 → 1초 쉼) · 움직임 줄이기면 멈춤 */
+.l2-back { --h: var(--backH); --wh: calc(var(--h) * 1.3); --ww: calc(var(--wh) * 113 / 119);
+  display: block; box-sizing: border-box; width: max-content; height: var(--h); margin: 0; padding: 0 calc(var(--ww) * .74); overflow: visible;
+  cursor: pointer; background: none; border: 0; color: #f2ecff; }
+.l2-back::before, .l2-back::after { content: ''; position: absolute; z-index: 0; top: calc(50% - var(--wh) * .5); width: var(--ww); height: var(--wh); pointer-events: none;
+  background: url(/assets/iandragon_game/ai/lobby2/back_wing_l.webp) center / 100% 100% no-repeat; image-rendering: pixelated; transform-origin: 100% 54%; animation: l2WingL 2.5s step-end infinite; }
+.l2-back::before { left: 0; }
+.l2-back::after { right: 0; background-image: url(/assets/iandragon_game/ai/lobby2/back_wing_r.webp); transform-origin: 0 54%; animation-name: l2WingR; }
+.l2-back-in { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 100%; padding: .1em .85em 0;
+  border: 2px solid #8e7bcc; border-radius: .5em; background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233;
+  font-size: calc(var(--h) * .44); font-weight: 900; line-height: 1; letter-spacing: .02em; white-space: nowrap; text-shadow: var(--t1); }
+.l2-back:active { filter: brightness(.86); }
+/* 6차 정렬 (11/12 대표님 «위아래 여백이 항상 달라») : 크롬은 글씨를 CSS 1px 단위로 붙여 그려서 판 안 위아래 여백이 크기마다 0~1px 어긋난다
+   → 412×780 · 412×915 · 915×412 에서 잉크(글씨 실제 화소)를 재서 위아래 차이가 가장 작은 미세 위치를 넣음 (tools/_out/_lobby6-tune.mjs) */
+.l2-back-in > span { position: relative; top: .5px; }
+.l2-money b { position: relative; top: -.25px; }
+.l2-btn.red > span { position: relative; top: .25px; }
+.l2-btn.green > span:not(.l2-pico) { position: relative; top: .5px; }
+.l2-back:active .l2-back-in { translate: 0 1px; }
+/* 위(뿌리 축으로 팁이 올라감 · 살짝 접힘) → 가운데 → 아래(팁이 내려감 · 더 접힘) → 가운데 … 3번 퍼덕 뒤 쉼 */
+@keyframes l2WingL {
+  0%, 10%, 20%, 30%, 40%, 50%, 60%, 100% { transform: none; }
+  5%, 25%, 45% { transform: rotate(15deg) scale(.92, .94); }
+  15%, 35%, 55% { transform: rotate(-16deg) scale(.8, .9); }
+}
+@keyframes l2WingR {
+  0%, 10%, 20%, 30%, 40%, 50%, 60%, 100% { transform: none; }
+  5%, 25%, 45% { transform: rotate(-15deg) scale(.92, .94); }
+  15%, 35%, 55% { transform: rotate(16deg) scale(.8, .9); }
+}
 
 /* ════ 가로 ════ */
 @media (orientation: landscape) {
@@ -194,7 +234,7 @@ html.idg-lobby-on body { width: 100%; }
     --py: clamp(6px, 1.6cqh, 18px); --px: max(clamp(10px, 1.6cqw, 32px), env(safe-area-inset-left), env(safe-area-inset-right)); --gap: clamp(5px, 1.4cqh, 14px);
     --fs: clamp(56px, 15.5cqh, 112px); --plw: calc(var(--fs) * 2.75); --ch: clamp(26px, 6cqh, 42px); --cg: calc(var(--ch) * 1.3);
     --s: calc((100cqh - 2 * var(--py) - var(--ch) * 1.2 - 5 * var(--gap)) / 5);
-    --bh: clamp(50px, 13cqh, 108px); --cardH: clamp(34px, 9cqh, 68px); --backH: clamp(36px, 9cqh, 72px);
+    --bh: clamp(50px, 13cqh, 108px); --cardH: clamp(34px, 9cqh, 68px); --backH: clamp(28px, 6.4cqh, 52px);   /* 6차 : 이안오락실로 = 보라 몸 높이 (더 작게) */
     /* 가운데 한 줄 (용 · 무대 · 카드 · 모험시작 · 파워업 = 화면 가로 50%) : 폭은 왼쪽 2×2 칸과 안 겹치는 만큼까지 */
     --pw: min(46cqw, 640px, calc(100cqw - 2 * (var(--px) + 2 * var(--s) + 2 * var(--gap))));
     --pl: calc(50cqw - var(--pw) / 2);
@@ -205,13 +245,14 @@ html.idg-lobby-on body { width: 100%; }
   .l2-side { left: var(--px); top: calc(var(--py) + var(--fs) * 1.07 + var(--gap)); bottom: calc(var(--py) + var(--backH) + var(--gap)); display: grid; grid-template-columns: repeat(2, var(--s)); grid-auto-rows: var(--s); gap: var(--gap); align-content: center; }
   /* 오른쪽 세로 5칸 (재화 판 아래부터) */
   .l2-bottom { right: var(--px); top: calc(var(--py) + var(--ch) * 1.2 + var(--gap)); bottom: var(--py); display: flex; flex-direction: column; justify-content: space-between; }
-  .l2-back { left: env(safe-area-inset-left, 0px); bottom: env(safe-area-inset-bottom, 0px); }   /* 왼쪽 아래 끝에 딱 붙게 (11/12 대표님) · 폭은 내용에 맞게 (4차) */
+  .l2-back { left: env(safe-area-inset-left, 0px); bottom: calc(env(safe-area-inset-bottom, 0px) + var(--backH) * .14); }   /* 왼쪽 아래 끝 (11/12 대표님) · 6차 : 몸 아래 그림자 · 테가 안 잘리게 살짝만 띄움 */
   /* 무대 아래 : 카드 + 큰 단추 두 개 (무대 가운데 줄에 맞춤 · 왼쪽 2×2 · 오른쪽 줄과 안 겹치게) */
   .l2-btns { left: var(--pl); width: var(--pw); bottom: var(--py); }
   /* 4차 (11/12 대표님 «폰 가로에서 아래로 내려앉아 잘린다») : 로고 바로 아래 빈 하늘(용 머리 위)에 작게 · 한 줄 [다음 스테이지 2-6 ★★★] */
   .l2-nextwrap { left: var(--pl); width: var(--pw); top: calc(var(--py) * .5 + min(24cqw, var(--fs) * 2.6) * .2894 + var(--gap) * .5); height: var(--cardH); }
   .l2-next { flex-direction: row; gap: calc(var(--c) * .16); padding: 0 calc(var(--c) * .2); }
-  .l2-next-t { font-size: calc(var(--c) * .34); }
+  .l2-next-t { position: relative; top: 1px; font-size: calc(var(--c) * .34); }   /* 6차 : 한 줄 카드 글씨도 면 세로 가운데 (잰 값 · 별과 같은 가운데) */
+  .l2-ttl i, .l2-ttl span { position: relative; top: 1px; }   /* 6차 : 가로에선 칭호 리본 글씨가 위로 쏠림 (잰 값) */
   .l2-stars { height: calc(var(--c) * .42); gap: calc(var(--c) * .05); }
   .l2-hint { left: calc(var(--pl) + var(--pw) * .3); bottom: calc(var(--py) + var(--bh) * .82); }
   /* 움직이는 것 자리 (배경 그림 좌표) */
@@ -233,7 +274,12 @@ html.idg-lobby-on body { width: 100%; }
     --py: clamp(8px, 1.1cqh, 22px); --px: clamp(10px, 2.6cqw, 30px); --gap: clamp(6px, 1.1cqh, 16px);
     --s: min(calc((100cqw - 2 * var(--px) - 4 * var(--gap)) / 5), 9.6cqh);
     --fs: clamp(64px, min(19cqw, 9.4cqh), 132px); --plw: auto; --ch: calc(var(--fs) * .4); --cg: calc(var(--ch) * .22);
-    --bh: clamp(52px, 7.4cqh, 104px); --cardH: clamp(60px, 8.6cqh, 124px); --backH: clamp(44px, 5.6cqh, 80px);
+    --bh: clamp(52px, 7.4cqh, 104px); --cardH: clamp(60px, 8.6cqh, 124px); --backH: clamp(30px, 4.4cqh, 60px);
+    /* 6차 (11/12 대표님 «호박 눈이 가려진다») : 이안오락실로 = 더 작게 + 호박 줄(--pb)에서 그림 46px 만큼 위로 띄움 (--backLift) · 위 묶음도 같이 올라감 */
+    --backLift: calc(46 * var(--sc));
+    /* 5차 (11/12 대표님 폰 캡처) : 아래 묶음(이안오락실로 · 5칸 · 큰 단추 · 카드) 밑단 = 앞 겹 맨 아래 큰 호박 줄 위 (그림 y --pk 의 화면 자리)
+       → 화면 높이(cqh) · 배율(--sc)로 정해짐 · 호박이 항상 보이고 맨 아래 단추가 브라우저 막대 쪽에서 안 잘림 · 안전 영역(홈 막대)보다는 항상 위 */
+    --pk: 1780; --pb: max(calc(var(--py) + env(safe-area-inset-bottom, 0px)), calc(50cqh - (var(--pk) - var(--ih) / 2) * var(--sc)));
   }
   .l2-player { flex: 1 1 auto; }
   .l2-lvrow { width: auto; right: calc(var(--fs) * .3); }
@@ -245,13 +291,12 @@ html.idg-lobby-on body { width: 100%; }
   .l2-side > :nth-child(1) { grid-area: 1 / 1; } .l2-side > :nth-child(2) { grid-area: 2 / 1; }
   .l2-side > :nth-child(3) { grid-area: 1 / 3; } .l2-side > :nth-child(4) { grid-area: 2 / 3; }
   /* 아래부터 : 긴 단추 · 5칸 · 큰 단추 · (무대와 큰 단추 사이 가운데) 카드 */
-  .l2-back { left: 50%; bottom: var(--py); transform: translateX(-50%); }   /* 4차 : 화면 가득 말고 내용 폭 · 가운데 */
-  .l2-bottom { left: var(--px); right: var(--px); bottom: calc(var(--py) + var(--backH) + var(--gap)); display: flex; justify-content: space-between; }
-  .l2-btns { left: var(--px); right: var(--px); bottom: calc(var(--py) + var(--backH) + var(--s) + 2 * var(--gap)); }
-  .l2-nextwrap { left: var(--px); right: var(--px); top: calc(var(--sty) + 110 * var(--sc)); bottom: calc(var(--py) + var(--backH) + var(--s) + var(--bh) + 3 * var(--gap)); }
+  .l2-back { left: 50%; bottom: calc(var(--pb) + var(--backLift)); transform: translateX(-50%); }   /* 4차 : 내용 폭 · 가운데 · 6차 : 호박 눈 위로 */
+  .l2-bottom { left: var(--px); right: var(--px); bottom: calc(var(--pb) + var(--backLift) + var(--backH) + var(--gap)); display: flex; justify-content: space-between; }
+  .l2-btns { left: var(--px); right: var(--px); bottom: calc(var(--pb) + var(--backLift) + var(--backH) + var(--s) + 2 * var(--gap)); }
+  .l2-nextwrap { left: var(--px); right: var(--px); top: calc(var(--sty) + 110 * var(--sc)); bottom: calc(var(--pb) + var(--backLift) + var(--backH) + var(--s) + var(--bh) + 3 * var(--gap)); }
   .l2-btn { font-size: calc(var(--bh) * .38); }
-  .l2-back-in { font-size: calc(var(--h) * .38); }
-  .l2-hint { left: calc(var(--px) + (100cqw - 2 * var(--px)) * .25); bottom: calc(var(--py) + var(--backH) + var(--s) + 2 * var(--gap) + var(--bh) * .82); }
+  .l2-hint { left: calc(var(--px) + (100cqw - 2 * var(--px)) * .25); bottom: calc(var(--pb) + var(--backLift) + var(--backH) + var(--s) + 2 * var(--gap) + var(--bh) * .82); }
   .l2-moon { --x: 140; --y: 430; --d: 260; }   /* 위 띠 · 제목 아래 빈 하늘 (부엉이가 달 앞에) */
   .l2-star.s1 { --x: 60; --y: 50; } .l2-star.s2 { --x: 420; --y: 40; } .l2-star.s3 { --x: 700; --y: 90; } .l2-star.s4 { --x: 1010; --y: 60; }
   .l2-star.s5 { --x: 520; --y: 300; } .l2-star.s6 { --x: 640; --y: 470; } .l2-star.s7 { --x: 90; --y: 520; } .l2-star.s8 { --x: 980; --y: 230; }
@@ -355,7 +400,7 @@ html.idg-lobby-on body { width: 100%; }
 
 @media (prefers-reduced-motion: reduce) {
   .l2-bats, .l2-fw, .l2-witch, .l2-hint-bat { display: none !important; }
-  .l2-owl, .l2-owl::after, .l2-leader, .l2-dot, .l2-star, .l2-cloud, .l2-wisp, .l2-hint, .l2-btn.red.go, .l2-btn.red.go .ico, .l2-shine, .l2-flag-cloth, .l2-flag-strip { animation: none !important; }
+  .l2-owl, .l2-owl::after, .l2-leader, .l2-dot, .l2-star, .l2-cloud, .l2-wisp, .l2-hint, .l2-btn.red.go, .l2-btn.red.go .ico, .l2-shine, .l2-flag-cloth, .l2-flag-strip, .l2-back::before, .l2-back::after { animation: none !important; }
   .l2-shine { display: none; }
   .l2-pico::after { display: none; }
   .l2-spark i { animation: none !important; transform: translateX(calc(-100% * 7 / 12)); }   /* 멈춤 : 큰 별 모양으로 서 있음 */

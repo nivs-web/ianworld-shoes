@@ -34,17 +34,23 @@ export async function applyRigFix(id, rig) {
   /* 보스 조립 보정 (11/12 겜보조 2 · ai/meta/rigfix_boss.json · 규칙 = tools/idg-rigcheck.mjs applyFix)
    *  { id: { order?: [뒤→앞], parts: { 이름: { p?, a?, flip? } } } } — 부품 값 덮어쓰기 → order 로 다시 줄 세움(order 에 없는 부품은 뒤에 원래 순서) */
   /* 일반 좀비 · 용 보정 (11/12 겜보조 · ai/meta/rigfix_zombie.json · 34종) 도 같은 형식 — 순서 : rigfix.json → rigfix_boss → rigfix_zombie (표끼리 같은 키 없음) */
-  const [TB, TZ] = await Promise.all([id.startsWith('boss') ? rigFixBossTable() : {}, rigFixZombieTable()]);
-  for (const B of [TB[id], TZ[id]]) if (B) {
+  /* 용 보정 (11/12 대표님 «날개 거꾸로 · 귀 투명 · 눈 · 솜뭉치 · 큰 용은 더 크게» · ai/meta/rigfix_dragon.json · 새 파일) — 같은 형식 + scale(크기 배수) · files(고친 부품 그림 새 이름) */
+  const [TB, TZ, TD] = await Promise.all([id.startsWith('boss') ? rigFixBossTable() : {}, rigFixZombieTable(), rigFixDragonTable()]);
+  let all = files;
+  for (const B of [TB[id], TZ[id], TD[id]]) if (B) {
     for (const [n, o] of Object.entries(B.parts || {})) { const q = rig.parts.find((x) => x.n === n); if (q) Object.assign(q, o); }
     if (Array.isArray(B.order)) rig.parts = [...B.order.map((n) => rig.parts.find((p) => p.n === n)).filter(Boolean), ...rig.parts.filter((p) => !B.order.includes(p.n))];
+    if (B.files) all = { ...all, ...B.files };
+    if (typeof B.scale === 'number' && B.scale > 0) rig.scale = (rig.scaleBase ??= rig.scale || 1) * B.scale;
   }
-  return files;
+  return all;
 }
 let bossP = null;
 export const rigFixBossTable = () => (bossP ||= fetch(`${BASE}meta/rigfix_boss.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
 let zombP = null;
 export const rigFixZombieTable = () => (zombP ||= fetch(`${BASE}meta/rigfix_zombie.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+let dragP = null;
+export const rigFixDragonTable = () => (dragP ||= fetch(`${BASE}meta/rigfix_dragon.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
 
 /*
  * rig.json 은 캐릭터마다 한 번만 받는다 (11/12 속도 — 로비 프로필 · 도감 · 전투가 같은 rig 를 몇 번씩 받았다).

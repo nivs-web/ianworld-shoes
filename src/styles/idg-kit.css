@@ -56,7 +56,7 @@
 @media (orientation: landscape) { .idg-k-win { width: min(92vw, 44em); max-height: 94vh; } }
 .idg-k-win-head { flex: none; display: flex; align-items: center; justify-content: center; position: relative; min-height: 2.6em; margin-top: -.6em; }
 .idg-k-win-head > .idg-k-close { position: absolute; right: -.6em; top: 50%; transform: translateY(-50%); }
-.idg-k-win-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: .55em; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--k-gold) var(--k-bg2); }
+.idg-k-win-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: .55em; overflow: auto; overscroll-behavior: contain; overflow-anchor: none; scrollbar-width: thin; scrollbar-color: var(--k-gold) var(--k-bg2); }
 .idg-k-win-foot { flex: none; display: flex; justify-content: center; gap: .6em; }
 .idg-k-win-foot > .idg-k-btn { flex: 1 1 0; max-width: 14em; }
 
@@ -134,9 +134,10 @@
 .idg-k-tabs.old .idg-k-tab[aria-selected="true"] { border-image-source: url(/assets/iandragon_game/ai/kit/tab2_on.webp); color: #fff3c8; --k-o: #4a0a10; }
 
 /* ── 목록 줄 (설정 · 상점 한 줄) : 아이콘 · 이름+설명 · 오른쪽 조작 ── */
-.idg-k-row { display: flex; align-items: center; gap: .6em; width: 100%; min-height: 3.3em; margin: 0; padding: .15em .35em; text-align: left;
-  border: solid transparent; border-width: .55em .6em; border-image: url(/assets/iandragon_game/ai/kit/row.webp) 26 fill / .55em .6em stretch; background: none; }
-.idg-k-row.hi { border-image-source: url(/assets/iandragon_game/ai/kit/row_hi.webp); }
+/*  (11/12 서브창2) 줄 그림 = row2 : 예전 row.webp 의 «금테 바깥 진한 보라 테» 를 잘라 낸 판 (slice 26 → 14) — 그만큼 줄이 낮아지고 줄 사이도 좁힌다 */
+.idg-k-row { display: flex; align-items: center; gap: .6em; width: 100%; min-height: 2.8em; margin: 0; padding: .12em .45em; text-align: left;
+  border: solid transparent; border-width: .3em .32em; border-image: url(/assets/iandragon_game/ai/kit/row2.webp) 14 fill / .3em .32em stretch; background: none; image-rendering: pixelated; }
+.idg-k-row.hi { border-image-source: url(/assets/iandragon_game/ai/kit/row2_hi.webp); }
 button.idg-k-row:active { filter: brightness(1.12); }
 .idg-k-row-ico { flex: none; width: 2.2em; height: 2.2em; object-fit: contain; }
 .idg-k-row-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: .15em; }
@@ -165,13 +166,32 @@ button.idg-k-row:active { filter: brightness(1.12); }
 .idg-k-scroll::before, .idg-k-scroll::after { content: ''; position: absolute; left: -.2em; right: -.2em; height: .62em; z-index: 2; pointer-events: none;
   background: url(/assets/iandragon_game/ai/kit/scroll_edge.webp) center / 100% 100% no-repeat; image-rendering: pixelated; }
 .idg-k-scroll::before { top: 0; } .idg-k-scroll::after { bottom: 0; }
-.idg-k-scroll-in { flex: 1 1 auto; min-height: 0; max-height: var(--k-scroll-h, 16em); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: .4em; padding: .35em .1em;
+.idg-k-scroll-in { flex: 1 1 auto; min-height: 0; max-height: var(--k-scroll-h, 16em); overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none; display: flex; flex-direction: column; gap: .3em; padding: .35em .1em;
   scrollbar-width: none; }
 .idg-k-scroll-in::-webkit-scrollbar { display: none; }
 .idg-k-more { position: absolute; left: 50%; bottom: -.15em; z-index: 3; width: 1.5em; height: 1.15em; margin-left: -.75em; pointer-events: none; display: none;
   background: url(/assets/iandragon_game/ai/kit/more_arrow.webp) center / 100% 100% no-repeat; image-rendering: pixelated; animation: idgKMore 1.2s steps(2, jump-none) infinite; }
 .idg-k-scroll.more .idg-k-more { display: block; }
 @keyframes idgKMore { 50% { transform: translateY(.22em); } }
+
+/* ── 픽셀 게이지 (11/12 서브창2) : 금테 홈(kit/gauge.webp · 원본 40×14 → 4배 · slice 4 원본 px (테 1 · 금 2 · 홈 경계 1)) + 채움 ──
+ *  높이 1em 기준 : 원본 1px = 1/14em → 테 .286em · 안쪽 홈 .43em
+ *  채움 = 밝음(위 1/3) · 본색 · 어두움(아래) 딱딱한 3단 + 끝 1px 어두운 마감선 · 0 이면 숨김 */
+.idg-k-gauge { --v: 0; --g-c: #5fd35f; --g-hi: #b8f59a; --g-lo: #2c8a3a; --g-end: #1d5a26;
+  position: relative; display: block; box-sizing: border-box; flex: 1 1 auto; min-width: 3em; height: 1em; margin: 0; padding: 0; overflow: hidden; background: none; box-shadow: none;
+  border: solid transparent; border-width: .286em; border-image: url(/assets/iandragon_game/ai/kit/gauge.webp) 16 fill / .286em stretch; image-rendering: pixelated; }
+.idg-k-gauge > i.idg-k-gauge-fill[aria-hidden] { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--v) * 100%); height: auto; max-width: none; margin: 0; padding: 0; border: 0; display: block;   /* 옛 막대 규칙(.idg-cx-bar i · .st i 등)이 덮지 못하게 선택자를 세게 */
+  background: linear-gradient(180deg, var(--g-hi) 0 34%, var(--g-c) 34% 68%, var(--g-lo) 68% 100%); box-shadow: inset -2px 0 0 var(--g-end); }
+.idg-k-gauge.full > i.idg-k-gauge-fill[aria-hidden] { box-shadow: none; }
+.idg-k-gauge.empty > i.idg-k-gauge-fill[aria-hidden] { display: none; }
+.idg-k-gauge.orange { --g-c: #ff9a3c; --g-hi: #ffd08a; --g-lo: #c45a14; --g-end: #7a3008; }
+.idg-k-gauge.gold   { --g-c: #ffc93c; --g-hi: #fff0a0; --g-lo: #c8861a; --g-end: #7a4a0a; }
+.idg-k-gauge.red    { --g-c: #ff5a4a; --g-hi: #ffb0a0; --g-lo: #b82418; --g-end: #6a0e08; }
+.idg-k-gauge.blue   { --g-c: #4aa8ff; --g-hi: #b8e0ff; --g-lo: #2262c0; --g-end: #123a78; }
+.idg-k-gauge.purple { --g-c: #b07cff; --g-hi: #e2ccff; --g-lo: #6e3cc0; --g-end: #3e1a78; }
+.idg-k-gauge.custom { --g-hi: color-mix(in srgb, var(--g-c), #fff 45%); --g-lo: color-mix(in srgb, var(--g-c), #000 30%); --g-end: color-mix(in srgb, var(--g-c), #000 60%); }
+.idg-k-gauge.sm { height: .8em; border-width: .229em; border-image-width: .229em; }
+.idg-k-gauge.lg { height: 1.25em; border-width: .357em; border-image-width: .357em; }
 
 /* ── 잠금 · 알림 점 ── */
 .idg-k-lock { display: inline-block; width: 1.3em; height: 1.3em; vertical-align: middle; background: url(/assets/iandragon_game/ai/lobby/ico_lock.png) center / contain no-repeat; image-rendering: pixelated; }

@@ -13,12 +13,13 @@ import { get as getProfile } from '../services/profile.js';
 import Portal from './Portal.js';
 import { lazyScreen } from './lazyScreen.js';
 import * as G from '../services/iandragonGame.js';
-import { enterFullscreen } from '../core/fullscreen.js';
+import { enterFullscreen, exitFullscreen, isFullscreen } from '../core/fullscreen.js';
 import { getSettings } from '../audio/audio.js';
 import * as Sfx from '../audio/sfx.js';
 import '../styles/iandragon-game.css';
 import '../styles/idg-lobby2.css';   /* 새 로비 (11/12) — 위 파일 끝은 다른 사람이 자동으로 고치므로 따로 */
 import { soundPanel, soundPrefs, applySound, bgmStyleNow } from '../games/iandragon_game/render/soundPrefs.js';
+import { lockLobby } from '../games/iandragon_game/render/rot.js';   /* 로비화면 방향 (기본 세로 · 음향 설정 «로비화면» · 11/12 서브창2) */
 import * as IdgAudio from '../games/iandragon_game/audio/index.js';
 import { lobbyScene } from './idgLobbyFun.js';
 /* 재미 요소 층 (촛불 · 등불 · 창문 · 호박 · 무덤 좀비 · 마녀 순환 — 다른 보조의 lobbyFx.js · idg-lobby-fx.css). 파일이 아직 없어도 터지지 않게 glob (없으면 빈 묶음) */
@@ -209,6 +210,16 @@ export default function IanDragonGameLobby(nav) {
     G.pickStage(typeof stageNo === 'number' ? stageNo : null);
     nav.push(IanDragonGame);
   }
+  /* 가로 로비 왼쪽 위 «전체 화면» 단추 (11/12 대표님 · 프로필 얼굴 아래 · 모양 = idg-subwin.css .idg-lfs · 세로에선 숨김)
+   *  전체 화면 API 가 없는 곳(아이폰 = 웹킷)이나 막힌 곳(허락 없는 iframe)은 숨김 · 누르는 순간 바로 요청(await 먼저 금지) */
+  function lobbyFs() {
+    const de = document.documentElement, ok = !!(de.requestFullscreen || de.webkitRequestFullscreen) && document.fullscreenEnabled !== false;
+    const b = el('button.idg-lfs', { type: 'button', 'aria-label': '전체 화면', title: '전체 화면', onclick: () => { Sfx.play('sfx_menu_select'); if (isFullscreen()) exitFullscreen(); else enterFullscreen(); } });
+    b.hidden = !ok; b.classList.toggle('on', isFullscreen());
+    const upd = () => { if (!b.isConnected) { document.removeEventListener('fullscreenchange', upd); document.removeEventListener('webkitfullscreenchange', upd); return; } b.classList.toggle('on', isFullscreen()); };
+    document.addEventListener('fullscreenchange', upd); document.addEventListener('webkitfullscreenchange', upd);
+    return b;
+  }
 
   /*
    * 가로 로비 (11/11 대표님 · 기획 IAN_DRAGON_LOBBY_ORIENTATION_PLAN.md 2장) : 같은 단추 · 같은 순서, 배치만 CSS 로 바꾼다.
@@ -301,6 +312,7 @@ export default function IanDragonGameLobby(nav) {
       const p = getProfile();
       const g = G.idg();
       document.documentElement.classList.add('idg-lobby-on');
+      lockLobby(); setTimeout(lockLobby, 0);   /* 로비화면 방향으로 잠금 (전투에서 돌아올 때 전투 화면이 잠금을 푼 뒤에도 다시) */
       /* 결과 창과 같은 글꼴 (Pretendard Variable · 전투 HUD 와 같은 링크 id 라 한 번만 붙는다) */
       if (!document.getElementById('idg-res-font')) document.head.appendChild(Object.assign(document.createElement('link'), { id: 'idg-res-font', rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css' }));
       /* 레벨 (보이기만) : 별 5개마다 1 레벨 · 막대 = 다음 레벨까지 */
@@ -331,12 +343,13 @@ export default function IanDragonGameLobby(nav) {
             face,
             el('div.l2-plate', null, [
               ttl ? el('button.l2-ttl', { type: 'button', 'aria-label': `칭호 ${ttl.name}`, onclick: () => { Sfx.play('sfx_menu_select'); toast(`칭호 «${ttl.name}» · 얻는 법 : ${ttl.how}`, 2600); } }, [el('i', '칭호'), el('span', ttl.name)]) : null,
-              el('div.l2-name', null, [el('span.l2-lv', `Lv.${lv}`), el('span.l2-nick', p.nickname || '???')]),
+              el('div.l2-name', null, [el('span.l2-lv', { 'aria-label': `레벨 ${lv}` }, [el('small', 'Lv.'), el('b', String(lv))]), el('span.l2-nick', p.nickname || '???')]),
               el('span.l2-xp', { title: `별 ${stars}개 · 다음 레벨까지 ${5 - (stars % 5)}개` }, [el('i', { style: `width:${Math.round(xp * 100)}%` })]),
             ]),
           ]),
           el('div.l2-cur', null, [money('coin', `${L2}coin_round.webp`, g.coins), money('gem', `${UI}icon_gem_v3.png`, g.gems)]),
         ]),
+        lobbyFs(),
         el('div.l2-logo', null, [el('img', { src: `${AL}title_logo.webp`, alt: '좀비와 드래곤 ZOMBIE & DRAGON', decoding: 'async' })]),
         el('nav.l2-side', null, [
           g.cleared >= OPEN_AT ? stone('hatch', '부화장', () => showHatch(() => nav.refresh?.())) : stone('hatch', '부화장', () => toast('부화장은 2-5를 깨면 열려요', 2200), { locked: true }),
@@ -363,7 +376,7 @@ export default function IanDragonGameLobby(nav) {
           stone('more', '더보기', () => showMore({ stage: () => showStages((n2) => start(n2)), hatch: () => (G.idg().cleared >= OPEN_AT ? showHatch(() => nav.refresh?.()) : toast('부화장은 2-5를 깨면 열려요', 2200)) })),
         ]),
         /* 박쥐 날개 긴 단추 — 가로 · 세로 모두 «이안오락실로» (11/12 대표님 · 띄어쓰기 없이 여섯 글자) · 화면 왼쪽 아래 끝에 붙음 */
-        (() => { const b = backButton('이안오락실로', back); b.className = 'l2-back'; b.setAttribute('aria-label', '이안오락실로 돌아가기'); b.replaceChildren(el('span.l2-back-in', null, [el('img', { src: `${AL}ico_arcade.png`, alt: '', onerror: hideBad }), el('span', '이안오락실로')])); return b; })(),
+        (() => { const b = backButton('이안오락실로', back); b.className = 'l2-back'; b.setAttribute('aria-label', '이안오락실로 돌아가기'); b.replaceChildren(el('span.l2-back-in', null, [el('span', '이안오락실로')])); return b; })(),
       );
       scr.classList.add('idg-lobby2');
       return scr;

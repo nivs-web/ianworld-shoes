@@ -22,8 +22,11 @@ export function showNest(onChange) {
   const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const page = powerPage(h, { save: () => G.idg(), write: (part) => { const r = G.saveIdg(part); onChange?.(); return r; }, buttons: [['닫기', () => close(), 'pbtn']], cls: 'idg-pp' });
   const box = el('div.dialog.idg-pp-dlg', { onclick: (e) => e.stopPropagation() }, [page]);
-  const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
-  const close = presentOverlay(overlay);
+  /* 출전 2개 미만이면 닫히지 않는다 (11/12 대표님) : 오른쪽 위 닫기 X 는 powerPage 가 막고, 바깥 누르기는 여기서 · 뒤로가기(router)로 닫혔으면 바로 다시 띄운다 */
+  const overlay = el('div.dialog-overlay', { onclick: page.guard(() => close()) }, [box]);
+  let close;
+  const open = () => { close = presentOverlay(overlay, (why) => { if (why === 'user' && page.deckShort()) { open(); page.warnShort(); } }); };
+  open();
 }
 
 /** (옛 둥지 목록 — 쓰지 않음 · 참고용) */

@@ -79,6 +79,11 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
    */
   const LN = await lanesP;
   const [S0, S1] = LN.spawnY, CY = LN.castleY, GC = Math.round((S0 + S1) / 2);
+  /* 싸움 줄은 늘 단추 줄 위 (11/12 대표님 «어떤 월드 · 확대 · 가로 · 세로에서도 단추에 캐릭터가 가려지지 않게») : 가장 아래 발(S1 + 보스 6칸)을 화면 맞춤(app.js footFit)에 알린다
+   * → 넘치면 캔버스를 올리고, 그래도 모자라면 view.lift 칸만큼 전장을 올려 그린다(아래 camera · underBox). 그리기 전용 — 코어는 x 만 쓴다. */
+  ctx.setFoot?.(S1 + 6);
+  /* 들어 올리기에 상한이 걸리면(app.js LIFT_MAX) 남은 view.squeeze 칸만큼 세 줄 범위 아래쪽을 위로 눌러 담는다 : [S0, S1+6] → [S0, S1+6−squeeze] (위 끝 · 순서 그대로) */
+  const laneMap = (y) => { const q = Math.min(view.squeeze || 0, S1 - S0); if (!q || y <= S0) return y; const lo = S1 + 6; return S0 + (y - S0) * (lo - q - S0) / (lo - S0); };
   const [bgTex, nestT, towerT] = await Promise.all([
     layered ? null : tryLoad(`${AI}bg/w${wN}_panel.png`).then((t) => t || tryLoad(`${AI}bg/w01_panel.png`)),
     nestP.then((t) => [t, null, null, null]),   /* 성은 멀쩡한 그림만 먼저 · 부서진 그림(hp1~3)은 전투가 뜬 뒤 뒤에서 */
@@ -124,11 +129,14 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   units.sortableChildren = true;
   root.addChild(bgBox, funBack, stage, funFront);
   const skyBox = new Container(), funSky = new Container(), frontBox = new Container();   // 하늘 겹은 카메라의 0.35배 (아래 update 에서 skyBox.x)
-  bgBox.addChild(skyBox, frontBox);
+  /* 앞 겹 아래 끝(540) 밑 = 앞 겹을 위아래로 뒤집어 이어 그림 (전장을 lift 칸 올렸을 때 카드 사이로 빈 곳이 보이지 않게 · 540 에서 이음새 없이 맞닿음) */
+  const underBox = new Container(); underBox.scale.y = -1; underBox.y = 540 * 2; underBox.visible = false;
+  bgBox.addChild(skyBox, frontBox, underBox);
   let living = null;
   if (layered) {
     tileMirror(skyBox, skyTex, FIELD); skyBox.addChild(funSky);
     const fw = tileMirror(frontBox, frontTex, FIELD);
+    tileMirror(underBox, frontTex, FIELD);
     lightsFor(world).then(async (LB) => {
       if (!LB || root.destroyed) return;
       const fx0 = LB.front?.fire ? await fxFrames(LB.front.fire).catch(() => null) : null;
@@ -136,7 +144,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       living = [LB.sky && makeBreath(skyBox, LB.sky, null, fw), LB.front && makeBreath(frontBox, LB.front, fx0, fw)].filter(Boolean);
       skyBox.addChild(funSky);   // 달 얼굴 · 자전거 · 박쥐는 숨결 위
     });
-  } else if (bgTex) tileMirror(frontBox, bgTex, FIELD);
+  } else if (bgTex) { tileMirror(frontBox, bgTex, FIELD); tileMirror(underBox, bgTex, FIELD); }
   const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, CY);
   const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, CY); if (pvp) tower.scale.x = -1;
   stage.addChild(nest, tower, units, fx);
@@ -166,6 +174,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   if (layered) delete spots.window;   /* 대표님 3차 «좀비 성 근처 갈색 네모 안 검은 사람» = 먼 성 창문 춤 — 두 겹 배경은 먼 성 자리가 달라 허공에 떴다 → 자리를 다시 잴 때까지 끔 */
   spots.safe = [260, FIELD - 260];
   if (spots.sky) spots.sky = [Math.max(spots.sky[0], 78), Math.max(spots.sky[1], 160)];   /* 확대해도 하늘 요소가 화면 위에 잘리지 않게 (위 HUD 아래부터) */
+  const skyBase = spots.sky ? [...spots.sky] : null;   /* 싸움 줄을 올리면(app.js footFit) 하늘이 더 잘린다 → 그만큼 하늘 요소 높이도 내린다 (아래 camera · 예전 기준 = 위 33칸 잘림 + HUD 45칸) */
   let camX = 0, viewW = view.w;
   const funStub = { update() {}, hush() {}, ids: [], usable: [], trigger() {}, setOff() {} };
   let fun = funStub;
@@ -340,10 +349,12 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
         const R = createRigged(rigFor(u), mid ? 1.45 : 1, u.side === 0 ? 1 : -1);
         R.speed = u.side === 0 ? 1.1 : 0.9;
         /* 발 높이 (11/12 대표님 «냥코처럼 위아래로 퍼져 나오게») : 그 월드 spawnY 사이 고르게 · 걷는 동안 그대로 · 아래(y 큼)일수록 앞(zIndex) · 판정은 코어가 x 만 */
-        v = { R, x: M + u.x, hp: u.hp, st: u.state, hitT: 0, flash: 0, kbT: 0, y: laneY(u.id, world, LN.spawnY) + (u.boss ? 6 : 0), dieT: -1 };
-        R.root.position.set(v.x, v.y); R.root.zIndex = v.y + (u.boss ? -20 : 0); units.addChild(R.root); V.set(u.id, v);
+        v = { R, x: M + u.x, hp: u.hp, st: u.state, hitT: 0, flash: 0, kbT: 0, y0: laneY(u.id, world, LN.spawnY) + (u.boss ? 6 : 0), dieT: -1 };
+        v.y = laneMap(v.y0);
+        R.root.position.set(v.x, v.y); R.root.zIndex = v.y0 + (u.boss ? -20 : 0); units.addChild(R.root); V.set(u.id, v);
         v.h = Math.min(220, R.root.height || 60);
       }
+      v.y = Math.round(laneMap(v.y0));   // 화면 맞춤이 바뀌면(확대 · 회전) 눌러 담기도 따라감
       if (!v.flee) v.x += (M + u.x - v.x) * Math.min(1, dt * 18);   // 도망치는 좀비는 코어 위치를 안 따름
       const R = v.R;
       if (u.hp < v.hp) { api.hits++; api.bigHit = v.hp - u.hp > u.maxHp * 0.25; v.flash = 0.08; if (u.hp > 0) puff(v.x, v.y - 30, u.side ? 0xfff0a0 : 0xffffff, 4, 60, 0.25, 1.6); }
@@ -603,8 +614,10 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     }
     shakes.screen -= dt;
     const sx = shakes.screen > 0 ? Math.round(Math.random() * 4 - 2) : 0, sy = shakes.screen > 0 ? Math.round(Math.random() * 2 - 1) : 0;
-    if (mirror) { root.scale.x = -1; root.position.set(Math.round(camX + view.w) + sx, sy); }   // 오른쪽 편 = 좌우 뒤집어 그린다
-    else root.position.set(-Math.round(camX) + sx, sy);
+    const lift = view.lift || 0; underBox.visible = lift > 0;   /* 싸움 줄을 단추 줄 위로 (app.js footFit) */
+    if (skyBase) { const d = Math.max(0, Math.round((view.topRow || 0) + 45 - skyBase[0])); if (spots.sky[0] !== skyBase[0] + d) spots.sky = [skyBase[0] + d, skyBase[1] + d]; }
+    if (mirror) { root.scale.x = -1; root.position.set(Math.round(camX + view.w) + sx, sy - lift); }   // 오른쪽 편 = 좌우 뒤집어 그린다
+    else root.position.set(-Math.round(camX) + sx, sy - lift);
     skyBox.x = Math.round(camX * 0.65);   // 하늘 겹 = 카메라의 0.35배 (뒤집힌 편도 같은 식)
   }
 
@@ -612,7 +625,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     FIELD, hits: 0, bigHit: false,
     update(S, dt) {
       lastS = S;
-      if (S.stage.fog) { let a = 0; for (const u of S.units) if (u.alive && u.side === 0) a = Math.max(a, u.x); const fx0 = M + a + 260; fog.clear(); for (let i = 0; i < 6; i++) fog.rect(fx0 + i * 30, 0, FIELD, 540).fill({ color: 0x8a90b8, alpha: 0.16 }); }
+      if (S.stage.fog) { let a = 0; for (const u of S.units) if (u.alive && u.side === 0) a = Math.max(a, u.x); const fx0 = M + a + 260; fog.clear(); for (let i = 0; i < 6; i++) fog.rect(fx0 + i * 30, 0, FIELD, 660).fill({ color: 0x8a90b8, alpha: 0.16 }); }
       syncUnits(S, dt); bases(S, dt); effects(S, dt); ending(S, dt); camera(S, dt);
       fun.update(dt); amb.update(dt); bossFx.update(S, dt, V); if (living) for (const b of living) b.update(dt);
       if (lead) lead.update(dt);
@@ -624,6 +637,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     /** 미니맵 · 시작 위치 */
     setCam(x) { camX = Math.max(0, Math.min(FIELD - view.w, x)); handT = 3; },
     get cam() { return camX; },
+    /** 싸움 줄을 단추 줄 위로 올린 칸 (app.js footFit · 점검용) */
+    get lift() { return view.lift || 0; },
+    laneMap,
     get fun() { return fun; },
     destroy() {
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('wheel', onWheel); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
