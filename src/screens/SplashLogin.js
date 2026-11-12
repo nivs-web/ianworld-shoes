@@ -4,11 +4,12 @@
  * **이 게임은 멀티플레이라 로그인이 전제다.** (2026-08-15)
  * 게스트는 uid 가 전부 'guest' 라 서버에서 두 사람이 한 사람으로 취급되고,
  * 방·랭킹 보안 규칙도 전부 `auth != null` 기준이다. 그래서 게스트 진입로를 없앴다.
+ * (2026-11-11) 시크릿 · 앱 안 브라우저로 보이면 «손님으로 시작»(익명 로그인)을 보여 준다 — services/auth.js.
  */
 
 import S from '../config/strings.ko.js';
-import { el, button, screen, goOraksilHome } from './ui.js';
-import { canSignIn, signInGoogle, currentUser } from '../services/auth.js';
+import { el, button, screen, goOraksilHome, presentOverlay } from './ui.js';
+import { canSignIn, signInGoogle, signInGuest, currentUser, redirectLikelyBroken } from '../services/auth.js';
 import { pullAll, get as getProfile } from '../services/profile.js';
 import { toast } from './ui.js';
 import NicknameSetup from './NicknameSetup.js';
@@ -18,6 +19,9 @@ import { arcadeHero, startArcade, stopArcade } from './arcadeHero.js';
 
 export default function SplashLogin(nav) {
   let busy = false;
+  /** 2026-11-11 시크릿 · 앱 안 브라우저로 보이면 «손님으로 시작» 단추와 안내를 처음부터 보여 준다 */
+  let risky = false;
+  redirectLikelyBroken().then((r) => { if (r && !risky) { risky = true; nav.refresh(); } }).catch(() => {});
 
   /**
    * 설치 가능 신호는 **화면을 그린 뒤에** 온다 (브라우저가 조건을 다 확인한 다음이라
@@ -41,6 +45,7 @@ export default function SplashLogin(nav) {
       await pullAll();
       enter();
     } catch (e) {
+      if (e?.code === 'app/private-window') { showPrivateGuide(); return; }
       // 왜 안 됐는지 말해 준다. '로그인 실패' 한 줄로는 사용자가 할 수 있는 게 없다
       toast(
         e?.code === 'app/popup-required' ? S.loginPopupBlocked
@@ -52,6 +57,40 @@ export default function SplashLogin(nav) {
     } finally {
       busy = false;
     }
+  }
+
+  /** 손님으로 시작 — 익명 로그인. 리다이렉트 · 팝업이 없어 어떤 브라우저에서도 막히지 않는다 */
+  async function onGuest() {
+    if (busy) return;
+    busy = true;
+    try {
+      const u = await signInGuest();
+      if (!u) return;
+      await pullAll();
+      enter();
+    } catch (e) {
+      toast(e?.code === 'app/guest-disabled' ? S.loginGuestDisabled : S.loginFailed, 3600);
+      console.warn('[로그인] 손님 시작 실패', e?.code, e);
+    } finally {
+      busy = false;
+    }
+  }
+
+  /** 시크릿 · 앱 안 브라우저 안내 창 — 하얀 영어 오류 화면 대신 */
+  function showPrivateGuide() {
+    let close = () => {};
+    const node = el('div.dialog-overlay', null, [
+      el('div.dialog', null, [
+        el('div.dialog-msg', S.loginPrivateTitle),
+        el('div.dialog-detail', S.loginPrivateDetail),
+        el('div.dialog-detail', S.loginGuestNote),
+        el('div.row', null, [
+          button(S.close, () => close(), { sfx: 'sfx_menu_back' }),
+          button(S.loginGuest, () => { close(); onGuest(); }, { primary: true }),
+        ]),
+      ]),
+    ]);
+    close = presentOverlay(node);
   }
 
   async function onInstall() {
@@ -84,6 +123,8 @@ export default function SplashLogin(nav) {
         signedIn
           ? button(S.touchToStart, enter, { primary: true })
           : button(S.loginGoogle, onGoogle, { primary: true, disabled: blocked }),
+        /* 2026-11-11 시크릿 · 앱 안 브라우저로 보이면 손님 단추를 바로 보여 준다(어디서나 막히지 않는 입구) */
+        !signedIn && risky && !blocked ? button(S.loginGuest, onGuest) : null,
         /**
          * 이미 홈 화면 앱으로 돌고 있으면 감춘다.
          * **모바일에서는 프롬프트가 아직 안 왔어도 보여 준다** (2026-08-19) —
@@ -93,7 +134,7 @@ export default function SplashLogin(nav) {
          */
         !isStandalone() && (canInstall() || isMobile()) ? button(S.installShortcut, onInstall) : null,
         button(S.goOraksilHome, goOraksilHome),
-        el('div.hint', blocked ? S.loginUnavailable : signedIn ? S.loginWhy : S.loginRequired)
+        el('div.hint', blocked ? S.loginUnavailable : signedIn ? S.loginWhy : risky ? S.loginPrivateHint : S.loginRequired)
       );
     },
   };

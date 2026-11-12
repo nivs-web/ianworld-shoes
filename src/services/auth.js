@@ -5,6 +5,10 @@
  * 게스트는 uid 가 전부 'guest' 라 서버에서 두 사람이 한 사람으로 취급되고,
  * 방·랭킹 보안 규칙도 전부 `auth != null` 을 요구한다.
  * 로그인하지 않으면 아무 화면에도 들어갈 수 없다.
+ *
+ * (2026-11-11) 대신 **손님 = Firebase 익명 로그인**을 더했다(`signInGuest`). 기기마다 진짜 uid 라
+ * 위 문제가 없다. 시크릿 · 앱 안 브라우저에서 구글 리다이렉트가 하얀 오류로 끝나는 것을 피하는 입구다.
+ * 손님은 `guest:true` 라 서버 동기화 · 순위 · 멀티는 지금처럼 꺼진다(기록은 이 기기에만).
  */
 
 import { getFirebase, configured } from './firebase.js';
@@ -40,7 +44,7 @@ export function currentUser() {
 function adopt(u) {
   if (u) dropForeignData(u.uid);
   current = u
-    ? { uid: u.uid, nickname: loadProfile().nickname, email: u.email ?? '', guest: false, created: Date.parse(u.metadata?.creationTime || '') || 0, name: u.displayName || '' }
+    ? { uid: u.uid, nickname: loadProfile().nickname, email: u.email ?? '', guest: !!u.isAnonymous, created: Date.parse(u.metadata?.creationTime || '') || 0, name: u.displayName || '' }
     : null;
   if (u) patchProfile({ uid: u.uid, email: u.email ?? '' });
   emit();
@@ -152,6 +156,55 @@ function redirectIsUsable(fb) {
 }
 
 /**
+ * ★ **시크릿 · 비밀 모드 · 앱 안 브라우저에서는 리다이렉트를 태우지 않는다.** (2026-11-11)
+ *
+ * 대표님이 시크릿 모드에서 «Google로 시작하기»를 누르자 구글까지 갔다가
+ * `/__/auth/handler` 에서 하얀 영어 화면(«missing initial state … sessionStorage …
+ * storage-partitioned browser environment»)으로 끝났다. 리다이렉트는 떠나기 전에
+ * sessionStorage 에 적어 둔 상태를 돌아와서 읽어야 하는데, 이런 창은 그걸 막거나 지운다.
+ * 그래서 이런 창으로 보이면 리다이렉트 대신 한국어 안내 + «손님으로 시작»을 보여 준다.
+ *
+ * 판별(하나라도 걸리면 «리다이렉트 위험»):
+ *   1) 앱 안 브라우저 — 네이버 앱 · 카카오톡 · 인스타그램 · 페이스북 · 라인 · 다음 · 밴드
+ *   2) sessionStorage 를 쓰고 읽을 수 없다
+ *   3) 크로미움 시크릿(삼성 인터넷 비밀 모드 포함) — 저장 공간 한도가 아주 작다(약 120MB 이하)
+ *   4) 사파리 비공개 — 저장 공간 견적을 못 주거나 0
+ * 판별이 틀려 일반 창을 위험으로 보더라도 팝업은 그대로 먼저 시도하므로 잃는 것이 없다.
+ */
+const IN_APP_UA = /NAVER\(inapp|KAKAOTALK|Instagram|FBAN|FBAV|FB_IAB|Line\/|DaumApps|BAND\//i;
+export function isInAppBrowser(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+  return IN_APP_UA.test(ua || '');
+}
+function sessionStorageWorks() {
+  try {
+    const k = '__oh_ss_probe__';
+    sessionStorage.setItem(k, '1');
+    const ok = sessionStorage.getItem(k) === '1';
+    sessionStorage.removeItem(k);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+const PRIVATE_QUOTA_MAX = 160 * 1024 * 1024;
+/** 시크릿 창으로 보이는가 — 크로미움은 저장 공간 한도로, 견적을 못 주면 «모름(false)» */
+async function looksPrivate() {
+  try {
+    const est = await navigator.storage?.estimate?.();
+    if (!est || !est.quota) return false;
+    return est.quota < PRIVATE_QUOTA_MAX;
+  } catch {
+    return false;
+  }
+}
+/** @returns {Promise<boolean>} 리다이렉트 로그인이 빈손(하얀 오류 화면)으로 끝날 가능성이 큰 창 */
+export async function redirectLikelyBroken() {
+  if (isInAppBrowser()) return true;
+  if (!sessionStorageWorks()) return true;
+  return looksPrivate();
+}
+
+/**
  * 구글 로그인. 모바일에서는 팝업이 막히는 일이 잦아 리다이렉트로 폴백한다.
  * 리다이렉트 뒤처리는 `initAuth` 의 `getRedirectResult` 가 맡는다 — 그게 없으면
  * 구글에서 돌아와도 로그인이 끝나지 않는다.
@@ -172,6 +225,12 @@ export async function signInGoogle() {
         blocked.code = 'app/popup-required';
         throw blocked;
       }
+      if (await redirectLikelyBroken()) {
+        // 시크릿 · 앱 안 브라우저 — 구글에 보냈다가 하얀 영어 오류로 끝나게 두지 않는다
+        const priv = new Error('private-window');
+        priv.code = 'app/private-window';
+        throw priv;
+      }
       await fb.authMod.signInWithRedirect(fb.auth, provider);
       return null; // 페이지가 구글로 넘어간다. 돌아오면 initAuth 가 이어받는다
     }
@@ -188,6 +247,34 @@ export async function signInGoogle() {
       throw blocked;
     }
     console.warn('[auth] 구글 로그인 실패', e?.code, e);
+    throw e;
+  }
+}
+
+/**
+ * ★ **손님으로 시작** (2026-11-11 권반장 · 대표님 — 시크릿 · 앱 안 브라우저 대비)
+ *
+ * 옛 «게스트»는 uid 가 전부 'guest' 라 서버에서 한 사람으로 뭉쳤다(맨 위 주석).
+ * 손님은 Firebase **익명 로그인**으로 기기마다 진짜 uid 를 받으므로, 보안 규칙의
+ * `auth != null` 도 그대로 통과하고 서로 섞이지 않는다. 리다이렉트도 팝업도 쓰지 않아
+ * 어떤 브라우저에서도 막히지 않는다(저장소가 막힌 창이면 그 탭이 살아 있는 동안만 유지).
+ *
+ * Firebase 콘솔에서 «익명» 로그인 제공자가 꺼져 있으면 `app/guest-disabled` 로 알린다
+ * (켜기는 콘솔 일 — 대표님 확인 뒤).
+ */
+export async function signInGuest() {
+  const fb = await getFirebase();
+  if (!fb) throw new Error('not-configured');
+  try {
+    const res = await fb.authMod.signInAnonymously(fb.auth);
+    return adopt(res.user);
+  } catch (e) {
+    if (e?.code === 'auth/admin-restricted-operation' || e?.code === 'auth/operation-not-allowed') {
+      const off = new Error('guest-disabled');
+      off.code = 'app/guest-disabled';
+      throw off;
+    }
+    console.warn('[auth] 손님 시작 실패', e?.code, e);
     throw e;
   }
 }
