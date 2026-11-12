@@ -211,6 +211,12 @@ ianworld-shoes/
 
 ## 5. 에셋 파이프라인 규칙
 
+> **★ 대표님 전체 규칙 (2026-11-12) — 그림 · 사진 · 음악 · 배경음 · 효과음 등 에셋은 무조건 Cloudflare R2(oraksil.onstori.com)에만 둔다.**
+> - Vercel 로 옮기거나 Vercel 에서 내보내지 않는다(`host:"vercel"` 같은 설정 금지). 속도 문제는 R2 · Cloudflare 안에서 해결한다.
+> - `r2-assets.json` 의 모든 게임은 `live:true · strip:true` — 운영 배포(dist)에 에셋 사본을 싣지 않는다(Vercel 용량 · 배포 한도 보호). 빌드가 R2 에 다 있는지 확인하고 없으면 멈춘다.
+> - 새 에셋 · 고친 에셋은 `npm run r2:sync -- <게임id>` 로 먼저 올리고 배포. 같은 이름 파일을 고치면 그 게임 `ver` 를 올린다(R2 1년 캐시).
+> - 새 게임 · 새 에셋 폴더를 만들면 `r2-assets.json` 에 `live:true · strip:true` 로 추가한다. Vercel 에 남는 건 코드 · `icons/`(파비콘 · 앱 아이콘)뿐.
+
 **원본(`etc/`)은 절대 수정하지 않는다.** 항상 `tools/` 스크립트로 `public/assets/` 를 생성한다.
 
 | 원본 | 스크립트 | 산출물 |

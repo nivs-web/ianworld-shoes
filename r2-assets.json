@@ -1,15 +1,15 @@
 {
-  "_설명": "게임 그림·소리를 Cloudflare R2(oraksil.onstori.com)에서 내보내는 설정. live=true 면 운영 빌드가 prefix 를 R2 주소로 바꿔 끼운다. strip=true 면 운영 배포에서 그 파일을 뺀다(빼기 전 R2 에 다 있는지 빌드가 확인). 그림을 고치면 ver 를 올리고 npm run r2:sync 로 올린다. 자세히 = tools/r2-assets.mjs. 11/12 대표님 전체 규칙 : 그림 · 소리는 무조건 R2 에서만 내보낸다(Vercel 로 옮기지 않는다).",
+  "_설명": "게임 그림·소리를 Cloudflare R2(oraksil.onstori.com)에서 내보내는 설정. live=true 면 운영 빌드가 prefix 를 R2 주소로 바꿔 끼운다. strip=true 면 운영 배포에서 그 파일을 뺀다(빼기 전 R2 에 다 있는지 빌드가 확인). 그림을 고치면 ver 를 올리고 npm run r2:sync 로 올린다. 자세히 = tools/r2-assets.mjs. 11/12 대표님 전체 규칙 : 그림 · 사진 · 음악 · 배경음은 무조건 R2 에만 둔다(Vercel 로 옮기지 않고 배포에도 싣지 않는다 — 모든 게임 strip:true).",
   "origin": "https://oraksil.onstori.com",
   "bucket": "oraksil-assets",
   "games": {
-    "idg": {"name": "좀비와 드래곤", "dir": "public/assets/iandragon_game", "prefix": "/assets/iandragon_game/", "ver": "20261112c", "live": true, "strip": false},
-    "ui": {"name": "오락실 공용 UI(배너 · 버튼 · 왕관)", "dir": "public/assets/ui", "prefix": "/assets/ui/", "ver": "20261111b", "live": true, "strip": false},
-    "bg": {"name": "신발을 찾아서 배경", "dir": "public/assets/bg", "prefix": "/assets/bg/", "ver": "20261111a", "live": true, "strip": false},
-    "shoes": {"name": "신발 그림", "dir": "public/assets/shoes", "prefix": "/assets/shoes/", "ver": "20261111a", "live": true, "strip": false},
-    "chars": {"name": "캐릭터 그림", "dir": "public/assets/characters", "prefix": "/assets/characters/", "ver": "20261111a", "live": true, "strip": false},
-    "items": {"name": "아이템 그림", "dir": "public/assets/items", "prefix": "/assets/items/", "ver": "20261111a", "live": true, "strip": false},
-    "fonts": {"name": "도트 글꼴", "dir": "public/assets/fonts", "prefix": "/assets/fonts/", "ver": "20261111a", "live": true, "strip": false},
-    "logo": {"name": "게임 로고", "dir": "public/assets", "prefix": "/assets/", "only": ["dragon-logo.png", "jumprope-logo.png", "jumppiano-logo.png", "iandragon-logo.png"], "ver": "20261111a", "live": true, "strip": false}
+    "idg": {"name": "좀비와 드래곤", "dir": "public/assets/iandragon_game", "prefix": "/assets/iandragon_game/", "ver": "20261112c", "live": true, "strip": true},
+    "ui": {"name": "오락실 공용 UI(배너 · 버튼 · 왕관)", "dir": "public/assets/ui", "prefix": "/assets/ui/", "ver": "20261111b", "live": true, "strip": true},
+    "bg": {"name": "신발을 찾아서 배경", "dir": "public/assets/bg", "prefix": "/assets/bg/", "ver": "20261111a", "live": true, "strip": true},
+    "shoes": {"name": "신발 그림", "dir": "public/assets/shoes", "prefix": "/assets/shoes/", "ver": "20261111a", "live": true, "strip": true},
+    "chars": {"name": "캐릭터 그림", "dir": "public/assets/characters", "prefix": "/assets/characters/", "ver": "20261111a", "live": true, "strip": true},
+    "items": {"name": "아이템 그림", "dir": "public/assets/items", "prefix": "/assets/items/", "ver": "20261111a", "live": true, "strip": true},
+    "fonts": {"name": "도트 글꼴", "dir": "public/assets/fonts", "prefix": "/assets/fonts/", "ver": "20261111a", "live": true, "strip": true},
+    "logo": {"name": "게임 로고", "dir": "public/assets", "prefix": "/assets/", "only": ["dragon-logo.png", "jumprope-logo.png", "jumppiano-logo.png", "iandragon-logo.png"], "ver": "20261111a", "live": true, "strip": true}
   }
 }
