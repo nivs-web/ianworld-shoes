@@ -85,7 +85,9 @@
     "qa:idg-hatch": "node tools/idg-hatch-qa.mjs",
     "qa:idg-lockstep": "node tools/idg-lockstep-qa.mjs 20",
     "r2:sync": "node tools/r2-sync.mjs",
-    "r2:check": "node tools/r2-check.mjs"
+    "r2:check": "node tools/r2-check.mjs",
+    "//assets:warm": "배포 · r2:sync 뒤 늘 한 번 : R2(oraksil.onstori.com/<id>/<ver>/) 의 먼저 받는 그림 · 소리를 받아 Cloudflare 엣지를 데운다 · --all 전부 · --game idg,ui · --head",
+    "assets:warm": "node tools/warm-assets.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0",
