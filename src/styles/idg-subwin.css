@@ -519,13 +519,15 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-grid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(170px, 27%) minmax(0, 1fr); column-gap: 8px; padding-top: 6px; }
 .idg-pp-grid.has-strip { grid-template-columns: minmax(170px, 27%) minmax(0, 1fr) clamp(108px, 15%, 190px); }
 .idg-pp-col { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; }
-/* 머리 판 (고정 · 시안의 짙은 남색 판) */
-.idg-pp-plate { --o: #2a1238; flex: none; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 .45em; min-height: 42px; padding: 3px 8px; box-sizing: border-box;
-  background: #261c56; border: 2px solid #17102e; box-shadow: inset 0 0 0 2px #382a74; font: 900 16px/1.15 var(--sw-font); color: #fff; text-align: center;
+/* 머리 판 (2차 · 키트 양식 금테 작은 제목 판 = kit/wallet 9-slice · 어두운 보라 안쪽 · 금 글씨 + 흰 글씨 · 1px 외곽선) */
+.idg-pp-plate { --o: #2a1238; flex: none; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 .45em; min-height: 40px; padding: 0 6px; box-sizing: border-box;
+  border: solid transparent; border-width: 7px 16px; border-image: url(/assets/iandragon_game/ai/kit/wallet.webp) 26 60 fill / 7px 16px stretch; background: none; box-shadow: none; image-rendering: pixelated;
+  font: 900 15px/1.1 var(--sw-font); color: #ffd45a; text-align: center;
   text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
-.idg-pp-plate span { color: #f2ecff; white-space: nowrap; }
+.idg-pp-plate b { font-weight: 900; color: #ffd45a; }
+.idg-pp-plate span { color: #fff; font-weight: 800; white-space: nowrap; }
 .idg-pp-plate.short span { color: #ff8f7f; }
-.idg-pp.pp2.short .idg-pp-plate { min-height: 34px; font-size: 14px; }
+.idg-pp.pp2.short .idg-pp-plate { min-height: 34px; font-size: 13px; border-width: 6px 14px; border-image-width: 6px 14px; }
 /* 왼쪽 : 번호 붙은 출전 칸 3열 (넘치면 이 칸만 스크롤) */
 .idg-pp-sbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 7px 5px 4px; scrollbar-width: thin; scrollbar-color: #d9a441 #1d1233; }
 .idg-pp.pp2.land .idg-pp-slots { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px 9px; justify-content: stretch; }
@@ -542,19 +544,25 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp.pp2.land .idg-pp-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .idg-pp.pp2.land .idg-pp-col.cards > .idg-dlg-more::before { top: -14px; }
 .idg-pp.pp2.land.more-down .idg-pp-col.cards > .idg-dlg-more::before { visibility: visible; animation: idgSwBob2 1.2s steps(2, jump-none) infinite; }
-/* 오른쪽 세로 띠 : 큰 빨간 «다시하기» · «전투 개시!» (결과 창 빨간 단추 그림) + 아래 «돌아가기» (보라) */
+/* 오른쪽 세로 띠 (2차 · 대표님 «엉성하다 → 제대로») : 정사각형에 가까운 큰 고급 빨간 단추(제미나이 kit/btn_sq_red · 금테 · 두툼한 입체 · 위 광택 · 9-slice)
+ *  큰 아이콘(다시하기 = 도트 되돌리기 화살표 · 전투 개시! = 칼) + 글씨 · 아래 «돌아가기» = 같은 양식의 보라 단추(kit/btn_wide_purple · 9-slice) */
 .idg-pp-strip { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
-.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go { --o: #5a0e00; flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; max-height: 15em; margin: 0; padding: 0 2px;
-  border: solid transparent; border-width: 20px 18px; border-radius: 0; border-image: url(/assets/iandragon_game/ai/result/btn_red3.webp) 92 140 fill / 20px 18px stretch; background: none; box-shadow: none; image-rendering: pixelated;
-  font: 900 clamp(18px, 2.4vw, 28px)/1.15 var(--sw-font); color: #fff; white-space: normal; word-break: keep-all; overflow-wrap: normal; letter-spacing: 0; word-spacing: normal;
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go { --o: #5a0e00; flex: 0 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  width: 100%; aspect-ratio: 1 / 1.08; min-width: 0; min-height: 0; max-height: 100%; margin: 0; padding: 0 2px 4px;
+  border: solid transparent; border-width: 22px 22px 30px; border-radius: 0; border-image: url(/assets/iandragon_game/ai/kit/btn_sq_red.webp) 44 44 60 fill / 22px 22px 30px stretch; background: none; box-shadow: none; image-rendering: pixelated;
+  font: 900 clamp(17px, 2.1vw, 26px)/1.1 var(--sw-font); color: #fff; white-space: normal; word-break: keep-all; overflow-wrap: normal; letter-spacing: 0; word-spacing: normal;
   text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
-.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back { --o: #2a1238; flex: none; width: 100%; min-width: 0; min-height: 50px; margin: 0; padding: 0 4px;
-  border: 2px solid #8e7bcc; border-radius: 8px; border-image: none; background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233;
-  font: 800 17px/1 var(--sw-font); color: #f2ecff; white-space: nowrap; letter-spacing: 0; word-spacing: normal;
+.idg-pp-strip .idg-pp-go .ico { display: block; width: 46%; max-width: 64px; aspect-ratio: 14 / 16; flex: none; }
+.idg-pp-strip .idg-pp-go .ico svg, .idg-pp-strip .idg-pp-go .ico img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.idg-pp-strip .idg-pp-go .ico img { filter: drop-shadow(1px 0 0 #2a1238) drop-shadow(-1px 0 0 #2a1238) drop-shadow(0 1px 0 #2a1238) drop-shadow(0 -1px 0 #2a1238); }
+.idg-pp-strip .idg-pp-go .lb { display: block; }
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back { --o: #2a1238; flex: none; width: 100%; min-width: 0; min-height: 54px; margin: auto 0 0; padding: 0 2px 2px;
+  border: solid transparent; border-width: 12px 14px 16px; border-radius: 0; border-image: url(/assets/iandragon_game/ai/kit/btn_wide_purple.webp) 40 40 52 fill / 12px 14px 16px stretch; background: none; box-shadow: none; image-rendering: pixelated;
+  font: 900 17px/1 var(--sw-font); color: #f2ecff; white-space: nowrap; letter-spacing: 0; word-spacing: normal;
   text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
-.idg-pp.pp2.short .idg-pp-strip .idg-btn.idg-pp-back { min-height: 42px; font-size: 15px; }
+.idg-pp.pp2.short .idg-pp-strip .idg-btn.idg-pp-back { min-height: 46px; font-size: 15px; }
 .idg-pp-strip .idg-btn:active { filter: brightness(.86); transform: translateY(1px); }
-.idg-pp-strip .idg-btn ~ .idg-btn.idg-pp-go { flex: 0 0 auto; min-height: 56px; }
+.idg-pp-strip .idg-btn ~ .idg-btn.idg-pp-go { flex: 0 0 auto; aspect-ratio: auto; min-height: 56px; }
 /* 카드 머리 (가로 시안) : 얼굴 왼쪽 · 이름 · Lv · 비용 오른쪽 · «출전» 표는 얼굴 아래 — 좁은 카드에서 이름이 한 글자씩 꺾이지 않게 */
 .idg-pp.pp2.land .idg-pp-pick { grid-template-columns: 38px minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 6px; row-gap: 1px; align-items: start; }
 .idg-pp.pp2.land .idg-pp-pick img { grid-row: 1 / span 2; grid-column: 1; width: 38px; height: 38px; }
@@ -562,3 +570,24 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp.pp2.land .idg-pp-pick .lv { grid-column: 2; grid-row: 2 / span 2; font-size: 11px; line-height: 1.25; word-break: keep-all; }
 .idg-pp.pp2.land .idg-pp-pick .tag { grid-column: 1; grid-row: 3; justify-self: start; align-self: start; padding: 1px 4px; font-size: 11px; }
 .idg-pp.pp2.land .idg-pp-card .st { grid-template-columns: 34px minmax(0, 1fr); font-size: 11px; }
+/* ── 2차 (11/12 대표님 피드백) ── */
+/* 머리 줄 가운데 = 리본 현판 «파워업» (가로 높이에 맞게 낮고 넓게) */
+.idg-pp.pp2.land > .idg-pp-top2 { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.idg-pp.pp2.land > .idg-pp-top2 > .idg-pp-band { justify-self: start; }
+.idg-pp.pp2.land > .idg-pp-top2 > .idg-pp-x { justify-self: end; }
+.idg-pp.pp2.land > .idg-pp-top2 > .idg-pp-title { min-width: 8.5em; font-size: 17px; padding: 6px 40px 2px; border-width: 9px 32px; border-image-width: 9px 32px; }
+.idg-pp.pp2.land.short > .idg-pp-top2 > .idg-pp-title { font-size: 15px; padding: 5px 34px 1px; border-width: 8px 28px; border-image-width: 8px 28px; }
+/* 왼쪽 출전 칸 : 넘치면 스크롤 + 아래 «더 있음» 화살표 */
+.idg-pp.pp2.land .idg-pp-col.slots > .idg-dlg-more::before { top: -14px; }
+.idg-pp.pp2.land .idg-pp-col.slots.more-down > .idg-dlg-more::before { visibility: visible; animation: idgSwBob2 1.2s steps(2, jump-none) infinite; }
+.idg-pp.pp2.land .idg-pp-col.slots > .idg-pp-sbody { border-bottom: 2px solid transparent; }
+/* 카드 글줄 : 1줄 «Lv 10 (권장 14)» · 2줄 «비용 [불씨] 50» */
+.idg-pp-card .lv .l1, .idg-pp-card .lv .cost { display: block; white-space: nowrap; }
+.idg-pp-card .lv .cost { color: #ffd9a8; }
+.idg-pp-card .lv .cost img { width: 1.15em; height: 1.15em; margin: 0 1px 0 0; vertical-align: -.22em; image-rendering: pixelated; }
+.idg-pp-card .lv .cost b { color: #fff; font-weight: 900; }
+/* 카드 «체력 · 공격 · 사거리» : 오른쪽 정렬(게이지 바로 앞) + 1px 아래 → 글자 눈 가운데 = 게이지 세로 가운데 (tools/_pp-gauge-measure.mjs 로 잼) */
+.idg-pp-card .st > span { justify-self: end; text-align: right; position: relative; top: 1px; line-height: 1; white-space: nowrap; }
+.idg-pp-card .st { column-gap: 5px; }
+.idg-pp.pp2.land > .idg-pp-top2 > * { grid-area: auto; }
+.idg-pp.pp2 .idg-pp-pick .lv .cost img { display: inline-block; grid-row: auto; width: 1.15em; height: 1.15em; padding: 0; border: 0; background: none; object-fit: contain; }
