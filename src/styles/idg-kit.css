@@ -1,0 +1,189 @@
+/* ════ 좀비와 드래곤 UI 키트 (11/12 · 겜부장 보조) ════
+ *  대표님 «어떤 버튼을 눌러도 어떤 페이지가 나와도 통일감» — 본보기 = 결과 창(hud.js resultCard · iandragon-game.css «결과 창 새 디자인»)
+ *  규칙 문서 = docs/IDG_DESIGN_STYLESHEET.md · DOM 도우미 = src/screens/idgKit.js · 부품 그림 = ai/kit/* (+ ai/result · ai/lobby 재사용)
+ *  - 도트 그림이 기본 · 글씨 = Pretendard 굵게 + 1px 8방향 딱딱한 외곽선 (흐린 그림자 · 글로우 금지)
+ *  - 크기는 전부 em : 감싸는 .idg-k 의 font-size(--k-fs) 하나로 폰 세로 · 가로 · PC 가 같이 커지고 작아진다
+ *  - 투명하게 서서히 사라지는 효과 금지 · 움직임은 은은하게(누름 1px 내려감 · 밝기)
+ *  - 재화 아이콘 + 숫자 = render/money.js 의 .idg-cash (idg-subwin.css) 를 그대로 쓴다 — 여기서는 키트 안 배치만 */
+
+/* ── 색 · 글씨 변수 ── */
+.idg-k {
+  --k-o: #2a1238;          /* 글씨 외곽선 · 부품 바깥 테 (짙은 보라) */
+  --k-gold: #d9a441;       /* 금테 */
+  --k-gold-hi: #ffd45a;    /* 금 강조 글씨 · 금화 숫자 */
+  --k-bg: #2a1f45;         /* 창 바탕 */
+  --k-bg2: #1d1233;        /* 판 속 (어두운 칸) */
+  --k-purple: #57458c;     /* 평범한 단추 */
+  --k-purple2: #44356e;
+  --k-purple-b: #8e7bcc;   /* 평범한 단추 테 */
+  --k-text: #ffffff;       /* 본문 글씨 */
+  --k-sub: #e6dcff;        /* 보조 글씨 */
+  --k-mute: #b3a3dc;       /* 흐린 안내 (잠김 · 꺼짐) */
+  --k-good: #8af06a;       /* 좋음 · 켜짐 */
+  --k-bad: #ff8f7f;        /* 모자람 · 경고 */
+  --k-coin: #ffd45a;       /* 금화 숫자 */
+  --k-gem: #f0b8ff;        /* 젬 숫자 */
+  --k-ink: #4a2c12;        /* 종이 판 위 글씨 (짙은 갈색) */
+  --k-ink2: #7a4f22;       /* 종이 판 위 보조 글씨 */
+  --k-font: 'Pretendard Variable', Pretendard, 'PretendardV', 'Neo둥근모', sans-serif;
+  /* 1px 8방향 딱딱한 외곽선 (작은 글씨) · 2px (큰 글씨 · 단추) */
+  --k-o1: 1px 0 var(--k-o), -1px 0 var(--k-o), 0 1px var(--k-o), 0 -1px var(--k-o), 1px 1px var(--k-o), -1px 1px var(--k-o), 1px -1px var(--k-o), -1px -1px var(--k-o);
+  --k-o2: 2px 0 var(--k-o), -2px 0 var(--k-o), 0 2px var(--k-o), 0 -2px var(--k-o), 2px 2px var(--k-o), -2px 2px var(--k-o), 2px -2px var(--k-o), -2px -2px var(--k-o);
+  --k-fs: clamp(14px, 3.9vw, 18px);   /* 기준 글씨 = 1em */
+  font-size: var(--k-fs); font-family: var(--k-font); font-weight: 700; line-height: 1.25; color: var(--k-text);
+  text-shadow: var(--k-o1); word-spacing: normal; letter-spacing: 0; -webkit-tap-highlight-color: transparent;
+}
+@media (orientation: landscape) { .idg-k { --k-fs: clamp(13px, 3.4vh, 18px); } }
+.idg-k, .idg-k *, .idg-k *::before, .idg-k *::after { box-sizing: border-box; word-spacing: normal; }
+.idg-k img { image-rendering: pixelated; -webkit-user-drag: none; }
+.idg-k button { font-family: inherit; color: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+.idg-k button:disabled { cursor: default; }
+.idg-k :focus-visible { outline: 2px solid var(--k-gold-hi); outline-offset: 2px; }
+
+/* ── 글씨 크기 단계 (5단계만 쓴다) ── */
+.idg-k-t1 { font-size: 1.6em; font-weight: 900; line-height: 1.15; text-shadow: var(--k-o2); }   /* 창 제목 · 큰 숫자 */
+.idg-k-t2 { font-size: 1.25em; font-weight: 900; line-height: 1.2; text-shadow: var(--k-o2); }   /* 단추 · 소제목 */
+.idg-k-t3 { font-size: 1em; font-weight: 800; }                                                   /* 본문 · 목록 이름 */
+.idg-k-t4 { font-size: .85em; font-weight: 700; color: var(--k-sub); }                            /* 보조 설명 */
+.idg-k-t5 { font-size: .72em; font-weight: 700; color: var(--k-mute); }                           /* 아주 작은 꼬리 글 */
+.idg-k-gold { color: var(--k-gold-hi); } .idg-k-good { color: var(--k-good); } .idg-k-bad { color: var(--k-bad); } .idg-k-mute { color: var(--k-mute); }
+.idg-k-sec { margin: .6em 0 .3em; font-size: 1.1em; font-weight: 900; color: var(--k-gold-hi); text-shadow: var(--k-o2); }   /* 목록 소제목 («모자») */
+
+/* ── 창 : 호박 창 테(dialog9) → 현판 → 본문 → 단추 줄 ── */
+.idg-k-win { position: relative; display: flex; flex-direction: column; gap: .7em; width: min(94vw, 34em); max-height: 92vh; margin: auto; padding: .4em .5em .6em;
+  border: solid transparent; border-width: 1.75em 1.65em; border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / 1.75em 1.65em stretch;
+  background: var(--k-bg); background-clip: padding-box; }
+@media (orientation: landscape) { .idg-k-win { width: min(92vw, 44em); max-height: 94vh; } }
+.idg-k-win-head { flex: none; display: flex; align-items: center; justify-content: center; position: relative; min-height: 2.6em; margin-top: -.6em; }
+.idg-k-win-head > .idg-k-close { position: absolute; right: -.6em; top: 50%; transform: translateY(-50%); }
+.idg-k-win-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: .55em; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--k-gold) var(--k-bg2); }
+.idg-k-win-foot { flex: none; display: flex; justify-content: center; gap: .6em; }
+.idg-k-win-foot > .idg-k-btn { flex: 1 1 0; max-width: 14em; }
+
+/* 창 머리 현판 : 빨간 리본 (부화장 창과 같은 ai/lobby/ribbon.webp · slice 30 72) */
+.idg-k-title { display: inline-flex; align-items: center; justify-content: center; min-width: 9em; max-width: 86%; margin: 0; padding: .05em .6em .2em;
+  border: solid transparent; border-width: .7em 1.6em; border-image: url(/assets/iandragon_game/ai/lobby/ribbon.webp) 30 72 fill / .7em 1.6em stretch;
+  font-size: 1.3em; font-weight: 900; line-height: 1.2; color: #fff; white-space: nowrap; text-shadow: 2px 0 #4a0a10, -2px 0 #4a0a10, 0 2px #4a0a10, 0 -2px #4a0a10, 2px 2px #4a0a10, -2px 2px #4a0a10, 2px -2px #4a0a10, -2px -2px #4a0a10; }
+
+/* ── 단추 ── */
+.idg-k-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .4em; min-width: 0; min-height: 2.75em; margin: 0; padding: 0 .3em; background: none; border: 0;
+  font-size: 1.15em; font-weight: 900; line-height: 1; letter-spacing: .02em; color: #fff; white-space: nowrap; text-shadow: var(--k-o2); user-select: none; }
+.idg-k-btn .ico { height: 1.4em; width: auto; flex: none; }
+.idg-k-btn:active:not(:disabled) { filter: brightness(.86); transform: translateY(1px); }
+.idg-k-btn:disabled { filter: grayscale(.85) brightness(.72); }
+/* 큰 단추 = 결과 창 단추 그림 (빨강 = 앞으로 가는 주 행동 · 초록 = 좋은 일 · 사기 · 강화) */
+.idg-k-btn.red, .idg-k-btn.green { --k-o: #5a0e00; min-height: 3em; padding: 0 .2em; border: solid transparent; border-width: .7em 1.1em;
+  border-image: url(/assets/iandragon_game/ai/result/btn_red3.webp) 92 140 fill / .7em 1.1em stretch; }
+.idg-k-btn.green { --k-o: #0b3a12; border-image-source: url(/assets/iandragon_game/ai/result/btn_green3.webp); }
+/* 평범한 단추 = 보라 (다시 · 닫기 · 나가기 · 보조 행동) */
+.idg-k-btn.purple { --k-o: #2a1238; min-height: 2.4em; padding: 0 .9em; border: 2px solid var(--k-purple-b); border-radius: .6em; background: linear-gradient(180deg, var(--k-purple), var(--k-purple2));
+  box-shadow: 0 0 0 2px var(--k-bg2), 0 3px 0 var(--k-bg2); font-size: 1em; font-weight: 800; color: #f2ecff; text-shadow: var(--k-o1); }
+.idg-k-btn.purple .ico { height: 1.15em; }
+.idg-k-btn.purple:disabled { filter: none; color: var(--k-mute); background: #3a3058; border-color: #6a5c96; }
+.idg-k-btn.sm { min-height: 2.3em; font-size: .95em; }
+.idg-k-btn.red.sm, .idg-k-btn.green.sm { border-width: .55em .85em; border-image-width: .55em .85em; }
+.idg-k-btn.wide { width: 100%; }
+/* 가격 단추 = 초록 고급 단추 + (작은 글씨) + 재화 아이콘 + 숫자 */
+.idg-k-btn.price { min-width: 6.4em; gap: .3em; padding: 0 .35em; }
+.idg-k-btn.price .idg-k-btn-label { font-size: .8em; }
+.idg-k-btn .idg-cash { font-size: 1em; }
+.idg-k-btn .idg-cash b { color: #fff; text-shadow: inherit; }
+.idg-k-btn .idg-cash-ico { height: 1.25em; } .idg-k-btn .idg-cash.coin .idg-cash-ico { width: 1.25em; }
+.idg-k-btn.price.poor .idg-cash b { color: var(--k-bad); }
+.idg-k-btn-tag { position: absolute; right: -.4em; top: -1.25em; z-index: 2; padding: .18em .4em; border: 2px solid var(--k-gold-hi); border-radius: .35em; background: #d8261c; box-shadow: 0 2px 0 #5a0e00;
+  font-size: .6em; font-style: normal; font-weight: 900; color: #fff; text-shadow: var(--k-o1); --k-o: #5a0e00; }
+
+/* 작은 닫기(X) 단추 */
+.idg-k-close { flex: none; width: 2.2em; height: 2.2em; margin: 0; padding: 0; border: 0; background: url(/assets/iandragon_game/ai/kit/btn_close.webp) center / 100% 100% no-repeat; image-rendering: pixelated; }
+.idg-k-close:active { filter: brightness(.86); transform: translateY(1px); }
+
+/* ── 토글 (켜짐 초록 · 꺼짐 회보라 · 금테 알약 + 둥근 손잡이) ── */
+.idg-k-toggle { flex: none; width: 3.9em; height: 1.73em; margin: 0; padding: 0; border: 0; background: url(/assets/iandragon_game/ai/kit/toggle_off.webp) center / 100% 100% no-repeat; image-rendering: pixelated; }
+.idg-k-toggle[aria-checked="true"] { background-image: url(/assets/iandragon_game/ai/kit/toggle_on.webp); }
+.idg-k-toggle:active { transform: translateY(1px); }
+.idg-k-toggle:disabled { filter: grayscale(.9) brightness(.7); }
+
+/* ── 체크 상자 ── */
+.idg-k-check { flex: none; width: 1.7em; height: 1.7em; margin: 0; padding: 0; border: 0; background: url(/assets/iandragon_game/ai/kit/check_off.webp) center / 100% 100% no-repeat; image-rendering: pixelated; }
+.idg-k-check[aria-checked="true"] { background-image: url(/assets/iandragon_game/ai/kit/check_on.webp); }
+.idg-k-check:active { transform: translateY(1px); }
+.idg-k-checkline { display: inline-flex; align-items: center; gap: .5em; cursor: pointer; }
+
+/* ── 슬라이더 (금테 홈 + 금빛 채움 + 금 손잡이 · 바탕은 진짜 input[type=range]) ── */
+.idg-k-slider { --v: .5; --knob: 1.45em; position: relative; flex: 1 1 8em; min-width: 6em; height: var(--knob); }
+.idg-k-slider-groove, .idg-k-slider-fill { position: absolute; left: 0; top: 50%; height: .78em; transform: translateY(-50%); pointer-events: none; image-rendering: pixelated;
+  border: solid transparent; border-width: .27em .3em; }
+.idg-k-slider-groove { right: 0; border-image: url(/assets/iandragon_game/ai/kit/slider_groove.webp) 30 fill / .27em .3em stretch; }
+.idg-k-slider-fill { width: calc(var(--knob) / 2 + (100% - var(--knob)) * var(--v)); min-width: .6em; border-image: url(/assets/iandragon_game/ai/kit/slider_fill.webp) 32 fill / .27em .3em stretch; }
+.idg-k-slider input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; background: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.idg-k-slider input::-webkit-slider-runnable-track { height: 100%; background: none; border: 0; }
+.idg-k-slider input::-moz-range-track { height: 100%; background: none; border: 0; }
+.idg-k-slider input::-webkit-slider-thumb { -webkit-appearance: none; width: var(--knob); height: var(--knob); border: 0; background: url(/assets/iandragon_game/ai/kit/slider_knob.webp) center / 100% 100% no-repeat; }
+.idg-k-slider input::-moz-range-thumb { width: var(--knob); height: var(--knob); border: 0; border-radius: 0; background: url(/assets/iandragon_game/ai/kit/slider_knob.webp) center / 100% 100% no-repeat; }
+.idg-k-slider input:disabled { cursor: default; } .idg-k-slider:has(input:disabled) { filter: grayscale(.9) brightness(.7); }
+
+/* ── 탭 (보통 = 보라 · .old = 고풍스러운 상점 탭 : 빨간 비단 + 금 장식) ── */
+.idg-k-tabs { display: flex; gap: .35em; width: 100%; }
+.idg-k-tab { flex: 1 1 0; min-width: 0; min-height: 2.5em; margin: 0; padding: 0 .3em; border: solid transparent; border-width: .6em .6em;
+  border-image: url(/assets/iandragon_game/ai/kit/tab_off.webp) 36 fill / .6em stretch; background: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: .3em; font-size: .95em; font-weight: 800; line-height: 1; color: var(--k-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.idg-k-tab .ico { height: 1.3em; width: auto; flex: none; }
+.idg-k-tab[aria-selected="true"] { border-image-source: url(/assets/iandragon_game/ai/kit/tab_on.webp); color: #fff; font-weight: 900; text-shadow: var(--k-o2); }
+.idg-k-tab:active { transform: translateY(1px); }
+.idg-k-tabs.old .idg-k-tab { border-width: .62em .62em; border-image: url(/assets/iandragon_game/ai/kit/tab2_off.webp) 42 fill / .62em stretch; color: #d8c49a; --k-o: #241226; }
+.idg-k-tabs.old .idg-k-tab[aria-selected="true"] { border-image-source: url(/assets/iandragon_game/ai/kit/tab2_on.webp); color: #fff3c8; --k-o: #4a0a10; }
+
+/* ── 목록 줄 (설정 · 상점 한 줄) : 아이콘 · 이름+설명 · 오른쪽 조작 ── */
+.idg-k-row { display: flex; align-items: center; gap: .6em; width: 100%; min-height: 3.3em; margin: 0; padding: .15em .35em; text-align: left;
+  border: solid transparent; border-width: .55em .6em; border-image: url(/assets/iandragon_game/ai/kit/row.webp) 26 fill / .55em .6em stretch; background: none; }
+.idg-k-row.hi { border-image-source: url(/assets/iandragon_game/ai/kit/row_hi.webp); }
+button.idg-k-row:active { filter: brightness(1.12); }
+.idg-k-row-ico { flex: none; width: 2.2em; height: 2.2em; object-fit: contain; }
+.idg-k-row-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: .15em; }
+.idg-k-row-txt > b { font-size: 1em; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.idg-k-row-txt > span { font-size: .78em; font-weight: 700; color: var(--k-sub); }
+.idg-k-row-end { flex: none; display: flex; align-items: center; gap: .4em; }
+.idg-k-row.locked .idg-k-row-ico { filter: grayscale(1) brightness(.6); }
+.idg-k-row.locked .idg-k-row-txt > b { color: var(--k-mute); }
+
+/* ── 재화 : 아이콘 + 숫자 (money.js .idg-cash) · 지갑 판 ── */
+.idg-k .idg-cash b { font-family: var(--k-font); font-weight: 800; }
+.idg-k-wallet { display: inline-flex; align-items: center; justify-content: center; gap: .55em; min-height: 2.5em; padding: 0 .1em; align-self: center;
+  border: solid transparent; border-width: .52em 1.15em; border-image: url(/assets/iandragon_game/ai/kit/wallet.webp) 26 60 fill / .52em 1.15em stretch; }
+.idg-k-wallet .idg-cash { font-size: 1.1em; }
+.idg-k-wallet .idg-cash-ico { height: 1.3em; } .idg-k-wallet .idg-cash.coin .idg-cash-ico { width: 1.3em; }
+.idg-k-wallet-sep { width: 2px; height: 1.2em; background: var(--k-gold); box-shadow: 1px 0 0 var(--k-o), -1px 0 0 var(--k-o); }
+
+/* ── 옛날 종이(양피지) 안내 판 : 안내 · 도움말 글은 항상 여기에 ── */
+.idg-k-paper { padding: .25em .5em; border: solid transparent; border-width: .8em .85em; border-image: url(/assets/iandragon_game/ai/kit/paper.webp) 34 fill / .8em .85em stretch;
+  color: var(--k-ink); font-size: .9em; font-weight: 700; line-height: 1.4; text-align: center; text-shadow: none; word-break: keep-all; }
+.idg-k-paper b, .idg-k-paper strong { color: #8a2a10; font-weight: 900; }
+.idg-k-paper small { display: block; margin-top: .2em; color: var(--k-ink2); font-size: .85em; }
+
+/* ── 스크롤 목록 상자 : 위아래 도트 금 테 + 아래 «더 있음» 화살표 ── */
+.idg-k-scroll { position: relative; display: flex; flex-direction: column; min-height: 0; padding: .55em 0; }
+.idg-k-scroll::before, .idg-k-scroll::after { content: ''; position: absolute; left: -.2em; right: -.2em; height: .62em; z-index: 2; pointer-events: none;
+  background: url(/assets/iandragon_game/ai/kit/scroll_edge.webp) center / 100% 100% no-repeat; image-rendering: pixelated; }
+.idg-k-scroll::before { top: 0; } .idg-k-scroll::after { bottom: 0; }
+.idg-k-scroll-in { flex: 1 1 auto; min-height: 0; max-height: var(--k-scroll-h, 16em); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: .4em; padding: .35em .1em;
+  scrollbar-width: none; }
+.idg-k-scroll-in::-webkit-scrollbar { display: none; }
+.idg-k-more { position: absolute; left: 50%; bottom: -.15em; z-index: 3; width: 1.5em; height: 1.15em; margin-left: -.75em; pointer-events: none; display: none;
+  background: url(/assets/iandragon_game/ai/kit/more_arrow.webp) center / 100% 100% no-repeat; image-rendering: pixelated; animation: idgKMore 1.2s steps(2, jump-none) infinite; }
+.idg-k-scroll.more .idg-k-more { display: block; }
+@keyframes idgKMore { 50% { transform: translateY(.22em); } }
+
+/* ── 잠금 · 알림 점 ── */
+.idg-k-lock { display: inline-block; width: 1.3em; height: 1.3em; vertical-align: middle; background: url(/assets/iandragon_game/ai/lobby/ico_lock.png) center / contain no-repeat; image-rendering: pixelated; }
+.idg-k-badge { position: absolute; right: -.35em; top: -.35em; z-index: 4; width: 1.25em; height: 1.25em; pointer-events: none;
+  background: url(/assets/iandragon_game/ai/lobby2/alert.webp) center / 100% 100% no-repeat; image-rendering: pixelated; animation: idgKBadge 1.6s steps(2, jump-none) infinite; }
+@keyframes idgKBadge { 50% { transform: translateY(-.12em); } }
+.idg-k-has-badge { position: relative; }
+
+/* ── 줄 배치 ── */
+.idg-k-line { display: flex; align-items: center; gap: .6em; min-width: 0; }
+.idg-k-line > .idg-k-btn { min-width: 0; }
+.idg-k-line.center { justify-content: center; } .idg-k-line.between { justify-content: space-between; } .idg-k-line.wrap { flex-wrap: wrap; }
+.idg-k-col { display: flex; flex-direction: column; gap: .5em; }
+
+@media (prefers-reduced-motion: reduce) { .idg-k-more, .idg-k-badge { animation: none; } }

@@ -17,6 +17,7 @@ import { ECON } from '../data/econ.js';
 import { powerMul } from '../core/rules.js';
 import { unlockedBefore, stageByNo, LAST_STAGE, makeLoads } from './battleSetup.js';
 import { breathStats } from './breathInfo.js';
+import { money } from './money.js';
 
 const AI = '/assets/iandragon_game/ai/';
 const capOf = (cleared) => ECON.capAt.reduce((c, [g, cap]) => (cleared >= g ? cap : c), 10);
@@ -39,9 +40,11 @@ export function powerPage(h, o) {
     const setDeck = (d) => { o.write({ deck: d }); };
 
     /* 위 띠 */
-    const band = h('div', 'idg-pp-band');
-    band.append(h('span', 'coin', `코인 ${fmt(g.coins || 0)}`), h('span', 'gem', `젬 ${fmt(g.gems || 0)}`), h('span', 'slots', `출전 ${deck.length} / ${un.deckCap}칸`));
-    if (next.costMax) band.append(h('span', 'limit', `다음 판 ${next.id} : 비용 ${next.costMax} 이하만`));
+    /* 지갑 판(금화 | 젬 · 아이콘 + 숫자) 과 «출전 ○/○칸» 알약은 따로 (11/12 대표님 · 겜부장 점검) */
+    const band = h('div', 'idg-pp-top'), wallet = h('div', 'idg-pp-band');
+    wallet.append(money('coin', g.coins || 0), h('i', 'sep'), money('gem', g.gems || 0));
+    band.append(wallet, h('span', 'idg-pp-pill slots', `출전 ${deck.length} / ${un.deckCap}칸`));
+    if (next.costMax) band.append(h('span', 'idg-pp-pill limit', `다음 판 ${next.id} : 비용 ${next.costMax} 이하만`));
     const bs = breathStats(ld, g), lead = h('div', 'idg-pp-lead');
     const face = h('img'); face.src = `${AI}${ld}/head.png`; face.alt = '';
     lead.append(face, h('b', null, `${LEADERS[ld]?.ko || '리더'} 브레스`), h('span', null, `사거리 ${bs.range} · 위력 ${fmt(bs.power)} · 밀어내기 ${bs.push} · 충전 ${bs.charge}초`));
@@ -82,8 +85,10 @@ export function powerPage(h, o) {
         if (deck.length < un.deckCap) { setDeck([...deck, id]); play('deploy_s'); swapFor = null; draw(); return; }
         swapFor = swapFor === id ? null : id; play('button'); draw();
       };
-      const up = h('button', 'idg-btn idg-pp-up' + (evo ? ' evo' : ''), max ? `최고 (상한 ${cap})` : `${evo ? '진화' : '레벨업'} ${fmt(cost)}`); up.type = 'button';
-      if (max) up.disabled = true; else if (poor) up.classList.add('poor');
+      /* 레벨업 = 결과 창 초록 단추 · 진화 = 빨간 단추 · 값은 금화 아이콘 + 숫자 · 최고 = 평범한 보라 (11/12 대표님 «노란 네모 단추 없애기») */
+      const up = h('button', 'idg-btn idg-pp-up idg-buy ' + (max ? 'plain' : evo ? 'red evo' : 'green')); up.type = 'button';
+      if (max) { up.textContent = `최고 (상한 ${cap})`; up.disabled = true; }
+      else { up.append(h('span', 'idg-buy-label', evo ? '진화' : '레벨업'), money('coin', cost)); if (poor) up.classList.add('poor'); }
       up.onclick = (e) => {
         e.stopPropagation();
         const cur = o.save(), now = cur.units?.[id]?.[0] || 1, c = ECON.lvCost(now);
@@ -104,9 +109,12 @@ export function powerPage(h, o) {
     const side = h('div', 'idg-pp-side'); side.append(lead, slots, hint);
     /* 고정 틀 : 제목 · 띠는 위에 고정 · 가운데만 스크롤 · 단추 한 줄은 아래에 고정 (뒤 배경 상자 없음) */
     const keep = box.querySelector('.idg-pp-body')?.scrollTop || 0;
-    box.replaceChildren(h('h2', 'idg-pp-title', '파워업'), band, h('div', 'idg-pp-body', null), row);
+    box.replaceChildren(h('h2', 'idg-pp-title', '파워업'), band, h('div', 'idg-pp-body', null), h('i', 'idg-dlg-more'), row);   /* idg-dlg-more = 스크롤 화살표 표(가운데 칸 아래 금 테에 걸침) */
     requestAnimationFrame(() => { const bd = box.querySelector('.idg-pp-body'); if (bd) bd.scrollTop = keep; });
     box.querySelector('.idg-pp-body').append(side, list);
+    /* 스크롤 표시 (11/12 대표님) : 아래가 더 있으면 금 화살표 · 넘치면 금 도트 줄 — 모양은 idg-subwin.css */
+    { const bd = box.querySelector('.idg-pp-body'), upd = () => { const over = bd.scrollHeight - bd.clientHeight; box.classList.toggle('scrolls', over > 2); box.classList.toggle('more-down', over > 2 && over - bd.scrollTop > 2); };
+      bd.addEventListener('scroll', upd, { passive: true }); bd.addEventListener('load', upd, true); requestAnimationFrame(() => requestAnimationFrame(upd)); setTimeout(upd, 400); }
   }
   draw();
   return box;

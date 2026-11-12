@@ -6,6 +6,7 @@
  */
 import { el, button, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
+import { kitPaper, kitSection } from './idgKit.js';   /* UI 키트 (11/12) */
 import { SLOTS, SLOT_NAME, LOOKS, TITLES, BREATH_COLORS, encodeLook, decodeLook, hasItem, artOf } from '../games/iandragon_game/data/looks.js';
 
 const AI = '/assets/iandragon_game/ai/';
@@ -31,13 +32,13 @@ export function showLook({ idg, save, onClose }) {
   for (const s of SLOTS) if (sel[s] && !hasItem(cur, s, sel[s])) sel[s] = null;
   const leader = !cur.leader || cur.leader === 'auto' ? 'novart' : cur.leader;
 
-  const preview = el('div.idg-look-preview', { style: 'position:relative;width:150px;height:150px;margin:8px auto 4px;border-radius:14px;background:#221548;border:4px solid #554' });
-  const info = el('div.idg-nest-help');
+  const preview = el('div.idg-look-preview');   /* 모양 = idg-subwin.css (도트 네모 틀 · 테두리 색 --fc) */
+  const info = kitPaper([]);   /* 지금 칭호 = 종이 판 */
   const body = el('div.idg-lab-sec');
 
   function drawPreview() {
     const frameColor = { wood: '#a0703a', silver: '#c8d0d8', gold: '#FFC93C', fire: '#ff6b2b' }[sel.frame] || '#554';
-    preview.style.borderColor = frameColor;
+    preview.style.setProperty('--fc', frameColor);
     const head = el('img', { src: `${AI}${leader}/head.png`, alt: '', style: 'position:absolute;left:25%;top:30%;width:50%;height:50%;object-fit:contain;image-rendering:pixelated', onerror: (e) => { e.target.style.display = 'none'; } });
     const parts = [head];
     if (sel.neck) parts.push(el('img', { src: imgFor('neck', sel.neck), alt: '', style: 'position:absolute;left:22%;top:66%;width:56%;height:30%;object-fit:contain;image-rendering:pixelated', onerror: (e) => { e.target.style.display = 'none'; } }));
@@ -69,11 +70,11 @@ export function showLook({ idg, save, onClose }) {
       for (const x of owned) {
         row.appendChild(el('button.idg-leader' + (sel[slot] === x.id ? '.on' : ''), { type: 'button', onclick: () => pick(x.id) }, [pic(slot, x.id, x.name), el('b', x.name)]));
       }
-      const sec = el('div', null, [el('div.idg-codex-h', SLOT_NAME[slot]), row]);
-      if (!owned.length) sec.appendChild(el('div.idg-nest-help', slot === 'frame' ? '명예의 전당 시즌 보상으로 받아요' : slot === 'title' ? '도전 과제와 기록으로 얻어요' : '용 시장에서 사 보세요'));
+      const sec = el('div', null, [kitSection(SLOT_NAME[slot]), row]);
+      if (!owned.length) sec.appendChild(el('div.idg-look-hint', slot === 'frame' ? '명예의 전당 시즌 보상으로 받아요' : slot === 'title' ? '도전 과제와 기록으로 얻어요' : '용 시장에서 사 보세요'));
       if (slot === 'title') {
         // 아직 못 얻은 칭호는 얻는 방법만 보여 준다
-        for (const t of TITLES.filter((x) => !x.has(cur))) sec.appendChild(el('div.idg-nest-help', { style: 'text-align:left;margin:2px 0' }, [`잠김 «${t.name}» — ${t.how}`]));
+        for (const t of TITLES.filter((x) => !x.has(cur))) sec.appendChild(el('div.idg-look-hint.lock', null, [el('img.idg-lock-ico', { src: `${AI}lobby/ico_lock.png`, alt: '잠김' }), el('b', `«${t.name}»`), ` ${t.how}`]));
       }
       secs.push(sec);
     }

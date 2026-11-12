@@ -92,7 +92,7 @@ export function showCodex(go = {}) {
   function worldCard(w) {
     const on = worldOpen(w);
     return el('button.idg-cx-world' + (on ? '' : '.off'), { type: 'button', onclick: () => { if (!on) { Sfx.play('button_deny'); return; } worldView(w); } }, [
-      el('img', { src: `${AI}bg/w${String(w).padStart(2, '0')}_panel.png`, alt: '' }), el('b', `월드 ${w}`), el('span', on ? WORLD_NAMES[w - 1] : '🔒 아직 못 갔어요'),
+      el('img', { src: `${AI}bg/w${String(w).padStart(2, '0')}_panel.png`, alt: '' }), el('b', `월드 ${w}`), el('span', null, on ? [WORLD_NAMES[w - 1]] : [el('img.idg-lock-ico', { src: '/assets/iandragon_game/ai/lobby/ico_lock.png', alt: '잠김' }), '아직 못 갔어요']),
     ]);
   }
   /** 자세히 보기 */
@@ -114,14 +114,15 @@ export function showCodex(go = {}) {
         el('h3', d.name), el('div.sub', `${T.sub(id)}${d.role ? ' · ' + d.role : ''}`),
         bar('체력', 'hp'), bar('공격', 'atk'), bar('사거리', 'range'), bar('빠르기', 'speed'),
         el('div.first', tab === 'dragon' ? (d.rar === 'story' ? '모험에서 함께해요' : '부화장에서 태어나요') : `처음 만나는 판 : ${firstAt[id] || '?'}`),
-        on ? null : el('div.idg-cx-get', null, [el('span', `얻는 법 · ${T.hint(id)}`), T.go?.(id) ? button('바로 가기', () => { const f = T.go(id); closeAll(); f(); }) : null].filter(Boolean)),
+        ...(on ? [] : [el('div.idg-cx-get', null, [el('span', `얻는 법 · ${T.hint(id)}`), T.go?.(id) ? button('바로 가기', () => { const f = T.go(id); closeAll(); f(); }) : null].filter(Boolean))]),   /* null 을 넘기면 «null» 글자가 찍혔다 (11/12 고침) */
       );
     };
     const step = (dlt) => { Sfx.play('sfx_menu_move'); k = (k + dlt + ids.length) % ids.length; show(); };
     const box = el('div.dialog.idg-cx-detail', { onclick: (e) => e.stopPropagation() }, [
-      el('div.idg-cx-dwrap', null, [el('button.idg-cx-arrow', { type: 'button', onclick: () => step(-1) }, ['◀']), stage, el('button.idg-cx-arrow', { type: 'button', onclick: () => step(1) }, ['▶'])]),
+      el('div.idg-how-title', `${TABS[tab]?.name || ''} 도감`),   /* 다른 창처럼 리본 현판 (11/12) */
+      el('div.idg-cx-dwrap', null, [el('button.idg-cx-arrow', { type: 'button', onclick: () => step(-1), 'aria-label': '앞으로' }, [el('i.idg-px-arrow.l')]), stage, el('button.idg-cx-arrow', { type: 'button', onclick: () => step(1), 'aria-label': '다음' }, [el('i.idg-px-arrow.r')])]),
       info,
-      el('div.idg-row2', null, [button('🔊 다시 듣기', () => sound(ids[k])), button('닫기', () => { close(); draw(); }, { primary: true })]),
+      el('div.idg-row2', null, [(() => { const b = button('다시 듣기', () => sound(ids[k])); b.prepend(el('img.idg-btn-ico', { src: '/assets/iandragon_game/ai/lobby/ico_sound.png', alt: '' })); return b; })()   /* 🔊 글자 그림 → 도트 아이콘 */, button('닫기', () => { close(); draw(); }, { primary: true })]),
     ]);
     const overlay = el('div.dialog-overlay', { onclick: () => { close(); draw(); } }, [box]);
     const close = presentOverlay(overlay);
@@ -135,7 +136,7 @@ export function showCodex(go = {}) {
     const n = String(w).padStart(2, '0');
     const strip = el('div.idg-cx-strip', null, [el('img', { src: `${AI}bg/w${n}_panel.png`, alt: '' })]);
     Audio.worldBgm(w);
-    const box = el('div.dialog.idg-cx-wdetail', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', `월드 ${w} · ${WORLD_NAMES[w - 1]}`), el('div.idg-cx-tip', '◀ 손가락으로 끌어서 구경해요 ▶'), strip, button('닫기', () => close(), { primary: true })]);
+    const box = el('div.dialog.idg-cx-wdetail', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', `월드 ${w} · ${WORLD_NAMES[w - 1]}`), el('div.idg-cx-tip', null, [el('i.idg-px-arrow.l', { 'aria-hidden': 'true' }), '손가락으로 끌어서 구경해요', el('i.idg-px-arrow.r', { 'aria-hidden': 'true' })])   /* ◀ ▶ 글자 → 도트 화살표(키트 more_arrow 돌림) */, strip, button('닫기', () => close())]);
     const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
     const close = presentOverlay(overlay, () => Audio.stopBgm());
   }

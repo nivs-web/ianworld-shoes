@@ -9,6 +9,7 @@ import * as G from '../services/iandragonGame.js';
 import * as Sfx from '../audio/sfx.js';
 import { UNITS } from '../games/iandragon_game/data/units.js';
 import { hatch, EGG, RATES, PITY, RAR_KO } from '../services/iandragonHatch.js';
+import { kitWallet, kitPaper, kitPriceBtn } from './idgKit.js';   /* UI 키트 (11/12 · docs/IDG_DESIGN_STYLESHEET.md) */
 
 const AI = '/assets/iandragon_game/ai/';
 /* 게임 소리(겜팀장) — 부화장에서만 늦게 받는다 */
@@ -17,16 +18,22 @@ const REVEAL = { rare: 'hatch_reveal_rare', super: 'hatch_reveal_super', legend:
 
 export function showHatch(onChange) {
   Sfx.play('sfx_menu_select');
-  const info = el('div.idg-hatch-info'), stage = el('div.idg-hatch-stage'), btns = el('div.idg-row');
+  const info = el('div.idg-hatch-info'), stage = el('div.idg-hatch-stage'), btns = el('div.idg-hatch-buy');
+  /* 10개 묶음 할인 % (1개 값 × 10 대비) — 단추 위 딱지 */
+  const off = Math.round((1 - EGG.ten / (EGG.one * 10)) * 100);
   function drawInfo() {
     const g = G.idg();
+    /* 11/12 대표님 : «젬» 글자 대신 젬 아이콘 · 확률 다음 줄에 «전설까지 ○번 남음» · 글씨 조금 크게 */
     info.replaceChildren(
-      el('div', `젬 ${g.gems.toLocaleString('en-US')}`),
-      el('div.small', `희귀 ${RATES.rare * 100}% · 슈퍼 ${RATES.super * 100}% · 전설 ${RATES.legend * 100}% · 전설까지 ${PITY - (g.pity || 0)}번 남음`),
+      kitWallet({ coins: g.coins, gems: g.gems }),   /* 키트 «내 보유량» 지갑 판 (상점 · 부화장 맨 위) */
+      kitPaper([el('span.idg-hatch-rates', null, [   /* 안내 = 종이 판 */
+        el('span.r', `희귀 ${RATES.rare * 100}%`), ' · ', el('span.s', `슈퍼 ${RATES.super * 100}%`), ' · ', el('span.l', `전설 ${RATES.legend * 100}%`),
+      ]), el('small.idg-hatch-pity', null, ['전설까지 ', el('b', `${PITY - (g.pity || 0)}번`), ' 남음'])]),
     );
+    /* 노란 네모 → 결과 창 양식 고급 단추 (1개 = 초록 · 10개 = 빨강 + «할인» 딱지) · 가격은 젬 아이콘 + 숫자 */
     btns.replaceChildren(
-      el('button.idg-btn.main', { type: 'button', disabled: g.gems < EGG.one, onclick: () => go(1) }, [`알 1개 · 젬 ${EGG.one}`]),
-      el('button.idg-btn.main', { type: 'button', disabled: g.gems < EGG.ten, onclick: () => go(10) }, [`알 10개 · 젬 ${EGG.ten}`]),
+      kitPriceBtn({ kind: 'green', label: '알 1개', gem: EGG.one, poor: g.gems < EGG.one, onClick: () => go(1) }),
+      kitPriceBtn({ kind: 'red', label: '알 10개', gem: EGG.ten, poor: g.gems < EGG.ten, tag: off > 0 ? `${off}% 할인` : '', onClick: () => go(10) }),
     );
   }
   function go(n) {

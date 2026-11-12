@@ -7,6 +7,7 @@
  */
 import { el, button, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
+import { kitWallet, kitTabs, kitPaper, kitSection, kitRow, kitPriceBtn, kitBtn } from './idgKit.js';   /* UI 키트 (11/12 · docs/IDG_DESIGN_STYLESHEET.md) */
 import { SLOT_NAME, LOOKS, CONSUMABLES, CONS_MAX, SELLABLE, keyOf, parseKey, priceOf, dealPrice, dealsFor, todayKst, artOf } from '../games/iandragon_game/data/looks.js';
 
 const META = '/assets/iandragon_game/ai/meta/';
@@ -22,14 +23,14 @@ export function itemIcon(slot, id, name) {
   wrap.append(img);
   return wrap;
 }
-const priceText = (p, price) => (p.gem ? `젬 ${fmt(price)}` : `코인 ${fmt(price)}`);
 
 export function showShop({ idg, save, onClose }) {
   Sfx.play('sfx_menu_select');
   let cur = idg, tab = 'look';
   const body = el('div.idg-lab-sec');
-  const tabs = el('div', { style: 'display:flex;gap:4px;margin-bottom:6px' });
-  const head = el('div.idg-nest-coins');
+  /* 상점 = 지갑 판 → 고풍 탭 → 종이 안내 → 소제목 → 목록 줄(끝에 가격 단추) → 보라 «닫기» (키트 규칙 8장) */
+  const head = kitWallet({ coins: cur.coins, gems: cur.gems }), help = el('div.idg-shop-help');
+  const tabs = kitTabs({ old: true, label: '상점 칸', tabs: TABS.map(([id, label]) => ({ id, label })), value: tab, onPick: (k) => { tab = k; draw(); } });
   const have = (key) => Array.isArray(cur.owned) && cur.owned.includes(key);
   const afford = (p, price) => (p.gem ? cur.gems : cur.coins) >= price;
 
@@ -44,24 +45,21 @@ export function showShop({ idg, save, onClose }) {
       if (next) cur = next;
       Sfx.play('sfx_purchase'); draw();
     };
-    return el('div.idg-nest-row', null, [
-      itemIcon(slot, id, item.name),
-      el('div.idg-nest-name', null, [
-        el('b', `${item.name} · ${SLOT_NAME[slot]}`),
-        el('span', sale ? `정가 ${fmt(p.price)} → 30% 할인 ${priceText(p, price)}` : priceText(p, price)),
-      ]),
-      el('button.idg-nest-up', { type: 'button', disabled: got || !afford(p, price), onclick: buy }, [got ? '가졌어요' : afford(p, price) ? `사기 ${fmt(price)}` : (p.gem ? '젬이 모자라요' : '코인이 모자라요')]),
-    ]);
+    /* 값은 단추에만 (아이콘 + 숫자) — 아래 줄은 종류 · 특가면 정가 줄긋기 */
+    return kitRow({ icon: itemIcon(slot, id, item.name), title: item.name, hi: sale,
+      sub: el('span.idg-shop-price', null, sale ? [SLOT_NAME[slot], ' · ', el('s', fmt(p.price)), ' ', el('em.idg-sale', '30% 할인')] : [SLOT_NAME[slot]]),
+      right: got ? kitBtn({ kind: 'purple', text: '가졌어요', size: 'sm', disabled: true }) : kitPriceBtn({ [p.gem ? 'gem' : 'coin']: price, size: 'sm', poor: !afford(p, price), label: '', onClick: buy }) });
   }
 
   function lookTab() {
-    const out = [el('div.idg-nest-help', '꾸미기는 멋만 내요. 힘은 세지지 않아요. (테두리는 명예의 전당 보상 · 칭호는 도전 과제로 얻어요)')];
+    help.replaceChildren(kitPaper(['꾸미기는 멋만 내요. 힘은 세지지 않아요.', el('small', '테두리는 명예의 전당 보상 · 칭호는 도전 과제로 얻어요')]));
+    const out = [];
     for (const slot of ['hat', 'neck', 'breath', 'flag']) {
-      out.push(el('div.idg-codex-h', SLOT_NAME[slot]));
+      out.push(kitSection(SLOT_NAME[slot]));
       for (const x of LOOKS[slot]) {
         const key = keyOf(slot, x.id);
         if (!SELLABLE.includes(key)) {   // 기본 불꽃 — 늘 가짐
-          out.push(el('div.idg-nest-row.got', null, [itemIcon(slot, x.id, x.name), el('div.idg-nest-name', null, [el('b', `${x.name} · ${SLOT_NAME[slot]}`), el('span', '처음부터 있어요')])]));
+          out.push(kitRow({ icon: itemIcon(slot, x.id, x.name), title: x.name, sub: SLOT_NAME[slot], right: kitBtn({ kind: 'purple', text: '처음부터 있어요', size: 'sm', disabled: true }) }));
           continue;
         }
         out.push(lookRow(key, false));
@@ -72,42 +70,40 @@ export function showShop({ idg, save, onClose }) {
 
   function dealTab() {
     const day = todayKst(), keys = dealsFor(day);
-    return [
-      el('div.idg-nest-help', `오늘(${day})의 특가 — 꾸미기 3개가 30% 싸요. 한국 시간 자정에 바뀌어요.`),
-      ...keys.map((k) => lookRow(k, true)),
-    ];
+    help.replaceChildren(kitPaper([`오늘(${day})의 특가 — 꾸미기 3개가 `, el('b', '30% 싸요'), '.', el('small', '한국 시간 자정에 바뀌어요.')]));
+    return keys.map((k) => lookRow(k, true));
   }
 
   function consTab() {
+    help.replaceChildren(kitPaper(['편의품은 한 판에 ', el('b', '하나만'), ' 쓸 수 있어요. 혼자 하기(스테이지)에서만 써요.', el('small', '명예의 전당 도전 · 같이 깨기 · 용 대결에서는 못 써요.')]));
     return [
-      el('div.idg-nest-help', '편의품은 한 판에 하나만 쓸 수 있어요. 혼자 하기(스테이지)에서만 써요. 명예의 전당 도전 · 같이 깨기 · 용 대결에서는 못 써요.'),
       ...CONSUMABLES.map((c) => {
         const n = Number(cur.cons?.[c.id]) || 0, can = cur.coins >= c.price && n < CONS_MAX;
-        return el('div.idg-nest-row', null, [
-          el('div.idg-nest-name', null, [el('b', `${c.name} (가진 수 ${n})`), el('span', `${c.desc} · 코인 ${fmt(c.price)}`)]),
-          el('button.idg-nest-up', {
-            type: 'button', disabled: !can,
-            onclick: () => {
+        return kitRow({ title: `${c.name} (가진 수 ${n})`, sub: c.desc,
+          right: n >= CONS_MAX ? kitBtn({ kind: 'purple', text: '가득 찼어요', size: 'sm', disabled: true }) : kitPriceBtn({
+            coin: c.price, size: 'sm', poor: !can,
+            onClick: () => {
               const now = cur, have0 = Number(now.cons?.[c.id]) || 0;
               if (now.coins < c.price || have0 >= CONS_MAX) { Sfx.play('sfx_denied'); return; }
               const next = save({ coins: now.coins - c.price, cons: { ...(now.cons || {}), [c.id]: have0 + 1 } });
               if (next) cur = next;
               Sfx.play('sfx_purchase'); draw();
             },
-          }, [n >= CONS_MAX ? '가득 찼어요' : cur.coins >= c.price ? `사기 ${fmt(c.price)}` : '코인이 모자라요']),
-        ]);
+          }) });
       }),
     ];
   }
 
   function draw() {
-    head.textContent = `코인 ${fmt(cur.coins)} · 젬 ${fmt(cur.gems)}`;
-    tabs.replaceChildren(...TABS.map(([k, label]) => el('button.idg-nest-go' + (tab === k ? '.on' : ''), { type: 'button', style: 'flex:1', onclick: () => { tab = k; Sfx.play('sfx_menu_select'); draw(); } }, [label])));
+    head.update({ coins: cur.coins, gems: cur.gems });
     body.replaceChildren(...(tab === 'look' ? lookTab() : tab === 'deal' ? dealTab() : consTab()));
   }
   draw();
 
-  const box = el('div.dialog.idg-shop.idg-lab', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '드래곤샵'), el('img.idg-shopkeeper', { src: '/assets/iandragon_game/ai/meta/shopkeeper.png', alt: '', onerror: (e) => { e.target.style.display = 'none'; } }), head, tabs, body, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '드래곤샵'),
+    /* 왼쪽 묶음(가로) = 주인 · 지갑 · 종이 안내 | 오른쪽 = 탭 · 목록 (세로는 위에서 아래로 그대로) */
+    el('div.idg-shop-side', null, [el('img.idg-shopkeeper', { src: '/assets/iandragon_game/ai/meta/shopkeeper.png', alt: '', onerror: (e) => { e.target.style.display = 'none'; } }), head, help]),
+    tabs, body, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const closeO = presentOverlay(overlay);
   const close = () => { closeO(); onClose?.(); };   // 닫으면 로비 코인 · 젬 다시 그리기

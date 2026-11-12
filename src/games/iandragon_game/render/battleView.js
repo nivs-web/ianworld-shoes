@@ -49,6 +49,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const lanesP = lanesFor(world);
   const layersP = Promise.all([img(`${AI}bg/layers/w${wN}_sky`), lanesP.then((ln) => img(`${AI}bg/layers/${ln.front.replace(/\.(png|webp)$/, '')}`)).then((t) => t || img(`${AI}bg/layers/w${wN}_front`))]);
   const nestP = img(`${AI}castles/nest_hp0`), towerP = towerImg('hp0');
+  const eggP = Promise.all(['egg_rare', 'egg_super'].map((n) => tryLoad(`${AI}eggs/${n}.png`)));   /* 둥지에서 품는 알 = 부화장 알 그림 재사용 (아래 brood) */
   const hpP = Promise.all([...['hp_unit_frame', 'hp_unit_fill_me', 'hp_unit_fill_foe', 'hp_castle_frame', 'hp_castle_fill'].map((n) => tryLoad(`${AI}hud/${n}.png`)), fetch(`${AI}hud/hp_bars.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
   const fxP = Promise.all([tryLoad(`${AI}fx/meteor.png`), fxFrames('boom').catch(() => null)]);
   const torchP = fxFrames('fire_orange').catch(() => null);
@@ -187,7 +188,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const LEAD_K = 0.74;   /* 리더 용을 일반 용 크기로 (대표님 «둥지 위 용이 너무 크다») */
   const lead = ldRig ? createRigged(ldRig, LEAD_K, 1) : null;
   const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(await wearRig(rigs[foeLeader], foeLeader, lookR), LEAD_K, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
-  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, CY - tower.height + 58); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
+  /* 리더 발 = 둥지 그림 위에서 66px (짚 가운데 · 대표님 11/11 «둥지와 용을 조금 아래로») — 대결 상대도 같은 자리(좌우 대칭) */
+  const LEAD_FEET = 66;
+  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, CY - tower.height + LEAD_FEET); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
   /* 착용 부품 (보조 2차 · 대표님 «상점 아이콘과 용이 쓴 모습은 달라야») — ai/meta/wear/ 옆모습 부품을 head · torso 부품에 붙인다.
      좌표 = ai/meta/wear.json (tools/idg-wear-fit.mjs 가 대장 용마다 계산) · 예시 tools/idg-gallery/viewer.js attachWear */
@@ -211,35 +214,75 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   async function dress(rig, lk, castle, art) {
     const flagT = lk.flag ? await tryLoad(`${AI}meta/flag_${lk.flag}.png`) : null;
     if (rig) await wear(rig, art, lk);
-    if (flagT && castle === nest && rig) { nestFlagT = flagT; return; }   /* 내 성 깃발은 리더 자리를 정한 뒤 머리 위에 (아래) */
-    if (flagT && castle) {   // 성 깃발 : 깃대 + 펄럭이는 깃발 (성 뒤 왼쪽 위)
-      const side = castle === tower ? -1 : 1, top = CY - castle.height;
-      /* 대표님 «용이 깃발을 가린다 · 더 높고 크게» (11/11) : 깃대를 성 바깥쪽 끝 · 높게(98) · 깃발 크게(40×58) · 성 바깥으로 펄럭 */
-      const pole = new Graphics().rect(-2, -98, 4, 98).fill(0x3a2410).rect(-1, -98, 2, 98).fill(0x6a4424); pole.position.set(castle.x - side * castle.width * 0.42, top + 22 + Math.max(0, FLAG_TOP - (top + 22 - 96)));   /* 위 체력 막대 밑에 숨지 않게 (11/12) */
-      const f = new Sprite(flagT); f.anchor.set(0, 0); f.width = 40; f.height = 58; f.scale.x *= -side; f.position.set(pole.x - side * 2, pole.y - 96);
-      stage.addChildAt(pole, stage.getChildIndex(castle)); stage.addChildAt(f, stage.getChildIndex(castle)); flags.push(f);
-    }
+    if (flagT && castle) groundFlag(castle, flagT);
   }
-  const flags = [], follow = [], nestFlag = []; let nestFlagT = null;   // follow = 몸통 뒤 층 장식이 torso 를 따라가게 [상자, torso]
+  const flags = [], follow = [], flagBox = [];   // follow = 몸통 뒤 층 장식이 torso 를 따라가게 [상자, torso] · flagBox[편] = 땅 깃발 (진 편은 기운다)
   /* 깃발 위 끝 최소 높이 (11/12 대표님 «깃발은 게임에서도 가리더니») : 떠 있는 HUD 의 위 체력 막대가 폰 가로 · PC 에서 땅 y 약 105 까지 덮는다 */
   const FLAG_TOP = 112;
-  await Promise.all([dress(lead, look, nest, leader), dress(lead2, lookR, pvp ? tower : null, foeLeader)]);
-  /* 대표님 11/11 «성 깃발이 안 보인다 · 파란 리더 머리 위로 · 둥지와 용을 조금 아래로» : 리더 8px 아래 · 깃대는 성 뒤에서 리더 머리 위로 솟고 깃발은 머리 위 */
-  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, CY - nest.height + 66); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
-  if (lead && nestFlagT) {
-    const lb = lead.root.getLocalBounds(), headY = lead.root.y + lb.y * Math.abs(lead.root.scale.y), top = CY - nest.height;
-    /*
-     * 깃발 32×46 · 머리 바로 위. 11/12 대표님 «깃발은 게임에서도 가리더니» : 키 큰 리더 · 바닥이 높은 월드(2 · 4 · lanes castleY)에서 머리 위 깃발이
-     * 위 체력 막대 밑으로 숨었다 → 위 끝을 FLAG_TOP 아래로 내리고, 그러면 머리에 닿을 때는 깃대를 용 왼쪽 옆(날개 · 꼬리 바깥)으로 비켜 세운다.
-     */
-    const poleTop = Math.max(Math.round(headY - 50), FLAG_TOP - 2), above = poleTop + 50 <= headY;
-    const leftX = lead.root.x - (Math.abs(lead.root.scale.x) * (lead.root.scale.x < 0 ? lb.x + lb.width : -lb.x));
-    const px = above ? nest.x - 6 : Math.round(Math.min(nest.x - 6, leftX - 4));
-    const pole = new Graphics().rect(-2, 0, 4, top + 30 - poleTop).fill(0x3a2410).rect(-1, 0, 2, top + 30 - poleTop).fill(0x6a4424); pole.position.set(px, poleTop);
-    const f = new Sprite(nestFlagT); f.anchor.set(0, 0); f.width = 32; f.height = 46; f.scale.x *= -1; f.position.set(px - 2, poleTop + 2);
-    stage.addChildAt(pole, stage.getChildIndex(nest)); stage.addChildAt(f, stage.getChildIndex(nest)); flags.push(f); nestFlag.push(pole, f);
+  /*
+   * 깃발 = 성 앞 땅에 꽂는다 (11/12 대표님 «깃발이 몸통(대장 용)에 가려지면 안 된다 · 성 아래 땅, 좀비가 오는 쪽에»). 성 꼭대기 · 리더 머리 위 깃발은
+   * 리더 몸 · 위 체력 막대와 계속 다퉜다. 깃대 밑동 = 그 월드 발 높이 범위 맨 뒤(lanes spawnY[0]) — 세 줄 유닛은 늘 깃발 앞을 지나가고,
+   * 천은 밑동 위 FLAG_H 라 서 있는 보통 유닛 머리보다 높다. 내 성 = 성 오른쪽 · 천은 들판 쪽으로 펄럭 / 대결 상대 성 = 좌우 대칭.
+   * FLAG_SIDE -1 = 성 왼쪽 안(비교용 · 화면 왼쪽 끝 · 왼쪽 화로와 겹쳐 오른쪽을 기본으로).
+   */
+  const FLAG_SIDE = 1, FLAG_H = 150, FLAG_W = 44, FLAG_HH = 64;
+  function groundFlag(castle, flagT) {
+    const me = castle === nest, out = me ? 1 : -1;   // out = 그 성에서 들판 쪽
+    const dx = FLAG_SIDE > 0 ? 108 : -84, dir = FLAG_SIDE > 0 ? out : -out;   // 깃대 자리 · 천 방향 (오른쪽 안 : 오른쪽 화로 바로 바깥 — 세로 화면에서도 천이 다 보이게 · 왼쪽 안 : 성 왼쪽 기둥 앞, 천은 바깥으로)
+    const baseY = S0 + 1, h = Math.min(FLAG_H, baseY - FLAG_TOP - 8);
+    const box = new Container(); box.position.set(Math.round(castle.x + out * dx), baseY);
+    const pole = new Graphics()
+      .rect(-5, -2, 10, 3).fill(0x3a2a1e)                                   /* 꽂힌 자리 흙 */
+      .rect(-2, -h, 4, h).fill(0x3a2410).rect(-1, -h, 2, h).fill(0x6a4424)  /* 깃대 */
+      .rect(-3, -h - 5, 6, 6).fill(0x5a3a10).rect(-2, -h - 4, 4, 4).fill(0xe0b040);   /* 꼭지 */
+    const f = new Sprite(flagT); f.anchor.set(0, 0); f.width = FLAG_W; f.height = FLAG_HH; if (dir < 0) f.scale.x *= -1; f.position.set(dir * 2, -h + 2);
+    box.addChild(pole, f); stage.addChildAt(box, stage.getChildIndex(units)); flags.push(f); flagBox[me ? 0 : 1] = box;
   }
+  await Promise.all([dress(lead, look, nest, leader), dress(lead2, lookR, pvp ? tower : null, foeLeader)]);
+  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, CY - nest.height + LEAD_FEET); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
   if (lead2) lead2.baseY = lead2.root.y;
+  /*
+   * 알 품기 (11/12 대표님 «알을 품고 있는 느낌이 전혀 없다» · 오래 반복) : 둥지 그림 속 알(작다)이 리더 몸에 다 가렸다.
+   * 부화장 알 그림(ai/eggs)을 더 크게 둥지에 올리고 층을 둥지 → 뒤 알 2개 → 리더 → 앞 알 → 둥지 앞 짚 순서로 :
+   * 뒤 알 윗부분이 용 배 아래 · 다리 사이 · 몸 양옆으로 보이고, 앞 알은 둥지 가장자리로 삐져나온다. 용 발 · 알 밑은 짚 속에 묻힌다.
+   * 앞 짚 = 같은 둥지 그림을 짚 띠만 잘라(가림) 같은 자리에 한 번 더 — 성이 맞아 금 가는 그림(hp1~3) · 흔들림 · 깜박임을 그대로 따라간다.
+   * 좌표 = 둥지 그림(212×300) 픽셀 · 대결 오른쪽 둥지는 좌우 뒤집힘.
+   */
+  const eggT = await eggP, broods = [];
+  const EGG_BACK = [[0, 104, 72, 38], [1, 127, 75, 32]], EGG_FRONT = [[0, 83, 80, 32]], LIP = [64, 63, 80, 24];   // [그림, 가운데 x, 밑 y, 높이] · 짚 띠 [x, y, 너비, 높이] (hp0 그림 픽셀)
+  /* 금 간 둥지 그림(hp1 · hp2 · hp3 · 기울어짐 fall0)은 크기가 달라 짚 자리가 옮겨 간다 (hp0 짚 조각을 맞춰 잼) — 알 · 앞 짚 · 리더가 함께 따라간다 */
+  const NEST_OFF = [[0, 0], [6, 5], [8, 0], [12, 20]], FALL0_OFF = [44, 24];
+  function brood(castle, R) {
+    if (!R || !eggT[0] || !castle.texture) return;
+    const tw = castle.texture.width, th = castle.texture.height, at = (x, y) => [x - tw / 2, y - th];   // hp0 그림 픽셀 → 성 자리(가운데 · 밑) 기준
+    const egg = ([i, x, y, h]) => { const t = eggT[i] || eggT[0], e = new Sprite(t); e.anchor.set(0.5, 1); e.scale.set(h / t.height); e.position.set(...at(x, y)); return e; };
+    const back = new Container(), front = new Container(), eggsB = new Container(), eggsF = new Container();
+    back.scale.x = front.scale.x = castle.scale.x;
+    for (const q of EGG_BACK) eggsB.addChild(egg(q));
+    for (const q of EGG_FRONT) eggsF.addChild(egg(q));
+    const lip = new Sprite(castle.texture); lip.anchor.set(0.5, 1);
+    const mask = new Graphics().rect(...at(LIP[0], LIP[1]), LIP[2], LIP[3]).fill(0xffffff); lip.mask = mask;
+    back.addChild(eggsB); front.addChild(eggsF, lip, mask);
+    stage.addChildAt(back, stage.getChildIndex(R.root)); stage.addChildAt(front, stage.getChildIndex(R.root) + 1);
+    back.position.set(castle.x, castle.y); front.position.copyFrom(back.position);
+    broods.push({ c: castle, R, back, front, lip, move: [eggsB, eggsF, mask], T: castle === nest ? nestT : towerT, off: [0, 0] });
+  }
+  /** 매 장면 : 성 흔들림 · 금 간 그림 · 깜박임을 따라간다 (리더는 흔들리지 않고 짚 자리만 따라감 · 대결 승리 깡충은 그대로) */
+  function broodUpdate() {
+    for (const b of broods) {
+      const on = b.R.root.visible, tex = b.c.texture, k = b.T.indexOf(tex);
+      const o = k >= 0 ? NEST_OFF[k] : b.c === nest && tex === nestFallT[0] ? FALL0_OFF : b.off;
+      if (o !== b.off) {
+        const sx = Math.sign(b.c.scale.x) || 1, dx = (o[0] - b.off[0]) * sx, dy = o[1] - b.off[1];
+        b.R.root.x += dx; b.R.root.y += dy; if (b.R.baseY != null) b.R.baseY += dy;
+        for (const m of b.move) m.position.set(o[0], o[1]);
+        b.off = o;
+      }
+      for (const c of [b.back, b.front]) { c.visible = on; c.position.set(b.c.x, b.c.y); }
+      b.lip.texture = tex; b.lip.tint = b.c.tint;
+    }
+  }
+  brood(nest, lead); brood(tower, lead2);
 
   const white = new ColorMatrixFilter();
   white.matrix = [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0];
@@ -515,8 +558,10 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     if (S.over.winner === 0 && !pvp) for (const u of S.units) { const v = V.get(u.id); if (v && u.side === 1 && u.alive) { v.flee = true; v.x += dt * 260; v.R.root.scale.x = Math.abs(v.R.root.scale.x); } }   // 좀비들 줄행랑 (오른쪽으로 도망)
     /* 성 무너짐 (대표님 «폭발 → 깜박깜박 → 와르르 무너지며 먼지 → 잔해가 남는다 · 투명하게 사라지는 것 금지») */
     if (S.over.winner === 0 && !pvp) collapse(tower, towerRubT, dt, towerFallT);
-    else if (S.over.winner === 1 && !pvp) { collapse(nest, nestRubT, dt, nestFallT); for (const t of torches) t.visible = false; if (overT > 1.6) for (const b of nestFlag) b.visible = false; if (lead) lead.root.visible = overT < 1.5; }
+    else if (S.over.winner === 1 && !pvp) { collapse(nest, nestRubT, dt, nestFallT); for (const t of torches) t.visible = false; if (lead) lead.root.visible = overT < 1.5; }
     else if (overT < 1) shakes.nest = 0.1;
+    /* 진 편 땅 깃발은 성이 무너질 때 성 쪽으로 기운다 (사라지지 않음 · 투명 금지 규칙) */
+    if (S.over.winner >= 0) { const fb = flagBox[1 - S.over.winner]; if (fb && overT > 1.3) fb.rotation = (S.over.winner === 1 ? -1 : 1) * Math.min(0.42, (overT - 1.3) * 1.4); }
     /* 대결 : 이긴 쪽 리더가 깡충깡충 (멀티 기획 5장) */
     if (pvp && S.over.winner >= 0) { const w = S.over.winner === 0 ? lead : lead2; if (w) { w.root.y = w.baseY - Math.abs(Math.sin(overT * 7)) * 18; if (overT < 0.05) w.set('hit'); } }
   }
@@ -572,6 +617,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       fun.update(dt); amb.update(dt); bossFx.update(S, dt, V); if (living) for (const b of living) b.update(dt);
       if (lead) lead.update(dt);
       if (lead2) lead2.update(dt);
+      broodUpdate();   // 알 · 앞 짚 · 리더가 둥지(흔들림 · 금 간 그림)를 따라감
       for (const [b, t] of follow) { if (b.destroyed || t.destroyed) continue; b.position.copyFrom(t.position); b.rotation = t.rotation; }
       for (const f of flags) f.skew.y = Math.sin(performance.now() / 260 + f.x) * 0.06;   // 깃발 펄럭
     },

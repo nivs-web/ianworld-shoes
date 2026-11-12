@@ -28,7 +28,7 @@ export function showMulti(onStart, rejoinCode = null) {
       el('p.idg-multi-msg', `둘이 함께 ${G.stageLabel(stageNo)} 에 도전해요. 용은 각자 덱에서 나가요.`),
       /* 빠른 시작 (대표님 «다른 게임처럼 방 번호 없이 바로») : 열린 방이 있으면 들어가고, 없으면 만들어 기다린다 */
       button('빠른 시작 · 같이 깨기', () => quick(false, stageNo), { primary: true }),
-      (g.cleared || 0) >= PVP_OPEN ? button('빠른 시작 · 용 대결', () => quick(true, 0), { primary: true }) : '',
+      (g.cleared || 0) >= PVP_OPEN ? button('빠른 시작 · 용 대결', () => quick(true, 0), { primary: true, class: 'green' })   /* 키트 규칙 «한 창에 빨강은 하나» → 둘째는 초록 */ : '',
       el('p.idg-multi-msg.sub', '친구와 방 번호로 만나기'),
       button('같이 깨기 방 만들기', () => make(stageNo)),
       (g.cleared || 0) >= PVP_OPEN ? button(`용 대결 방 만들기 (오늘 보상 ${Math.max(0, PVP_DAY - (g.pvp?.day === new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) ? g.pvp.n : 0))}/${PVP_DAY}판 · 전적 ${g.pvp?.w || 0}승 ${g.pvp?.l || 0}패)`, () => make(0)) : el('p.idg-multi-msg', `용 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 열려요.`),

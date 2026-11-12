@@ -10,40 +10,40 @@ import * as G from '../services/iandragonGame.js';
 import * as Sfx from '../audio/sfx.js';
 import { LEADERS } from '../games/iandragon_game/data/leaders.js';
 import { ECON } from '../games/iandragon_game/data/econ.js';
+import { kitWallet, kitRow, kitPriceBtn, kitBtn, kitSection } from './idgKit.js';   /* UI 키트 (11/12 · docs/IDG_DESIGN_STYLESHEET.md) */
 import { LAB, TREASURE, treasureLv, LAST_STAGE } from '../games/iandragon_game/render/battleSetup.js';
 
 const AI = '/assets/iandragon_game/ai/';
-const fmt = (n) => n.toLocaleString('en-US');
 const eff = (x, n, flat) => (flat || !x.pct && !x.per.toString().startsWith('0') ? `+${x.per * n}` : `+${Math.round(x.per * n * 100)}%`);
 
 export function showLab(onChange) {
   Sfx.play('sfx_menu_select');
-  const body = el('div.idg-lab-body');
+  const body = el('div.idg-lab-body'), wallet = kitWallet({});   /* «내 보유량» 지갑 판 */
   function draw() {
     const g = G.idg(), worlds = Math.floor(g.cleared / 10), cap = Math.min(ECON.labMax, worlds);
-    const lab = el('div.idg-lab-sec', null, [el('div.idg-codex-h', `연구소 — 코인 ${fmt(g.coins)} · 최대 Lv${cap} (깬 월드 수)`)]);
+    wallet.update({ coins: g.coins, gems: g.gems });
+    const lab = el('div.idg-lab-sec', null, [kitSection(`연구소 — 최대 Lv${cap} (깬 월드 수)`)]);
     LAB.forEach((L, i) => {
       const n = g.lab[i] || 0, cost = ECON.labCost(n), max = n >= cap;
-      lab.appendChild(el('div.idg-nest-row', null, [
-        el('div.idg-nest-name', null, [el('b', `${L.name} Lv${n}`), el('span', n ? eff(L, n, !L.pct) : '아직 0')]),
-        el('button.idg-nest-up', {
-          type: 'button', disabled: max || g.coins < cost,
-          onclick: () => {
+      lab.appendChild(kitRow({ title: `${L.name} Lv${n}`, sub: n ? eff(L, n, !L.pct) : '아직 0',
+        right: max ? kitBtn({ kind: 'purple', text: cap ? 'MAX' : '월드 1을 깬 뒤', size: 'sm', disabled: true }) : kitPriceBtn({
+          coin: cost, label: '올리기', size: 'sm', poor: g.coins < cost,
+          onClick: () => {
             const cur = G.idg(), now = cur.lab[i] || 0, c = ECON.labCost(now);
             if (cur.coins < c || now >= Math.min(ECON.labMax, Math.floor(cur.cleared / 10))) return;
             const next = cur.lab.slice(); next[i] = now + 1;
             G.saveIdg({ coins: cur.coins - c, lab: next }); Sfx.play('sfx_menu_select'); draw(); onChange?.();
           },
-        }, [max ? (cap ? 'MAX' : '월드 1을 깬 뒤') : `올리기 ${fmt(cost)}`]),
-      ]));
+        }) }));
     });
-    const tre = el('div.idg-lab-sec', null, [el('div.idg-codex-h', '보물 — 월드마다 별 10 · 20 · 30개')]);
+    const tre = el('div.idg-lab-sec', null, [kitSection('보물 — 월드마다 별 10 · 20 · 30개')]);
     for (let w = 1; w <= LAST_STAGE / 10; w++) {
       let st = 0; for (let i = (w - 1) * 10; i < w * 10; i++) st += Number(g.stars[i]) || 0;
       const T = TREASURE[w - 1], n = treasureLv(g.stars, w);
-      tre.appendChild(el('div.idg-nest-row', null, [el('div.idg-nest-name', null, [el('b', null, [`월드 ${w} 보물 `, el('span.idg-tre-steps', null, [10, 20, 30].map((t, i) => el('i' + (i < n ? '.on' : ''), `★${t}`)))]), el('span', `별 ${st}/30 · ${T.name} ${n ? eff(T, n, T.flat) : '+0'}`)])]));
+      tre.appendChild(kitRow({ title: `월드 ${w} 보물`, hi: n >= 3, sub: `별 ${st}/30 · ${T.name} ${n ? eff(T, n, T.flat) : '+0'}`,
+        right: el('span.idg-tre-steps', null, [10, 20, 30].map((t, i) => el('i' + (i < n ? '.on' : ''), null, [el('img', { src: '/assets/iandragon_game/ai/result/star_on.webp', alt: '별' }), String(t)]))) }));   /* ★ 글자 → 별 그림 */
     }
-    const ld = el('div.idg-lab-sec', null, [el('div.idg-codex-h', '리더 (성 위에서 브레스를 뿜어요)')]);
+    const ld = el('div.idg-lab-sec', null, [kitSection('리더 (성 위에서 브레스를 뿜어요)')]);
     const row = el('div.idg-leader-row');
     const pick = (id) => { G.saveIdg({ leader: id }); Sfx.play('sfx_menu_select'); draw(); onChange?.(); };
     row.appendChild(el('button.idg-leader' + (g.leader === 'auto' ? '.on' : ''), { type: 'button', onclick: () => pick('auto') }, [el('b', '자동'), el('span', '월드 추천')]));
@@ -57,7 +57,7 @@ export function showLab(onChange) {
     body.replaceChildren(lab, tre, ld);
   }
   draw();
-  const box = el('div.dialog.idg-lab', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '연구소 · 보물 · 리더'), body, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-lab', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '연구소 · 보물 · 리더'), wallet, body, button('닫기', () => close())]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }

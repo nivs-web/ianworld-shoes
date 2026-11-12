@@ -53,8 +53,8 @@ function showHow() {
   const box = el('div.dialog.idg-how', { onclick: (e) => e.stopPropagation() }, [
     el('div.idg-how-title', S.idgLobbyHow),
     el('ol.idg-how-steps', null, S.idgLobbyHowSteps.map((t) => el('li', t))),
-    button('알겠어요', () => close(), { primary: true }),
-    button('음악 출처', () => { close(); showCredits(); }),
+    /* 아래 고정 줄에 둘 다 (11/12 · 가로에서 «알겠어요» 가 스크롤 아래로 숨던 것) — 확인 = 초록 · 보조 = 보라 */
+    el('div.idg-row.idg-foot2', null, [button('알겠어요', () => close(), { primary: true, class: 'green' }), button('음악 출처', () => { close(); showCredits(); })]),
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
@@ -72,7 +72,7 @@ function showCredits() {
       /* 오케스트라 EDM 편곡 (음향 설정 «EDM») — CC-BY-SA · CC-BY 표기 의무 */
       el('p.idg-credits-h', '오케스트라 EDM 편곡'), el('p', EDM_NOTE), ...EDM_MUST.map((t) => el('p.idg-credits-must', t)), el('p', `곡 : ${EDM_SONGS}`),
     ]),
-    button('닫기', () => close(), { primary: true }),
+    button('닫기', () => close()),   /* 닫기 = 보라 (키트 규칙 · 빨강은 앞으로 가는 행동만) */
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
@@ -91,13 +91,13 @@ function showStages(onPick) {
     name.textContent = `월드 ${w} · ${WORLD_NAMES[w - 1]}`;
     /* 난이도 (운영자 스위치 · 어려움은 이 월드를 다 깨야 열림) */
     const cur = G.idg().diff, hOk = hardOpen(w * 10, g);
-    diffRow.replaceChildren(...(diffOn ? Object.entries(DIFF).map(([k, d]) => el('button.idg-diff-btn' + (cur === k ? '.on' : '') + '.' + k, { type: 'button', disabled: k === 'hard' && !hOk, title: k === 'hard' && !hOk ? '이 월드를 다 깨면 열려요' : '', onclick: () => { G.saveIdg({ diff: k }); draw(); } }, [d.name, ...(k === 'hard' && !hOk ? [el('span.idg-lock', '🔒')] : [])])) : []));
+    diffRow.replaceChildren(...(diffOn ? Object.entries(DIFF).map(([k, d]) => el('button.idg-diff-btn' + (cur === k ? '.on' : '') + '.' + k, { type: 'button', disabled: k === 'hard' && !hOk, title: k === 'hard' && !hOk ? '이 월드를 다 깨면 열려요' : '', onclick: () => { G.saveIdg({ diff: k }); draw(); } }, [d.name, ...(k === 'hard' && !hOk ? [el('img.idg-lock-ico', { src: `${AL}ico_lock.png`, alt: '잠김' })] : [])]   /* 🔒 글자 → 도트 자물쇠 */)) : []));
     diffNote.textContent = diffOn && !hOk ? `어려움(좀비 1.35배 · 붉은 별)은 월드 ${w}의 10판을 모두 깨면 열려요.` : '';   /* 대표님 «어려움은 왜 잠겨 있고 언제 풀리나» */
     const hard = diffOn && cur === 'hard' && hOk;
     grid.replaceChildren(...Array.from({ length: 10 }, (_, k) => {
       const no = (w - 1) * 10 + k + 1, st = Number((hard ? g.hardStars : g.stars)[no - 1]) || 0, locked = no > open;
       return el('button.idg-stage-btn' + (locked ? '.locked' : '') + (k === 9 ? '.boss' : ''), { type: 'button', disabled: locked, onclick: () => { close(); onPick(no); } }, [
-        el('b', `${w}-${k + 1}`), el('span.idg-stage-stars' + (hard ? '.red' : ''), locked ? '🔒' : '★'.repeat(st) + '☆'.repeat(3 - st)),
+        el('b', `${w}-${k + 1}`), el('span.idg-stage-stars' + (hard ? '.red' : ''), { 'data-px': '1' }, locked ? [el('img.idg-lock-ico', { src: `${AL}ico_lock.png`, alt: '잠김' })] : [0, 1, 2].map((i) => el('img.idg-star-ico', { src: `/assets/iandragon_game/ai/result/star_${i < st ? 'on' : 'off'}.webp`, alt: i < st ? '★' : '☆' }))),   /* ★☆ 글자 → 결과 창 별 그림 */
       ]);
     }));
   }
@@ -139,7 +139,7 @@ function showSound() {
   Sfx.play('sfx_menu_select');
   const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
   /* 전체 소리를 다시 켜면 로비 곡도 다시 (끄면 setMuteAll 이 곡을 멈춘다) */
-  const box = el('div.dialog.idg-soundset', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '음향 설정'), soundPanel(mk, ({ mute }) => { if (mute === false) lobbyMusic(); }), button('닫기', () => close(), { primary: true })]);
+  const box = el('div.dialog.idg-soundset', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '음향 설정'), soundPanel(mk, ({ mute }) => { if (mute === false) lobbyMusic(); }), button('닫기', () => close())]);   /* 키트 판 · 닫기 = 보라 */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }
@@ -330,12 +330,12 @@ export default function IanDragonGameLobby(nav) {
           el('div.l2-player', null, [
             face,
             el('div.l2-plate', null, [
-              ttl ? el('div.l2-ttl', { title: ttl.how || '' }, [el('span', ttl.name)]) : null,
+              ttl ? el('button.l2-ttl', { type: 'button', 'aria-label': `칭호 ${ttl.name}`, onclick: () => { Sfx.play('sfx_menu_select'); toast(`칭호 «${ttl.name}» · 얻는 법 : ${ttl.how}`, 2600); } }, [el('i', '칭호'), el('span', ttl.name)]) : null,
               el('div.l2-name', null, [el('span.l2-lv', `Lv.${lv}`), el('span.l2-nick', p.nickname || '???')]),
               el('span.l2-xp', { title: `별 ${stars}개 · 다음 레벨까지 ${5 - (stars % 5)}개` }, [el('i', { style: `width:${Math.round(xp * 100)}%` })]),
             ]),
           ]),
-          el('div.l2-cur', null, [money('coin', `${RES}coin_crown.webp`, g.coins), money('gem', `${UI}icon_gem_v3.png`, g.gems)]),
+          el('div.l2-cur', null, [money('coin', `${L2}coin_round.webp`, g.coins), money('gem', `${UI}icon_gem_v3.png`, g.gems)]),
         ]),
         el('div.l2-logo', null, [el('img', { src: `${AL}title_logo.webp`, alt: '좀비와 드래곤 ZOMBIE & DRAGON', decoding: 'async' })]),
         el('nav.l2-side', null, [
@@ -353,7 +353,7 @@ export default function IanDragonGameLobby(nav) {
         el('div.l2-btns', null, [
           /* 모험시작 = 크고 멋지게 (결과 창 빨간 단추 btn_red3 · 큰 칼 아이콘 · 지나가는 빛줄기 · 살짝 숨쉬기) */
           el('button.l2-btn.red.go', { type: 'button', onclick: () => start() }, [el('img.ico', { src: `${RES}ico_fight.webp`, alt: '', onerror: hideBad }), el('span', S.idgLobbyStart), el('i.l2-shine', { 'aria-hidden': 'true' })]),
-          el('button.l2-btn.green', { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); showNest(() => nav.refresh?.()); } }, [el('img.ico', { src: `${RES}ico_power_n.webp`, alt: '', onerror: hideBad }), el('span', '파워업')]),
+          el('button.l2-btn.green', { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); showNest(() => nav.refresh?.()); } }, [el('span.l2-pico', null, [el('img.ico', { src: `${L2}ico_power_clean.webp`, alt: '', onerror: hideBad })]), el('span', '파워업'), el('i.l2-spark.a', { 'aria-hidden': 'true' }, [el('i')]), el('i.l2-spark.b', { 'aria-hidden': 'true' }, [el('i')])]),
         ]),
         el('nav.l2-bottom', null, [
           stone('stage', '스테이지', () => showStages((n2) => start(n2))),

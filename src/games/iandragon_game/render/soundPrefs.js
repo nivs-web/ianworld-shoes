@@ -10,6 +10,8 @@
 import * as Audio from '../audio/index.js';
 import { isOn } from '../../../services/switches.js';
 import { ORIENTS, orientPref, setOrientPref } from './rot.js';
+import { el } from '../../../screens/ui.js';
+import { kitRow, kitSlider, kitToggle, kitTabs } from '../../../screens/idgKit.js';   /* UI 키트 (11/12) */
 
 /*
  * 배경음악 풍 (대표님 11/11 «클래식 · EDM 중 고르게 · 기본은 클래식 · 관리자 페이지에서 기본 음악을 정하게»)
@@ -42,41 +44,31 @@ export function setMuteAll(on) { try { localStorage.setItem(MUTE_KEY, on ? '1' :
  * 음향 설정 판 (DOM). h = (tag, cls, text) 만드는 함수 · onChange({ mute }) = 전체 끄기가 바뀌면(곡 다시 틀기 등)
  */
 export function soundPanel(h, onChange = () => {}) {
-  const wrap = h('div', 'idg-sound');
+  /* UI 키트로 통일 (11/12 대표님 «설정 토글 · 슬라이더 · 탭까지 전부 같은 모양» · docs/IDG_DESIGN_STYLESHEET.md 8장)
+   *  한 줄 = [이름] ……… [키트 탭 · 슬라이더 · 토글]. 전투 일시정지에서도 쓰므로 판 자체가 .idg-k 뿌리. h 는 옛 호출과 맞추려고 받기만 한다. */
+  void h;
+  const wrap = el('div.idg-sound.idg-k');
+  const row = (title, right, cls = '') => { const r = kitRow({ title, right }); r.classList.add('idg-sound-row2'); if (cls) r.classList.add(cls); return r; };
+  /* 막대 0~100 (놓으면 시험 소리) */
   const slider = (label, kind, test) => {
-    const r = h('div', 'idg-sound-row'), rg = h('input'), val = h('b', 'val');
-    rg.type = 'range'; rg.min = '0'; rg.max = '100'; rg.step = '5';
-    rg.value = String(Math.round(Audio.getVolumes()[kind] * 100)); val.textContent = rg.value;
-    rg.oninput = () => { Audio.setVolume(kind, Number(rg.value) / 100); val.textContent = rg.value; };
-    rg.onchange = () => { if (!isMuted()) test(); };
-    r.append(h('span', 'lb', label), rg, val); return r;
+    const v0 = Math.round(Audio.getVolumes()[kind] * 100), val = el('b.idg-sound-val', String(v0));
+    const sl = kitSlider({ value: v0, min: 0, max: 100, step: 5, label, onInput: (v) => { Audio.setVolume(kind, v / 100); val.textContent = String(v); }, onChange: () => { if (!isMuted()) test(); } });
+    return row(label, [sl, val], 'sl');
   };
-  /* 켜짐 | 꺼짐 두 칸 (대표님 11/11 밤 «클래식 · EDM 처럼») */
-  const toggle = (label, get, set) => {
-    const r = h('div', 'idg-sound-row st'), pk = h('div', 'idg-sound-pick');
-    const bOn = h('button', 'idg-sound-opt', '켜짐'), bOff = h('button', 'idg-sound-opt', '꺼짐'); bOn.type = bOff.type = 'button';
-    const draw = () => { const on = get(); bOn.classList.toggle('on', on); bOff.classList.toggle('on', !on); };
-    bOn.onclick = () => { if (!get()) set(true); draw(); }; bOff.onclick = () => { if (get()) set(false); draw(); };
-    pk.append(bOn, bOff); draw(); r.append(h('span', 'lb', label), pk); return r;
-  };
-  /* 배경음악 풍 고르기 (두 칸 단추) */
-  const styleRow = h('div', 'idg-sound-row st'), pick = h('div', 'idg-sound-pick');
-  const mkPick = (v, label) => { const b = h('button', 'idg-sound-opt', label); b.type = 'button'; b.onclick = () => { setBgmPick(v); drawPick(); onChange({ style: v }); }; return b; };
-  const bO = mkPick('orchestra', '클래식'), bE = mkPick('edm', 'EDM');   /* 대표님 «클래식, EDM 중 고르는 걸로» */
-  const drawPick = () => { const v = bgmPick(); bO.classList.toggle('on', v === 'orchestra'); bE.classList.toggle('on', v === 'edm'); };
-  pick.append(bO, bE); drawPick(); styleRow.append(h('span', 'lb', '배경음악'), pick);
+  /* 켜짐 / 꺼짐 = 키트 토글 */
+  const toggle = (label, get, set) => row(label, kitToggle({ on: get(), label, onChange: (on) => set(on) }));
+  /* 배경음악 풍 (대표님 «클래식, EDM 중 고르는 걸로») */
+  const styleTabs = kitTabs({ label: '배경음악', tabs: [{ id: 'orchestra', label: '클래식' }, { id: 'edm', label: 'EDM' }], value: bgmPick(), onPick: (v) => { setBgmPick(v); onChange({ style: v }); } });
   /* 화면 방향 (대표님 11/11 «가로 고정 · 세로 고정 · 자동 회전 · 기본 자동») */
-  const orRow = h('div', 'idg-sound-row st'), orPick = h('div', 'idg-sound-pick three');
-  const orBtns = ORIENTS.map(({ v, label }) => { const b = h('button', 'idg-sound-opt', label); b.type = 'button'; b.onclick = () => { setOrientPref(v); drawOr(); }; return [v, b]; });
-  const drawOr = () => { const cur = orientPref(); for (const [v, b] of orBtns) b.classList.toggle('on', v === cur); };
-  orPick.append(...orBtns.map(([, b]) => b)); drawOr(); orRow.append(h('span', 'lb', '화면 방향'), orPick);
+  const orTabs = kitTabs({ label: '화면 방향', tabs: ORIENTS.map(({ v, label }) => ({ id: v, label })), value: orientPref(), onPick: (v) => setOrientPref(v) });
   /* 목소리 말 많기 0~5 (겜팀장 VOICE_LEVELS · 대표님 «말 많기 6단계») */
-  const vlRow = h('div', 'idg-sound-row st vl'), vlPick = h('div', 'idg-sound-pick six'), vlDesc = h('p', 'idg-sound-desc');
-  const vlBtns = Audio.VOICE_LEVELS.map(({ n, name, desc }) => { const b = h('button', 'idg-sound-opt', String(n)); b.type = 'button'; b.title = name; b.onclick = () => { Audio.setVoiceLevel(n); drawVl(); if (n > 0 && !isMuted()) Audio.voice('name/kkomul'); }; return [n, b, name, desc]; });
-  const drawVl = () => { const cur = Audio.getVoiceLevel(); for (const [n, b, name, desc] of vlBtns) { b.classList.toggle('on', n === cur); if (n === cur) vlDesc.textContent = `${name} — ${desc}`; } };
-  vlPick.append(...vlBtns.map(([, b]) => b)); drawVl(); vlRow.append(h('span', 'lb', '말 많기'), vlPick);
+  const vlDesc = el('p.idg-sound-desc.idg-k-t4');
+  const descOf = (n) => { const L = Audio.VOICE_LEVELS.find((x) => x.n === n); vlDesc.textContent = L ? `${L.name} — ${L.desc}` : ''; };
+  const vlTabs = kitTabs({ label: '말 많기', tabs: Audio.VOICE_LEVELS.map(({ n }) => ({ id: String(n), label: String(n) })), value: String(Audio.getVoiceLevel()),
+    onPick: (id) => { const n = Number(id); Audio.setVoiceLevel(n); descOf(n); if (n > 0 && !isMuted()) Audio.voice('name/kkomul'); } });
+  descOf(Audio.getVoiceLevel());
   wrap.append(
-    styleRow, orRow, vlRow, vlDesc,
+    row('배경음악', styleTabs, 'pick'), row('화면 방향', orTabs, 'pick'), row('말 많기', vlTabs, 'pick'), vlDesc,
     slider('음악 크기', 'music', () => {}),
     slider('효과음', 'sfx', () => Audio.play('star')),
     slider('목소리', 'voice', () => Audio.voice('name/kkomul')),
