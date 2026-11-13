@@ -67,9 +67,9 @@ export function powerPage(h, o) {
   /** «파워업» 로고 (3차 · 4차 대표님) : 금색 굵은 «파워업» 글씨만 · 1px 도트 외곽선 — 리본 제목 대신 */
   const logo = () => { const lg = h('div', 'idg-pp-logo'); lg.setAttribute('role', 'heading'); lg.setAttribute('aria-level', '2'); lg.append(h('b', null, '파워업')); return lg; };   /* 4차 : 화살표 빼고 글씨만 */
   /** 고정 안내 2줄 (3차 → 4차 문구 «카드를 슬롯에 넣고 빼세요» · «카드 순서를 바꿀 수 있어요») */
-  const guide = () => { const gd = h('div', 'idg-pp-guide'); const ln = (ico, t) => { const p = h('p'); const i = h('i', 'gi'); i.innerHTML = ico; p.append(i, h('span', null, t)); return p; }; gd.append(ln(ICO_INOUT, '카드를 슬롯에 넣고 빼세요'), ln(ICO_ORDER, '카드 순서를 바꿀 수 있어요')); return gd; };   /* 4차 문구 · 줄 앞 도트 아이콘 */
+  const guide = () => { const gd = h('div', 'idg-pp-guide'); const ln = (ico, t) => { const p = h('p'); const i = h('i', 'gi'); i.innerHTML = ico; p.append(i, h('span', null, t)); return p; }; gd.append(ln(ICO_INOUT, '카드를 출전덱에 넣고 빼세요'), ln(ICO_ORDER, '카드 순서를 바꿀 수 있어요')); return gd; };   /* 4차 문구 · 줄 앞 도트 아이콘 */
   /** 가로 안내 : 10번 칸 옆 빈 2칸 자리에 들어가는 글씨만 (11/13 대표님 · 그림 없음 · 굵게 아님 · 종이 판 위) */
-  const guideCell = () => { const gd = h('div', 'idg-pp-guide cell'); gd.append(h('p', null, '카드를 슬롯에 넣고 빼세요'), h('p', null, '순서도 바꿀 수 있어요')); return gd; };
+  const guideCell = () => { const gd = h('div', 'idg-pp-guide cell'); gd.append(h('p', null, '카드를 출전덱에 넣고 빼세요'), h('p', null, '순서도 바꿀 수 있어요')); return gd; };
   /** «나가기» = 로비로 (결과 창 «나가기» 와 같은 동작 · 전투 판 사이만 o.exit) */
   const exitBtn = (extra = '') => { const b = h('button', 'idg-btn idg-pp-exit' + extra); b.type = 'button'; const ic = h('img', 'ico'); ic.src = `${AI}result/ico_exit.svg`; ic.alt = ''; ic.draggable = false; b.append(ic, h('span', 'lb', '나가기')); b.onclick = guard(() => o.exit()); return b; };
   const lvLine = (lv, exp, cost) => { const sp = h('span', 'lv'); const c = h('span', 'cost'), im = h('img'); im.src = EMBER; im.alt = '불씨'; im.draggable = false; c.append('불씨 ', im, h('b', null, String(cost))); sp.append(h('span', 'l1', `Lv ${lv}${exp > lv ? ` (권장 ${exp})` : ''}`), c); return sp; };
@@ -212,7 +212,7 @@ export function powerPage(h, o) {
       const plate = (a, b) => { const p = h('div', 'idg-pp-plate'); p.append(h('b', null, a), h('span', null, `< ${b} >`)); return p; };
       const sScroll = h('div', 'idg-pp-sbody'); sScroll.append(slots);
       slots.append(guideCell());   /* 10번 칸 옆 빈 2칸 */
-      const sCol = h('div', 'idg-pp-col slots'); const sPlate = plate('출전 카드', `${deck.length}/${un.deckCap}`); sPlate.classList.add('has-clear'); sPlate.append(clearBtn);   /* 비우기 자리를 내려고 «< 출전 8/10 >» → «< 8/10 >» */
+      const sCol = h('div', 'idg-pp-col slots'); const sPlate = h('div', 'idg-pp-plate has-clear deckp'); sPlate.append(h('b', null, `출전덱 (${deck.length}/${un.deckCap})`), clearBtn);   /* 대표님 11/13 : 이 칸 이름 = «출전덱» · 흰 글씨 가운데 · 오른쪽 비우기 */   /* 비우기 자리를 내려고 «< 출전 8/10 >» → «< 8/10 >» */
       sCol.append(sPlate, sScroll, h('i', 'idg-dlg-more'), hint); if (limit) sCol.append(limit);
       if (deck.length < need) sCol.firstChild.classList.add('short');
       body.append(list);
@@ -244,8 +244,7 @@ export function powerPage(h, o) {
       box.classList.toggle('more-host', false);
     } else {
       if (o.buttons.length) { row = h('div', 'idg-row idg-pp-row'); for (const [k, bt] of o.buttons.entries()) row.appendChild(o.exit && k === closeIdx ? exitBtn() : mkBtn(bt)); }   /* 3차 : 전투 판 사이 세로도 «돌아가기» → «나가기»(로비) */   /* 세로 = 예전 단추 줄 (로비 «닫기» · 전투 «전투 개시!/다시하기» + «돌아가기») */
-      const sHead = h('div', 'idg-pp-slots-head'); sHead.append(clearBtn);   /* 세로 : 출전 칸 바로 위 오른쪽 */
-      const side = h('div', 'idg-pp-side'); side.append(lead, sHead, slots, hint, guide()); if (limit) side.append(limit);
+      const side = h('div', 'idg-pp-side'); side.append(lead, slots, hint, guide());   /* 세로 = 비우기 없음 (대표님 11/13 · 정렬 단추도 없으니) */ if (limit) side.append(limit);
       /* 고정 틀 : 머리는 위에 고정 · 가운데만 스크롤 · (전투 안) 앞으로 가는 단추 한 줄은 아래에 고정
        * 가운데 칸은 겉 상자(.idg-pp-bodyw) 안에서 스크롤 → 금 도트 줄(겉 상자 위 · 아래 테)은 스크롤 칸 밖이라 내용이 줄을 넘어 그려지지 않는다 (11/12 대표님) */
       const bodyW = h('div', 'idg-pp-bodyw');

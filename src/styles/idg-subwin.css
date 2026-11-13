@@ -788,3 +788,6 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp.pp2.land .idg-pp-plate .idg-pp-clear:active { transform: translateY(calc(-50% + 1px)); }
 .idg-pp-slots-head { display: flex; justify-content: flex-end; margin: 0 0 4px; }
 .idg-pp.pp2.land .idg-pp-plate.has-clear { padding-right: 62px; padding-left: 8px; justify-content: flex-start; }
+/* 출전덱 판 (11/13 대표님) : «출전덱 (8/10)» 흰 글씨 가운데 · 오른쪽 비우기 */
+.idg-pp.pp2.land .idg-pp-plate.has-clear.deckp { justify-content: center; padding-left: 62px; padding-right: 62px; }
+.idg-pp-plate.deckp > b { color: #fff; white-space: nowrap; }
