@@ -25,7 +25,7 @@
   --k-gem: #f0b8ff;        /* 젬 숫자 */
   --k-ink: #4a2c12;        /* 종이 판 위 글씨 (짙은 갈색) */
   --k-ink2: #7a4f22;       /* 종이 판 위 보조 글씨 */
-  --k-font: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif;
+  --k-font: 'Galmuri11', 'Neo둥근모', sans-serif;
   /* 1px 8방향 딱딱한 외곽선 (작은 글씨) · 2px (큰 글씨 · 단추) */
   --k-o1: 1px 0 var(--k-o), -1px 0 var(--k-o), 0 1px var(--k-o), 0 -1px var(--k-o), 1px 1px var(--k-o), -1px 1px var(--k-o), 1px -1px var(--k-o), -1px -1px var(--k-o);
   --k-o2: 2px 0 var(--k-o), -2px 0 var(--k-o), 0 2px var(--k-o), 0 -2px var(--k-o), 2px 2px var(--k-o), -2px 2px var(--k-o), 2px -2px var(--k-o), -2px -2px var(--k-o);

@@ -438,7 +438,6 @@ export default function IanDragonGameLobby(nav) {
       document.documentElement.classList.add('idg-lobby-on');
       lockLobby(); setTimeout(lockLobby, 0);   /* 로비화면 방향으로 잠금 (전투에서 돌아올 때 전투 화면이 잠금을 푼 뒤에도 다시) */
       /* 결과 창과 같은 글꼴 (Pretendard Variable · 전투 HUD 와 같은 링크 id 라 한 번만 붙는다) */
-      if (!document.getElementById('idg-res-font')) document.head.appendChild(Object.assign(document.createElement('link'), { id: 'idg-res-font', rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css' }));
       /* 레벨 (보이기만) : 별 5개마다 1 레벨 · 막대 = 다음 레벨까지 */
       /* 레벨 = 보통 + 붉은 + 보라 별 · 5개마다 1 · 상한 999 (§C-2) — 하늘 폭죽 수는 예전처럼 보통 별로 */
       const buildStage = (v, gg) => (v === 'castle' ? castleBox(gg, () => { Sfx.play('sfx_menu_select'); showLook({ idg: G.idg(), save: G.saveIdg, tab: 'castle', onClose: () => nav.refresh?.() }); }) : myDragon('button.l2-dragon', gg, 'l2-leader', { fit: true, W: 420, H: 330, pad: 3 }));

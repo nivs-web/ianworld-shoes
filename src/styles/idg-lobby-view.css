@@ -1,7 +1,7 @@
 /* 로비 드래곤 ↔ 드래곤캐슬 전환 (겜보조 2 · 11/13) — 단추 · 먼지 · 통통. 글씨 외곽선 = 1px 8방향 도트만 · 빛번짐 없음 */
 .screen.idg-lobby2 > .l2-switch { position: absolute; z-index: 2; left: 50%; top: calc(var(--sty) + var(--foot) * var(--sc) + 10 * var(--sc)); transform: translateX(-50%);
   display: inline-flex; align-items: center; gap: .3em; margin: 0; padding: .16em .55em .16em .38em; box-sizing: border-box; white-space: nowrap; cursor: pointer;
-  font: 900 calc(var(--fs, 28px) * .21) / 1 'Pretendard Variable', Pretendard, sans-serif; color: #fff7d6; text-shadow: var(--t1);
+  font: 900 calc(var(--fs, 28px) * .21) / 1 'Galmuri11', sans-serif; color: #fff7d6; text-shadow: var(--t1);
   background: rgba(20, 10, 40, .34); border: 1px solid rgba(255, 233, 160, .5); border-radius: .4em; box-shadow: none; }   /* 11/13 대표님 : 더 작고 · 더 투명하고 · 단순하게 */
 .screen.idg-lobby2 > .l2-switch:active { transform: translateX(-50%) translateY(1px); background: rgba(20, 10, 40, .6); }
 /* 도트 회전 화살표 (두 화살표가 원을 그림) */

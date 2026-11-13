@@ -24,7 +24,7 @@ import { drawKid, kidHands, poseHands, ropeGeom, drawRope, drawHandles, rect, rb
 
 const SHORT_SIDE = 240;   // 2026-11-07 2차 192 → 240: 대표님 «도트가 너무 도트스러워 — 좀 줄여도»
 const NEO = "'Galmuri11', 'Neo둥근모', 'Courier New', monospace";   // 갈무리11 굵게(OFL) — 12px 격자 도트 글꼴
-const PRET = "'PretendardV', 'Pretendard', 'Arial Black', sans-serif";
+const PRET = "'Galmuri11', 'Arial Black', sans-serif";
 const KID_W = 80, KID_H = 76, KID_FOOT = 72;   // 선수 1배 캔버스 (줄 고리까지 들어가는 크기)
 const GRADE_COL = { perfect: '#ffd23f', great: '#6fe3ff', good: '#9be36f', miss: '#ff6b6b', empty: '#ff6a6a' };
 const GRADE_TXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS', empty: '콤보 끊김' };
@@ -1767,7 +1767,7 @@ export function _debug() {
 
 const CSS = `
 @font-face { font-family: 'Galmuri11'; src: url('https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11-Bold.woff2') format('woff2'); font-display: swap; }
-@font-face { font-family: 'PretendardV'; src: url('https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2'); font-weight: 45 920; font-display: swap; }
+/* 글꼴 = 갈무리11 굵게 (전역 pixel-ui.css · 11/14 대표님 통일) */
 .rb-host { position: relative; width: 100%; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #0a0618; }
 .rb-canvas { display: block; touch-action: none; image-rendering: pixelated; }
 .rb-ov { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(8,4,20,0.66); padding: 14px; overflow-y: auto; }
@@ -1775,7 +1775,7 @@ const CSS = `
   box-shadow: 0 -3px 0 0 #ffdd8e, 0 3px 0 0 #ffdd8e, -3px 0 0 0 #ffdd8e, 3px 0 0 0 #ffdd8e, 0 -6px 0 0 #600f09, 0 6px 0 0 #600f09, -6px 0 0 0 #600f09, 6px 0 0 0 #600f09, 0 10px 0 0 rgba(0,0,0,0.45); }
 .rb-title { text-align: center; font-size: 24px; color: #ffd23f; text-shadow: 2px 2px 0 #1b0f0a; }
 .rb-top { display: flex; align-items: center; gap: 12px; justify-content: center; }
-.rb-rank { font-family: 'PretendardV', sans-serif; font-weight: 900; font-size: 64px; line-height: 1; color: #ffd23f; text-shadow: 3px 3px 0 #600f09, -2px -2px 0 #1b0f0a; animation: rbRank .5s steps(5) both; }
+.rb-rank { font-family: 'Galmuri11', sans-serif; font-weight: 900; font-size: 64px; line-height: 1; color: #ffd23f; text-shadow: 3px 3px 0 #600f09, -2px -2px 0 #1b0f0a; animation: rbRank .5s steps(5) both; }
 .rb-rank.rS { color: #ffe14d; } .rb-rank.rA { color: #7cf09a; } .rb-rank.rB { color: #6fe3ff; } .rb-rank.rC { color: #c9b8ff; } .rb-rank.rD { color: #ff9a9a; }
 @keyframes rbRank { 0% { transform: scale(2.4); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
 .rb-top-r { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
@@ -1783,7 +1783,7 @@ const CSS = `
 .rb-star { width: 33px; height: 33px; image-rendering: pixelated; }
 .rb-star.on { animation: rbStar .4s steps(4) both; }
 @keyframes rbStar { 0% { transform: scale(0.25); opacity: 0 } 60% { transform: scale(1.3) } 100% { transform: scale(1) } }
-.rb-score { font-family: 'PretendardV', sans-serif; font-weight: 900; font-size: 26px; color: #fff; text-shadow: 2px 2px 0 #1b0f0a; }
+.rb-score { font-family: 'Galmuri11', sans-serif; font-weight: 900; font-size: 26px; color: #fff; text-shadow: 2px 2px 0 #1b0f0a; }
 .rb-acc { font-size: 16px; color: #c9b8ff; }
 .rb-best { text-align: center; color: #ff8fd1; font-size: 16px; animation: rbBlink 0.5s steps(2) infinite; }
 @keyframes rbBlink { 50% { opacity: 0.35 } }

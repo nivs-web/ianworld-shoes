@@ -30,7 +30,7 @@ html.idg-wide body { width: 100%; }
 /* ── 세로 로비 ── */
 .idg-logo { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 18px 0 8px; }
 .idg-logo-main {
-  font-family: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; font-weight: 900; font-size: 40px; line-height: 1; letter-spacing: 1px;
+  font-family: 'Galmuri11', 'Neo둥근모', sans-serif; font-weight: 900; font-size: 40px; line-height: 1; letter-spacing: 1px;
   background: linear-gradient(180deg, #FFE27A 0%, #FF9A3C 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 3px 0 #3a1a00);
 }
@@ -1401,7 +1401,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-hud .idg-panel-over:has(.idg-res) { container-type: size; padding: 0; }
 .idg-hud .idg-card.idg-res { --o: #2a1238; --bg: #2a1f45; --gold: #d9a441; position: relative; display: flex; flex-direction: column; box-sizing: border-box; min-width: 0; max-width: none; max-height: none; padding: 0; overflow: hidden;
   border-width: 30px 28px; border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / 30px 28px stretch; background: var(--bg); background-clip: padding-box;
-  font-family: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; color: #fff; word-spacing: normal; }
+  font-family: 'Galmuri11', 'Neo둥근모', sans-serif; color: #fff; word-spacing: normal; }
 .idg-hud .idg-card.idg-res * { word-spacing: normal; }
 .idg-hud .idg-card.idg-res.lose { --bg: #222040; }
 /* 장면 : 그라데이션 없음 · 아래 끝 금 줄(보상 판 금테와 같은 색) */
@@ -1565,13 +1565,13 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 @container (max-aspect-ratio: 1/1) { .idg-res.tight .idg-res-scene { aspect-ratio: 1 / .88; } .idg-res.tight.tighter .idg-res-scene { aspect-ratio: 1 / .78; } }
 
 /* ── 전투 중 띠 · 안내 (11/13 창 패턴 §0) : 종이 띠 판 + Pretendard 굵게 + 딱딱한 외곽선 · 흐린 그림자 · 글로우 없음 ── */
-.idg-hud .idg-tip, .idg-hud .idg-net, .idg-hud .idg-mate, .idg-hud .idg-talk { --o: #2a1238; font-family: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 800; color: #ffe9c0; background: none; border: solid transparent; border-width: 8px 16px; border-image: url(/assets/iandragon_game/ai/result/plate_tab.webp) 40 60 fill / 8px 16px stretch; border-radius: 0; box-shadow: none; padding: 3px 4px 1px;
+.idg-hud .idg-tip, .idg-hud .idg-net, .idg-hud .idg-mate, .idg-hud .idg-talk { --o: #2a1238; font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 800; color: #ffe9c0; background: none; border: solid transparent; border-width: 8px 16px; border-image: url(/assets/iandragon_game/ai/result/plate_tab.webp) 40 60 fill / 8px 16px stretch; border-radius: 0; box-shadow: none; padding: 3px 4px 1px;
   text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
 .idg-hud .idg-net { color: #bfe6ff; } .idg-hud .idg-mate.foe { color: #ffc4b8; } .idg-hud .idg-talk.mine { color: #ffe27a; }
-.idg-hud .idg-warn { font-family: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 900; font-size: 26px; letter-spacing: 2px; color: #ffdf7a; --o: #5a0a0a; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); border-top: 3px solid #d9a441; border-bottom: 3px solid #d9a441; }
+.idg-hud .idg-warn { font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 900; font-size: 26px; letter-spacing: 2px; color: #ffdf7a; --o: #5a0a0a; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); border-top: 3px solid #d9a441; border-bottom: 3px solid #d9a441; }
 .idg-hud .idg-bossname { background: #3a0f22; border-top: 3px solid #d9a441; border-bottom: 3px solid #d9a441; }
-.idg-hud .idg-bossname b { font-family: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 900; letter-spacing: 1px; --o: #2a1238; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
-.idg-hud .idg-boss { font-family: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 800; }
+.idg-hud .idg-bossname b { font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 900; letter-spacing: 1px; --o: #2a1238; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+.idg-hud .idg-boss { font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 800; }
 .idg-res-body::-webkit-scrollbar { display: none; }
 /* 일시정지 오른쪽 위 X (키트 X · PAUSE_X 켰을 때만) : 카드가 스크롤돼도 붙어 있게 sticky 줄 안에 */
 .idg-pause-xw { position: sticky; top: 0; z-index: 6; height: 0; display: flex; justify-content: flex-end; pointer-events: none; }
@@ -1599,7 +1599,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 
 /* ════ 11/13 대표님 (b3ui) — 시작 창 별 알약 · 결과 창 전적 글씨 · 도움말 한 줄 ════ */
 /* ① 판 시작 창(원래 창) 안의 별 알약 : 결과 창 · 새 시작 창과 같은 부품(.idg-res-bar · plate_reward) · 창 가운데 · 칸마다 가운데 */
-.idg-card .idg-sp { --o: #2a1238; box-sizing: border-box; width: min(280px, 100%); margin: 8px auto 6px; align-self: center; font: 800 12px/1 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; color: #fff; word-spacing: normal; text-align: center; }
+.idg-card .idg-sp { --o: #2a1238; box-sizing: border-box; width: min(280px, 100%); margin: 8px auto 6px; align-self: center; font: 800 12px/1 'Galmuri11', 'Neo둥근모', sans-serif; color: #fff; word-spacing: normal; text-align: center; }
 .idg-card .idg-sp .cell { justify-content: center; text-align: center; gap: .25em; }
 .idg-card .idg-sp .ss img { height: .82em; margin-left: -.2em; } .idg-card .idg-sp .ss img:first-child { margin-left: 0; }   /* 별 3개 + 세 자리 초가 칸 칸막이에 닿지 않게 */
 /* ② 내 전적 · 큰 글씨 : 1px · 2px 8방향 딱딱한 외곽선 + 아래쪽 딱딱한 그림자(0 흐림) · 바닥에서 5px 위로 */
@@ -1631,11 +1631,11 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-card .idg-sp .ss img + img { margin-left: -1px; }
 .idg-card .idg-sp .ss img, .idg-card .idg-sp .ss img:first-child { height: 1.28em; }
 .idg-card .idg-sp .cell:nth-child(3) { padding-left: .45em; }
-.idg-cons.auto { font-family: 'Pretendard Variable', Pretendard, sans-serif; font-weight: 800; letter-spacing: 0; }
+.idg-cons.auto { font-family: 'Galmuri11', sans-serif; font-weight: 800; letter-spacing: 0; }
 /* 시작 창 별 알약 3차 (11/13 대표님) : 칸막이 금선 없는 판 · ★★★ 30초 → ★★ 40초 → ★ 깨기 · 초 앞에 결과 창 초시계 · 세 묶음을 판 안에 고르게(양 끝 장식 피해서) */
 .idg-card .idg-sp2 { --o: #1a0c24; box-sizing: border-box; display: flex; align-items: center; justify-content: space-evenly; width: 400px; max-width: calc(100vw - 96px); aspect-ratio: 1200 / 167; margin: 10px auto 8px; padding: 0 7.5% 1px; align-self: center;
   background: url(/assets/iandragon_game/ai/result/plate_pill.webp) center / 100% 100% no-repeat; image-rendering: pixelated;
-  font: 800 15px/1 'Pretendard Variable', Pretendard, sans-serif; color: #fff; word-spacing: normal; letter-spacing: 0; }
+  font: 800 15px/1 'Galmuri11', sans-serif; color: #fff; word-spacing: normal; letter-spacing: 0; }
 .idg-card .idg-sp2 .cell { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .idg-card .idg-sp2 .ss { display: inline-flex; align-items: center; }
 .idg-card .idg-sp2 .ss img { height: 19px; width: auto; image-rendering: auto; filter: drop-shadow(0 1px 0 #0c0614); }
@@ -1672,7 +1672,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 @container (min-aspect-ratio: 1/1) and (max-height: 430px) { .idg-res-scene { flex-basis: 50cqh; } .idg-res-body { padding-bottom: 4px; } }
 /* 일시정지 창 탭 (11/14 대표님) : 음향 · 화면 · 키보드 — 기본 음향 · 키보드 표는 창 안에서 스크롤 */
 .idg-pause-tabs { display: flex; gap: 6px; justify-content: center; margin: 2px 0 8px; }
-.idg-pause-tab { flex: 1 1 0; max-width: 120px; padding: 6px 4px 7px; border: 2px solid #1c0b28; border-radius: 6px; background: #3a2a5e; box-shadow: inset 0 2px 0 #5a4690; color: #d8ccf4; font: 800 14px/1 'Pretendard Variable', Pretendard, sans-serif; cursor: pointer; }
+.idg-pause-tab { flex: 1 1 0; max-width: 120px; padding: 6px 4px 7px; border: 2px solid #1c0b28; border-radius: 6px; background: #3a2a5e; box-shadow: inset 0 2px 0 #5a4690; color: #d8ccf4; font: 800 14px/1 'Galmuri11', sans-serif; cursor: pointer; }
 .idg-pause-tab.on { background: #7b52c8; box-shadow: inset 0 2px 0 #a382e6, inset 0 -3px 0 #4f3290; color: #fff; text-shadow: 1px 0 #1c0b28, -1px 0 #1c0b28, 0 1px #1c0b28, 0 -1px #1c0b28; }
 .idg-pause-body { max-height: min(46vh, 340px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; text-align: left; }
 .idg-pause-body .idg-k-row, .idg-pause-body .kit-row { font-size: 13px; }

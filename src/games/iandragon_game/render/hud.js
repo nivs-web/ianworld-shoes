@@ -202,7 +202,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
    *  단추 · 판 = 대표님 시안을 글자 없이 다시 그린 제미나이 부품(btn_red · btn_green · btn_purple · plate_reward · plate_new)
    *  아이콘 = 칼 · 화살표 하나(제미나이) · 다시하기 · 나가기(흰 SVG) · 코인(새 금화) · 젬(우리 icon_gem_v3) · 글씨 = 굵은 글꼴 + 단단한 외곽선 */
   const RES = '/assets/iandragon_game/ai/result/';
-  const fontOnce = () => { if (document.getElementById('idg-res-font')) return; const l = document.createElement('link'); l.id = 'idg-res-font'; l.rel = 'stylesheet'; l.href = 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css'; document.head.appendChild(l); };
+  const fontOnce = () => {};   /* 글꼴 = 갈무리11 굵게 (전역 pixel-ui.css · 11/14 대표님) — 따로 받을 것 없음 */
   fontOnce();   /* 전투 중 띠 · 안내 · 현판도 같은 글꼴(Pretendard) */
   function resultCard(kind, info) {
     fontOnce();

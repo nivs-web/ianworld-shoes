@@ -95,7 +95,7 @@ export function lvBar(L) {
 }
 
 const CSS = `
-.rb-cal-pad { display: block; width: 100%; height: 120px; font-family: 'PretendardV', 'Arial Black', sans-serif; font-weight: 900; font-size: 44px; color: #fff; text-shadow: 3px 3px 0 #1b0f0a; background: #ff7a1a; border: 0; cursor: pointer; box-shadow: 0 -3px 0 0 #600f09, 0 3px 0 0 #600f09, -3px 0 0 0 #600f09, 3px 0 0 0 #600f09, inset 0 4px 0 0 #ffd08a, inset 0 -5px 0 0 #8a2a00; }
+.rb-cal-pad { display: block; width: 100%; height: 120px; font-family: 'Galmuri11', 'Arial Black', sans-serif; font-weight: 900; font-size: 44px; color: #fff; text-shadow: 3px 3px 0 #1b0f0a; background: #ff7a1a; border: 0; cursor: pointer; box-shadow: 0 -3px 0 0 #600f09, 0 3px 0 0 #600f09, -3px 0 0 0 #600f09, 3px 0 0 0 #600f09, inset 0 4px 0 0 #ffd08a, inset 0 -5px 0 0 #8a2a00; }
 .rb-cal-pad:active { transform: translateY(3px); background: #d9561a; }
 .dialog.jr-guide { max-width: 320px; gap: 10px; text-align: left; }
 .jr-guide-tag { align-self: center; padding: 2px 10px; font-size: 13px; color: #fff; background: #4a2380; }

@@ -3,7 +3,7 @@
  *  이 파일 = ① 재화 아이콘(money.js .idg-cash) ② 전투 안 파워업용 고급 단추(.idg-buy · 키트 가격 단추와 같은 그림)
  *            ③ 키트를 «옛 창»(.dialog.idg-* — 로비 파일 안 창 포함)에 입히기 : 글꼴 · 단추 · 고르는 칸 · 안내 종이 · 스크롤 표시
  *  글씨 외곽선은 1px 8방향만 (흐린 그림자 · 글로우 금지) · iandragon-game.css 끝은 다른 사람이 고치므로 이 파일에 따로 */
-:root { --sw-o: #1a0c38; --sw-font: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; }
+:root { --sw-o: #1a0c38; --sw-font: 'Galmuri11', 'Neo둥근모', sans-serif; }
 
 /* ── ① 재화 (아이콘 + 숫자) ── */
 .idg-cash { display: inline-flex; align-items: center; gap: .28em; vertical-align: middle; white-space: nowrap; line-height: 1; word-spacing: normal; }

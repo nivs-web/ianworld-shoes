@@ -1,7 +1,7 @@
 /* 프로필 창 (겜보조 2 · 11/13) — 머리 = 로비 프로필 판(.l2-*)을 그대로 · 테두리 · 칭호 격자. 카드는 꾸미기 창과 같은 .idg-lg */
 .dialog.idg-profile .idg-pf-info {
   --o: #2a1238; --t1: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); --t2: var(--t1); --tl: var(--t1);
-  --fs: 84px; display: flex; justify-content: center; padding: .1em .3em .6em; color: #fff; font-family: 'Pretendard Variable', Pretendard, sans-serif; font-weight: 900;
+  --fs: 84px; display: flex; justify-content: center; padding: .1em .3em .6em; color: #fff; font-family: 'Galmuri11', sans-serif; font-weight: 900;
 }
 .dialog.idg-profile .idg-pf-info:empty { display: none; }
 .idg-pf-info .l2-ttl { cursor: default; }

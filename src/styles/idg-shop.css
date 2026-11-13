@@ -127,3 +127,6 @@
 .dialog.idg-shop > .idg-how-title { width: calc(100% - 88px); min-width: 0; box-sizing: border-box; }
 .dialog.idg-shop > .idg-how-title > .idg-k-close { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); font-size: 15px; z-index: 6; }
 .dialog.idg-shop > .idg-how-title > .idg-k-close:active { transform: translateY(calc(-50% + 1px)); }
+/* 갈무리11 (11/14) : 글자 폭이 넓어 작은 탭 «대장 드래곤 · 브레스 강화» 가 잘리던 것 — 작은 탭 글씨 한 단계 작게 · 자간 좁게 · 좌우 여백 줄임 */
+.idg-shop-sub .idg-k-tab { font-size: .82em; letter-spacing: -.04em; padding-left: 2px; padding-right: 2px; white-space: nowrap; overflow: visible; }
+.idg-shop-sub .idg-k-tab { font-size: .74em; letter-spacing: -.05em; }
