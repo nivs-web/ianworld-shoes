@@ -182,7 +182,8 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
     if (big === 'deal') {
       setInfo(false);
       const day = todayKst();
-      help.replaceChildren(kitPaper([`오늘(${day})의 특가 — 꾸미기 3개가 `, el('b', '30% 싸요'), '.', el('small', '한국 시간 자정에 바뀌어요.')]));
+      const [, mm, dd] = day.split('-');   // 2026-11-13 → «11월 13일» (쉬운 날짜)
+      help.replaceChildren(kitPaper([`오늘의 특가 · ${Number(mm)}월 ${Number(dd)}일 — 꾸미기 3개가 `, el('b', '30% 싸요'), '.', el('small', '한국 시간 자정에 바뀌어요.')]));
       content.classList.add('is-grid');
       return place(dealsOf(day, cur).map((it) => card(it, true)));
     }
@@ -199,7 +200,7 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
           Sfx.play('sfx_purchase'); draw(false);
         };
         const poor = !can && n < CONS_MAX;
-        return kitRow({ title: `${c.name} (가진 수 ${n})`, sub: c.desc,
+        return kitRow({ title: c.name, sub: el('span', null, [c.desc, el('small', { style: 'flex-basis:100%' }, `가진 수 ${n}`)]),   /* «(가진 수 n)» 은 제목에 붙이면 두 줄로 접힌다 → 작은 글씨 다음 줄 (span 이 flex wrap 이라 flex-basis 100% 로 줄바꿈) */
           right: n >= CONS_MAX ? kitBtn({ kind: 'purple', text: '가득 찼어요', size: 'sm', disabled: true })
             : el(`button.idg-k-btn.price.green.sm${poor ? '.poor' : ''}`, { type: 'button', disabled: poor, 'aria-label': `금화 ${kitFmt(c.price)}`, onclick: buyC }, [kitCoin(c.price, { cls: poor ? 'short' : '' })]) });
       })]);

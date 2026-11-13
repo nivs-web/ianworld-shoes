@@ -33,7 +33,7 @@ export const GROUPS = [
 /** 월드 테마 10 (월드 번호 순) */
 export const THEMES = [
   { id: 'hill', name: '달밤 언덕', w: 1 }, { id: 'volcano', name: '부글 화산', w: 2 }, { id: 'sky', name: '구름 하늘섬', w: 3 }, { id: 'ice', name: '꽁꽁 얼음골', w: 4 }, { id: 'mine', name: '덜컹 쇠 광산', w: 5 },
-  { id: 'grave', name: '으스스 묘지', w: 6 }, { id: 'desert', name: '모래바람 사막', w: 7 }, { id: 'swamp', name: '끈적 독 늪', w: 8 }, { id: 'crystal', name: '반짝 수정 동굴', w: 9 }, { id: 'castle', name: '좀비 드래곤 성', w: 10 },
+  { id: 'grave', name: '으스스 묘지', w: 6 }, { id: 'desert', name: '모래바람 사막', w: 7 }, { id: 'swamp', name: '끈적 독 늪', w: 8 }, { id: 'crystal', name: '반짝 수정 동굴', w: 9 }, { id: 'castle', name: '좀비 드래곤캐슬', w: 10 },
 ];
 
 /**
