@@ -47,6 +47,15 @@ export function createSkillFx({ app, fx, view, M, FIELD, GC, S1, mirror, getCam,
   const W = () => view.w;
   const topY = () => Math.max(0, Math.round((view.topRow || 0) - (view.lift || 0)));
   const sx = (x) => (mirror ? getCam() + view.w - x : x - getCam());
+  /** 필살기 때 대장 드래곤이 화면 밖(캐슬이 화면 왼쪽 너머)이면 몸의 2/3 쯤이 화면 가장자리에 보이게 옆으로 당긴다 (대표님 11/13 «용은 안 보이는데 불만 뿜으니 이상해») — 화면 전용 · 돌려줄 값 = 당긴 전장 거리 */
+  function peek(R) {
+    const g = R.root.getBounds(), Wg = app.screen?.width || view.w, w = g.width, k = R.root.parent?.worldTransform?.a || 1;
+    if (!w || !k) return 0;
+    const seen = Math.min(g.x + w, Wg) - Math.max(g.x, 0);
+    if (seen >= w * 0.66) return 0;
+    const d = g.x < 0 ? w * 0.66 - (g.x + w) : Wg - w * 0.66 - g.x;   /* 화면 px */
+    const dw = d / k; R.root.x += dw; return dw;
+  }
   const sy = (y) => y - (view.lift || 0);
 
   /* ── 화면 고정 층 (카메라를 따라가지 않음 · 보스 컷인 위) */
@@ -324,7 +333,7 @@ export function createSkillFx({ app, fx, view, M, FIELD, GC, S1, mirror, getCam,
     snd('ult_roar_thumps');   /* «쿵 · 쿵 · 쿵» 0.12 · 0.42 · 0.72 (아래 beatAt 와 같은 박자) */
     if (S.units.some((u) => u.alive && u.side !== side)) snd('ult_zombie_flinch', 0.5);   /* 좀비 «히익!» */
     for (const u of S.units) { const v = V.get(u.id); if (!v || !u.alive) continue; if (u.side === side) v.roarT = 0; else v.scareT = -0.12; }
-    const L = leaders()[side]; if (L) { L.set('roar'); roar.lead = L; }
+    const L = leaders()[side]; if (L) { L.set('roar'); roar.lead = L; roar.hx = L.root.x; }
   }
   function ring(x, y, r1, life, col) {
     if (rings.length > 30) return;
@@ -343,6 +352,7 @@ export function createSkillFx({ app, fx, view, M, FIELD, GC, S1, mirror, getCam,
       if (R0.lead) { const f = R0.side === 0 ? 1 : -1; ring(R0.lead.root.x + f * 24, R0.lead.root.y - 70, 420, 0.6, 0xffffff); }
       for (const u of S.units) { const v = V.get(u.id); if (v && u.alive && u.side !== R0.side) addP(wl, v.x + (Math.random() - 0.5) * 10, v.y - (v.h || 50) - 12, 2, 3, 0xbfe8ff, { vx: (Math.random() - 0.5) * 60, vy: -60, g: 300, life: 0.4 }); }   /* 식은땀 */
     }
+    if (R0.lead && !R0.lead.dive) { R0.lead.root.x = R0.hx; if (R0.t <= ROAR_TIME + 0.05) R0.lead.root.x = Math.round(R0.hx + peek(R0.lead)); }   /* 화면 밖이면 2/3 보이게 · 끝나면 제자리 */
     if (R0.lead && R0.t > ROAR_TIME + 0.05) { R0.lead.set('idle'); R0.lead = null; }
     if (R0.t > ROAR_TIME + 0.2) roar = null;
   }
@@ -429,6 +439,7 @@ export function createSkillFx({ app, fx, view, M, FIELD, GC, S1, mirror, getCam,
         x = D.lx + (D.hx - D.lx) * k; y = D.ly - D.foot * s + (D.hy - (D.ly - D.foot * s)) * k - 44 * 4 * k * (1 - k);
       }
       R.root.position.set(Math.round(x), Math.round(y)); R.root.scale.set(D.sx * s, s); R.set(st);
+      if (t < DV.small) R.root.x = Math.round(R.root.x + peek(R));   /* 화면 밖이면 2/3 보이게 (폴짝 돌아갈 때는 제자리로) */
       if (cross(DV.hop)) { dust(D.lx, D.ly, 30, 46); shake(0.24); }                                /* 쿵 (내려앉음) */
       if (cross(DV.grow1) || cross(DV.grow2)) { dust(D.lx, D.ly, 10, 26 * s); shake(0.1); }       /* 쑥 · 쑥 */
       if (cross(DV.end) || cross(DV.small)) dust(D.lx, D.ly, 6, 20 * s);                          /* 줄어듦 */
