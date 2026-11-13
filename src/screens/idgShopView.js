@@ -31,7 +31,7 @@ const hasPanel = (name) => !!PANELS[panelPath(name)];
 const BIG = [['dragon', '드래곤'], ['castle', '드래곤캐슬'], ['deal', '특가'], ['cons', '편의품']];
 /* 하위 메뉴 [id, 이름, 패널 파일(있으면 패널)] — 칸 id 는 shopCatalog 의 SHOP_SLOT 과 같다 */
 const SUBS = {
-  dragon: [['dragon', '드래곤', 'dragon'], ['power', '강화', 'breath'], ['hat', '모자'], ['neck', '목 장식'], ['breath', '브레스 색'], ['aura', '오라'], ['pet', '펫']],
+  dragon: [['dragon', '대장 드래곤', 'dragon'], ['power', '브레스 강화', 'breath'], ['hat', '모자'], ['neck', '목 장식'], ['breath', '브레스 색'], ['aura', '오라'], ['pet', '펫']],
   castle: [['stage', '캐슬 단계', 'castle'], ['gear', '장비', 'gear'], ['flag', '깃발'], ['roof', '지붕'], ['gate', '정문'], ['yard', '앞마당']],
 };
 const firstSub = (big) => { const l = SUBS[big]; return (l.find((s) => (s[2] ? hasPanel(s[2]) : true)) || l[0])[0]; };

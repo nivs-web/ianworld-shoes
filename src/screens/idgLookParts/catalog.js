@@ -19,7 +19,7 @@ export const RARITY = [
 export const stars = (r) => '★'.repeat(r);
 
 /** 큰 칸 → 작은 칸 (id · 이름) */
-export const DRAGON_TABS = [['dragon', '대장'], ['hat', '모자'], ['neck', '목 장식'], ['breath', '브레스 색'], ['aura', '오라'], ['pet', '펫']];
+export const DRAGON_TABS = [['dragon', '대장 드래곤'], ['hat', '모자'], ['neck', '목 장식'], ['breath', '브레스 색'], ['aura', '오라'], ['pet', '펫']];
 export const CASTLE_TABS = [['skin', '캐슬 모습'], ['flag', '깃발'], ['roof', '지붕'], ['gate', '정문'], ['yard', '앞마당'], ['gear', '장비']];
 
 /** 가졌나 */
