@@ -37,7 +37,7 @@ body {
   overscroll-behavior: none;
   background: #0d0a08;
   color: #fff;
-  font-family: 'Neo둥근모', 'Courier New', monospace;
+  font-family: 'Galmuri11', 'Neo둥근모', 'Courier New', monospace;
   /* 노치/홈바 영역까지 사용하되 안전영역은 변수로 노출 */
   padding: 0;
 }

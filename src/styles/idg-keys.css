@@ -21,7 +21,7 @@ html.idg-kb.idg-lobby-on :focus, html.idg-kb.idg-wide :focus { outline: none !im
 .idg-set-body { min-height: 0; }
 
 /* 전투 단추 귀퉁이 키 글자 (idgKeys.js hintKeys) — 키보드를 쓰거나 폰이 아닐 때만(html.idg-kh-on) · 터치하면 숨음 · 1px 딱딱한 외곽선 · 흐린 그림자 없음 */
-.idg-hud .idg-khint { display: none; position: absolute; left: 2px; top: -3px; z-index: 4; pointer-events: none; font: 700 16px/1 'Neo둥근모', monospace; font-style: normal; letter-spacing: 0; white-space: nowrap; color: #fff6d8;
+.idg-hud .idg-khint { display: none; position: absolute; left: 2px; top: -3px; z-index: 4; pointer-events: none; font: 700 16px/1 'Galmuri11', 'Neo둥근모', monospace; font-style: normal; letter-spacing: 0; white-space: nowrap; color: #fff6d8;
   text-shadow: 1px 0 0 #1a0c38, -1px 0 0 #1a0c38, 0 1px 0 #1a0c38, 0 -1px 0 #1a0c38, 1px 1px 0 #1a0c38, -1px 1px 0 #1a0c38, 1px -1px 0 #1a0c38, -1px -1px 0 #1a0c38; }
 html.idg-kh-on .idg-hud .idg-khint { display: block; }
 .idg-hud .idg-wallet { position: relative; }
