@@ -210,7 +210,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     /* 11/12 대표님 : 그림이 창의 절반 넘게 · 현판은 용 머리 위 · 별은 용 아래 · 그림은 보상 판 가운데 줄(양 끝 뾰족한 곳)까지 내려와 금 줄로 끝남 */
     const scene = h('div', 'idg-res-scene'), body = h('div', 'idg-res-body');
     if (info.plate) { const pl = h('div', `idg-res-banner idg-res-plate ${win ? 'gold' : 'stone'}`), pi = h('div', 'p'); pi.appendChild(h('b', info.plate.length > 6 ? 'long' : info.plate.length > 4 ? 'mid' : '', info.plate)); pl.appendChild(pi); scene.appendChild(pl); }   /* 습격 · 비김 · 어긋남 = 글자 없는 날개 + 현판 글씨 (같은 자리 · 같은 날개) */
-    else scene.appendChild(img(`${RES}${win ? 'banner_win' : 'banner_lose'}.webp`, 'idg-res-banner', win ? '승리!' : '패배'));
+    else scene.appendChild(img(`${RES}${win ? 'banner_win_open' : 'banner_lose_open'}.webp`, 'idg-res-banner', win ? '승리!' : '패배')   /* 11/13 대표님 : 글자 뒤 판(보라 상자 · 돌판)을 지운 현판 — 글자 + 날개만, 뒤 트로피가 보이게 */);
     if (info.big != null) { const bg = h('div', 'idg-res-big' + (String(info.big).length > 4 ? ' sm' : '')); if (info.bigSub) bg.appendChild(h('small', null, info.bigSub)); bg.appendChild(h('b', null, String(info.big))); scene.appendChild(bg); }   /* 별 없는 모드 : 별 자리에 큰 숫자(웨이브 · 전적) */
     else { const st = h('div', 'idg-res-stars' + (info.diff === 'hard' ? ' red' : info.diff === 'master' ? ' purple' : '')); for (let i = 0; i < 3; i++) { const on = win && i < info.stars,   /* 패배 = 꺼진 별 3개 (11/12 대표님) */ w = h('span', 'star' + (on ? ' on' : '')), s = img(`${RES}${on ? 'star_on' : 'star_off'}.webp`); w.style.animationDelay = `${0.25 + i * 0.3}s`; w.appendChild(s); st.appendChild(w); } scene.appendChild(st); }
     /* 보상 판 (칸막이 2개 = 3칸) */

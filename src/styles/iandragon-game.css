@@ -1650,3 +1650,23 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
   .idg-res-scene { height: 62%; }
   .idg-res-body { gap: .5cqh; padding-bottom: 1cqh; }
 }
+/* ── 결과 창 2차 (11/13 대표님) ──
+ *  ① 창 크기 = 내용만큼 (위 · 좌우 · 아래 줄임 · 맨 아래 단추와 아래 금테 사이 6 ~ 8px) — «새로 열림» 줄이 두 줄이 되면 창이 그만큼 길어진다(최대 화면 94%, 넘치면 안쪽 스크롤)
+ *  ② 빨강 · 초록 큰 단추 : 검은 테 · 그림자 · 그라데이션 없이, 진한 빨강 / 진한 초록 테 + 또렷한 위 밝은 줄 · 아래 어두운 줄 */
+@container (min-aspect-ratio: 1/1) {
+  .idg-hud .idg-card.idg-res { height: auto; max-height: 94cqh; width: min(84cqw, 128cqh); }
+  .idg-res-scene { height: 52cqh; }
+  .idg-res-body { flex: 0 1 auto; padding: 0 4% 7px; }
+}
+@container (min-aspect-ratio: 1/1) and (max-height: 430px) {
+  .idg-res-scene { height: 50cqh; }
+  .idg-res-body { padding-bottom: 6px; }
+}
+.idg-res-btn.red, .idg-res-btn.green { border-image: none; border: 3px solid; border-radius: 9px; }
+.idg-res-btn.red { --o: #6e0f06; border-color: #7a1408; background: #e2452c; box-shadow: inset 0 3px 0 #ff8a66, inset 0 -4px 0 #b02a16; }
+.idg-res-btn.green { --o: #0e3a08; border-color: #1b5410; background: #43b232; box-shadow: inset 0 3px 0 #8be470, inset 0 -4px 0 #2a8420; }
+.idg-res-btn.red:active, .idg-res-btn.green:active { box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .25); transform: translateY(1px); }
+/* 결과 창 금테 = 내용에 바짝 (11/13 대표님 «황금색 박스 테두리를 이 화면 딱 맞게 · 아래는 단추 밑 5 ~ 10px») : 창 틀 그림의 안쪽 보라 띠를 덜 쓰도록 자르는 선을 금줄 바로 안쪽으로 */
+.idg-hud .idg-card.idg-res { border-width: 26px 17px 19px; border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 90 60 64 / 26px 17px 19px stretch; }
+@container (min-aspect-ratio: 1/1) { .idg-res-body { padding-bottom: 4px; } .idg-res-scene { flex: 0 1 52cqh; height: auto; min-height: 30cqh; } }
+@container (min-aspect-ratio: 1/1) and (max-height: 430px) { .idg-res-scene { flex-basis: 50cqh; } .idg-res-body { padding-bottom: 4px; } }
