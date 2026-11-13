@@ -126,6 +126,9 @@ export function powerPage(h, o) {
     const face = h('img'); face.src = `${AI}${ld}/head.png`; face.alt = '';
     lead.append(face, h('b', null, `${LEADERS[ld]?.ko || '리더'} 브레스`), h('span', null, `사거리 ${bs.range} · 위력 ${fmt(bs.power)} · 밀어내기 ${bs.push} · 충전 ${bs.charge}초`));
 
+    /* 비우기 (대표님 11/13 «출전 카드 오른쪽 위 · 누르면 슬롯 카드가 한 번에 전부 빠짐») — 2장 미만이면 저장하지 않고(setDeck 규칙) 다시 끼우면 저장된다 */
+    const clearBtn = h('button', 'idg-pp-clear', '비우기'); clearBtn.type = 'button'; clearBtn.disabled = !deck.length;
+    clearBtn.onclick = () => { if (!deck.length) return; sel = null; swapFor = null; setDeck([]); play('button_back'); draw(); };
     /* 출전 칸 (번호 = 단축키) */
     const slots = h('div', 'idg-pp-slots' + (swapFor ? ' pick' : '') + (sel != null ? ' has-sel' : ''));
     for (let i = 0; i < SLOT_MAX; i++) {
@@ -209,7 +212,8 @@ export function powerPage(h, o) {
       const plate = (a, b) => { const p = h('div', 'idg-pp-plate'); p.append(h('b', null, a), h('span', null, `< ${b} >`)); return p; };
       const sScroll = h('div', 'idg-pp-sbody'); sScroll.append(slots);
       slots.append(guideCell());   /* 10번 칸 옆 빈 2칸 */
-      const sCol = h('div', 'idg-pp-col slots'); sCol.append(plate('출전 카드', `출전 ${deck.length}/${un.deckCap}`), sScroll, h('i', 'idg-dlg-more'), hint); if (limit) sCol.append(limit);
+      const sCol = h('div', 'idg-pp-col slots'); const sPlate = plate('출전 카드', `${deck.length}/${un.deckCap}`); sPlate.classList.add('has-clear'); sPlate.append(clearBtn);   /* 비우기 자리를 내려고 «< 출전 8/10 >» → «< 8/10 >» */
+      sCol.append(sPlate, sScroll, h('i', 'idg-dlg-more'), hint); if (limit) sCol.append(limit);
       if (deck.length < need) sCol.firstChild.classList.add('short');
       body.append(list);
       const cPlate = plate('파워업 카드', `${ids.length}카드 보유`); cPlate.classList.add('sorts');
@@ -240,7 +244,8 @@ export function powerPage(h, o) {
       box.classList.toggle('more-host', false);
     } else {
       if (o.buttons.length) { row = h('div', 'idg-row idg-pp-row'); for (const [k, bt] of o.buttons.entries()) row.appendChild(o.exit && k === closeIdx ? exitBtn() : mkBtn(bt)); }   /* 3차 : 전투 판 사이 세로도 «돌아가기» → «나가기»(로비) */   /* 세로 = 예전 단추 줄 (로비 «닫기» · 전투 «전투 개시!/다시하기» + «돌아가기») */
-      const side = h('div', 'idg-pp-side'); side.append(lead, slots, hint, guide()); if (limit) side.append(limit);
+      const sHead = h('div', 'idg-pp-slots-head'); sHead.append(clearBtn);   /* 세로 : 출전 칸 바로 위 오른쪽 */
+      const side = h('div', 'idg-pp-side'); side.append(lead, sHead, slots, hint, guide()); if (limit) side.append(limit);
       /* 고정 틀 : 머리는 위에 고정 · 가운데만 스크롤 · (전투 안) 앞으로 가는 단추 한 줄은 아래에 고정
        * 가운데 칸은 겉 상자(.idg-pp-bodyw) 안에서 스크롤 → 금 도트 줄(겉 상자 위 · 아래 테)은 스크롤 칸 밖이라 내용이 줄을 넘어 그려지지 않는다 (11/12 대표님) */
       const bodyW = h('div', 'idg-pp-bodyw');
