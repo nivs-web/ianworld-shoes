@@ -46,6 +46,7 @@ import { DIFF, diffUnlocked, diffVisible, diffOpen, diffNext, diffRun } from '..
 import { MASTER_ON } from '../games/iandragon_game/data/features.js';   // 초고수 전면 취소 (11/13)
 import { SEEN, seenBit, withSeen } from '../services/iandragonGameState.js';
 import { GIFT_TIERS, GIFT_ODDS, parseKey, artOf, artFilter } from '../games/iandragon_game/data/looks.js';
+import '../styles/idg-land.css';   /* 로비 가로 정리 (11/13) */
 import '../styles/idg-lvbadge.css';   /* 레벨 배지 100 단위 색 · 열림 연출 · 레벨 선물 (11/13 · 난이도 4단계 묶음) */
 import { isOn } from '../services/switches.js';
 import { MUST, SONGS, EDM_NOTE, EDM_MUST, EDM_SONGS } from '../games/iandragon_game/data/musicCredits.js';
