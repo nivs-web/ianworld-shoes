@@ -163,7 +163,7 @@ export function powerPage(h, o) {
     /* 용 목록 */
     const list = h('div', 'idg-pp-list');
     const statOf = (id) => { const U = UNITS[id], m = powerMul(Math.max(g.units?.[id]?.[0] || 1, exp)); return { cost: U.cost, hp: U.hp * m, atk: U.atk * m, range: U.range || 40 }; };
-    const shown = box.classList.contains('land') && sortBy ? ids.map((id, n) => [id, n, statOf(id)[sortBy.k]]).sort((a, b) => (sortBy.low ? a[2] - b[2] : b[2] - a[2]) || a[1] - b[1]).map((r) => r[0]) : ids;
+    const shown = box.classList.contains('land') && sortBy?.k === 'deck' ? ids.map((id, n) => [id, n, deck.includes(id) ? deck.indexOf(id) : 1e6]).sort((a, b) => a[2] - b[2] || a[1] - b[1]).map((r) => r[0]) : box.classList.contains('land') && sortBy ? ids.map((id, n) => [id, n, statOf(id)[sortBy.k]]).sort((a, b) => (sortBy.low ? a[2] - b[2] : b[2] - a[2]) || a[1] - b[1]).map((r) => r[0]) : ids;
     for (const id of shown) {
       const U = UNITS[id], lv = g.units?.[id]?.[0] || 1, cost = ECON.lvCost(lv), max = lv >= cap, poor = (g.coins || 0) < cost;
       const on = deck.includes(id), over = next.costMax && U.cost > next.costMax;
@@ -225,6 +225,8 @@ export function powerPage(h, o) {
       body.append(list);
       const cPlate = plate('파워업 카드', `${ids.length}카드 보유`); cPlate.classList.add('sorts');
       const sortBar = h('div', 'idg-pp-sort'); sortBar.append(h('b', null, '정렬:'));
+      { const on = sortBy?.k === 'deck'; const db = h('button', 'idg-pp-sortb deckb' + (on ? ' on' : '')); db.type = 'button'; db.dataset.k = 'deck'; db.setAttribute('aria-pressed', on ? 'true' : 'false'); db.setAttribute('aria-label', '출전덱 1번부터 순서대로 정렬');
+        db.append(h('span', null, '출전덱순')); db.onclick = () => { sortBy = { k: 'deck', low: true }; play('button'); draw(); const bd = box.querySelector('.idg-pp-body'); if (bd) bd.scrollTop = 0; }; sortBar.append(db); }
       for (const [k, lb, lowFirst] of SORTS) {
         const on = sortBy?.k === k, low = on ? sortBy.low : lowFirst;
         const sb = h('button', 'idg-pp-sortb' + (on ? ' on' : '')); sb.type = 'button'; sb.dataset.k = k; sb.setAttribute('aria-pressed', on ? 'true' : 'false');
