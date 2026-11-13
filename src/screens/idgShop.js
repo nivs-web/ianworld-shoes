@@ -8,6 +8,7 @@
 import { el, button, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
 import { kitWallet, kitTabs, kitPaper, kitSection, kitRow, kitPriceBtn, kitBtn } from './idgKit.js';   /* UI 키트 (11/12 · docs/IDG_DESIGN_STYLESHEET.md) */
+import { bpOffer, bpOwned } from '../games/iandragon_game/data/breathUp.js';   /* 브레스 UP (11/13) — 같은 판 연속 패배 아이템 */
 import { SLOT_NAME, LOOKS, CONSUMABLES, CONS_MAX, SELLABLE, keyOf, parseKey, priceOf, dealPrice, dealsFor, todayKst, artOf } from '../games/iandragon_game/data/looks.js';
 
 const META = '/assets/iandragon_game/ai/meta/';
@@ -74,9 +75,30 @@ export function showShop({ idg, save, onClose, tab: tab0 }) {
     return keys.map((k) => lookRow(k, true));
   }
 
+  /** 브레스 UP (11/13) — 같은 판을 드래곤캐슬이 무너져 3번 이상 연속으로 진 사람에게만 맨 위에 보인다 · 한 번에 1개 · 그 판 전용 · 시작하면 자동으로 쓴다 */
+  function bpRows() {
+    const off = bpOffer(cur), own = bpOwned(cur), fx = (m) => `힘 · 거리 ×${m} · 차는 시간 ÷${m}`, rows = [];
+    if (off && !(own && own.key === off.key && own.tier === off.tier)) {
+      rows.push(kitRow({ title: off.name, sub: `같은 판을 ${off.n}번 연속으로 진 사람에게만 보여요 · ${off.label} 전용 · ${fx(off.mul)}`,
+        right: own ? kitBtn({ kind: 'purple', text: '가지고 있음', size: 'sm', disabled: true }) : kitPriceBtn({
+          coin: off.price, size: 'sm', poor: cur.coins < off.price,
+          onClick: () => {
+            const now = cur, o2 = bpOffer(now);
+            if (bpOwned(now) || !o2 || o2.key !== off.key || o2.tier !== off.tier || now.coins < o2.price) { Sfx.play('sfx_denied'); return; }   // 최신값으로 다시 확인 (두 번 눌러도 한 번만)
+            const next = save({ coins: now.coins - o2.price, bpUp: `${o2.key}:${o2.tier}` });
+            if (next) cur = next;
+            Sfx.play('sfx_purchase'); draw();
+          },
+        }) }));
+    }
+    if (own) rows.push(kitRow({ title: own.name, sub: `${own.label} 전용 · ${fx(own.mul)} · 그 판을 시작하면 자동으로 써요`, right: kitBtn({ kind: 'purple', text: '가지고 있음', size: 'sm', disabled: true }) }));
+    return rows;
+  }
+
   function consTab() {
     help.replaceChildren(kitPaper(['편의품은 한 판에 ', el('b', '하나만'), ' 쓸 수 있어요. 혼자 하기(스테이지)에서만 써요.', el('small', '명예의 전당 도전 · 같이 깨기 · 용 대결에서는 못 써요.')]));
     return [
+      ...bpRows(),
       ...CONSUMABLES.map((c) => {
         const n = Number(cur.cons?.[c.id]) || 0, can = cur.coins >= c.price && n < CONS_MAX;
         return kitRow({ title: `${c.name} (가진 수 ${n})`, sub: c.desc,

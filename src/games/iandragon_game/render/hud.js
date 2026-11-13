@@ -291,7 +291,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     /* 편의품 (판마다 1개) */
     if (!raid && !pvp && cons && cons.length) {
       const cr = h('div', 'idg-cons-row');
-      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
+      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { if (c.auto) return h('span', 'idg-cons on auto', c.name); /* 브레스 UP = 자동 사용 · 켜진 표시만 */ const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
       draw(); body.appendChild(cr);
     }
     const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(`${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
@@ -334,7 +334,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안에 · ★★★ ${stage.star3}초 안에`));
       if (cons && cons.length) {   /* 편의품 (판마다 1개) */
         const cr = h('div', 'idg-cons-row');
-        const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
+        const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { if (c.auto) return h('span', 'idg-cons on auto', c.name); /* 브레스 UP = 자동 사용 · 켜진 표시만 */ const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
         draw(); box.appendChild(cr);
       }
     }
