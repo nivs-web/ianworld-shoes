@@ -314,6 +314,37 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     return box;
   }
 
+  /* ── 판 · 대결 시작 창 = 원래 모양(대표님 11/13 «시작할 때 화면 원래가 더 좋았던 것 같다 — 되돌리고, 새 디자인은 기획부터 다시») ──
+   *  f0f3a83 의 시작 카드 그대로 : idg-card · 제목 «4-8 펭귄 썰매 부대» 한 줄 · (난이도 줄) · (기믹) · 좀비 얼굴 줄 · «★ 깨면 · ★★ N초 안에 · ★★★ N초 안에» · 편의품 줄 · «출격!» + «나가기»
+   *  대결 = «드래곤 대결!» · 양쪽 덱 얼굴 · 규칙 한 줄. 주간 습격 소개는 새 모양(introCard) 그대로. 글자는 h() 가 ko() 로 낱말을 고친다(용 → 드래곤 · 좀비 성 → 좀비 탑) */
+  function startCard() {
+    const box = h('div', 'idg-card');
+    if (stage.pvp) {
+      box.append(h('h2', null, '용 대결!'));
+      const face = (list, ld) => { const z = h('div', 'idg-intro-z'); for (const id of [ld, ...(list || []).map((d) => d.id)].filter(Boolean)) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.style.display = 'none'; }; z.appendChild(im); } return z; };
+      box.append(h('p', 'small', '나'), face(deck, leader), h('p', 'small', 'VS 친구'), face(foeDeck || [], foeLeader));
+      box.append(h('p', 'small', '상대 둥지를 먼저 무너뜨리면 승리 · 3분 · 90초부터 불꽃 타임 · 모두 Lv20'));
+    } else {
+      box.append(h('h2', null, `${stage.id} ${stage.name}`));
+      if (stage.diff && stage.diff !== 'normal') box.append(h('p', 'idg-diff ' + stage.diff, stage.diff === 'hard' ? '어려움 — 붉은 별 · 출전 드래곤 Lv21 이상' : stage.diff === 'master' ? `초고수 — 보라 별 · ${stage.limit ? `${stage.limit}초 · ` : ''}부화 «+» · 편의품은 안 통해요` : '쉬움 — 좀비가 약해요 · 별은 2개까지'));
+      if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
+      const zs = h('div', 'idg-intro-z');
+      for (const tr of [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))]) { const ic = h('img', 'idg-attr'); ic.src = `/assets/iandragon_game/ui/hud_attr_${tr}_s.png`; ic.alt = ''; ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; zs.appendChild(ic); }   // 이 판의 특별한 좀비
+      for (const id of [...new Set(stage.lines.map((l) => ZART[l.id] || l.id))]) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
+      box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안에 · ★★★ ${stage.star3}초 안에`));
+      if (cons && cons.length) {   /* 편의품 (판마다 1개) */
+        const cr = h('div', 'idg-cons-row');
+        const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
+        draw(); box.appendChild(cr);
+      }
+    }
+    const row = h('div', 'idg-row');
+    const add = (label, fn, cls = '') => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
+    add('출격!', () => cb.go(useCons), 'main'); add(text.exit, () => cb.exit());
+    box.appendChild(row);
+    return box;
+  }
+
   function showPanel(kind, info = {}) {
     panel.replaceChildren();
     if (kind === 'powerup') {   /* 판 사이 파워업 (powerPage.js) — 돌아가기 = 방금 결과 창 */
@@ -324,9 +355,10 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       panel.classList.add('on'); return;
     }
     /* 일시정지 · 시작(판 · 습격 · 대결) · 결과 = 모두 결과 창과 같은 틀(docs/IDG_UI_PATTERNS.md §0 · §1 · §2) */
-    const card = kind === 'pause' ? pauseCard() : kind === 'intro' ? introCard(info) : resultCard(kind, info);
+    const card = kind === 'pause' ? pauseCard() : kind === 'intro' ? (stage.raid ? introCard(info) : startCard()) : resultCard(kind, info);   /* 판 · 대결 시작 = 원래 창(startCard) · 주간 습격 = 새 소개 창 */
     panel.appendChild(card);
     panel.classList.add('on');
+    if (kind === 'intro' && !stage.raid) return;   /* 원래 시작 창은 짧아서 스크롤 화살표 없음 */
     /* 아래로 더 있으면 금 화살표 (대표님 11/13 · 공용 idgMore.js) : 일시정지 카드는 카드째 스크롤, 시작 · 결과는 가운데 칸(.idg-res-body)이 스크롤 */
     if (kind === 'pause') scrollHint(card, { host: panel, lift: 30 });
     else { const body = card.querySelector('.idg-res-body'); if (body) scrollHint(body, { host: card, lift: 3 }); }
