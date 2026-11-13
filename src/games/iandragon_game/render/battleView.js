@@ -12,7 +12,7 @@ import { loadFun, createFun, FUN_SOUND } from './fun.js';
 import * as Audio from '../audio/index.js';
 import { offKeys, isOn, nums } from '../../../services/switches.js';
 import { SPOTS } from './funSpots.js';
-import { px } from './rot.js';
+import { px, rotated } from './rot.js';
 import { createAmbient } from './ambient.js';
 import { createBossFx } from './bossFx.js';
 import { createSkillFx } from './skillFx.js';
@@ -592,14 +592,22 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const fracX = (clientX) => { const r = canvas.getBoundingClientRect(); return r.width ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0.5; };
   const gap = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
   /* 아래 단추 줄 근처에서 시작한 손가락은 맵을 움직이지 않는다 (대표님 11/13 «출전 단추를 누르다 실수로 맵을 건드리면 화면이 돌아간다») : api.guard(clientX, clientY) = HUD 가 알려 주는 «단추 줄 + 위로 40px» 안인지 */
-  const onDown = (e) => { if (api.guard?.(e.clientX, e.clientY)) return; fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (fingers.size === 2) { drag = null; pinch = gap(); } else drag = { x: px(e), cam: camX }; handT = 3; };
+  /* 길 위 점선(발 높이 범위 위끝 S0) 보다 위에서 시작한 손가락 · 휠만 맵을 움직인다 (대표님 11/13 2차 «좀비 · 드래곤이 다니는 길의 위 점선 위쪽을 끌어야만 화면 이동 · 확대») — 화면을 돌려 그리면(rot.js) «게임 위쪽» = cw 화면 오른쪽 · ccw 왼쪽 */
+  const aboveLane = (cx, cy) => {
+    const r = canvas.getBoundingClientRect(), H = app.screen?.height || canvas.height; if (!r.width || !r.height || !H) return true;
+    const gy = root.toGlobal({ x: 0, y: S0 }).y / H, rt = rotated();
+    if (rt === 'cw') return cx > r.right - gy * r.width;
+    if (rt === 'ccw') return cx < r.left + gy * r.width;
+    return cy < r.top + gy * r.height;
+  };
+  const onDown = (e) => { if (api.guard?.(e.clientX, e.clientY) || !aboveLane(e.clientX, e.clientY)) return; fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (fingers.size === 2) { drag = null; pinch = gap(); } else drag = { x: px(e), cam: camX }; handT = 3; };
   const onMove = (e) => {
     if (fingers.has(e.pointerId)) fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (fingers.size >= 2 && pinch) { const g = gap(); if (g > 0 && Math.abs(Math.log(g / pinch)) > 0.02) { const [a, b] = [...fingers.values()]; zoomF = fracX((a.x + b.x) / 2); api.onZoom?.(Math.log(g / pinch) * 3); pinch = g; } handT = 3; return; }
     if (!drag || !fingers.has(e.pointerId)) return; camX = Math.max(0, Math.min(FIELD - view.w, drag.cam - (mirror ? -1 : 1) * toWorld(px(e) - drag.x))); handT = 3;
   };
   const onUp = (e) => { if (e?.pointerId != null && !fingers.has(e.pointerId)) return; if (e?.pointerId != null) fingers.delete(e.pointerId); else fingers.clear(); if (fingers.size < 2) pinch = 0; drag = null; };
-  const onWheel = (e) => { e.preventDefault(); zoomF = fracX(e.clientX); api.onZoom?.(-Math.sign(e.deltaY) * Math.min(1, Math.abs(e.deltaY) / 100) * 0.25); handT = 3; };
+  const onWheel = (e) => { e.preventDefault(); if (!aboveLane(e.clientX, e.clientY)) return; zoomF = fracX(e.clientX); api.onZoom?.(-Math.sign(e.deltaY) * Math.min(1, Math.abs(e.deltaY) / 100) * 0.25); handT = 3; };
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.style.touchAction = 'none';
   canvas.addEventListener('pointerdown', onDown); window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
@@ -643,6 +651,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     },
     /** 미니맵 · 시작 위치 */
     setCam(x) { camX = Math.max(0, Math.min(FIELD - view.w, x)); handT = 3; },
+    get camX() { return camX; },   /* 점검용 (지금 카메라 자리) */
     get cam() { return camX; },
     /** 싸움 줄을 단추 줄 위로 올린 칸 (app.js footFit · 점검용) */
     get lift() { return view.lift || 0; },
