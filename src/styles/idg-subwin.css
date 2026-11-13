@@ -428,9 +428,9 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp.pp2 > .idg-pp-head { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "l t r"; align-items: center; column-gap: 8px; row-gap: 4px; margin-top: -2px; }
 .idg-pp.pp2 .idg-pp-hl { grid-area: l; display: flex; align-items: center; gap: 6px; min-width: 0; justify-self: start; }
 .idg-pp.pp2 .idg-pp-hr { grid-area: r; display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
-.idg-pp.pp2.port > .idg-pp-head { grid-template-areas: ". t x" "l w w"; }
+.idg-pp.pp2.port > .idg-pp-head { grid-template-areas: ". t x" "l l l" "w w w"; }   /* 세로 : 출전 알약 · 지갑 알약이 한 줄에서 겹쳐 «출전 10 / 10칸» 이 «10킨» 으로 잘렸다 (11/13 대표님) → 줄을 나눔 */
 .idg-pp.pp2.port .idg-pp-hr { display: contents; }
-.idg-pp.pp2.port .idg-pp-band { grid-area: w; justify-self: end; }
+.idg-pp.pp2.port .idg-pp-band { grid-area: w; justify-self: stretch; justify-content: center; flex-wrap: wrap; row-gap: 2px; }
 .idg-pp.pp2.port .idg-pp-x { grid-area: x; justify-self: end; }
 /* 리본 «파워업» : 글씨를 리본 붉은 띠 세로 가운데 (리본 그림 위 27칸이 비어 글씨가 위로 쏠려 보였다) */
 .idg-pp.pp2 .idg-pp-title { grid-area: t; display: flex; align-items: center; justify-content: center; margin: 0; min-width: 6.4em; line-height: 1; padding: 6px 24px 2px; }

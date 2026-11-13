@@ -26,7 +26,10 @@ const GIM = {
   cost: '불씨 300 이하인 용만 나갈 수 있어요', money: '용돈 듬뿍! 불씨를 많이 들고 시작해요', fever: '불꽃 타임이 빨리 와요',
 };
 const ZART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant', shieldFirm: 'helmet', lavaFirm: 'lava', gearFirm: 'gear', shroomFirm: 'shroom' };   // *Firm = 초고수 굳센 좀비(원본 그림 그대로)
-const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+/** 낱말 규칙(대표님 11/13) : 화면에 그릴 때 «용» → «드래곤» · «좀비 성» → «좀비 탑» · «성» → «드래곤캐슬» (판 자료 글은 그대로 두고 그릴 때만 · «용돈 · 활용» 같은 낱말 속 글자는 건드리지 않음) */
+const KO_YONG = /(^|[\s«「'"(·])용(?=[은는이가을를도의과와에로만들]|[\s,.!?·»」'")]|$)/g, KO_SUNG = /(^|[\s«「'"(·])성(?=[은는이가을를도의과와에로만]|[\s,.!?·»」'")]|$)/g;
+export const ko = (s) => (typeof s === 'string' && /[용성]/.test(s) ? s.replace(/좀비 성/g, '좀비 탑').replace(KO_YONG, '$1드래곤').replace(KO_SUNG, '$1드래곤캐슬') : s);
+const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = ko(txt); return e; };
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const UI = '/assets/iandragon_game/ui/';
 /** 떠 있는 HUD : 위 · 아래 띠 판 없이 단추만 (CSS .idg-hud.float) */
@@ -69,7 +72,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* 위 */
   const top = h('div', 'idg-top'); root.appendChild(top);
   const pauseB = h('button', 'idg-btn idg-pause', '⏸'); pauseB.type = 'button'; pauseB.onclick = () => cb.pause();
-  const title = h('div', 'idg-title', `${stage.id} ${stage.name}`);
+  const title = h('div', 'idg-title', stage.raid ? '주간 좀비 습격 ·' : `${stage.id} ${stage.name}`);   /* 습격 : «주간 좀비 습격 · 웨이브 18 · 5:48» (이름의 «습격» 두 번 고침 11/13) */
   const time = h('div', 'idg-time', '0:00');
   const speedB = h('button', 'idg-btn idg-speed', '2배속');   /* 동그라미 «2배속» (대표님 11/11 · X 없이 한글) — 켜지면 불이 들어온다 */ speedB.type = 'button'; speedB.onclick = () => cb.speed();
   const money = h('div', 'idg-money'); const moneyN = h('span', 'n', '0'); money.append(h('i', 'idg-ico-ember'), moneyN);
@@ -98,7 +101,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const myWrap = h('div', 'idg-hp-side me'), foeWrap = h('div', 'idg-hp-side foe'); myWrap.append(myHp, myBar); foeWrap.append(foeBar, foeHp);
   hp.append(myWrap, foeWrap);
   const boss = h('div', 'idg-boss'); const bossFill = h('i'); boss.append(h('span', null, '보스'), h('b', null, '')); boss.lastChild.appendChild(bossFill); root.appendChild(boss);
-  const warn = h('div', 'idg-warn', 'WARNING'); root.appendChild(warn);
+  const warn = h('div', 'idg-warn', '보스가 나타났다!'); root.appendChild(warn);
   /* 보스 이름 띠 : 보스가 새로 나오면 1.2초(bossFx.js CUT_TIME) 보여 주고, 그 뒤에 WARNING 을 켠다 (처음 보스만) */
   const bname = h('div', 'idg-bossname'); const bnameT = h('b'); bname.appendChild(bnameT); root.appendChild(bname);
   let bossRef = null, nameT = 0, warnT = 0, bossCount = 0, lastNow = performance.now();
@@ -172,32 +175,117 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
    *  아이콘 = 칼 · 화살표 하나(제미나이) · 다시하기 · 나가기(흰 SVG) · 코인(새 금화) · 젬(우리 icon_gem_v3) · 글씨 = 굵은 글꼴 + 단단한 외곽선 */
   const RES = '/assets/iandragon_game/ai/result/';
   const fontOnce = () => { if (document.getElementById('idg-res-font')) return; const l = document.createElement('link'); l.id = 'idg-res-font'; l.rel = 'stylesheet'; l.href = 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css'; document.head.appendChild(l); };
+  fontOnce();   /* 전투 중 띠 · 안내 · 현판도 같은 글꼴(Pretendard) */
   function resultCard(kind, info) {
     fontOnce();
     const win = kind === 'win', card = h('div', `idg-card idg-res ${win ? 'win' : 'lose'}`);
     const img = (src, cls, alt = '') => { const i = h('img', cls); i.src = src; i.alt = alt; i.draggable = false; return i; };
     /* 11/12 대표님 : 그림이 창의 절반 넘게 · 현판은 용 머리 위 · 별은 용 아래 · 그림은 보상 판 가운데 줄(양 끝 뾰족한 곳)까지 내려와 금 줄로 끝남 */
     const scene = h('div', 'idg-res-scene'), body = h('div', 'idg-res-body');
-    scene.appendChild(img(`${RES}${win ? 'banner_win' : 'banner_lose'}.webp`, 'idg-res-banner', win ? '승리!' : '패배'));
-    { const st = h('div', 'idg-res-stars' + (info.diff === 'hard' ? ' red' : info.diff === 'master' ? ' purple' : '')); for (let i = 0; i < 3; i++) { const on = win && i < info.stars,   /* 패배 = 꺼진 별 3개 (11/12 대표님) */ w = h('span', 'star' + (on ? ' on' : '')), s = img(`${RES}${on ? 'star_on' : 'star_off'}.webp`); w.style.animationDelay = `${0.25 + i * 0.3}s`; w.appendChild(s); st.appendChild(w); } scene.appendChild(st); }
+    if (info.plate) { const pl = h('div', `idg-res-banner idg-res-plate ${win ? 'gold' : 'stone'}`), pi = h('div', 'p'); pi.appendChild(h('b', info.plate.length > 6 ? 'long' : info.plate.length > 4 ? 'mid' : '', info.plate)); pl.appendChild(pi); scene.appendChild(pl); }   /* 습격 · 비김 · 어긋남 = 글자 없는 날개 + 현판 글씨 (같은 자리 · 같은 날개) */
+    else scene.appendChild(img(`${RES}${win ? 'banner_win' : 'banner_lose'}.webp`, 'idg-res-banner', win ? '승리!' : '패배'));
+    if (info.big != null) { const bg = h('div', 'idg-res-big' + (String(info.big).length > 4 ? ' sm' : '')); if (info.bigSub) bg.appendChild(h('small', null, info.bigSub)); bg.appendChild(h('b', null, String(info.big))); scene.appendChild(bg); }   /* 별 없는 모드 : 별 자리에 큰 숫자(웨이브 · 전적) */
+    else { const st = h('div', 'idg-res-stars' + (info.diff === 'hard' ? ' red' : info.diff === 'master' ? ' purple' : '')); for (let i = 0; i < 3; i++) { const on = win && i < info.stars,   /* 패배 = 꺼진 별 3개 (11/12 대표님) */ w = h('span', 'star' + (on ? ' on' : '')), s = img(`${RES}${on ? 'star_on' : 'star_off'}.webp`); w.style.animationDelay = `${0.25 + i * 0.3}s`; w.appendChild(s); st.appendChild(w); } scene.appendChild(st); }
     /* 보상 판 (칸막이 2개 = 3칸) */
     const bar = h('div', 'idg-res-bar'), cell = (src, txt) => { const c = h('div', 'cell'); c.append(img(src), h('b', null, txt)); return c; };
     bar.append(cell(`${RES}timer.webp`, clock(info.t || 0)), cell(`${RES}coin_crown.webp`, `+${fmt(info.coins || 0)}`), cell('/assets/iandragon_game/ui/lobby/icon_gem_v3.png', `+${info.gems || 0}`));   /* 승리 · 패배 모두 : 시간 → 동전 → 젬 (11/12 대표님 «다른 배치는 없어») */
     body.appendChild(bar);
     /* 새로 열림 판 (승리) · 도움말 판 (패배) */
-    const extra = win ? (info.unlocks ? info.unlocks.join(' · ') : info.daily ? '오늘 첫 승리 보너스 : 젬 +10' : '') : (info.hint || '파워업에서 용을 키우면 더 쉬워져요!');
-    if (extra) { const nw = h('div', 'idg-res-new' + (win ? '' : ' is-tip')); nw.append(h('em', null, win ? (info.unlocks ? '새로 열림 :' : '보너스 :') : '도움말 :'), h('span', null, extra)); bar.appendChild(nw); bar.classList.add('has-new'); }   /* 보상 판 바로 아래에 붙은 꼬리표 (따로 떨어진 칸 아님) */
+    const own = info.line !== undefined;   /* 습격 · 대결 · 어긋남 = 한 줄을 직접 줌(꼬리표 글자 없이) */
+    const extra = own ? info.line : win ? (info.unlocks ? info.unlocks.join(' · ') : info.daily ? '오늘 첫 승리 보너스 : 젬 +10' : '') : (info.mode ? '' : info.hint || '파워업에서 용을 키우면 더 쉬워져요!');
+    if (extra) { const nw = h('div', 'idg-res-new' + (win || own ? '' : ' is-tip')); if (!own) nw.append(h('em', null, win ? (info.unlocks ? '새로 열림 :' : '보너스 :') : '도움말 :')); nw.append(h('span', null, extra)); bar.appendChild(nw); bar.classList.add('has-new'); requestAnimationFrame(() => { if (!nw.offsetHeight) return; const em = parseFloat(getComputedStyle(nw).fontSize) || 10; if (nw.offsetHeight > em * 3) card.classList.add('tight'); requestAnimationFrame(() => { bar.style.marginBottom = `${Math.ceil(nw.offsetHeight - 0.12 * bar.offsetHeight + 4)}px`; }); }); }   /* 한 줄이 두 줄로 길어지면 아래 여백도 같이 */   /* 보상 판 바로 아래에 붙은 꼬리표 (따로 떨어진 칸 아님) */
     if (info.final) body.appendChild(h('p', 'idg-res-final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요!'));
     /* 단추 규칙 (대표님 11/11) : 승리 = 전투개시! + 파워업 / 다시하기 · 나가기 (작고 밋밋하게) · 패배 = 다시하기 + 파워업 / 나가기 */
-    const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(`${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
+    const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(ico.startsWith('/') ? ico : `${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
     const r1 = h('div', 'idg-res-row big'), r2 = h('div', 'idg-res-row');
-    const next = win && info.hasNext;
-    r1.appendChild(next ? btn('전투개시!', 'ico_fight.webp', () => cb.next(), 'red') : btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'red'));
-    if (cb.puSave) r1.appendChild(btn('파워업', 'ico_power_n.webp', () => showPanel('powerup', { back: kind, backInfo: info }), 'green'));
+    const next = win && info.hasNext && !isNet && !info.mode;
+    if (info.mode === 'raid') {   /* 주간 습격 : 빨강 다시하기 · 초록 명예의 전당(«주간 습격» 탭 바로 열기) · 보라 나가기 */
+      r1.append(btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'red'), btn('명예의 전당', '/assets/iandragon_game/ui/lobby/icon_hall.png', () => cb.hall?.(), 'green'));
+    } else if (isNet) r1.appendChild(btn('다시하기', 'ico_retry.svg', () => cb.rejoin(), 'red'));   /* 같이 깨기 · 대결 : 같은 방에서 다시하기 */
+    else r1.appendChild(next ? btn('전투개시!', 'ico_fight.webp', () => cb.next(), 'red') : btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'red'));
+    if (cb.puSave && !isNet && !info.mode) r1.appendChild(btn('파워업', 'ico_power_n.webp', () => showPanel('powerup', { back: kind, backInfo: info }), 'green'));
     if (next) r2.appendChild(btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'purple'));
     r2.appendChild(btn(text.exit, 'ico_exit.svg', () => cb.exit(), 'purple'));
     body.append(r1, r2);
     card.append(scene, body);
+    return card;
+  }
+
+  /* ── 시작 창 (대표님 11/13 «시작 창 · 결과 창 비슷한 창은 규칙으로 통일» · docs/IDG_UI_PATTERNS.md §1) ──
+   *  차례 : 날개 현판(판 이름 · 모드 이름) → 그림 띠(포스터 · 월드 배경 + 나오는 좀비 얼굴 칸) → 큰 한 줄 목표 → 정보 줄(아이콘 + 짧은 글 · 종이 띠) → (별 기준 알약) → 빨강 «시작하기» + 보라 «나가기»
+   *  창이 떠 있는 동안 전투는 멈춰 있다(battle.js ui.paused) · «시작하기»를 눌러야 시작 */
+  function introCard(info) {
+    fontOnce();
+    const raid = !!stage.raid, pvp = !!stage.pvp, card = h('div', `idg-card idg-res idg-int win${raid ? ' raid' : ''}${pvp ? ' pvp' : ''}`);
+    const img = (src, cls, alt = '') => { const i = h('img', cls); i.src = src; i.alt = alt; i.draggable = false; return i; };
+    const scene = h('div', 'idg-res-scene'), body = h('div', 'idg-res-body');
+    /* 현판 : 판 = «1-4» 큰 글 + 이름 작은 글 두 줄 · 습격 = «주간 좀비 습격» */
+    { const pl = h('div', 'idg-res-banner idg-res-plate gold two'), pi = h('div', 'p');
+      if (raid || pvp) pi.appendChild(h('b', 'mid', raid ? '주간 좀비 습격' : '드래곤 대결')); else pi.append(h('b', 'id', stage.id), h('i', null, stage.name));
+      pl.appendChild(pi); scene.appendChild(pl); }
+    if (raid) { const po = img('/assets/iandragon_game/ui/raid_poster.webp', 'idg-int-poster'); po.onerror = () => { po.onerror = null; po.src = `${RES}win.webp`; }; scene.appendChild(po); }
+    else if (pvp) {   /* 대결 : 내 덱(대장 먼저) VS 친구 덱 · 얼굴 칸 */
+      scene.style.backgroundImage = `url(${AI}bg/w${String(stage.w || 1).padStart(2, '0')}_panel.png)`; scene.classList.add('world');
+      const side = (name, list, ld) => { const g = h('div', 'grp'), z = h('div', 'idg-int-faces in'); g.appendChild(h('i', null, name));
+        for (const id of [ld, ...(list || []).map((d) => d.id)].filter(Boolean)) { const c = h('div', 'face'), im = img(`${AI}${id}/head.png`); im.onerror = () => { c.style.display = 'none'; }; c.appendChild(im); z.appendChild(c); } g.appendChild(z); return g; };
+      const vs = h('div', 'idg-int-vs'); vs.append(side('나', deck, leader), h('b', null, 'VS'), side('친구', foeDeck, foeLeader)); scene.appendChild(vs);
+    }
+    else {
+      scene.style.backgroundImage = `url(${AI}bg/w${String(stage.w || 1).padStart(2, '0')}_panel.png)`; scene.classList.add('world');
+      const zs = h('div', 'idg-int-faces');   /* 나오는 좀비 얼굴 칸 */
+      for (const id of [...new Set(stage.lines.map((l) => ZART[l.id] || l.id))]) { const c = h('div', 'face'), im = img(`${AI}${id}/head.png`); im.onerror = () => { im.onerror = null; im.src = `${AI}${ZART[id] || id}/torso.png`; }; c.appendChild(im); zs.appendChild(c); }
+      scene.appendChild(zs);
+    }
+    /* 별 기준 알약 (판만) : 별 1 · 2 · 3 개 = 깨면 · n 초 안에 */
+    if (!raid && !pvp) {
+      const bar = h('div', 'idg-res-bar idg-int-bar' + (stage.diff === 'hard' ? ' red' : stage.diff === 'master' ? ' purple' : ''));
+      const cell = (n, txt) => { const c = h('div', 'cell'), ss = h('span', 'ss'); for (let i = 0; i < n; i++) ss.appendChild(img(`${RES}star_on.webp`)); c.append(ss, h('b', null, txt)); return c; };
+      bar.append(cell(1, '깨기'), cell(2, `${stage.star2}초`), cell(3, `${stage.star3}초`)); body.appendChild(bar);
+    }
+    body.appendChild(h('p', 'idg-int-goal', raid ? '최대한 오래 버텨라!' : pvp ? '상대 드래곤캐슬을 먼저 부숴라!' : '좀비 탑을 무너뜨려라!'));
+    /* 정보 줄 (아이콘 + 짧은 글) */
+    const lines = h('div', 'idg-int-lines'), line = (ico, txt, cls = '') => { const l = h('div', 'idg-res-new idg-int-line ' + cls); if (ico) l.appendChild(typeof ico === 'string' ? img(ico, 'ico') : ico); l.appendChild(h('span', null, txt)); lines.appendChild(l); };
+    const ICO = { timer: `${RES}timer.webp`, fight: `${RES}ico_fight.webp`, hall: `${UI}lobby/icon_hall.png`, tip: `${RES}ico_tip.webp` };
+    if (pvp) {
+      line(ICO.timer, '3분 안에 · 90초부터 불꽃 타임'); line(ICO.fight, '모두 같은 조건 : 드래곤 Lv20'); line(`${RES}ico_castle.webp`, '시간이 끝나면 드래곤캐슬 체력이 많은 쪽이 이겨요');
+    } else if (raid) {
+      line(ICO.timer, '좀비가 20초마다 더 세게 몰려와요 — 끝이 없어요'); line(ICO.fight, '이번 주 모두 같은 좀비 · 같은 드래곤(Lv20)으로 겨뤄요'); line(ICO.hall, '버틴 웨이브 수가 명예의 전당 순위가 돼요');
+      scene.appendChild(h('div', 'idg-int-best', info.best ? `내 이번 주 최고 ${info.best} 웨이브` : '이번 주 내 기록이 아직 없어요'));
+    } else {
+      if (stage.diff && stage.diff !== 'normal') line(ICO.fight, stage.diff === 'hard' ? '어려움 — 붉은 별 · 출전 드래곤 Lv21 이상' : stage.diff === 'master' ? `초고수 — 보라 별 · ${stage.limit ? `${stage.limit}초 · ` : ''}부화 «+» · 편의품은 안 통해요` : '쉬움 — 좀비가 약해요 · 별은 2개까지', 'diff ' + stage.diff);
+      if (stage.gim && GIM[stage.gim]) line(ICO.tip, GIM[stage.gim]);
+      const trs = [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))];
+      if (trs.length) { const w = h('span', 'attrs'); for (const tr of trs) { const ic = img(`${UI}hud_attr_${tr}_s.png`, 'idg-attr'); ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; w.appendChild(ic); } line(w, `특별한 좀비 : ${trs.map((t) => ATTR_KO[t]).join(' · ')}`); }
+    }
+    if (lines.childElementCount) body.appendChild(lines);
+    /* 편의품 (판마다 1개) */
+    if (!raid && !pvp && cons && cons.length) {
+      const cr = h('div', 'idg-cons-row');
+      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
+      draw(); body.appendChild(cr);
+    }
+    const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(`${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
+    const r1 = h('div', 'idg-res-row big');
+    r1.append(btn('시작하기', 'ico_fight.webp', () => cb.go(useCons), 'red'), btn(text.exit, 'ico_exit.svg', () => cb.exit(), 'purple'));
+    body.appendChild(r1);
+    card.append(scene, body);
+    return card;
+  }
+
+  /* ── 일시정지 창 (§0) : 현판 «일시정지» → 소리 · 설정 판(안에서 스크롤) → 빨강 «계속하기» → 보라 «다시하기» · «나가기» ── */
+  function pauseCard() {
+    fontOnce();
+    const card = h('div', 'idg-card idg-res idg-pausewin win');
+    const img = (src, cls) => { const i = h('img', cls); i.src = src; i.alt = ''; i.draggable = false; return i; };
+    const head = h('div', 'idg-pw-head'), pl = h('div', 'idg-res-banner idg-res-plate gold'), pi = h('div', 'p');
+    pi.appendChild(h('b', 'mid', '일시정지')); pl.appendChild(pi); head.appendChild(pl);
+    const body = h('div', 'idg-res-body'), set = h('div', 'idg-pw-set'); set.appendChild(soundBox()); body.appendChild(set);
+    const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(`${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
+    const r1 = h('div', 'idg-res-row big'), r2 = h('div', 'idg-res-row');
+    r1.appendChild(btn('계속하기', 'ico_fight.webp', () => cb.pause(), 'red'));
+    r2.append(btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'purple'), btn(text.exit, 'ico_exit.svg', () => cb.exit(), 'purple'));
+    body.append(r1, r2);
+    card.append(head, body);
     return card;
   }
 
@@ -210,67 +298,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, cls: 'idg-card idg-pp' }));
       panel.classList.add('on'); return;
     }
-    const box = h('div', 'idg-card');
-    if (kind === 'pause') { box.append(h('h2', null, '일시정지')); box.appendChild(soundBox()); }
-    else if (kind === 'intro' && stage.raid) {   /* 주간 습격 카드 */
-      box.append(h('h2', null, '좀비 습격'), h('p', 'small', `${stage.raid} · 20초마다 웨이브 · 점점 세져요 · 5웨이브마다 보스`), h('p', 'small', '모두 같은 조건 : 내 덱 6칸 · 모두 Lv20 · 연구소/보물 없음'));
-    }
-    else if (kind === 'intro' && stage.pvp) {   /* 용 대결 카드 : 양쪽 덱 · 리더 공개 */
-      box.append(h('h2', null, '용 대결!'));
-      const face = (list, ld) => { const z = h('div', 'idg-intro-z'); for (const id of [ld, ...list.map((d) => d.id)].filter(Boolean)) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.style.display = 'none'; }; z.appendChild(im); } return z; };
-      box.append(h('p', 'small', '나'), face(deck, leader), h('p', 'small', 'VS 친구'), face(foeDeck || [], foeLeader));
-      box.append(h('p', 'small', '상대 둥지를 먼저 무너뜨리면 승리 · 3분 · 90초부터 불꽃 타임 · 모두 Lv20'));
-    }
-    else if (kind === 'intro') {   /* 스테이지 카드 (기획서 11.4) : 이름 · 기믹 · 오늘의 좀비 · 별 조건 */
-      box.append(h('h2', null, `${stage.id} ${stage.name}`));
-      if (stage.diff && stage.diff !== 'normal') box.append(h('p', 'idg-diff ' + stage.diff, stage.diff === 'hard' ? '어려움 — 붉은 별 · 출전 드래곤 Lv21 이상' : stage.diff === 'master' ? `초고수 — 보라 별 · ${stage.limit}초 · 부화 «+» · 편의품은 안 통해요` : '쉬움 — 좀비가 약해요 · 별은 2개까지'));
-      if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
-      const zs = h('div', 'idg-intro-z');
-      for (const tr of [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))]) { const ic = h('img', 'idg-attr'); ic.src = `/assets/iandragon_game/ui/hud_attr_${tr}_s.png`; ic.alt = ''; ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; zs.appendChild(ic); }   // 이 판의 특별한 좀비 (유령 · 거대 · 그림자 · 수정)
-      for (const id of [...new Set(stage.lines.map((l) => ZART[l.id] || l.id))]) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
-      box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안에 · ★★★ ${stage.star3}초 안에`));
-    }
-    else if ((kind === 'win' || kind === 'lose') && !info.pvp && !isNet && !stage.raid) {   /* 새 결과 창 (대표님 11/12 시안) */
-      panel.appendChild(resultCard(kind, info)); panel.classList.add('on'); return;
-    }
-    else {
-      box.append(h('h2', kind === 'win' ? 'win' : 'lose', info.title || (kind === 'win' ? '승리!' : '아쉬워요…')));
-      if (info.pvp) { box.append(h('p', null, `${clock(info.t || 0)} · 코인 +${fmt(info.coins || 0)}`), h('p', 'small', info.rec || '')); if (info.hint) box.append(h('p', 'hint', info.hint)); }
-      else if (kind === 'win') { const st = h('div', 'idg-stars' + (info.red ? ' red' : info.purple ? ' purple' : '')); for (let i = 0; i < 3; i++) { const s = h('span', i < info.stars ? 'on' : '', '★'); s.style.animationDelay = `${0.3 + i * 0.35}s`; st.appendChild(s); } box.appendChild(st); }
-      if (!info.pvp) box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}${kind === 'win' && info.gems ? ` · 젬 +${info.gems}` : ''}${info.daily ? ' (오늘 첫 승리 +10)' : ''}${info.gold ? ` · 황금 좀비 +${fmt(info.gold)}` : ''}`));
-      if (kind === 'lose' && info.hint && !info.pvp) box.append(h('p', 'hint', info.hint));
-    }
-    const row = h('div', 'idg-row');
-    const add = (label, fn, cls = '') => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
-    if (kind === 'pause' && !info.pvp && !isNet) {   /* 일시정지 단추 (대표님 11/11 밤) : «계속» 한 줄 꽉 · 아래 «다시하기 · 나가기» */
-      const rows = h('div', 'idg-rows'), line = (...bs) => { const r = h('div', 'idg-row'); for (const [label, fn, cls] of bs) { const b = h('button', 'idg-btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; r.appendChild(b); } rows.appendChild(r); };
-      line(['계속', () => cb.pause(), 'main big']); line(['다시하기', () => cb.retry()], [text.exit, () => cb.exit()]);
-      box.appendChild(rows); panel.appendChild(box); panel.classList.add('on'); return;
-    }
-    if (kind === 'pause') add('계속', () => cb.pause(), 'main');
-    if (kind === 'intro' && cons && cons.length) {   /* 편의품 (판마다 1개) */
-      const cr = h('div', 'idg-cons-row');
-      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
-      draw(); box.appendChild(cr);
-    }
-    if (kind === 'intro') { add('출격!', () => cb.go(useCons), 'main'); add(text.exit, () => cb.exit()); box.appendChild(row); panel.appendChild(box); panel.classList.add('on'); return; }
-    if (info.unlocks) box.append(h('p', 'final', `새로 열림 : ${info.unlocks.join(' · ')}`));
-    if (info.final) box.append(h('p', 'final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요! 🐉'));
-    /* 판 사이 기지 — 단추 세 줄 (대표님 11/11) : ① 전투 개시(승리) · 다시 하기(패배) ② 파워 업 ③ 다시 하기 + 나가기 (패배는 나가기만) */
-    const base = (kind === 'win' || kind === 'lose') && !info.pvp && !isNet && !stage.raid;
-    if (base) {
-      const rows = h('div', 'idg-rows'), line = (...bs) => { const r = h('div', 'idg-row'); for (const [label, fn, cls] of bs) { const b = h('button', 'idg-btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; r.appendChild(b); } rows.appendChild(r); };
-      const win = kind === 'win' && info.hasNext;
-      line(win ? ['전투 개시!', () => cb.next(), 'main big'] : ['다시하기', () => cb.retry(), 'main big']);
-      if (cb.puSave) line(['파워 업', () => showPanel('powerup', { back: kind, backInfo: info }), 'pu big']);
-      line(...(win ? [['다시하기', () => cb.retry()], [text.exit, () => cb.exit()]] : [[text.exit, () => cb.exit()]]));
-      box.appendChild(rows); panel.appendChild(box); panel.classList.add('on'); return;
-    }
-    if (kind === 'win' && info.hasNext && !info.pvp && !isNet) add('전투 개시!', () => cb.next(), 'main big');   /* 다음 판 */
-    if (isNet) add('한 판 더 (같은 방)', () => cb.rejoin(), 'main');
-    else if (!info.pvp || stage.raid) add('다시하기', () => cb.retry(), kind === 'lose' ? 'main big' : '');
-    add(text.exit, () => cb.exit());
-    box.appendChild(row); panel.appendChild(box); panel.classList.add('on');
+    /* 일시정지 · 시작(판 · 습격 · 대결) · 결과 = 모두 결과 창과 같은 틀(docs/IDG_UI_PATTERNS.md §0 · §1 · §2) */
+    if (kind === 'pause') panel.appendChild(pauseCard());
+    else if (kind === 'intro') panel.appendChild(introCard(info));
+    else panel.appendChild(resultCard(kind, info));
+    panel.classList.add('on');
   }
 
   /* 키보드 */
@@ -349,7 +381,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
         miniMe.style.left = `${(a / F) * 100}%`; miniFoe.style.left = `${(b / F) * 100}%`; miniFoe.style.visibility = S.stage.fog ? 'hidden' : '';
         miniView.style.left = `${(cam / F) * 100}%`; miniView.style.width = `${(w / F) * 100}%`;
       }
-      tip.textContent = ui.tip || ''; tip.classList.toggle('on', !!ui.tip); tip.dataset.at = ui.tipAt || '';
+      tip.textContent = ko(ui.tip || ''); tip.classList.toggle('on', !!ui.tip); tip.dataset.at = ui.tipAt || '';
       root.classList.toggle('fever', S.t >= S.feverAt);
     },
     showPanel,
