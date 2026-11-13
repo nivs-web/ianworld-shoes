@@ -806,3 +806,4 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-guide.cell.warn p { line-height: 1.12; margin: 0; }
 .idg-pp-guide.cell.warn { gap: 0; }
 .idg-pp.pp2 .idg-pp-guide.cell.warn p { color: #c21d0c; font-weight: 800; }
+.idg-pp.pp2.land .idg-pp-slots > .idg-pp-guide.cell.warn p { color: #c21d0c; font-weight: 800; line-height: 1.12; }   /* 경고 두 줄 : 빨강 · 줄간격 좁게 (위 720행 가로 규칙보다 강하게) */
