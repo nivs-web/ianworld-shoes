@@ -20,7 +20,7 @@ html.idg-lobby-on body { width: 100%; }
   --sty: calc(50cqh + (var(--sy) - var(--ih) / 2) * var(--sc));
   position: relative; display: block; flex: 1 1 0; box-sizing: border-box; width: 100%; min-height: 0; height: auto; margin: 0; padding: 0; overflow: hidden;
   container-type: size;
-  font-family: 'Pretendard Variable', Pretendard, 'PretendardV', 'Neo둥근모', sans-serif; font-weight: 900; color: #fff; word-spacing: normal; letter-spacing: 0; line-height: 1.1;
+  font-family: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; font-weight: 900; color: #fff; word-spacing: normal; letter-spacing: 0; line-height: 1.1;
 }
 .screen.idg-lobby2 * { word-spacing: normal; }
 .screen.idg-lobby2 > .idg-lobby-bg { background: #0e0822; }   /* 남는 틈만 어둡게 */

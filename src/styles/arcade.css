@@ -96,7 +96,7 @@
 @keyframes ohLogoShine { 0%, 55% { background-position: 170% 0 } 85%, 100% { background-position: -70% 0 } }
 
 /* ── 플레이어 이름: 대표님 11/4 밤 선택 1번 «아케이드 하이스코어 등록창» — 버튼 느낌 없음 · 그라데이션 없음 · 위아래 여백 같게 ── */
-@font-face { font-family: 'PretendardV'; src: url('https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2'); font-weight: 45 920; font-display: swap; }
+/* Pretendard = 부분 판(index.html 의 dynamic-subset · 화면에 나온 글자 묶음만 받음) — 2MB 통짜 판은 쓰지 않음 (11/14 대표님) */
 .oh-player { flex-shrink: 0; margin: 18px 4px 4px; padding: 12px 16px; background: #000; border: 4px double #FFC93C; color: #fff; text-align: left; }
 .oh-player-label { display: block; font-size: 13px; letter-spacing: 3px; color: #22E6FF; }
 .oh-player-name { display: block; font-size: 26px; line-height: 1.25; margin-top: 4px; color: #fff; }
@@ -112,19 +112,19 @@
 /* PLAY — 대표님 선택 1번 «밤 보라 + 금색 테두리» · 정사각 · 높이 = 왼쪽 타이틀 그림 높이(열 너비 계산식이 같게 맞춤) */
 .gc-play { grid-column: 2; grid-row: 1; align-self: start; width: 100%; aspect-ratio: 1; border-radius: 12px; cursor: pointer; padding: 0;
   display: grid; place-items: center; background: #1a1033; border: 2px solid #FFC93C; box-shadow: inset 0 0 0 4px #1a1033, inset 0 0 0 5px rgba(255, 201, 60, .35);
-  color: #FFC93C; font-family: 'PretendardV', 'Neo둥근모', sans-serif; font-weight: 900; font-size: 20px; letter-spacing: 1px; }
+  color: #FFC93C; font-family: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; font-weight: 900; font-size: 20px; letter-spacing: 1px; }
 .gc-play:active { transform: translateY(2px); background: #241544; }
 .gc-sub { grid-column: 1 / span 2; grid-row: 2; font-size: 12px; color: #e9dcc0; opacity: .9; padding: 0 2px; }
 /* 신작 «제작 중» 카드 (2026-11-10 이안 드래곤) — 타이틀 그림이 생기기 전까지 그림 자리를 글자로. 크기는 배너와 같다 */
 .gc-new { border-color: rgba(255, 201, 60, .55); }
 .gc-new-art { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; overflow: hidden;
   background: radial-gradient(120% 90% at 50% 0%, #2a1550 0%, #120a26 60%, #0a0716 100%); border: 1px dashed rgba(255, 201, 60, .5); box-sizing: border-box; }
-.gc-new-title { font-family: 'PretendardV', 'Neo둥근모', sans-serif; font-weight: 900; font-size: clamp(24px, 8vw, 34px); letter-spacing: 1px; line-height: 1;
+.gc-new-title { font-family: 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; font-weight: 900; font-size: clamp(24px, 8vw, 34px); letter-spacing: 1px; line-height: 1;
   background: linear-gradient(180deg, #FFE27A 0%, #FF9A3C 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 3px 0 #3a1a00); }
 .gc-new-tag { font-size: 12px; letter-spacing: 3px; color: #22E6FF; animation: ohCur 1.2s steps(1) infinite; }
 .gc-new-badge { position: absolute; top: 8px; left: 8px; padding: 2px 7px; border-radius: 6px; background: #FF3D6E; color: #fff;
-  font-family: 'PretendardV', sans-serif; font-weight: 900; font-size: 11px; letter-spacing: 1px; }
+  font-family: 'Pretendard Variable', Pretendard, sans-serif; font-weight: 900; font-size: 11px; letter-spacing: 1px; }
 .gc-new-banner { padding: 0; }
 .gc-new-banner > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
 .gc-new-banner > .gc-new-badge { z-index: 1; top: 3px; left: 3px; padding: 1px 5px; font-size: 9px; }   /* 배너 제목을 덜 가리게 */
@@ -143,7 +143,7 @@
 .oh-player { cursor: pointer; }
 .oh-player:active { transform: translateY(1px); }
 .dialog.oh-pinfo { background: #000; border: 4px double #FFC93C; max-width: 400px; width: calc(100% - 24px); text-align: left; }
-.oh-pinfo-label { font-family: 'PretendardV', sans-serif; font-weight: 800; color: #4fd8ff; letter-spacing: .2em; font-size: 13px; }
+.oh-pinfo-label { font-family: 'Pretendard Variable', Pretendard, sans-serif; font-weight: 800; color: #4fd8ff; letter-spacing: .2em; font-size: 13px; }
 .oh-pinfo-name { font-size: 24px; color: #fff; margin: 4px 0 10px; }
 .oh-pinfo-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .oh-pinfo-row { border-top: 1px solid #3a2a08; padding-top: 7px; }
