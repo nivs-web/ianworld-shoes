@@ -27,6 +27,7 @@ export const S = {
   power: '브레스 힘', range: '브레스 사거리', step: '단계', next: '다음', start: '처음',
   lead: '대장', curCastle: '내 드래곤캐슬', slots: (n) => `장비 칸 ${n}`,
   gearLv: (n) => (n ? `Lv ${n}` : '아직 없어요'),
+  sells: '아이템 샵에서 팔아요', goShop: '샵 가기', auto: '자동', autoSub: '월드 추천', autoNow: '지금은',
   rangeFoot: '처음엔 60% · 드래곤 레벨과 브레스 색으로도 넓어져요',
 };
 
