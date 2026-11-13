@@ -9,7 +9,7 @@
 import * as L from './storageLocal.js';
 import { patch } from './profile.js';
 import { normIdg } from './iandragonGameState.js';
-import { pickGift, GIFT_EVERY, GIFT_LAST } from '../games/iandragon_game/data/looks.js';
+import { pickGift, rememberLooks, GIFT_EVERY, GIFT_LAST } from '../games/iandragon_game/data/looks.js';
 
 /** 지금 값 (항상 안전한 모양) */
 export const idg = () => normIdg(L.loadProfile().idg);
@@ -39,15 +39,20 @@ export const pendingGifts = (g = idg()) => {
   for (let lv = GIFT_EVERY; lv <= top; lv += GIFT_EVERY) if (!g.lvGifts?.[String(lv)]) out.push(lv);
   return out;
 };
-/** 밀린 선물을 모두 뽑아 저장 — 씨앗 = 계정 id + 레벨 (로그인 안 했으면 'guest') · 돌려줌 [{ lv, key, tier, gems }] */
-export function claimGifts(uid) {
+/** 밀린 선물을 모두 뽑아 저장 — 씨앗 = 계정 id + 레벨 (로그인 안 했으면 'guest') · 돌려줌 [{ lv, key, tier, gems }]
+ *  후보 = 샵에 열린 것(catalog.giftCandidates · 따로 묶음이라 여기서 받는다) → async (11/13 모으기) */
+export async function claimGifts(uid) {
   let g = idg();
   const list = pendingGifts(g);
   if (!list.length) return [];
+  let cat = null;
+  try { cat = await import('../games/iandragon_game/data/catalog.js'); rememberLooks(cat.CATALOG); } catch (e) { console.warn('[좀비와 드래곤] 선물 후보 목록을 못 받았다', e); return []; }   // 못 받으면 다음에 다시 (옛 표로 몰래 뽑지 않는다)
+  g = idg();   // 기다리는 동안 바뀐 저장 반영
   const got = [], owned = [...g.owned], rec = { ...g.lvGifts };
   let gems = g.gems;
   for (const lv of list) {
-    const r = pickGift({ ...g, owned, lvGifts: rec }, lv, uid || 'guest');
+    if (rec[String(lv)]) continue;   // 그 사이 받은 레벨은 건너뜀
+    const r = pickGift({ ...g, owned, lvGifts: rec }, lv, uid || 'guest', cat.giftCandidates({ ...g, owned, lvGifts: rec }));
     got.push(r); gems += r.gems;
     rec[String(lv)] = r.key || 'gem';
     if (r.key && !r.key.startsWith('title:') && !owned.includes(r.key)) owned.push(r.key);   // 칭호는 lvGifts 기록이 곧 «가짐»

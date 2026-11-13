@@ -302,7 +302,7 @@ async function runNotices({ onLook, onDone }) {
     }
     /* ⑤ 레벨 선물 (밀린 것 한꺼번에) */
     if (G.pendingGifts(G.idg()).length) {
-      const got = G.claimGifts(currentUser()?.uid);
+      const got = await G.claimGifts(currentUser()?.uid);
       if (got.length) { changed = true; let look = false; await giftWin(got, () => { look = true; }); if (look) { onLook?.(); changed = false; } }
     }
   } catch (e) { console.warn('[좀비와 드래곤] 안내 창 실패', e); }

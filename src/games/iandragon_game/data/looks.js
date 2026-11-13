@@ -165,10 +165,13 @@ export function decodeLook(str) {
 
 /* ───────── 아이템 열쇠 'hat:crown' ───────── */
 export const keyOf = (slot, id) => `${slot}:${id}`;
+/** 샵 목록(catalog.js · 따로 묶음)에서 온 새 물건 이름 — 레벨 선물이 catalog 를 받을 때 채운다(꾸미기 표 LOOKS 는 옛 26개만 · 새 물건은 저장 번호를 lookFx 가 맡는다) */
+const EXTRA = {};
+export const rememberLooks = (rows) => { for (const r of rows || []) if (!LOOKS[r.slot]?.some((x) => x.id === r.id)) EXTRA[r.key] = { id: r.id, name: r.name }; };
 export function parseKey(key) {
   const m = /^(hat|neck|breath|flag|frame|title|aura|pet|roof|gate|yard):([a-z0-9_]{1,24})$/.exec(String(key));
   if (!m) return null;
-  const item = LOOKS[m[1]].find((x) => x.id === m[2]);
+  const item = LOOKS[m[1]].find((x) => x.id === m[2]) || EXTRA[String(key)];
   return item ? { slot: m[1], id: m[2], item } : null;
 }
 /** 상점에서 파는 꾸미기 열쇠들 (가격이 있고 0 보다 큰 모자 · 목 · 브레스 · 깃발) */
@@ -218,24 +221,26 @@ export const GIFT_ODDS = GIFT_TIERS.map((t) => `${t.name} ${t.p}`).join(' · ');
 export const giftGems = (lv) => (lv === 100 ? 50 : 20);
 /** 이 계정에 보여도 되는 꾸미기 (칸마다 · 물건에 vis 가 있으면 그 조건 · 지금은 초고수 칭호만 걸림) — 거르는 곳은 여기 한 곳 */
 export const visibleLooks = (g) => Object.fromEntries(Object.entries(LOOKS).map(([slot, list]) => [slot, list.filter((x) => !x.vis || x.vis(g))]));
-/** 레벨 선물 후보 열쇠 (등급별 · 보이는 것 중 상점 판매품 + 선물 전용) */
-export function giftPool(g) {
+/** 레벨 선물 후보 열쇠 (등급별) — 샵에 **열린 것**(catalog.giftCandidates(g) · 안 가진 것 · 전설 · 신화 · 변신 모습 없음) + 레벨 선물 전용 칭호(보통) · 테두리(희귀).
+ *  cat = { common, fine, rare, hero } (catalog.giftCandidates) — 등급 이름은 선물 창이 쓰는 대로(고급 = uncommon · 영웅 = epic). cat 이 없으면 옛 26개 표(LOOKS)로 */
+export function giftPool(g, cat) {
   const P = Object.fromEntries(GIFT_TIERS.map((t) => [t.id, []])), V = visibleLooks(g);
-  for (const [slot, list] of Object.entries(V)) for (const x of list) if (x.tier && P[x.tier] && (x.gift || x.price > 0)) P[x.tier].push(keyOf(slot, x.id));
+  if (cat) { P.common.push(...cat.common); P.uncommon.push(...cat.fine); P.rare.push(...cat.rare); P.epic.push(...cat.hero); }
+  for (const [slot, list] of Object.entries(V)) for (const x of list) if (x.tier && P[x.tier] && (cat ? x.gift : x.gift || x.price > 0)) P[x.tier].push(keyOf(slot, x.id));
   return P;
 }
 /** 이 열쇠를 이미 가졌나 (칭호는 조건 · 나머지는 owned) */
 export const hasKey = (g, key) => { const p = parseKey(key); return !!p && hasItem(g, p.slot, p.id); };
-/** 선물 하나 뽑기 (결정적) — g = 지금 저장값(앞 선물까지 반영) · seed = 계정 id 글자 */
-export function pickGift(g, lv, seed) {
+/** 선물 하나 뽑기 (결정적) — g = 지금 저장값(앞 선물까지 반영) · seed = 계정 id 글자 · cat = catalog.giftCandidates(g) (없으면 옛 표) */
+export function pickGift(g, lv, seed, cat) {
   let h = 2166136261;
   for (const c of `idg-gift:${seed}:${lv}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
   const rnd = mulberry(h >>> 0), roll = rnd() * 100, pick = rnd();
   let acc = 0, ti = GIFT_TIERS.length - 1;
   for (let i = 0; i < GIFT_TIERS.length; i++) { acc += GIFT_TIERS[i].p; if (roll < acc) { ti = i; break; } }
-  const P = giftPool(g);
-  for (let i = ti; i >= 0; i--) {   // 뽑힌 등급 → 아래 등급으로만
-    const left = P[GIFT_TIERS[i].id].filter((k) => !hasKey(g, k));
+  const P = giftPool(g, cat), has = (k) => hasKey(g, k) || (Array.isArray(g?.owned) && g.owned.includes(k));
+  for (let i = ti; i >= 0; i--) {   // 뽑힌 등급 → 아래 등급으로만 (위로 올라가지 않는다) → 다 비면 젬
+    const left = P[GIFT_TIERS[i].id].filter((k) => !has(k));
     if (left.length) return { lv, key: left[Math.floor(pick * left.length)], tier: GIFT_TIERS[i].id, gems: giftGems(lv) };
   }
   return { lv, key: null, tier: null, gems: giftGems(lv) + GIFT_ALL_GEMS };

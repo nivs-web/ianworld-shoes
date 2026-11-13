@@ -61,6 +61,48 @@ function stats(raw) {
   return Object.fromEntries(STAT_KEYS.map((k) => [k, n0(r[k], 1e9)]));
 }
 
+/* ── 드래곤 · 드래곤캐슬 키우기 · 모으기 (IDG_UPGRADES_SPEC §1.2 · §2 · §4 · 11/13) — 부팅 묶음이라 게임 데이터를 import 하지 않고 표를 작게 복사해 둔다 ── */
+const LEAD_UNLOCK = { novart: 0, aquantis: 1, forestia: 2, crimsonde: 3, volttail: 4, solaris: 5, sandscale: 6, shadowfen: 7, frostwing: 8, goldrex: 9 };   // LEADERS.unlock 그대로 (leaders.js)
+const GEAR_IDS = ['cannon', 'fence', 'repair', 'bell'];
+const obj = (v) => (v && typeof v === 'object' ? v : {});
+/** 대장 드래곤 : 가진 것 · 레벨(2~10만 적음) · 모습(red · purple). 필드가 없으면 지금 열린 대장 드래곤을 그대로 가진 것으로(옮기기 · 결정 1) */
+function lead(raw, cleared) {
+  const r = obj(raw), open = Math.floor((cleared || 0) / 10);
+  const base = Array.isArray(r.own) ? r.own : Object.keys(LEAD_UNLOCK).filter((id) => LEAD_UNLOCK[id] <= open);
+  const own = ids(['novart', 'aquantis', ...base], 16);
+  const lv = {}, form = {};
+  for (const id of own) {
+    const n = n0(obj(r.lv)[id], 10); if (n > 1) lv[id] = n;
+    const f = obj(r.form)[id]; if (f === 'red' || f === 'purple') form[id] = f;
+  }
+  return { own, lv, form };
+}
+function castle(raw) {
+  const r = obj(raw), lv = Math.max(1, n0(r.lv, 10)), gear = {};
+  for (const k of GEAR_IDS) { const n = n0(obj(r.gear)[k], 5); if (n) gear[k] = n; }
+  const sl = Array.isArray(r.slots) ? r.slots : [], slots = [0, 1, 2].map((i) => (GEAR_IDS.includes(sl[i]) && gear[sl[i]] && sl.indexOf(sl[i]) === i ? sl[i] : null));
+  return { lv, skin: Math.min(lv, Math.max(1, n0(r.skin, 10))), gear, slots };
+}
+/** old = 업데이트 전에 깬 월드 하나마다 사거리 +5% 덤 — 필드가 없을 때 **한 번만** 정해진다(그 뒤 월드를 더 깨도 안 늘어남) */
+const breathUp = (raw, cleared) => {
+  const r = raw && typeof raw === 'object' ? raw : null;
+  return { pow: n0(r?.pow, 8), rng: n0(r?.rng, 5), old: r ? n0(r.old, 8) : Math.min(8, Math.floor((cleared || 0) / 10)) };
+};
+/** 보물 게이지 : n = 보스 판 다시 깬 누적 · at = 마지막으로 떨어졌을 때의 n (칸 = n − at) */
+const gauge = (raw) => { const r = obj(raw), one = (x) => { const n = n0(obj(x).n, 1e6); return { n, at: Math.min(n, n0(obj(x).at, 1e6)) }; }; return { hard: one(r.hard), master: one(r.master) }; };
+/** 코디 3칸 */
+const fits = (raw) => [0, 1, 2].map((i) => { const f = obj(Array.isArray(raw) ? raw[i] : null); return { look: lookStr(f.look), clook: lookStr(f.clook) }; });
+
+/**
+ * 도감 도장 (§1.2) — 도장을 찍어 준 물건 수 `stampN`. 새 물건 = `owned` 의 stampN 번째 뒤(owned 는 얻은 차례로 뒤에 붙는다).
+ * 10개마다 젬 10. 돌려줌 { stampN: 새 값, fresh: 새로 도장 찍힌 열쇠들, gems: 이번에 받는 젬 } — 물건을 얻는 곳(결과 창 · 샵 · 레벨 선물)이 같은 함수를 쓴다.
+ */
+export const STAMP_GEMS = 10, STAMP_EVERY = 10;
+export function stampOf(stampN, owned) {
+  const own = Array.isArray(owned) ? owned : [], old = Math.min(n0(stampN, OWNED_MAX), own.length), now = own.length;
+  return { stampN: now, fresh: own.slice(old), gems: (Math.floor(now / STAMP_EVERY) - Math.floor(old / STAMP_EVERY)) * STAMP_GEMS };
+}
+
 export function emptyIdg() { return normIdg(null); }
 
 /** 저장된 값이 어떤 모양이든 안전한 모양으로 */
@@ -101,6 +143,14 @@ export function normIdg(raw) {
     masterStars: starsStr(r.masterStars),       // 초고수 «보라 별» (판마다 0~3 · 11/13)
     lvGifts: gifts(r.lvGifts),                  // 레벨 선물 받은 기록 { "10": "hat:ribbon", "20": "gem" } (§C-5 · 11/13)
     pvp: { w: n0(r.pvp?.w), l: n0(r.pvp?.l), d: n0(r.pvp?.d), day: str(r.pvp?.day, 10, ''), n: n0(r.pvp?.n, 99) },   // 드래곤 대결 전적 · 오늘 보상 판 수 (3차 M5)
+    /* 11/13 키우기 · 모으기 (IDG_UPGRADES_SPEC §1.2) — 없으면 기본값 · 옛 저장은 한 번 옮긴다(§2) */
+    lead: lead(r.lead, r.cleared),              // 대장 드래곤 { own: [id…], lv: { id: 2~10 }, form: { id: 'red' | 'purple' } }
+    castle: castle(r.castle),                   // 드래곤캐슬 { lv, skin, gear: { cannon | fence | repair | bell: 1~5 }, slots: [id | null ×3] }
+    breathUp: breathUp(r.breathUp, r.cleared),  // 브레스 힘 · 사거리 단계 + 업데이트 전 월드 덤(old · 한 번만 정해짐)
+    view: r.view === 'castle' ? 'castle' : 'dragon',   // 로비 보기 : 드래곤 ⇄ 드래곤캐슬
+    bossGauge: gauge(r.bossGauge),              // 보물 게이지 { hard: { n, at }, master: { n, at } }
+    stampN: Math.min(n0(r.stampN, OWNED_MAX), ownedKeys(r.owned).length),   // 도감 도장을 찍어 준 물건 수 (owned 보다 많을 수 없다)
+    fits: fits(r.fits),                         // 코디 3칸 [{ look, clook } ×3]
   };
 }
 
@@ -135,7 +185,7 @@ export function mergeIdg(localRaw, remoteRaw) {
     const u = unitsOut[k];
     unitsOut[k] = u ? [Math.max(u[0], v[0]), Math.max(u[1], v[1])] : v;
   }
-  return {
+  return normIdg({   // 끝에서 한 번 더 거른다 — 고른 것(skin · slots · form)이 합친 가진 것과 어긋나지 않게
     v: 1,
     coins: Math.max(a.coins, b.coins),
     gems: Math.max(a.gems, b.gems),
@@ -169,5 +219,18 @@ export function mergeIdg(localRaw, remoteRaw) {
     lvGifts: { ...b.lvGifts, ...a.lvGifts },   // 합집합 (같은 레벨이면 이 기기 값 — 씨앗이 같아 보통 같은 값)
     pvp: { w: Math.max(a.pvp.w, b.pvp.w), l: Math.max(a.pvp.l, b.pvp.l), d: Math.max(a.pvp.d, b.pvp.d), day: a.pvp.day > b.pvp.day ? a.pvp.day : b.pvp.day,
       n: a.pvp.day === b.pvp.day ? Math.max(a.pvp.n, b.pvp.n) : a.pvp.day > b.pvp.day ? a.pvp.n : b.pvp.n },
-  };
+    /* 11/13 키우기 · 모으기 (§4) — 줄지 않는 것(가진 것 · 레벨 · 단계 · 게이지 · 도장)은 큰 쪽 / 합집합 · 고른 것(form · skin · slots · view · fits)은 원격 */
+    lead: { own: [...new Set([...a.lead.own, ...b.lead.own])].slice(0, 16),
+      lv: Object.fromEntries([...new Set([...Object.keys(a.lead.lv), ...Object.keys(b.lead.lv)])].map((k) => [k, Math.max(a.lead.lv[k] || 1, b.lead.lv[k] || 1)])),
+      form: remoteRaw.lead ? b.lead.form : a.lead.form },
+    castle: { lv: Math.max(a.castle.lv, b.castle.lv),
+      gear: Object.fromEntries(GEAR_IDS.filter((k) => a.castle.gear[k] || b.castle.gear[k]).map((k) => [k, Math.max(a.castle.gear[k] || 0, b.castle.gear[k] || 0)])),
+      skin: remoteRaw.castle ? b.castle.skin : a.castle.skin, slots: remoteRaw.castle ? b.castle.slots : a.castle.slots },
+    breathUp: { pow: Math.max(a.breathUp.pow, b.breathUp.pow), rng: Math.max(a.breathUp.rng, b.breathUp.rng), old: Math.max(a.breathUp.old, b.breathUp.old) },
+    view: remoteRaw.view ? b.view : a.view,
+    bossGauge: { hard: { n: Math.max(a.bossGauge.hard.n, b.bossGauge.hard.n), at: Math.max(a.bossGauge.hard.at, b.bossGauge.hard.at) },
+      master: { n: Math.max(a.bossGauge.master.n, b.bossGauge.master.n), at: Math.max(a.bossGauge.master.at, b.bossGauge.master.at) } },
+    stampN: Math.max(a.stampN, b.stampN),
+    fits: remoteRaw.fits ? b.fits : a.fits,
+  });
 }
