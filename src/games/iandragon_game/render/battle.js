@@ -344,7 +344,9 @@ export async function startBattle(ctx, opts) {
   };
   ctx.app.ticker.add(tick);
   ui.paused = true; hud.showPanel('intro', { best: raid && opts.save?.raid?.w === raid.idx ? opts.save.raid.best || 0 : 0 });   // 스테이지 카드 → «출격!»
-  if (opts.quick && !net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); useBp(); sound.start(raid ? 'raid' : '', myDeck.map((d) => d.id)); } }, 50);   // 다시 하기 = 1터치 (기획 GDD 137)
+  /* 다시 하기 = 1터치 (기획 GDD 137) — 단, 편의품을 가지고 있으면 시작 창을 띄워 고르게 한다 (대표님 11/13 «졌을 때 다시하면 왜 이 창이 안 떠?») */
+  const consHave = !net && !raid && !DF.noItems && CONSUMABLES.some((c) => (opts.save?.cons?.[c.id] || 0) > 0);
+  if (opts.quick && !net && !consHave) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); useBp(); sound.start(raid ? 'raid' : '', myDeck.map((d) => d.id)); } }, 50);   // 다시 하기 = 1터치 (기획 GDD 137)
   if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '', myDeck.map((d) => d.id)); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
   const onHide = () => { if (document.hidden && !net && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);
