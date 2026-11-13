@@ -591,13 +591,14 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const fingers = new Map(); let pinch = 0, zoomF = 0.5, lastW = view.w;   /* zoomF = 확대 · 축소 기준점 (캔버스 가로 비율 · 두 손가락 가운데 / 휠은 마우스 자리) */
   const fracX = (clientX) => { const r = canvas.getBoundingClientRect(); return r.width ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0.5; };
   const gap = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
-  const onDown = (e) => { fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (fingers.size === 2) { drag = null; pinch = gap(); } else drag = { x: px(e), cam: camX }; handT = 3; };
+  /* 아래 단추 줄 근처에서 시작한 손가락은 맵을 움직이지 않는다 (대표님 11/13 «출전 단추를 누르다 실수로 맵을 건드리면 화면이 돌아간다») : api.guard(clientX, clientY) = HUD 가 알려 주는 «단추 줄 + 위로 40px» 안인지 */
+  const onDown = (e) => { if (api.guard?.(e.clientX, e.clientY)) return; fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (fingers.size === 2) { drag = null; pinch = gap(); } else drag = { x: px(e), cam: camX }; handT = 3; };
   const onMove = (e) => {
     if (fingers.has(e.pointerId)) fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (fingers.size >= 2 && pinch) { const g = gap(); if (g > 0 && Math.abs(Math.log(g / pinch)) > 0.02) { const [a, b] = [...fingers.values()]; zoomF = fracX((a.x + b.x) / 2); api.onZoom?.(Math.log(g / pinch) * 3); pinch = g; } handT = 3; return; }
-    if (!drag) return; camX = Math.max(0, Math.min(FIELD - view.w, drag.cam - (mirror ? -1 : 1) * toWorld(px(e) - drag.x))); handT = 3;
+    if (!drag || !fingers.has(e.pointerId)) return; camX = Math.max(0, Math.min(FIELD - view.w, drag.cam - (mirror ? -1 : 1) * toWorld(px(e) - drag.x))); handT = 3;
   };
-  const onUp = (e) => { if (e?.pointerId != null) fingers.delete(e.pointerId); else fingers.clear(); if (fingers.size < 2) pinch = 0; drag = null; };
+  const onUp = (e) => { if (e?.pointerId != null && !fingers.has(e.pointerId)) return; if (e?.pointerId != null) fingers.delete(e.pointerId); else fingers.clear(); if (fingers.size < 2) pinch = 0; drag = null; };
   const onWheel = (e) => { e.preventDefault(); zoomF = fracX(e.clientX); api.onZoom?.(-Math.sign(e.deltaY) * Math.min(1, Math.abs(e.deltaY) / 100) * 0.25); handT = 3; };
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.style.touchAction = 'none';

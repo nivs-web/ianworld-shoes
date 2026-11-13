@@ -1595,3 +1595,21 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-hud .idg-top .idg-speed::before { content: ''; position: absolute; z-index: -1; left: 9.4%; right: 12.5%; top: 12.5%; bottom: 9.4%; border-radius: 50%; }   /* 눌린 판(32칸) 안쪽 둥근 면 : 왼 3 · 위 4 · 폭 25칸 */
 .idg-hud .idg-top .idg-speed.on { translate: 0 2px; filter: none; color: #fff; text-shadow: var(--idg-pxo-fire); background-image: url(/assets/iandragon_game/ui/hud_btn_round_pressed.png); }
 .idg-hud .idg-top .idg-speed.on::before { background: #c9780f; box-shadow: inset 0 3px 0 #6b3300, inset 0 -2px 0 #dd9a3a; }
+
+/* ════ 11/13 대표님 (b3ui) — 시작 창 별 알약 · 결과 창 전적 글씨 · 도움말 한 줄 ════ */
+/* ① 판 시작 창(원래 창) 안의 별 알약 : 결과 창 · 새 시작 창과 같은 부품(.idg-res-bar · plate_reward) · 창 가운데 · 칸마다 가운데 */
+.idg-card .idg-sp { --o: #2a1238; box-sizing: border-box; width: min(280px, 100%); margin: 8px auto 6px; align-self: center; font: 800 12px/1 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; color: #fff; word-spacing: normal; text-align: center; }
+.idg-card .idg-sp .cell { justify-content: center; text-align: center; gap: .25em; }
+.idg-card .idg-sp .ss img { height: .82em; margin-left: -.2em; } .idg-card .idg-sp .ss img:first-child { margin-left: 0; }   /* 별 3개 + 세 자리 초가 칸 칸막이에 닿지 않게 */
+/* ② 내 전적 · 큰 글씨 : 1px · 2px 8방향 딱딱한 외곽선 + 아래쪽 딱딱한 그림자(0 흐림) · 바닥에서 5px 위로 */
+.idg-res-big { --sh: #130a1e; }
+.idg-res-big b { text-shadow: 3px 0 var(--o), -3px 0 var(--o), 0 3px var(--o), 0 -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o),
+  3px 5px var(--sh), -3px 5px var(--sh), 0 6px var(--sh), 3px 6px var(--sh), -3px 6px var(--sh), 0 4px var(--sh), 3px 4px var(--sh), -3px 4px var(--sh); }
+.idg-res-big small { text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o),
+  2px 3px var(--sh), -2px 3px var(--sh), 0 4px var(--sh), 2px 4px var(--sh), -2px 4px var(--sh), 0 3px var(--sh); }
+@container (min-aspect-ratio: 1/1) { .idg-res-big { bottom: calc(8.5% + 5px); } }
+@container (max-aspect-ratio: 1/1) { .idg-res-big { bottom: calc(8% + 5px); } }
+/* ③ 결과 창 도움말 한 줄(«새로 열림 : …») : 머리글 줄바꿈 금지 · 글씨 한 단계 작게(t4 .85em → t5 .72em) · 굵지 않게 · 글자 간격 한 단계 좁게 */
+.idg-res:not(.idg-int) .idg-res-new { font-size: .72em; letter-spacing: -.03em; }
+.idg-res:not(.idg-int) .idg-res-new em { font-weight: 500; white-space: nowrap; flex: none; }
+.idg-res:not(.idg-int) .idg-res-new span { font-weight: 500; }

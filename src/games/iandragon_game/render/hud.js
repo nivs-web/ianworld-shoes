@@ -41,7 +41,7 @@ const FLOAT_HUD = true;
  * 잘라 낼 칸 : 위 하늘 CROP.top · 아래 흙 CROP.bottom (합 49칸 = 540/491 ≈ 1.1배). 전투 ZOOM_AT 초부터 ZOOM_DUR 초 동안 부드럽게.
  * 개발 서버에서만 window.__idgCropTop 으로 위쪽 칸을 바꿔 비교할 수 있다.
  */
-const CROP = { top: 33, bottom: 16 }, ZOOM_AT = 5, ZOOM_DUR = 1.2;   /* 아래는 단추와 땅 줄 사이 여백이 남게 */
+const CROP = { top: 33, bottom: 16 }, ZOOM_AT = 5, ZOOM_DUR = 1.2, GUARD_UP = 40;   /* 아래는 단추와 땅 줄 사이 여백이 남게 */
 const cropTop = () => (import.meta.env?.DEV && window.__idgCropTop != null ? window.__idgCropTop : CROP.top);
 /** 아이콘 그림 (없으면 글자 fallback) */
 const ico = (name, alt) => { const i = h('img', 'ico'); i.src = `${UI}${name}.png`; i.alt = alt; i.draggable = false; i.onerror = () => { i.replaceWith(h('span', 'ico-t', alt)); }; return i; };
@@ -317,6 +317,13 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* ── 판 · 대결 시작 창 = 원래 모양(대표님 11/13 «시작할 때 화면 원래가 더 좋았던 것 같다 — 되돌리고, 새 디자인은 기획부터 다시») ──
    *  f0f3a83 의 시작 카드 그대로 : idg-card · 제목 «4-8 펭귄 썰매 부대» 한 줄 · (난이도 줄) · (기믹) · 좀비 얼굴 줄 · «★ 깨면 · ★★ N초 안에 · ★★★ N초 안에» · 편의품 줄 · «출격!» + «나가기»
    *  대결 = «드래곤 대결!» · 양쪽 덱 얼굴 · 규칙 한 줄. 주간 습격 소개는 새 모양(introCard) 그대로. 글자는 h() 가 ko() 로 낱말을 고친다(용 → 드래곤 · 좀비 성 → 좀비 탑) */
+  function starPill() {   /* 원래 시작 창 안의 별 알약 : 결과 창 · 새 시작 창 보상 판(plate_reward) 그대로 · 칸 가운데 맞춤 · 난이도 색 별(붉은 · 보라) */
+    fontOnce();
+    const bar = h('div', 'idg-res-bar idg-int-bar idg-sp' + (stage.diff === 'hard' ? ' red' : stage.diff === 'master' ? ' purple' : ''));
+    const cell = (n, txt) => { const c = h('div', 'cell'), ss = h('span', 'ss'); for (let i = 0; i < n; i++) { const im = h('img'); im.src = `${RES}star_on.webp`; im.alt = ''; im.draggable = false; ss.appendChild(im); } c.append(ss, h('b', null, txt)); return c; };
+    bar.append(cell(1, '깨기'), cell(2, `${stage.star2}초`), cell(3, `${stage.star3}초`));
+    return bar;
+  }
   function startCard() {
     const box = h('div', 'idg-card');
     if (stage.pvp) {
@@ -331,7 +338,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       const zs = h('div', 'idg-intro-z');
       for (const tr of [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))]) { const ic = h('img', 'idg-attr'); ic.src = `/assets/iandragon_game/ui/hud_attr_${tr}_s.png`; ic.alt = ''; ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; zs.appendChild(ic); }   // 이 판의 특별한 좀비
       for (const id of [...new Set(stage.lines.map((l) => ZART[l.id] || l.id))]) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
-      box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안에 · ★★★ ${stage.star3}초 안에`));
+      box.append(zs, starPill());   /* 별 기준 = 새 창의 짙은 알약 (대표님 11/13 · «★ 깨기 | ★★ N초 | ★★★ N초») */
       if (cons && cons.length) {   /* 편의품 (판마다 1개) */
         const cr = h('div', 'idg-cons-row');
         const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
@@ -443,6 +450,17 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       }
       tip.textContent = ko(ui.tip || ''); tip.classList.toggle('on', !!ui.tip); tip.dataset.at = ui.tipAt || '';
       root.classList.toggle('fever', S.t >= S.feverAt);
+    },
+    /** 아래 단추 줄 근처인가 (화면 px · 전장 끌기 · 확대가 쓴다 — 대표님 11/13 «출전 단추를 누르다 실수로 맵을 건드리면 화면이 돌아간다»)
+     *  .idg-bot(화로 · 출전 · 필살기 · 브레스 줄) 위끝에서 GUARD_UP px 위부터 아래 전부. 줄 위에 떠 있는 으르렁은 그 둘레 40px 도. 화면을 돌려 그리면(rot.js) «게임 위쪽» = 화면 오른쪽(cw) · 왼쪽(ccw) */
+    inGuard(x, y) {
+      if (!bot.isConnected) return false;
+      const r = bot.getBoundingClientRect(); if (!r.width || !r.height) return false;
+      const ru = bot.classList.contains('rage-up') ? rage.getBoundingClientRect() : null, rt = rotated();
+      if (ru && ru.width && x >= ru.left - GUARD_UP && x <= ru.right + GUARD_UP && y >= ru.top - GUARD_UP && y <= ru.bottom + GUARD_UP) return true;   /* 줄 위에 떠 있는 으르렁 둘레 */
+      if (rt === 'cw') return x <= r.right + GUARD_UP;
+      if (rt === 'ccw') return x >= r.left - GUARD_UP;
+      return y >= r.top - GUARD_UP;
     },
     showPanel,
     hidePanel() { panel.classList.remove('on'); panel.replaceChildren(); },

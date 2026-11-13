@@ -76,7 +76,7 @@ export async function startBattle(ctx, opts) {
   let tickN = 0, sendT = 0, nextHash = 150, waitT = 0;
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: allDragons, enemies: enemyIds, leader: loads[0].leader, pvp, mirror, foeLeader: pvp ? loads[1].leader : null, look: decodeLook(pvp ? (me === 0 ? opts.save?.look : net.loads?.[0]?.look) || '' : opts.save?.look || ''), lookR: decodeLook(pvp ? (me === 1 ? opts.save?.look : net.loads?.[1]?.look) || '' : '') });   // 내 대장 용 꾸미기 (모자 · 목 · 브레스 색)
-  view.onZoom = (d) => hud.zoomBy(d); view.me = me;   /* 맵 확대 · 축소 (두 손가락 · 휠) */
+  view.onZoom = (d) => hud.zoomBy(d); view.guard = (x, y) => hud.inGuard(x, y); view.me = me;   /* 맵 확대 · 축소 (두 손가락 · 휠) */
 
   const sound = createBattleSound(stage, me);
   /* 멀티는 1배속 고정 */
