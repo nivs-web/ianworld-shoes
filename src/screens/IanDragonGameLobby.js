@@ -39,6 +39,7 @@ import { showHall, checkRaidFrame } from './idgHall.js';   /* 주간 습격 테�
 import { TITLES, titleOf, decodeLook } from '../games/iandragon_game/data/looks.js';
 import { currentUser } from '../services/auth.js';
 import { DIFF, diffUnlocked, diffVisible, diffOpen, diffNext, diffRun } from '../games/iandragon_game/render/battleSetup.js';
+import { MASTER_ON } from '../games/iandragon_game/data/features.js';   // 초고수 전면 취소 (11/13)
 import { SEEN, seenBit, withSeen } from '../services/iandragonGameState.js';
 import { GIFT_TIERS, GIFT_ODDS, parseKey, artOf, artFilter } from '../games/iandragon_game/data/looks.js';
 import '../styles/idg-lvbadge.css';   /* 레벨 배지 100 단위 색 · 열림 연출 · 레벨 선물 (11/13 · 난이도 4단계 묶음) */
@@ -273,8 +274,8 @@ async function runNotices({ onLook, onDone }) {
     if ((g.cleared || 0) >= 100 && !seenBit(g, SEEN.hardOpen)) {
       mark(SEEN.hardOpen);
       await noteWin('idg-note-open', '어려움이 열렸다!', [
-        el('p.idg-note-text.big', '붉은 별에 도전!'), lockFx('thud', '초고수'),
-        el('p.idg-note-text', '어려움 1-1 부터 차례로 · 출전 드래곤은 Lv21 부터. 어려움 10-10 을 깨면 자물쇠가 풀려요.'),
+        el('p.idg-note-text.big', '붉은 별에 도전!'), ...(MASTER_ON ? [lockFx('thud', '초고수')] : []),
+        el('p.idg-note-text', MASTER_ON ? '어려움 1-1 부터 차례로 · 출전 드래곤은 Lv21 부터. 어려움 10-10 을 깨면 자물쇠가 풀려요.' : '어려움 1-1 부터 차례로 · 출전 드래곤은 Lv21 부터. 좀비가 훨씬 세요 — 드래곤과 드래곤캐슬을 키워서 끝판까지!'),
       ], okBtn);
     }
     /* ③ 초고수 열림 (어려움 10-10 뒤 · 자물쇠가 깨져 조각이 바닥에 남음) */
