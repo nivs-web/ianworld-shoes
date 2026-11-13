@@ -14,6 +14,8 @@ import { createBattleSound } from './battleSound.js';
 import { superData } from './breathInfo.js';
 import { earlyCastle, makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY, DIFF, diffFor, raidStage, raidWaves, weekKey } from './battleSetup.js';
 import { isOn } from '../../../services/switches.js';
+import { currentUser } from '../../../services/auth.js';
+import { stampOf } from '../../../services/iandragonGameState.js';   // 도감 도장 (부팅 묶음의 작은 순수 함수)
 import { decodeLook, CONSUMABLES, TITLES } from '../data/looks.js';
 import { loadDiffStages } from '../data/stages/diffLoad.js';   // 어려움 · 초고수 판 100개 (보조 S · 필요할 때만 받음)
 import { sendChat, subscribeChat, leaveRoom } from '../../../services/multiplayer.js';
@@ -101,6 +103,7 @@ export async function startBattle(ctx, opts) {
     },
     go(useCons) {
       ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '', myDeck.map((d) => d.id));
+      if (!pvp && !raid) setTimeout(loadDrops, 3000);   // 모으기 보상 계산은 싸움이 자리 잡은 뒤에 조용히 받아 둔다
       /* 편의품 (META 3장 · 판마다 1개 · 혼자 하기만) — 판을 시작하며 1개 쓴다 · 도중에 나가도 돌려주지 않는다 */
       const have = opts.save?.cons?.[useCons] || 0;
       if (!net && !raid && !DF.noItems && useCons && have > 0) {   // 초고수 = 편의품 무효 (단추 회색)
@@ -146,7 +149,31 @@ export async function startBattle(ctx, opts) {
   }
 
   const END_MS = 3200;   /* 결과 창은 성 무너짐(폭발 → 깜박 → 와르르 → 잔해 2.1초)을 다 보여 준 뒤 (대표님 11/11) */
-  function finish() {
+  /* 모으기 보상 계산(drops.js · 따로 묶음) — 전투를 시작하면 뒤에서 받아 두고, 결과에서 기다린다 (못 받으면 모으기 보상만 건너뜀) */
+  let dropsP = null;
+  const loadDrops = () => (dropsP ||= import('../data/drops.js').catch((e) => { console.warn('[좀비와 드래곤] 보상 계산을 못 받았다', e); return null; }));
+  /** 모으기 보상 한 묶음 : 첫 클리어 확정 · 별 900 · 다시 깨기(보물 게이지 · «?» +1) · 도감 도장(10개마다 젬 10) — 계산은 drops.js, 여기서는 owned(제자리) · 젬 · 글을 붙인다.
+   *  난수는 전투 씨앗과 따로(drops.js — 계정 id + 판 + 횟수) → 전투 결정론을 건드리지 않는다. 돌려줌 { part(저장에 더할 것), gems, lines } */
+  function giveDrops(drops, after, owned, first, base = owned.length) {
+    const out = { part: {}, gems: 0, lines: [] };
+    if (!drops) return out;
+    try {
+      const r = drops.resultDrops({ ...after, owned }, { dk, w: stage.w, s: stage.s, first, uid: currentUser()?.uid });
+      for (const k of r.keys) if (!owned.includes(k)) owned.push(k);
+      out.gems += r.gems; out.lines.push(...r.lines);
+      if (r.units) out.part.units = { ...(after.units || {}), ...r.units };
+      if (r.bossGauge) out.part.bossGauge = r.bossGauge;
+      if (r.gauge) out.gauge = r.gauge;
+      if (r.awake.length) out.awake = r.awake;
+      if (owned.length > base) {   // 새 물건이 생긴 판만 도장 (샵에서 산 것도 owned 의 stampN 번째 뒤라 같이 찍힌다)
+        const st = stampOf(after.stampN, owned);
+        out.part.stampN = st.stampN;
+        if (st.gems) { out.gems += st.gems; out.lines.push(`도감 도장 ${st.stampN}개 · 젬 +${st.gems}`); }
+      }
+    } catch (e) { console.warn('[좀비와 드래곤] 모으기 보상 계산 실패', e); }
+    return out;
+  }
+  async function finish() {
     ui.done = true;
     if (pvp) { finishPvp(); return; }
     if (raid) { finishRaid(); return; }
@@ -161,6 +188,7 @@ export async function startBattle(ctx, opts) {
     if (!win) { try { opts.save = opts.onSave?.({ stat }) || opts.save; } catch { /* */ } }
     if (win) {
       info.stars = starsFor(stage, S.t);
+      const drops = await loadDrops();   // 모으기 보상 계산 (전투 시작 때 받아 둠 · 거의 바로 끝남)
       const save = opts.save || {};
       /* 같이 깨기 보상 : 끌어 주기(내 다음 차례 판 = 별 1개로 첫 클리어) · 내 차례보다 뒤 판 = 다시 깨기 코인만(진행 안 건너뜀) · 별 2·3개는 혼자만 · 우정 +10% */
       const ahead = coop && stage.g > (save.cleared || 0) + 1, pull = coop && stage.g === (save.cleared || 0) + 1;
@@ -183,10 +211,15 @@ export async function startBattle(ctx, opts) {
         if (fr && !owned.includes(fr)) owned.push(fr);
         const after = { ...save, [key]: hs.join(''), ...(won ? { hardWon: won.join('') } : {}) }, tGot = save.tGot || [];
         const fresh = TITLES.filter((t) => t.has(after) && !t.has(save) && !tGot.includes(t.id));
-        const got = [...fresh.map((t) => `칭호 «${t.name}»`), ...(fr && !(save.owned || []).includes(fr) ? [dk === 'hard' ? '붉은 테두리' : '보라 불꽃 테두리'] : [])];
+        /* 모으기 보상 (11/13) : 어려움 x-5 · x-10 첫 클리어 전설 확정 · x-10 붉은 모습 · 3-10 · 6-10 · 9-10 «?» 드래곤 / 초고수 x-10 신화 · 보라 모습 · 4-10 · 7-10 · 10-10 «?» 드래곤 / 다시 깨기 전설 3% · 신화 1% + 보물 게이지 · 도감 도장 */
+        const dr = giveDrops(drops, { ...after, owned }, owned, first, (save.owned || []).length);
+        info.gems += dr.gems;
+        if (dr.gauge) info.gauge = dr.gauge;      // 결과 창 보물 게이지 칸 { kind, fill, cap, full }
+        if (dr.awake) info.awake = dr.awake;      // 깨어난 «?» 드래곤 id (봉인된 돌 연출용)
+        const got = [...fresh.map((t) => `칭호 «${t.name}»`), ...(fr && !(save.owned || []).includes(fr) ? [dk === 'hard' ? '붉은 테두리' : '보라 불꽃 테두리'] : []), ...dr.lines];
         if (got.length) info.unlocks = got;
         const part = { [key]: hs.join(''), ...(won ? { hardWon: won.join('') } : {}), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, stat,
-          ...(owned.length !== (save.owned || []).length ? { owned } : {}), ...(fresh.length ? { tGot: [...tGot, ...fresh.map((t) => t.id)] } : {}) };
+          ...(owned.length !== (save.owned || []).length ? { owned } : {}), ...(fresh.length ? { tGot: [...tGot, ...fresh.map((t) => t.id)] } : {}), ...dr.part };
         try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
         setTimeout(() => { if (gone) return; hud.showPanel('win', info); sound.stars(info.stars); }, END_MS);
         return;
@@ -203,7 +236,12 @@ export async function startBattle(ctx, opts) {
       /* 매일 첫 승리 : 젬 10 (한국 날짜) */
       const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
       if (save.daily !== today) { info.gems += 10; info.daily = true; }
-      const part = { cleared: Math.max(save.cleared || 0, ahead ? 0 : stage.g), stars: (ahead ? save.stars || '' : stars.join('')), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today, stat };
+      /* 모으기 보상 (11/13) : 보통에서는 별 900 «별의 왕관» · 놓친 첫 클리어 보상 채우기 · 도감 도장 — 난수 없음 */
+      const owned = [...(save.owned || [])], clearedNow = Math.max(save.cleared || 0, ahead ? 0 : stage.g), starsNow = ahead ? save.stars || '' : stars.join('');
+      const dr = giveDrops(drops, { ...save, cleared: clearedNow, stars: starsNow, owned }, owned, first);
+      info.gems += dr.gems; if (dr.awake) info.awake = dr.awake;
+      if (dr.lines.length) info.unlocks = [...(info.unlocks || []), ...dr.lines];
+      const part = { cleared: clearedNow, stars: starsNow, coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today, stat, ...(owned.length !== (save.owned || []).length ? { owned } : {}), ...dr.part };
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     } else info.hint = loseHint(S, me);
     if (net && ls.mismatch() >= 0) info.hint = '연결이 어긋났어요 — 이 판은 기록하지 않아요. 한 판 더?';
@@ -267,7 +305,7 @@ export async function startBattle(ctx, opts) {
       if (S.boss && !bossSeen) { bossSeen = true; ui.warn = 0.9; }
       for (const u of S.units) if (u.side !== (pvp ? me : 0) && !u.alive && u.def._art === 'gold' && !goldSeen.has(u.id)) { goldSeen.add(u.id); goldKills++; }
       ui.warn -= dt;
-      if (S.over && !ui.done) finish();
+      if (S.over && !ui.done) finish().catch((e) => console.warn('[좀비와 드래곤] 결과 처리 실패', e));
       tips(dt);
       view.update(S, dt);
       sound.update(S, view);
