@@ -92,3 +92,21 @@
   .idg-lg-desc .idg-lg-go { flex: 0 0 auto; min-height: 32px; }
 }
 @media (orientation: portrait) and (min-width: 700px) { .idg-lg .idg-sp-list { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* ── 작은 폰(세로 · 화면 높이 700 이하 · 360×640) : 위쪽을 낮춰 격자가 2.5줄 이상 보이게 ── */
+@media (orientation: portrait) and (max-height: 700px) {
+  .idg-lk-stage { height: clamp(100px, 16dvh, 120px); }
+  .idg-lk, .idg-lk-list { gap: .35em; }
+  .idg-ob { gap: .2em .25em; }
+  .idg-ob { flex-wrap: nowrap; }
+  .idg-ob-label { display: none; }   /* «코디» 글자는 단추들(1 2 3 · 저장 · 불러오기 · 주사위 코디)이 말해 줌 — 한 줄에 넣으려고 */
+  .idg-ob-slots { gap: .15em; flex: none; }
+  .dialog.idg-k .idg-ob .idg-k-btn { flex: 0 1 auto; padding-inline: .2em; font-size: .74em; white-space: nowrap; }
+  .dialog.idg-k .idg-ob .idg-ob-slot { min-width: 22px; flex: none; }
+  .idg-ob-msg { position: absolute; left: 0; right: 0; bottom: 100%; z-index: 5; flex: none; padding: .15em .4em; background: #2a1650; border: 2px solid #ffd45a; }
+  .idg-ob { position: relative; }
+  /* 작은 단추 = 한 줄 가로 밀림 */
+  .idg-lk-small .idg-k-tabs { display: flex; flex-wrap: nowrap; gap: .3em; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; touch-action: pan-x; -webkit-overflow-scrolling: touch; }
+  .idg-lk-small .idg-k-tabs::-webkit-scrollbar { display: none; }
+  .idg-lk-small .idg-k-tab { flex: 0 0 auto; min-width: 4.4em; min-height: 2.1em; white-space: nowrap; }
+}
