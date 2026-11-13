@@ -84,6 +84,10 @@
   .dialog.idg-shop.idg-k[class*="idg-"] { --k-fs: max(clamp(13px, 3.4vh, 16px), 2.22vh); }
   .dialog.idg-shop.idg-lab { max-width: min(96vw, 60em); height: min(94vh, 40em); }
   @supports (height: 1dvh) { .dialog.idg-shop.idg-lab { height: min(94dvh, 40em); } }
+  .idg-shop-reco .idg-sp-reco-txt small { font-size: calc(var(--k-fs) * .68); }   /* 추천 띠 글씨 = px 고정이라 TV 에서 작았다 → 창 글씨를 따라가게 */
+  .idg-shop-reco .idg-sp-reco-txt b { font-size: calc(var(--k-fs) * .85); }
+  .idg-shop-reco .idg-sp-reco-txt span { font-size: calc(var(--k-fs) * .75); }
+  .idg-shop-reco .idg-sp-reco .idg-sp-buy { font-size: calc(var(--k-fs) * .8); min-height: calc(var(--k-fs) * 2.2); min-width: calc(var(--k-fs) * 5.2); }
   .idg-shop-reco { order: 3; }      /* 추천 띠는 메뉴 줄 아래 — 탭 줄이 칸마다 뛰지 않게 */
   .idg-shop-big { order: 1; } .idg-shop-subslot { order: 2; } .idg-shop-scroll { order: 4; }
   .idg-shop-sub.idg-k-tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
