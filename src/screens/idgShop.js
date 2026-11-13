@@ -100,7 +100,7 @@ export function showShop({ idg, save, onClose }) {
   }
   draw();
 
-  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '드래곤샵'),
+  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '아이템 샵'),
     /* 왼쪽 묶음(가로) = 주인 · 지갑 · 종이 안내 | 오른쪽 = 탭 · 목록 (세로는 위에서 아래로 그대로) */
     el('div.idg-shop-side', null, [el('img.idg-shopkeeper', { src: '/assets/iandragon_game/ai/meta/shopkeeper.png', alt: '', onerror: (e) => { e.target.style.display = 'none'; } }), head, help]),
     tabs, body, button('닫기', () => close())]);
