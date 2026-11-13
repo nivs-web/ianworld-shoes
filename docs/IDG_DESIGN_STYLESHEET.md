@@ -198,3 +198,7 @@ const win = kitWin({ title: '드래곤샵', body: [
 - 결과 창 한 모양 : `resultCard(kind, info)` — `info.plate`(글자 없는 날개 현판 + 현판 글씨) · `info.big` / `info.bigSub`(별 없는 모드의 큰 숫자) · `info.line`(종이 띠 한 줄) · `info.mode`(coop · pvp · raid · void). 모드마다 다른 것은 그림 · 현판 글자 · 가운데(별 / 숫자) · 단추 이름뿐.
 - 날개 현판 = 새 그림 없이 `banner_win` / `banner_lose` 의 양쪽 날개만 잘라 쓰고(`.idg-res-plate`) 가운데 판은 CSS.
 - 창 안 가로 · 세로 갈림은 화면 방향 미디어 쿼리가 아니라 **창 틀 모양**(`@container (min-aspect-ratio: 1/1)`)으로 — 폰을 세로로 들면 전투 틀이 돌아가 그려져 `(orientation: portrait)` 가 틀렸다.
+- 낱말 규칙 : 판 자료 글은 그대로 두고 **화면에 그릴 때**만 `ko()`(`render/hud.js`)로 «용» → «드래곤» · «좀비 성» → «좀비 탑» · «성» → «드래곤캐슬»(«용돈 · 활용» 같은 낱말 속 글자는 그대로). HUD 의 모든 글(`h()`) · 안내 말풍선에 자동 적용.
+- 한 줄(`.idg-res-new`) 글씨 = t4(.85em) · 길면 두 줄까지(JS 가 아래 여백 · 그림 칸 높이를 맞춤).
+- 시작 창은 `introCard`(판 · 습격 · 대결 한 함수) · 일시정지는 `pauseCard`(현판 «일시정지» → 설정 판(스크롤) → 빨강 «계속하기» → 보라 «다시하기» · «나가기»). ※ 클래스 이름 `.idg-pause` 는 ⏸ 단추가 쓰고 있어 창은 `.idg-pausewin`.
+- 전투 중 띠 · 안내(`.idg-tip` · `.idg-net` · `.idg-mate` · `.idg-talk`) = 종이 띠 판 + Pretendard + 딱딱한 외곽선 · 경고 띠 «보스가 나타났다!» · 보스 이름 띠는 사라질 때 투명해지지 않고 옆으로 싹.
