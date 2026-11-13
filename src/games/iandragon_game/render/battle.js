@@ -117,6 +117,7 @@ export async function startBattle(ctx, opts) {
     speed() { if (net) return; ui.speed = ui.speed >= speedMax ? 1 : ui.speed + 1; try { opts.save = opts.onSave?.({ speed: ui.speed }) || opts.save; } catch { /* */ } },   // 2배속 = 1-5 · 3배속 = 3-10 을 깨면 · 고른 배속은 기억
     auto() { if (canAuto) ui.auto = !ui.auto; },
     exit() { if (net?.code) leaveRoom(net.code).catch?.(() => {}); opts.onExit(); },   // 멀티 : 방에서도 나간다 (방 정리)
+    hall() { import('../../../screens/idgHall.js').then((m) => m.showHall('raid')).catch((e) => console.warn('[좀비와 드래곤] 명예의 전당을 열지 못했다', e)); },   // 습격 결과 창 «명예의 전당» = 주간 습격 탭으로
     rejoin() { if (net?.code) pickRejoin(net.code); opts.onExit(); },   // 한 판 더 : 같은 방 대기실로
     retry() { opts.restart(raid ? 'raid' : stage.g, true); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
@@ -149,9 +150,9 @@ export async function startBattle(ctx, opts) {
     ui.done = true;
     if (pvp) { finishPvp(); return; }
     if (raid) { finishRaid(); return; }
-    if (net && ls.mismatch() >= 0) { setTimeout(() => { if (!gone) hud.showPanel('lose', { t: S.t, pvp: true, coins: 0, title: '판이 어긋났어요', rec: '이 판은 기록하지 않아요', hint: '연결이 어긋났어요 — 한 판 더 해요!' }); }, 900); return; }   // 기획 3.6 : 무효
+    if (net && ls.mismatch() >= 0) { setTimeout(() => { if (!gone) hud.showPanel('lose', { mode: 'void', t: S.t, coins: 0, gems: 0, plate: '판이 어긋났어요', big: '기록 없음', line: '연결이 어긋났어요 · 이 판은 기록하지 않아요 — 한 판 더 해요!' }); }, 900); return; }   // 기획 3.6 : 무효
     const win = S.over.winner === 0;
-    const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE };
+    const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE, ...(coop ? { mode: 'coop' } : {}) };
     { const fb = S.base[1]; if (fb && fb.maxHp) info.foeHp = Math.max(0, Math.round((fb.hp / fb.maxHp) * 100)); }   // 결과 창 «좀비 성 남은 체력» (11/12)
     /* 쌓인 기록 (도전 과제) — 이겨도 져도 */
     const P0 = S.players[me], st0 = opts.save?.stat || {};
@@ -216,9 +217,11 @@ export async function startBattle(ctx, opts) {
     const coins = Math.max(0, waves - old) * 20;
     const fire = waves >= 40 && !(save.owned || []).includes('frame:fire');   // 끝까지 버티면 불꽃 테두리 (META 2장)
     try { opts.save = opts.onSave?.({ raid: { w: raid.idx, best: Math.max(old, waves) }, coins: (save.coins || 0) + coins, ...(fire ? { owned: [...(save.owned || []), 'frame:fire'] } : {}) }) || opts.save; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
-    const info = { t: S.t, pvp: true, coins, title: waves >= 40 ? '끝까지 버텼다!' : `${waves} 웨이브!`, rec: `${raid.key} · 이번 주 최고 ${Math.max(old, waves)} 웨이브${waves > old ? ' (새 기록!)' : ''}${fire ? ' · 불꽃 테두리 획득!' : ''}`, hint: '명예의 전당 «주간 습격»에서 순위를 볼 수 있어요.' };
+    const best = Math.max(old, waves);
+    const info = { mode: 'raid', t: S.t, coins, gems: 0, plate: '주간 습격', big: waves, bigSub: waves >= 40 ? '끝까지 버텼다! 웨이브' : '웨이브',
+      line: `이번 주 최고 ${best} 웨이브${waves > old ? ' · 새 기록!' : ''}${fire ? ' · 불꽃 테두리 획득!' : ''}` };   // 주 번호(2026-W46) 대신 «이번 주» · 글자 «코인» 없이 아이콘 + 숫자
     if (waves > old) sound.say('raid/record');
-    setTimeout(() => { if (!gone) hud.showPanel(waves > old ? 'win' : 'lose', info); }, 1200);
+    setTimeout(() => { if (!gone) hud.showPanel('win', info); }, 1200);   // 습격은 늘 «버틴 웨이브» 창 (승리 장면 · 새 기록 여부는 한 줄로만)
   }
 
   /* 용 대결 끝 : 승 200 · 무 120 · 패 80 코인 (하루 PVP_DAY 판까지) · 젬 없음 · 전적만 기록 */
@@ -235,9 +238,9 @@ export async function startBattle(ctx, opts) {
       try { opts.save = opts.onSave?.({ coins: (save.coins || 0) + coins, pvp: rec }) || { ...save, pvp: rec }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
     }
     const r = opts.save?.pvp || pv;
-    const info = { t: S.t, pvp: true, coins, title: win ? '승리!' : draw ? '무승부' : '아쉬워요…',
-      rec: `전적 ${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''}${pv.n >= PVP_DAY && !bad ? ' · 오늘 보상은 다 받았어요' : ''}`,
-      hint: bad ? '연결이 어긋났어요 — 이 판은 기록하지 않아요.' : S.over.forfeit ? '상대가 나갔어요 — 승리!' : S.over.timeout ? '시간 끝 — 둥지 체력이 많은 쪽, 같으면 잃은 용이 적은 쪽이 이겨요.' : '' };
+    const note = bad ? '연결이 어긋났어요 · 이 판은 기록하지 않아요' : S.over.forfeit ? '상대가 나갔어요 — 승리!' : S.over.timeout ? '시간 끝 — 드래곤캐슬 체력이 많은 쪽 승!' : '';
+    const info = { mode: 'pvp', t: S.t, coins, gems: 0, ...(draw ? { plate: '무승부' } : {}), big: `${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''}`, bigSub: '내 전적',
+      line: [note, pv.n >= PVP_DAY && !bad ? '오늘 보상은 다 받았어요' : ''].filter(Boolean).join(' · ') };
     if (!bad) sound.say(win ? 'duel/win' : draw ? 'duel/win' : 'duel/lose');   // 대결 끝 대사 (진 쪽도 기죽지 않는 말투)
     setTimeout(() => { if (!gone) hud.showPanel(win ? 'win' : 'lose', info); }, 1400);
   }
@@ -276,12 +279,12 @@ export async function startBattle(ctx, opts) {
     hud.update(S, ui);
   };
   ctx.app.ticker.add(tick);
-  ui.paused = true; hud.showPanel('intro');   // 스테이지 카드 → «출격!»
+  ui.paused = true; hud.showPanel('intro', { best: raid && opts.save?.raid?.w === raid.idx ? opts.save.raid.best || 0 : 0 });   // 스테이지 카드 → «출격!»
   if (opts.quick && !net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : '', myDeck.map((d) => d.id)); } }, 50);   // 다시 하기 = 1터치 (기획 GDD 137)
   if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '', myDeck.map((d) => d.id)); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
   const onHide = () => { if (document.hidden && !net && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);
-  if (import.meta.env.DEV) window.__idgBattle = { S, view, ui, cmds };
+  if (import.meta.env.DEV) { window.__idgBattle = { S, view, ui, cmds }; window.__idgHud = hud; }
 
   return {
     destroy() { gone = true; net?.transport.close(); talkOff?.(); document.removeEventListener('visibilitychange', onHide); ctx.app.ticker?.remove(tick); hud.destroy(); view.destroy(); sound.destroy(); },

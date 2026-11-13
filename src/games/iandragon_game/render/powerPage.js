@@ -50,7 +50,7 @@ const fitCls = (box) => { const l = isLand(); box.classList.toggle('land', l); b
 export function powerPage(h, o) {
   const box = h('div', (o.cls || 'idg-pp') + ' pp2');
   /** 카드 글줄 (2차) : 1줄 «Lv 10 (권장 14)» · 2줄 «비용 [불씨] 50» — 비용 = 전투에서 쓰는 불씨 */
-  const lvLine = (lv, exp, cost) => { const sp = h('span', 'lv'); const c = h('span', 'cost'), im = h('img'); im.src = EMBER; im.alt = '불씨'; im.draggable = false; c.append('비용 ', im, h('b', null, String(cost))); sp.append(h('span', 'l1', `Lv ${lv}${exp > lv ? ` (권장 ${exp})` : ''}`), c); return sp; };
+  const lvLine = (lv, exp, cost) => { const sp = h('span', 'lv'); const c = h('span', 'cost'), im = h('img'); im.src = EMBER; im.alt = '불씨'; im.draggable = false; c.append('불씨 ', im, h('b', null, String(cost))); sp.append(h('span', 'l1', `Lv ${lv}${exp > lv ? ` (권장 ${exp})` : ''}`), c); return sp; };
   let swapFor = null;   /* 꽉 찼을 때 넣으려는 용 → 바꿀 칸을 고르는 중 */
   let sel = null;       /* 고른 출전 칸 번호 (0부터) */
   let work = null;      /* 지금 화면의 덱 (2개 미만이어도 여기에만 · 저장은 2개 이상일 때만) */
@@ -125,7 +125,7 @@ export function powerPage(h, o) {
       : short ? MIN_DECK_MSG
         : sel != null ? `${sel + 1}번 칸을 골랐어요 · 다른 칸을 누르면 자리 바꿈 · 한 번 더 누르면 빠져요`
           : box.classList.contains('land') ? '칸을 눌러 고른 뒤 다른 칸을 누르면 자리가 바뀌어요' : '카드를 누르면 넣고 빼요 · 칸을 눌러(끌어) 순서를 바꿔요');
-    const limit = next.costMax ? h('p', 'idg-pp-limit', `다음 판 ${next.id} : 비용 ${next.costMax} 이하만`) : null;
+    const limit = next.costMax ? h('p', 'idg-pp-limit', `다음 판 ${next.id} : 불씨 ${next.costMax} 이하만`) : null;
 
     /* 용 목록 */
     const list = h('div', 'idg-pp-list');
@@ -139,7 +139,7 @@ export function powerPage(h, o) {
       const im = h('img'); im.src = `${AI}${lv >= 10 ? `${id}_2` : id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${id}/head.png`; };
       const bar = (lb, v, mx, color) => { const r = h('div', 'st'); r.append(h('span', null, lb), kitGauge({ value: v, max: mx, color, floor: 0.05, size: 'sm', label: lb })); return r; };
       const top = h('div', 'idg-pp-pick');
-      top.append(im, h('b', 'nm', form?.name || U.name), lvLine(lv, exp, U.cost), on ? h('em', 'tag', `출전 ${deck.indexOf(id) + 1}`) : h('em', 'tag off', over ? '비용 초과' : '대기'));
+      top.append(im, h('b', 'nm', form?.name || U.name), lvLine(lv, exp, U.cost), on ? h('em', 'tag', `출전 ${deck.indexOf(id) + 1}`) : h('em', 'tag off', over ? '불씨 초과' : '대기'));
       /* 카드 전체(레벨업 단추만 빼고)를 누르면 출전 ↔ 대기 (대표님 11/11 «직관적으로 빠르게 넣고 빼게») */
       card.onclick = () => {
         if (on) { sel = null; setDeck(deck.filter((x) => x !== id)); play('button_back'); draw(); return; }

@@ -94,11 +94,11 @@ function valueOf(kind, r) {
 /** 작은 레벨 배지 — 색은 보조 D 의 .idg-lv[data-tier="0"~"9"] (idg-lvbadge.css · tier = floor(lv / 100)) */
 const lvBadge = (lv) => el('span.idg-lv.idg-hall-lv', { 'data-tier': String(Math.min(9, Math.floor(lv / 100))) }, `Lv.${lv}`);
 
-export function showHall() {
+export function showHall(startKind = 'conquer') {   // startKind : 처음 열 탭 (습격 결과 창에서 'raid')
   Sfx.play('sfx_menu_select');
   ensureCss();
   const myUid = currentUser()?.uid;
-  let kind = 'conquer';
+  let kind = TABS.some((t) => t.value === startKind) ? startKind : 'conquer';
   let state = { loading: true, rows: [], err: null };
   let live = true, reqId = 0, synced = false;
 

@@ -90,7 +90,7 @@ html.idg-wide body { width: 100%; }
 .idg-breath b { position: relative; }
 .idg-breath.can { border-color: #fff; box-shadow: 0 0 12px #ff7a1a; animation: idgGlow .8s infinite alternate; }
 .idg-hud.fever { box-shadow: inset 0 0 30px rgba(255, 90, 0, .55); }
-.idg-panel-over { position: absolute; inset: 0; display: none; place-items: center; background: rgba(5, 2, 12, .6); pointer-events: auto; }
+.idg-panel-over { position: absolute; inset: 0; z-index: 10; display: none; place-items: center; background: rgba(5, 2, 12, .6); pointer-events: auto; }
 .idg-panel-over.on { display: grid; }
 .idg-card { min-width: 260px; padding: 16px 20px; border: 3px solid #FFC93C; border-radius: 14px; background: #1a1033; text-align: center; }
 .idg-card h2 { margin: 0 0 8px; color: #FFC93C; font-size: 22px; } .idg-card h2.lose { color: #9cf; }
@@ -1435,8 +1435,8 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-res-btn.purple .ico { height: 1.2em; }
 .idg-res-btn:active { filter: brightness(.85); }
 .idg-res-final { margin: 0; color: #ffdf7a; font-weight: 800; }
-/* 가로 */
-@media (orientation: landscape) {
+/* 가로 (창 틀 모양으로 가름 — 폰을 세로로 들면 전투 틀이 돌아가 그려져 화면 방향 미디어 쿼리가 틀린다 · 11/13) */
+@container (min-aspect-ratio: 1/1) {
   .idg-hud .idg-card.idg-res { height: 94cqh; width: min(96cqw, 150cqh); }
   .idg-res-scene { height: 68%; background-size: 100% auto; }
   .idg-res-bar.has-new { margin-bottom: 3.2%; }
@@ -1448,7 +1448,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
   .idg-res-row.big .idg-res-btn { height: 8.8cqh; font-size: 3.8cqh; } .idg-res-btn.purple { height: 5.6cqh; font-size: 2.4cqh; }
 }
 /* 세로 */
-@media (orientation: portrait) {
+@container (max-aspect-ratio: 1/1) {
   .idg-hud .idg-card.idg-res { width: 96cqw; max-height: 96cqh; border-width: 24px 22px; border-image-width: 24px 22px; }
   .idg-res-scene { aspect-ratio: 1 / 1.02; }
   .idg-res-banner { top: 14%; width: 76%; } .idg-res.lose .idg-res-banner { top: 13%; width: 66%; }
@@ -1458,3 +1458,80 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
   .idg-res-row.big { width: 100%; gap: 2.4cqw; } .idg-res-row:not(.big) { width: 78%; gap: 2.4cqw; }
   .idg-res-row.big .idg-res-btn { height: 14cqw; font-size: 4.8cqw; } .idg-res-btn.purple { height: 9cqw; font-size: 3.6cqw; }
 }
+
+/* ── 결과 창 : 별 없는 모드(습격 · 대결 · 어긋남)의 현판 · 큰 숫자 (11/13 대표님 «어떤 게임이든 승리 · 패배 화면 레이아웃») ──
+ *  현판 = 새 그림 없이 승리/패배 현판의 양쪽 날개만 잘라 쓰고(banner_win · banner_lose) 가운데 판은 CSS 로 · 글씨는 Pretendard 굵게 + 딱딱한 외곽선 */
+.idg-res-banner.idg-res-plate { aspect-ratio: 720 / 196; container-type: inline-size; height: auto; }
+.idg-res-banner.idg-res-plate.stone { aspect-ratio: 720 / 279; }
+.idg-res-plate::before, .idg-res-plate::after { content: ''; position: absolute; top: 0; bottom: 0; width: 23%; background: url(/assets/iandragon_game/ai/result/banner_win.webp) 0 50% / auto 100% no-repeat; image-rendering: pixelated; }
+.idg-res-plate::after { right: 0; background-position: 100% 50%; } .idg-res-plate::before { left: 0; }
+.idg-res-plate.stone::before, .idg-res-plate.stone::after { background-image: url(/assets/iandragon_game/ai/result/banner_lose.webp); }
+.idg-res-plate .p { position: absolute; z-index: 1; left: 19.5%; right: 19.5%; top: 17%; bottom: 8%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; text-align: center;
+  background: linear-gradient(180deg, #5a479b, #3a2b6e 60%, #2e2358); border: .9cqw solid #e2ad45; border-radius: 1.6cqw; box-shadow: 0 0 0 .7cqw #1d1233; }
+.idg-res-plate.stone .p { top: 26%; bottom: 10%; background: linear-gradient(180deg, #6a768d, #485268 60%, #3b4358); border-color: #222a40; box-shadow: 0 0 0 .7cqw #121724; }
+.idg-res-plate .p b { font-weight: 900; font-size: 11.5cqw; line-height: 1; white-space: nowrap; color: #ffe27a; letter-spacing: .02em;
+  text-shadow: .5cqw 0 var(--o), -.5cqw 0 var(--o), 0 .5cqw var(--o), 0 -.5cqw var(--o), .5cqw .5cqw var(--o), -.5cqw .5cqw var(--o), .5cqw -.5cqw var(--o), -.5cqw -.5cqw var(--o); }
+.idg-res-plate.stone .p b { color: #d8ecff; }
+.idg-res-plate .p b.mid { font-size: 9cqw; } .idg-res-plate .p b.long { font-size: 6.8cqw; }
+.idg-res-big { position: absolute; left: 0; right: 0; z-index: 3; display: flex; align-items: baseline; justify-content: center; gap: .4em; line-height: 1; font-family: inherit; white-space: nowrap; animation: idgResStar .45s cubic-bezier(.2, 1.6, .4, 1) both; }
+.idg-res-big b { font-weight: 900; color: #ffd34d; text-shadow: 3px 0 var(--o), -3px 0 var(--o), 0 3px var(--o), 0 -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
+.idg-res-big small { font-weight: 800; color: #fff; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+@container (min-aspect-ratio: 1/1) {
+  .idg-res-banner.idg-res-plate { width: min(36%, 330px); top: 1%; } .idg-res.lose .idg-res-banner.idg-res-plate { width: min(36%, 330px); top: 0; }
+  .idg-res-big { bottom: 8.5%; } .idg-res-big b { font-size: 10.5cqh; } .idg-res-big.sm b { font-size: 8cqh; } .idg-res-big small { font-size: 3.6cqh; }
+}
+@container (max-aspect-ratio: 1/1) {
+  .idg-res-banner.idg-res-plate { width: 86%; top: 12%; } .idg-res.lose .idg-res-banner.idg-res-plate { width: 86%; top: 8%; }
+  .idg-res-big { bottom: 8%; } .idg-res-big b { font-size: 14cqw; } .idg-res-big.sm b { font-size: 10cqw; } .idg-res-big small { font-size: 4.6cqw; }
+}
+
+/* ── 시작 창 (판 시작 카드 · 주간 습격 소개) : 결과 창과 같은 틀 · 같은 부품 (11/13 · docs/IDG_UI_PATTERNS.md §1) ── */
+.idg-int .idg-res-scene { background-size: cover; background-position: 50% 60%; overflow: hidden; }
+.idg-int .idg-res-scene:not(.world) { background-image: none; }
+.idg-int-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; image-rendering: pixelated; display: block; }
+.idg-int .idg-res-banner { z-index: 3; }
+.idg-int .idg-res-plate.two .p { flex-direction: column; gap: .5cqw; padding: 0 1cqw; }
+.idg-int .idg-res-plate.two .p b.id { font-size: 11cqw; } .idg-int .idg-res-plate.two .p b.mid { font-size: 9.6cqw; }
+.idg-int .idg-res-plate.two .p i { font-style: normal; font-weight: 800; font-size: 4.9cqw; line-height: 1.05; white-space: nowrap; color: #fff0c8;
+  text-shadow: .4cqw 0 var(--o), -.4cqw 0 var(--o), 0 .4cqw var(--o), 0 -.4cqw var(--o), .4cqw .4cqw var(--o), -.4cqw .4cqw var(--o), .4cqw -.4cqw var(--o), -.4cqw -.4cqw var(--o); }
+.idg-int-faces { position: absolute; left: 0; right: 0; bottom: 5%; z-index: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 1.2cqh 1cqw; padding: 0 4%; }
+.idg-int-faces .face { box-sizing: border-box; display: grid; place-items: center; overflow: hidden; background: #1d1233; border: 2px solid var(--gold); border-radius: 6px; box-shadow: 0 0 0 2px #2a1238; }
+.idg-int-faces .face img { width: 92%; height: 92%; object-fit: contain; image-rendering: pixelated; }
+.idg-int-bar { grid-template-columns: 29.4fr 32.3fr 26.3fr; }
+.idg-int-bar .cell { gap: .3em; } .idg-int-bar .cell b { font-size: .86em; }
+.idg-int-bar .ss { display: inline-flex; } .idg-int-bar .ss img { height: .95em; width: auto; margin-left: -.12em; } .idg-int-bar .ss img:first-child { margin-left: 0; }
+.idg-int-bar.red .ss img { filter: hue-rotate(-42deg) saturate(1.5); } .idg-int-bar.purple .ss img { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92); }
+.idg-hud .idg-card.idg-int .idg-int-goal { margin: 0; text-align: center; font-weight: 900; color: #ffdf7a; white-space: nowrap;
+  text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+.idg-int-lines { display: flex; flex-direction: column; align-items: center; gap: .3em; width: 100%; }
+.idg-int .idg-int-line { position: relative; left: auto; top: auto; z-index: auto; transform: none; width: auto; max-width: 100%; height: auto; min-height: 1.9em; padding: .12em 0; font-size: 1em; display: flex; justify-content: center; }
+.idg-int .idg-int-line .ico { height: 1.25em; width: auto; image-rendering: pixelated; flex: none; } .idg-int .idg-int-line .attrs { display: inline-flex; gap: .15em; } .idg-int .idg-int-line .attrs img { height: 1.3em; width: auto; }
+.idg-int .idg-int-line span { color: #ffe9c0; font-weight: 700; overflow: visible; white-space: nowrap;
+  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+.idg-int .idg-int-line.diff.hard span { color: #ff9a8a; } .idg-int .idg-int-line.diff.master span { color: #d9a8ff; } .idg-int .idg-int-line.best span { color: #ffd45a; font-weight: 800; }
+.idg-int .idg-cons-row { display: flex; align-items: center; justify-content: center; gap: .4em; font-weight: 800; font-size: .9em; }
+.idg-int .idg-res-row.big .idg-res-btn.purple { flex: 1 1 0; font-weight: 800; }
+@container (min-aspect-ratio: 1/1) {
+  .idg-int .idg-res-scene { flex: 1 1 0; height: auto; min-height: 26cqh; } .idg-int .idg-res-body { flex: none; }   /* 남는 높이는 그림 띠가 가져감 */
+  .idg-int .idg-res-banner.idg-res-plate { width: min(50%, 420px); top: 1%; }
+  .idg-int-faces .face { width: 9cqh; height: 9cqh; } .idg-int-faces { bottom: 7.4cqh; }
+  .idg-int .idg-res-body { margin-top: calc(-0.5 * min(56%, 520px) * 167 / 1200 - 1.5px); gap: .6cqh; padding: 0 4% 1.2cqh; font-size: 2.9cqh; }
+  .idg-int.raid .idg-res-body { margin-top: 1cqh; }
+  .idg-hud .idg-card.idg-int .idg-int-goal { font-size: 5.2cqh; } .idg-int-bar { font-size: 2.9cqh; }
+  .idg-int .idg-res-row.big { width: min(64%, 560px); margin-top: .4cqh; } .idg-int .idg-res-row.big .idg-res-btn { height: 8.2cqh; font-size: 3.8cqh; } .idg-int .idg-res-row.big .idg-res-btn.purple { font-size: 3cqh; }
+  .idg-int .idg-int-line { max-width: 86%; }
+}
+@container (max-aspect-ratio: 1/1) {
+  .idg-int .idg-res-scene { aspect-ratio: auto; height: 34cqw; } .idg-int.raid .idg-res-scene { height: 54cqw; }
+  .idg-int .idg-res-banner.idg-res-plate { width: 86%; top: 3%; }
+  .idg-int-faces .face { width: 9.6cqw; height: 9.6cqw; }
+  .idg-int .idg-res-body { gap: 1.6cqw; padding: 0 1% 3cqw; font-size: 3.7cqw; }
+  .idg-int.raid .idg-res-body { margin-top: 2.4cqw; }
+  .idg-hud .idg-card.idg-int .idg-int-goal { font-size: 6.6cqw; } .idg-int-bar { font-size: 4.2cqw; }
+  .idg-int .idg-res-row.big { width: 100%; } .idg-int .idg-res-row.big .idg-res-btn { height: 13cqw; font-size: 4.8cqw; } .idg-int .idg-res-row.big .idg-res-btn.purple { font-size: 4cqw; }
+  .idg-int .idg-int-line { white-space: normal; }
+}
+
+.idg-int-best { position: absolute; left: 50%; bottom: 4%; z-index: 3; transform: translateX(-50%); padding: .15em .9em .2em; white-space: nowrap; font-weight: 800; color: #ffd45a; background: rgba(29, 18, 51, .88); border: 2px solid var(--gold); border-radius: 999px; box-shadow: 0 0 0 2px #2a1238;
+  font-size: 2.9cqh; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+@container (max-aspect-ratio: 1/1) { .idg-int-best { font-size: 3.8cqw; } }
