@@ -4,7 +4,7 @@
   "hat_crown": {
    "slot": "hat",
    "src": "ai/meta/hat_crown.png",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -14,7 +14,7 @@
   "hat_pirate": {
    "slot": "hat",
    "src": "ai/meta/hat_pirate.png",
-   "w": 1.1,
+   "w": 0.9,
    "anchor": [
     0.5,
     1
@@ -25,7 +25,7 @@
   "hat_wizard": {
    "slot": "hat",
    "src": "ai/meta/hat_wizard.png",
-   "w": 1.1,
+   "w": 0.75,
    "anchor": [
     0.5,
     1
@@ -35,7 +35,7 @@
   "hat_pumpkin": {
    "slot": "hat",
    "src": "ai/meta/hat_pumpkin.png",
-   "w": 1.1,
+   "w": 0.8,
    "anchor": [
     0.5,
     1
@@ -45,7 +45,7 @@
   "hat_helmet": {
    "slot": "hat",
    "src": "ai/meta/hat_helmet.png",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -55,7 +55,7 @@
   "hat_ribbon": {
    "slot": "hat",
    "src": "ai/meta/hat_ribbon.png",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -65,7 +65,7 @@
   "hat_party": {
    "slot": "hat",
    "src": "ai/meta/hat_party.png",
-   "w": 1.1,
+   "w": 0.6,
    "anchor": [
     0.5,
     1
@@ -75,7 +75,7 @@
   "hat_viking": {
    "slot": "hat",
    "src": "ai/meta/hat_viking.png",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -85,7 +85,7 @@
   "hat_acorn": {
    "slot": "hat",
    "src": "ai/meta/hat_acorn.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -95,7 +95,7 @@
   "hat_nightcap": {
    "slot": "hat",
    "src": "ai/meta/hat_nightcap.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -105,7 +105,7 @@
   "hat_moonhelm": {
    "slot": "hat",
    "src": "ai/meta/hat_moonhelm.webp",
-   "w": 1.1,
+   "w": 0.7,
    "anchor": [
     0.5,
     1
@@ -115,7 +115,7 @@
   "hat_moonstar": {
    "slot": "hat",
    "src": "ai/meta/hat_moonstar.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -125,7 +125,7 @@
   "hat_lavacone": {
    "slot": "hat",
    "src": "ai/meta/hat_lavacone.webp",
-   "w": 1.1,
+   "w": 0.8,
    "anchor": [
     0.5,
     1
@@ -135,7 +135,7 @@
   "hat_phoenixcrest": {
    "slot": "hat",
    "src": "ai/meta/hat_phoenixcrest.webp",
-   "w": 1.1,
+   "w": 0.65,
    "anchor": [
     0.5,
     1
@@ -145,7 +145,7 @@
   "hat_aviator": {
    "slot": "hat",
    "src": "ai/meta/hat_aviator.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -155,7 +155,7 @@
   "hat_wingcap": {
    "slot": "hat",
    "src": "ai/meta/hat_wingcap.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -165,7 +165,7 @@
   "hat_stormcrown": {
    "slot": "hat",
    "src": "ai/meta/hat_stormcrown.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -175,7 +175,7 @@
   "hat_earmuff": {
    "slot": "hat",
    "src": "ai/meta/hat_earmuff.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -185,7 +185,7 @@
   "hat_minerhelm": {
    "slot": "hat",
    "src": "ai/meta/hat_minerhelm.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -195,7 +195,7 @@
   "hat_drillhat": {
    "slot": "hat",
    "src": "ai/meta/hat_drillhat.webp",
-   "w": 1.1,
+   "w": 0.8,
    "anchor": [
     0.5,
     1
@@ -205,7 +205,7 @@
   "hat_jewelhelm": {
    "slot": "hat",
    "src": "ai/meta/hat_jewelhelm.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -215,7 +215,7 @@
   "hat_turban": {
    "slot": "hat",
    "src": "ai/meta/hat_turban.webp",
-   "w": 1.1,
+   "w": 0.75,
    "anchor": [
     0.5,
     1
@@ -225,7 +225,7 @@
   "hat_pharaoh": {
    "slot": "hat",
    "src": "ai/meta/hat_pharaoh.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -235,7 +235,7 @@
   "hat_lilypad": {
    "slot": "hat",
    "src": "ai/meta/hat_lilypad.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -245,7 +245,7 @@
   "hat_witchhat": {
    "slot": "hat",
    "src": "ai/meta/hat_witchhat.webp",
-   "w": 1.1,
+   "w": 0.8,
    "anchor": [
     0.5,
     1
@@ -255,7 +255,7 @@
   "hat_crystalcap": {
    "slot": "hat",
    "src": "ai/meta/hat_crystalcap.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -265,7 +265,7 @@
   "hat_gemtiara": {
    "slot": "hat",
    "src": "ai/meta/hat_gemtiara.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -275,7 +275,7 @@
   "hat_flamecrown": {
    "slot": "hat",
    "src": "ai/meta/hat_flamecrown.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -285,7 +285,7 @@
   "hat_cometcrown": {
    "slot": "hat",
    "src": "ai/meta/hat_cometcrown.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1
@@ -295,7 +295,7 @@
   "hat_starcrown": {
    "slot": "hat",
    "src": "ai/meta/hat_starcrown.webp",
-   "w": 1.1,
+   "w": 0.85,
    "anchor": [
     0.5,
     1

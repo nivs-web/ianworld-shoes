@@ -21,11 +21,11 @@ import { wearTables, attachWear, wearRigData } from '/src/games/iandragon_game/r
 import { Assets } from 'pixi.js';
 
 const q = new URLSearchParams(location.search);
-const kind = q.get('kind') || 'hat', S = Number(q.get('scale') || 2);
-const LEADERS = (q.get('d') || 'novart,aquantis,forestia,crimsonde,volttail,solaris,sandscale,shadowfen,frostwing,goldrex').split(',');
+const BODY = q.get('kind') === 'body', kind = BODY ? 'hat' : (q.get('kind') || 'hat'), S = Number(q.get('scale') || 2);
+const LEADERS = (q.get('d') || (BODY ? 'aquantis,crimsonde,shadowfen' : 'novart,aquantis,forestia,crimsonde,volttail,solaris,sandscale,shadowfen,frostwing,goldrex')).split(',');
 const T = await wearTables();
-const ids = (q.get('only') ? q.get('only').split(',') : Object.keys(T.I.items).filter((k) => k.startsWith(kind + '_')).map((k) => k.slice(kind.length + 1)));
-const CW = (kind === 'hat' ? 56 : 62) * S, CH = (kind === 'hat' ? 75 : 85) * S, OY = (kind === 'hat' ? 62 : 33) * S;
+const ids = (q.get('only') ? q.get('only').split(',') : BODY ? ['crown', 'party', 'viking', 'pumpkin', 'moonhelm', 'wizard'] : Object.keys(T.I.items).filter((k) => k.startsWith(kind + '_')).map((k) => k.slice(kind.length + 1)));
+const CW = BODY ? 300 : (kind === 'hat' ? 56 : 62) * S, CH = BODY ? 330 : (kind === 'hat' ? 75 : 85) * S, OY = (kind === 'hat' ? 62 : 33) * S;
 const B = '/assets/iandragon_game/';
 const loadTex = (f) => Assets.load(B + f).then((t) => { t.source.scaleMode = 'nearest'; return t; }).catch(() => null);
 const app = new Application();
@@ -44,12 +44,16 @@ for (let j = 0; j < LEADERS.length; j++) {
   for (let i = 0; i < ids.length; i++) {
     const lk = { [kind]: ids[i] };
     const data = await wearRigData(data0, l, lk, T, loadTex);
-    const R = createRigged(data, S, 1); R.t = 0; R.set('idle');
+    const R = createRigged(data, BODY ? 1 : S, 1); R.t = 0; R.set('idle');
     const fl = await attachWear(R, data0, l, lk, T, loadTex);
     R.update(0); for (const [bx, t] of fl) bx.position.copyFrom(t.position);
     const cell = new Container(); cell.position.set(i * CW, j * CH);
     const m = new Graphics().rect(0, 0, CW, CH).fill(0xffffff); cell.addChild(m); cell.mask = m;
-    R.root.position.set(CW / 2 - S * hp.p[0], OY - S * hp.p[1]);
+    if (BODY) {   // 로비 liveRig 와 같은 맞춤 : 발 = 아래 가운데 · 몸 전체(모자 포함)가 칸에 꽉 차게 (날개 여유 6%)
+      const b = R.root.getLocalBounds(), up = -b.y, half = Math.max(-b.x, b.x + b.width), pad = 3;
+      const k = Math.min((CH - pad * 2) / up, (CW / 2 - pad) / half) * 0.94;
+      R.root.scale.set(k * R.root.scale.x, k * R.root.scale.y); R.root.position.set(CW / 2, CH - pad);
+    } else R.root.position.set(CW / 2 - S * hp.p[0], OY - S * hp.p[1]);
     cell.addChild(R.root); app.stage.addChild(cell);
   }
 }
