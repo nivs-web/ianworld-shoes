@@ -80,7 +80,7 @@ export const SONGS = [
     "lic": "CC BY 3.0"
   },
   {
-    "k": "w10 — 좀비 드래곤 성",
+    "k": "w10 — 좀비 드래곤캐슬",
     "title": "전람회의 그림 중 «키예프의 대문» (The Great Gate of Kiev)",
     "by": "모데스트 무소륵스키 (1839–1881)",
     "perf": "스키드모어 대학 오케스트라 (Skidmore College Orchestra), Musopen 제공",

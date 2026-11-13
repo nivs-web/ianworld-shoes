@@ -31,16 +31,16 @@ export const QUESTS = [
   ['월드 5 깨기', (g) => g.cleared, 50, 50],
   ['보스 3마리 쓰러뜨리기', (g) => g.stat.boss, 3, 20],
   ['★★★ 스테이지 10개', threeOf, 10, 20],
-  ['용 10마리 모으기', owned, 10, 20],
+  ['드래곤 10마리 모으기', owned, 10, 20],
   ['처음으로 알 깨기', (g) => g.stat.hatch, 1, 10],
-  ['전설 용 만나기', hasLegend, 1, 50],
-  ['용 하나를 Lv10 (진화!)', maxLv, 10, 20],
+  ['전설 드래곤 만나기', hasLegend, 1, 50],
+  ['드래곤 하나를 Lv10 (진화!)', maxLv, 10, 20],
   /* 2차 (월드 6~10 · 2026-11-11) — 비트 순서 때문에 뒤에만 붙인다 */
   ['월드 7 깨기', (g) => g.cleared, 70, 30],
   ['월드 10 깨기 — 엔딩!', (g) => g.cleared, 100, 50],
   ['보스 10마리 쓰러뜨리기', (g) => g.stat.boss, 10, 30],
   ['별 300개 모두 모으기', starsOf, 300, 50],
-  ['용 하나를 Lv20 (마지막 진화!)', maxLv, 20, 30],
+  ['드래곤 하나를 Lv20 (마지막 진화!)', maxLv, 20, 30],
 ].map(([name, prog, need, gems], i) => ({ i, name, prog, need, gems }));
 
 export const questState = (g, q) => ({ now: Math.min(q.need, q.prog(g) || 0), done: (q.prog(g) || 0) >= q.need, got: (g.quests || '')[q.i] === '1' });

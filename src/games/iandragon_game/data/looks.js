@@ -97,7 +97,7 @@ const LV_TITLES = [
 export const TITLES = [
   { id: 'zombie_hunter', name: '좀비 사냥꾼', how: '좀비 1,000마리 쓰러뜨리기', has: (g) => st(g, 'kills') >= 1000 },
   { id: 'star_collector', name: '별 수집가', how: '별 100개 모으기', has: (g) => sumStars(g?.stars) >= 100 },
-  { id: 'hundred_dragon', name: '백 판의 용', how: '스테이지 100개 모두 깨기', has: (g) => (g?.cleared || 0) >= 100 },
+  { id: 'hundred_dragon', name: '백 판의 드래곤', how: '스테이지 100개 모두 깨기', has: (g) => (g?.cleared || 0) >= 100 },
   { id: 'hard_conqueror', name: '어려움 정복자', how: '어려움 붉은 별 50판 이상', has: (g) => [...(g?.hardStars || '')].filter((c) => c !== '0').length >= 50 },
   { id: 'coop_friend', name: '같이 깨기 친구', how: '친구랑 같이 10판 이기기', has: (g) => st(g, 'coop') >= 10 },
   { id: 'boss_slayer', name: '보스 사냥꾼', how: '보스 판 50번 이기기', has: (g) => st(g, 'boss') >= 50 },
@@ -115,7 +115,7 @@ export const TITLES = [
   /* 초고수 칭호 : vis = 보통 10-10 을 깬 계정에만 목록에 보인다 (그 전에는 «초고수»라는 글자가 어디에도 없어야 함) */
   { id: 'master_top', name: '초고수', how: '초고수 10-10 깨기', has: (g) => starAt(g?.masterStars, 100), vis: SEES_MASTER },
   { id: 'master_legend', name: '전설의 드래곤 조련사', how: '보라 별 300개 모으기', has: (g) => sumStars(g?.masterStars) >= 300, vis: SEES_MASTER },
-  ...['달밤 언덕', '부글 화산', '구름 하늘섬', '꽁꽁 얼음골', '덜컹 쇠 광산', '으스스 묘지', '모래바람 사막', '끈적 독 늪', '반짝 수정 동굴', '좀비 드래곤 성'].map((nm, i) => (
+  ...['달밤 언덕', '부글 화산', '구름 하늘섬', '꽁꽁 얼음골', '덜컹 쇠 광산', '으스스 묘지', '모래바람 사막', '끈적 독 늪', '반짝 수정 동굴', '좀비 드래곤캐슬'].map((nm, i) => (
     { id: `mw_${MW[i]}`, name: `${nm}의 전설`, how: `초고수 ${i + 1}-10 깨기`, has: (g) => starAt(g?.masterStars, (i + 1) * 10), vis: SEES_MASTER })),
   /* 레벨 선물 전용 (§C-5 · 상점 판매 X · 받으면 lvGifts 에 'title:<id>' 로 남는다) */
   ...LV_TITLES.map((t) => ({ ...t, how: '레벨 선물에서 나와요', has: (g) => Object.values(g?.lvGifts || {}).includes(`title:${t.id}`) })),
@@ -128,7 +128,11 @@ const BADGE = { zombie_hunter: 'hunter', star_collector: 'stars', hundred_dragon
   ...Object.fromEntries(MW.map((w) => [`mw_${w}`, 'boss'])) };
 /** 새 테두리 = 기존 테두리 그림 + 색 필터 (전용 그림이 나오면 이 표에서 빼면 된다) */
 export const FRAME_ART = { red: ['fire', 'hue-rotate(-28deg) saturate(1.5)'], violet: ['fire', 'hue-rotate(-110deg) saturate(1.3)'], lvstar: ['silver', 'hue-rotate(190deg) saturate(2)'], lvgem: ['gold', 'hue-rotate(110deg) saturate(1.4)'] };
-export const artOf = (slot, id) => `/assets/iandragon_game/ai/meta/${slot === 'title' ? `badge_${BADGE[id] || id}` : slot === 'breath' && id === 'basic' ? 'breath_default' : slot === 'frame' && FRAME_ART[id] ? `frame_${FRAME_ART[id][0]}` : `${slot}_${id}`}.png`;
+/** 그림이 .webp 로만 있는 물건 (11/13 새 꾸미기 · 파일 이름 = <칸>_<id>) — 나머지는 .png. 새 그림이 들어오면 여기에 더한다
+ *  (다시 뽑기 : ai/meta 에서 .png 없이 .webp 만 있는 hat_ · neck_ · aura_ · pet_ · flag_ · roof_ · gate_ · yard_ 이름) */
+const WEBP = new Set(`aura_breeze aura_bubbles aura_firefly aura_fog aura_fullmoon aura_galaxy aura_gearaura aura_gemring aura_goldring aura_grass aura_lavaring aura_nebula aura_prism aura_sandstorm aura_snowflake aura_spiritring aura_spores aura_sunflare flag_aurora flag_banner flag_batflag flag_dragonking flag_froglord flag_gemflag flag_kite flag_legendflag flag_lionflag flag_moonhill flag_nightking flag_oasis flag_pickflag flag_rainbowstar flag_sunflag flag_volcano gate_cloudgate gate_dragongate gate_firegate gate_geargate gate_glaciergate gate_icegate gate_irongate gate_lavagate gate_mossgate gate_portcullis gate_reedgate gate_royalgate gate_sandarch gate_snowarch gate_sphinxgate gate_stargate gate_tombgate gate_vinegate hat_acorn hat_aviator hat_cometcrown hat_crystalcap hat_drillhat hat_earmuff hat_flamecrown hat_gemtiara hat_jewelhelm hat_lavacone hat_lilypad hat_minerhelm hat_moonhelm hat_moonstar hat_nightcap hat_pharaoh hat_phoenixcrest hat_starcrown hat_stormcrown hat_turban hat_wingcap hat_witchhat neck_bonechain neck_cloudscarf neck_coalpouch neck_crystalbead neck_dragonheart neck_emberscarf neck_featherboa neck_frogbead neck_frostmedal neck_ghostcape neck_icescarf neck_knightcape neck_lavachain neck_leafscarf neck_rubyamulet neck_starnecklace neck_sunscarab neck_vinecape pet_camel pet_cloudwhale pet_cometfox pet_emberpup pet_firebird pet_froggy pet_gemfairy pet_goldegg pet_griffin pet_minidragon pet_mole pet_moonbunny pet_owl pet_penguin pet_salamander pet_scarab pet_skyspirit pet_starcat roof_balloon roof_belltower roof_chimney roof_crowroof roof_crystalspire roof_diamondroof roof_dragonstatue roof_geode roof_icicle roof_moontower roof_pyramid roof_shardroof roof_skyship roof_starfrost roof_starwing roof_sundome roof_weathervane roof_windmill yard_brazier yard_crystaltree yard_fountain yard_gravestone yard_haystack yard_icestatue yard_igloo yard_knightstatue yard_lotuspond yard_lotusthrone yard_minecart yard_mushrooms yard_obelisk yard_pumpkinlamp yard_snowman yard_starfountain yard_torches yard_treasure`.split(' '));
+const metaExt = (name) => (WEBP.has(name) ? 'webp' : 'png');
+export const artOf = (slot, id) => { const n = slot === 'title' ? `badge_${BADGE[id] || id}` : slot === 'breath' && id === 'basic' ? 'breath_default' : slot === 'frame' && FRAME_ART[id] ? `frame_${FRAME_ART[id][0]}` : `${slot}_${id}`; return `/assets/iandragon_game/ai/meta/${n}.${metaExt(n)}`; };
 /** 그림에 씌울 CSS 필터 (없으면 '') */
 export const artFilter = (slot, id) => (slot === 'frame' && FRAME_ART[id] ? FRAME_ART[id][1] : '');
 /** 칭호 목록에 보여도 되나 (초고수 칭호는 보통 10-10 을 깬 계정에만) */
