@@ -21,6 +21,7 @@
  */
 import { LEADERS } from './leaders.js';
 import { TIERS, TIER_KO, LOOK_FX, SLOT_IDS } from './lookFx.js';
+import { MASTER_ON } from './features.js';
 
 export { TIERS, TIER_KO };
 /** 큰 칸 → 작은 칸 (샵 · 꾸미기 창 메뉴) */
@@ -316,9 +317,9 @@ const bitAt = (s, g) => (typeof s === 'string' ? s : '')[g - 1] === '1';
 const run = (s) => { let n = 0; while (n < 100 && starAt(s, n + 1) > 0) n++; return n; };
 const sumStr = (s) => [...(typeof s === 'string' ? s : '')].reduce((a, c) => a + (Number(c) || 0), 0);
 /** 초고수 관련(신화 · 보라 모습 · 초고수 «?»)을 보여도 되는 계정 = 보통 10-10 깸 */
-export const seesMaster = (g) => (g?.cleared || 0) >= 100;
+export const seesMaster = (g) => MASTER_ON && (g?.cleared || 0) >= 100;   // 초고수 꺼짐 (11/13)
 /** 초고수가 열린 계정 = 어려움 10-10 깸 (난이도 §A-1 · diffUnlocked 와 같은 셈) */
-export const masterOpen = (g) => run(g?.hardStars) >= 100;
+export const masterOpen = (g) => MASTER_ON && run(g?.hardStars) >= 100;
 const stageNo = (w, s) => (w - 1) * 10 + s;
 const label = (w, s) => `${w}-${s}`;
 /** 숫자 뒤 을/를 (끝 숫자 읽기 : 0 영/십 · 1 일 · 3 삼 · 6 육 · 7 칠 · 8 팔 → 을) */

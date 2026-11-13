@@ -11,6 +11,7 @@ import { SKILLS } from '../data/skills.js';
 import { STAGES } from '../data/stages/index.js';
 import { LEADERS } from '../data/leaders.js';
 import { ENEMIES } from '../data/enemies.js';
+import { MASTER_ON } from '../data/features.js';   // 초고수 전면 취소 스위치 (11/13)
 import { step, createBattle } from '../core/index.js';
 
 /** 용이 열리는 차례 (기획서 9.5) */
@@ -112,9 +113,9 @@ export const DIFF = {
 export const diffRun = (arr) => { let n = 0; while (n < 100 && Number(arr?.[n]) > 0) n++; return n; };
 /** 그 난이도 자체가 열렸나 (어려움 = 보통 10-10 · 초고수 = 어려움 1-1 ~ 10-10 붉은 별 + 10-10 을 «새 어려움»으로 깸 · 옛 붉은 별만으로는 안 열림) */
 export const diffUnlocked = (save, d) =>
-  d === 'hard' ? (save?.cleared || 0) >= 100 : d === 'master' ? diffRun(save?.hardStars) >= 100 && (save?.hardWon || '')[99] === '1' : !!DIFF[d];
+  d === 'hard' ? (save?.cleared || 0) >= 100 : d === 'master' ? MASTER_ON && diffRun(save?.hardStars) >= 100 && (save?.hardWon || '')[99] === '1' : !!DIFF[d];
 /** 단추를 만들지 말지 — 초고수는 보통 10-10 을 깬 계정에만 (숨김이 아니라 아예 안 만든다) */
-export const diffVisible = (save, d) => (d !== 'master' || (save?.cleared || 0) >= 100) && !!DIFF[d];
+export const diffVisible = (save, d) => (d !== 'master' || (MASTER_ON && (save?.cleared || 0) >= 100)) && !!DIFF[d];
 /** 이 판(g)에 그 난이도로 들어갈 수 있나 — 1-1 · 앞 판 별 · 이미 별을 딴 판 */
 export const diffOpen = (g, save, d) => {
   const D = DIFF[d]; if (!D) return false;
