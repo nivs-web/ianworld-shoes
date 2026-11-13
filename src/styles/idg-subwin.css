@@ -791,3 +791,5 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 /* 출전덱 판 (11/13 대표님) : «출전덱 (8/10)» 흰 글씨 가운데 · 오른쪽 비우기 */
 .idg-pp.pp2.land .idg-pp-plate.has-clear.deckp { justify-content: center; padding-left: 62px; padding-right: 62px; }
 .idg-pp-plate.deckp > b { color: #fff; white-space: nowrap; }
+.idg-pp-plate.deckp > b { color: unset; }   /* 노란 제목은 판 기본색 그대로 (파워업 카드 판과 같게) */
+.idg-pp.pp2.land .idg-pp-plate.has-clear.deckp { flex-wrap: nowrap; padding-left: 10px; padding-right: 66px; white-space: nowrap; }

@@ -212,7 +212,7 @@ export function powerPage(h, o) {
       const plate = (a, b) => { const p = h('div', 'idg-pp-plate'); p.append(h('b', null, a), h('span', null, `< ${b} >`)); return p; };
       const sScroll = h('div', 'idg-pp-sbody'); sScroll.append(slots);
       slots.append(guideCell());   /* 10번 칸 옆 빈 2칸 */
-      const sCol = h('div', 'idg-pp-col slots'); const sPlate = h('div', 'idg-pp-plate has-clear deckp'); sPlate.append(h('b', null, `출전덱 (${deck.length}/${un.deckCap})`), clearBtn);   /* 대표님 11/13 : 이 칸 이름 = «출전덱» · 흰 글씨 가운데 · 오른쪽 비우기 */   /* 비우기 자리를 내려고 «< 출전 8/10 >» → «< 8/10 >» */
+      const sCol = h('div', 'idg-pp-col slots'); const sPlate = plate('출전덱', `${deck.length}/${un.deckCap}`); sPlate.classList.add('has-clear', 'deckp'); sPlate.append(clearBtn);   /* 대표님 11/13 : 오른쪽 «파워업 카드 < 10카드 보유 >» 와 같은 모양 — 노란 «출전덱» + 흰 «< 8/10 >» · 오른쪽 비우기 */   /* 비우기 자리를 내려고 «< 출전 8/10 >» → «< 8/10 >» */
       sCol.append(sPlate, sScroll, h('i', 'idg-dlg-more'), hint); if (limit) sCol.append(limit);
       if (deck.length < need) sCol.firstChild.classList.add('short');
       body.append(list);
