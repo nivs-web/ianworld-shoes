@@ -366,25 +366,14 @@ export default function IanDragonGameLobby(nav) {
   const killLive = () => { liveGen++; const a = liveApp; liveApp = null; try { a?.destroy(true, { children: true }); } catch { /* */ } };
   async function liveRig(ld, look, { W = 420, H = 330, pad = 3 } = {}) {
     killLive(); const my = liveGen;
-    const [{ Application, Assets, Container, Sprite }, { loadRig, createRigged }] = await Promise.all([import('pixi.js'), import('../games/iandragon_game/render/rig.js')]);
+    const [{ Application, Assets }, { loadRig, createRigged }, kit] = await Promise.all([import('pixi.js'), import('../games/iandragon_game/render/rig.js'), import('../games/iandragon_game/render/wearKit.js')]);
     const B = '/assets/iandragon_game/';
-    const [data, Wr] = await Promise.all([loadRig(ld), fetch(`${B}ai/meta/wear.json`).then((r) => r.json()).catch(() => null)]);
-    const lk = decodeLook(look || ''), L = Wr?.leaders?.[ld], hk = 'hat_' + lk.hat, nk = 'neck_' + lk.neck;
+    const [data, T] = await Promise.all([loadRig(ld), kit.wearTables()]);
+    const lk = decodeLook(look || '');
     const wt = (f) => Assets.load(B + f).then((t) => { t.source.scaleMode = 'nearest'; return t; }).catch(() => null);
-    const hatE = lk.hat && Wr?.items?.[hk] && L?.hat?.[hk];
-    let rd = data;
-    if (hatE?.head) { const tex = { ...data.tex }; for (const [n, f] of Object.entries(hatE.head)) { const t = await wt(f); if (t) tex[n] = t; } rd = { rig: data.rig, tex }; }   // 덮는 모자 = 모자용 머리
+    const rd = await kit.wearRigData(data, ld, lk, T, wt);   // 덮는 모자 = 모자용 머리
     const R = createRigged(rd, 1, 1); R.set('idle');
-    const body = R.root.children[0], idx = (n) => data.rig.parts.findIndex((q) => q.n === n);
-    const head = body.children[idx('head')], torso = body.children[idx('torso')], follow = [];
-    if (hatE && head) { const t = await wt(Wr.items[hk].file); if (t) { const sp = new Sprite(t); sp.position.set(hatE.x, hatE.y); head.addChild(sp); } }
-    const it = lk.neck && L && Wr?.items?.[nk];
-    if (it && torso) {
-      const at = it.layer === 'behind' ? L.nape : L.neck;
-      const mk = async (f) => { const t = await wt(f); if (!t) return null; const sp = new Sprite(t); sp.anchor.set(it.anchor[0], it.anchor[1]); sp.position.set(at.x, at.y); return sp; };
-      const behind = async (f) => { const sp = await mk(f); if (!sp) return; const bx = new Container(); bx.addChild(sp); body.addChildAt(bx, body.getChildIndex(torso)); follow.push([bx, torso]); };
-      if (it.layer === 'split') { const fr = await mk(it.files.front); if (fr) torso.addChild(fr); await behind(it.files.back); } else await behind(it.file);
-    }
+    const follow = await kit.attachWear(R, data, ld, lk, T, wt);   // 모자 · 목 장식 · 망토 (표 = wear_anchor.json · wear_items.json)
     R.update(0); for (const [bx, t] of follow) bx.position.copyFrom(t.position);
     const b = R.root.getLocalBounds(), up = -b.y, half = Math.max(-b.x, b.x + b.width);
     const k = Math.min((H - pad * 2) / up, (W / 2 - pad) / half) * 0.94;   // 날개를 펄럭여도 안 잘리게 6% 여유

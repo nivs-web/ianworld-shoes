@@ -1,0 +1,202 @@
+{
+ "note": "꾸미기 착용 기준점 표 (겜보조 1 · 11/13). 좌표 단위 = 게임 부품 칸(도트). head = 머리 부품 기준(머리 anchor 가 0,0 · 위가 −) · neck / back = 몸통 부품 기준(몸통 중심이 0,0). 모자 = head 점에 «아래 가운데(챙)» 가 · 목 장식 = neck 점에 «위 가운데» 가 · 망토류 = back 점에 «위 가운데» 가. size = 크기 묶음 1~5 (모자 기준 폭 sizes[size].head) · w 를 직접 적으면 그 드래곤만 그 폭. 진화 · 붉은/보라 모습도 같은 값(부품이 같음). 고친 뒤 node tools/idg-wear-bake.mjs",
+ "sizes": {
+  "1": {
+   "head": 34
+  },
+  "2": {
+   "head": 35
+  },
+  "3": {
+   "head": 36
+  },
+  "4": {
+   "head": 39
+  },
+  "5": {
+   "head": 44
+  }
+ },
+ "dragons": {
+  "novart": {
+   "size": 4,
+   "head": {
+    "x": 2,
+    "y": -14
+   },
+   "neck": {
+    "x": 7,
+    "y": -16,
+    "w": 36
+   },
+   "back": {
+    "x": -4,
+    "y": -17,
+    "w": 40
+   },
+   "cover": "ai/meta/wear/heads/novart/cover"
+  },
+  "aquantis": {
+   "size": 5,
+   "head": {
+    "x": 1,
+    "y": -12
+   },
+   "neck": {
+    "x": 6,
+    "y": -16,
+    "w": 28
+   },
+   "back": {
+    "x": -3,
+    "y": -17,
+    "w": 31
+   },
+   "cover": "ai/meta/wear/heads/aquantis/cover"
+  },
+  "forestia": {
+   "size": 2,
+   "head": {
+    "x": 1,
+    "y": -12
+   },
+   "neck": {
+    "x": 7,
+    "y": -16,
+    "w": 33
+   },
+   "back": {
+    "x": -3,
+    "y": -17,
+    "w": 37
+   },
+   "cover": "ai/meta/wear/heads/forestia/cover"
+  },
+  "crimsonde": {
+   "size": 4,
+   "head": {
+    "x": 1,
+    "y": -13
+   },
+   "neck": {
+    "x": 7,
+    "y": -17,
+    "w": 33
+   },
+   "back": {
+    "x": -3,
+    "y": -18,
+    "w": 37
+   },
+   "cover": "ai/meta/wear/heads/crimsonde/cover"
+  },
+  "volttail": {
+   "size": 2,
+   "head": {
+    "x": 0,
+    "y": -14
+   },
+   "neck": {
+    "x": 6,
+    "y": -15,
+    "w": 32
+   },
+   "back": {
+    "x": -4,
+    "y": -16,
+    "w": 35
+   },
+   "cover": "ai/meta/wear/heads/volttail/cover"
+  },
+  "solaris": {
+   "size": 3,
+   "head": {
+    "x": 0,
+    "y": -17
+   },
+   "neck": {
+    "x": 5,
+    "y": -14,
+    "w": 25
+   },
+   "back": {
+    "x": -3,
+    "y": -15,
+    "w": 28
+   },
+   "cover": "ai/meta/wear/heads/solaris/cover"
+  },
+  "sandscale": {
+   "size": 3,
+   "head": {
+    "x": 2,
+    "y": -15
+   },
+   "neck": {
+    "x": 6,
+    "y": -16,
+    "w": 32
+   },
+   "back": {
+    "x": -4,
+    "y": -17,
+    "w": 36
+   },
+   "cover": "ai/meta/wear/heads/sandscale/cover"
+  },
+  "shadowfen": {
+   "size": 1,
+   "head": {
+    "x": 2,
+    "y": -19
+   },
+   "neck": {
+    "x": 7,
+    "y": -15,
+    "w": 36
+   },
+   "back": {
+    "x": -4,
+    "y": -16,
+    "w": 40
+   },
+   "cover": "ai/meta/wear/heads/shadowfen/cover"
+  },
+  "frostwing": {
+   "size": 4,
+   "head": {
+    "x": 1,
+    "y": -18
+   },
+   "neck": {
+    "x": 7,
+    "y": -14,
+    "w": 34
+   },
+   "back": {
+    "x": -3,
+    "y": -15,
+    "w": 38
+   },
+   "cover": "ai/meta/wear/heads/frostwing/cover"
+  },
+  "goldrex": {
+   "size": 1,
+   "head": {
+    "x": 2,
+    "y": -14
+   },
+   "neck": {
+    "x": 7,
+    "y": -15,
+    "w": 36
+   },
+   "back": {
+    "x": -4,
+    "y": -16,
+    "w": 40
+   },
+   "cover": "ai/meta/wear/heads/goldrex/cover"
+  }
+ }
+}

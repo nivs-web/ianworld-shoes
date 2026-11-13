@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>착용 점검표</title>
+<style>
+  body { margin: 0; background: #1b1530; color: #e8e0ff; font: 11px/1.2 'Pretendard', sans-serif; }
+  #wrap { position: relative; display: inline-block; padding: 26px 0 0 84px; }
+  .lab { position: absolute; white-space: nowrap; text-align: center; }
+  .row { position: absolute; left: 4px; width: 76px; text-align: right; font-weight: 700; }
+  .col { transform: translateX(-50%); }
+</style></head>
+<body>
+<div id="wrap"></div>
+<script type="module">
+/*
+ * 착용 점검표 (겜보조 1 · 11/13) — 대장 드래곤 10마리 × 모자 / 목 장식을 «실제 게임 그리기 규칙»(createRigged + wearKit)으로 입혀 한 장에 찍는다.
+ *   ?kind=hat | neck   &scale=2   &only=crown,pirate  (물건 일부만)   &d=novart,aquantis (드래곤 일부만)
+ * 찍는 도구 : node tools/idg-wear-check.mjs
+ */
+import { Application, Container, Graphics } from 'pixi.js';
+import { loadRig, createRigged } from '/src/games/iandragon_game/render/rig.js';
+import { wearTables, attachWear, wearRigData } from '/src/games/iandragon_game/render/wearKit.js';
+import { Assets } from 'pixi.js';
+
+const q = new URLSearchParams(location.search);
+const kind = q.get('kind') || 'hat', S = Number(q.get('scale') || 2);
+const LEADERS = (q.get('d') || 'novart,aquantis,forestia,crimsonde,volttail,solaris,sandscale,shadowfen,frostwing,goldrex').split(',');
+const T = await wearTables();
+const ids = (q.get('only') ? q.get('only').split(',') : Object.keys(T.I.items).filter((k) => k.startsWith(kind + '_')).map((k) => k.slice(kind.length + 1)));
+const CW = (kind === 'hat' ? 56 : 62) * S, CH = (kind === 'hat' ? 75 : 85) * S, OY = (kind === 'hat' ? 62 : 33) * S;
+const B = '/assets/iandragon_game/';
+const loadTex = (f) => Assets.load(B + f).then((t) => { t.source.scaleMode = 'nearest'; return t; }).catch(() => null);
+const app = new Application();
+await app.init({ width: ids.length * CW, height: LEADERS.length * CH, background: 0x2a2145, antialias: false, resolution: 1, preference: 'webgl' });
+const wrap = document.getElementById('wrap');
+const holder = document.createElement('div'); holder.style.position = 'relative'; holder.appendChild(app.canvas); wrap.appendChild(holder);
+ids.forEach((id, i) => { const d = document.createElement('div'); d.className = 'lab col'; d.style.cssText = `left:${84 + i * CW + CW / 2}px;top:8px`; d.textContent = id; wrap.appendChild(d); });
+LEADERS.forEach((l, j) => { const d = document.createElement('div'); d.className = 'lab row'; d.style.top = `${26 + j * CH + CH / 2}px`; d.textContent = l; wrap.appendChild(d); });
+const lines = new Graphics();
+for (let i = 0; i <= ids.length; i++) lines.moveTo(i * CW, 0).lineTo(i * CW, LEADERS.length * CH);
+for (let j = 0; j <= LEADERS.length; j++) lines.moveTo(0, j * CH).lineTo(ids.length * CW, j * CH);
+lines.stroke({ width: 1, color: 0x4a3d78 }); app.stage.addChild(lines);
+const follows = [];
+for (let j = 0; j < LEADERS.length; j++) {
+  const l = LEADERS[j], data0 = await loadRig(l), hp = data0.rig.parts.find((p) => p.n === 'head');
+  for (let i = 0; i < ids.length; i++) {
+    const lk = { [kind]: ids[i] };
+    const data = await wearRigData(data0, l, lk, T, loadTex);
+    const R = createRigged(data, S, 1); R.t = 0; R.set('idle');
+    const fl = await attachWear(R, data0, l, lk, T, loadTex);
+    R.update(0); for (const [bx, t] of fl) bx.position.copyFrom(t.position);
+    const cell = new Container(); cell.position.set(i * CW, j * CH);
+    const m = new Graphics().rect(0, 0, CW, CH).fill(0xffffff); cell.addChild(m); cell.mask = m;
+    R.root.position.set(CW / 2 - S * hp.p[0], OY - S * hp.p[1]);
+    cell.addChild(R.root); app.stage.addChild(cell);
+  }
+}
+app.render();
+window.__ready = { w: ids.length * CW, h: LEADERS.length * CH, kind, n: ids.length };
+</script></body></html>
