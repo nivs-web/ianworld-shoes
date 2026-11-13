@@ -4,7 +4,7 @@
  *  위 : ⏸ · 스테이지 · 시간 · ×1/×2 · 불씨 / 내 기지 ♥ · 좀비 탑 ♥ · (보스 체력바)
  *  아래 : [화로] [용 덱 5~10] [스킬] [포효] [브레스]
  * 덱 버튼 = 용 얼굴(부품 그림의 head) + 값. 불씨 모자라면 어둡게 · 재생산 중이면 시계처럼 차오름 · 다 되면 번쩍.
- * 키보드 : 1~0 덱 · Q 화로 · 스페이스 브레스 · A/S 스킬 · R 포효 · P 일시정지
+ * 키보드 : screens/idgKeys.js 가 한 곳에서 맡는다 (1~0 덱 · ` 화로 · Q W E R 필살기 · T 으르렁 · Space 브레스 · Tab 2배속 · Esc 일시정지 · Enter 전체화면 …) — 설정 → 키보드에서 바꿀 수 있다
  */
 import { UNITS } from '../data/units.js';
 import { SKILLS } from '../data/skills.js';
@@ -16,6 +16,7 @@ const fsOk = () => { const e = document.documentElement; return !!(e.requestFull
 import { powerPage } from './powerPage.js';
 import { soundPanel } from './soundPrefs.js';
 import { kitClose } from '../../../screens/idgKit.js';   /* 키트 X 단추 (일시정지 오른쪽 위 시안 PAUSE_X) */
+import { bindBattleKeys, hintKeys, resetKeyFocus } from '../../../screens/idgKeys.js';   /* 전투 키 · 창 키보드 이동 (한 곳 · 11/13 밤) */
 import { scrollHint } from '../../../screens/idgMore.js';   /* «아래로 더 있음» 금 화살표 공용 (11/13) */
 const ATTR_KO = { ghost: '유령', giant: '거대', shadow: '그림자', crystal: '수정' };
 
@@ -360,7 +361,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     return box;
   }
 
+  let curKind = '', panDir = 0;   /* 열린 판 종류 (Esc 가 무엇을 닫을지) · 누르고 있는 화면 옮기기 방향 */
   function showPanel(kind, info = {}) {
+    curKind = kind; panDir = 0; resetKeyFocus();
     panel.replaceChildren();
     if (kind === 'powerup') {   /* 판 사이 파워업 (powerPage.js) — 돌아가기 = 방금 결과 창 */
       /* 한 페이지 파워업 (powerPage.js · 대표님 «한 페이지에서 슬롯 끼고 빼고 업글») */
@@ -379,19 +382,39 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     else { const body = card.querySelector('.idg-res-body'); if (body) scrollHint(body, { host: card, lift: 3 }); }
   }
 
-  /* 키보드 */
-  const onKey = (e) => {
-    if (e.repeat) return;
-    const k = e.key.toLowerCase();
-    if (/^[0-9]$/.test(k)) { const i = k === '0' ? 9 : Number(k) - 1; if (i < deck.length) cb.cmd({ type: 'spawn', i }); }
-    else if (k === 'q') cb.cmd({ type: 'wallet' });
-    else if (k === ' ') { e.preventDefault(); cb.cmd({ type: 'breath' }); }
-    else if (k === 'a') cb.cmd({ type: 'skill', i: 0 });
-    else if (k === 's') cb.cmd({ type: 'skill', i: 1 });
-    else if (k === 'r') cb.cmd({ type: 'rage' });
-    else if (k === 'p') cb.pause();
-  };
-  window.addEventListener('keydown', onKey);
+  /* 키보드 (idgKeys.js 가 키를 동작 이름으로 바꿔 부른다 — 마우스로 누른 것과 똑같이 단추를 누른다) */
+  const unKeys = bindBattleKeys({
+    panelNode: panel,
+    panel: () => (panel.classList.contains('on') ? panel : null),
+    run(id, down) {
+      let m;
+      if (id === 'panL' || id === 'panR') { const d = id === 'panL' ? -1 : 1; if (down) panDir = d; else if (panDir === d) panDir = 0; return; }
+      if (id === 'breath') { if (down) { cb.aim?.(true); breath.click(); } else cb.aim?.(false); return; }
+      if (!down) return;
+      if ((m = /^spawn(\d+)$/.exec(id))) dbtn[Number(m[1]) - 1]?.b.click();
+      else if (id === 'wallet') wallet.click();
+      else if ((m = /^skill(\d)$/.exec(id))) sk[Number(m[1]) - 1]?.click();
+      else if (id === 'rage') rage.click();
+      else if (id === 'speed') { if (speedMax >= 2 && !isNet) cb.speed(); }
+      else if (id === 'pause') { if (panel.classList.contains('on')) { if (curKind === 'pause') cb.pause(); } else if (!isNet) cb.pause(); }   /* P : 일시정지 · 이어하기 (전체화면에서는 Esc 를 브라우저가 먼저 가져간다) */
+      else if (id === 'zoomIn') { if (FLOAT_HUD) userZ = ZMAX; }
+      else if (id === 'zoomOut') { if (FLOAT_HUD) userZ = host.clientHeight > host.clientWidth * 1.05 ? 1 : 0; }
+    },
+    /* Esc : 판이 떠 있으면 그 판 닫기 (일시정지 = 이어하기 · 파워업 = 돌아가기 · 시작 · 결과 = 나가기) · 없으면 일시정지 */
+    esc() {
+      if (panel.classList.contains('on')) {
+        if (curKind === 'pause') cb.pause();
+        else if (curKind === 'powerup') { const x = panel.querySelector('.idg-pp-x') || [...panel.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('돌아가기')); x?.click(); }
+        else if (!isNet || curKind === 'win' || curKind === 'lose') cb.exit();
+        return;
+      }
+      if (!isNet) cb.pause();
+    },
+    fs() { if (fsOk()) fsB.click(); },   /* 창이 없을 때 Enter = 전체화면 켜기 · 끄기 */
+    release() { panDir = 0; cb.aim?.(false); },
+  });
+  /* 단추 귀퉁이 키 글자 (키보드를 쓰면 · 폰이 아니면 보임 · 터치하면 숨음) — 출전 칸은 이미 숫자가 있어 그대로 */
+  const unHints = hintKeys({ wallet, skill1: sk[0], skill2: sk[1], skill3: sk[2], skill4: sk[3], rage, breath, speed: speedB });
 
   return {
     /** 맵 확대 · 축소 (전장 두 손가락 · 휠) : d > 0 확대 */
@@ -441,6 +464,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       boss.classList.toggle('on', !!(bs && bs.alive));
       if (bs) bossFill.style.width = `${Math.max(0, bs.hp / bs.maxHp) * 100}%`;
       const now = performance.now(), dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
+      if (panDir && !ui.paused) cb.pan?.(panDir * dt);   /* ← → 를 누르고 있는 동안 화면 옮기기 (초당 폭 1배) */
       if (bs && bs !== bossRef) {
         bossRef = bs; bossCount++; nameT = 1.2; bnameT.textContent = bs.def.name;
         bname.classList.remove('on'); void bname.offsetWidth; bname.classList.add('on');
@@ -471,7 +495,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       return y >= r.top - GUARD_UP;
     },
     showPanel,
-    hidePanel() { panel.classList.remove('on'); panel.replaceChildren(); },
-    destroy() { document.removeEventListener('fullscreenchange', fsDraw); document.removeEventListener('webkitfullscreenchange', fsDraw); window.removeEventListener('keydown', onKey); window.removeEventListener('resize', onRs); root.remove(); },
+    hidePanel() { curKind = ''; panel.classList.remove('on'); panel.replaceChildren(); },
+    destroy() { document.removeEventListener('fullscreenchange', fsDraw); document.removeEventListener('webkitfullscreenchange', fsDraw); unKeys(); unHints(); window.removeEventListener('resize', onRs); root.remove(); },
   };
 }
