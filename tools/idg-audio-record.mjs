@@ -31,7 +31,7 @@ window.rec = async (kind, id, ms) => {
 window.ready = true;
 </script>`);
 
-const server = await createServer({ server: { port: 5199, strictPort: false, hmr: false, watch: null }, logLevel: 'error' });   // 녹음 중 파일이 바뀌어도 새로고침 안 함
+const server = await createServer({ cacheDir: 'node_modules_rec_cache', optimizeDeps: { entries: ['tools/_out/_audio_rec.html'] }, server: { port: 5199, strictPort: false, hmr: false, watch: null }, logLevel: 'error' });   // node_modules 가 겜부장 폴더와 연결돼 있어 deps 캐시를 따로 둔다 · 검사할 html 은 녹음 페이지 하나만   // 녹음 중 파일이 바뀌어도 새로고침 안 함
 await server.listen();
 const url = server.resolvedUrls.local[0];
 let browser;
@@ -48,6 +48,7 @@ const jobs = [
 const funSrc = fs.readFileSync('src/games/iandragon_game/audio/sfx.js', 'utf8');
 const funIds = [...funSrc.slice(funSrc.indexOf('export const FUN_SFX')).matchAll(/^\s{2}([a-z_]+):/gm)].map((m) => m[1]);
 for (const id of funIds) jobs.push(['fun', id, 1400]);
+if (ONLY) for (const id of ONLY) if (!jobs.some(([, j]) => j === id)) jobs.push(['sfx', id, 2500]);   // 목록에 없는 새 효과음 id 도 이름만 주면 녹음
 for (const [kind, id, ms] of jobs.filter(([, id]) => !ONLY || ONLY.includes(id))) {
   const b64 = await page.evaluate(([k, i, m]) => window.rec(k, i, m), [kind, id, ms]);
   fs.writeFileSync(`${OUT}/${kind}_${id}.webm`, Buffer.from(b64, 'base64'));
