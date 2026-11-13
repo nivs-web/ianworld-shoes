@@ -327,6 +327,7 @@ html.idg-wide body { width: 100%; }
 .idg-cons-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin: 6px 0; font: 12px 'Neo둥근모', monospace; color: #ffe9b0; }
 .idg-cons { min-height: 32px; padding: 0 10px; border-radius: 10px; border: 2px solid #c9963a; background: rgba(26, 14, 52, .85); color: #e8dcff; font: 700 12px 'Neo둥근모', monospace; }
 .idg-cons.on { background: #2f8a4a; color: #fff; border-color: #9fffb0; }
+.idg-cons.auto { display: inline-flex; align-items: center; cursor: default; letter-spacing: .06em; }   /* 브레스 UP = 자동 사용 · 켜진 표시만 (11/13) */
 
 /* 빠른 말 (멀티) */
 .idg-talk { position: absolute; left: 50%; top: 88px; transform: translateX(-50%); padding: 4px 14px; border-radius: 14px; background: #fff; color: #1a1033; font: 700 13px 'Neo둥근모', monospace; display: none; pointer-events: none; box-shadow: 0 2px 0 #0006; }

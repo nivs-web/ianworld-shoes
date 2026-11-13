@@ -54,6 +54,16 @@ const OWNED_MAX = 512;
 const ownedKeys = (a) => [...new Set((Array.isArray(a) ? a : []).filter((s) => typeof s === 'string' && KEY.test(s)))].slice(0, OWNED_MAX);
 const CONS_IDS = ['ember50', 'brazier', 'basehp'];
 const consObj = (o) => Object.fromEntries(CONS_IDS.map((k) => [k, n0(o && typeof o === 'object' ? o[k] : 0, 99)]));
+/* «브레스 UP» (11/13) : lossRun = 같은 판 연속 패배 수 { 'normal:95': 3 } · lossAt = 마지막에 진 판 · bpUp = 산 아이템 'normal:95:3' — data/breathUp.js */
+const LOSS_KEY = /^(easy|normal|hard):\d{1,3}$/;
+const lossRun = (o) => {
+  const out = {};
+  if (!o || typeof o !== 'object') return out;
+  for (const [k, v] of Object.entries(o)) { const n = n0(v, 99); if (LOSS_KEY.test(k) && n > 0 && Object.keys(out).length < 100) out[k] = n; }
+  return out;
+};
+const lossKey = (s) => (typeof s === 'string' && LOSS_KEY.test(s) ? s : '');
+const bpStr = (s) => (typeof s === 'string' && /^(easy|normal|hard):\d{1,3}:[123]$/.test(s) ? s : '');
 const lookStr = (s) => (typeof s === 'string' && /^[a-z0-9.]{0,80}$/.test(s) ? s : '');   // 입은 모습 글자 80자까지 (새 칸 머리글자 a · p · o · g · y)
 const STAT_KEYS = ['kills', 'wins', 'breath', 'maxWl', 'boss', 'hatch', 'coop'];   // coop = 같이 깨기 이긴 판 (명예의 전당)
 function stats(raw) {
@@ -88,6 +98,9 @@ export function normIdg(raw) {
     stat: stats(r.stat),                      // 쌓인 기록 (도전 과제용 · 2026-11-11 야간)
     owned: ownedKeys(r.owned),                // 가진 꾸미기 'hat:crown' (용 시장 · 명예의 전당 보상)
     cons: consObj(r.cons),                    // 편의품 개수
+    lossRun: lossRun(r.lossRun),              // 같은 판 연속 패배 수 (브레스 UP · 이긴 판은 지운다)
+    lossAt: lossKey(r.lossAt),                // 마지막에 진 판
+    bpUp: bpStr(r.bpUp),                      // 산 브레스 UP «난이도:판:단계» (한 번에 1개)
     look: lookStr(r.look),                    // 꾸민 모습 'h3.n1.b2.f4.r0.t7'
     clook: lookStr(r.clook),                  // 드래곤캐슬 꾸미기 (자리만 · 모으기 묶음에서 씀)
     title: str(r.title, 24, ''),              // 단 칭호 id
@@ -155,6 +168,9 @@ export function mergeIdg(localRaw, remoteRaw) {
     stat: Object.fromEntries(STAT_KEYS.map((k) => [k, Math.max(a.stat[k], b.stat[k])])),
     owned: [...new Set([...a.owned, ...b.owned])].slice(0, OWNED_MAX),   // 합집합 (산 걸 잃지 않게)
     cons: remoteRaw.cons ? b.cons : a.cons,
+    lossRun: remoteRaw.lossRun ? b.lossRun : a.lossRun,   // 마지막에 쓴 쪽 (지운 키가 되살아나지 않게)
+    lossAt: remoteRaw.lossRun ? b.lossAt : a.lossAt,
+    bpUp: remoteRaw.lossRun || remoteRaw.bpUp !== undefined ? b.bpUp : a.bpUp,
     look: remoteRaw.look ? b.look : a.look,
     clook: remoteRaw.clook ? b.clook : a.clook,
     title: remoteRaw.title ? b.title : a.title,
