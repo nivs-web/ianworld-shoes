@@ -22,7 +22,7 @@ export function screenTab() {
   const note = el('span');   /* 안내는 종이 판(짙은 갈색 글씨)에 — 11/14 대표님 */
   const paint = () => {
     const chosen = lobbyOrientChosen();
-    note.textContent = chosen ? '내가 고른 대로 기억해요.' : `처음에는 기기에 맞춰져요 — 지금은 ${isPhone() ? '휴대폰이라 세로' : '휴대폰이 아니라 가로'}예요. 직접 고르면 그대로 기억해요.`;
+    note.replaceChildren(...(chosen ? ['내가 고른 대로 기억해요.'] : ['처음에는 기기에 맞춰져요', el('br'), `지금은 ${isPhone() ? '휴대폰이라 세로' : '휴대폰이 아니라 가로'}예요`, el('br'), '직접 고르면 그대로 기억해요']));   /* 세 줄 (11/14 대표님 «줄바꿈을 적절히») */
   };
   const tabs = kitTabs({ label: '로비화면 방향', tabs: ORIENTS.map(({ v, label }) => ({ id: v, label })), value: lobbyOrientPref(), onPick: (v) => { setLobbyOrientPref(v); paint(); } });
   paint();
@@ -52,7 +52,7 @@ export function keysTab(withReset = false) {
       return true;
     });
   };
-  const out = [kitPaper('[바꾸기]를 누르고 새 키를 누르세요. 이미 쓰는 키면 두 동작이 서로 바뀌어요. 한글 입력 상태여도 같은 키예요. Esc = 취소')];
+  const out = [kitPaper(['[바꾸기]를 누르고 새 키를 누르세요.', el('br'), '이미 쓰는 키면 두 동작이 서로 바뀌어요.', el('br'), '한글 입력 상태여도 같은 키예요. Esc = 취소'])];
   let grp = '';
   for (const a of KEY_ACTIONS) {
     if (a.group !== grp) { grp = a.group; out.push(kitSection(grp)); }

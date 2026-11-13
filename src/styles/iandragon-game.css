@@ -1700,3 +1700,10 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-hud .idg-pause-card .idg-btn.idg-p2-go:active, .idg-hud .idg-pause-card .idg-btn.idg-p2-sub:active { filter: brightness(.86); transform: translateY(1px); }
 @media (max-height: 430px) { .idg-p2-top h2 { font-size: 18px; } .idg-hud .idg-pause-card .idg-btn.idg-p2-sub { min-height: 38px; font-size: 15px; } .idg-hud .idg-pause-card .idg-btn.idg-p2-go { min-height: 60px; } }
 .idg-hud .idg-panel-over .idg-card.idg-pause-card.p2, .idg-hud .idg-card.idg-pause-card.p2 { width: min(94vw, 760px); min-width: min(94vw, 760px); max-width: min(94vw, 760px); }   /* 탭을 바꿔도 가로폭 그대로 */
+/* 일시정지 3차 (11/14 대표님 «가로로 길게 하지 말라 · 내용 칸 = 탭 3개 합친 폭만큼») */
+.idg-hud .idg-panel-over .idg-card.idg-pause-card.p2, .idg-hud .idg-card.idg-pause-card.p2 { width: fit-content; min-width: 0; max-width: 94vw; }
+.idg-pause-card.p2 .idg-p2-grid { grid-template-columns: 384px clamp(130px, 18vw, 160px); }
+.idg-pause-card.p2 .idg-pause-tabs { gap: 6px; }
+.idg-pause-card.p2 .idg-pause-tab { flex: 1 1 0; max-width: none; }
+.idg-pause-card.p2 .idg-pause-body { width: 384px; }
+.idg-pause-card.p2 .idg-k-paper { font-size: 12.5px; line-height: 1.35; }
