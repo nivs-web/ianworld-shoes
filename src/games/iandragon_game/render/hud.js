@@ -319,7 +319,16 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   function pauseCard() {
     const box = h('div', 'idg-card idg-pause-card');
     if (PAUSE_X) { const w = h('div', 'idg-pause-xw'); w.appendChild(kitClose(() => cb.pause(), '계속')); box.appendChild(w); }
-    box.append(h('h2', null, '일시정지')); box.appendChild(soundBox());
+    box.append(h('h2', null, '일시정지'));
+    /* 탭 [음향] [화면] [키보드] (11/14 대표님 «일시정지에도 설정 창처럼 · 기본은 음향») — 화면 · 키보드 내용은 로비 설정 창(idgSettings.js)을 처음 누를 때 받아 쓴다 */
+    const pbody = h('div', 'idg-pause-body'), ptabs = h('div', 'idg-pause-tabs');
+    const pick = (id) => {
+      for (const t of ptabs.children) t.classList.toggle('on', t.dataset.id === id);
+      if (id === 'sound') { pbody.replaceChildren(soundBox()); return; }
+      import('../../../screens/idgSettings.js').then((m) => { if (!pbody.isConnected) return; pbody.replaceChildren(...(id === 'screen' ? m.screenTab() : m.keysTab(true))); }).catch(() => {});
+    };
+    for (const [id, lb] of [['sound', '음향'], ['screen', '화면'], ['keys', '키보드']]) { const t = h('button', 'idg-pause-tab', lb); t.type = 'button'; t.dataset.id = id; t.onclick = () => pick(id); ptabs.appendChild(t); }
+    box.append(ptabs, pbody); pick('sound');
     const rows = h('div', 'idg-rows'), line = (...bs) => { const r = h('div', 'idg-row'); for (const [label, fn, cls] of bs) { const b = h('button', 'idg-btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; r.appendChild(b); } rows.appendChild(r); };
     line(['계속', () => cb.pause(), 'main big']); line(['다시하기', () => cb.retry()], [text.exit, () => cb.exit()]);
     box.appendChild(rows);

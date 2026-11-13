@@ -793,3 +793,11 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-plate.deckp > b { color: #fff; white-space: nowrap; }
 .idg-pp-plate.deckp > b { color: unset; }   /* 노란 제목은 판 기본색 그대로 (파워업 카드 판과 같게) */
 .idg-pp.pp2.land .idg-pp-plate.has-clear.deckp { flex-wrap: nowrap; padding-left: 10px; padding-right: 66px; white-space: nowrap; }
+/* 출전덱 모자람 (11/14 대표님) : 양탄자 칸 = 빨간 경고 표시 + 두 줄 · 다시하기/전투 개시 = 흐리게(누르면 원래처럼 경고만) */
+.idg-pp-guide.cell.warn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.idg-pp-guide.cell.warn .wi { display: block; width: 26px; height: 24px; margin-bottom: 2px; }
+.idg-pp-guide.cell.warn .wi svg { display: block; width: 100%; height: 100%; }
+.idg-pp-guide.cell.warn p { color: #c21d0c; font-weight: 800; }
+.idg-pp-strip .idg-btn.idg-pp-go.off { filter: grayscale(.85) brightness(.7); }
+.idg-pp-strip .idg-btn.idg-pp-go.off:active { transform: none; filter: grayscale(.85) brightness(.7); }
+.idg-pp-guide.cell.warn p { font-size: 13px; line-height: 1.3; }

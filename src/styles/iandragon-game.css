@@ -1670,3 +1670,12 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-hud .idg-card.idg-res { border-width: 26px 17px 19px; border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 90 60 64 / 26px 17px 19px stretch; }
 @container (min-aspect-ratio: 1/1) { .idg-res-body { padding-bottom: 4px; } .idg-res-scene { flex: 0 1 52cqh; height: auto; min-height: 30cqh; } }
 @container (min-aspect-ratio: 1/1) and (max-height: 430px) { .idg-res-scene { flex-basis: 50cqh; } .idg-res-body { padding-bottom: 4px; } }
+/* 일시정지 창 탭 (11/14 대표님) : 음향 · 화면 · 키보드 — 기본 음향 · 키보드 표는 창 안에서 스크롤 */
+.idg-pause-tabs { display: flex; gap: 6px; justify-content: center; margin: 2px 0 8px; }
+.idg-pause-tab { flex: 1 1 0; max-width: 120px; padding: 6px 4px 7px; border: 2px solid #1c0b28; border-radius: 6px; background: #3a2a5e; box-shadow: inset 0 2px 0 #5a4690; color: #d8ccf4; font: 800 14px/1 'Pretendard Variable', Pretendard, sans-serif; cursor: pointer; }
+.idg-pause-tab.on { background: #7b52c8; box-shadow: inset 0 2px 0 #a382e6, inset 0 -3px 0 #4f3290; color: #fff; text-shadow: 1px 0 #1c0b28, -1px 0 #1c0b28, 0 1px #1c0b28, 0 -1px #1c0b28; }
+.idg-pause-body { max-height: min(46vh, 340px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; text-align: left; }
+.idg-pause-body .idg-k-row, .idg-pause-body .kit-row { font-size: 13px; }
+/* 일시정지 탭 내용은 창 안에서만 스크롤 — 제목 · 탭 · 계속 · 다시하기 · 나가기는 늘 보이게 (낮은 폰 가로 390px 도) */
+.idg-pause-body { max-height: max(104px, calc(100vh - 262px)); }
+@media (max-height: 430px) { .idg-pause-card h2 { margin: 0 0 2px; font-size: 18px; } .idg-pause-tabs { margin: 0 0 5px; } .idg-pause-tab { padding: 4px 4px 5px; font-size: 13px; } }

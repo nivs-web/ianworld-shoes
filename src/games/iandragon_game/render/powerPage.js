@@ -69,7 +69,14 @@ export function powerPage(h, o) {
   /** 고정 안내 2줄 (3차 → 4차 문구 «카드를 슬롯에 넣고 빼세요» · «카드 순서를 바꿀 수 있어요») */
   const guide = () => { const gd = h('div', 'idg-pp-guide'); const ln = (ico, t) => { const p = h('p'); const i = h('i', 'gi'); i.innerHTML = ico; p.append(i, h('span', null, t)); return p; }; gd.append(ln(ICO_INOUT, '카드를 출전덱에 넣고 빼세요'), ln(ICO_ORDER, '카드 순서를 바꿀 수 있어요')); return gd; };   /* 4차 문구 · 줄 앞 도트 아이콘 */
   /** 가로 안내 : 10번 칸 옆 빈 2칸 자리에 들어가는 글씨만 (11/13 대표님 · 그림 없음 · 굵게 아님 · 종이 판 위) */
-  const guideCell = () => { const gd = h('div', 'idg-pp-guide cell'); gd.append(h('p', null, '카드를 출전덱에 넣고 빼세요'), h('p', null, '순서도 바꿀 수 있어요')); return gd; };
+  /** 출전덱이 2장보다 적으면 (11/14 대표님) : 양탄자 안내 자리에 빨간 경고 표시 + «출전덱에 드래곤을 / 2개 이상 넣어 주세요» — 평소엔 원래 안내 */
+  const WARN_SVG = '<svg viewBox="0 0 11 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3a0600" d="M5 0h1v1h1v2h1v2h1v2h1v2h1v1H0V9h1V7h1V5h1V3h1V1h1z"/><path fill="#e8341c" d="M5 1h1v2h1v2h1v2h1v2H1V7h1V5h1V3h1V1z"/><path fill="#fff" d="M5 3h1v3H5zM5 7h1v1H5z"/></svg>';
+  const guideCell = (short) => {
+    const gd = h('div', 'idg-pp-guide cell' + (short ? ' warn' : ''));
+    if (short) { const ic = h('i', 'wi'); ic.innerHTML = WARN_SVG; gd.append(ic, h('p', null, '출전덱에 드래곤을'), h('p', null, '2개 이상 넣어 주세요')); }
+    else gd.append(h('p', null, '카드를 출전덱에 넣고 빼세요'), h('p', null, '순서도 바꿀 수 있어요'));
+    return gd;
+  };
   /** «나가기» = 로비로 (결과 창 «나가기» 와 같은 동작 · 전투 판 사이만 o.exit) */
   const exitBtn = (extra = '') => { const b = h('button', 'idg-btn idg-pp-exit' + extra); b.type = 'button'; const ic = h('img', 'ico'); ic.src = `${AI}result/ico_exit.svg`; ic.alt = ''; ic.draggable = false; b.append(ic, h('span', 'lb', '나가기')); b.onclick = guard(() => o.exit()); return b; };
   const lvLine = (lv, exp, cost) => { const sp = h('span', 'lv'); const c = h('span', 'cost'), im = h('img'); im.src = EMBER; im.alt = '불씨'; im.draggable = false; c.append('불씨 ', im, h('b', null, String(cost))); sp.append(h('span', 'l1', `Lv ${lv}${exp > lv ? ` (권장 ${exp})` : ''}`), c); return sp; };
@@ -211,7 +218,7 @@ export function powerPage(h, o) {
       const top = h('div', 'idg-pp-top2'); top.append(wallet, logo(), right.querySelector('.idg-pp-x') || h('i'));   /* 11/13 : «파워업» 제목은 늘 머리 줄 정중앙 (전투 판 사이도 띠 위가 아니라 여기) */
       const plate = (a, b) => { const p = h('div', 'idg-pp-plate'); p.append(h('b', null, a), h('span', null, `< ${b} >`)); return p; };
       const sScroll = h('div', 'idg-pp-sbody'); sScroll.append(slots);
-      slots.append(guideCell());   /* 10번 칸 옆 빈 2칸 */
+      slots.append(guideCell(short)); if (short && !swapFor && sel == null) hint.hidden = true;   /* 가로 : 모자람 경고는 양탄자 칸에만 (아래 빨간 줄은 안 띄움) */   /* 10번 칸 옆 빈 2칸 */
       const sCol = h('div', 'idg-pp-col slots'); const sPlate = plate('출전덱', `${deck.length}/${un.deckCap}`); sPlate.classList.add('has-clear', 'deckp'); sPlate.append(clearBtn);   /* 대표님 11/13 : 오른쪽 «파워업 카드 < 10카드 보유 >» 와 같은 모양 — 노란 «출전덱» + 흰 «< 8/10 >» · 오른쪽 비우기 */   /* 비우기 자리를 내려고 «< 출전 8/10 >» → «< 8/10 >» */
       sCol.append(sPlate, sScroll, h('i', 'idg-dlg-more'), hint); if (limit) sCol.append(limit);
       if (deck.length < need) sCol.firstChild.classList.add('short');
@@ -231,7 +238,7 @@ export function powerPage(h, o) {
       const grid = h('div', 'idg-pp-grid' + (mains.length ? ' has-strip' : '')); grid.append(sCol, cCol);
       if (mains.length) {
         const strip = h('div', 'idg-pp-strip');
-        mains.forEach((bt, k) => { const b = mkBtn(bt, k === 0 ? ' idg-pp-go' : ''); if (k === 0) { const ic = h('span', 'ico'); if (/전투/.test(bt[0])) { const im = h('img'); im.src = `${AI}result/ico_fight.webp`; im.alt = ''; im.draggable = false; ic.append(im); } else ic.innerHTML = RETRY_SVG; b.replaceChildren(ic, h('span', 'lb', bt[0])); } strip.append(b); });
+        mains.forEach((bt, k) => { const b = mkBtn(bt, k === 0 ? ' idg-pp-go' + (short ? ' off' : '') : ''); if (k === 0 && short) b.setAttribute('aria-disabled', 'true'); if (k === 0) { const ic = h('span', 'ico'); if (/전투/.test(bt[0])) { const im = h('img'); im.src = `${AI}result/ico_fight.webp`; im.alt = ''; im.draggable = false; ic.append(im); } else ic.innerHTML = RETRY_SVG; b.replaceChildren(ic, h('span', 'lb', bt[0])); } strip.append(b); });
         /* 11/13 대표님 : 전투 개시 아래로 · 길게 → «로비로»(나가기 그림) → 맨 아래 «X 창닫기»(결과 창으로 · 오른쪽 위 닫기 X 와 같은 동작) — 둘 다 금테 없는 보라 단추 */
         const sub = h('div', 'idg-pp-subs');
         if (o.exit) { const lb = exitBtn(' idg-pp-back'); const ic = h('i', 'ico'); ic.innerHTML = HOME_SVG; lb.replaceChildren(ic, h('span', 'lb', '로비로')); sub.append(lb); }
