@@ -26,10 +26,11 @@
 .idg-shop-big .idg-k-tab { font-size: .82em; min-height: 2.5em; padding-inline: .1em; }
 .idg-shop-big .idg-k-tab:nth-child(2) { flex-grow: 1.5; }
 .idg-shop-subslot:empty { display: none; }
-/* 하위 메뉴 : 한 줄 · 넘치면 좌우로만 밀림(세로 줄바꿈 · 길게 늘어놓기 없음) */
-.idg-shop-sub.idg-k-tabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; gap: .2em; padding-bottom: 1px; }
-.idg-shop-sub.idg-k-tabs::-webkit-scrollbar { display: none; }
-.idg-shop-sub .idg-k-tab { flex: 0 0 auto; min-width: 3.4em; padding-inline: .15em; font-size: .86em; min-height: 2.3em; }
+/* 하위 메뉴 : 옆으로 밀지 않는다 — 12칸 격자에 칸 맞춤으로 2줄 (드래곤 7 = 4 + 3 · 드래곤캐슬 6 = 3 + 3). n = 개수(idgShopView 가 data-n 으로 단다) */
+.idg-shop-sub.idg-k-tabs { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: .25em .2em; overflow: visible; }
+.idg-shop-sub .idg-k-tab { flex: none; min-width: 0; grid-column: span 4; padding-inline: .1em; font-size: .86em; min-height: 2.3em; white-space: nowrap; }
+.idg-shop-sub[data-n="7"] .idg-k-tab { grid-column: span 3; }
+.idg-shop-sub[data-n="7"] .idg-k-tab:nth-child(n+5) { grid-column: span 4; }
 
 /* ── 모은 수 · 거름 ── */
 .idg-shop-info { display: flex; align-items: center; justify-content: space-between; gap: .6em; padding: 0 .2em; }
@@ -103,7 +104,6 @@
   .idg-shop-foot .idg-k-btn { min-height: 1.8em; }
   .idg-shop-lock { min-height: 1.8em; }
 }
-@media (prefers-reduced-motion: reduce) { .idg-shop-sub.idg-k-tabs { scroll-behavior: auto; } }
 
 /* ── 닫기 = 머리 오른쪽 X 하나 (IDG_UI_PATTERNS §5) : 리본 양옆 44px 를 비워 X 자리를 만든다 ── */
 .dialog.idg-shop > .idg-how-title { width: calc(100% - 88px); min-width: 0; box-sizing: border-box; }
