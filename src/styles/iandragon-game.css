@@ -1645,3 +1645,8 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-card .idg-sp2 b { font-weight: 800; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
 .idg-card .idg-sp2.red .ss img { filter: hue-rotate(-42deg) saturate(1.5) drop-shadow(0 1px 0 #0c0614); }
 .idg-card .idg-sp2.purple .ss img { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92) drop-shadow(0 1px 0 #0c0614); }
+/* 결과 창 · 낮은 가로 화면(폰 844×390 등) : 장면 그림 칸을 조금 줄여 «나가기» 가 아래 테에 걸리거나 스크롤 화살표가 뜨지 않게 (겜보조 1 점검 11/13) */
+@container (min-aspect-ratio: 1/1) and (max-height: 430px) {
+  .idg-res-scene { height: 62%; }
+  .idg-res-body { gap: .5cqh; padding-bottom: 1cqh; }
+}
