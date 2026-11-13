@@ -43,6 +43,10 @@ const SORTS = [['cost', '불씨', true], ['hp', '체력', false], ['atk', '공�
 /* 도트 화살표 7×4 (▲ 높은 순 · ▼ 낮은 순) */
 const ARW_UP = '<svg viewBox="0 0 7 4" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M3 0h1v1H3zM2 1h3v1H2zM1 2h5v1H1zM0 3h7v1H0z"/></svg>';
 const ARW_DN = '<svg viewBox="0 0 7 4" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h7v1H0zM1 1h5v1H1zM2 2h3v1H2zM3 3h1v1H3z"/></svg>';
+/* 로비로 : 도트 집 (흰 면 + 짙은 보라 1칸 외곽선 · 닫기 X 와 같은 그림 방식 · 11/13 대표님 «창닫기와 조화롭게») */
+const HOME_SVG = '<svg viewBox="0 0 11 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2a1238" d="M4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM3 1h1v1h-1zM7 1h1v1h-1zM2 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM9 3h1v1h-1zM0 4h1v1h-1zM10 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM9 6h1v1h-1zM1 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM9 7h1v1h-1zM1 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM9 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM7 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1z"/><path fill="#fff" d="M4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z"/></svg>';
+/* 아이템샵 : 도트 쇼핑 가방 (금색 · 짙은 갈색 외곽선 · 가운데 보석 무늬) */
+const BAG_SVG = '<svg viewBox="0 0 12 13" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3a1400" d="M4 0h4v1h-4zM3 1h1v3h-1zM8 1h1v3h-1zM0 3h12v1h-12zM0 4h1v8h-1zM11 4h1v8h-1zM0 12h12v1h-12zM5 6h2v1h-2zM4 7h4v1h-4zM5 8h2v1h-2z"/><path fill="#ffd45a" d="M1 5h10v1h-10zM1 6h4v1h-4zM7 6h4v1h-4zM1 7h3v1h-3zM8 7h3v1h-3zM1 8h4v1h-4zM7 8h4v1h-4zM1 9h10v2h-10z"/><path fill="#fff3b0" d="M1 4h10v1h-10z"/><path fill="#d08a1a" d="M1 11h10v1h-10z"/></svg>';
 /* 닫기 X : 도트 X 아이콘 (10칸 · 흰 X + 짙은 보라 1칸 외곽선) */
 const X_SVG = '<svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2a1238" d="M0 0h3v1h1v1h2V1h1V0h3v3H9v1H8v2h1v1h1v3H7V9H6V8H4v1H3v1H0V7h1V6h1V4H1V3H0z"/><path fill="#fff" d="M1 1h2v1h1v1h2V2h1V1h2v2H8v1H7v2h1v1h1v2H7V8H6V7H4v1H3v1H1V7h1V6h1V4H2V3H1z"/></svg>';
 /** 게임 화면이 가로인가 (전투 틀을 시계 방향으로 돌려 그리면 기기는 세로여도 가로) */
@@ -226,7 +230,8 @@ export function powerPage(h, o) {
         mains.forEach((bt, k) => { const b = mkBtn(bt, k === 0 ? ' idg-pp-go' : ''); if (k === 0) { const ic = h('span', 'ico'); if (/전투/.test(bt[0])) { const im = h('img'); im.src = `${AI}result/ico_fight.webp`; im.alt = ''; im.draggable = false; ic.append(im); } else ic.innerHTML = RETRY_SVG; b.replaceChildren(ic, h('span', 'lb', bt[0])); } strip.append(b); });
         /* 11/13 대표님 : 전투 개시 아래로 · 길게 → «로비로»(나가기 그림) → 맨 아래 «X 창닫기»(결과 창으로 · 오른쪽 위 닫기 X 와 같은 동작) — 둘 다 금테 없는 보라 단추 */
         const sub = h('div', 'idg-pp-subs');
-        if (o.exit) { const lb = exitBtn(' idg-pp-back'); lb.querySelector('.lb').textContent = '로비로'; sub.append(lb); }
+        if (o.exit) { const lb = exitBtn(' idg-pp-back'); const ic = h('i', 'ico'); ic.innerHTML = HOME_SVG; lb.replaceChildren(ic, h('span', 'lb', '로비로')); sub.append(lb); }
+        if (o.shop) { const sb = h('button', 'idg-btn idg-pp-back idg-pp-shop'); sb.type = 'button'; const ic = h('i', 'ico'); ic.innerHTML = BAG_SVG; sb.append(ic, h('span', 'lb', '아이템샵')); sb.onclick = guard(() => o.shop()); sub.append(sb); }   /* 11/13 대표님 : 편의품을 판 사이에 바로 사러 (주황) */
         if (closeIdx >= 0) { const cb = mkBtn(o.buttons[closeIdx], ' idg-pp-back idg-pp-close'); const ic = h('i', 'ico'); ic.innerHTML = X_SVG; cb.replaceChildren(ic, h('span', 'lb', '창닫기')); sub.append(cb); }
         strip.append(sub);   /* 3차 : «돌아가기» → «나가기»(로비) · 결과 창으로는 오른쪽 위 닫기 X */
         grid.append(strip);

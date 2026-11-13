@@ -122,6 +122,7 @@ export async function startBattle(ctx, opts) {
     retry() { opts.restart(raid ? 'raid' : stage.g, true); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
     /* 판 사이 파워 업 : 저장 읽기 · 쓰기 (로비 «용 둥지»와 같은 저장) */
+    shop(done) { const write = (part) => { try { opts.save = opts.onSave?.(part) || { ...opts.save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); } return opts.save; }; import('../../../screens/idgShop.js').then((m) => m.showShop({ idg: opts.save || {}, save: write, tab: 'cons', onClose: () => done?.() })).catch((e) => console.warn('[좀비와 드래곤] 아이템샵을 열지 못했다', e)); },   // 판 사이 파워업 «아이템샵» → 편의품 칸 (11/13 대표님)
     puSave: () => opts.save || {},
     puWrite: (part) => { try { opts.save = opts.onSave?.(part) || { ...opts.save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); } return opts.save; },
     aim(on) { view.aim = !!on; },   /* 브레스 단추를 누르고 있는 동안 사거리 */

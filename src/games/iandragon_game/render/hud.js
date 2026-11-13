@@ -351,7 +351,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       /* 한 페이지 파워업 (powerPage.js · 대표님 «한 페이지에서 슬롯 끼고 빼고 업글») */
       const back = () => showPanel(info.back, info.backInfo);
       const btns = info.back === 'win' && info.backInfo?.hasNext ? [['전투 개시!', () => cb.next(), 'main big'], ['돌아가기', back]] : [['다시하기', () => cb.retry(), 'main big'], ['돌아가기', back]];
-      panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, exit: () => cb.exit(), cls: 'idg-card idg-pp' }));   /* exit = «나가기»(로비 · 결과 창 나가기와 같음 · 11/12 대표님 3차) */
+      panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, exit: () => cb.exit(), shop: cb.shop ? () => cb.shop(() => showPanel('powerup', info)) : null, cls: 'idg-card idg-pp' }));   /* exit = «나가기»(로비 · 결과 창 나가기와 같음 · 11/12 대표님 3차) */
       panel.classList.add('on'); return;
     }
     /* 일시정지 · 시작(판 · 습격 · 대결) · 결과 = 모두 결과 창과 같은 틀(docs/IDG_UI_PATTERNS.md §0 · §1 · §2) */

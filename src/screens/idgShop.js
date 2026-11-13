@@ -24,9 +24,9 @@ export function itemIcon(slot, id, name) {
   return wrap;
 }
 
-export function showShop({ idg, save, onClose }) {
+export function showShop({ idg, save, onClose, tab: tab0 }) {
   Sfx.play('sfx_menu_select');
-  let cur = idg, tab = 'look';
+  let cur = idg, tab = tab0 || 'look';
   const body = el('div.idg-lab-sec');
   /* 상점 = 지갑 판 → 고풍 탭 → 종이 안내 → 소제목 → 목록 줄(끝에 가격 단추) → 보라 «닫기» (키트 규칙 8장) */
   const head = kitWallet({ coins: cur.coins, gems: cur.gems }), help = el('div.idg-shop-help');
