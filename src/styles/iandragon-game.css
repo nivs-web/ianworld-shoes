@@ -1382,6 +1382,17 @@ html.idg-rot.ccw .idg-hud.float .idg-breath.in-row { width: 62px; }
 html.idg-rot.ccw .idg-hud.float .idg-skill, html.idg-rot.ccw .idg-hud.float .idg-rage { justify-self: center; align-self: center; width: min(100%, 52px); height: auto; aspect-ratio: 1 / 1; }
 html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; } html.idg-rot.ccw .idg-hud.float .idg-rage.on { visibility: visible; }
 
+/* ════ 가로 둥근 단추 (11/12 대표님 «치명적인 버그» → 대표님 결정 : 으르렁은 브레스 바로 위) ════
+ *  한 줄 = 화로 · 카드 · 스킬 · 브레스(맨 오른쪽). 으르렁 = 브레스 위에 세로 정렬로 떠 있다(hud.js fitRound 가 .rage-up · --rx). 꺼지면 숨기만 하고 줄 폭은 그대로.
+ *  넘치면 카드를 더 좁게(.tight 44px · .tight2 38px). 세로 배치는 «세로 전투 4차». */
+.idg-hud.float .idg-bot .idg-rage { display: grid; visibility: hidden; }
+.idg-hud.float .idg-bot .idg-rage.on { visibility: visible; }
+.idg-hud.float .idg-bot.rage-up .idg-rage { position: absolute; left: var(--rx, auto); right: auto; top: auto; bottom: calc(100% + 3px); width: 46px; height: 46px; }   /* 오른쪽 끝 = 좀비 성 앞이라 작게 (46px) */
+.idg-hud.float .idg-bot.rage-up .idg-rage .ico { width: 24px; height: 24px; margin-top: -8px; }
+.idg-hud.float .idg-bot.rage-up .idg-rage .nm { bottom: 7px; font-size: 9px; }
+.idg-hud.float .idg-bot.tight .idg-deck .idg-unit { min-width: 44px; }
+.idg-hud.float .idg-bot.tight2 .idg-deck { gap: 2px; } .idg-hud.float .idg-bot.tight2 .idg-deck .idg-unit { min-width: 38px; } .idg-hud.float .idg-bot.tight2 .idg-wallet { width: 46px; }
+
 /* ════ 결과 창 새 디자인 (11/12 대표님 · 조립판 6차 · 확인용 · 배포 전) ════
  *  우리 호박 창 테 하나 · 그림이 창의 절반 넘게 : 위 «승리!/패배» 현판(용 머리 위) → 용들(가운데) → 별(용 아래) → 그림은 보상 판 가운데 줄에서 금 줄로 끝남
  *  보상 판(시간 → 동전 → 젬 · 칸막이 35.4% · 67.7% 에 맞춘 칸 가운데) + 붙은 꼬리표 → 큰 단추(빨강 · 초록) → 작은 평범한 단추
@@ -1564,3 +1575,23 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 /* 일시정지 오른쪽 위 X (키트 X · PAUSE_X 켰을 때만) : 카드가 스크롤돼도 붙어 있게 sticky 줄 안에 */
 .idg-pause-xw { position: sticky; top: 0; z-index: 6; height: 0; display: flex; justify-content: flex-end; pointer-events: none; }
 .idg-pause-xw .idg-k-close { pointer-events: auto; width: 32px; height: 32px; margin: -4px -6px 0 0; }
+
+/* ════ 전투 단추 기다림 (11/13 대표님 3차 «원래대로 + 살짝») ════
+ *  차오름은 원래 시계 덮개(conic) 그대로 · 차기 전(필살기 .chg · 브레스 :not(.can) · 출전 .wait)에만 단추 전체를 살짝 회색 · 어둡게(금 테도 같이 가라앉음) + 덮개 조금 진하게
+ *  다 차면 원래 모양 그대로 (테 · 반짝 · 들썩 · 팡 없음) · 회색 세기 = --idg-wg(회색) · --idg-wb(밝기) */
+.idg-hud { --idg-wg: .6; --idg-wb: .9; }
+.idg-hud .idg-skill.chg, .idg-hud .idg-breath:not(.can), .idg-hud .idg-unit.wait { filter: grayscale(var(--idg-wg)) brightness(var(--idg-wb)); }
+.idg-hud .idg-skill.chg .cd, .idg-hud .idg-unit.wait .cd { background: conic-gradient(rgba(0, 0, 0, .72) calc(var(--p, 0) * 360deg), transparent 0); }
+.idg-hud .idg-unit.wait .cost { color: #a59fb0; }   /* 불씨 숫자도 차기 전에는 흐리게 */
+/* 돌풍 · 얼음 (11/13 대표님 «그림을 조금 크게 · 글씨는 으르렁 글씨처럼 크게») : 그림 = 단추의 약 65% · 이름 = 으르렁과 같은 비율(단추의 약 19.5%) · 같은 글꼴 · 외곽선 */
+.idg-hud .idg-skill:not(.idg-rage) .ico { width: 38px; height: 38px; margin-top: -13px; }
+.idg-hud .idg-skill:not(.idg-rage) .nm { font-size: 11px; bottom: 5px; }
+@media (max-height: 430px) {
+  .idg-hud .idg-skill:not(.idg-rage) .ico { width: 30px; height: 30px; margin-top: -10px; }
+  .idg-hud .idg-skill:not(.idg-rage) .nm { font-size: 10px; bottom: 5px; }
+}
+/* 2배속 : 켜짐 = 눌린 판 + 2px 가라앉음 + 안쪽을 어두운 호박색으로 채움(흰 글씨가 또렷하게) · 꺼짐 = 원래 그대로 (자동 단추도 같은 모양) */
+.idg-hud .idg-top .idg-speed { isolation: isolate; }
+.idg-hud .idg-top .idg-speed::before { content: ''; position: absolute; z-index: -1; left: 9.4%; right: 12.5%; top: 12.5%; bottom: 9.4%; border-radius: 50%; }   /* 눌린 판(32칸) 안쪽 둥근 면 : 왼 3 · 위 4 · 폭 25칸 */
+.idg-hud .idg-top .idg-speed.on { translate: 0 2px; filter: none; color: #fff; text-shadow: var(--idg-pxo-fire); background-image: url(/assets/iandragon_game/ui/hud_btn_round_pressed.png); }
+.idg-hud .idg-top .idg-speed.on::before { background: #c9780f; box-shadow: inset 0 3px 0 #6b3300, inset 0 -2px 0 #dd9a3a; }

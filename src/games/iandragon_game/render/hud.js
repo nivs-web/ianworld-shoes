@@ -54,9 +54,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* 대표님 «PC 에서 위 글씨 · 숫자가 너무 작다» (11/11) : HUD 전체를 화면 크기에 맞춰 키운다 (폰 가로 = 1 · PC 1280×800 ≈ 1.33 · 최대 1.7) */
   /* 2026-11-11 대표님 태블릿 «아래 단추가 사라진다» : CSS zoom 은 옛 크롬 · 삼성 인터넷에서 크기 계산이 달라 HUD 가 화면보다 커지며 아래가 잘렸다
    * → 어느 브라우저든 같은 transform 확대 (상자 크기를 1/z 로 줄이고 z 배로 키움 = 늘 화면에 꼭 맞음) */
+  let hudZ = 1;   /* HUD 확대 배율 (sendIns 가 레이아웃 좌표 → CSS px 로 바꿀 때) */
   const fitHud = () => {
     const port = host.clientHeight > host.clientWidth * 1.05;   /* 세로 : 폭 520 · 높이 900 기준 (세로 태블릿에서 창 · 단추가 너무 작지 않게) */
     const z = Math.round(Math.max(1, Math.min(1.7, host.clientWidth / (port ? 520 : 960), host.clientHeight / (port ? 900 : 540))) * 100) / 100;
+    hudZ = z;
     Object.assign(root.style, { zoom: '', transformOrigin: '0 0', transform: z === 1 ? '' : `scale(${z})`, width: z === 1 ? '' : `${100 / z}%`, height: z === 1 ? '' : `${100 / z}%`, right: z === 1 ? '' : 'auto', bottom: z === 1 ? '' : 'auto' });
   };
   /* 위 · 아래 띠 높이를 캔버스에 알려 전장이 띠에 가리지 않게 한다 (app.js 'idg-insets') */
@@ -67,9 +69,14 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     const H = host.getBoundingClientRect(), tb = root.querySelector('.idg-top')?.getBoundingClientRect(), bb = root.querySelector('.idg-bot')?.getBoundingClientRect();
     if (!tb || !bb) return;
     /* 떠 있는 HUD (11/11 대표님 «위 · 아래 띠가 게임 화면을 가린다 · 단추는 공중에 떠 있게») : 띠 판이 없으니 캔버스는 화면 전체 — 띠 높이를 0 으로 알린다 */
-    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { ...cropOf(zoomK), bar: Math.round(Math.max(0, H.bottom - bb.top)), hudTop: Math.round(Math.max(0, (root.querySelector('.idg-hp')?.getBoundingClientRect().bottom ?? H.top) - H.top) + 12) } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
+    /* 단추 줄 높이 · 위 체력 줄 아래 끝은 «레이아웃 좌표»(offsetTop)로 잰다 — 화면 방향 고정(rot.js)으로 전투 틀이 90° 돌아가 있으면
+     * getBoundingClientRect 는 돌아간 화면 좌표라 띠 높이가 화면 높이만큼 나와 전장이 통째로 밀려 올라갔다(11/12 · 세로 기기 «가로 고정»에서 검은 화면) */
+    const lt = (el) => { let y = 0; for (let e = el; e && e !== root; e = e.offsetParent) y += e.offsetTop; return y; };
+    const botEl = root.querySelector('.idg-bot'), hpEl = root.querySelector('.idg-hp'), RH = root.offsetHeight;
+    const barL = Math.round(Math.max(0, (RH - lt(botEl)) * hudZ)), hudTopL = Math.round(Math.max(0, hpEl ? (lt(hpEl) + hpEl.offsetHeight) * hudZ : 0) + 12);
+    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { ...cropOf(zoomK), bar: barL, hudTop: hudTopL } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
   });
-  const onRs = () => { fitHud(); sendIns(); };
+  const onRs = () => { fitHud(); fitRound(); sendIns(); };   /* fitRound = 가로 둥근 단추 한 줄 · 두 단 (아래) */
   fitHud(); window.addEventListener('resize', onRs);
   /* 위 */
   const top = h('div', 'idg-top'); root.appendChild(top);
@@ -142,10 +149,12 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const sk = skills.map((id, i) => {
     const def = SKILLS[id] || {}, b = h('button', 'idg-btn idg-skill'); b.type = 'button'; b.title = `${def.name || id} : ${def.line || ''} (한 판에 ${def.charges || 1}번)`;
     const cdI = h('i', 'cd'), n = h('em', 'n', String(def.charges || 1));
-    b.append(ico(`hud_skill_${id}`, (def.name || id).slice(0, 2)), cdI, h('b', 'nm', def.name || id), n);
+    b.append(ico(`hud_skill_${id === 'gust' ? 'gust2' : id}`, (def.name || id).slice(0, 2)), cdI,   /* 돌풍 = 새 그림 gust2 (11/13 · 전투 단추만) */ h('b', 'nm', def.name || id), n);
     b.onclick = () => cb.cmd({ type: 'skill', i }); right.appendChild(b); b._cd = cdI; b._n = n; return b;
   });
-  const rage = h('button', 'idg-btn idg-rage', '으르렁!'); rage.type = 'button'; rage.onclick = () => cb.cmd({ type: 'rage' }); right.appendChild(rage);
+  /* 으르렁 (11/12 대표님 «아이콘 없이 글씨만») : 다른 스킬과 같은 양식 — 도트 아이콘(포효하는 용 · ui/hud_rage) + 아래 이름 */
+  const rage = h('button', 'idg-btn idg-skill idg-rage'); rage.type = 'button'; rage.title = '으르렁! : 잠깐 모든 용이 세져요'; rage.onclick = () => cb.cmd({ type: 'rage' });
+  rage.append(ico('hud_rage', '으르'), h('b', 'nm', '으르렁')); right.appendChild(rage);
   const breath = h('button', 'idg-btn idg-breath'); breath.type = 'button'; breath.onclick = () => cb.cmd({ type: 'breath' }); breath.onpointerdown = () => cb.aim?.(true); breath.onpointerleave = breath.onpointerup = () => cb.aim?.(false);   /* 누르고 있는 동안 전장에 브레스 사거리 (대표님 11/11) */
   const bFill = h('i', 'fill'); breath.append(bFill, h('b', null, '브레스'));
   bot.append(wallet, deckBox, right, breath);
@@ -162,7 +171,23 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     round.forEach((e, j) => { const inGrid = j < free; e.style.setProperty('--gr', String(inGrid ? top + rows : 1)); e.style.setProperty('--gc', String(COLS - (inGrid ? j : j - free))); e.classList.toggle('in-row', !inGrid); });
     bot.classList.toggle('has-act', !!top);
   }
-  sendIns(); setTimeout(sendIns, 300);   // 글꼴 · 그림이 늦게 와서 높이가 바뀔 수 있다   // 스킬 · 포효 = 아래 띠 안 브레스 왼쪽 (예전 오른쪽 위는 좀비 성 체력 숫자를 가렸다)
+  /*
+   * 가로 (11/12 대표님 «치명적인 버그» → 대표님 결정) : 한 줄 = [화로 · 카드 · 스킬 … 브레스(맨 오른쪽 · 가장 큼)].
+   * «으르렁»은 줄에서 빼 브레스 바로 위에 세로로 맞춰 띄운다(.rage-up · 가운데 맞춤 --rx) — 꺼져 있으면 그 자리만 비고 카드 줄 폭에는 영향 없음.
+   * 그래도 넘치거나 카드가 52px 보다 좁아지면 카드를 더 좁게 허용(.tight 44px → .tight2 38px). 세로(격자 배치)는 위 자리표 그대로.
+   * 단추 영역 높이(footFit 기준)는 .idg-bot 상자 = 카드 줄 위끝 — 위에 뜬 으르렁은 넣지 않는다.
+   */
+  function fitRound() {
+    bot.classList.remove('stack', 'tight', 'tight2', 'rage-up'); rage.style.removeProperty('--rx');
+    if (getComputedStyle(bot).display === 'grid') return;
+    bot.classList.add('rage-up');
+    const over = () => bot.scrollWidth > bot.clientWidth + 1;
+    if (over() || Math.min(...dbtn.map((q) => q.b.offsetWidth || 99)) < 52) bot.classList.add('tight');
+    if (over()) bot.classList.add('tight2');
+    rage.style.setProperty('--rx', `${Math.round(breath.offsetLeft + (breath.offsetWidth - rage.offsetWidth) / 2)}px`);
+  }
+  fitRound();
+  sendIns(); setTimeout(() => { fitRound(); sendIns(); }, 300);   // 글꼴 · 그림이 늦게 와서 높이가 바뀔 수 있다   // 스킬 · 포효 = 아래 띠 안 브레스 왼쪽 (예전 오른쪽 위는 좀비 성 체력 숫자를 가렸다)
 
   /** 일시정지 판의 소리 설정 : 배경음 · 효과음 각각 켜기 + 크기 */
   /** 일시정지 판의 «음향 설정» (로비 더보기와 같은 판 · soundPrefs.js) */
@@ -295,7 +320,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       /* 한 페이지 파워업 (powerPage.js · 대표님 «한 페이지에서 슬롯 끼고 빼고 업글») */
       const back = () => showPanel(info.back, info.backInfo);
       const btns = info.back === 'win' && info.backInfo?.hasNext ? [['전투 개시!', () => cb.next(), 'main big'], ['돌아가기', back]] : [['다시하기', () => cb.retry(), 'main big'], ['돌아가기', back]];
-      panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, cls: 'idg-card idg-pp' }));
+      panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, exit: () => cb.exit(), cls: 'idg-card idg-pp' }));   /* exit = «나가기»(로비 · 결과 창 나가기와 같음 · 11/12 대표님 3차) */
       panel.classList.add('on'); return;
     }
     /* 일시정지 · 시작(판 · 습격 · 대결) · 결과 = 모두 결과 창과 같은 틀(docs/IDG_UI_PATTERNS.md §0 · §1 · §2) */
@@ -362,7 +387,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       const bc = Math.min(1, p.breathT / p.breathCharge);
       bFill.style.setProperty('--p', String(bc)); breath.classList.toggle('can', bc >= 1);
       const foeOn = S.units.some((u) => u.alive && u.side !== p.side);   // 좀비가 없을 때 누르면 횟수만 날아간다 → 그때는 못 누름
-      sk.forEach((b, i) => { const s = p.skills[i], left = s ? s.left : 0; b.disabled = !s || left <= 0 || s.cdT > 0 || !foeOn; b._n.textContent = String(left); b.classList.toggle('used', left <= 0); b._cd.style.setProperty('--p', s && left > 0 && s.cdT > 0 ? String(s.cdT / s.def.cd) : '0'); });
+      /* .chg = 다시 차는 중 (11/13 대표님 : 차기 전에는 살짝 회색 · 어둡게 — CSS «전투 단추 기다림») */
+      sk.forEach((b, i) => { const s = p.skills[i], left = s ? s.left : 0; b.disabled = !s || left <= 0 || s.cdT > 0 || !foeOn; b._n.textContent = String(left); b.classList.toggle('used', left <= 0); b.classList.toggle('chg', !!s && left > 0 && s.cdT > 0); b._cd.style.setProperty('--p', s && left > 0 && s.cdT > 0 ? String(s.cdT / s.def.cd) : '0'); });
       rage.classList.toggle('on', p.rage >= 100);
       const bs = S.boss;
       boss.classList.toggle('on', !!(bs && bs.alive));

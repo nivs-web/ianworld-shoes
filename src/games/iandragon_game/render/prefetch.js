@@ -17,9 +17,9 @@ export async function prefetchBattle({ world = 1, ids = [] }) {
   if (done === key) return; done = key;
   const wN = String(world).padStart(2, '0');
   lanesFor(world).then((ln) => get(`${AI}bg/layers/${ln.front.replace(/\.png$/, '.webp')}`));   // 앞 겹 = lanes.json 의 그 월드 front (1 · 3 · 6 · 10 = _v3)
-  [`${AI}bg/layers/w${wN}_sky.webp`, `${AI}castles/nest_hp0.webp`, wN === '01' ? `${AI}castles/tower_hp0.webp` : `${AI}castles/tower_w${wN}_hp0.webp`,
+  [`${AI}bg/layers/w${wN}_sky.webp`, `${AI}castles/nest_hp0_noflag.webp`, wN === '01' ? `${AI}castles/tower_hp0.webp` : `${AI}castles/tower_w${wN}_hp0.webp`,
     ...['hp_unit_frame', 'hp_unit_fill_me', 'hp_unit_fill_foe', 'hp_castle_frame', 'hp_castle_fill'].map((n) => `${AI}hud/${n}.png`), `${AI}hud/hp_bars.json`,
-    `${AI}fx/meteor.png`, `${AI}meta/wear.json`].forEach(get);
+    `${AI}fx/meteor.png`, `${AI}meta/wear.json`, `${AI}meta/flag_pumpkin.png`].forEach(get);   // 호박 깃발 = 깃발을 안 단 사람의 기본 땅 깃발 (battleView dress)
   const fix = (await json(`${AI}meta/rigfix.json`)) || {};
   await Promise.all([...new Set(ids.map((id) => ART[id] || id))].map(async (id) => {
     const rig = await json(`${AI}${id}/rig.json`); if (!rig?.parts) return;
