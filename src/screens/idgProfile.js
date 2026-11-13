@@ -66,7 +66,7 @@ export function showProfile({ idg, save, info, onClose }) {
   const head = el('div.idg-pf-info', null, [headOf()]);
   const box = el('div.dialog.idg-shop.idg-lab.idg-k.idg-profile', { onclick: (e) => e.stopPropagation() }, [
     el('div.idg-how-title', null, ['프로필', kitClose(() => close())]),
-    el('div.idg-shop-wrap', null, [head, tabs, content]),
+    el('div.idg-shop-wrap', null, [head, el('div.idg-pf-main', null, [tabs, content])]),   // 가로 = 왼쪽 머리 | 오른쪽(탭 · 격자)
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   let done = false;

@@ -5,5 +5,25 @@
 }
 .dialog.idg-profile .idg-pf-info:empty { display: none; }
 .idg-pf-info .l2-ttl { cursor: default; }
+.idg-pf-main { min-width: 0; min-height: 0; }
 .idg-pf-content { min-height: 0; }
 @media (max-height: 700px) { .dialog.idg-profile .idg-pf-info { --fs: 68px; padding-bottom: .4em; } }
+
+/* ── 가로 (폰 가로 · 태블릿 · PC · TV) : 왼쪽 = 머리(얼굴 · 이름 판) | 오른쪽 = 탭 · 격자. 세로 모양은 그대로 ──
+   프로필 창은 샵 CSS(idg-shop.css)를 안 부르므로 창 크기 · 글씨 · 칸 배치를 여기서 스스로 정한다(선택자를 샵 것보다 세게 — 샵을 먼저 열어 와도 같은 모양) */
+@media (orientation: landscape) {
+  .dialog.idg-shop.idg-profile.idg-k[class*="idg-"] { --k-fs: max(clamp(13px, 3.4vh, 16px), 2.22vh); }   /* 샵과 같은 식 : 1080 = 약 24px · 720 = 16px */
+  .dialog.idg-shop.idg-profile.idg-lab { width: 100%; max-width: min(96vw, 46em); height: min(94vh, 34em); max-height: 94vh; overflow: hidden; }
+  @supports (height: 1dvh) { .dialog.idg-shop.idg-profile.idg-lab { height: min(94dvh, 34em); max-height: 94dvh; } }
+  .dialog.idg-profile.idg-framed > .idg-dlg-body { overflow: hidden; display: flex; flex-direction: column; background: none; padding-top: 0; padding-bottom: 0; }
+  .dialog.idg-profile.idg-framed > .idg-dlg-body > .idg-shop-wrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: row; align-items: stretch; gap: .8em; }
+  .dialog.idg-profile .idg-pf-info { --fs: calc(var(--k-fs) * 4.4); flex: none; width: calc(var(--fs) * 3.35); align-items: flex-start; justify-content: flex-start; padding: .3em 0 0 .2em; }
+  .dialog.idg-profile .idg-pf-main { flex: 1 1 0; display: flex; flex-direction: column; gap: .4em; }
+  .dialog.idg-profile .idg-k-tabs { flex: none; }
+  .dialog.idg-profile .idg-k-tab { flex: 1 1 0; height: auto; min-height: 2.4em; }
+  .dialog.idg-profile .idg-pf-content { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .dialog.idg-shop.idg-profile.idg-lab { height: min(96vh, 520px); max-height: 96vh; }
+  .dialog.idg-profile .idg-pf-info { --fs: calc(var(--k-fs) * 3.4); }
+}

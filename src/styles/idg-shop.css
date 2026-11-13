@@ -80,9 +80,17 @@
 
 /* ── 폰 가로 · PC 가로 : 왼쪽(지갑 · 모은 수 · 안내) | 오른쪽(메뉴 · 격자 5칸) ── */
 @media (orientation: landscape) {
-  .dialog.idg-shop.idg-lab { max-width: min(96vw, 60em); }
+  /* TV · PC : 창 글씨를 화면 높이에 비례해 키운다(폰 가로 · 720 은 지금 값 그대로 · 1080 = 약 24px) · 창 높이도 글씨를 따라가되 쓸데없이 길지 않게 */
+  .dialog.idg-shop.idg-k[class*="idg-"] { --k-fs: max(clamp(13px, 3.4vh, 16px), 2.22vh); }
+  .dialog.idg-shop.idg-lab { max-width: min(96vw, 60em); height: min(94vh, 40em); }
+  @supports (height: 1dvh) { .dialog.idg-shop.idg-lab { height: min(94dvh, 40em); } }
+  .idg-shop-reco { order: 3; }      /* 추천 띠는 메뉴 줄 아래 — 탭 줄이 칸마다 뛰지 않게 */
+  .idg-shop-big { order: 1; } .idg-shop-subslot { order: 2; } .idg-shop-scroll { order: 4; }
+  .idg-shop-sub.idg-k-tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .idg-shop-sub .idg-k-tab, .idg-shop-sub[data-n="7"] .idg-k-tab, .idg-shop-sub[data-n="7"] .idg-k-tab:nth-child(n+5) { grid-column: auto; }
   .idg-shop-wrap { flex-direction: row; gap: .7em; }
-  .idg-shop-side { width: 8.5em; flex: none; position: static; gap: .35em; }
+  .idg-shop-side { width: 11.5em; flex: none; position: static; gap: .35em; }
+  .idg-shop-wal .idg-k-wallet { flex: none; width: max-content; max-width: 100%; font-size: .8em; gap: .4em; }   /* 젬 숫자가 판 밖으로 나가지 않게 */
   .idg-shop-wal { flex-direction: column; gap: .2em; }
   .idg-shop-wal .idg-shopkeeper { height: 4.2em; }
   .idg-shop-info { flex-direction: column; align-items: stretch; gap: .35em; }
@@ -97,6 +105,12 @@
   .idg-shop-wal .idg-shopkeeper { height: 2.8em; }
   .idg-shop-wal .idg-k-wallet { font-size: .7em; }
   .idg-shop-big .idg-k-tab, .idg-shop-sub .idg-k-tab { min-height: 2em; }
+  /* 낮은 가로 : 추천 띠를 한 줄로 얇게 (격자가 한 줄 반이라도 더 보이게) */
+  .idg-sp-reco { border-width: 6px; border-image-width: 6px; padding: 0 2px; }
+  .idg-sp-reco-txt { flex-direction: row; align-items: baseline; gap: .5em; }
+  .idg-sp-reco .idg-sp-buy { min-height: 26px; }
+  .idg-shop-info { flex-direction: column; }
+  .idg-shop-content.is-grid { align-content: start; }
   .idg-shop-content.is-grid { gap: .35em; }
   .idg-shop-card { padding: .2em .2em .25em; gap: .12em; }
   .idg-shop-artwrap { max-height: 2.9em; }
