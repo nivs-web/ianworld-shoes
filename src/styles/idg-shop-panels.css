@@ -65,3 +65,21 @@
 .idg-sp-fire { grid-row: 1 / span 2; display: grid; place-items: center; width: 40px; height: 40px; box-sizing: border-box; background: #170d36; border: 2px solid #1b1030; }
 .idg-sp-fire i { display: block; width: 24px; height: 36px; background: url(/assets/iandragon_game/ai/fx/fire_orange.png) 0 0 / auto 36px no-repeat; image-rendering: pixelated; }
 .idg-sp-fire.green i { background-image: url(/assets/iandragon_game/ai/fx/fire_green.png); }
+
+/* ── 샵 맨 위 «추천 강화» 한 줄 카드 (_reco.js) ── */
+.idg-shop-reco:empty { display: none; }
+.idg-sp-reco { --o: #1a0c38; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 4px; border: solid transparent; border-width: 10px; border-image: url(/assets/iandragon_game/ai/kit/card_on.webp) 40 fill / 10px stretch; image-rendering: pixelated; color: #d8ccff; }
+.idg-sp-reco-face { flex: none; width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; background: #170d36; border: 2px solid #1b1030; box-sizing: border-box; }
+.idg-sp-reco .idg-sp-fire.idg-sp-reco-face i { transform: scale(.8); }
+.idg-sp-reco-txt { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; line-height: 1.15; }
+.idg-sp-reco-txt small { font-size: 10px; color: #FFC93C; }
+.idg-sp-reco-txt b { color: #fff; font-size: 13px; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o); word-break: keep-all; }
+.idg-sp-reco-txt span { font-size: 11px; color: #ffd9a8; }
+.idg-sp-reco .idg-sp-buy { flex: 0 0 auto; min-height: 36px; min-width: 84px; font-size: 12px; }
+
+/* 작은 화면(360×640) : 추천 카드를 낮게 — 그림을 빼고 이름 한 줄 (격자가 더 보이게) */
+@media (max-height: 700px) {
+  .idg-sp-reco-face { display: none; }
+  .idg-sp-reco-txt b { white-space: nowrap; font-size: 12px; }
+  .idg-sp-reco .idg-sp-buy { min-width: 76px; min-height: 32px; }
+}

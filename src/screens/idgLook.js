@@ -4,15 +4,15 @@
  *   드래곤 : 대장(가진 것 중 고르기 + 레벨업 = shopPanels/dragon.js 재사용) · 모자 · 목 장식 · 브레스 색 · 오라 · 펫
  *   드래곤캐슬 : 캐슬 모습(가진 단계 중) · 깃발 · 지붕 · 정문 · 앞마당 · 장비(칸 수 = 캐슬 단계)
  *  미리보기 : 드래곤 탭 = 살아 있는 드래곤 / 캐슬 탭 = 캐슬 + 오른쪽 땅 깃발 + 장비 칸. 코디 3칸 저장 · 불러오기 · 주사위 코디.
- *  저장 필드 : look (드래곤 글자 · 깃발 포함) · clook (새 칸 5개) · outfits ['', '', ''] · castle.skin / castle.slots · leader · lead (레벨업)
+ *  저장 필드 : look (드래곤 쪽 + 오라 · 펫 + 깃발) · clook (지붕 · 정문 · 앞마당) · fits [{look, clook}×3] · castle.skin / castle.slots[3] · leader · lead (레벨업)
  *  테두리 · 칭호 고르기는 프로필 창으로 옮긴다 — 여기서는 이미 고른 값만 그대로 두고 저장한다(건드리지 않음).
  *  showLook({ idg, save, onClose }) — save(part) = 저장 후 새 idg 를 돌려주는 함수(G.saveIdg).
- *  물건 목록 = idgLookParts/catalog.js (임시 어댑터 · shopCatalog.js 가 오면 거기만 바꾼다).
+ *  물건 목록 = shopCatalog.js → data/catalog.js (184개 · 열 때 한 번 받음) · 글자 = idgLookParts/wear.js.
  */
 import { el, button, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
 import { kitTabs, kitKeepScroll, kitClose } from './idgKit.js';
-import { LOOKS, TITLES, encodeLook, decodeLook, artOf } from '../games/iandragon_game/data/looks.js';
+import { LOOKS, TITLES, encodeLook, artOf } from '../games/iandragon_game/data/looks.js';
 import { LEADERS } from '../games/iandragon_game/data/leaders.js';
 import { leaderFor, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
 import { CASTLE_LV, GEAR, ICON, castleOf, gearLv, leadOwn } from './shopPanels/_data.js';
@@ -21,7 +21,9 @@ import { liveDragon } from './idgLookParts/dragonLive.js';
 import { castleStage } from './idgLookParts/castleStage.js';
 import { itemGrid } from './idgLookParts/grid.js';
 import { outfitBar } from './idgLookParts/outfitBar.js';
-import { DRAGON_TABS, CASTLE_TABS, WORN, catalogFor, owns, encodeClook, decodeClook, encodeOutfit, decodeOutfit } from './idgLookParts/catalog.js';
+import { DRAGON_TABS, CASTLE_TABS, WORN, catalogFor, owns, encodeOutfit, decodeOutfit } from './idgLookParts/catalog.js';
+import { wearOf, keepOf, partsFor } from './idgLookParts/wear.js';
+import { loadCatalog } from './shopCatalog.js';
 import '../styles/idg-look.css';
 import '../styles/idg-look2.css';
 
@@ -35,20 +37,23 @@ const wantOf = (g) => (!g.leader || !LEADERS[g.leader] ? 'auto' : g.leader);
 const leadOf = (g) => { const w = wantOf(g); return w !== 'auto' && leadOwn(g).includes(w) ? w : autoLeader(g); };
 const pick1 = (a) => a[Math.floor(Math.random() * a.length)];
 
-export function showLook({ idg, save, onClose }) {
+/** 물건 목록(data/catalog.js)을 받은 뒤 연다 — 못 받아도 열린다(물건 칸은 비어 보임) */
+export const showLook = (opts) => loadCatalog().then(() => openLook(opts));
+
+function openLook({ idg, save, onClose }) {
   Sfx.play('sfx_menu_select');
   let cur = idg, big = 'dragon', trial = null, panelH = null;
   const small = { dragon: 'dragon', castle: 'skin' };
   const saveSync = (part) => { const n = save(part); if (n) cur = n; return n; };
 
   /* ── 지금 입은 모습 W (가진 것만 남긴다 — 예전 저장값이 이상해도 안전) ── */
-  const lk = decodeLook(cur.look), W = { hat: lk.hat, neck: lk.neck, breath: lk.breath, flag: lk.flag, ...decodeClook(cur.clook), skin: castleOf(cur).skin };
-  const keep = { frame: lk.frame, title: TITLES.some((t) => t.id === cur.title && t.has(cur)) ? cur.title : null };   /* 프로필 창 몫 — 그대로 둔다 */
+  const W = { ...wearOf(cur), skin: castleOf(cur).skin }, kp = keepOf(cur);
+  const keep = { frame: kp.frame, title: TITLES.some((t) => t.id === cur.title && t.has(cur)) ? cur.title : null };   /* 프로필 창 몫 — 그대로 둔다 */
   for (const s of WORN) if (W[s] && !owns(cur, s, W[s])) W[s] = null;
   W.skin = Math.max(1, Math.min(castleOf(cur).lv, W.skin));
   const shown = () => trial || W;
   const persist = () => {
-    saveSync({ look: encodeLook({ hat: W.hat, neck: W.neck, breath: W.breath, flag: W.flag, frame: keep.frame, title: keep.title }), title: keep.title || '', clook: encodeClook(W) });
+    saveSync({ ...partsFor(W, keep), title: keep.title || '' });
     const c = castleOf(cur); if (c.skin !== W.skin) saveSync({ castle: { ...c, skin: W.skin } });
   };
 
@@ -57,7 +62,11 @@ export function showLook({ idg, save, onClose }) {
   const nameEl = el('b.idg-lk-name'), titleEl = el('span.idg-lk-title');
   const flame = el('img.idg-lk-breath-img.idg-lk-flame', { alt: '' }), flameBox = el('div.idg-lk-breath', { role: 'img' }, [flame]);
   const ph = (cls, label) => el(`i.idg-ph.${cls}`, { 'aria-hidden': 'true', title: `${label} (자리 · 그림 준비 중)` }, [el('small', label)]);   /* 임시 점선 네모 */
-  const dragonStage = el('div.idg-lk-stage', null, [el('i.idg-lk-slab'), ph('aura', '오라'), dragonBox, ph('pet', '펫'), flameBox, el('div.idg-lk-tag', null, [nameEl, titleEl])]);
+  const auraPh = ph('aura', '오라'), petPh = ph('pet', '펫');
+  const dragonStage = el('div.idg-lk-stage', null, [el('i.idg-lk-slab'), auraPh, dragonBox, petPh, flameBox, el('div.idg-lk-tag', null, [nameEl, titleEl])]);
+  /** 고른 물건 이름 (그림이 아직 없는 오라 · 펫은 점선 칸에 이름이 적힌다) */
+  const nameOfItem = (slot, id) => catalogFor(slot, cur).find((x) => x.id === id)?.name || '';
+  const labelPh = (node, base, slot, id) => { node.querySelector('small').textContent = id ? nameOfItem(slot, id) : base; node.classList.toggle('on', !!id); };
   const cs = castleStage();
   const side = el('div.idg-lk-side');
   let shownKey = '';
@@ -70,27 +79,29 @@ export function showLook({ idg, save, onClose }) {
     const key = `${ld}|${w.hat || ''}|${w.neck || ''}`;
     if (key !== shownKey) { shownKey = key; live.show(ld, encodeLook({ hat: w.hat, neck: w.neck })); }
     const br = w.breath || 'basic';
+    flame.onerror = () => { flame.onerror = null; flame.src = artOf('breath', 'basic'); };   /* 새 브레스 색 그림이 아직 없으면 기본 불꽃 */
     flame.src = artOf('breath', br);
-    flameBox.setAttribute('aria-label', `브레스 색 : ${LOOKS.breath.find((x) => x.id === br)?.name || '기본 불꽃'}`);
+    flameBox.setAttribute('aria-label', `브레스 색 : ${br === 'basic' ? '기본 불꽃' : nameOfItem('breath', br)}`);
+    labelPh(auraPh, '오라', 'aura', w.aura); labelPh(petPh, '펫', 'pet', w.pet);
     dragonStage.classList.toggle('has-aura', !!w.aura); dragonStage.classList.toggle('has-pet', !!w.pet);
   }
   const gearSlots = () => { const c = castleOf(cur), n = CASTLE_LV[c.lv - 1].slots; return Array.from({ length: n }, (_, i) => (GEAR.some((g) => g.id === c.slots[i]) && gearLv(cur, c.slots[i]) ? c.slots[i] : null)); };
-  const drawStage = () => (big === 'dragon' ? drawDragon() : cs.update(shown(), gearSlots()));
+  const drawStage = () => (big === 'dragon' ? drawDragon() : cs.update(shown(), gearSlots(), (slot, id) => nameOfItem(slot, id)));
 
   /* ── 코디 줄 · 주사위 확인 줄 ── */
-  const outfitsOf = () => [0, 1, 2].map((i) => (Array.isArray(cur.outfits) && typeof cur.outfits[i] === 'string' ? cur.outfits[i] : ''));
+  const fitsOf = () => [0, 1, 2].map((i) => { const f = Array.isArray(cur.fits) ? cur.fits[i] : null; return { look: typeof f?.look === 'string' ? f.look : '', clook: typeof f?.clook === 'string' ? f.clook : '' }; });
   const trialBar = el('div.idg-trial', { hidden: true }, [
     el('span', '주사위 코디를 입혀 봤어요'),
     button('이걸로 입기', () => { Object.assign(W, trial); trial = null; persist(); afterWear(); }),
     button('돌아가기', () => { trial = null; afterWear(); }),
   ]);
   const bar = outfitBar({
-    outfits: outfitsOf,
-    onSave: (i) => { const o = outfitsOf(); o[i] = encodeOutfit(shown()); saveSync({ outfits: o }); },
-    onLoad: (i) => { const w = decodeOutfit(outfitsOf()[i], cur, castleOf(cur).lv); if (!w) return; trial = null; Object.assign(W, w); W.skin = Math.max(1, w.skin); persist(); afterWear(); },
+    outfits: () => fitsOf().map((f) => (f.look || f.clook ? 'x' : '')),
+    onSave: (i) => { const o = fitsOf(); o[i] = encodeOutfit(shown(), keep); saveSync({ fits: o }); },
+    onLoad: (i) => { const w = decodeOutfit(fitsOf()[i], cur, castleOf(cur).lv); if (!w) return; trial = null; Object.assign(W, w); W.skin = Math.max(1, w.skin); persist(); afterWear(); },
     onDice: () => {
       const w = { ...W }, c = castleOf(cur);
-      for (const s of WORN) { const own = catalogFor(s).filter((x) => owns(cur, s, x.id)); w[s] = own.length && Math.random() < own.length / (own.length + 1) ? pick1(own).id : null; }
+      for (const s of WORN) { const own = catalogFor(s, cur).filter((x) => x.owned); w[s] = own.length && Math.random() < own.length / (own.length + 1) ? pick1(own).id : null; }
       w.skin = 1 + Math.floor(Math.random() * c.lv);
       trial = w; afterWear(); bar.say('가진 것 중에서 무작위로 입혀 봤어요');
     },
@@ -101,7 +112,7 @@ export function showLook({ idg, save, onClose }) {
   let grid = null;
   const goShop = () => import('./idgShop.js').then((m) => m.showShop({ idg: cur, save: saveSync, onClose: () => { buildPanel(); drawStage(); } })).catch(() => {});
   const wear = (slot, id) => { if (trial) trial = null; W[slot] = id; persist(); afterWear(); };
-  const itemsOf = (slot) => catalogFor(slot).map((x) => ({ ...x, owned: owns(cur, slot, x.id) }));
+  const itemsOf = (slot) => catalogFor(slot, cur);
   function gridFor(slot) {
     if (slot === 'skin') {
       const c = castleOf(cur);
@@ -116,7 +127,7 @@ export function showLook({ idg, save, onClose }) {
           const cc = castleOf(cur), arr = gearSlots().slice();
           const at = arr.indexOf(id);
           if (at >= 0) arr[at] = null; else { const free = arr.indexOf(null); if (free < 0) { bar.say(n ? `장비 칸 ${n}개가 가득 찼어요` : '장비 칸이 없어요 · 드래곤캐슬을 올리면 생겨요'); return; } arr[free] = id; }
-          saveSync({ castle: { ...cc, slots: arr } }); drawStage(); grid.mark();
+          saveSync({ castle: { ...cc, slots: [...arr, null, null, null].slice(0, 3) } }); drawStage(); grid.mark();
         }, goShop });
     }
     return itemGrid(itemsOf(slot), { none: '없음', isOn: (id) => (shown()[slot] || null) === id, onPick: (id) => wear(slot, id), goShop });

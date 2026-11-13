@@ -4,7 +4,7 @@
  * 저장 : lead = { own, lv } + coins · gems  (처음 살 때 «옛 계정이 열어 둔 드래곤»도 own 에 함께 적어 굳힌다)
  */
 import { LEADERS } from '../../games/iandragon_game/data/leaders.js';
-import { S, ICON, LEAD_SHOP, LEAD_ORDER, LEAD_MAX, LEAD_LV_COST, LEAD_FLAME_PER_LV, LEAD_AURA_PER_LV, leadOwn, leadLv, worldsCleared, canPay, pay, commit } from './_data.js';
+import { S, ICON, LEAD_SHOP, LEAD_ORDER, LEAD_MAX, leadUpCost, LEAD_FLAME_PER_LV, LEAD_AURA_PER_LV, leadOwn, leadLv, leadSave, worldsCleared, canPay, pay, commit, stepOf } from './_data.js';
 import { kitBtn } from '../idgKit.js';
 import { panelRoot, note, card, list, line, buyBtn, plainBtn, statRow, lockLine, snd } from './_ui.js';
 
@@ -21,15 +21,15 @@ export default function render(box, ctx, opts = {}) {
     const g = ctx.g, own = leadOwn(g), cost = { [cur]: LEAD_SHOP[id][cur] };
     if (own.includes(id)) return;
     if (!canPay(g, cost)) { snd('sfx_denied'); ctx.toast?.(S.poor); return; }
-    commit(ctx, { ...pay(g, cost), lead: { ...(g.lead || {}), own: [...own, id], lv: { ...(g.lead?.lv || {}) } } });
+    commit(ctx, { ...pay(g, cost), lead: { ...leadSave(g), own: [...own, id] } });
     snd('sfx_purchase'); done();
   }
 
   function levelUp(id) {
-    const g = ctx.g, lv = leadLv(g, id), cost = LEAD_LV_COST[lv + 1];
-    if (lv >= LEAD_MAX || !cost) return;
-    if (!canPay(g, cost)) { snd('sfx_denied'); ctx.toast?.(S.poor); return; }
-    commit(ctx, { ...pay(g, cost), lead: { ...(g.lead || {}), own: leadOwn(g), lv: { ...(g.lead?.lv || {}), [id]: lv + 1 } } });
+    const g = ctx.g, st = stepOf(g, 'lead', id);
+    if (!st) return;
+    if (!canPay(g, st.cost)) { snd('sfx_denied'); ctx.toast?.(S.poor); return; }
+    commit(ctx, { ...pay(g, st.cost), ...st.part });
     snd('sfx_purchase'); done();
   }
 
@@ -47,7 +47,7 @@ export default function render(box, ctx, opts = {}) {
   }
 
   function ownedCard(id, g) {
-    const L = LEADERS[id], lv = leadLv(g, id), cost = LEAD_LV_COST[lv + 1], flame = LEAD_FLAME_PER_LV * (lv - 1), aura = LEAD_AURA_PER_LV * (lv - 1);
+    const L = LEADERS[id], lv = leadLv(g, id), cost = leadUpCost(lv), flame = LEAD_FLAME_PER_LV * (lv - 1), aura = LEAD_AURA_PER_LV * (lv - 1);
     const c = card({
       id, face: ICON.face(id), name: L.ko, l1: `Lv ${lv}`, tag: isLead(id, g) ? S.lead : null, on: isLead(id, g),
       rows: [statRow(S.statFlame, flame, LEAD_FLAME_PER_LV * (LEAD_MAX - 1), 'orange', `+${flame}%`), statRow(S.statAura, aura, LEAD_AURA_PER_LV * (LEAD_MAX - 1), 'blue', `+${aura}%`)],

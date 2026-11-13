@@ -5,18 +5,17 @@
  */
 import { el } from '../ui.js';
 import { kitBtn } from '../idgKit.js';
-import { S, ICON, GEAR, GEAR_MAX, GEAR_COST, CASTLE_LV, castleOf, gearLv, canPay, pay, commit } from './_data.js';
+import { S, ICON, GEAR, GEAR_MAX, GEAR_COST, CASTLE_LV, castleOf, gearLv, canPay, pay, commit, stepOf } from './_data.js';
 import { panelRoot, note, card, list, line, buyBtn, plainBtn, stepBar, snd } from './_ui.js';
 
 export default function render(box, ctx) {
   const done = () => { draw(); ctx.refresh?.(); };
 
   function buy(id) {
-    const g = ctx.g, c = castleOf(g), lv = gearLv(g, id);
-    if (lv >= GEAR_MAX) return;
-    const cost = GEAR_COST[lv];
-    if (!canPay(g, cost)) { snd('sfx_denied'); ctx.toast?.(S.poor); return; }
-    commit(ctx, { ...pay(g, cost), castle: { ...c, gear: { ...c.gear, [id]: lv + 1 } } });
+    const g = ctx.g, st = stepOf(g, 'gear', id);
+    if (!st) return;
+    if (!canPay(g, st.cost)) { snd('sfx_denied'); ctx.toast?.(S.poor); return; }
+    commit(ctx, { ...pay(g, st.cost), ...st.part });
     snd('sfx_purchase'); done();
   }
 

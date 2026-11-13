@@ -17,15 +17,18 @@ export function castleStage() {
   const flagBox = el('div.idg-lk-flag', { role: 'img' }, [el('i.idg-lk-pole'), el('i.idg-lk-knob'), flagImg, el('i.idg-lk-pole-foot')]);
   const gears = el('div.idg-lc-gears', { role: 'group', 'aria-label': '장비 칸' });
   const nameEl = el('b.idg-lk-name');
+  const phs = { roof: ph('roof', '지붕'), gate: ph('gate', '정문'), yard: ph('yard', '앞마당') };
+  const BASE = { roof: '지붕', gate: '정문', yard: '앞마당' };
   const node = el('div.idg-lk-stage.idg-lc-stage', null, [
-    el('i.idg-lk-slab'), castle, ph('roof', '지붕'), ph('gate', '정문'), ph('yard', '앞마당'), flagBox, gears,
+    el('i.idg-lk-slab'), castle, phs.roof, phs.gate, phs.yard, flagBox, gears,
     el('div.idg-lk-tag', null, [nameEl]),
   ]);
-  /** w = 입은 모습(flag · skin) · slots = 장비 칸 배열(id|null) */
-  function update(w, slots) {
+  /** w = 입은 모습(flag · roof · gate · yard · skin) · slots = 장비 칸 배열(id|null) · nameOf(slot, id) = 고른 물건 이름(그림이 올 때까지 점선 칸에 적음) */
+  function update(w, slots, nameOf) {
     const def = CASTLE_LV[Math.max(1, Math.min(CASTLE_LV.length, w.skin || 1)) - 1];
     castle.src = ICON.castle;   /* 임시 : 새 캐슬 10단계 그림이 오면 단계별 그림으로 */
     nameEl.textContent = `${def.lv}단계 · ${def.name}`;
+    for (const k in phs) { phs[k].querySelector('small').textContent = w[k] ? nameOf?.(k, w[k]) || BASE[k] : BASE[k]; phs[k].classList.toggle('on', !!w[k]); }
     node.classList.toggle('has-flag', !!w.flag);
     if (w.flag) { flagImg.src = artOf('flag', w.flag); flagBox.setAttribute('aria-label', `드래곤캐슬 깃발 : ${w.flag}`); }
     gears.replaceChildren(...slots.map((id) => {

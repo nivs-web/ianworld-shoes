@@ -13,11 +13,13 @@
  * 저장 필드 : owned(가진 꾸미기 열쇠 배열 'hat:crown') · cons({ember50: 개수}) · look(입은 것) · coins / gems.
  */
 import '../styles/idg-shop.css';
-import { el, button, presentOverlay, toast as uiToast } from './ui.js';
+import { el, presentOverlay, toast as uiToast } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
-import { kitWallet, kitTabs, kitPaper, kitRow, kitBtn, kitCheck, kitScroll, kitLock, kitCoin, kitGem, kitFmt } from './idgKit.js';
-import { CONSUMABLES, CONS_MAX, todayKst, encodeLook, decodeLook } from '../games/iandragon_game/data/looks.js';
-import { SHOP_SLOT, RARITY, itemsOf, dealsOf, dealPrice, isOwned, isWorn, stateOf, canPay, lockText } from './shopCatalog.js';
+import { kitWallet, kitTabs, kitPaper, kitRow, kitBtn, kitCheck, kitScroll, kitLock, kitCoin, kitGem, kitFmt, kitClose } from './idgKit.js';
+import { CONSUMABLES, CONS_MAX, todayKst } from '../games/iandragon_game/data/looks.js';
+import { SHOP_SLOT, RARITY, itemsOf, dealsOf, dealPrice, isOwned, isWorn, stateOf, canPay, lockText, loadCatalog } from './shopCatalog.js';
+import { wearPart } from './idgLookParts/wear.js';
+import { recoCard } from './shopPanels/_reco.js';
 
 const META = '/assets/iandragon_game/ai/meta/';
 const STAR = '/assets/iandragon_game/ai/result/star_on.webp';   // 등급 별 (결과 창 별과 같은 그림)
@@ -30,7 +32,7 @@ const BIG = [['dragon', '드래곤'], ['castle', '드래곤캐슬'], ['deal', '�
 /* 하위 메뉴 [id, 이름, 패널 파일(있으면 패널)] — 칸 id 는 shopCatalog 의 SHOP_SLOT 과 같다 */
 const SUBS = {
   dragon: [['dragon', '드래곤', 'dragon'], ['power', '강화', 'breath'], ['hat', '모자'], ['neck', '목 장식'], ['breath', '브레스 색'], ['aura', '오라'], ['pet', '펫']],
-  castle: [['stage', '캐슬 단계', 'castle'], ['gear', '장비', 'gear'], ['flag', '깃발'], ['roof', '지붕'], ['gate', '성문'], ['yard', '앞마당']],
+  castle: [['stage', '캐슬 단계', 'castle'], ['gear', '장비', 'gear'], ['flag', '깃발'], ['roof', '지붕'], ['gate', '정문'], ['yard', '앞마당']],
 };
 const firstSub = (big) => { const l = SUBS[big]; return (l.find((s) => (s[2] ? hasPanel(s[2]) : true)) || l[0])[0]; };
 
@@ -78,9 +80,10 @@ export function showShop({ idg, save, onClose }) {
   scroll.classList.add('idg-shop-scroll');
 
   const side = el('div.idg-shop-side', null, [el('div.idg-shop-wal', null, [keeper, head]), info, help]);
-  const main = el('div.idg-shop-main', null, [bigTabs, subSlot, scroll]);
+  const reco = el('div.idg-shop-reco');
+  const main = el('div.idg-shop-main', null, [reco, bigTabs, subSlot, scroll]);
   const wrap = el('div.idg-shop-wrap', null, [side, main]);
-  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '아이템 샵'), wrap, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['아이템 샵', kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X 하나 (IDG_UI_PATTERNS §5) */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const closeO = presentOverlay(overlay);
   const close = () => { dead = true; leavePanel(); closeO(); onClose?.(); };   // 닫으면 로비 코인 · 젬 다시 그리기
@@ -97,10 +100,8 @@ export function showShop({ idg, save, onClose }) {
     Sfx.play('sfx_purchase'); draw(false);
   }
   function equip(it) {
-    if (SHOP_SLOT[it.slot].look) {
-      ctx.save({ look: encodeLook({ ...decodeLook(cur.look), [it.slot]: it.id }) });
-      fresh.delete(it.key); Sfx.play('sfx_menu_select'); msg(`${it.name} 입었어요`); draw(false);
-    } else { ctx.openLook(it.slot); }
+    ctx.save(wearPart(cur, it.slot, it.id));
+    fresh.delete(it.key); Sfx.play('sfx_menu_select'); msg(`${it.name} 입었어요`); draw(false);
   }
 
   /* ── 카드 ── */
@@ -156,6 +157,7 @@ export function showShop({ idg, save, onClose }) {
     const my = ++gen;
     head.update({ coins: cur.coins, gems: cur.gems });
     bigTabs.set(big);
+    drawReco();
     if (top) { leavePanel(); setSubTabs(); scroll.inner.scrollTop = 0; } else if (subTabs && SUBS[big]) subTabs.set(sub[big]);
     help.replaceChildren();
     content.className = 'idg-shop-content';
@@ -164,7 +166,7 @@ export function showShop({ idg, save, onClose }) {
       const day = todayKst();
       help.replaceChildren(kitPaper([`오늘(${day})의 특가 — 꾸미기 3개가 `, el('b', '30% 싸요'), '.', el('small', '한국 시간 자정에 바뀌어요.')]));
       content.classList.add('is-grid');
-      return place(dealsOf(day).map((it) => card(it, true)));
+      return place(dealsOf(day, cur).map((it) => card(it, true)));
     }
     if (big === 'cons') {
       setInfo(false);
@@ -209,5 +211,14 @@ export function showShop({ idg, save, onClose }) {
     content.classList.add('is-grid');
     place(list.length ? list.map((it) => card(it, false)) : [kitPaper(['다 모았어요!', el('small', '«안 가진 것만» 을 끄면 다 보여요.')])]);
   }
-  draw(true);
+  /* 맨 위 «추천 강화» 한 장 — 드래곤 · 드래곤캐슬 큰 메뉴에서만 */
+  function drawReco() {
+    reco.replaceChildren();
+    if (big !== 'dragon' && big !== 'castle') return;
+    const c = recoCard(ctx, { onBought: () => draw(false) });
+    if (c) reco.append(c);
+  }
+  /* 물건 목록(data/catalog.js)은 처음 열 때 한 번 받는다 */
+  place(soon('불러오는 중이에요'));
+  loadCatalog().then(() => { if (!dead) draw(true); });
 }

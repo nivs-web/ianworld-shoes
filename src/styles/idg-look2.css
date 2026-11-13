@@ -110,3 +110,7 @@
   .idg-lk-small .idg-k-tabs::-webkit-scrollbar { display: none; }
   .idg-lk-small .idg-k-tab { flex: 0 0 auto; min-width: 4.4em; min-height: 2.1em; white-space: nowrap; }
 }
+
+/* 고른 오라 · 펫 · 지붕 · 정문 · 앞마당 : 그림이 오기 전엔 점선 칸에 이름이 적히고 테가 금색 실선 */
+.idg-ph.on { border: 2px solid #ffd45a; background: rgba(23, 13, 54, .75); }
+.idg-ph.on small { color: #fff; white-space: normal; text-align: center; max-width: 100%; line-height: 1.05; }

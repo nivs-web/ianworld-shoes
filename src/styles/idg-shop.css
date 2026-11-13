@@ -104,3 +104,8 @@
   .idg-shop-lock { min-height: 1.8em; }
 }
 @media (prefers-reduced-motion: reduce) { .idg-shop-sub.idg-k-tabs { scroll-behavior: auto; } }
+
+/* ── 닫기 = 머리 오른쪽 X 하나 (IDG_UI_PATTERNS §5) : 리본 양옆 44px 를 비워 X 자리를 만든다 ── */
+.dialog.idg-shop > .idg-how-title { width: calc(100% - 88px); min-width: 0; box-sizing: border-box; }
+.dialog.idg-shop > .idg-how-title > .idg-k-close { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); font-size: 15px; z-index: 6; }
+.dialog.idg-shop > .idg-how-title > .idg-k-close:active { transform: translateY(calc(-50% + 1px)); }

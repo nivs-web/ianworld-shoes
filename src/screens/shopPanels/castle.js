@@ -3,7 +3,7 @@
  * 맨 위 = 내 드래곤캐슬 요약(체력 · 가호 · 장비 칸) · 아래 = 단계 카드. 모습 고르기는 꾸미기 창 몫.
  * 저장 : castle = { lv, skin, gear, slots } + coins · gems  (샀으면 skin 도 새 단계로 올려 바로 그 모습이 되게 한다)
  */
-import { S, ICON, CASTLE_LV, CASTLE_GUARD_PER_LV, castleOf, worldsCleared, canPay, pay, commit } from './_data.js';
+import { S, ICON, CASTLE_LV, CASTLE_GUARD_PER_LV, castleOf, worldsCleared, canPay, pay, commit, stepOf } from './_data.js';
 import { panelRoot, note, card, list, buyBtn, plainBtn, statRow, lockLine, snd } from './_ui.js';
 
 const MAX_HP = CASTLE_LV[CASTLE_LV.length - 1].hp, MAX_GUARD = CASTLE_GUARD_PER_LV * (CASTLE_LV.length - 1);
@@ -12,11 +12,10 @@ export default function render(box, ctx) {
   const done = () => { draw(); ctx.refresh?.(); };
 
   function buy(def) {
-    const g = ctx.g, c = castleOf(g);
-    if (def.lv !== c.lv + 1 || worldsCleared(g) < def.world) return;
-    const cost = { coin: def.coin, gem: def.gem };
-    if (!canPay(g, cost)) { snd('sfx_denied'); ctx.toast?.(S.poor); return; }
-    commit(ctx, { ...pay(g, cost), castle: { ...c, lv: def.lv, skin: def.lv } });
+    const g = ctx.g, c = castleOf(g), st = stepOf(g, 'castle');
+    if (!st || def.lv !== c.lv + 1) return;
+    if (!canPay(g, st.cost)) { snd('sfx_denied'); ctx.toast?.(S.poor); return; }
+    commit(ctx, { ...pay(g, st.cost), ...st.part });
     snd('sfx_purchase'); done();
   }
 
