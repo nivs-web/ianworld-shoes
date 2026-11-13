@@ -34,6 +34,7 @@ import { installIdgFrame } from './idgFrame.js';
 installIdgFrame();   /* 모든 창 고정 틀 (제목 · 단추 고정 · 가운데만 스크롤) */
 import { makeLoads, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
 import { showLab } from './idgLab.js';
+import { xTitle } from './idgXwin.js';
 import { showMulti } from './idgMulti.js';
 import { showShop } from './idgShop.js';
 import { showLook } from './idgLook.js';
@@ -56,11 +57,11 @@ const IanDragonGame = lazyScreen(() => import('./IanDragonGame.js'), S.idgTitle)
 
 function showHow() {
   Sfx.play('sfx_menu_select');
-  const box = el('div.dialog.idg-how', { onclick: (e) => e.stopPropagation() }, [
-    el('div.idg-how-title', S.idgLobbyHow),
+  const box = el('div.dialog.idg-how.idg-xw', { onclick: (e) => e.stopPropagation() }, [
+    xTitle(S.idgLobbyHow, () => close()),
     el('ol.idg-how-steps', null, S.idgLobbyHowSteps.map((t) => el('li', t))),
     /* 아래 고정 줄에 둘 다 (11/12 · 가로에서 «알겠어요» 가 스크롤 아래로 숨던 것) — 확인 = 초록 · 보조 = 보라 */
-    el('div.idg-row.idg-foot2', null, [button('알겠어요', () => close(), { primary: true, class: 'green' }), button('음악 출처', () => { close(); showCredits(); })]),
+    el('div.idg-row.idg-foot2', null, [button('음악 출처', () => { close(); showCredits(); })]),   /* 닫기 = 머리 X (11/13) */
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
@@ -69,8 +70,8 @@ function showHow() {
 /** 음악 출처 (겜팀장 녹음 · CC BY 3.0 곡은 게임 안 표기 필수) — «하는 법» 창 아래 단추 */
 function showCredits() {
   Sfx.play('sfx_menu_select');
-  const box = el('div.dialog.idg-how.idg-credits', { onclick: (e) => e.stopPropagation() }, [
-    el('div.idg-how-title', '음악 출처'),
+  const box = el('div.dialog.idg-how.idg-credits.idg-xw', { onclick: (e) => e.stopPropagation() }, [
+    xTitle('음악 출처', () => close()),
     el('p.idg-credits-small', '배경음악은 저작권이 끝난 클래식 곡의 공개 녹음입니다.'),
     ...MUST.map((t) => el('p.idg-credits-must', t)),
     el('div.idg-credits-list', null, [
@@ -78,14 +79,13 @@ function showCredits() {
       /* 오케스트라 EDM 편곡 (음향 설정 «EDM») — CC-BY-SA · CC-BY 표기 의무 */
       el('p.idg-credits-h', '오케스트라 EDM 편곡'), el('p', EDM_NOTE), ...EDM_MUST.map((t) => el('p.idg-credits-must', t)), el('p', `곡 : ${EDM_SONGS}`),
     ]),
-    button('닫기', () => close()),   /* 닫기 = 보라 (키트 규칙 · 빨강은 앞으로 가는 행동만) */
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }
 
 /** 스테이지 고르기 (B4 최소판 · 2026-11-11 야간) — 월드 1~5 × 10판 · 별 · 잠금(깬 다음 판까지만 열림) */
-const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 쇠 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤 성'];
+const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 쇠 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤캐슬'];
 /* 난이도별 별 색 (붉은 · 보라 = 노란 별 그림에 색 필터 · idg-subwin.css) */
 const STAR_CLS = { hard: '.red', master: '.purple' };
 const LOCK_NOTE = { hard: '보통 10-10 을 깨면 열려요', master: '어려움 10-10 을 깨면 열려요' }, LOCK_LINE = { hard: '어려움은 보통 10-10 을 깨면 열려요.', master: '초고수는 어려움 10-10 을 깨면 열려요.' };
@@ -131,7 +131,7 @@ function showStages(onPick) {
     }));
   }
   draw();
-  const box = el('div.dialog.idg-stages', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '스테이지 고르기'), tabs, name, diffRow, diffNote, grid, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-stages.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('스테이지 고르기', () => close()), tabs, name, diffRow, diffNote, grid]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }
@@ -149,8 +149,8 @@ function tile(key, label, fn, locked = false, dot = false) {
 /** «더보기» 창 : 도감 · 게임하는 법 · 음향 설정 · 명예의 전당 · 음악 출처 */
 function showMore(go = {}) {
   const pick = (fn) => () => { close(); fn(); };
-  const box = el('div.dialog.idg-more', { onclick: (e) => e.stopPropagation() }, [
-    el('div.idg-how-title', '더보기'),
+  const box = el('div.dialog.idg-more.idg-xw', { onclick: (e) => e.stopPropagation() }, [
+    xTitle('더보기', () => close()),
     el('div.idg-menu', null, [
       tile('codex', '도감', pick(() => showCodex(go))),
       tile('how', '게임하는 법', pick(showHow)),
@@ -158,7 +158,6 @@ function showMore(go = {}) {
       tile('hall', '명예의 전당', pick(showHall)),
       tile('music', '음악 출처', pick(showCredits)),
     ]),
-    button('닫기', () => close()),
   ]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
@@ -168,7 +167,7 @@ function showSound() {
   Sfx.play('sfx_menu_select');
   const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
   /* 전체 소리를 다시 켜면 로비 곡도 다시 (끄면 setMuteAll 이 곡을 멈춘다) */
-  const box = el('div.dialog.idg-soundset', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '음향 설정'), soundPanel(mk, ({ mute }) => { if (mute === false) lobbyMusic(); }), button('닫기', () => close())]);   /* 키트 판 · 닫기 = 보라 */
+  const box = el('div.dialog.idg-soundset.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('음향 설정', () => close()), soundPanel(mk, ({ mute }) => { if (mute === false) lobbyMusic(); })]);   /* 닫기 = 머리 X */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }
@@ -199,7 +198,9 @@ function checkTitles() {
   if (!fresh.length) return;
   G.saveIdg({ tGot: [...g.tGot, ...fresh] });
   Sfx.play('sfx_purchase');
-  toast(`칭호 획득! «${TITLES.filter((t) => fresh.includes(t.id)).map((t) => t.name).join(' · ')}» — 꾸미기에서 달 수 있어요`, 3200);
+  /* 알림 현판 (IDG_UI_PATTERNS §6) : 화면 위에 떠서 아래 타일 줄을 가리지 않는다 (11/13) */
+  const tn = el('div.toast.idg-toast-top', `칭호 획득! «${TITLES.filter((t) => fresh.includes(t.id)).map((t) => t.name).join(' · ')}» · 프로필에서 달아요`);
+  document.body.append(tn); setTimeout(() => tn.remove(), 2600);
 }
 
 /*

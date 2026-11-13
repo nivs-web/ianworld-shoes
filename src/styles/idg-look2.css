@@ -95,7 +95,16 @@
 
 /* ── 작은 폰(세로 · 화면 높이 700 이하 · 360×640) : 위쪽을 낮춰 격자가 2.5줄 이상 보이게 ── */
 @media (orientation: portrait) and (max-height: 700px) {
-  .idg-lk-stage { height: clamp(100px, 16dvh, 120px); }
+  .idg-lk-stage { height: clamp(88px, 14.5dvh, 96px); }   /* 11/13 ⑨ : 목록이 3줄 이상 보이게 무대를 낮추고(이름표 한 줄 · 드래곤은 그 위 칸을 꽉) 카드를 줄임 */
+  .idg-lk-stage .idg-lk-slab { bottom: 2%; height: 1.35em; border-width: .4em .6em; }
+  .idg-lk-stage .idg-lk-slab::before { top: -.45em; height: .55em; }
+  .idg-lk-stage .idg-lk-name { bottom: calc(2% - .05em); font-size: .82em; line-height: 1.4em; }
+  .idg-lk-stage .idg-lk-dbox { top: .9em; bottom: calc(2% + 1.1em); }
+  .idg-lg .idg-sp-top img:not(.idg-lg-lockmini) { width: 26px; height: 26px; }
+  .idg-lg .idg-sp-card { border-width: 7px; border-image-width: 7px; }
+  .idg-lg .idg-sp-top { row-gap: 1px; }
+  .idg-lg .idg-sp-top .nm { font-size: 11px; line-height: 1.1; }
+  .idg-lg .idg-sp-card .stars { font-size: 9px; line-height: 1; }
   .idg-lk, .idg-lk-list { gap: .35em; }
   .idg-ob { gap: .2em .25em; }
   .idg-ob { flex-wrap: nowrap; }
@@ -108,7 +117,7 @@
   /* 작은 단추 = 한 줄 가로 밀림 */
   .idg-lk-small .idg-k-tabs { display: flex; flex-wrap: nowrap; gap: .3em; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; touch-action: pan-x; -webkit-overflow-scrolling: touch; }
   .idg-lk-small .idg-k-tabs::-webkit-scrollbar { display: none; }
-  .idg-lk-small .idg-k-tab { flex: 0 0 auto; min-width: 4.4em; min-height: 2.1em; white-space: nowrap; }
+  .idg-lk-small .idg-k-tab { flex: 0 0 auto; min-width: 4.4em; min-height: 1.9em; white-space: nowrap; }
 }
 
 /* 고른 오라 · 펫 · 지붕 · 정문 · 앞마당 : 그림이 오기 전엔 점선 칸에 이름이 적히고 테가 금색 실선 */

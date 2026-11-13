@@ -10,7 +10,8 @@ import * as G from '../services/iandragonGame.js';
 import * as Sfx from '../audio/sfx.js';
 import { LEADERS } from '../games/iandragon_game/data/leaders.js';
 import { ECON } from '../games/iandragon_game/data/econ.js';
-import { kitWallet, kitRow, kitPriceBtn, kitBtn, kitSection } from './idgKit.js';   /* UI 키트 (11/12 · docs/IDG_DESIGN_STYLESHEET.md) */
+import { kitWallet, kitRow, kitPriceBtn, kitBtn, kitSection } from './idgKit.js';
+import { xTitle } from './idgXwin.js';   /* UI 키트 (11/12 · docs/IDG_DESIGN_STYLESHEET.md) */
 import { LAB, TREASURE, treasureLv, LAST_STAGE } from '../games/iandragon_game/render/battleSetup.js';
 
 const AI = '/assets/iandragon_game/ai/';
@@ -43,7 +44,7 @@ export function showLab(onChange) {
       tre.appendChild(kitRow({ title: `월드 ${w} 보물`, hi: n >= 3, sub: `별 ${st}/30 · ${T.name} ${n ? eff(T, n, T.flat) : '+0'}`,
         right: el('span.idg-tre-steps', null, [10, 20, 30].map((t, i) => el('i' + (i < n ? '.on' : ''), null, [el('img', { src: '/assets/iandragon_game/ai/result/star_on.webp', alt: '별' }), String(t)]))) }));   /* ★ 글자 → 별 그림 */
     }
-    const ld = el('div.idg-lab-sec', null, [kitSection('리더 (성 위에서 브레스를 뿜어요)')]);
+    const ld = el('div.idg-lab-sec', null, [kitSection('리더 (드래곤캐슬 위에서 브레스를 뿜어요)')]);
     const row = el('div.idg-leader-row');
     const pick = (id) => { G.saveIdg({ leader: id }); Sfx.play('sfx_menu_select'); draw(); onChange?.(); };
     row.appendChild(el('button.idg-leader' + (g.leader === 'auto' ? '.on' : ''), { type: 'button', onclick: () => pick('auto') }, [el('b', '자동'), el('span', '월드 추천')]));
@@ -57,7 +58,7 @@ export function showLab(onChange) {
     body.replaceChildren(lab, tre, ld);
   }
   draw();
-  const box = el('div.dialog.idg-lab', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '연구소 · 보물 · 리더'), wallet, body, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-lab.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('연구소 · 보물 · 리더', () => close()), wallet, body]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }

@@ -1,0 +1,17 @@
+/* 로비 창 «닫기 = 머리 오른쪽 X 하나» 공용 (IDG_UI_PATTERNS §5 · 겜보조 1 · 11/13) — 샵(idg-shop.css)과 같은 규칙을 연구소 · 부화장 · 멀티 · 도전과제 · 도감 · 스테이지 · 더보기 · 음향 · 하는 법 · 음악 출처에 */
+.dialog.idg-xw > .idg-how-title { width: calc(100% - 88px); min-width: 0; box-sizing: border-box; }
+.dialog.idg-xw > .idg-how-title > .idg-k-close { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); font-size: 15px; z-index: 6; }
+.dialog.idg-xw > .idg-how-title > .idg-k-close:active { transform: translateY(calc(-50% + 1px)); }
+/* 위에 뜨는 알림 현판 (칭호 획득 같은 알림 · §6 « 화면 가운데 위 ») — 아래 단추 줄을 가리지 않는다 */
+html .toast.idg-toast-top, html.idg-lobby-on .toast.idg-toast-top { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 62px); white-space: nowrap; width: max-content; max-width: 94vw; font-size: 13px; }
+.dialog.idg-cx-detail .idg-row2 { justify-content: center; }
+
+/* 더보기 타일 (11/13 ⑩) : «게임하는 법»이 «게임하 / 는 법»으로 접히지 않게 — 한 줄 유지 · 그림 · 테 · 간격을 조금 줄임 */
+.dialog.idg-more .idg-tile { gap: 3px; border-width: 8px 9px; padding: 0 1px; }
+.dialog.idg-more .idg-tile img { width: 34px; height: 34px; }
+.dialog.idg-more .idg-tile span { white-space: nowrap; font-size: 14px; letter-spacing: -.5px; word-break: keep-all; min-width: 0; }
+@media (min-width: 400px) {
+  .dialog.idg-more .idg-tile { gap: 6px; border-width: 10px 12px; padding: 0 2px; }
+  .dialog.idg-more .idg-tile img { width: 42px; height: 42px; }
+  .dialog.idg-more .idg-tile span { font-size: 15px; letter-spacing: -.3px; }
+}
