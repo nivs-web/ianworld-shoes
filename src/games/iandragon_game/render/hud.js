@@ -317,11 +317,12 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* ── 판 · 대결 시작 창 = 원래 모양(대표님 11/13 «시작할 때 화면 원래가 더 좋았던 것 같다 — 되돌리고, 새 디자인은 기획부터 다시») ──
    *  f0f3a83 의 시작 카드 그대로 : idg-card · 제목 «4-8 펭귄 썰매 부대» 한 줄 · (난이도 줄) · (기믹) · 좀비 얼굴 줄 · «★ 깨면 · ★★ N초 안에 · ★★★ N초 안에» · 편의품 줄 · «출격!» + «나가기»
    *  대결 = «드래곤 대결!» · 양쪽 덱 얼굴 · 규칙 한 줄. 주간 습격 소개는 새 모양(introCard) 그대로. 글자는 h() 가 ko() 로 낱말을 고친다(용 → 드래곤 · 좀비 성 → 좀비 탑) */
-  function starPill() {   /* 원래 시작 창 안의 별 알약 : 결과 창 · 새 시작 창 보상 판(plate_reward) 그대로 · 칸 가운데 맞춤 · 난이도 색 별(붉은 · 보라) */
+  function starPill() {   /* 원래 시작 창 안의 별 알약 (11/13 대표님 3차) : 칸막이 없는 판(plate_pill) · 별 3개 → 2개 → 1개 순서 · 시간은 결과 창 초시계 아이콘 + 초 · 난이도 색 별(붉은 · 보라) */
     fontOnce();
-    const bar = h('div', 'idg-res-bar idg-int-bar idg-sp' + (stage.diff === 'hard' ? ' red' : stage.diff === 'master' ? ' purple' : ''));
-    const cell = (n, txt) => { const c = h('div', 'cell'), ss = h('span', 'ss'); for (let i = 0; i < n; i++) { const im = h('img'); im.src = `${RES}star_on.webp`; im.alt = ''; im.draggable = false; ss.appendChild(im); } c.append(ss, h('b', null, txt)); return c; };
-    bar.append(cell(1, '깨기'), cell(2, `${stage.star2}초`), cell(3, `${stage.star3}초`));
+    const bar = h('div', 'idg-sp2' + (stage.diff === 'hard' ? ' red' : stage.diff === 'master' ? ' purple' : ''));
+    const pic = (src, cls) => { const im = h('img', cls); im.src = src; im.alt = ''; im.draggable = false; return im; };
+    const cell = (n, sec) => { const c = h('div', 'cell'), ss = h('span', 'ss'); for (let i = 0; i < n; i++) ss.appendChild(pic(`${RES}star_on.webp`)); c.append(ss); if (sec) { const t = h('span', 't'); t.append(pic(`${RES}timer.webp`, 'tm'), h('b', null, `${sec}초`)); c.append(t); } else c.append(h('b', null, '깨기')); return c; };
+    bar.append(cell(3, stage.star3), cell(2, stage.star2), cell(1, 0));
     return bar;
   }
   function startCard() {

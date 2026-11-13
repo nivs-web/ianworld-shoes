@@ -1632,3 +1632,16 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-card .idg-sp .ss img, .idg-card .idg-sp .ss img:first-child { height: 1.28em; }
 .idg-card .idg-sp .cell:nth-child(3) { padding-left: .45em; }
 .idg-cons.auto { font-family: 'Pretendard Variable', Pretendard, sans-serif; font-weight: 800; letter-spacing: 0; }
+/* 시작 창 별 알약 3차 (11/13 대표님) : 칸막이 금선 없는 판 · ★★★ 30초 → ★★ 40초 → ★ 깨기 · 초 앞에 결과 창 초시계 · 세 묶음을 판 안에 고르게(양 끝 장식 피해서) */
+.idg-card .idg-sp2 { --o: #1a0c24; box-sizing: border-box; display: flex; align-items: center; justify-content: space-evenly; width: 400px; max-width: calc(100vw - 96px); aspect-ratio: 1200 / 167; margin: 10px auto 8px; padding: 0 7.5% 1px; align-self: center;
+  background: url(/assets/iandragon_game/ai/result/plate_pill.webp) center / 100% 100% no-repeat; image-rendering: pixelated;
+  font: 800 15px/1 'Pretendard Variable', Pretendard, sans-serif; color: #fff; word-spacing: normal; letter-spacing: 0; }
+.idg-card .idg-sp2 .cell { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.idg-card .idg-sp2 .ss { display: inline-flex; align-items: center; }
+.idg-card .idg-sp2 .ss img { height: 19px; width: auto; image-rendering: auto; filter: drop-shadow(0 1px 0 #0c0614); }
+.idg-card .idg-sp2 .ss img + img { margin-left: -2px; }
+.idg-card .idg-sp2 .t { display: inline-flex; align-items: center; gap: 3px; }
+.idg-card .idg-sp2 .tm { height: 15px; width: auto; image-rendering: auto; }
+.idg-card .idg-sp2 b { font-weight: 800; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+.idg-card .idg-sp2.red .ss img { filter: hue-rotate(-42deg) saturate(1.5) drop-shadow(0 1px 0 #0c0614); }
+.idg-card .idg-sp2.purple .ss img { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92) drop-shadow(0 1px 0 #0c0614); }
