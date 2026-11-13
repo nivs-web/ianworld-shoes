@@ -9,6 +9,7 @@ import { TICK, createBattle, step, aiCommands, hashState } from '../core/index.j
 import { createLockstep } from '../net/lockstep.js';
 import { D } from '../data/battleData.js';
 import { createBattleView, tagArt } from './battleView.js';
+import { decoOf } from './castleKit.js';
 import { createHud } from './hud.js';
 import { createBattleSound } from './battleSound.js';
 import { superData } from './breathInfo.js';
@@ -75,7 +76,7 @@ export async function startBattle(ctx, opts) {
   if (net) { net.transport.onMessage((from, str) => ls.receive(from, str)); net.transport.onLeave?.(leave); }
   let tickN = 0, sendT = 0, nextHash = 150, waitT = 0;
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
-  const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: allDragons, enemies: enemyIds, leader: loads[0].leader, pvp, mirror, foeLeader: pvp ? loads[1].leader : null, look: decodeLook(pvp ? (me === 0 ? opts.save?.look : net.loads?.[0]?.look) || '' : opts.save?.look || ''), lookR: decodeLook(pvp ? (me === 1 ? opts.save?.look : net.loads?.[1]?.look) || '' : '') });   // 내 대장 용 꾸미기 (모자 · 목 · 브레스 색)
+  const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: allDragons, enemies: enemyIds, leader: loads[0].leader, pvp, mirror, foeLeader: pvp ? loads[1].leader : null, look: decodeLook(pvp ? (me === 0 ? opts.save?.look : net.loads?.[0]?.look) || '' : opts.save?.look || ''), lookR: decodeLook(pvp ? (me === 1 ? opts.save?.look : net.loads?.[1]?.look) || '' : ''), deco: pvp || !opts.save ? null : decoOf(opts.save) });   // 내 대장 용 꾸미기 (모자 · 목 · 브레스 색)
   view.onZoom = (d) => hud.zoomBy(d); view.me = me;   /* 맵 확대 · 축소 (두 손가락 · 휠) */
 
   const sound = createBattleSound(stage, me);
