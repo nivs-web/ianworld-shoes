@@ -232,7 +232,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
    * 천은 밑동 위 FLAG_H 라 서 있는 보통 유닛 머리보다 높다. 내 성 = 성 오른쪽 · 천은 들판 쪽으로 펄럭 / 대결 상대 성 = 좌우 대칭.
    * FLAG_SIDE -1 = 성 왼쪽 안(비교용 · 화면 왼쪽 끝 · 왼쪽 화로와 겹쳐 오른쪽을 기본으로).
    */
-  const FLAG_SIDE = 1;
+  const FLAG_SIDE = 1, FLAG_H = 150, FLAG_W = 44, FLAG_HH = 64;   // H · W · HH = 필살기 연출(skillFx flagTop)이 쓰는 깃발 크기 (배포판 b2 와 같은 값)
   function groundFlag(castle, flagT) {
     const me = castle === nest, out = me ? 1 : -1;   // out = 그 성에서 들판 쪽
     const dx = FLAG_SIDE > 0 ? Math.round(castle.width / 2) + 2 : -84, dir = FLAG_SIDE > 0 ? out : -out;   // 깃대 자리 = 성 오른쪽 밑동 바로 바깥 (성 너비에 맞춤) · 천 방향
