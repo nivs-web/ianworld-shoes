@@ -208,3 +208,6 @@ button.idg-k-row:active { filter: brightness(1.12); }
 .idg-k-col { display: flex; flex-direction: column; gap: .5em; }
 
 @media (prefers-reduced-motion: reduce) { .idg-k-more, .idg-k-badge { animation: none; } }
+/* 종이 판 모서리 (11/14 대표님 «모서리가 찌그러져 있어») : 금 모서리 장식이 다 들어가게 자르는 선 56 · 네 변 같은 두께(가로 · 세로 비율 그대로) · 글씨는 늘 짙은 갈색 */
+.idg-k-paper { border-width: 12px; border-image: url(/assets/iandragon_game/ai/kit/paper.webp) 56 fill / 12px stretch; padding: 0 4px; color: var(--k-ink, #4a2c12); image-rendering: pixelated; }
+.idg-k-paper small { color: var(--k-ink2, #6a4a2a); }

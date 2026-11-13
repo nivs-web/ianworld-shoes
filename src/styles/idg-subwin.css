@@ -801,3 +801,8 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-strip .idg-btn.idg-pp-go.off { filter: grayscale(.85) brightness(.7); }
 .idg-pp-strip .idg-btn.idg-pp-go.off:active { transform: none; filter: grayscale(.85) brightness(.7); }
 .idg-pp-guide.cell.warn p { font-size: 13px; line-height: 1.3; }
+.dialog.idg-k[class*="idg-"] .idg-nest-help { border-width: 12px; border-image: url(/assets/iandragon_game/ai/kit/paper.webp) 56 fill / 12px stretch; padding: 0 4px; }
+.idg-pp-guide { border-width: 10px; border-image: url(/assets/iandragon_game/ai/kit/paper.webp) 56 fill / 10px stretch; padding: 0 3px; }
+.idg-pp-guide.cell.warn p { line-height: 1.12; margin: 0; }
+.idg-pp-guide.cell.warn { gap: 0; }
+.idg-pp.pp2 .idg-pp-guide.cell.warn p { color: #c21d0c; font-weight: 800; }

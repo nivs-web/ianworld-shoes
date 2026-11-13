@@ -13,7 +13,7 @@ import { rotated, lockPref } from './rot.js';
 import { enterFullscreen, exitFullscreen, isFullscreen } from '../../../core/fullscreen.js';
 /** 이 브라우저에서 전체 화면을 쓸 수 있나 (아이폰 = API 없음 · 허락 없는 iframe = fullscreenEnabled false) */
 const fsOk = () => { const e = document.documentElement; return !!(e.requestFullscreen || e.webkitRequestFullscreen) && document.fullscreenEnabled !== false && document.webkitFullscreenEnabled !== false; };
-import { powerPage } from './powerPage.js';
+import { powerPage, X_SVG } from './powerPage.js';
 import { soundPanel } from './soundPrefs.js';
 import { kitClose } from '../../../screens/idgKit.js';   /* 키트 X 단추 (일시정지 오른쪽 위 시안 PAUSE_X) */
 import { bindBattleKeys, hintKeys, resetKeyFocus } from '../../../screens/idgKeys.js';   /* 전투 키 · 창 키보드 이동 (한 곳 · 11/13 밤) */
@@ -317,23 +317,27 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* ── 일시정지 창 = 원래 모양 그대로(대표님 11/13 «일시정지 창은 건들지 마») : idg-card · «일시정지» · 설정 · «계속» 한 줄 꽉 · «다시하기 · 나가기» ── */
   const PAUSE_X = false;   /* 오른쪽 위 X(키트 btn_close) = «계속» 과 같음 — 시안만(대표님이 사진을 보고 받아들이면 true) */
   function pauseCard() {
-    const box = h('div', 'idg-card idg-pause-card');
-    if (PAUSE_X) { const w = h('div', 'idg-pause-xw'); w.appendChild(kitClose(() => cb.pause(), '계속')); box.appendChild(w); }
-    box.append(h('h2', null, '일시정지'));
-    /* 탭 [음향] [화면] [키보드] (11/14 대표님 «일시정지에도 설정 창처럼 · 기본은 음향») — 화면 · 키보드 내용은 로비 설정 창(idgSettings.js)을 처음 누를 때 받아 쓴다 */
+    /* 일시정지 (11/14 대표님 2차) : 파워업 가로 창과 같은 틀 — 위 가운데 «일시정지» · 오른쪽 위 «X 닫기» · 왼쪽 = 탭 [음향] [화면] [키보드](기본 음향 · 창 크기 고정 · 내용만 스크롤)
+     *  오른쪽 띠 = 큰 빨간 «계속» + «다시하기» · «나가기» (아이콘 없음) */
+    const box = h('div', 'idg-card idg-pause-card p2');
+    const top = h('div', 'idg-p2-top'), x = h('button', 'idg-pp-x idg-p2-x'); x.type = 'button'; x.innerHTML = X_SVG; x.append(h('span', null, '닫기')); x.onclick = () => cb.pause();
+    top.append(h('i'), h('h2', null, '일시정지'), x);
     const pbody = h('div', 'idg-pause-body'), ptabs = h('div', 'idg-pause-tabs');
     const pick = (id) => {
       for (const t of ptabs.children) t.classList.toggle('on', t.dataset.id === id);
-      if (id === 'sound') { pbody.replaceChildren(soundBox()); return; }
+      pbody.scrollTop = 0;
+      if (id === 'sound') { pbody.replaceChildren(soundPanel(h, () => cb.soundRefresh?.(), { screen: false })); return; }   /* 화면 방향 줄은 [화면] 탭에만 */
       import('../../../screens/idgSettings.js').then((m) => { if (!pbody.isConnected) return; pbody.replaceChildren(...(id === 'screen' ? m.screenTab() : m.keysTab(true))); }).catch(() => {});
     };
     for (const [id, lb] of [['sound', '음향'], ['screen', '화면'], ['keys', '키보드']]) { const t = h('button', 'idg-pause-tab', lb); t.type = 'button'; t.dataset.id = id; t.onclick = () => pick(id); ptabs.appendChild(t); }
-    box.append(ptabs, pbody); pick('sound');
-    const rows = h('div', 'idg-rows'), line = (...bs) => { const r = h('div', 'idg-row'); for (const [label, fn, cls] of bs) { const b = h('button', 'idg-btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; r.appendChild(b); } rows.appendChild(r); };
-    line(['계속', () => cb.pause(), 'main big']); line(['다시하기', () => cb.retry()], [text.exit, () => cb.exit()]);
-    box.appendChild(rows);
+    const main = h('div', 'idg-p2-main'); main.append(ptabs, pbody);
+    const strip = h('div', 'idg-p2-strip'), sb = (label, fn, cls) => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; return b; };
+    strip.append(sb('계속', () => cb.pause(), 'idg-p2-go'), sb('다시하기', () => cb.retry(), 'idg-p2-sub retry'), sb(text.exit, () => cb.exit(), 'idg-p2-sub exit'));
+    const grid = h('div', 'idg-p2-grid'); grid.append(main, strip);
+    box.append(top, grid); pick('sound');
     return box;
   }
+
 
   /* ── 판 · 대결 시작 창 = 원래 모양(대표님 11/13 «시작할 때 화면 원래가 더 좋았던 것 같다 — 되돌리고, 새 디자인은 기획부터 다시») ──
    *  f0f3a83 의 시작 카드 그대로 : idg-card · 제목 «4-8 펭귄 썰매 부대» 한 줄 · (난이도 줄) · (기믹) · 좀비 얼굴 줄 · «★ 깨면 · ★★ N초 안에 · ★★★ N초 안에» · 편의품 줄 · «출격!» + «나가기»

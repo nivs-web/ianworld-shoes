@@ -19,7 +19,7 @@ const TABS = [{ id: 'sound', label: '음향' }, { id: 'screen', label: '화면' 
 
 /** [화면] 탭 내용 — 로비 설정 창 · 전투 일시정지 창이 같이 쓴다 */
 export function screenTab() {
-  const note = el('p.idg-set-note');
+  const note = el('span');   /* 안내는 종이 판(짙은 갈색 글씨)에 — 11/14 대표님 */
   const paint = () => {
     const chosen = lobbyOrientChosen();
     note.textContent = chosen ? '내가 고른 대로 기억해요.' : `처음에는 기기에 맞춰져요 — 지금은 ${isPhone() ? '휴대폰이라 세로' : '휴대폰이 아니라 가로'}예요. 직접 고르면 그대로 기억해요.`;
@@ -29,7 +29,7 @@ export function screenTab() {
   return [
     kitRow({ title: '로비화면', sub: '로비와 로비 창의 방향', right: tabs }),
     kitRow({ title: '게임화면', sub: '싸울 때는 늘 가로예요', right: el('span.idg-key-chip.fixed', GAME_ORIENT === 'land' ? '가로' : '세로') }),
-    note,
+    kitPaper([note]),
   ];
 }
 

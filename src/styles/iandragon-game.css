@@ -1679,3 +1679,24 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 /* 일시정지 탭 내용은 창 안에서만 스크롤 — 제목 · 탭 · 계속 · 다시하기 · 나가기는 늘 보이게 (낮은 폰 가로 390px 도) */
 .idg-pause-body { max-height: max(104px, calc(100vh - 262px)); }
 @media (max-height: 430px) { .idg-pause-card h2 { margin: 0 0 2px; font-size: 18px; } .idg-pause-tabs { margin: 0 0 5px; } .idg-pause-tab { padding: 4px 4px 5px; font-size: 13px; } }
+/* ── 일시정지 2차 (11/14 대표님 · 파워업 가로 창과 같은 틀) ── */
+.idg-hud .idg-card.idg-pause-card.p2 { width: min(94vw, 760px); max-width: none; max-height: 94vh; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; text-align: left; overflow: hidden; }
+.idg-p2-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.idg-p2-top h2 { margin: 0; font-size: 22px; }
+.idg-p2-top .idg-p2-x { justify-self: end; }
+.idg-p2-grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(130px, 22vw, 170px); gap: 12px; min-height: 0; }
+.idg-p2-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.idg-pause-card.p2 .idg-pause-tabs { justify-content: flex-start; }
+.idg-pause-card.p2 .idg-pause-body { height: clamp(140px, calc(94vh - 150px), 330px); max-height: none; box-sizing: border-box; }   /* 탭을 바꿔도 창 크기 그대로 */
+.idg-p2-strip { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.idg-hud .idg-pause-card .idg-btn.idg-p2-go { --o: #5a0e00; flex: 1 1 auto; min-height: 80px; margin: 0; padding: 0 2px 4px; border: solid transparent; border-width: 14px 14px 22px; border-radius: 0;
+  border-image: url(/assets/iandragon_game/ai/kit/btn_sq_red_thin.webp) 36 36 56 fill / 14px 14px 22px stretch; background: none; box-shadow: none; image-rendering: pixelated;
+  font: 900 clamp(20px, 3.4vw, 28px)/1 var(--sw-font); color: #fff; letter-spacing: 0; word-spacing: normal;
+  text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+.idg-hud .idg-pause-card .idg-btn.idg-p2-sub { --o: #2a0a00; flex: none; min-height: 46px; margin: 0; padding: 0 4px 4px; border: 3px solid #2a0a00; border-radius: 6px; border-image: none;
+  font: 900 17px/1 var(--sw-font); color: #fff; letter-spacing: 0; word-spacing: normal; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o); }
+.idg-hud .idg-pause-card .idg-btn.idg-p2-sub.retry { background: #c4461c; box-shadow: inset 0 3px 0 #e8743f, inset 0 -5px 0 #8a2c0c; }
+.idg-hud .idg-pause-card .idg-btn.idg-p2-sub.exit { --o: #0e0603; border-color: #0c0502; background: #36200f; box-shadow: inset 0 3px 0 #563620, inset 0 -5px 0 #1c0f06; color: #f4e6d8; }
+.idg-hud .idg-pause-card .idg-btn.idg-p2-go:active, .idg-hud .idg-pause-card .idg-btn.idg-p2-sub:active { filter: brightness(.86); transform: translateY(1px); }
+@media (max-height: 430px) { .idg-p2-top h2 { font-size: 18px; } .idg-hud .idg-pause-card .idg-btn.idg-p2-sub { min-height: 38px; font-size: 15px; } .idg-hud .idg-pause-card .idg-btn.idg-p2-go { min-height: 60px; } }
+.idg-hud .idg-panel-over .idg-card.idg-pause-card.p2, .idg-hud .idg-card.idg-pause-card.p2 { width: min(94vw, 760px); min-width: min(94vw, 760px); max-width: min(94vw, 760px); }   /* 탭을 바꿔도 가로폭 그대로 */
