@@ -764,3 +764,8 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 @media (min-height: 600px) and (orientation: landscape) {
   .idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go { flex: 1 1 auto; aspect-ratio: auto; max-height: none; }
 }
+/* 띠 단추 색 (11/13 대표님) : 전투 개시!(빨강) 아래로 점점 어둡게 — 로비로 = 빨강에 가까운 어두운 주황 · 아이템샵 = 조금 더 어두운 주황 · 창닫기 = 거의 검은 주황 */
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back { --o: #3a0e00; border-color: #2a0a00; background: #c4461c; box-shadow: inset 0 3px 0 #e8743f, inset 0 -5px 0 #8a2c0c; color: #fff; }
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-shop, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-shop { --o: #2e1000; border-color: #241000; background: #a3510f; box-shadow: inset 0 3px 0 #c97632, inset 0 -5px 0 #6a3208; }
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-close, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-close { --o: #0e0603; border-color: #0c0502; background: #36200f; box-shadow: inset 0 3px 0 #563620, inset 0 -5px 0 #1c0f06; color: #f4e6d8; }
+.idg-pp-strip .idg-pp-shop .ico { width: 1.4em; height: 1.3em; }
