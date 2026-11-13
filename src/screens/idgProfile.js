@@ -10,6 +10,9 @@ import { kitTabs, kitClose } from './idgKit.js';
 import { itemGrid } from './idgLookParts/grid.js';
 import { visibleLooks, hasItem, artOf, artFilter, titleVisible, TITLES, SEES_MASTER } from '../games/iandragon_game/data/looks.js';
 import { wearOf, keepOf, partsFor } from './idgLookParts/wear.js';
+import { allStars } from '../services/iandragonGame.js';
+import '../styles/idg-lobby2.css';   /* 로비 프로필 판 부품(.l2-*) 그대로 재사용 */
+import '../styles/idg-lvbadge.css';
 import '../styles/idg-look2.css';
 import '../styles/idg-profile.css';
 
@@ -46,7 +49,21 @@ export function showProfile({ idg, save, info, onClose }) {
   const tabs = kitTabs({ old: true, label: '프로필 칸', tabs: TABS.map(([id, label]) => ({ id, label })), value: tab, onPick: (id) => { tab = id; build(); } });
   build();
 
-  const head = el('div.idg-pf-info', null, [info?.() || null]);
+  /** 머리 = 로비 왼쪽 위 프로필 판과 같은 부품(.l2-player · 금 얼굴 테 · 칭호 리본 · 이름 판 · Lv 배지 · 경험치) — 로비가 넘긴 얼굴 · 이름 · 레벨 · 칭호만 골라 같은 모양으로 다시 짠다 */
+  function headOf() {
+    const src = info?.(); if (!src) return null;
+    const face = src.querySelector('.l2-face'), nick = src.querySelector('.idg-pf-nick')?.textContent || '???', lv = src.querySelector('.idg-lv'), ttl = (src.querySelector('.idg-pf-ttl')?.textContent || '').replace(/[«»]/g, '');
+    const all = allStars(cur);
+    return el('div.l2-player', null, [
+      face,
+      el('div.l2-plate', null, [
+        ttl ? el('div.l2-ttl', null, [el('i', '칭호'), el('span', ttl)]) : null,
+        el('div.l2-name', null, [lv, el('span.l2-nick', nick)]),
+        el('span.l2-xp', { title: `별 ${all}개 · 다음 레벨까지 ${5 - (all % 5)}개` }, [el('i', { style: `width:${Math.round((all % 5) / 5 * 100)}%` })]),
+      ]),
+    ]);
+  }
+  const head = el('div.idg-pf-info', null, [headOf()]);
   const box = el('div.dialog.idg-shop.idg-lab.idg-k.idg-profile', { onclick: (e) => e.stopPropagation() }, [
     el('div.idg-how-title', null, ['프로필', kitClose(() => close())]),
     el('div.idg-shop-wrap', null, [head, tabs, content]),

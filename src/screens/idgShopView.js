@@ -163,9 +163,8 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
     subTabs = null;
     if (!SUBS[big]) return;
     subTabs = kitTabs({ label: '샵 하위 메뉴', tabs: SUBS[big].map(([id, label]) => ({ id, label })), value: sub[big], onPick: (k) => { sub[big] = k; draw(true); } });
-    subTabs.classList.add('idg-shop-sub');
+    subTabs.classList.add('idg-shop-sub'); subTabs.dataset.n = String(SUBS[big].length);
     subSlot.append(subTabs);
-    requestAnimationFrame(() => subTabs.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));   // 가로로 넘치면 고른 단추가 보이게
   }
   const setInfo = (on, text = '') => { info.style.display = on ? '' : 'none'; countEl.textContent = text; };
   const soon = (t) => [kitPaper([t, el('small', '곧 열려요')])];
