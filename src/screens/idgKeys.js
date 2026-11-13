@@ -24,29 +24,30 @@ const NUMPADS = ['Numpad1', 'Numpad2', 'Numpad3', 'Numpad4', 'Numpad5', 'Numpad6
 /** 동작 목록 (설정 표가 이 순서로 보여 준다) — id · 이름 · 묶음 · 기본 키(1~2개) */
 export const KEY_ACTIONS = [
   ...DIGITS.map((c, i) => ({ id: `spawn${i + 1}`, label: `출전 ${i + 1}번`, group: '출전 칸', def: [c, NUMPADS[i]] })),
-  { id: 'wallet', label: '화로 레벨업', group: '싸움 도구', def: ['Backquote'] },
+  { id: 'wallet', label: '화로 레벨업', group: '싸움 도구', def: ['Backquote', 'KeyA'] },   // 대표님 11/13 : ` 와 A 둘 다
   { id: 'skill1', label: '필살기 1', group: '싸움 도구', def: ['KeyQ'] },
   { id: 'skill2', label: '필살기 2', group: '싸움 도구', def: ['KeyW'] },
   { id: 'skill3', label: '필살기 3', group: '싸움 도구', def: ['KeyE'] },
   { id: 'skill4', label: '필살기 4', group: '싸움 도구', def: ['KeyR'] },
   { id: 'rage', label: '으르렁', group: '싸움 도구', def: ['KeyT'] },
   { id: 'breath', label: '브레스 (누르고 있으면 사거리)', group: '싸움 도구', def: ['Space'] },
-  { id: 'zoomIn', label: '맵 최대 확대', group: '화면 · 속도', def: ['NumpadAdd', 'Equal'] },
-  { id: 'zoomOut', label: '맵 최소 축소', group: '화면 · 속도', def: ['NumpadSubtract', 'Minus'] },
+  { id: 'zoomIn', label: '맵 최대 확대', group: '화면 · 속도', def: ['NumpadAdd', 'Equal', 'ArrowUp'] },   // + 와 ↑ (전투 중 · 창이 없을 때)
+  { id: 'zoomOut', label: '맵 최소 축소', group: '화면 · 속도', def: ['NumpadSubtract', 'Minus', 'ArrowDown'] },
   { id: 'panL', label: '화면 왼쪽으로 (누르고 있기)', group: '화면 · 속도', def: ['ArrowLeft'] },
   { id: 'panR', label: '화면 오른쪽으로 (누르고 있기)', group: '화면 · 속도', def: ['ArrowRight'] },
   { id: 'speed', label: '2배속 켜기 · 끄기', group: '화면 · 속도', def: ['Tab'] },
   { id: 'pause', label: '일시정지 · 이어하기', group: '화면 · 속도', def: ['KeyP'] },
   { id: 'fullscreen', label: '전체화면 켜기 · 끄기', group: '화면 · 속도', def: ['KeyF'] },
+  { id: 'retry', label: '다시하기 (결과 창 · 파워업 창)', group: '창', def: ['KeyR'], ctx: 'panel' },   // 창이 떠 있을 때만 — 필살기 4(R)와 같은 키여도 겹치지 않는다
 ];
 /** 바꿀 수 없는 키 (표 맨 아래에 «고정» 으로 보여 준다) */
 export const FIXED_KEYS = [
   { keys: 'Esc', label: '전투 중 = 일시정지 · 창이 떠 있으면 = 그 창 닫기 (일시정지 창은 이어하기) · 전체화면에서는 브라우저가 먼저 써서 P 키가 더 확실해요' },
   { keys: 'Enter', label: '창이 떠 있으면 = 고른 단추 누르기 (처음엔 빨간 주 단추) · 싸움 중 = 전체화면 켜기 · 끄기 (F 와 같음)' },
-  { keys: '↑ ↓ ← →', label: '로비 · 모든 창에서 단추 옮기기' },
+  { keys: '↑ ↓ ← →', label: '로비 · 모든 창에서 단추 옮기기 (싸움 중에는 ↑ ↓ = 확대 · 축소 · ← → = 화면 옮기기)' },
 ];
 /** 쓸 수 없는 키 : 창 · 단추 옮기기와 닫기용 + 브라우저 기능 */
-const RESERVED = new Set(['Escape', 'Enter', 'NumpadEnter', 'ArrowUp', 'ArrowDown', 'F1', 'F3', 'F5', 'F6', 'F11', 'F12', 'ContextMenu']);
+const RESERVED = new Set(['Escape', 'Enter', 'NumpadEnter', 'F1', 'F3', 'F5', 'F6', 'F11', 'F12', 'ContextMenu']);
 const MODS = new Set(['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'CapsLock', 'NumLock', 'ScrollLock', 'Lang1', 'Lang2', 'HangulMode', 'HanjaMode']);
 
 const defaults = () => Object.fromEntries(KEY_ACTIONS.map((a) => [a.id, a.def.slice()]));
@@ -61,9 +62,9 @@ function load() {
     const o = JSON.parse(raw), out = {}, seen = new Set();
     for (const a of KEY_ACTIONS) {
       const v = o?.[a.id];
-      const list = Array.isArray(v) ? v.filter((c) => typeof c === 'string' && /^[A-Za-z0-9]{1,20}$/.test(c) && !RESERVED.has(c) && !MODS.has(c)).slice(0, 2) : null;
+      const list = Array.isArray(v) ? v.filter((c) => typeof c === 'string' && /^[A-Za-z0-9]{1,20}$/.test(c) && !RESERVED.has(c) && !MODS.has(c)).slice(0, 3) : null;
       out[a.id] = list && list.length ? list : d[a.id];
-      for (const c of out[a.id]) { if (seen.has(c)) return d; seen.add(c); }   // 겹치면 저장값 통째로 버리고 처음대로
+      if (!a.ctx) for (const c of out[a.id]) { if (seen.has(c)) return d; seen.add(c); }   // 창 전용(ctx) 키는 전투 키와 겹쳐도 됨   // 겹치면 저장값 통째로 버리고 처음대로
     }
     return out;
   } catch { return d; }
@@ -74,7 +75,7 @@ function save() {
 }
 export const keysOf = (id) => map[id] || [];
 export function actionOf(code) {
-  if (!rev) { rev = new Map(); for (const [id, list] of Object.entries(map)) for (const c of list) rev.set(c, id); }
+  if (!rev) { rev = new Map(); const ctx = new Set(KEY_ACTIONS.filter((a) => a.ctx).map((a) => a.id)); for (const [id, list] of Object.entries(map)) if (!ctx.has(id)) for (const c of list) rev.set(c, id); }
   return rev.get(code) || null;
 }
 export const isDefaultKeys = () => KEY_ACTIONS.every((a) => map[a.id].length === a.def.length && map[a.id].every((c, i) => c === a.def[i]));
@@ -87,10 +88,11 @@ export const keyUsable = (code) => !RESERVED.has(code) && !MODS.has(code);
  */
 export function setKey(id, code) {
   if (!keyUsable(code)) return { ok: false, error: '이 키는 쓸 수 없어요' };
+  if (KEY_ACTIONS.find((a) => a.id === id)?.ctx) { map[id] = [code]; save(); return { ok: true }; }   // 창 전용 키는 맞바꾸지 않음
   const other = actionOf(code);
   if (other === id) { map[id] = [code]; save(); return { ok: true }; }
   const mine = map[id];
-  if (other) { map[other] = map[other].filter((c) => c !== code); map[other] = [...map[other], ...mine].slice(0, 2); if (!map[other].length) map[other] = mine.slice(0, 1); }
+  if (other) { map[other] = map[other].filter((c) => c !== code); map[other] = [...map[other], ...mine].slice(0, 3); if (!map[other].length) map[other] = mine.slice(0, 1); }
   map[id] = [code];
   save();
   return { ok: true, swapped: other || undefined };
@@ -331,6 +333,10 @@ function onKeyDown(e) {
     if (battle && sc === battle.panelNode) {   // 전투 판(일시정지 · 시작 · 결과)이 떠 있어도 P(이어하기) · F(전체화면)는 먹는다
       const a = actionOf(code);
       if (a === 'pause' || a === 'fullscreen') { stop(e); if (!e.repeat) { if (a === 'pause') battle.run('pause', true); else battle.fs(); } return; }
+    }
+    if ((map.retry || []).includes(code) && !typing) {   /* 다시하기 (대표님 11/13 «Enter 그대로 + R») — 창 안에 «다시하기» 단추가 있으면 누른다 */
+      const rb = [...sc.querySelectorAll('button')].find((x) => x.offsetParent && /다시하기/.test(x.textContent));
+      if (rb) { stop(e); if (!e.repeat) rb.click(); return; }
     }
     if (code in DIRS) {
       if (isRange(t) && (code === 'ArrowLeft' || code === 'ArrowRight')) return;   // 슬라이더는 좌우로 값 바꾸기
