@@ -2,20 +2,23 @@
  "bangul": {
   "parts": {
    "wing": {
-    "flip": false,
+    "flip": true,
     "a": [
-     0.85,
+     0.15,
      0.9
     ]
    }
+  },
+  "files": {
+   "wing": "wing_v3"
   }
  },
  "bangul_2": {
   "parts": {
    "wing": {
-    "flip": false,
+    "flip": true,
     "a": [
-     0.85,
+     0.15,
      0.9
     ]
    }
@@ -71,6 +74,11 @@
      0.9
     ]
    }
+  },
+  "files": {
+   "head": "head_v2",
+   "head_blink": "head_blink_v2",
+   "head_breath": "head_breath_v2"
   }
  },
  "doldeung": {
@@ -106,7 +114,10 @@
     ]
    }
   },
-  "scale": 1.05
+  "scale": 1.05,
+  "files": {
+   "wing": "wing_v3"
+  }
  },
  "dungsil": {
   "parts": {
@@ -221,7 +232,11 @@
   "scale": 1.12
  },
  "kungkwang": {
-  "scale": 1.15
+  "scale": 1.15,
+  "files": {
+   "head": "head_v2",
+   "head_blink": "head_blink_v2"
+  }
  },
  "meari": {
   "parts": {
@@ -236,7 +251,8 @@
   "scale": 1.12,
   "files": {
    "head": "head_ear1",
-   "head_blink": "head_blink_ear1"
+   "head_blink": "head_blink_ear1",
+   "wing": "wing_v3"
   }
  },
  "nunbora": {
@@ -298,8 +314,8 @@
      0.24
     ],
     "p": [
-     21,
-     -37
+     15,
+     -34
     ]
    },
    "arm_b": {
@@ -326,7 +342,8 @@
   "scale": 1.05,
   "files": {
    "arm_f": "arm_f_fix1",
-   "arm_b": "arm_b_fix1"
+   "arm_b": "arm_b_fix1",
+   "wing": "wing_v3"
   }
  },
  "ssaeng": {
@@ -366,5 +383,26 @@
  },
  "twetwe_2": {
   "scale": 1.12
+ },
+ "sandscale": {
+  "files": {
+   "head": "head_v2",
+   "head_blink": "head_blink_v2",
+   "head_breath": "head_breath_v2"
+  }
+ },
+ "volttail": {
+  "files": {
+   "head": "head_v2",
+   "head_blink": "head_blink_v2",
+   "head_breath": "head_breath_v2"
+  }
+ },
+ "frostwing": {
+  "files": {
+   "head": "head_v2",
+   "head_blink": "head_blink_v2",
+   "head_breath": "head_breath_v2"
+  }
  }
 }
