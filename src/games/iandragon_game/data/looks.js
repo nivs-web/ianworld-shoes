@@ -208,10 +208,10 @@ export function dealsFor(dateStr) {
  *  씨앗 = 계정 id + 레벨 → 다시 뽑기 · 기기 바꿔 뽑기 없음 (결과는 저장 lvGifts 에 남는다). */
 export const GIFT_EVERY = 10, GIFT_LAST = 180, GIFT_ALL_GEMS = 50;
 export const GIFT_TIERS = [
-  { id: 'common', name: '보통', p: 60 },
-  { id: 'uncommon', name: '고급', p: 28 },
-  { id: 'rare', name: '희귀', p: 10 },
-  { id: 'epic', name: '영웅', p: 2 },
+  { id: 'common', name: '보통', p: 60, stars: 1 },     // 색 : 회색 (샵 카드와 같게 · 모으기 기획 §1)
+  { id: 'uncommon', name: '고급', p: 28, stars: 2 },   // 초록
+  { id: 'rare', name: '희귀', p: 10, stars: 3 },       // 파랑
+  { id: 'epic', name: '영웅', p: 2, stars: 4 },        // 보라
 ];
 export const GIFT_ODDS = GIFT_TIERS.map((t) => `${t.name} ${t.p}`).join(' · ');
 export const giftGems = (lv) => (lv === 100 ? 50 : 20);

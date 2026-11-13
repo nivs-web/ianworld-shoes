@@ -220,12 +220,14 @@ const lockFx = (mode, label) => el(`div.idg-lockfx.${mode}`, { 'aria-hidden': 't
 /** 선물 상자 연출 + 받은 것 목록 */
 function giftWin(list, onTry) {
   const n = list.length, gems = list.reduce((a, r) => a + r.gems, 0);
-  const tierName = Object.fromEntries(GIFT_TIERS.map((t) => [t.id, t.name]));
+  const tierOf = Object.fromEntries(GIFT_TIERS.map((t) => [t.id, t]));
+  /* 등급 띠 = 이름 + 별 수 (보통 1 · 고급 2 · 희귀 3 · 영웅 4) — 별은 글자 ★ 가 아니라 결과 창 도트 별 그림 */
+  const tierBand = (id) => { const t = tierOf[id]; return t ? [t.name, el('i.idg-gift-stars', { 'aria-label': `별 ${t.stars}개` }, Array.from({ length: t.stars }, () => el('img', { src: '/assets/iandragon_game/ai/result/star_on.webp', alt: '' })))] : ['젬 선물']; };
   const card = (r) => {
     const p = r.key ? parseKey(r.key) : null;
     const pic = p ? el('img.idg-gift-pic', { src: artOf(p.slot, p.id), alt: '', style: artFilter(p.slot, p.id) ? `filter:${artFilter(p.slot, p.id)}` : null, onerror: hideBad }) : el('img.idg-gift-pic', { src: GEM_ICO, alt: '' });
     const nm = p ? (p.slot === 'title' ? `칭호 «${p.item.name}»` : p.item.name) : '다 모았어요!';
-    return el(`div.idg-gift-card.t-${r.tier || 'gem'}`, null, [el('small.idg-gift-lv', `Lv.${r.lv}`), pic, el('b.idg-gift-name', nm), el('span.idg-gift-tier', r.tier ? tierName[r.tier] : '젬 선물')]);
+    return el(`div.idg-gift-card.t-${r.tier || 'gem'}`, null, [el('small.idg-gift-lv', `Lv.${r.lv}`), pic, el('b.idg-gift-name', nm), el('span.idg-gift-tier', null, tierBand(r.tier))]);
   };
   /* 겜팀장 그림 (ui/lvgift_*) : 닫힘 · 왼쪽 기움 · 오른쪽 기움 · 열림 · 뚜껑 · 조각 4 */
   const GI = (k) => `${UI_GIFT}lvgift_${k}.webp`;
