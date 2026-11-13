@@ -87,7 +87,12 @@ const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구�
 const STAR_CLS = { hard: '.red', master: '.purple' };
 const LOCK_NOTE = { hard: '보통 10-10 을 깨면 열려요', master: '어려움 10-10 을 깨면 열려요' }, LOCK_LINE = { hard: '어려움은 보통 10-10 을 깨면 열려요.', master: '초고수는 어려움 10-10 을 깨면 열려요.' };
 /** 로비가 따를 난이도 (어려움 · 초고수를 골랐고 열려 있을 때만 · 아니면 null = 보통 흐름) */
-const diffNow = (g) => { const d = g?.diff; return isOn('zdOpt', 'diff') && DIFF[d]?.stages && diffVisible(g, d) && diffUnlocked(g, d) ? d : null; };
+const diffNow = (g) => {
+  const d = g?.diff;
+  if (isOn('zdOpt', 'diff') && DIFF[d]?.stages && diffVisible(g, d) && diffUnlocked(g, d)) return d;
+  /* 보통 10-10 까지 다 깼으면 «모험 시작» · 다음 판 카드는 어려움 다음 판으로 (대표님 11/13 «보통 10-10 을 깨면 어려움 1-1 부터 차례로») */
+  return isOn('zdOpt', 'diff') && (g?.cleared || 0) >= 100 && diffUnlocked(g, 'hard') ? 'hard' : null;
+};
 function showStages(onPick) {
   Sfx.play('sfx_menu_select');
   const g = G.idg();
@@ -273,6 +278,7 @@ async function runNotices({ onLook, onDone }) {
     g = G.idg();
     if ((g.cleared || 0) >= 100 && !seenBit(g, SEEN.hardOpen)) {
       mark(SEEN.hardOpen);
+      G.saveIdg({ diff: 'hard' });   // 어려움이 열리면 바로 어려움 1-1 이 다음 판 (11/13)
       await noteWin('idg-note-open', '어려움이 열렸다!', [
         el('p.idg-note-text.big', '붉은 별에 도전!'), ...(MASTER_ON ? [lockFx('thud', '초고수')] : []),
         el('p.idg-note-text', MASTER_ON ? '어려움 1-1 부터 차례로 · 출전 드래곤은 Lv21 부터. 어려움 10-10 을 깨면 자물쇠가 풀려요.' : '어려움 1-1 부터 차례로 · 출전 드래곤은 Lv21 부터. 좀비가 훨씬 세요 — 드래곤과 드래곤캐슬을 키워서 끝판까지!'),
