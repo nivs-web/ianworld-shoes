@@ -172,7 +172,9 @@ export async function startBattle(ctx, opts) {
         if (won) won[stage.g - 1] = '1';
         hs[stage.g - 1] = String(Math.max(hOld, info.stars));
         const base = ECON.coin(stage.g), newStars = Math.max(0, info.stars - hOld);
-        info.coins = Math.round(base * (hOld ? ECON.replay : 1) * DF.coin);
+        /* 코인 = 보통과 같은 식(첫 클리어 1 · 다시 40% + 새 별 하나마다 25% 덤 · 황금 좀비 따로) × 1.5(어려움) / × 2(초고수) — 11/13 겜부장 돈 맞춤 */
+        if (goldKills) info.gold = Math.round(base * ECON.goldBonus * goldKills);
+        info.coins = (info.gold || 0) + Math.round((base * (hOld ? ECON.replay : 1) + base * ECON.starBonus * newStars) * DF.coin);
         info.gems = newStars * DF.gem.star + (first && stage.s === 5 ? DF.gem.mid : 0) + (first && stage.s === 10 ? DF.gem.boss : 0);
         info.red = dk === 'hard'; info.purple = dk === 'master'; info.final = false;   // «모든 모험 끝» 글은 보통 10-10 에서만
         /* 칭호 · 테두리 : 10-10 처음 = 붉은 테두리 / 보라 불꽃 테두리 · 칭호는 조건으로 얻는다(looks.js TITLES) → 이번 판으로 새로 얻은 것만 결과 창 «새로 열림» */
