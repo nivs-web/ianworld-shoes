@@ -57,6 +57,22 @@ export function card(o) {
   return c;
 }
 
+/**
+ * 목록 줄 하나 (IDG_UI_PATTERNS §5 «목록 줄») — 카드와 같은 옵션을 받는다.
+ *  왼쪽 얼굴 · 가운데(이름 · Lv 한 줄 + 효과 막대 · 설명) · 오른쪽 가격 단추(작게). 잠김 = 단추 대신 자물쇠 + 조건 한 줄(가운데에 들어감).
+ * @param {{id?:string, face?:string|Node, name:string, l1?:string, l2?:string|Node, tag?:string, on?:boolean, locked?:boolean, rows?:Node[], foot?:Node|Node[]}} o
+ */
+export function row(o) {
+  const c = el(`div.idg-sp-row${o.on ? '.on' : ''}${o.locked ? '.locked' : ''}`, { 'data-id': o.id || null, role: 'group', 'aria-label': o.name });
+  const img = o.face && typeof o.face !== 'string' ? o.face : el('img', { src: o.face || '', alt: '', draggable: 'false' });
+  if (img.tagName === 'IMG') img.onerror = () => { img.onerror = null; img.style.visibility = 'hidden'; };
+  const foot = [].concat(o.foot || []).filter(Boolean), lock = foot.filter((n) => n.classList?.contains('idg-sp-lock')), acts = foot.filter((n) => !n.classList?.contains('idg-sp-lock'));
+  const head = el('div.t', null, [el('b.nm', o.name), (o.l1 || o.tag) ? el('span.l1', null, [o.l1 || '', o.tag ? el('em.tag', o.tag) : null]) : null]);
+  const sub = o.l2 ? (typeof o.l2 === 'string' ? el('span.l2', o.l2) : o.l2) : null;
+  c.append(...[img, el('div.mid', null, [head, sub, ...(o.rows || []), ...lock].filter(Boolean)), acts.length ? el('div.act', null, acts) : null].filter(Boolean));
+  return c;
+}
+
 /** 불꽃 얼굴(브레스 카드) : 기존 불꽃 시트(fx/fire_*.png)의 첫 칸 — 새 그림이 오기 전 임시 */
 export const fireFace = (color = 'orange') => el(`span.idg-sp-fire.${color}`, { 'aria-hidden': 'true' }, [el('i')]);
 
@@ -64,7 +80,7 @@ export const fireFace = (color = 'orange') => el(`span.idg-sp-fire.${color}`, { 
 export const line = (kids) => el('p.idg-sp-line', null, [].concat(kids).map((k) => (typeof k === 'string' ? document.createTextNode(k) : k)));
 
 /** 카드 격자 */
-export const list = (cards) => el('div.idg-sp-list', null, cards);
+export const list = (cards) => el(`div.idg-sp-list${cards[0]?.classList?.contains('idg-sp-row') ? '.rows' : ''}`, null, cards);
 
 /** 단계 막대 : N 칸 중 have 칸이 찼다 (픽셀 칸 · 보간 없음) */
 export function stepBar(n, have, label) {

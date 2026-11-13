@@ -6,7 +6,7 @@
 import { LEADERS } from '../../games/iandragon_game/data/leaders.js';
 import { S, ICON, LEAD_SHOP, LEAD_ORDER, LEAD_MAX, leadUpCost, LEAD_FLAME_PER_LV, LEAD_AURA_PER_LV, leadOwn, leadLv, leadSave, worldsCleared, canPay, pay, commit, stepOf } from './_data.js';
 import { kitBtn } from '../idgKit.js';
-import { panelRoot, note, card, list, line, buyBtn, plainBtn, statRow, lockLine, snd } from './_ui.js';
+import { panelRoot, note, row, list, line, buyBtn, plainBtn, statRow, lockLine, snd } from './_ui.js';
 
 /**
  * @param {{look?:boolean, want?:()=>string, autoId?:()=>string, pick?:(id:string)=>void, goShop?:()=>void}} [opts]
@@ -43,12 +43,12 @@ export default function render(box, ctx, opts = {}) {
 
   function autoCard(g) {
     const on = opts.want() === 'auto', id = opts.autoId?.() || 'novart';
-    return pickable(card({ id: 'auto', face: ICON.face(id), name: S.auto, l1: S.autoSub, tag: on ? S.lead : null, on, rows: [line(`${S.autoNow} ${LEADERS[id]?.ko || id}`)] }), 'auto');
+    return pickable(row({ id: 'auto', face: ICON.face(id), name: S.auto, l1: S.autoSub, tag: on ? S.lead : null, on, rows: [line(`${S.autoNow} ${LEADERS[id]?.ko || id}`)] }), 'auto');
   }
 
   function ownedCard(id, g) {
     const L = LEADERS[id], lv = leadLv(g, id), cost = leadUpCost(lv), flame = LEAD_FLAME_PER_LV * (lv - 1), aura = LEAD_AURA_PER_LV * (lv - 1);
-    const c = card({
+    const c = row({
       id, face: ICON.face(id), name: L.ko, l1: `Lv ${lv}`, tag: isLead(id, g) ? S.lead : null, on: isLead(id, g),
       rows: [statRow(S.statFlame, flame, LEAD_FLAME_PER_LV * (LEAD_MAX - 1), 'orange', `+${flame}%`), statRow(S.statAura, aura, LEAD_AURA_PER_LV * (LEAD_MAX - 1), 'blue', `+${aura}%`)],
       foot: lv >= LEAD_MAX ? plainBtn(S.max) : buyBtn(cost, { label: S.lvUp, poor: !canPay(g, cost), onClick: () => levelUp(id) }),
@@ -58,9 +58,9 @@ export default function render(box, ctx, opts = {}) {
 
   function shopCard(id, g, open) {
     const L = LEADERS[id], s = LEAD_SHOP[id];
-    return card({
+    return row({
       id, face: ICON.face(id), name: L.ko, locked: look || !open,
-      rows: [line(L.line)],
+      rows: open && !look ? [line(L.line)] : [],
       foot: look ? [lockLine(S.sells), kitBtn({ kind: 'purple', size: 'sm', text: S.goShop, onClick: (e) => { e.stopPropagation(); opts.goShop?.(); } })]
         : open
         ? [buyBtn({ coin: s.coin }, { label: S.buy, poor: g.coins < s.coin, onClick: () => buy(id, 'coin') }), buyBtn({ gem: s.gem }, { label: S.buy, poor: g.gems < s.gem, onClick: () => buy(id, 'gem') })]

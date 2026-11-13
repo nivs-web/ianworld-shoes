@@ -6,7 +6,7 @@
 import { el } from '../ui.js';
 import { kitBtn } from '../idgKit.js';
 import { S, ICON, GEAR, GEAR_MAX, GEAR_COST, CASTLE_LV, castleOf, gearLv, canPay, pay, commit, stepOf } from './_data.js';
-import { panelRoot, note, card, list, line, buyBtn, plainBtn, stepBar, snd } from './_ui.js';
+import { panelRoot, note, row, list, line, buyBtn, plainBtn, stepBar, snd } from './_ui.js';
 
 export default function render(box, ctx) {
   const done = () => { draw(); ctx.refresh?.(); };
@@ -21,8 +21,8 @@ export default function render(box, ctx) {
 
   function gearCard(def, g) {
     const lv = gearLv(g, def.id), cost = lv < GEAR_MAX ? GEAR_COST[lv] : null;
-    const now = line([lv ? el('b', def.line(lv)) : def.line(1), cost && lv ? el('span.nx', null, [el('br'), `${S.next} ${def.line(lv + 1)}`]) : null].filter(Boolean));
-    return card({
+    const now = line([lv ? el('b', def.line(lv)) : def.line(1)]);   /* 줄 높이를 아끼려고 «다음 단계» 글은 뺐다 */
+    return row({
       id: def.id, face: ICON.gear[def.id], name: def.name, l1: S.gearLv(lv), l2: def.place, on: lv > 0,
       rows: [stepBar(GEAR_MAX, lv, def.name), now],
       foot: cost ? buyBtn(cost, { label: lv ? S.enhance : S.buy, poor: !canPay(g, cost), onClick: () => buy(def.id) }) : plainBtn(S.maxed),

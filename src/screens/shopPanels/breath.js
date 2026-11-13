@@ -5,7 +5,7 @@
  */
 import { el } from '../ui.js';
 import { S, BREATH_POWER, BREATH_RANGE, breathUp, canPay, pay, commit, stepOf } from './_data.js';
-import { panelRoot, note, card, list, line, fireFace, buyBtn, plainBtn, stepBar, snd } from './_ui.js';
+import { panelRoot, note, row, list, line, fireFace, buyBtn, plainBtn, stepBar, snd } from './_ui.js';
 
 const KINDS = [
   { key: 'pow', name: S.power, T: BREATH_POWER, icon: () => fireFace('orange'), pre: '지금 ',
@@ -28,7 +28,7 @@ export default function render(box, ctx) {
   function kindCard(k, g) {
     const n = breathUp(g)[k.key], max = k.T.pct.length, cost = n < max ? { coin: k.T.coin[n], gem: k.T.gem[n] } : null;
     const now = line([k.pre, el('b', k.now(n)), cost ? el('br') : null, cost ? el('span.nx', `${S.next} ${k.nx(n)}`) : null].filter(Boolean));
-    return card({
+    return row({
       id: k.key, face: k.icon(), name: k.name, l1: `${n} / ${max} ${S.step}`, on: n > 0,
       rows: [stepBar(max, n, k.name), now, k.key === 'rng' ? line(S.rangeFoot) : null].filter(Boolean),
       foot: cost ? buyBtn(cost, { label: S.up, poor: !canPay(g, cost), onClick: () => buy(k) }) : plainBtn(S.maxed),

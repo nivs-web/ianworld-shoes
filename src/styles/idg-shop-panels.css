@@ -83,3 +83,36 @@
   .idg-sp-reco-txt b { white-space: nowrap; font-size: 12px; }
   .idg-sp-reco .idg-sp-buy { min-width: 76px; min-height: 32px; }
 }
+
+/* ── 목록 줄 (IDG_UI_PATTERNS §5) : 얼굴 | 이름 · Lv + 효과 막대 | 가격 단추(작게) — 세로 한 열 ── */
+.idg-sp-list.rows { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.idg-sp-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 6px; align-items: center; min-width: 0; padding: 0 2px; border: solid transparent; border-width: 8px; border-image: url(/assets/iandragon_game/ai/kit/card_off.webp) 40 fill / 8px stretch; background: none; image-rendering: pixelated; color: #d8ccff; user-select: none; }
+.idg-sp-row.on { border-image-source: url(/assets/iandragon_game/ai/kit/card_on.webp); }
+.idg-sp-row > img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; background: #170d36; border: 2px solid #1b1030; box-sizing: border-box; }
+.idg-sp-row.locked > img { filter: grayscale(1) brightness(.55); }
+.idg-sp-row .mid { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.idg-sp-row .t { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; min-width: 0; }
+.idg-sp-row .nm { color: #fff; font-size: 13px; line-height: 1.2; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); word-break: keep-all; }
+.idg-sp-row.locked .nm { color: #b9a8e8; }
+.idg-sp-row .l1 { font-size: 11px; color: #FFC93C; white-space: nowrap; }
+.idg-sp-row .l2 { font-size: 10px; line-height: 1.2; color: #ffd9a8; }
+.idg-sp-row .tag { display: inline-block; margin-left: 5px; font-style: normal; font-size: 10px; line-height: 1.2; padding: 0 4px; white-space: nowrap; background: #2f7a3a; color: #eaffea; border: 2px solid #12301a; }
+.idg-sp-row .st { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; column-gap: 4px; font-size: 10px; color: #d8ccff; }
+.idg-sp-row .st > span { justify-self: end; line-height: 1; white-space: nowrap; }
+.idg-sp-row .st > em { font-style: normal; font-size: 10px; color: #fff; min-width: 2.8em; text-align: right; white-space: nowrap; }
+.idg-sp-row .st .idg-k-gauge { height: 9px; min-width: 0; border-width: 2px; border-image-width: 2px; }
+.idg-sp-row .idg-sp-line { margin: 0; font-size: 10px; line-height: 1.25; color: #d8ccff; word-break: keep-all; min-height: 0; }
+.idg-sp-row .idg-sp-line b { color: #fff; font-weight: 800; }
+.idg-sp-row .idg-sp-line .nx { color: #9fe58f; }
+.idg-sp-row .idg-sp-steps { height: 9px; }
+.idg-sp-row .idg-sp-fire { grid-row: auto; }
+.idg-sp-row .idg-sp-lock { min-height: 0; padding: 1px 4px; font-size: 10px; }
+.idg-sp-row .idg-sp-lock img { width: 12px; height: 12px; flex-basis: 12px; }
+.idg-sp-row .act { display: flex; flex-direction: column; gap: 2px; width: 84px; }
+.idg-sp-row .idg-sp-buy { flex: none; width: 100%; min-height: 34px; padding: 0; font-size: 11px; border-width: 7px 12px; border-image-width: 7px 12px; }
+.idg-sp-row .idg-sp-buy .idg-cash { font-size: 11px; }
+@media (max-width: 380px) { .idg-sp-row .act { width: 76px; } .idg-sp-row .nm { font-size: 12px; } }
+
+/* 목록 줄 칸의 위 안내 종이 : 한 덩이 낮게 (줄이 5 ~ 6개 보이게) */
+.idg-sp:has(.idg-sp-list.rows) > .idg-k-paper { font-size: 11px; line-height: 1.3; padding-top: 2px; padding-bottom: 2px; }
+.idg-sp:has(.idg-sp-list.rows) > .idg-k-paper small { display: none; }

@@ -21,9 +21,9 @@
 .idg-lk-content { min-width: 0; }
 
 /* ── 물건 카드(샵 카드 위에 덧입힘) : 눌러서 입기 · 등급 색 테 + ★ ── */
-.idg-sp-card.pick { cursor: pointer; }
-.idg-sp-card.pick:active { translate: 0 1px; }
-.idg-sp-card.pick:focus-visible { outline: 2px solid #ffd45a; outline-offset: -2px; }
+.idg-sp-card.pick, .idg-sp-row.pick { cursor: pointer; }
+.idg-sp-card.pick:active, .idg-sp-row.pick:active { translate: 0 1px; }
+.idg-sp-card.pick:focus-visible, .idg-sp-row.pick:focus-visible { outline: 2px solid #ffd45a; outline-offset: -2px; }
 .idg-sp-card .stars { color: var(--rc, #9aa3b0); font-size: 11px; letter-spacing: 1px; text-shadow: 1px 0 #1a0c38, -1px 0 #1a0c38, 0 1px #1a0c38, 0 -1px #1a0c38; }
 .idg-sp-card .stars small { color: #d8ccff; letter-spacing: 0; font-size: 10px; text-shadow: none; }
 .idg-sp-card[class*=" r"] .idg-sp-top img { border-color: var(--rc); }
