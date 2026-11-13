@@ -5,6 +5,7 @@
  */
 
 /** 칸 이름 (저장 글자 순서 · 화면 순서) */
+import { MASTER_ON } from './features.js';
 export const SLOTS = ['hat', 'neck', 'breath', 'flag', 'frame', 'title'];
 export const SLOT_NAME = { hat: '모자', neck: '목 장식', breath: '브레스 색', flag: '드래곤캐슬 깃발', frame: '테두리', title: '칭호' };
 /** 저장 글자의 칸 머리글 (h3.n1.b2.f4.r0.t7) */
@@ -88,7 +89,7 @@ const sumStars = (s) => [...(typeof s === 'string' ? s : '')].reduce((a, c) => a
 const st = (g, k) => Number(g?.stat?.[k]) || 0;
 const starAt = (s, g) => Number((typeof s === 'string' ? s : '')[g - 1]) > 0;
 /** 초고수 관련 항목을 보여도 되는 계정 (보통 10-10 을 깸) */
-export const SEES_MASTER = (g) => (g?.cleared || 0) >= 100;
+export const SEES_MASTER = (g) => MASTER_ON && (g?.cleared || 0) >= 100;   // 초고수 꺼짐이면 늘 false (11/13)
 const MW = ['hill', 'volcano', 'sky', 'ice', 'mine', 'grave', 'desert', 'swamp', 'crystal', 'castle'];
 const LV_TITLES = [
   { id: 'lv_spark', name: '반짝반짝 성장왕', tier: 'common', gift: true }, { id: 'lv_moon', name: '달빛 모험가', tier: 'common', gift: true }, { id: 'lv_rocket', name: '쑥쑥 로켓', tier: 'common', gift: true }, { id: 'lv_crown', name: '별빛 왕관', tier: 'common', gift: true },
