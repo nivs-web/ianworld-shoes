@@ -323,7 +323,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       box.append(h('h2', null, '용 대결!'));
       const face = (list, ld) => { const z = h('div', 'idg-intro-z'); for (const id of [ld, ...(list || []).map((d) => d.id)].filter(Boolean)) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.style.display = 'none'; }; z.appendChild(im); } return z; };
       box.append(h('p', 'small', '나'), face(deck, leader), h('p', 'small', 'VS 친구'), face(foeDeck || [], foeLeader));
-      box.append(h('p', 'small', '상대 둥지를 먼저 무너뜨리면 승리 · 3분 · 90초부터 불꽃 타임 · 모두 Lv20'));
+      box.append(h('p', 'small', '상대 드래곤캐슬을 먼저 무너뜨리면 승리 · 3분 · 90초부터 불꽃 타임 · 모두 Lv20'));
     } else {
       box.append(h('h2', null, `${stage.id} ${stage.name}`));
       if (stage.diff && stage.diff !== 'normal') box.append(h('p', 'idg-diff ' + stage.diff, stage.diff === 'hard' ? '어려움 — 붉은 별 · 출전 드래곤 Lv21 이상' : stage.diff === 'master' ? `초고수 — 보라 별 · ${stage.limit ? `${stage.limit}초 · ` : ''}부화 «+» · 편의품은 안 통해요` : '쉬움 — 좀비가 약해요 · 별은 2개까지'));
