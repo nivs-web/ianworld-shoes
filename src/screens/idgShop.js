@@ -77,7 +77,7 @@ export function showShop({ idg, save, onClose, tab: tab0 }) {
 
   /** 브레스 UP (11/13) — 같은 판을 드래곤캐슬이 무너져 3번 이상 연속으로 진 사람에게만 맨 위에 보인다 · 한 번에 1개 · 그 판 전용 · 시작하면 자동으로 쓴다 */
   function bpRows() {
-    const off = bpOffer(cur), own = bpOwned(cur), fx = (m) => `힘 · 거리 ×${m} · 차는 시간 ÷${m}`, rows = [];
+    const off = bpOffer(cur), own = bpOwned(cur), fx = (m) => { const p = Math.round((m - 1) * 100); return `힘 · 거리 · 차는 속도 +${p}%`; }, rows = [];
     if (off && !(own && own.key === off.key && own.tier === off.tier)) {
       rows.push(kitRow({ title: off.name, sub: `같은 판을 ${off.n}번 연속으로 진 사람에게만 보여요 · ${off.label} 전용 · ${fx(off.mul)}`,
         right: own ? kitBtn({ kind: 'purple', text: '가지고 있음', size: 'sm', disabled: true }) : kitPriceBtn({
@@ -96,7 +96,7 @@ export function showShop({ idg, save, onClose, tab: tab0 }) {
   }
 
   function consTab() {
-    help.replaceChildren(kitPaper(['편의품은 한 판에 ', el('b', '하나만'), ' 쓸 수 있어요. 혼자 하기(스테이지)에서만 써요.', el('small', '명예의 전당 도전 · 같이 깨기 · 용 대결에서는 못 써요.')]));
+    help.replaceChildren(kitPaper(['편의품은 한 판에 ', el('b', '하나만'), ' 쓸 수 있어요. 혼자 하기(스테이지)에서만 써요.', el('small', '명예의 전당 도전 · 같이 깨기 · 드래곤 대결에서는 못 써요.')]));
     return [
       ...bpRows(),
       ...CONSUMABLES.map((c) => {
