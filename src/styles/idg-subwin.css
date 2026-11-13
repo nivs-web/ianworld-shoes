@@ -42,7 +42,7 @@
 .dialog.idg-k[class*="idg-"] { --k-fs: clamp(14px, 3.9vw, 17px); }
 @media (orientation: landscape) { .dialog.idg-k[class*="idg-"] { --k-fs: clamp(13px, 3.4vh, 16px); } }
 /* 현판(리본 제목) : 글씨 굵게 · 짙은 빨강 2px 외곽선 (키트 .idg-k-title 과 같게) */
-.dialog.idg-k[class*="idg-"] > .idg-how-title { font-weight: 900; letter-spacing: .5px; text-shadow: 2px 0 #4a0a10, -2px 0 #4a0a10, 0 2px #4a0a10, 0 -2px #4a0a10, 2px 2px #4a0a10, -2px 2px #4a0a10, 2px -2px #4a0a10, -2px -2px #4a0a10; }
+.dialog.idg-k[class*="idg-"] > .idg-how-title { font-weight: 900; letter-spacing: .5px; text-shadow: 1px 0 #4a0a10, -1px 0 #4a0a10, 0 1px #4a0a10, 0 -1px #4a0a10, 1px 1px #4a0a10, -1px 1px #4a0a10, 1px -1px #4a0a10, -1px -1px #4a0a10; }
 /* 폰 가로 : 리본이 창 폭만큼 납작하게 늘어나던 것 → 글씨에 맞는 크기 */
 @media (orientation: landscape) and (max-height: 560px) {
   .dialog.idg-framed[class*="idg-"] > .idg-how-title { min-width: 0; width: auto; align-self: center; padding: 11px 42px 10px; font-size: 16px; }
@@ -191,7 +191,7 @@
 /* 파워업 제목 : 맨 금글씨 → 다른 창과 같은 빨간 리본 현판 */
 .idg-pp-title { align-self: center; width: auto; min-width: 7em; margin: 0 auto 2px; padding: 3px 26px 5px; border: 0 solid transparent; border-width: 11px 26px; border-image: url(/assets/iandragon_game/ai/lobby/ribbon.webp) 30 72 fill / 11px 26px stretch;
   font-family: var(--sw-font); font-size: 17px; font-weight: 900; line-height: 1.1; color: #fff; text-align: center; white-space: nowrap;
-  text-shadow: 2px 0 #4a0a10, -2px 0 #4a0a10, 0 2px #4a0a10, 0 -2px #4a0a10, 2px 2px #4a0a10, -2px 2px #4a0a10, 2px -2px #4a0a10, -2px -2px #4a0a10; }
+  text-shadow: 1px 0 #4a0a10, -1px 0 #4a0a10, 0 1px #4a0a10, 0 -1px #4a0a10, 1px 1px #4a0a10, -1px 1px #4a0a10, 1px -1px #4a0a10, -1px -1px #4a0a10; }
 /* 파워업 안 글씨도 Pretendard (로비 창) */
 .dialog.idg-k .idg-pp, .dialog.idg-k .idg-pp *:not(img) { font-family: var(--k-font); }
 /* 명예의 전당 : 순위 줄 · «내 기록» 상자 = 키트 목록 줄 그림 (빨간 네모 테 없앰) */

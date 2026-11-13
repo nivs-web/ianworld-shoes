@@ -1,5 +1,5 @@
-/* 사이트 공용 글꼴 = 갈무리11 굵게 (Galmuri11-Bold · quiple · OFL · 현대 한글 11,172자 전부) — 대표님 11/14 «Pretendard 쓴 곳 전부 갈무리11 굵게로 통일» · 굵기 100~900 어디에나 이 한 장(가짜 굵게 안 만듦) */
-@font-face { font-family: 'Galmuri11'; src: url('https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11-Bold.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+/* 사이트 공용 글꼴 = 갈무리11 보통 (Galmuri11 · quiple · OFL · 현대 한글 11,172자 전부) — 대표님 11/14 «Pretendard 쓴 곳 전부 갈무리11 굵게로 통일» · 굵기 100~900 어디에나 이 한 장(가짜 굵게 안 만듦) */
+@font-face { font-family: 'Galmuri11'; src: url('https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
 /* 픽셀 렌더링 규칙 — 이 파일의 값은 건드리지 않는다. (CLAUDE.md §3-1) */
 
 :root {
