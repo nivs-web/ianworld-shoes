@@ -1,0 +1,11 @@
+/* 모든 창 머리 현판 통일 (대표님 11/14) :
+ *  ① 빨간 현판 폭 = 창 폭의 50% (글씨 길이와 상관없이)
+ *  ② X 단추 = 늘 창 오른쪽 위에 고정 · 살짝 크게
+ *  ③ 제목 글씨 한 단계 크게 (현판 밖으로 튀어나와도 됨)
+ *  X 는 현판 안 자식이라 현판 폭(=창의 50%) 기준 % 로 창 오른쪽 끝을 잡는다 : 창 오른쪽 끝 = 현판 왼쪽 + 150% */
+.dialog[class*="idg-"][class*="idg-"] > .idg-how-title { width: calc((100% + 2 * var(--tp, 38px)) * .5) !important; min-width: 0 !important; max-width: none !important; box-sizing: border-box; align-self: center; white-space: nowrap; overflow: visible; font-size: 19px; text-align: center; }
+.dialog[class*="idg-"][class*="idg-"] > .idg-how-title > .idg-k-close { position: absolute !important; left: auto !important; right: auto !important; top: -3px !important; margin: 0 !important; transform: none !important;
+  font-size: 18px; width: 2.4em; height: 2.4em; left: calc(150% - 2.4em - (var(--tp, 38px) - 6px) - 5px) !important;   /* 창 테두리 안쪽(잘리지 않는 자리)에 붙임 */ z-index: 8; }
+.dialog[class*="idg-"][class*="idg-"] > .idg-how-title > .idg-k-close:active { transform: translateY(1px) !important; }
+@media (max-height: 560px) { .dialog[class*="idg-"] { --tp: 30px; } .dialog[class*="idg-"][class*="idg-"] > .idg-how-title { font-size: 17px; } .dialog[class*="idg-"][class*="idg-"] > .idg-how-title > .idg-k-close { font-size: 16px; } }
+@media (orientation: landscape) and (min-height: 561px) { .dialog[class*="idg-"][class*="idg-"] > .idg-how-title { font-size: max(19px, 2.4vh); } }

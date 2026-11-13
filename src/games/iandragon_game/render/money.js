@@ -11,6 +11,7 @@
  */
 import '../../../styles/idg-kit.css';      /* 키트 먼저 → 서브 창 다듬기(키트를 옛 창에 입힘)가 뒤에 와서 이긴다 */
 import '../../../styles/idg-subwin.css';
+import '../../../styles/idg-titlebar.css';
 
 export const COIN_ICON = '/assets/iandragon_game/ai/ui/coin.svg';
 export const GEM_ICON = '/assets/iandragon_game/ai/ui/gem.svg';
