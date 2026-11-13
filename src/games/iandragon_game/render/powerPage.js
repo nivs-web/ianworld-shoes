@@ -224,7 +224,11 @@ export function powerPage(h, o) {
       if (mains.length) {
         const strip = h('div', 'idg-pp-strip');
         mains.forEach((bt, k) => { const b = mkBtn(bt, k === 0 ? ' idg-pp-go' : ''); if (k === 0) { const ic = h('span', 'ico'); if (/전투/.test(bt[0])) { const im = h('img'); im.src = `${AI}result/ico_fight.webp`; im.alt = ''; im.draggable = false; ic.append(im); } else ic.innerHTML = RETRY_SVG; b.replaceChildren(ic, h('span', 'lb', bt[0])); } strip.append(b); });
-        if (o.exit) strip.append(exitBtn(' idg-pp-back')); else if (closeIdx >= 0) strip.append(mkBtn(o.buttons[closeIdx], ' idg-pp-back'));   /* 3차 : «돌아가기» → «나가기»(로비) · 결과 창으로는 오른쪽 위 닫기 X */
+        /* 11/13 대표님 : 전투 개시 아래로 · 길게 → «로비로»(나가기 그림) → 맨 아래 «X 창닫기»(결과 창으로 · 오른쪽 위 닫기 X 와 같은 동작) — 둘 다 금테 없는 보라 단추 */
+        const sub = h('div', 'idg-pp-subs');
+        if (o.exit) { const lb = exitBtn(' idg-pp-back'); lb.querySelector('.lb').textContent = '로비로'; sub.append(lb); }
+        if (closeIdx >= 0) { const cb = mkBtn(o.buttons[closeIdx], ' idg-pp-back idg-pp-close'); const ic = h('i', 'ico'); ic.innerHTML = X_SVG; cb.replaceChildren(ic, h('span', 'lb', '창닫기')); sub.append(cb); }
+        strip.append(sub);   /* 3차 : «돌아가기» → «나가기»(로비) · 결과 창으로는 오른쪽 위 닫기 X */
         grid.append(strip);
       }
       box.replaceChildren(top, grid, ...(t ? [t] : []));
