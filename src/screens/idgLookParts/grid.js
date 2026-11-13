@@ -6,6 +6,7 @@
 import { el } from '../ui.js';
 import { kitBtn } from '../idgKit.js';
 import { card, list, line, lockLine, snd } from '../shopPanels/_ui.js';
+import { ICON } from '../shopPanels/_data.js';
 import { RARITY, stars } from './catalog.js';
 
 const PLACE = '곧 새 물건이 들어와요';   /* 임시 : 오라 · 펫 · 지붕 · 정문 · 앞마당은 아직 물건(그림)이 없다 */
@@ -18,6 +19,12 @@ const PLACE = '곧 새 물건이 들어와요';   /* 임시 : 오라 · 펫 · �
 export function itemGrid(items, o) {
   const root = el('div.idg-lg');
   const cards = [];
+  /* 세로(작은 카드) : 효과 한 줄 · 잠김 안내는 카드 대신 이 설명 줄에 — 카드를 누르면 채워진다(가로는 카드 안에 그대로 있어 이 줄을 숨김) */
+  const desc = el('div.idg-lg-desc', { role: 'status', 'aria-live': 'polite' });
+  const say = (it) => {
+    desc.replaceChildren(el('b', it.name), ...(it.fx ? [el('span', it.fx)] : []),
+      ...(it.owned ? [] : [lockLine(it.lock || '아이템 샵에서 팔아요'), ...(o.goShop ? [kitBtn({ kind: 'purple', size: 'sm', text: '샵 가기', cls: 'idg-lg-go', onClick: (e) => { e.stopPropagation(); o.goShop(); } })] : [])]));
+  };
   const mk = (it) => {
     const r = it.rarity ? RARITY[it.rarity - 1] : null;
     const l1 = r ? el('span.stars', { style: { '--rc': r.c } }, [stars(it.rarity), el('small', ` ${r.n}`)]) : it.sub || ' ';
@@ -27,9 +34,13 @@ export function itemGrid(items, o) {
       foot: it.owned ? [] : [lockLine(it.lock || '아이템 샵에서 팔아요'), ...(o.goShop ? [kitBtn({ kind: 'purple', size: 'sm', text: '샵 가기', cls: 'idg-lg-go', onClick: (e) => { e.stopPropagation(); o.goShop(); } })] : [])],
     });
     if (r) c.style.setProperty('--rc', r.c), c.classList.add(`r${it.rarity}`);
+    if (!it.owned) {
+      c.querySelector('.idg-sp-top')?.append(el('img.idg-lg-lockmini', { src: ICON.lock, alt: '', draggable: 'false' }));
+      c.addEventListener('click', () => { snd('sfx_menu_select'); say(it); });
+    }
     if (it.owned) {
       c.classList.add('pick'); c.tabIndex = 0; c.setAttribute('role', 'button');
-      const go = () => { snd('sfx_menu_select'); o.onPick(o.toggle || !o.isOn(it.id) ? it.id : null); };
+      const go = () => { snd('sfx_menu_select'); say(it); o.onPick(o.toggle || !o.isOn(it.id) ? it.id : null); };
       c.onclick = go;
       c.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
     }
@@ -47,7 +58,7 @@ export function itemGrid(items, o) {
   }
   nodes.push(...owned.map(mk), ...rest.map(mk));
   if (!items.length) root.append(el('div.idg-lg-empty', null, [el('i'), el('span', PLACE)]));
-  root.append(list(nodes));
+  root.append(list(nodes), desc);
   root.mark = () => {
     for (const { id, node } of cards) {
       const on = o.isOn(id || null);

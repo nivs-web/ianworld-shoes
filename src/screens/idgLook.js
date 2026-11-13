@@ -11,7 +11,7 @@
  */
 import { el, button, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
-import { kitTabs, kitKeepScroll } from './idgKit.js';
+import { kitTabs, kitKeepScroll, kitClose } from './idgKit.js';
 import { LOOKS, TITLES, encodeLook, decodeLook, artOf } from '../games/iandragon_game/data/looks.js';
 import { LEADERS } from '../games/iandragon_game/data/leaders.js';
 import { leaderFor, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
@@ -149,7 +149,7 @@ export function showLook({ idg, save, onClose }) {
   switchBig('dragon');
 
   const wrap = el('div.idg-lk', null, [side, list]);
-  const box = el('div.dialog.idg-look.idg-look2.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '꾸미기'), wrap, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-look.idg-look2.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['꾸미기', kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X (아래 단추가 목록을 가리지 않게) */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   let done = false;
   const ended = () => { if (done) return; done = true; live.kill(); onClose?.(); };   // 닫으면(뒤로가기 포함) 로비 다시 그리기 — 무대 드래곤 · 코인 · 젬
