@@ -31,14 +31,14 @@ export const SHOP_SLOT = {
   yard: { name: '앞마당', big: 'castle', look: false },
 };
 
-/** 등급 6단계 (테 색은 idg-shop.css 의 .r-<id>) */
+/** 등급 6단계 (테 색은 idg-shop.css 의 .r-<id> · stars = 카드에 보이는 별 수 ★1 보통 ~ ★6 신화) */
 export const RARITY = {
-  common: { name: '보통', pct: 0.5 },
-  uncommon: { name: '고급', pct: 1 },
-  rare: { name: '희귀', pct: 1.5 },
-  epic: { name: '영웅', pct: 2 },
-  legend: { name: '전설', pct: 2.5 },
-  myth: { name: '신화', pct: 3 },
+  common: { name: '보통', pct: 0.5, stars: 1 },
+  uncommon: { name: '고급', pct: 1, stars: 2 },
+  rare: { name: '희귀', pct: 1.5, stars: 3 },
+  epic: { name: '영웅', pct: 2, stars: 4 },
+  legend: { name: '전설', pct: 2.5, stars: 5 },
+  myth: { name: '신화', pct: 3, stars: 6 },
 };
 
 /** 꾸미기 효과 한 줄 (IDG_COLLECTION_PLAN §3.3 표 — 기획값의 1/5) */

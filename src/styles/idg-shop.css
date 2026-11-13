@@ -57,6 +57,8 @@
 .idg-shop-card.r-myth { border-color: transparent; border-image: linear-gradient(90deg, #ff4d4d 0 16.66%, #ffa94d 0 33.33%, #ffe14d 0 50%, #6bdc6b 0 66.66%, #4da6ff 0 83.33%, #a56bff 0) 3; }   /* 신화 = 무지개 띠(6단 도트) */
 .idg-shop-artwrap { position: relative; width: 100%; aspect-ratio: 1; max-height: 5.2em; display: flex; align-items: center; justify-content: center; background: #150d27; box-shadow: inset 0 0 0 1px var(--k-o); overflow: hidden; }
 .idg-shop-artwrap .idg-k-lock { position: absolute; right: .1em; bottom: .1em; width: 1.2em; height: 1.2em; }
+.idg-shop-stars { position: absolute; left: .15em; top: .15em; z-index: 2; display: flex; gap: 1px; pointer-events: none; }
+.idg-shop-stars img { width: .8em; height: .8em; object-fit: contain; image-rendering: pixelated; }
 .idg-shop-art { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
 .idg-shop-art img { width: 100%; height: 100%; object-fit: contain; }
 .idg-shop-art i { font-style: normal; font-size: .8em; font-weight: 800; color: var(--k-mute); }

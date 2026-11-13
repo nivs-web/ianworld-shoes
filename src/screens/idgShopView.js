@@ -20,6 +20,7 @@ import { CONSUMABLES, CONS_MAX, todayKst, encodeLook, decodeLook } from '../game
 import { SHOP_SLOT, RARITY, itemsOf, dealsOf, dealPrice, isOwned, isWorn, stateOf, canPay, lockText } from './shopCatalog.js';
 
 const META = '/assets/iandragon_game/ai/meta/';
+const STAR = '/assets/iandragon_game/ai/result/star_on.webp';   // 등급 별 (결과 창 별과 같은 그림)
 /* 패널 파일 — 있으면 처음 열 때 받는다(따로 묶음). 없으면 빈 묶음 */
 const PANELS = import.meta.glob('./shopPanels/*.js');
 const panelPath = (name) => `./shopPanels/${name}.js`;
@@ -123,8 +124,8 @@ export function showShop({ idg, save, onClose }) {
     else if (fresh.has(it.key) && !worn) foot = kitBtn({ kind: 'green', text: '바로 입기', size: 'sm', onClick: () => equip(it) });
     else foot = kitBtn({ kind: 'purple', text: worn ? '입는 중' : '가졌어요', size: 'sm', disabled: true });
     const stateCls = st === 'owned' ? 'got' : st === 'locked' ? 'locked' : (canPay(cur, pr) ? 'buy' : 'buy poor');
-    return el(`div.idg-shop-card.r-${it.rarity}.${stateCls.split(' ').join('.')}`, { role: 'group', 'aria-label': `${it.name} · ${RARITY[it.rarity].name}${st === 'locked' ? ' · 잠김' : st === 'owned' ? ' · 가졌어요' : ''}` }, [
-      el('div.idg-shop-artwrap', null, [artBox(it), st === 'locked' ? kitLock() : null]),
+    return el(`div.idg-shop-card.r-${it.rarity}.${stateCls.split(' ').join('.')}`, { role: 'group', 'aria-label': `${it.name} · ${RARITY[it.rarity].name} ★${RARITY[it.rarity].stars}${st === 'locked' ? ' · 잠김' : st === 'owned' ? ' · 가졌어요' : ''}` }, [
+      el('div.idg-shop-artwrap', null, [artBox(it), el('span.idg-shop-stars', { 'aria-hidden': 'true' }, Array.from({ length: RARITY[it.rarity].stars }, () => el('img', { src: STAR, alt: '', draggable: false }))), st === 'locked' ? kitLock() : null]),
       el('b.idg-shop-name', it.name),
       el('span.idg-shop-fx', it.fx),
       sale && st === 'buy' ? el('i.idg-shop-sale', '30%') : null,
