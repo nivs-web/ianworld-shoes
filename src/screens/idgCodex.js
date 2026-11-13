@@ -54,7 +54,7 @@ export function showCodex(go = {}) {
   const met = new Set();
   for (const st of STAGES) if (st.g <= Math.min(g.cleared, LAST_STAGE)) for (const l of st.lines) met.add(l.id);
   const allZ = [...new Set(STAGES.filter((s) => s.g <= LAST_STAGE).flatMap((s) => s.lines.map((l) => l.id)))];
-  const DR = Object.keys(UNITS).filter((id) => UNITS[id].rar !== 'story' || DRAGON_ORDER.includes(id));
+  const DR = Object.keys(UNITS).filter((id) => (UNITS[id].rar !== 'story' || DRAGON_ORDER.includes(id)) && !['secret', 'myth'].includes(UNITS[id].rar));   // «?» 드래곤은 도감에 그대로 늘어놓지 않는다(비밀 · catalog.mysteryView 카드는 화면 담당이 붙임 · ⑤ 임시로 숨김)
   const haveD = (id) => story.includes(id) || (UNITS[id].rar !== 'story' && !!g.units[id]);
   const joinAt = {};   /* 스토리 용 : 몇 판을 깨면 함께하나 */
   for (let n = 1; n <= LAST_STAGE + 1; n++) for (const id of unlockedBefore(n).dragons) if (!joinAt[id]) joinAt[id] = n;

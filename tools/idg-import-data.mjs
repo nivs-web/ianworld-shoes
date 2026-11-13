@@ -10,7 +10,7 @@
  *  2. src/games/iandragon_game/data/{units,enemies,leaders,skills,wallet,econ}.js · data/stages/w01~w10.js · data/stages/index.js
  *     + data/stages/hard.js · master.js (어려움 · 초고수 100판씩) · data/stages/diffLoad.js (그 둘을 따로 묶음으로 불러옴)
  *  3. src/games/iandragon_game/data/artManifest.js — 1차(월드 1~5)에 필요한 그림 프레임 이름 (팀 계획서 2.1)
- *  4. tools/idg-golden.json · tools/idg-golden-diff.json — 계산기 golden.js 가 뽑은 정답표 (보통 300 · 어려움/초고수 60, `npm run qa:idg-core` 가 대조)
+ *  4. tools/idg-golden.json · tools/idg-golden-diff.json · tools/idg-golden-castle.json — 계산기 golden.js 가 뽑은 정답표 (보통 300 · 어려움/초고수 60 · 키우기 30 + «?» 10, `npm run qa:idg-core` 가 대조)
  */
 
 import fs from 'node:fs';
@@ -169,5 +169,9 @@ const gdp = path.join(SIM, 'golden.diff.json');   // 어려움 · 초고수 정�
 if (!fs.existsSync(gdp)) fail('계산기에 golden.diff.json 이 없다 — 먼저 `node golden.js`');
 fs.copyFileSync(gdp, path.join(ROOT, 'tools/idg-golden-diff.json'));
 files.push('tools/idg-golden-diff.json');
+const gcp = path.join(SIM, 'golden.castle.json');   // 드래곤캐슬 키우기 30 · «?» 드래곤 10 (2026-11-13 ⑤)
+if (!fs.existsSync(gcp)) fail('계산기에 golden.castle.json 이 없다 — 먼저 `node golden.js`');
+fs.copyFileSync(gcp, path.join(ROOT, 'tools/idg-golden-castle.json'));
+files.push('tools/idg-golden-castle.json');
 
 console.log(`옮김 ${files.length}개 · 코어 줄 대조 OK (${want.length}줄) · 그림 프레임 ${names.length}개 (용 ${dragons.length} · 좀비 ${[...enemySet].filter((i) => !isBoss(i)).length} · 보스 ${[...enemySet].filter(isBoss).length} · 리더 ${leaders.length})`);

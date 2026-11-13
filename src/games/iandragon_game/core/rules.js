@@ -14,6 +14,8 @@ const K = {
   RAGE_TIME: 8, RAGE_ATK: 1.5, RAGE_SPEED: 1.3, // 포효 : 적 전체 넉백 + 8초간 아군 공격 ×1.5 · 이동 ×1.3
   BURROW_SEE: 220, BURROW_TIME: 1.2,            // 땅굴 : 아군이 220wu 안에 보이면 1.2초 숨었다가 전선 뒤로
   SHOCK_MUL: 2,                     // 보스 등장 충격파 : 넉백 시간 2배(=180wu)
+  GUARD_FLY: 0.3, CANNON_FLY: 0.5,  // 드래곤캐슬 : 수호 불꽃 · 포탄이 날아가는 시간(쏜 자리에 떨어져 둘레를 친다)
+  GUARD_VS: ['ghost', 'shadow'],    // 브레스 색 «유령 · 그림자에 +» 가 붙는 속성
   PVP_BOUNTY: 0.2,                  // 대전 : 상대 유닛 처치 시 그 유닛 비용의 20%
 };
 
@@ -50,7 +52,10 @@ function hasTrait(list, tr) {
   return list.includes(tr);
 }
 
-const ZERO_BONUS = { income: 1, walletMax: 1, startMoney: 0, baseHp: 1, breathDmg: 1, breathCharge: 1, cooldown: 1, bounty: 1, atk: 1, hp: 1 };
+// 드래곤캐슬 키우기(2026-11-13) 키 : guardDmg 수호 불꽃 × · breathRange 브레스 사거리 × · bossCap 브레스 한 번이 보스에게 주는 피해 ≤ 보스 최대 체력 × (0 = 없음)
+//   baseArmor 기지가 받는 피해 × · baseRegen 기지 초당 회복(최대 체력 비율) · thorns 기지를 때린 적에게 되돌림 비율 · guardBounty 불(수호 불꽃 · 브레스)로 잡은 불씨 ×
+const ZERO_BONUS = { income: 1, walletMax: 1, startMoney: 0, baseHp: 1, breathDmg: 1, breathCharge: 1, cooldown: 1, bounty: 1, atk: 1, hp: 1,
+  guardDmg: 1, breathRange: 1, bossCap: 0, baseArmor: 1, baseRegen: 0, thorns: 0, guardBounty: 1 };
 
 const targetable = u => u.alive && u.corpseT <= 0 && u.burrowT <= 0 && u.state !== 'kb';
 function knock(u, mult) { if (u.def.kbImmune) return; u.state = 'kb'; u.t = K.KB_TIME * (mult || 1); }

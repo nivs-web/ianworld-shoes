@@ -15,6 +15,8 @@ import { SPOTS } from './funSpots.js';
 import { px } from './rot.js';
 import { createAmbient } from './ambient.js';
 import { createBossFx } from './bossFx.js';
+import { createGuardFx } from './guardFx.js';   // 수호 불꽃 · 대포 · 경보 종 (⑤ · 코어 사건 S.ev 만 읽음)
+import { BREATH_PAL } from '../data/lookFx.js';
 import { BREATH_COLORS } from '../data/looks.js';
 import { lightsFor, fxFrames, makeBreath, tileMirror } from './living.js';
 import { lanesFor, laneY } from './lanes.js';
@@ -314,6 +316,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     solaris: { c: [0xfff6c0, 0xffd84a], vy: -20, g: 0, r: 5, ray: true },
   };
   const BS = BREATH[leader] || BREATH.novart;
+  const guardFx = createGuardFx({ layer: fx, M, gy: GC, rigs: [lead, lead2], castles: [nest, tower], breath: [look.breath, lookR.breath], pal: { ...BREATH_PAL, ...BREATH_COLORS } });   // 드래곤캐슬 연출 (guardFx.js)
   const bossFx = createBossFx({ layer: app.stage, fx, M, GY: GC, band: [S0 - 10, S1 + 8], view, artOf: (def) => artOf(def._art), shake: (t) => { shakes.screen = Math.max(shakes.screen, t); } });   // 보스 컷인 · 큰 공격 경고 (bossFx.js)
 
   /* 상태 아이콘 : 약해짐(보라) > 되살아날 유령 > 방패 > 안 밀림 > 독 공격 > 정화 공격 */
@@ -627,7 +630,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       lastS = S;
       if (S.stage.fog) { let a = 0; for (const u of S.units) if (u.alive && u.side === 0) a = Math.max(a, u.x); const fx0 = M + a + 260; fog.clear(); for (let i = 0; i < 6; i++) fog.rect(fx0 + i * 30, 0, FIELD, 660).fill({ color: 0x8a90b8, alpha: 0.16 }); }
       syncUnits(S, dt); bases(S, dt); effects(S, dt); ending(S, dt); camera(S, dt);
-      fun.update(dt); amb.update(dt); bossFx.update(S, dt, V); if (living) for (const b of living) b.update(dt);
+      fun.update(dt); amb.update(dt); bossFx.update(S, dt, V); guardFx.update(S, dt); if (living) for (const b of living) b.update(dt);
       if (lead) lead.update(dt);
       if (lead2) lead2.update(dt);
       broodUpdate();   // 알 · 앞 짚 · 리더가 둥지(흔들림 · 금 간 그림)를 따라감
@@ -644,7 +647,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     destroy() {
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('wheel', onWheel); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp); window.removeEventListener('blur', onUp);
-      bossFx.destroy(); root.destroy({ children: true });
+      guardFx.destroy(); bossFx.destroy(); root.destroy({ children: true });
     },
   };
   return api;

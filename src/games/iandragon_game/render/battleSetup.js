@@ -12,6 +12,7 @@ import { STAGES } from '../data/stages/index.js';
 import { LEADERS } from '../data/leaders.js';
 import { ENEMIES } from '../data/enemies.js';
 import { MASTER_ON } from '../data/features.js';   // 초고수 전면 취소 스위치 (11/13)
+import { upgradeLoad, resolveLeader, gearLoad, GUARD, BREATH_UP } from '../data/upgrades.js';   // 드래곤 · 드래곤캐슬 키우기 (IDG_UPGRADES_SPEC §10 · ⑤)
 import { step, createBattle } from '../core/index.js';
 
 /** 용이 열리는 차례 (기획서 9.5) */
@@ -76,8 +77,9 @@ export function bonusFor(w, save) {
   for (const k of Object.keys(ref)) out[k] = Math.max(ref[k], mine[k] ?? ref[k]);
   return out;
 }
-/** 리더 : 저장값 'auto' 면 월드 추천 리더, 아니면 고른 리더(연 것만 · 결정 D8) */
-export const leaderFor = (stage, save) => { const want = save?.leader; const open = Math.floor((save?.cleared || 0) / 10); return want && want !== 'auto' && LEADERS[want] && LEADERS[want].unlock <= open ? want : LEADER_AT[stage.w - 1] || 'novart'; };
+/** 리더 : 가진 대장 드래곤(lead.own · IDG_UPGRADES_SPEC §2)이 저장돼 있으면 그 안에서만 — 고른 것 → 월드 추천 → 가진 것 맨 앞 («자동»도 가진 것만).
+ *  lead.own 이 아직 없는 저장(옛 저장 · 저장 정리 코드가 합쳐지기 전)은 지금 규칙 : 저장값 'auto' 면 월드 추천 리더, 아니면 고른 리더(연 것만 · 결정 D8) */
+export const leaderFor = (stage, save) => { if (Array.isArray(save?.lead?.own)) return resolveLeader(save, LEADER_AT[stage.w - 1] || 'novart'); const want = save?.leader; const open = Math.floor((save?.cleared || 0) / 10); return want && want !== 'auto' && LEADERS[want] && LEADERS[want].unlock <= open ? want : LEADER_AT[stage.w - 1] || 'novart'; };
 
 export function makeLoads(stage, save) {
   const un = unlockedBefore(Math.max(stage.g, Math.min(LAST_STAGE, (save?.cleared || 0) + 1)));   // 다시 하기도 지금까지 연 만큼 (코드 검토 4)
@@ -88,12 +90,17 @@ export function makeLoads(stage, save) {
   const ids = mine.length >= 2 ? mine : pickDeck(un.dragons, un.deckCap, stage.w, stage.costMax);
   const deck = ids.map((id) => ({ id, lv: lvOf(id) }));
   const leader = leaderFor(stage, save);
+  /* 드래곤 · 드래곤캐슬 키우기 (IDG_UPGRADES_SPEC §10) — 판 시작 때 한 번 숫자로 굳힌다(전투 중에는 안 부름). 꾸미기 효과는 난이도에 따라(초고수 0) */
+  const U = upgradeLoad(save, { diff: stage.diff || 'normal', mode: 'stage', leader });
+  const B0 = DIFF[stage.diff]?.stages ? realBonus(save) : bonusFor(stage.w, save);
+  const bonus = { ...B0, atk: B0.atk * U.atk, hp: B0.hp * U.hp, baseHp: B0.baseHp * U.baseHp, breathDmg: B0.breathDmg * U.breathDmg, breathCharge: B0.breathCharge * U.breathCharge,
+    guardDmg: U.guardDmg, baseArmor: U.baseArmor, baseRegen: U.baseRegen, thorns: U.thorns, breathRange: U.breathRange, bossCap: U.bossCap, guardBounty: U.bounty };
   return {
     deck,
     skills: un.skills,
     speedMax: un.speedMax,
     /* 어려움 · 초고수 = 내가 실제로 쌓은 보너스만 (계산기 맞춤도 «내 키우기» 기준 · 기준 보너스를 덤으로 주면 «안 키움»이 권장 키우기만큼 세진다 · §B-1) */
-    loads: [{ side: 0, deck, leader, leaderLv: Math.max(1, stage.expLevel || 1), skills: un.skills, bonus: DIFF[stage.diff]?.stages ? realBonus(save) : bonusFor(stage.w, save) }],
+    loads: [{ side: 0, deck, leader, leaderLv: Math.max(1, stage.expLevel || 1), skills: un.skills, bonus, guard: U.guard, gear: U.gear, ...(U.cannon ? { cannon: U.cannon } : {}), ...(U.bell ? { bell: U.bell } : {}) }],
   };
 }
 
@@ -166,19 +173,28 @@ export function pvpStage() {
   const b = stageByNo(PVP_OPEN);
   return { ...b, id: 'VS', name: '용 대결', g: 0, s: 0, gim: null, fog: false, pvp: true, lines: [], length: 1000, baseHp: 3000, limit: 180, fever: 90, star2: 0, star3: 0 };
 }
+/** 대결 덱에 한 장만 : 전설 · «?» 드래곤(어려움 secret · 초고수 myth)을 합쳐 1장 */
+const BIG_RAR = ['legend', 'secret', 'myth'];
 export function pvpLoad(ld, side) {
   const seen = new Set(); let legend = 0;
-  const deck = ld.deck.filter((d) => { if (seen.has(d.id)) return false; if (UNITS[d.id]?.rar === 'legend' && legend++) return false; seen.add(d.id); return true; }).slice(0, 6).map((d) => ({ id: d.id, lv: 20 }));
-  return { side, deck, leader: ld.leader, leaderLv: 20, skills: (ld.skills || []).slice(0, 2), bonus: {} };
+  const deck = ld.deck.filter((d) => { if (seen.has(d.id)) return false; if (BIG_RAR.includes(UNITS[d.id]?.rar) && legend++) return false; seen.add(d.id); return true; }).slice(0, 6).map((d) => ({ id: d.id, lv: 20 }));
+  /* 모두 같은 조건 (IDG_DRAGON_CASTLE_PLAN §9) : 키우기 · 꾸미기 · 장비 없음 · 브레스 사거리 지금 그대로 · 수호 불꽃만 기본 세기로 양쪽 똑같이 */
+  return { side, deck, leader: ld.leader, leaderLv: 20, skills: (ld.skills || []).slice(0, 2), bonus: {}, guard: { ...GUARD, slow: 0, vs: 0 } };
 }
 
 /** 멀티 버전 (멀티 기획 3.5) — 전투 숫자(데이터)의 짧은 해시. 두 기기가 다르면 계산이 어긋나므로 시작하지 않는다 */
 export const NET_V = (() => { const s = JSON.stringify([UNITS, ENEMIES, LEADERS, SKILLS, STAGES.length, String(step).length, String(createBattle).length]); /* 데이터 + 코어 코드 길이 */ let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); })();
 
-/** 멀티 편성 → 글자 (방 `players/$uid/ld` · 500자 이하) */
+/** 멀티 편성 → 글자 (방 `players/$uid/ld` · 500자 이하)
+ *  같이 깨기도 키우기는 각자 자기 것 (§9) : 보너스는 기본값(1 · 0)이 아닌 것만 싣고(글자 줄이기 — 코어가 없는 키를 기본값으로 채운다),
+ *  울타리 · 수리 · 대포 · 종 숫자는 싣지 않고 끼운 장비만 글자로 싣는다(받는 쪽이 gearLoad 로 다시 만든다).
+ *  u = [수호 불꽃 느려짐(초), 유령/그림자 +, 장비 글자 'c5f5b5'(c 대포 · f 울타리 · r 수리 · b 종 + 레벨)] */
+const LD_SKIP = new Set(['baseArmor', 'thorns', 'baseRegen', 'bossCap']);
+const GEAR_CH = { cannon: 'c', fence: 'f', repair: 'r', bell: 'b' }, CH_GEAR = { c: 'cannon', f: 'fence', r: 'repair', b: 'bell' };
 export function loadToLd(load, look = '') {
-  const b = {}; for (const [k, v] of Object.entries(load.bonus || {})) b[k] = Math.round(v * 1000) / 1000;
-  return JSON.stringify({ v: NET_V, o: String(look || '').slice(0, 80), d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b });
+  const b = {}; for (const [k, v] of Object.entries(load.bonus || {})) { const r = Math.round(v * 1000) / 1000; if (!LD_SKIP.has(k) && r !== (k === 'startMoney' ? 0 : 1)) b[k] = r; }
+  const g = load.guard, u = g ? [Math.round((g.slow || 0) * 100) / 100, Math.round((g.vs || 0) * 100) / 100, (load.gear || []).map((x) => (GEAR_CH[x.id] || '') + x.lv).join('')] : undefined;
+  return JSON.stringify({ v: NET_V, o: String(look || '').slice(0, 80), d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b, ...(u ? { u } : {}) });
 }
 /** 글자 → 편성 (받은 값은 범위 안으로 자르고 확인 · 이상하면 null → 시작하지 않는다) */
 export function ldToLoad(str) {
@@ -188,8 +204,17 @@ export function ldToLoad(str) {
   for (const [id, lv] of o.d) { if (!UNITS[id] || seen.has(id)) return null; seen.add(id); deck.push({ id, lv: Math.max(1, Math.min(30, Math.round(lv) || 1)) }); }
   if (!LEADERS[o.l]) return null;
   const skills = (Array.isArray(o.k) ? o.k : []).filter((id) => SKILLS[id]).slice(0, 2);
-  const bonus = {}; for (const [k, v] of Object.entries(o.b || {})) if (Number.isFinite(v)) bonus[k] = Math.max(0, Math.min(k === 'startMoney' ? 2000 : 5, v));
-  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus, v: String(o.v || ''), look: typeof o.o === 'string' && /^[a-z0-9.]{0,80}$/.test(o.o) ? o.o : '' };
+  const bonus = {}; for (const [k, v] of Object.entries(o.b || {})) if (Number.isFinite(v) && !LD_SKIP.has(k)) bonus[k] = Math.max(0, Math.min(k === 'startMoney' ? 2000 : 5, v));
+  const up = {};
+  if (Array.isArray(o.u)) {   /* 드래곤캐슬 키우기 (같이 깨기) — 받은 값은 범위 안으로 · 장비는 표에 있는 것 · 겹침 없이 · 3칸까지 */
+    const cl = (v, hi) => Math.max(0, Math.min(hi, Number(v) || 0)), seenG = new Set(), gear = [];
+    for (const [, ch, n] of String(o.u[2] || '').slice(0, 12).matchAll(/([cfrb])(\d)/g)) { const id = CH_GEAR[ch]; if (seenG.has(id) || gear.length >= 3) continue; seenG.add(id); gear.push({ id, lv: Math.max(1, Math.min(5, Number(n) || 1)) }); }
+    const GL = gearLoad(gear);
+    if ('breathRange' in bonus) bonus.breathRange = Math.max(BREATH_UP.rng.base, Math.min(1, bonus.breathRange));
+    Object.assign(bonus, { baseArmor: GL.baseArmor, thorns: GL.thorns, baseRegen: GL.baseRegen, bossCap: BREATH_UP.bossCap });
+    Object.assign(up, { guard: { ...GUARD, slow: cl(o.u[0], 1), vs: cl(o.u[1], 0.5) }, gear, ...(GL.cannon ? { cannon: GL.cannon } : {}), ...(GL.bell ? { bell: GL.bell } : {}) });
+  }
+  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus, ...up, v: String(o.v || ''), look: typeof o.o === 'string' && /^[a-z0-9.]{0,80}$/.test(o.o) ? o.o : '' };
 }
 
 /** 별 : ★ 깨면 · ★★ star2 초 안 · ★★★ star3 초 안 (1배속 전투 시간) */

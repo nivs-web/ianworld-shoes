@@ -84,7 +84,7 @@ export const castleOf = (lv) => CASTLE_LV[Math.max(1, Math.min(10, Number(lv) ||
 /* ───────── 드래곤캐슬 장비 4종 Lv1 ~ 5 (§6.2) ───────── */
 export const GEAR_IDS = ['cannon', 'fence', 'repair', 'bell'];
 export const GEAR = {
-  cannon: { name: '대포', at: '지붕', every: 6, splash: 80, kb: 0.3, dmg: [80, 110, 140, 170, 200] },
+  cannon: { name: '대포', at: '지붕', every: 6, range: 600, splash: 80, kb: 0.3, dmg: [80, 110, 140, 170, 200] },   // range = 내 캐슬 앞 이만큼 안의 가장 앞선 좀비 (⑤ 정함 · 피해는 대장 레벨 배율을 곱한다)
   fence: { name: '가시 울타리', at: '성문 앞', cut: [0.06, 0.09, 0.12, 0.15, 0.18], thorns: [0.2, 0.3, 0.4, 0.5, 0.6] },
   repair: { name: '수리 둥지', at: '캐슬 왼쪽 아래', regen: [0.002, 0.003, 0.004, 0.005, 0.006] },   // 1초에 최대 체력의 비율
   bell: { name: '경보 종', at: '종탑', freeze: [2, 2.5, 3, 3.5, 4], at1: 0.5, at2: 0.25 },          // 50% 아래로 처음 → 한 번 · Lv5 는 25% 에서 한 번 더
@@ -181,6 +181,19 @@ export function recommendNext(save, leaderId) {
   return null;
 }
 
+/** 끼운 장비 [{id,lv}] → 전투 숫자 (upgradeLoad · 멀티 편성 글자 ldToLoad 가 같이 쓴다) */
+export function gearLoad(gear) {
+  const G = {};
+  for (const x of Array.isArray(gear) ? gear : []) if (GEAR[x?.id] && !G[x.id]) G[x.id] = int(x.lv, 1, 5);
+  return {
+    baseArmor: G.fence ? 1 - GEAR.fence.cut[G.fence - 1] : 1,
+    thorns: G.fence ? GEAR.fence.thorns[G.fence - 1] : 0,
+    baseRegen: G.repair ? GEAR.repair.regen[G.repair - 1] : 0,
+    cannon: G.cannon ? { dmg: GEAR.cannon.dmg[G.cannon - 1], every: GEAR.cannon.every, range: GEAR.cannon.range, splash: GEAR.cannon.splash, kb: GEAR.cannon.kb } : null,
+    bell: G.bell ? { freeze: GEAR.bell.freeze[G.bell - 1], at: G.bell >= 5 ? [GEAR.bell.at1, GEAR.bell.at2] : [GEAR.bell.at1] } : null,
+  };
+}
+
 /** 대결 · 주간 습격 : 모두 같은 조건 (§9) — 수호 불꽃 기본 · 장비 없음 · 배율 1 · 브레스 사거리 지금 그대로(100%) */
 const FLAT = Object.freeze({
   leader: null, leadLv: 1, castleLv: 1, guard: { ...GUARD, slow: 0, vs: 0 }, gear: [],
@@ -204,7 +217,7 @@ export function upgradeLoad(save, opt = {}) {
   const L = lookBonus(save, diff);
   const leader = opt.leader && ownedLeads(save).includes(opt.leader) ? opt.leader : resolveLeader(save, opt.leader);
   const leadLv = leadLvOf(save, leader), castleLv = int(save?.castle?.lv ?? 1, 1, 10);
-  const gear = equippedGear(save), G = Object.fromEntries(gear.map((x) => [x.id, x.lv]));
+  const gear = equippedGear(save), GL = gearLoad(gear);
   const pow = int(save?.breathUp?.pow, 0, BREATH_UP.pow.max);
   return {
     leader, leadLv, castleLv, gear,
@@ -217,11 +230,7 @@ export function upgradeLoad(save, opt = {}) {
     breathCharge: L.charge,
     breathRange: breathRangeOf(save, leader, L.breathRange),
     bossCap: BREATH_UP.bossCap,
-    baseArmor: G.fence ? 1 - GEAR.fence.cut[G.fence - 1] : 1,
-    thorns: G.fence ? GEAR.fence.thorns[G.fence - 1] : 0,
-    baseRegen: G.repair ? GEAR.repair.regen[G.repair - 1] : 0,
-    cannon: G.cannon ? { dmg: GEAR.cannon.dmg[G.cannon - 1], every: GEAR.cannon.every, splash: GEAR.cannon.splash, kb: GEAR.cannon.kb } : null,
-    bell: G.bell ? { freeze: GEAR.bell.freeze[G.bell - 1], at: G.bell >= 5 ? [GEAR.bell.at1, GEAR.bell.at2] : [GEAR.bell.at1] } : null,
+    ...GL,
     bounty: L.bounty,
   };
 }
