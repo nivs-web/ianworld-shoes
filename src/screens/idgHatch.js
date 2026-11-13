@@ -9,7 +9,8 @@ import * as G from '../services/iandragonGame.js';
 import * as Sfx from '../audio/sfx.js';
 import { UNITS } from '../games/iandragon_game/data/units.js';
 import { hatch, EGG, RATES, PITY, RAR_KO } from '../services/iandragonHatch.js';
-import { kitWallet, kitPaper, kitPriceBtn } from './idgKit.js';   /* UI 키트 (11/12 · docs/IDG_DESIGN_STYLESHEET.md) */
+import { kitWallet, kitPaper, kitPriceBtn } from './idgKit.js';
+import { xTitle } from './idgXwin.js';   /* UI 키트 (11/12 · docs/IDG_DESIGN_STYLESHEET.md) */
 
 const AI = '/assets/iandragon_game/ai/';
 /* 게임 소리(겜팀장) — 부화장에서만 늦게 받는다 */
@@ -62,7 +63,7 @@ export function showHatch(onChange) {
   }
   drawInfo();
   stage.appendChild(el('div.idg-egg', null, [el('img', { src: `${AI}eggs/egg_rare.png`, alt: '', onerror: (e) => e.target.remove() })]));
-  const box = el('div.dialog.idg-hatch', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '부화장'), info, stage, btns, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-hatch.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('부화장', () => close()), info, stage, btns]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }

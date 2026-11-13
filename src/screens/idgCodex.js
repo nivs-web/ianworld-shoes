@@ -16,6 +16,7 @@ import { ENEMIES } from '../games/iandragon_game/data/enemies.js';
 import { STAGES } from '../games/iandragon_game/data/stages/index.js';
 import { unlockedBefore, LAST_STAGE, DRAGON_ORDER } from '../games/iandragon_game/render/battleSetup.js';
 import { RAR_KO, RATES } from '../services/iandragonHatch.js';
+import { xTitle } from './idgXwin.js';
 import { kitGauge, kitKeepScroll, kitClose } from './idgKit.js';   /* 키트 픽셀 게이지 · 스크롤 지키기 · 닫기 X (11/12 서브창2) */
 
 const AI = '/assets/iandragon_game/ai/';
@@ -23,7 +24,7 @@ const ART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant' };
 const RAR = { story: '스토리', ...RAR_KO };
 const CX = `${AI}codex/`;
 /* 카드 판 = kit/cx_card.webp (모은 것 · 금테) · kit/cx_card_off.webp (미수집 · 은테) — 모양은 idg-subwin.css «서브창2» (옛 ai/codex/card_tier_* 대신 · 11/12) */
-const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 쇠 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤 성'];
+const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 쇠 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤캐슬'];
 const SEEN_KEY = 'idgCodexSeen';
 const seen = (() => { try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]')); } catch { return new Set(); } })();
 const markSeen = (id) => { if (seen.has(id)) return; seen.add(id); try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen])); } catch { /* */ } };
@@ -120,11 +121,11 @@ export function showCodex(go = {}) {
       );
     };
     const step = (dlt) => { Sfx.play('sfx_menu_move'); k = (k + dlt + ids.length) % ids.length; show(); };
-    const box = el('div.dialog.idg-cx-detail', { onclick: (e) => e.stopPropagation() }, [
-      el('div.idg-how-title', `${TABS[tab]?.name || ''} 도감`),   /* 다른 창처럼 리본 현판 (11/12) */
+    const box = el('div.dialog.idg-cx-detail.idg-xw', { onclick: (e) => e.stopPropagation() }, [
+      xTitle(`${TABS[tab]?.name || ''} 도감`, () => { close(); redraw(); }),   /* 다른 창처럼 리본 현판 (11/12) */
       el('div.idg-cx-dwrap', null, [el('button.idg-cx-arrow', { type: 'button', onclick: () => step(-1), 'aria-label': '앞으로' }, [el('i.idg-px-arrow.l')]), stage, el('button.idg-cx-arrow', { type: 'button', onclick: () => step(1), 'aria-label': '다음' }, [el('i.idg-px-arrow.r')])]),
       info,
-      el('div.idg-row2', null, [(() => { const b = button('다시 듣기', () => sound(ids[k])); b.prepend(el('img.idg-btn-ico', { src: '/assets/iandragon_game/ai/lobby/ico_sound.png', alt: '' })); return b; })()   /* 🔊 글자 그림 → 도트 아이콘 */, button('닫기', () => { close(); redraw(); }, { primary: true })]),
+      el('div.idg-row2', null, [(() => { const b = button('다시 듣기', () => sound(ids[k])); b.prepend(el('img.idg-btn-ico', { src: '/assets/iandragon_game/ai/lobby/ico_sound.png', alt: '' })); return b; })()   /* 🔊 글자 그림 → 도트 아이콘 */]),
     ]);
     const overlay = el('div.dialog-overlay', { onclick: () => { close(); redraw(); } }, [box]);
     const close = presentOverlay(overlay);
@@ -191,14 +192,14 @@ export function showCodex(go = {}) {
     /* 11/12 서브창2 (대표님 «끌어서 구경이라는데 확대가 안 된다») : 그림을 누르면 큰 화면(전체 덮개)으로 — 화면 높이에 꽉 · 끌어서 구경 · 두 손가락 확대 */
     const strip = el('button.idg-cx-strip.zoomable', { type: 'button', 'aria-label': `${name} 크게 보기`, onclick: () => bigView(src, name) }, [el('img', { src, alt: '' }), el('i.idg-cx-zoom', { 'aria-hidden': 'true' })]);
     Audio.worldBgm(w);
-    const box = el('div.dialog.idg-cx-wdetail', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', name), el('div.idg-cx-tip', '그림을 눌러서 크게 보기'), strip, button('닫기', () => close())]);
+    const box = el('div.dialog.idg-cx-wdetail.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle(name, () => close()), el('div.idg-cx-tip', '그림을 눌러서 크게 보기'), strip]);
     const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
     const close = presentOverlay(overlay, () => Audio.stopBgm());
   }
 
   draw();
   let closeMain = null;
-  const box = el('div.dialog.idg-codex.idg-cx', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '도감'), tabsEl, prog, grid, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-codex.idg-cx.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('도감', () => close()), tabsEl, prog, grid]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
   closeMain = close;

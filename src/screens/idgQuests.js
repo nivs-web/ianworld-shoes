@@ -11,6 +11,7 @@
 import { el, button, presentOverlay } from './ui.js';
 import * as G from '../services/iandragonGame.js';
 import * as Sfx from '../audio/sfx.js';
+import { xTitle } from './idgXwin.js';
 import { kitWallet, kitRow, kitPriceBtn, kitBtn, kitGem, kitGauge, kitKeepScroll } from './idgKit.js';   /* UI 키트 (11/12 · docs/IDG_DESIGN_STYLESHEET.md) */
 import { QUESTS, questState, claim } from '../services/iandragonQuests.js';
 
@@ -68,7 +69,7 @@ export function showQuests(onChange) {
     drawHead();
   }
   drawAll();
-  const box = el('div.dialog.idg-nest.idg-quests', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '도전과제'), el('div.idg-q-head', null, [head, done, allBox]), list, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-nest.idg-quests.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('도전과제', () => close()), el('div.idg-q-head', null, [head, done, allBox]), list]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }

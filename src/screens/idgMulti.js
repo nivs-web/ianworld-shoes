@@ -12,6 +12,7 @@ import { seatsOf } from '../games/iandragon_game/net/roomBridge.js';
 import { makeLoads, stageByNo, loadToLd, ldToLoad, PVP_OPEN, PVP_DAY, NET_V } from '../games/iandragon_game/render/battleSetup.js';
 import { currentUser } from '../services/auth.js';
 import { decodeLook, titleOf } from '../games/iandragon_game/data/looks.js';
+import { xTitle } from './idgXwin.js';
 import { enterFullscreen } from '../core/fullscreen.js';   /* 11/12 대표님 «전투로 들어가는 단추는 무조건 전체 화면» — 판은 서버 응답 뒤에 열려 그때는 못 켜므로 누르는 순간에 켠다 */
 
 export function showMulti(onStart, rejoinCode = null) {
@@ -26,13 +27,13 @@ export function showMulti(onStart, rejoinCode = null) {
     const g = G.idg(), stageNo = Math.min(100, (g.cleared || 0) + 1);
     const input = el('input.idg-code', { type: 'text', inputmode: 'numeric', maxlength: 6, placeholder: '방 번호' });
     body.replaceChildren(
-      el('p.idg-multi-msg', `둘이 함께 ${G.stageLabel(stageNo)} 에 도전해요. 용은 각자 덱에서 나가요.`),
+      el('p.idg-multi-msg', `둘이 함께 ${G.stageLabel(stageNo)} 에 도전해요. 드래곤은 각자 덱에서 나가요.`),
       /* 빠른 시작 (대표님 «다른 게임처럼 방 번호 없이 바로») : 열린 방이 있으면 들어가고, 없으면 만들어 기다린다 */
       button('빠른 시작 · 같이 깨기', () => quick(false, stageNo), { primary: true }),
-      (g.cleared || 0) >= PVP_OPEN ? button('빠른 시작 · 용 대결', () => quick(true, 0), { primary: true, class: 'green' })   /* 키트 규칙 «한 창에 빨강은 하나» → 둘째는 초록 */ : '',
+      (g.cleared || 0) >= PVP_OPEN ? button('빠른 시작 · 드래곤 대결', () => quick(true, 0), { primary: true, class: 'green' })   /* 키트 규칙 «한 창에 빨강은 하나» → 둘째는 초록 */ : '',
       el('p.idg-multi-msg.sub', '친구와 방 번호로 만나기'),
       button('같이 깨기 방 만들기', () => make(stageNo)),
-      (g.cleared || 0) >= PVP_OPEN ? button(`용 대결 방 만들기 (오늘 보상 ${Math.max(0, PVP_DAY - (g.pvp?.day === new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) ? g.pvp.n : 0))}/${PVP_DAY}판 · 전적 ${g.pvp?.w || 0}승 ${g.pvp?.l || 0}패)`, () => make(0)) : el('p.idg-multi-msg', `용 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 열려요.`),
+      (g.cleared || 0) >= PVP_OPEN ? button(`드래곤 대결 방 만들기 (오늘 보상 ${Math.max(0, PVP_DAY - (g.pvp?.day === new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) ? g.pvp.n : 0))}/${PVP_DAY}판 · 전적 ${g.pvp?.w || 0}승 ${g.pvp?.l || 0}패)`, () => make(0)) : el('p.idg-multi-msg', `용 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 열려요.`),
       el('div.idg-multi-join', null, [input, button('들어가기', async () => {
         const c = input.value.trim(); if (!c) return;
         enterFullscreen();
@@ -68,7 +69,7 @@ export function showMulti(onStart, rejoinCode = null) {
     off = Room.subscribeRoom(c, async (room) => {
       if (!room || started) return;
       const uids = seatsOf(room);
-      if (room.idgStage === 0 && (G.idg().cleared || 0) < PVP_OPEN) { off?.(); Room.leaveRoom(c).catch?.(() => {}); msg(`용 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 할 수 있어요.`); return; }
+      if (room.idgStage === 0 && (G.idg().cleared || 0) < PVP_OPEN) { off?.(); Room.leaveRoom(c).catch?.(() => {}); msg(`드래곤 대결은 ${G.stageLabel(PVP_OPEN)} 을 깨면 할 수 있어요.`); return; }
       /* 내 편성을 한 번 올린다 (방 스테이지 기준 — 둘이 같은 판) */
       if (!sentLd) { sentLd = true; Room.publishIdg(c, { ld: loadToLd(makeLoads(stageByNo(room.idgStage || PVP_OPEN), G.idg()).loads[0], G.idg().look) }); }   // 대결(0)은 덱 6칸 판 기준
       who.replaceChildren(...uids.map((u, i) => { const t = titleOf(decodeLook(ldToLoad(room.players[u]?.ld || '')?.look || '').title); return el('div', `${i + 1}. ${room.players[u]?.nickname || '친구'}${t ? ` · ${t.name}` : ''}${u === room.hostUid ? ' (방장)' : ''}`); }));
@@ -90,7 +91,7 @@ export function showMulti(onStart, rejoinCode = null) {
   }
 
   if (rejoinCode) { Room.resetRoom(rejoinCode).catch?.(() => {}); wait(rejoinCode); } else menu();   // 한 판 더 : 같은 방을 대기 상태로 되돌리고 대기실로
-  const box = el('div.dialog.idg-nest', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', '친구랑 같이 깨기'), body, button('닫기', () => close())]);
+  const box = el('div.dialog.idg-nest.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('친구랑 같이 깨기', () => close()), body]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const closeO = presentOverlay(overlay);
   const close = () => { off?.(); closeO(); };
