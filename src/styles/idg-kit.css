@@ -170,9 +170,10 @@ button.idg-k-row:active { filter: brightness(1.12); }
   scrollbar-width: none; }
 .idg-k-scroll-in::-webkit-scrollbar { display: none; }
 .idg-k-more { position: absolute; left: 50%; bottom: -.15em; z-index: 3; width: 1.5em; height: 1.15em; margin-left: -.75em; pointer-events: none; display: none;
-  background: url(/assets/iandragon_game/ai/kit/more_arrow.webp) center / 100% 100% no-repeat; image-rendering: pixelated; animation: idgKMore 1.2s steps(2, jump-none) infinite; }
+  background: url(/assets/iandragon_game/ai/kit/more_arrow.webp) center / 100% 100% no-repeat; image-rendering: pixelated; animation: idgMoreBlink 1.4s ease-in-out infinite; }
 .idg-k-scroll.more .idg-k-more { display: block; }
-@keyframes idgKMore { 50% { transform: translateY(.22em); } }
+@keyframes idgMoreBlink { 0%, 100% { filter: brightness(.6); } 50% { filter: brightness(1); } }   /* 깜빡임 = 밝기만 (대표님 11/13) */
+.idg-k-scroll.more .idg-k-more { pointer-events: auto; cursor: pointer; }
 
 /* ── 픽셀 게이지 (11/12 서브창2) : 금테 홈(kit/gauge.webp · 원본 40×14 → 4배 · slice 4 원본 px (테 1 · 금 2 · 홈 경계 1)) + 채움 ──
  *  높이 1em 기준 : 원본 1px = 1/14em → 테 .286em · 안쪽 홈 .43em

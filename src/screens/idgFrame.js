@@ -7,6 +7,7 @@
  * 예전에는 제목 · 단추를 sticky 로 붙이고 뒤에 색 띠(#3f2a5a)를 깔아 가렸는데, 그 띠가 «버튼 뒤 진한 보라 상자»로 보였다.
  */
 import '../styles/idg-kit.css';      /* UI 키트 모양 (다른 보조 작 · 고치지 않음) */
+import { moreDown } from './idgMore.js';   /* «아래로 더 있음» 화살표 공용 규칙 (11/13) */
 import '../styles/idg-subwin.css';   /* 서브 창 다듬기 (11/12) — 키트를 옛 창(.dialog.idg-*)에 입히기 · 스크롤 표시 · 픽셀 바꿔 끼우기 */
 
 /* 스크롤 표시 (11/12 대표님 «목록이 닫기 단추 위에서 뚝 잘려 보인다 → 스크롤 영역임을 알 수 있게 · 그림자 대신 도트 테두리 / 화살표»)
@@ -20,7 +21,7 @@ export function watchMore(box, body, after = body) {
   const upd = () => {
     const over = body.scrollHeight - body.clientHeight;
     box.classList.toggle('scrolls', over > 2);
-    box.classList.toggle('more-down', over > 2 && over - body.scrollTop > 2);
+    box.classList.toggle('more-down', moreDown(body));
     box.classList.toggle('more-up', body.scrollTop > 2);
   };
   body.addEventListener('scroll', upd, { passive: true });

@@ -19,6 +19,7 @@ import { decodeLook, titleOf } from '../games/iandragon_game/data/looks.js';
 import { headCanvas } from './idgDressed.js';
 import { el, segmented, presentOverlay, toast } from './ui.js';
 import { crownImg } from './crown.js';
+import { moreDown } from './idgMore.js';   /* «아래로 더 있음» 화살표 공용 규칙 (11/13) */
 import * as Sfx from '../audio/sfx.js';
 import { get as getProfile } from '../services/profile.js';
 import { currentUser } from '../services/auth.js';
@@ -156,7 +157,7 @@ export function showHall(startKind = 'conquer') {   // startKind : 처음 열 �
   /* 11위 아래가 있으면 금 화살표 (키트 .idg-dlg-more 그림 · 맨 아래까지 내리면 숨김) */
   function updMore() {
     const over = list.scrollHeight - list.clientHeight;
-    listWrap.classList.toggle('more-down', over > 2 && over - list.scrollTop > 2);
+    listWrap.classList.toggle('more-down', moreDown(list));
   }
   list.addEventListener('scroll', updMore, { passive: true });
 

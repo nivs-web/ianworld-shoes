@@ -22,6 +22,7 @@ import { unlockedBefore, stageByNo, LAST_STAGE, makeLoads } from './battleSetup.
 import { breathStats } from './breathInfo.js';
 import { money } from './money.js';
 import { rotated } from './rot.js';
+import { moreDown } from '../../../screens/idgMore.js';   /* «아래로 더 있음» 화살표 공용 (11/13) */
 import { kitGauge } from '../../../screens/idgKit.js';   /* 키트 픽셀 게이지 (11/12 서브창2 · 체력 초록 · 공격 주황 · 사거리 파랑) */
 
 const AI = '/assets/iandragon_game/ai/';
@@ -207,14 +208,14 @@ export function powerPage(h, o) {
     box.classList.toggle('no-foot', !row);
     { const sb = box.querySelector('.idg-pp-sbody'); if (sb) { if (keepS) { sb.scrollTop = keepS; requestAnimationFrame(() => { sb.scrollTop = keepS; }); }
       /* 왼쪽 출전 칸도 넘치면 스크롤 + 아래 «더 있음» 화살표 (2차) */
-      const col = sb.parentElement, u2 = () => { const ov = sb.scrollHeight - sb.clientHeight; col.classList.toggle('more-down', ov > 2 && ov - sb.scrollTop > 2); };
+      const col = sb.parentElement, u2 = () => { const ov = sb.scrollHeight - sb.clientHeight; col.classList.toggle('more-down', moreDown(sb)); };
       sb.addEventListener('scroll', u2, { passive: true }); sb.addEventListener('load', u2, true); requestAnimationFrame(() => requestAnimationFrame(u2)); setTimeout(u2, 400); } }
     /* 스크롤 그대로 (11/12 서브창2 · 레벨업 · 끼우기 뒤 맨 위로 튀지 않게) : 내용을 넣은 바로 뒤 + 다음 그림 직전 + 머리 그림이 늦게 들어올 때 */
     { const t0 = performance.now(); const hold = keep > 0; let on = hold;
       const back = () => { if (on && performance.now() - t0 < 700 && Math.abs(body.scrollTop - keep) > 1) body.scrollTop = keep; };
       if (hold) { body.scrollTop = keep; requestAnimationFrame(back); body.addEventListener('load', back, true); body.addEventListener('pointerdown', () => { on = false; }, { once: true }); } }
     /* 스크롤 표시 (11/12 대표님) : 아래가 더 있으면 금 화살표 · 넘치면 금 도트 줄 — 모양은 idg-subwin.css */
-    { const upd = () => { const over = body.scrollHeight - body.clientHeight; box.classList.toggle('scrolls', over > 2); box.classList.toggle('more-down', over > 2 && over - body.scrollTop > 2); };
+    { const upd = () => { const over = body.scrollHeight - body.clientHeight; box.classList.toggle('scrolls', over > 2); box.classList.toggle('more-down', moreDown(body)); };
       body.addEventListener('scroll', upd, { passive: true }); body.addEventListener('load', upd, true); requestAnimationFrame(() => requestAnimationFrame(upd)); setTimeout(upd, 400); }
   }
 

@@ -10,6 +10,7 @@
  */
 import '../styles/idg-kit.css';
 import { el } from './ui.js';
+import { moreDown } from './idgMore.js';   /* «아래로 더 있음» 화살표 공용 규칙 (11/13) */
 import * as Sfx from '../audio/sfx.js';
 import { money, moneyIcon, fmtMoney } from '../games/iandragon_game/render/money.js';
 
@@ -211,7 +212,7 @@ export function kitPaper(children) {
 export function kitScroll(children, opt = {}) {
   const inner = el('div.idg-k-scroll-in', { tabindex: '0', role: 'list' }, [].concat(children || []));
   const box = el('div.idg-k-scroll', { style: opt.height ? { '--k-scroll-h': opt.height } : null }, [inner, el('i.idg-k-more', { 'aria-hidden': 'true' })]);
-  const refresh = () => box.classList.toggle('more', inner.scrollHeight - inner.scrollTop - inner.clientHeight > 4);
+  const refresh = () => box.classList.toggle('more', moreDown(inner));
   inner.addEventListener('scroll', refresh, { passive: true });
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(refresh).observe(inner);
   requestAnimationFrame(refresh);

@@ -233,8 +233,13 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-dlg-more { display: block; position: relative; flex: none; align-self: center; width: 0; height: 0; margin: 0; pointer-events: none; z-index: 7; }
 .idg-dlg-more::before { content: ''; position: absolute; left: -12px; top: -15px; width: 24px; height: 18px; visibility: hidden; image-rendering: pixelated;
   background: url(/assets/iandragon_game/ai/kit/more_arrow.webp) center / 100% 100% no-repeat; }
-.more-down > .idg-dlg-more::before { visibility: visible; animation: idgSwBob2 1.2s steps(2, jump-none) infinite; }
-@keyframes idgSwBob2 { 50% { transform: translateY(3px); } }
+.more-down > .idg-dlg-more::before { visibility: visible; animation: idgMoreBlink 1.4s ease-in-out infinite; }
+@keyframes idgMoreBlink { 0%, 100% { filter: brightness(.6); } 50% { filter: brightness(1); } }   /* 깜빡임 = 밝기만 (.6 ↔ 1 · 투명하게 사라지지 않게) — 대표님 11/13 */
+/* 누를 수 있게 : 화살표가 보일 때만 그림 둘레 32×24 를 눌림 칸으로 (누르면 한 화면 내려감 · idgMore.js) */
+.more-down > .idg-dlg-more::after, .idg-dlg-more.fly.on::after, .idg-pp.pp2.land.more-down .idg-pp-col > .idg-dlg-more::after { content: ''; position: absolute; left: -16px; top: -19px; width: 32px; height: 24px; pointer-events: auto; cursor: pointer; }
+.idg-dlg-more.fly { position: absolute; align-self: auto; z-index: 12; }
+.idg-dlg-more.fly.on::before { visibility: visible; animation: idgMoreBlink 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .more-down > .idg-dlg-more::before, .idg-dlg-more.fly.on::before { animation: none; } }
 .idg-pp > .idg-dlg-more { grid-column: 1 / -1; }
 
 /* 2) 하는 법 : 아래 고정 줄에 «알겠어요»(초록) · «음악 출처»(보라) 둘 다 */
@@ -548,7 +553,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
   scrollbar-width: thin; scrollbar-color: #d9a441 #1d1233; }
 .idg-pp.pp2.land .idg-pp-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .idg-pp.pp2.land .idg-pp-col.cards > .idg-dlg-more::before { top: -14px; }
-.idg-pp.pp2.land.more-down .idg-pp-col.cards > .idg-dlg-more::before { visibility: visible; animation: idgSwBob2 1.2s steps(2, jump-none) infinite; }
+.idg-pp.pp2.land.more-down .idg-pp-col.cards > .idg-dlg-more::before { visibility: visible; animation: idgMoreBlink 1.4s ease-in-out infinite; }
 /* 오른쪽 세로 띠 (2차 · 대표님 «엉성하다 → 제대로») : 정사각형에 가까운 큰 고급 빨간 단추(제미나이 kit/btn_sq_red · 금테 · 두툼한 입체 · 위 광택 · 9-slice)
  *  큰 아이콘(다시하기 = 도트 되돌리기 화살표 · 전투 개시! = 칼) + 글씨 · 아래 «돌아가기» = 같은 양식의 보라 단추(kit/btn_wide_purple · 9-slice) */
 .idg-pp-strip { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
@@ -584,7 +589,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp.pp2.land.short > .idg-pp-top2 > .idg-pp-title { font-size: 15px; padding: 5px 34px 1px; border-width: 8px 28px; border-image-width: 8px 28px; }
 /* 왼쪽 출전 칸 : 넘치면 스크롤 + 아래 «더 있음» 화살표 */
 .idg-pp.pp2.land .idg-pp-col.slots > .idg-dlg-more::before { top: -14px; }
-.idg-pp.pp2.land .idg-pp-col.slots.more-down > .idg-dlg-more::before { visibility: visible; animation: idgSwBob2 1.2s steps(2, jump-none) infinite; }
+.idg-pp.pp2.land .idg-pp-col.slots.more-down > .idg-dlg-more::before { visibility: visible; animation: idgMoreBlink 1.4s ease-in-out infinite; }
 .idg-pp.pp2.land .idg-pp-col.slots > .idg-pp-sbody { border-bottom: 2px solid transparent; }
 /* 카드 글줄 : 1줄 «Lv 10 (권장 14)» · 2줄 «비용 [불씨] 50» */
 .idg-pp-card .lv .l1, .idg-pp-card .lv .cost { display: block; white-space: nowrap; }

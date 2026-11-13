@@ -15,6 +15,8 @@ import { enterFullscreen, exitFullscreen, isFullscreen } from '../../../core/ful
 const fsOk = () => { const e = document.documentElement; return !!(e.requestFullscreen || e.webkitRequestFullscreen) && document.fullscreenEnabled !== false && document.webkitFullscreenEnabled !== false; };
 import { powerPage } from './powerPage.js';
 import { soundPanel } from './soundPrefs.js';
+import { kitClose } from '../../../screens/idgKit.js';   /* 키트 X 단추 (일시정지 오른쪽 위 시안 PAUSE_X) */
+import { scrollHint } from '../../../screens/idgMore.js';   /* «아래로 더 있음» 금 화살표 공용 (11/13) */
 const ATTR_KO = { ghost: '유령', giant: '거대', shadow: '그림자', crystal: '수정' };
 
 const AI = '/assets/iandragon_game/ai/';
@@ -208,6 +210,9 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     r2.appendChild(btn(text.exit, 'ico_exit.svg', () => cb.exit(), 'purple'));
     body.append(r1, r2);
     card.append(scene, body);
+    /* 가운데 칸이 아래 테두리에 걸려 단추가 잘리면 그림 칸을 줄여(.tight) 먼저 맞춘다 — 그래도 넘치면 그때 스크롤 + 금 화살표(idgMore) */
+    const fit = () => { if (!card.isConnected || body.scrollHeight - body.clientHeight <= 2) return; if (!card.classList.contains('tight')) card.classList.add('tight'); else if (!card.classList.contains('tighter')) card.classList.add('tighter'); };
+    setTimeout(fit, 120); setTimeout(fit, 300); setTimeout(fit, 600);
     return card;
   }
 
@@ -272,21 +277,16 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     return card;
   }
 
-  /* ── 일시정지 창 (§0) : 현판 «일시정지» → 소리 · 설정 판(안에서 스크롤) → 빨강 «계속하기» → 보라 «다시하기» · «나가기» ── */
+  /* ── 일시정지 창 = 원래 모양 그대로(대표님 11/13 «일시정지 창은 건들지 마») : idg-card · «일시정지» · 설정 · «계속» 한 줄 꽉 · «다시하기 · 나가기» ── */
+  const PAUSE_X = false;   /* 오른쪽 위 X(키트 btn_close) = «계속» 과 같음 — 시안만(대표님이 사진을 보고 받아들이면 true) */
   function pauseCard() {
-    fontOnce();
-    const card = h('div', 'idg-card idg-res idg-pausewin win');
-    const img = (src, cls) => { const i = h('img', cls); i.src = src; i.alt = ''; i.draggable = false; return i; };
-    const head = h('div', 'idg-pw-head'), pl = h('div', 'idg-res-banner idg-res-plate gold'), pi = h('div', 'p');
-    pi.appendChild(h('b', 'mid', '일시정지')); pl.appendChild(pi); head.appendChild(pl);
-    const body = h('div', 'idg-res-body'), set = h('div', 'idg-pw-set'); set.appendChild(soundBox()); body.appendChild(set);
-    const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(`${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
-    const r1 = h('div', 'idg-res-row big'), r2 = h('div', 'idg-res-row');
-    r1.appendChild(btn('계속하기', 'ico_fight.webp', () => cb.pause(), 'red'));
-    r2.append(btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'purple'), btn(text.exit, 'ico_exit.svg', () => cb.exit(), 'purple'));
-    body.append(r1, r2);
-    card.append(head, body);
-    return card;
+    const box = h('div', 'idg-card idg-pause-card');
+    if (PAUSE_X) { const w = h('div', 'idg-pause-xw'); w.appendChild(kitClose(() => cb.pause(), '계속')); box.appendChild(w); }
+    box.append(h('h2', null, '일시정지')); box.appendChild(soundBox());
+    const rows = h('div', 'idg-rows'), line = (...bs) => { const r = h('div', 'idg-row'); for (const [label, fn, cls] of bs) { const b = h('button', 'idg-btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; r.appendChild(b); } rows.appendChild(r); };
+    line(['계속', () => cb.pause(), 'main big']); line(['다시하기', () => cb.retry()], [text.exit, () => cb.exit()]);
+    box.appendChild(rows);
+    return box;
   }
 
   function showPanel(kind, info = {}) {
@@ -299,10 +299,12 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       panel.classList.add('on'); return;
     }
     /* 일시정지 · 시작(판 · 습격 · 대결) · 결과 = 모두 결과 창과 같은 틀(docs/IDG_UI_PATTERNS.md §0 · §1 · §2) */
-    if (kind === 'pause') panel.appendChild(pauseCard());
-    else if (kind === 'intro') panel.appendChild(introCard(info));
-    else panel.appendChild(resultCard(kind, info));
+    const card = kind === 'pause' ? pauseCard() : kind === 'intro' ? introCard(info) : resultCard(kind, info);
+    panel.appendChild(card);
     panel.classList.add('on');
+    /* 아래로 더 있으면 금 화살표 (대표님 11/13 · 공용 idgMore.js) : 일시정지 카드는 카드째 스크롤, 시작 · 결과는 가운데 칸(.idg-res-body)이 스크롤 */
+    if (kind === 'pause') scrollHint(card, { host: panel, lift: 30 });
+    else { const body = card.querySelector('.idg-res-body'); if (body) scrollHint(body, { host: card, lift: 3 }); }
   }
 
   /* 키보드 */
