@@ -1613,3 +1613,15 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-res:not(.idg-int) .idg-res-new { font-size: .72em; letter-spacing: -.03em; }
 .idg-res:not(.idg-int) .idg-res-new em { font-weight: 500; white-space: nowrap; flex: none; }
 .idg-res:not(.idg-int) .idg-res-new span { font-weight: 500; }
+/* 시작 창 별 알약 2차 (11/13 대표님 «별이 너무 작고 이상해») : 별을 글씨보다 크게 · 겹치지 않게 · 큰 그림을 줄일 땐 부드럽게(도트로 깎으면 뭉개짐) · 알약 조금 크게 */
+.idg-card .idg-sp { width: min(330px, 100%); margin: 10px auto 8px; font-size: 14px; }
+.idg-card .idg-sp .cell { gap: .3em; }
+.idg-card .idg-sp .ss { display: inline-flex; align-items: center; gap: 1px; flex: none; }
+.idg-card .idg-sp .ss img, .idg-card .idg-sp .ss img:first-child { height: 1.42em; width: auto; margin: 0; image-rendering: auto; filter: drop-shadow(0 1px 0 #1a0c24); }
+.idg-card .idg-sp .cell b { font-size: 1em; }
+.idg-card .idg-sp { width: min(384px, 100%); font-size: 13.5px; }
+.idg-card .idg-sp .cell { gap: .22em; }
+.idg-card .idg-sp .ss img, .idg-card .idg-sp .ss img:first-child { height: 1.34em; }
+.idg-card .idg-sp.red .ss img, .idg-card .idg-sp.red .ss img:first-child { filter: hue-rotate(-42deg) saturate(1.5) drop-shadow(0 1px 0 #1a0c24); }
+.idg-card .idg-sp.purple .ss img, .idg-card .idg-sp.purple .ss img:first-child { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92) drop-shadow(0 1px 0 #1a0c24); }
+.idg-card .idg-sp { width: 384px; max-width: calc(100vw - 96px); }   /* 좁은 카드(좀비 얼굴 하나)에서도 알약이 줄지 않게 — 카드가 알약만큼 넓어진다 */
