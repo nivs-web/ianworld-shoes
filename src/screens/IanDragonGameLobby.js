@@ -425,7 +425,7 @@ export default function IanDragonGameLobby(nav) {
   /** 재화 판 (왕관 금화 · 우리 보석) — 금 «+» = 드래곤샵 */
   const money = (cls, icon, n) => el('div.l2-money.' + cls, null, [
     el('img.l2-money-ico', { src: icon, alt: '', onerror: hideBad }), el('b', Number(n || 0).toLocaleString('en-US')),
-    el('button.l2-plus', { type: 'button', 'aria-label': '아이템 샵', onclick: () => { Sfx.play('sfx_menu_select'); shop(); } }),
+    el('button.l2-plus', { type: 'button', 'aria-label': '아이템샵', onclick: () => { Sfx.play('sfx_menu_select'); shop(); } }),
   ]);
   /** 하늘 겹 (어두운 밤 · 달 · 반짝이 별 · 흘러가는 구름 · 박쥐 · 폭죽 · 가끔 마녀) — 앞 겹(성 · 길 · 무대 · 호박) 뒤 */
   const sky = (fwN) => [
@@ -514,7 +514,7 @@ export default function IanDragonGameLobby(nav) {
         el('nav.l2-bottom', null, [
           stone('stage', '스테이지', () => showStages((n2) => start(n2))),
           stone('lab', '연구소', () => showLab(() => nav.refresh?.())),
-          stone('shop', '아이템 샵', shop),
+          stone('shop', '아이템샵', shop),
           stone('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
           stone('more', '더보기', () => showMore({ stage: () => showStages((n2) => start(n2)), hatch: () => (G.idg().cleared >= OPEN_AT ? showHatch(() => nav.refresh?.()) : toast('부화장은 2-5를 깨면 열려요', 2200)) })),
         ]),

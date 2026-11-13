@@ -49,7 +49,7 @@ const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStar
 
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
 export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null, consOff = false, talk = null, isNet = false }, cb) {
-  let useCons = null;   // 시작 카드에서 고른 편의품
+  const useCons = new Set();   // 시작 카드에서 고른 편의품 (종류마다 1개 · 최대 3개 — 대표님 11/13 «B»)
   const root = h('div', 'idg-hud' + (FLOAT_HUD ? ' float' : '')); host.appendChild(root);
   /* 대표님 «PC 에서 위 글씨 · 숫자가 너무 작다» (11/11) : HUD 전체를 화면 크기에 맞춰 키운다 (폰 가로 = 1 · PC 1280×800 ≈ 1.33 · 최대 1.7) */
   /* 2026-11-11 대표님 태블릿 «아래 단추가 사라진다» : CSS zoom 은 옛 크롬 · 삼성 인터넷에서 크기 계산이 달라 HUD 가 화면보다 커지며 아래가 잘렸다
@@ -244,6 +244,21 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* ── 시작 창 (대표님 11/13 «시작 창 · 결과 창 비슷한 창은 규칙으로 통일» · docs/IDG_UI_PATTERNS.md §1) ──
    *  차례 : 날개 현판(판 이름 · 모드 이름) → 그림 띠(포스터 · 월드 배경 + 나오는 좀비 얼굴 칸) → 큰 한 줄 목표 → 정보 줄(아이콘 + 짧은 글 · 종이 띠) → (별 기준 알약) → 빨강 «시작하기» + 보라 «나가기»
    *  창이 떠 있는 동안 전투는 멈춰 있다(battle.js ui.paused) · «시작하기»를 눌러야 시작 */
+  /** 시작 창 편의품 줄 (11/13 대표님) : 종류마다 1개씩 · 최대 3개 고름 (누르면 초록 · 다시 누르면 뺌) · 브레스 UP = 자동 사용 표시
+   *  가진 편의품이 하나도 없으면 «편의품을 구매하시면 도움이 됩니다» + «아이템샵 ›» (편의품 칸으로 바로 · 닫으면 산 것이 이 줄에 나온다) */
+  function consRow() {
+    const cr = h('div', 'idg-cons-row');
+    const draw = () => {
+      const real = cons.filter((c) => !c.auto), auto = cons.filter((c) => c.auto).map((c) => h('span', 'idg-cons on auto', c.name));
+      if (!real.length && !consOff && cb.shop) {
+        const go = h('button', 'idg-cons shop', '아이템샵 ›'); go.type = 'button';
+        go.onclick = () => cb.shop(() => { if (cb.consNow) cons = cb.consNow(); showPanel('intro'); });
+        return cr.replaceChildren(h('span', null, '편의품'), ...auto, h('span', 'idg-cons-hint', '편의품을 구매하시면 도움이 됩니다'), go);
+      }
+      cr.replaceChildren(h('span', null, '편의품'), ...auto, ...real.map((c) => { const b = h('button', 'idg-cons' + (useCons.has(c.id) ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { if (useCons.has(c.id)) useCons.delete(c.id); else useCons.add(c.id); draw(); }; return b; }));
+    };
+    draw(); return cr;
+  }
   function introCard(info) {
     fontOnce();
     const raid = !!stage.raid, pvp = !!stage.pvp, card = h('div', `idg-card idg-res idg-int win${raid ? ' raid' : ''}${pvp ? ' pvp' : ''}`);
@@ -289,14 +304,10 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     }
     if (lines.childElementCount) body.appendChild(lines);
     /* 편의품 (판마다 1개) */
-    if (!raid && !pvp && cons && cons.length) {
-      const cr = h('div', 'idg-cons-row');
-      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { if (c.auto) return h('span', 'idg-cons on auto', c.name); /* 브레스 UP = 자동 사용 · 켜진 표시만 */ const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
-      draw(); body.appendChild(cr);
-    }
+    if (!raid && !pvp && cons) body.appendChild(consRow());
     const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(`${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
     const r1 = h('div', 'idg-res-row big');
-    r1.append(btn('시작하기', 'ico_fight.webp', () => cb.go(useCons), 'red'), btn(text.exit, 'ico_exit.svg', () => cb.exit(), 'purple'));
+    r1.append(btn('시작하기', 'ico_fight.webp', () => cb.go([...useCons]), 'red'), btn(text.exit, 'ico_exit.svg', () => cb.exit(), 'purple'));
     body.appendChild(r1);
     card.append(scene, body);
     return card;
@@ -340,15 +351,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       for (const tr of [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))]) { const ic = h('img', 'idg-attr'); ic.src = `/assets/iandragon_game/ui/hud_attr_${tr}_s.png`; ic.alt = ''; ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; zs.appendChild(ic); }   // 이 판의 특별한 좀비
       for (const id of [...new Set(stage.lines.map((l) => ZART[l.id] || l.id))]) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
       box.append(zs, starPill());   /* 별 기준 = 새 창의 짙은 알약 (대표님 11/13 · «★ 깨기 | ★★ N초 | ★★★ N초») */
-      if (cons && cons.length) {   /* 편의품 (판마다 1개) */
-        const cr = h('div', 'idg-cons-row');
-        const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { if (c.auto) return h('span', 'idg-cons on auto', c.name); /* 브레스 UP = 자동 사용 · 켜진 표시만 */ const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
-        draw(); box.appendChild(cr);
-      }
+      if (cons) box.appendChild(consRow());
     }
     const row = h('div', 'idg-row');
     const add = (label, fn, cls = '') => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
-    add('출격!', () => cb.go(useCons), 'main'); add(text.exit, () => cb.exit());
+    add('출격!', () => cb.go([...useCons]), 'main'); add(text.exit, () => cb.exit());
     box.appendChild(row);
     return box;
   }

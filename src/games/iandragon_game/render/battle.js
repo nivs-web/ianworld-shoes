@@ -117,14 +117,18 @@ export async function startBattle(ctx, opts) {
     go(useCons) {
       ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '', myDeck.map((d) => d.id));
       if (!pvp && !raid) setTimeout(loadDrops, 3000);   // 모으기 보상 계산은 싸움이 자리 잡은 뒤에 조용히 받아 둔다
-      /* 편의품 (META 3장 · 판마다 1개 · 혼자 하기만) — 판을 시작하며 1개 쓴다 · 도중에 나가도 돌려주지 않는다 */
-      const have = opts.save?.cons?.[useCons] || 0;
-      if (!net && !raid && !DF.noItems && useCons && have > 0) {   // 초고수 = 편의품 무효 (단추 회색)
-        const P = S.players[0];
-        if (useCons === 'ember50') P.money += 50;
-        else if (useCons === 'brazier') P.wl = Math.max(P.wl, Math.min(1, S.D.wallet.length - 1));
-        else if (useCons === 'basehp') { S.base[0].maxHp = Math.round(S.base[0].maxHp * 1.05); S.base[0].hp = S.base[0].maxHp; }
-        try { opts.save = opts.onSave?.({ cons: { ...opts.save.cons, [useCons]: have - 1 } }) || opts.save; } catch { /* */ }
+      /* 편의품 (혼자 하기만 · 종류마다 1개씩 최대 3개 — 대표님 11/13 «B») — 판을 시작하며 고른 것을 1개씩 쓴다 · 도중에 나가도 돌려주지 않는다 */
+      if (!net && !raid && !DF.noItems && Array.isArray(useCons) && useCons.length) {   // 초고수 = 편의품 무효 (단추 회색)
+        const P = S.players[0], left = { ...(opts.save?.cons || {}) };
+        for (const id of new Set(useCons)) {
+          if (!((left[id] || 0) > 0)) continue;
+          if (id === 'ember50') P.money += 50;
+          else if (id === 'brazier') P.wl = Math.max(P.wl, Math.min(1, S.D.wallet.length - 1));
+          else if (id === 'basehp') { S.base[0].maxHp = Math.round(S.base[0].maxHp * 1.05); S.base[0].hp = S.base[0].maxHp; }
+          else continue;
+          left[id] -= 1;
+        }
+        try { opts.save = opts.onSave?.({ cons: left }) || opts.save; } catch { /* */ }
       }
       useBp();
     },
@@ -139,6 +143,7 @@ export async function startBattle(ctx, opts) {
     retry() { opts.restart(raid ? 'raid' : stage.g, true); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
     /* 판 사이 파워 업 : 저장 읽기 · 쓰기 (로비 «용 둥지»와 같은 저장) */
+    consNow: () => [...CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), ...(bp && !bpUsed ? [{ id: 'bp', name: bp.name, auto: true }] : [])],   /* 시작 창에서 아이템샵을 다녀온 뒤 편의품 줄 다시 */
     shop(done) { const write = (part) => { try { opts.save = opts.onSave?.(part) || { ...opts.save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); } return opts.save; }; import('../../../screens/idgShop.js').then((m) => m.showShop({ idg: opts.save || {}, save: write, tab: 'cons', onClose: () => done?.() })).catch((e) => console.warn('[좀비와 드래곤] 아이템샵을 열지 못했다', e)); },   // 판 사이 파워업 «아이템샵» → 편의품 칸 (11/13 대표님)
     puSave: () => opts.save || {},
     puWrite: (part) => { try { opts.save = opts.onSave?.(part) || { ...opts.save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); } return opts.save; },
@@ -344,9 +349,7 @@ export async function startBattle(ctx, opts) {
   };
   ctx.app.ticker.add(tick);
   ui.paused = true; hud.showPanel('intro', { best: raid && opts.save?.raid?.w === raid.idx ? opts.save.raid.best || 0 : 0 });   // 스테이지 카드 → «출격!»
-  /* 다시 하기 = 1터치 (기획 GDD 137) — 단, 편의품을 가지고 있으면 시작 창을 띄워 고르게 한다 (대표님 11/13 «졌을 때 다시하면 왜 이 창이 안 떠?») */
-  const consHave = !net && !raid && !DF.noItems && CONSUMABLES.some((c) => (opts.save?.cons?.[c.id] || 0) > 0);
-  if (opts.quick && !net && !consHave) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); useBp(); sound.start(raid ? 'raid' : '', myDeck.map((d) => d.id)); } }, 50);   // 다시 하기 = 1터치 (기획 GDD 137)
+  /* 다시 하기도 늘 시작 창을 띄운다 (대표님 11/13 «편의품이 없어도 무조건 시작 창» — 옛 1터치 빠른 시작은 뺌) */
   if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '', myDeck.map((d) => d.id)); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
   const onHide = () => { if (document.hidden && !net && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);

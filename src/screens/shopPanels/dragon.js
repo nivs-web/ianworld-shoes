@@ -12,7 +12,7 @@ import { panelRoot, note, row, list, line, buyBtn, plainBtn, statRow, lockLine, 
 
 /**
  * @param {{look?:boolean, want?:()=>string, autoId?:()=>string, pick?:(id:string)=>void, goShop?:()=>void}} [opts]
- *   look = 꾸미기 창에서 쓰는 모습 : 사기 단추 대신 «대장 고르기»(가진 것 · 자동) + 안 가진 것은 «아이템 샵에서 팔아요» + 샵 가기. 레벨업 단추는 그대로.
+ *   look = 꾸미기 창에서 쓰는 모습 : 사기 단추 대신 «대장 고르기»(가진 것 · 자동) + 안 가진 것은 «아이템샵에서 팔아요» + 샵 가기. 레벨업 단추는 그대로.
  *   want() = 지금 고른 대장('auto' 또는 id) · pick(id) = 고름(저장은 부르는 쪽) · 반환값 .redraw() = 부르는 쪽이 고른 뒤 다시 그릴 때
  */
 export default function render(box, ctx, opts = {}) {

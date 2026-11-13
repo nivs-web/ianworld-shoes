@@ -1,5 +1,5 @@
 /**
- * 아이템 샵 칸 4개(드래곤 · 브레스 · 드래곤캐슬 · 장비)와 꾸미기 창이 함께 쓰는 값 · 저장 도우미 (겜보조 2 · 11/13)
+ * 아이템샵 칸 4개(드래곤 · 브레스 · 드래곤캐슬 · 장비)와 꾸미기 창이 함께 쓰는 값 · 저장 도우미 (겜보조 2 · 11/13)
  *
  *  숫자는 모두 data/upgrades.js(핵심 보조 ④) 표에서 가져온다 — 여기에는 표를 두지 않고 «화면용 모양»으로만 바꾼다.
  *  저장 모양(IDG_UPGRADES_SPEC §1) : lead = { own, lv, form } · castle = { lv, skin, gear, slots[3] } · breathUp = { pow, rng, old }
@@ -28,7 +28,7 @@ export const S = {
   power: '브레스 힘', range: '브레스 사거리', step: '단계', next: '다음', start: '처음',
   lead: '대장', curCastle: '내 드래곤캐슬', slots: (n) => `장비 칸 ${n}`,
   gearLv: (n) => (n ? `Lv ${n}` : '아직 없어요'),
-  reco: '추천 강화', sells: '아이템 샵에서 팔아요', goShop: '샵 가기', auto: '자동', autoSub: '월드 추천', autoNow: '지금은',
+  reco: '추천 강화', sells: '아이템샵에서 팔아요', goShop: '샵 가기', auto: '자동', autoSub: '월드 추천', autoNow: '지금은',
   form: '모습', formBase: '기본 모습',
   rangeFoot: '처음엔 60% · 드래곤 레벨과 브레스 색으로도 넓어져요',
 };

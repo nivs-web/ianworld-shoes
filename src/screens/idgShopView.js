@@ -1,5 +1,5 @@
 /**
- * 좀비와 드래곤 — 아이템 샵 (11/13 · 겜보조 1 · 기획 IDG_COLLECTION_PLAN §4)
+ * 좀비와 드래곤 — 아이템샵 (11/13 · 겜보조 1 · 기획 IDG_COLLECTION_PLAN §4)
  *
  * 큰 메뉴 4개(드래곤 · 드래곤캐슬 · 특가 · 편의품) → 하위 메뉴(가로로 넘치면 좌우로만) → 격자(세로 3칸 · 가로 5칸) → 카드.
  * 카드 = 그림 · 이름 · 등급 테(6색) · 효과 한 줄 · 값(아이콘 + 숫자). 순서 : 살 수 있음 → 잠김(조건 한 줄) → 가짐.
@@ -101,7 +101,7 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
   const reco = el('div.idg-shop-reco');
   const main = el('div.idg-shop-main', null, [reco, bigTabs, subSlot, scroll]);
   const wrap = el('div.idg-shop-wrap', null, [side, main]);
-  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['아이템 샵', kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X 하나 (IDG_UI_PATTERNS §5) */
+  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['아이템샵', kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X 하나 (IDG_UI_PATTERNS §5) */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const closeO = presentOverlay(overlay);
   const close = () => { dead = true; leavePanel(); closeO(); onClose?.(); };   // 닫으면 로비 코인 · 젬 다시 그리기
@@ -189,7 +189,7 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
     }
     if (big === 'cons') {
       setInfo(false);
-      help.replaceChildren(kitPaper(['편의품은 한 판에 ', el('b', '하나만'), ' 쓸 수 있어요. 혼자 하기(스테이지)에서만 써요.', el('small', '명예의 전당 도전 · 같이 깨기 · 드래곤 대결에서는 못 써요.')]));
+      help.replaceChildren(kitPaper(['편의품은 한 판에 ', el('b', '종류마다 하나씩'), ' 쓸 수 있어요. 혼자 하기(스테이지)에서만 써요.', el('small', '명예의 전당 도전 · 같이 깨기 · 드래곤 대결에서는 못 써요.')]));
       content.classList.add('is-list');
       return place([...bpRows(), ...CONSUMABLES.map((c) => {
         const n = Number(cur.cons?.[c.id]) || 0, can = cur.coins >= c.price && n < CONS_MAX;

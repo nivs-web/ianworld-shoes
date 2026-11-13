@@ -116,7 +116,7 @@ function openLook({ idg, save, onClose, tab }) {
     }
     if (slot === 'gear') {
       const c = castleOf(cur), n = CASTLE_LV[c.lv - 1].slots;
-      return itemGrid(GEAR.map((d) => ({ id: d.id, name: d.name, sub: gearLv(cur, d.id) ? `Lv ${gearLv(cur, d.id)}` : '아직 없어요', fx: d.line(Math.max(1, gearLv(cur, d.id))), art: ICON.gear[d.id], owned: gearLv(cur, d.id) > 0, lock: '아이템 샵에서 팔아요' })), {
+      return itemGrid(GEAR.map((d) => ({ id: d.id, name: d.name, sub: gearLv(cur, d.id) ? `Lv ${gearLv(cur, d.id)}` : '아직 없어요', fx: d.line(Math.max(1, gearLv(cur, d.id))), art: ICON.gear[d.id], owned: gearLv(cur, d.id) > 0, lock: '아이템샵에서 팔아요' })), {
         toggle: true, isOn: (id) => gearSlots().includes(id),
         onPick: (id) => {
           const cc = castleOf(cur), arr = gearSlots().slice();

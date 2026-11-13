@@ -769,3 +769,11 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-shop, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-shop { --o: #2e1000; border-color: #241000; background: #a3510f; box-shadow: inset 0 3px 0 #c97632, inset 0 -5px 0 #6a3208; }
 .idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-close, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-close { --o: #0e0603; border-color: #0c0502; background: #36200f; box-shadow: inset 0 3px 0 #563620, inset 0 -5px 0 #1c0f06; color: #f4e6d8; }
 .idg-pp-strip .idg-pp-shop .ico { width: 1.4em; height: 1.3em; }
+/* 낮은 가로 화면(폰 브라우저 · 주소창 때문에 높이 ~330px) : 다시하기 · 전투 개시! 큰 아이콘이 단추 위 테를 뚫고 나가던 문제 (대표님 폰 11/13)
+ *  아이콘 크기를 단추 높이에 맞추고(가로폭 기준 X) 글씨 한 단계 작게 */
+@media (max-height: 420px) and (orientation: landscape) {
+  .idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go { flex: 1 1 auto; aspect-ratio: auto; min-height: 0; gap: 2px; font-size: clamp(15px, 4.4vh, 22px); overflow: hidden; }
+  .idg-pp-strip .idg-pp-go .ico { width: auto; height: 38%; max-height: 54px; max-width: 46%; }
+  .idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back { min-height: 38px; font-size: 15px; }
+  .idg-pp-subs { gap: 5px; }
+}

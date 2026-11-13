@@ -1,4 +1,4 @@
-/* 아이템 샵 칸 4개(드래곤 · 브레스 · 드래곤캐슬 · 장비) — 파워업 카드(.idg-pp-card)와 같은 모양 (겜보조 2 · 11/13)
+/* 아이템샵 칸 4개(드래곤 · 브레스 · 드래곤캐슬 · 장비) — 파워업 카드(.idg-pp-card)와 같은 모양 (겜보조 2 · 11/13)
    규칙 : 새 모양 없음 · 글씨 1px 8방향 외곽선 · 빛번짐 없음 · 재화 = 아이콘 + 숫자 · 보간 없는 픽셀 칸 */
 .idg-sp { --o: #1a0c38; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .idg-sp .idg-k-paper { margin: 0; }
