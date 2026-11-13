@@ -1,7 +1,7 @@
 /**
  * 그림 담당 — 용 조립 보정 표 만들기 (겜보조 · 2026-11-12 · 대표님 «날개가 거꾸로 달린 용이 너무 많다 · 하나하나 꼼꼼히»)
  *
- *   node tools/idg-rigfix-dragon.mjs        → public/assets/iandragon_game/ai/meta/rigfix_dragon.json 을 새로 쓴다
+ *   node tools/idg-rigfix-dragon.mjs        → public/assets/iandragon_game/ai/meta/rigfix_dragon_v2.json 을 새로 쓴다
  *
  * 날개 거꾸로의 원인 : 원본 날개 그림은 대부분 이미 «뿌리(굵은 뼈 끝)가 오른쪽 아래 · 막이 왼쪽으로 펼쳐진» 모양이라
  *   오른쪽을 보는 용에는 그대로 붙여야 하는데, rig.json 이 모든 용 날개를 flip:true 로 한 번 더 뒤집었다
@@ -15,7 +15,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const AI = path.join(ROOT, 'public/assets/iandragon_game/ai');
-const OUT = path.join(AI, 'meta/rigfix_dragon.json');
+const OUT = path.join(AI, 'meta/rigfix_dragon_v2.json');
 const WINGTAIL = JSON.parse(fs.readFileSync(path.join(AI, 'meta/rigfix.json'), 'utf8'));
 
 /* 날개 그림의 뿌리(굵은 팔뼈 끝 · 엄지 발톱 쪽)가 오른쪽인 용 — 43종을 한 장씩 크게 보고 고름 (11/12)

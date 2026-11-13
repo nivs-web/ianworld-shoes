@@ -2,7 +2,7 @@
  * 조립 점검 화면 (그림 담당 겜보조 2 · 2026-11-12 · 대표님 «보스 조립이 피카소 그림 같다 — 캐릭터를 하나하나 점검하는 걸 만들어»)
  *
  * 게임 render/rig.js 의 createRigged 를 그대로 import 해서 움직인다 (src 는 읽기만).
- *  왼쪽 = 원래 rig.json · 오른쪽 = 보정 표(ai/meta/ rigfix.json 날개 · 꼬리 → rigfix_boss.json → rigfix_zombie.json → rigfix_dragon.json 을 겹침) + 이 화면에서 고친 것.
+ *  왼쪽 = 원래 rig.json · 오른쪽 = 보정 표(ai/meta/ rigfix.json 날개 · 꼬리 → rigfix_boss.json → rigfix_zombie.json → rigfix_dragon_v2.json 을 겹침) + 이 화면에서 고친 것.
  *  부품 표 : 그리는 순서(1 = 맨 뒤) · 켜고 끄기 · ▲▼ 순서 바꾸기 · 기준점 a · 자리 p · 뒤집기. 줄에 마우스를 올리면 그 부품 상자가 두 화면에 뜬다.
  *  고친 값은 이 브라우저에만 임시로 남고(localStorage), «보정 표 JSON» 을 복사해 보스는 rigfix_boss.json, 일반은 rigfix_zombie.json 에 붙인다.
  */
@@ -204,7 +204,7 @@ async function main() {
   const table = (n) => fetch(`${BASE}meta/${n}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
   const [list, wt, boss, zombie, dragon] = await Promise.all([
     IDS,
-    table('rigfix.json'), table('rigfix_boss.json'), table('rigfix_zombie.json'), table('rigfix_dragon.json'),
+    table('rigfix.json'), table('rigfix_boss.json'), table('rigfix_zombie.json'), table('rigfix_dragon_v2.json'),
   ]);
   S.list = list; S.table = mergeFix(wt, boss, zombie, dragon);
   S.prev = mergeFix(wt, boss, zombie);   // «용 표 전» = 11/12 용 보정 직전 게임 모습 (자세 사진 --before prev)

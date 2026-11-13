@@ -44,7 +44,7 @@ for (const id of ids.length ? ids : ['bossLord']) {
     }
   }
   for (const key of ['before', 'after']) {
-    const comp = [{ input: label(`${id} · ${key === 'before' ? (BEFORE === 'prev' ? '고치기 전 (지금 게임)' : '고치기 전 (rig.json 그대로)') : (/^boss/.test(id) ? '고친 뒤 (rigfix_boss.json)' : BEFORE === 'prev' ? '고친 뒤 (rigfix_dragon.json)' : '고친 뒤 (rigfix_zombie.json)')}`, W * POSES.length), left: 0, top: 0 }];
+    const comp = [{ input: label(`${id} · ${key === 'before' ? (BEFORE === 'prev' ? '고치기 전 (지금 게임)' : '고치기 전 (rig.json 그대로)') : (/^boss/.test(id) ? '고친 뒤 (rigfix_boss.json)' : BEFORE === 'prev' ? '고친 뒤 (rigfix_dragon_v2.json)' : '고친 뒤 (rigfix_zombie.json)')}`, W * POSES.length), left: 0, top: 0 }];
     shots[key].forEach((s, i) => { comp.push({ input: s.buf, left: i * W, top: 34 + 30 }, { input: label(s.name, W), left: i * W, top: 34 }); });
     const file = path.join(OUT, `${/^boss/.test(id) ? 'boss' : 'rig'}_${id}_${key}.png`);
     await sharp({ create: { width: W * POSES.length, height: H + 64, channels: 3, background: '#120c22' } }).composite(comp).png().toFile(file);

@@ -7,7 +7,7 @@
  *
  * 보정 표 = public/assets/iandragon_game/ai/meta/ 의 세 장을 겹친다 (rig.json 은 R2 1년 캐시라 덮어쓰지 않는다)
  *   rigfix.json (용 · 리더 날개 · 꼬리 자리 { id: { wing, tail, files } }) → rigfix_boss.json (보스) → rigfix_zombie.json (일반 좀비 · 용 몸통)
- *   → rigfix_dragon.json (용 날개 방향 · 크기 배수 scale · 고친 그림 files · 11/12)
+ *   → rigfix_dragon_v2.json (용 날개 방향 · 크기 배수 scale · 고친 그림 files · 11/12)
  *   { id: { order?: [부품 이름 …](뒤 → 앞), parts?: { 이름: { p?, a?, flip?, move? } }, files?: { 이름: '새 그림 이름' } } }
  * 규칙은 게임 render/rig.js 와 같다 : parts 순서 = 그리는 순서 · a = 그림 안 기준점 비율 · p = 발밑 가운데에서의 자리 · flip = 좌우 뒤집기.
  */
@@ -44,7 +44,7 @@ export function mergeFix(...tables) {
   return out;
 }
 
-export const fixTable = () => mergeFix(wingTailFix(readFix('rigfix.json')), readFix('rigfix_boss.json'), readFix('rigfix_zombie.json'), readFix('rigfix_dragon.json'));
+export const fixTable = () => mergeFix(wingTailFix(readFix('rigfix.json')), readFix('rigfix_boss.json'), readFix('rigfix_zombie.json'), readFix('rigfix_dragon_v2.json'));
 export const rigOf = (id) => JSON.parse(fs.readFileSync(path.join(AI, id, 'rig.json'), 'utf8'));
 
 /** 점검 화면 rigcheck.js 의 applyFix 와 같은 규칙 */

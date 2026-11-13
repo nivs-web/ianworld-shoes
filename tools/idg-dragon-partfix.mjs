@@ -5,7 +5,7 @@
  *     meari/head_ear1.png · head_blink_ear1.png   왼쪽 귀 안쪽 투명 구멍을 둘레 색으로 채움 (닫힘 연산 → 가장 가까운 안쪽 색)
  *     banjjak/head_eye1.png                         빈 눈(빛나는 동그라미)에 눈동자 · 반짝이 그려 넣음 + 먼 쪽 눈
  *     sommung/arm_f_fix1.png · arm_b_fix1.png        팔 그림에 같이 잘려 들어온 날개 조각 지움
- * 연결은 ai/meta/rigfix_dragon.json 의 files (tools/idg-rigfix-dragon.mjs FILES 표).
+ * 연결은 ai/meta/rigfix_dragon_v2.json 의 files (tools/idg-rigfix-dragon.mjs FILES 표).
  */
 import path from 'node:path';
 import sharp from 'sharp';
