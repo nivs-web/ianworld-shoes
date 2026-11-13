@@ -7,7 +7,7 @@
  * 받을 자격은 진행에서 계산한다(`grantProgress`) — 첫 클리어 확정 보상은 «조건이 참인데 안 가진 것»을 넣는 멱등 함수라
  * 합치기 · 기기 바꿈 · 놓친 보상도 다음 결과 때 저절로 채워진다.
  */
-import { CATALOG, LEAD_FORMS, MYSTERY, TIER_KO, condMet, seesMaster, mysteryView } from './catalog.js';
+import { CATALOG, LEAD_FORMS, MYSTERY, TIER_KO, condMet, seesMaster } from './catalog.js';
 import { MASTER_ON } from './features.js';   // 초고수 보류(11/13) : false 면 신화 · 보라 모습 · myth · 신화 다시 깨기 · 초고수 게이지가 절대 안 나온다(코드는 남김)
 
 /** 떨어짐 숫자 (SPEC §8 · §6) */
@@ -124,6 +124,12 @@ export function resultDrops(after, ctx) {
  * 어려움 «?» = 어려움을 새로 깬 판(hardWon) · 초고수 «?» = 보라 별을 딴 판. 얻었으면 10, 아직 «?» 카드 · 안 보이는 단계면 0.
  */
 export function mysteryStep(g, id) {
-  const v = mysteryView(g, id);
-  return v.show === 'owned' ? 10 : v.show === 'silhouette' ? Math.round((v.lit || 0) * 10) : 0;
+  const m = MYSTERY.find((x) => x.id === id);
+  if (!m) return 0;
+  if (g?.units?.[id]) return 10;
+  if (m.rar === 'myth' && !MASTER_ON) return 0;   // 초고수 꺼짐
+  const isHard = m.rar === 'secret', [a, b] = m.span;
+  let n = 0;
+  for (let i = a; i <= b; i++) if (isHard ? bitAt(g?.hardWon, i) : starAt(g?.masterStars, i)) n++;
+  return Math.floor((n / (b - a + 1)) * 10 + 1e-9);   // 10조각 (실루엣을 보여 주는지는 mysteryView 가 따로 정한다)
 }
