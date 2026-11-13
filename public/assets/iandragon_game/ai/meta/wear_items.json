@@ -1,0 +1,546 @@
+{
+ "note": "꾸미기 물건별 착용 표 (겜보조 1 · 11/13). src = 꾸미기 그림(상점 그림 그대로) · w = 폭(모자: 머리 폭 · 목 장식: 목 폭 · 망토류: 몸 폭 에 대한 비율) · anchor = 그림(투명 가장자리를 자른 것) 안에서 붙는 점 비율 · layer = front(몸통 앞) | back(몸통 뒤 · 망토) · cover = 그 드래곤 뿔 · 볏을 지운 «모자용 머리»로 바꿔 끼우나 · dx/dy = 칸 단위 손보정(선택). 고친 뒤 node tools/idg-wear-bake.mjs",
+ "items": {
+  "hat_crown": {
+   "slot": "hat",
+   "src": "ai/meta/hat_crown.png",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_pirate": {
+   "slot": "hat",
+   "src": "ai/meta/hat_pirate.png",
+   "w": 0.9,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true,
+   "hole": false
+  },
+  "hat_wizard": {
+   "slot": "hat",
+   "src": "ai/meta/hat_wizard.png",
+   "w": 0.75,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_pumpkin": {
+   "slot": "hat",
+   "src": "ai/meta/hat_pumpkin.png",
+   "w": 0.8,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_helmet": {
+   "slot": "hat",
+   "src": "ai/meta/hat_helmet.png",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_ribbon": {
+   "slot": "hat",
+   "src": "ai/meta/hat_ribbon.png",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_party": {
+   "slot": "hat",
+   "src": "ai/meta/hat_party.png",
+   "w": 0.6,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_viking": {
+   "slot": "hat",
+   "src": "ai/meta/hat_viking.png",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_acorn": {
+   "slot": "hat",
+   "src": "ai/meta/hat_acorn.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_nightcap": {
+   "slot": "hat",
+   "src": "ai/meta/hat_nightcap.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_moonhelm": {
+   "slot": "hat",
+   "src": "ai/meta/hat_moonhelm.webp",
+   "w": 0.7,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_moonstar": {
+   "slot": "hat",
+   "src": "ai/meta/hat_moonstar.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_lavacone": {
+   "slot": "hat",
+   "src": "ai/meta/hat_lavacone.webp",
+   "w": 0.8,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_phoenixcrest": {
+   "slot": "hat",
+   "src": "ai/meta/hat_phoenixcrest.webp",
+   "w": 0.65,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_aviator": {
+   "slot": "hat",
+   "src": "ai/meta/hat_aviator.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_wingcap": {
+   "slot": "hat",
+   "src": "ai/meta/hat_wingcap.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_stormcrown": {
+   "slot": "hat",
+   "src": "ai/meta/hat_stormcrown.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_earmuff": {
+   "slot": "hat",
+   "src": "ai/meta/hat_earmuff.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_minerhelm": {
+   "slot": "hat",
+   "src": "ai/meta/hat_minerhelm.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_drillhat": {
+   "slot": "hat",
+   "src": "ai/meta/hat_drillhat.webp",
+   "w": 0.8,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_jewelhelm": {
+   "slot": "hat",
+   "src": "ai/meta/hat_jewelhelm.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_turban": {
+   "slot": "hat",
+   "src": "ai/meta/hat_turban.webp",
+   "w": 0.75,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_pharaoh": {
+   "slot": "hat",
+   "src": "ai/meta/hat_pharaoh.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_lilypad": {
+   "slot": "hat",
+   "src": "ai/meta/hat_lilypad.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_witchhat": {
+   "slot": "hat",
+   "src": "ai/meta/hat_witchhat.webp",
+   "w": 0.8,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_crystalcap": {
+   "slot": "hat",
+   "src": "ai/meta/hat_crystalcap.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_gemtiara": {
+   "slot": "hat",
+   "src": "ai/meta/hat_gemtiara.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "hat_flamecrown": {
+   "slot": "hat",
+   "src": "ai/meta/hat_flamecrown.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_cometcrown": {
+   "slot": "hat",
+   "src": "ai/meta/hat_cometcrown.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": false
+  },
+  "hat_starcrown": {
+   "slot": "hat",
+   "src": "ai/meta/hat_starcrown.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    1
+   ],
+   "cover": true
+  },
+  "neck_cape": {
+   "slot": "neck",
+   "src": "ai/meta/neck_cape.png",
+   "w": 1.35,
+   "anchor": [
+    0.5,
+    0.06
+   ],
+   "layer": "back"
+  },
+  "neck_scarf": {
+   "slot": "neck",
+   "src": "ai/meta/neck_scarf.png",
+   "w": 1,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_medal": {
+   "slot": "neck",
+   "src": "ai/meta/neck_medal.png",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_skull": {
+   "slot": "neck",
+   "src": "ai/meta/neck_skull.png",
+   "w": 1.25,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_bow": {
+   "slot": "neck",
+   "src": "ai/meta/neck_bow.png",
+   "w": 1,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_bell": {
+   "slot": "neck",
+   "src": "ai/meta/neck_bell.png",
+   "w": 1,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_leafscarf": {
+   "slot": "neck",
+   "src": "ai/meta/neck_leafscarf.webp",
+   "w": 1,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_emberscarf": {
+   "slot": "neck",
+   "src": "ai/meta/neck_emberscarf.webp",
+   "w": 1,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_lavachain": {
+   "slot": "neck",
+   "src": "ai/meta/neck_lavachain.webp",
+   "w": 1.25,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_cloudscarf": {
+   "slot": "neck",
+   "src": "ai/meta/neck_cloudscarf.webp",
+   "w": 1,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_featherboa": {
+   "slot": "neck",
+   "src": "ai/meta/neck_featherboa.webp",
+   "w": 1,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_icescarf": {
+   "slot": "neck",
+   "src": "ai/meta/neck_icescarf.webp",
+   "w": 1,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_frostmedal": {
+   "slot": "neck",
+   "src": "ai/meta/neck_frostmedal.webp",
+   "w": 0.85,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_coalpouch": {
+   "slot": "neck",
+   "src": "ai/meta/neck_coalpouch.webp",
+   "w": 1.25,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_rubyamulet": {
+   "slot": "neck",
+   "src": "ai/meta/neck_rubyamulet.webp",
+   "w": 1.25,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_bonechain": {
+   "slot": "neck",
+   "src": "ai/meta/neck_bonechain.webp",
+   "w": 1.25,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_ghostcape": {
+   "slot": "neck",
+   "src": "ai/meta/neck_ghostcape.webp",
+   "w": 1.35,
+   "anchor": [
+    0.5,
+    0.06
+   ],
+   "layer": "back"
+  },
+  "neck_sunscarab": {
+   "slot": "neck",
+   "src": "ai/meta/neck_sunscarab.webp",
+   "w": 1.2,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_frogbead": {
+   "slot": "neck",
+   "src": "ai/meta/neck_frogbead.webp",
+   "w": 1.25,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_vinecape": {
+   "slot": "neck",
+   "src": "ai/meta/neck_vinecape.webp",
+   "w": 1.35,
+   "anchor": [
+    0.5,
+    0.06
+   ],
+   "layer": "back"
+  },
+  "neck_crystalbead": {
+   "slot": "neck",
+   "src": "ai/meta/neck_crystalbead.webp",
+   "w": 1.25,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_knightcape": {
+   "slot": "neck",
+   "src": "ai/meta/neck_knightcape.webp",
+   "w": 1.35,
+   "anchor": [
+    0.5,
+    0.06
+   ],
+   "layer": "back"
+  },
+  "neck_dragonheart": {
+   "slot": "neck",
+   "src": "ai/meta/neck_dragonheart.webp",
+   "w": 1.25,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  },
+  "neck_starnecklace": {
+   "slot": "neck",
+   "src": "ai/meta/neck_starnecklace.webp",
+   "w": 1.25,
+   "anchor": [
+    0.5,
+    0.12
+   ],
+   "layer": "front"
+  }
+ }
+}

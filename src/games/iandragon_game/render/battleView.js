@@ -21,6 +21,7 @@ import { BREATH_COLORS } from '../data/looks.js';
 import { lightsFor, fxFrames, makeBreath, tileMirror } from './living.js';
 import { lanesFor, laneY } from './lanes.js';
 import { keepBase, anchorsOf, loadDecoTex, buildDeco, makeFlag, wave, makeAura, makePet } from './castleKit.js';
+import { wearTables, wearPlan, wearRigData, attachWear } from './wearKit.js';   // 꾸미기 착용 (모자 · 목 장식) 공용 — 표 ai/meta/wear_anchor.json · wear_items.json
 
 const AI = '/assets/iandragon_game/ai/';
 /** 예전 한 줄 땅 높이 (11/12 부터 전투는 월드마다 lanes.js — 발 높이 spawnY · 성 밑동 castleY). 밖에서 쓰는 곳을 위해 남겨 둠 */
@@ -59,19 +60,16 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const hpP = Promise.all([...['hp_unit_frame', 'hp_unit_fill_me', 'hp_unit_fill_foe', 'hp_castle_frame', 'hp_castle_fill'].map((n) => tryLoad(`${AI}hud/${n}.png`)), fetch(`${AI}hud/hp_bars.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
   const fxP = Promise.all([tryLoad(`${AI}fx/meteor.png`), fxFrames('boom').catch(() => null)]);
   const torchP = fxFrames('fire_orange').catch(() => null);
-  const WEARP = fetch('/assets/iandragon_game/ai/meta/wear.json').then((r) => r.json()).catch(() => null);
+  const WEARP = wearTables();   // 착용 표 두 장 {A, I} (wearKit.js)
   const ST = ['weaken', 'revive', 'shield', 'noknock', 'poison', 'purify'];
   const stP = Promise.all(ST.map(async (k) => [k, await tryLoad(`/assets/iandragon_game/ui/hud_st_${k}_xs.png`)]));
   /* 꾸미기 그림(깃발 · 모자 · 모자용 머리 · 목 장식)도 미리 받아 둔다 — 아래 wearRig · dress 가 같은 주소를 부르면 이미 받은 것을 쓴다 */
   const prefetchLook = (art, lk) => {
     if (!lk) return;
     if (lk.flag) tryLoad(`${AI}meta/flag_${lk.flag}.png`);
-    WEARP.then((W) => {
-      const Lw = W?.leaders?.[art]; if (!Lw) return;
-      const hk = 'hat_' + lk.hat, nk = 'neck_' + lk.neck, it = lk.neck && W.items?.[nk], fs = [];
-      if (lk.hat && W.items?.[hk] && Lw.hat?.[hk]) fs.push(W.items[hk].file, ...Object.values(Lw.hat[hk].head || {}));
-      if (it) fs.push(it.file, it.files?.front, it.files?.back);
-      for (const f of fs) if (typeof f === 'string' && f) tryLoad('/assets/iandragon_game/' + f);
+    WEARP.then((T) => {
+      const pl = wearPlan(art, lk, T), fs = [pl.hat?.file, ...Object.values(pl.hat?.heads || {}), pl.neck?.file];
+      for (const f of fs) if (f) tryLoad('/assets/iandragon_game/' + f);
     });
   };
   prefetchLook(leader, look);
@@ -198,11 +196,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   /* 덮는 모자(cover) : 그 대장 용의 머리 텍스처(head · blink · breath)를 뿔 · 볏을 지운 그림으로 바꿔 끼운다 (보조 3차 · 대표님 «모자가 이마를 덮고 뿔이 뚫으면 안 됨») · WEARP = 위에서 미리 받기 시작 */
   async function wearRig(data, art, lk) {
     if (!data || !lk?.hat) return data;
-    const e = (await WEARP)?.leaders?.[art]?.hat?.['hat_' + lk.hat];
-    if (!e?.head) return data;
-    const tex = { ...data.tex };
-    for (const [n, file] of Object.entries(e.head)) { const t = await tryLoad('/assets/iandragon_game/' + file); if (t) tex[n] = t; }
-    return { rig: data.rig, tex };
+    return wearRigData(data, art, lk, await WEARP, (f) => tryLoad('/assets/iandragon_game/' + f));
   }
   const ldRig = await wearRig(rigs[leader] || null, leader, look);
   const LEAD_K = 0.74;   /* 리더 용을 일반 용 크기로 (대표님 «둥지 위 용이 너무 크다») */
@@ -212,24 +206,10 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const LEAD_FEET = 66;
   if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, CY - tower.height + LEAD_FEET); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
-  /* 착용 부품 (보조 2차 · 대표님 «상점 아이콘과 용이 쓴 모습은 달라야») — ai/meta/wear/ 옆모습 부품을 head · torso 부품에 붙인다.
-     좌표 = ai/meta/wear.json (tools/idg-wear-fit.mjs 가 대장 용마다 계산) · 예시 tools/idg-gallery/viewer.js attachWear */
+  /* 착용 (11/13 겜보조 1 · 대표님 «드래곤마다 덩치가 달라 아이템이 안 맞음») — 꾸미기 그림 하나 + 대장 용마다 기준점 3개(head · neck · back) · 크기 : render/wearKit.js */
   async function wear(R, art, lk) {
-    const body = R?.root.children[0], data = rigs[art], W = await WEARP, L = W?.leaders?.[art];
-    if (!body || !data || !L) return;
-    const idx = (n) => data.rig.parts.findIndex((p) => p.n === n);
-    const torso = body.children[idx('torso')], head = body.children[idx('head')];
-    const wt = (file) => tryLoad('/assets/iandragon_game/' + file);
-    const hk = 'hat_' + lk.hat, nk = 'neck_' + lk.neck;   // 표 열쇠 = 그림 이름
-    if (lk.hat && W.items[hk] && L.hat?.[hk] && head) { const t = await wt(W.items[hk].file); if (t && !head.destroyed) { const sp = new Sprite(t); sp.position.set(L.hat[hk].x, L.hat[hk].y); head.addChild(sp); } }
-    const it = lk.neck && W.items[nk];
-    if (it && torso) {
-      const at = it.layer === 'behind' ? L.nape : L.neck;
-      const mk = async (file) => { const t = await wt(file); if (!t) return null; const sp = new Sprite(t); sp.anchor.set(it.anchor[0], it.anchor[1]); sp.position.set(at.x, at.y); return sp; };
-      const behind = async (file) => { const sp = await mk(file); if (!sp || torso.destroyed || torso.parent !== body) return; const box = new Container(); box.addChild(sp); body.addChildAt(box, body.getChildIndex(torso)); box.position.copyFrom(torso.position); follow.push([box, torso]); };
-      if (it.layer === 'split') { const fr = await mk(it.files.front); if (fr && !torso.destroyed) torso.addChild(fr); await behind(it.files.back); }
-      else await behind(it.file);
-    }
+    if (!R || !rigs[art]) return;
+    follow.push(...await attachWear(R, rigs[art], art, lk, await WEARP, (f) => tryLoad('/assets/iandragon_game/' + f)));   // 표 = wear_anchor.json · wear_items.json · 그림 = 꾸미기 그림을 도트 칸에 맞게 굽은 ai/meta/wear/fit/
   }
   async function dress(rig, lk, castle, art) {
     const flagT = castle === nest && dtx?.flag ? dtx.flag : lk.flag ? await tryLoad(`${AI}meta/flag_${lk.flag}.png`) : null;   // 내 성 : 새 꾸미기 깃발(png · webp 둘 다)

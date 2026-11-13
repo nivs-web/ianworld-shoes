@@ -1,6 +1,6 @@
 /**
  * 꾸미기 창 미리보기 — 살아 있는 드래곤 한 마리 (idgLook.js 에서 옮김 · 내용 그대로)
- * 로비 myDragon · liveRig 와 같은 방법 : rig idle + wear.json 모자 · 목 장식. Pixi 캔버스 하나를 창이 닫힐 때까지 다시 쓴다.
+ * 로비 myDragon · liveRig 와 같은 방법 : rig idle + wear_anchor.json 모자 · 목 장식. Pixi 캔버스 하나를 창이 닫힐 때까지 다시 쓴다.
  */
 import { dressedCanvas } from '../idgDressed.js';
 import { decodeLook } from '../../games/iandragon_game/data/looks.js';
@@ -11,7 +11,7 @@ export const CW = 360, CH = 300;
 const PET_Y = Math.round(CH * 0.66);   // 미리보기 캔버스 속 크기 (CSS 가 칸에 맞춰 늘림 · 도트 그대로)
 
 /**
- * 살아 있는 용 한 마리 (로비 myDragon · liveRig 와 같은 방법 : rig idle + wear.json 모자 · 목 장식) — Pixi 캔버스 하나를 창이 닫힐 때까지 다시 쓴다.
+ * 살아 있는 용 한 마리 (로비 myDragon · liveRig 와 같은 방법 : rig idle + wear_anchor.json 모자 · 목 장식) — Pixi 캔버스 하나를 창이 닫힐 때까지 다시 쓴다.
  * WebGL 이 안 되면 꾸민 정지 그림(dressedCanvas)으로.
  */
 export function liveDragon(host) {
@@ -32,24 +32,13 @@ export function liveDragon(host) {
     return appP;
   }
   async function build(ld, look) {
-    const [{ Application, Assets, Container, Sprite }, { loadRig, createRigged }] = await Promise.all([import('pixi.js'), import('../../games/iandragon_game/render/rig.js')]);
-    const [data, Wr] = await Promise.all([loadRig(ld), fetch(`${B}ai/meta/wear.json`).then((r) => r.json()).catch(() => null)]);
-    const lk = decodeLook(look || ''), L = Wr?.leaders?.[ld], hk = 'hat_' + lk.hat, nk = 'neck_' + lk.neck;
+    const [{ Application, Assets }, { loadRig, createRigged }, kit] = await Promise.all([import('pixi.js'), import('../../games/iandragon_game/render/rig.js'), import('../../games/iandragon_game/render/wearKit.js')]);
+    const [data, T] = await Promise.all([loadRig(ld), kit.wearTables()]);
+    const lk = decodeLook(look || '');
     const wt = (f) => Assets.load(B + f).then((t) => { t.source.scaleMode = 'nearest'; return t; }).catch(() => null);
-    const hatE = lk.hat && Wr?.items?.[hk] && L?.hat?.[hk];
-    let rd = data;
-    if (hatE?.head) { const tex = { ...data.tex }; for (const [n, f] of Object.entries(hatE.head)) { const t = await wt(f); if (t) tex[n] = t; } rd = { rig: data.rig, tex }; }   // 덮는 모자 = 모자용 머리
+    const rd = await kit.wearRigData(data, ld, lk, T, wt);   // 덮는 모자 = 모자용 머리
     const r = createRigged(rd, 1, 1); r.set('idle');
-    const body = r.root.children[0], idx = (n) => data.rig.parts.findIndex((q) => q.n === n);
-    const head = body.children[idx('head')], torso = body.children[idx('torso')], fl = [];
-    if (hatE && head) { const t = await wt(Wr.items[hk].file); if (t) { const sp = new Sprite(t); sp.position.set(hatE.x, hatE.y); head.addChild(sp); } }
-    const it = lk.neck && L && Wr?.items?.[nk];
-    if (it && torso) {
-      const at = it.layer === 'behind' ? L.nape : L.neck;
-      const mk = async (f) => { const t = await wt(f); if (!t) return null; const sp = new Sprite(t); sp.anchor.set(it.anchor[0], it.anchor[1]); sp.position.set(at.x, at.y); return sp; };
-      const behind = async (f) => { const sp = await mk(f); if (!sp) return; const bx = new Container(); bx.addChild(sp); body.addChildAt(bx, body.getChildIndex(torso)); fl.push([bx, torso]); };
-      if (it.layer === 'split') { const fr = await mk(it.files.front); if (fr) torso.addChild(fr); await behind(it.files.back); } else await behind(it.file);
-    }
+    const fl = await kit.attachWear(r, data, ld, lk, T, wt);   // 모자 · 목 장식 · 망토 (표 = wear_anchor.json · wear_items.json)
     r.update(0); for (const [bx, t] of fl) bx.position.copyFrom(t.position);
     /* 크기 : 용마다 키가 달라도 칸에 꼭 맞게 · 발(rig 원점) = 캔버스 아래 가운데 = 석판 위 · 날개를 펄럭여도 안 잘리게 6% 여유 */
     const bd = r.root.getLocalBounds(), up = -bd.y, half = Math.max(-bd.x, bd.x + bd.width), pad = 3;
