@@ -15,6 +15,7 @@ const K = {
   BURROW_SEE: 220, BURROW_TIME: 1.2,            // 땅굴 : 아군이 220wu 안에 보이면 1.2초 숨었다가 전선 뒤로
   SHOCK_MUL: 2,                     // 보스 등장 충격파 : 넉백 시간 2배(=180wu)
   PVP_BOUNTY: 0.2,                  // 대전 : 상대 유닛 처치 시 그 유닛 비용의 20%
+  BREATH_WIND: 12,                  // 브레스 : 누르고 12틱(0.4초) 뒤에 불이 나간다 — 캐슬 위 드래곤이 내려와 커지는 시간 (기획 13.1)
 };
 
 function mulberry32(seed) {
