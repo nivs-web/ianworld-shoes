@@ -1626,3 +1626,9 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-card .idg-sp.red .ss img, .idg-card .idg-sp.red .ss img:first-child { filter: hue-rotate(-42deg) saturate(1.5) drop-shadow(0 1px 0 #1a0c24); }
 .idg-card .idg-sp.purple .ss img, .idg-card .idg-sp.purple .ss img:first-child { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92) drop-shadow(0 1px 0 #1a0c24); }
 .idg-card .idg-sp { width: 384px; max-width: calc(100vw - 96px); }   /* 좁은 카드(좀비 얼굴 하나)에서도 알약이 줄지 않게 — 카드가 알약만큼 넓어진다 */
+/* 배포 전 점검 (11/13) : 3번째 칸 «★★★ 205초» 가 칸막이에 닿지 않게 — 별 사이 1px 겹침 · 칸 안쪽 여백 · 브레스 UP 표시는 «%» 가 뭉개지지 않는 글꼴 */
+.idg-card .idg-sp .ss { gap: 0; }
+.idg-card .idg-sp .ss img + img { margin-left: -1px; }
+.idg-card .idg-sp .ss img, .idg-card .idg-sp .ss img:first-child { height: 1.28em; }
+.idg-card .idg-sp .cell:nth-child(3) { padding-left: .45em; }
+.idg-cons.auto { font-family: 'Pretendard Variable', Pretendard, sans-serif; font-weight: 800; letter-spacing: 0; }
