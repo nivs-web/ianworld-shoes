@@ -4,12 +4,15 @@ import { TICK, K, mulberry32, levelMul, formOf, formMul, powerMul, resolveDef, h
 
 /* stage  = { length, baseHp, mag(적 체력 배율), atkMag(적 공격 배율, 없으면 mag), lines:[{id,count,start,every,baseHpBelow,orAfter,bossHpBelow,delay,mag,boss}],
               bossShock, fever, capAlly, walletLock, costMax, startMoney, allySpeed, enemySpeed, limit, pvp }
-   loads  = [{ side, deck:[{id,lv}], bonus, leader, leaderLv, skills:[id] }]   // PvE 1인 = 1개, 협동 = side 0 둘, 대전 = side 0 / side 1
-   D      = { units, enemies, wallet, leaders, skills, startMoney, playerBaseHp }  */
+   loads  = [{ side, deck:[{id,lv}], bonus, leader, leaderLv, skills:[id], guard?, cannon?, bell? }]   // PvE 1인 = 1개, 협동 = side 0 둘, 대전 = side 0 / side 1
+            guard  = { dmg, every, range, splash, slow, vs }  수호 불꽃 (없으면 안 쏜다 — 옛 편성 · 정답표 300판은 그대로)
+            cannon = { dmg, every, range, splash, kb } 대포 · bell = { freeze, at:[0.5(,0.25)] } 경보 종 (없으면 없음)
+   D      = { units, enemies, wallet, leaders, skills, startMoney, playerBaseHp }
+   S.ev   = 화면용 사건(최근 32개 · 계산에는 안 쓴다) { n, k:'gs'|'gh'|'cs'|'ch'|'bell'|'th', p?, side, x?, t? } — 그리는 쪽은 n 이 본 것보다 큰 것만 */
 function createBattle(stage, loads, D, seed) {
   const S = {
     t: 0, L: stage.length, stage, D, rnd: mulberry32(seed || 1), uid: 0, units: [],
-    base: [{ hp: 0, maxHp: 0 }, { hp: 0, maxHp: 0 }], players: [], lines: [], over: null, boss: null,
+    base: [newBase(), newBase()], players: [], lines: [], over: null, boss: null, castle: false, ev: [], evN: 0,
     feverAt: stage.fever || 120,
     st: { enemySpawned: 0, kills: 0, bossAt: null, firstHit: null, minFront: stage.length, swings: 0, _dir: 0, _ext: 0, _sampleT: 0 },
   };
@@ -17,7 +20,8 @@ function createBattle(stage, loads, D, seed) {
   for (const ld of loads) perSide[ld.side]++;
   for (const ld of loads) {
     const B = Object.assign({}, ZERO_BONUS, ld.bonus || {});
-    const leader = D.leaders[ld.leader || 'novart'];
+    let leader = D.leaders[ld.leader || 'novart'];
+    if (B.breathRange !== 1) leader = Object.assign({}, leader, { range: Math.round(leader.range * B.breathRange) });   // 브레스 사거리 배율 (60% ~ 100%)
     if (leader.passive) for (const k in leader.passive) { if (k === 'startMoney') B[k] += leader.passive[k]; else B[k] *= leader.passive[k]; }   // 리더 패시브
     const lmul = powerMul(ld.leaderLv || 1);
     const wl0 = stage.walletLock != null ? stage.walletLock : 0;
@@ -29,6 +33,8 @@ function createBattle(stage, loads, D, seed) {
       breathT: 0, breathCharge: leader.charge / B.breathCharge,
       skills: (ld.skills || []).map(id => ({ id, def: D.skills[id], left: D.skills[id].charges, cdT: D.skills[id].first || 0 })),
       rage: 0, rageT: 0,
+      guard: ld.guard ? Object.assign({}, ld.guard, { dmg: ld.guard.dmg * B.guardDmg }) : null, guardT: 0,
+      cannon: ld.cannon ? Object.assign({}, ld.cannon) : null, cannonT: 0, shots: [],
       cap: Math.floor((stage.capAlly || K.CAP_UNITS) / perSide[ld.side]) + (perSide[ld.side] > 1 ? 1 : 0),
       st: { spawned: 0, lost: 0, breath: 0, walletUps: 0, skill: 0, rageUse: 0, earned: 0, spent: 0, peak: 0 },
     });
@@ -37,11 +43,18 @@ function createBattle(stage, loads, D, seed) {
     const b = S.base[ld.side];
     b.maxHp = b.maxHp === 0 ? hp : Math.round(Math.max(b.maxHp, hp) * 1.5);
     b.hp = b.maxHp;
+    // 드래곤캐슬 장비 : 같은 편이 둘이면 좋은 쪽 (울타리 · 수리 · 종)
+    b.armor = Math.min(b.armor, B.baseArmor); b.thorns = Math.max(b.thorns, B.thorns); b.regen = Math.max(b.regen, B.baseRegen);
+    if (ld.bell && (!b.bell || ld.bell.at.length > b.bell.at.length || (ld.bell.at.length === b.bell.at.length && ld.bell.freeze > b.bell.freeze))) b.bell = ld.bell;
   }
+  for (const p of S.players) if (p.guard || p.cannon) S.castle = true;
+  for (const b of S.base) if (b.regen > 0 || b.bell) S.castle = true;
   if (perSide[1] === 0) { S.base[1].hp = S.base[1].maxHp = stage.baseHp; }
   S.lines = (stage.lines || []).map(e => ({ ...e, left: e.count, next: e.start || 0, armed: e.baseHpBelow == null && e.bossHpBelow == null }));
   return S;
 }
+// 기지 하나 : 체력 + 드래곤캐슬 장비(armor 받는 피해 × · thorns 되돌림 · regen 초당 회복 · bell 경보 종 · bellN 울린 횟수)
+function newBase() { return { hp: 0, maxHp: 0, armor: 1, thorns: 0, regen: 0, bell: null, bellN: 0 }; }
 
 function makeUnit(S, def, side, mul, owner, amul) {
   const hp = Math.max(1, Math.round(def.hp * mul));
@@ -127,8 +140,9 @@ function applyCommand(S, cmd) {
       let d = dmg;
       if (ld.focus && u === top) d *= ld.focus;
       if (ld.strongVs && hasTrait(u.def.traits, ld.strongVs)) d *= 2;
+      if (u.boss && p.B.bossCap > 0 && d > u.maxHp * p.B.bossCap) d = u.maxHp * p.B.bossCap;   // 보스 상한 : 한 방에 보스를 못 잡는다
       const half = u.boss ? 0.5 : 1;
-      applyHit(S, null, u, d, { trueDmg: ld.trueDmg, purify: ld.purify, pi: cmd.p, bountyMul: ld.bountyMul });
+      applyHit(S, null, u, d, { trueDmg: ld.trueDmg, purify: ld.purify, pi: cmd.p, bountyMul: p.B.guardBounty !== 1 ? (ld.bountyMul || 1) * p.B.guardBounty : ld.bountyMul });
       if (!u.alive) continue;
       if (ld.kb) knock(u, ld.kb);
       if (ld.slow) u.slowT = Math.max(u.slowT, ld.slow * half);

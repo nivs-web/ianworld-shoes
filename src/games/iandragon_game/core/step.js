@@ -40,6 +40,9 @@ function step(S, cmds) {
   // ── 3. 플레이어 명령
   if (cmds) for (const c of cmds) applyCommand(S, c);
 
+  // ── 3b. 드래곤캐슬 : 수호 불꽃 · 대포 · 수리 · 경보 종 (키우기가 없는 판은 건너뛴다)
+  if (S.castle) castleTick(S);
+
   // ── 4. 유닛 갱신 (타격은 모았다가 5에서 한꺼번에)
   const A = [], E = [];                                              // 조준 가능한 유닛 : A = side0 (x 큰 순), E = side1 (x 작은 순)
   for (const u of units) if (targetable(u)) (u.side === 0 ? A : E).push(u);
@@ -116,13 +119,14 @@ function step(S, cmds) {
       for (const [a, f] of list) if (a >= 1e6) applyHit(S, u, f, dmg);       // 파동 : 사거리 밖 wave 까지 뒤따라 맞는다
     } else hitBase = bd <= def.range;
     if (hitBase) {
-      const b = S.base[1 - u.side], d = dmg * (def.baseKiller ? 4 : 1);
+      const b = S.base[1 - u.side], d = dmg * (def.baseKiller ? 4 : 1) * b.armor;   // armor = 가시 울타리 (받는 피해 ×, 없으면 1)
       const before = b.hp;
       b.hp -= d;
       if (u.side === 0 && S.st.firstHit == null) S.st.firstHit = time;
       for (const p of S.players) if (p.side === 1 - u.side) {                // 기지가 맞으면 분노가 찬다
         p.rage = Math.min(K.RAGE_MAX, p.rage + K.RAGE_BASE * 100 * (before - Math.max(0, b.hp)) / b.maxHp);
       }
+      if (b.thorns > 0) thorn(S, u, d * b.thorns, 1 - u.side);
     }
     if (def.blast) { u.alive = false; u.killer = null; u.selfKill = true; }
   }
@@ -176,6 +180,72 @@ function step(S, cmds) {
     S.over = { winner: stage.pvp ? (a > b ? 0 : a < b ? 1 : -1) : 1, timeout: true };
   }
 }
+
+/* ── 드래곤캐슬 (IDG_DRAGON_CASTLE_PLAN §5.3 · §6.2 · §11.3 · 2026-11-13) — step 3b 에서 한 틱에 한 번, 플레이어 순서대로.
+   수호 불꽃 : guardT 가 every 를 넘고 내 기지 앞 range 안에 조준할 적이 있으면 가장 가까운 적 자리로 불덩이 → GUARD_FLY 뒤 그 자리 둘레 splash 를 친다.
+     피해 = dmg(× guardDmg) × 대장 레벨 배율 × 상성(리더 strongVs 2배 · 유령/그림자 + vs) · 맞은 적 slow 초 느려짐. 난수 없음.
+   대포 : every 초마다 range 안 가장 앞선(내 기지에 가장 가까운) 적 자리로 포탄 → CANNON_FLY 뒤 둘레 splash 피해(× 대장 레벨 배율) + 살짝 밀침(kb).
+   수리 : 기지 체력 += 최대 × regen × TICK.  경보 종 : 기지 체력이 at[n] 아래로 처음 내려가면 한 번 — 적 전부 밀치고 freeze 초 얼림(보스 절반). */
+function castleTick(S) {
+  for (let s = 0; s < 2; s++) {
+    const b = S.base[s];
+    if (b.bell && b.bellN < b.bell.at.length && b.hp > 0 && b.hp <= b.maxHp * b.bell.at[b.bellN]) {
+      b.bellN++;
+      for (const u of S.units) {
+        if (!targetable(u) || u.side === s) continue;
+        knock(u, 1);
+        if (!u.def.freezeImmune) u.freezeT = Math.max(u.freezeT, b.bell.freeze * (u.boss ? 0.5 : 1));
+      }
+      castleEv(S, { k: 'bell', side: s });
+    }
+    if (b.regen > 0 && b.hp > 0 && b.hp < b.maxHp) b.hp = Math.min(b.maxHp, b.hp + b.maxHp * b.regen * TICK);
+  }
+  for (let pi = 0; pi < S.players.length; pi++) {
+    const p = S.players[pi];
+    for (let i = 0; i < p.shots.length;) { const sh = p.shots[i]; sh.t -= TICK; if (sh.t <= 0) { landShot(S, pi, sh); p.shots.splice(i, 1); } else i++; }
+    const g = p.guard, c = p.cannon;
+    if (g) {
+      if (p.guardT < g.every) p.guardT += TICK;
+      const t = p.guardT >= g.every ? nearestFoe(S, p.side, g.range) : null;
+      if (t) { p.guardT = 0; p.shots.push({ k: 'g', t: K.GUARD_FLY, x: t.x }); castleEv(S, { k: 'gs', p: pi, side: p.side, x: t.x, t: K.GUARD_FLY }); }
+    }
+    if (c) {
+      if (p.cannonT < c.every) p.cannonT += TICK;
+      const t = p.cannonT >= c.every ? nearestFoe(S, p.side, c.range) : null;
+      if (t) { p.cannonT = 0; p.shots.push({ k: 'c', t: K.CANNON_FLY, x: t.x }); castleEv(S, { k: 'cs', p: pi, side: p.side, x: t.x, t: K.CANNON_FLY }); }
+    }
+  }
+}
+function nearestFoe(S, side, range) {
+  let best = null, bd = range;
+  for (const u of S.units) { if (!targetable(u) || u.side === side) continue; const d = distFromBase(S, side, u); if (d <= bd && (!best || d < bd)) { best = u; bd = d; } }
+  return best;
+}
+function landShot(S, pi, sh) {
+  const p = S.players[pi], g = p.guard, c = p.cannon, guard = sh.k === 'g';
+  const splash = guard ? g.splash : c.splash, base = (guard ? g.dmg : c.dmg) * p.lmul;
+  const bm = p.B.guardBounty !== 1 ? p.B.guardBounty : undefined;
+  for (const u of S.units) {
+    if (!targetable(u) || u.side === p.side || Math.abs(u.x - sh.x) > splash) continue;
+    let d = base;
+    if (guard) {
+      if (p.leader.strongVs && hasTrait(u.def.traits, p.leader.strongVs)) d *= 2;
+      if (g.vs && hasTrait(u.def.traits, K.GUARD_VS)) d *= 1 + g.vs;
+    }
+    applyHit(S, null, u, d, { pi, bountyMul: guard ? bm : undefined });
+    if (!u.alive) continue;
+    if (guard && g.slow && !u.def.slowImmune) u.slowT = Math.max(u.slowT, g.slow * (u.boss ? 0.5 : 1));
+    if (!guard && c.kb) knock(u, c.kb);
+  }
+  castleEv(S, { k: guard ? 'gh' : 'ch', p: pi, side: p.side, x: sh.x });
+}
+// 가시 울타리 되돌림 : 기지를 때린 적에게 (보스는 절반)
+function thorn(S, u, amt, side) {
+  let pi = -1; for (let i = 0; i < S.players.length; i++) if (S.players[i].side === side) { pi = i; break; }
+  applyHit(S, null, u, amt * (u.boss ? 0.5 : 1), { pi });
+  castleEv(S, { k: 'th', side, x: u.x });
+}
+function castleEv(S, e) { e.n = ++S.evN; S.ev.push(e); if (S.ev.length > 32) S.ev.shift(); }
 
 
 export { step };
