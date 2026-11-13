@@ -314,6 +314,12 @@ html.idg-wide body { width: 100%; }
 .idg-diff-btn:disabled { opacity: .5; }
 .idg-stage-stars.red, .idg-stars.red span.on { color: #ff4d4d !important; text-shadow: var(--idg-pxo-red) !important; }
 .idg-diff { font-weight: 700; } .idg-diff.hard { color: #ff6a6a; } .idg-diff.easy { color: #7ee08f; }
+/* 11/13 난이도 4단계 : 초고수 = 보라 (별 · 단추 · 카드 글) · 편의품 회색(초고수) · 결과 창 별 색 (노란 별 그림 + 색 필터) */
+.idg-diff-btn.on.master { background: #6a2fc0; color: #fff; } .idg-diff.master { color: #c9a0ff; }
+.idg-stars.purple span.on { color: #b36bff !important; text-shadow: var(--idg-pxo) !important; }
+.idg-cons:disabled { filter: grayscale(1) brightness(.7); cursor: not-allowed; }
+.idg-res-stars.red .star.on img { filter: hue-rotate(-42deg) saturate(1.5); } .idg-res-stars.purple .star.on img { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92); }
+.idg-res-stars.red .star.on::before { filter: hue-rotate(-42deg) saturate(1.5); } .idg-res-stars.purple .star.on::before { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92); }
 .idg-mate { position: absolute; left: 50%; top: 62px; transform: translateX(-50%); padding: 3px 12px; border-radius: 10px; background: rgba(20, 60, 30, .8); color: #c8ffd0; font: 700 12px 'Neo둥근모', monospace; display: none; pointer-events: none; }
 .idg-mate.on { display: block; } .idg-mate.foe { background: rgba(80, 16, 20, .8); color: #ffd0d0; }
 

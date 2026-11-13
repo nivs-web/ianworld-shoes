@@ -43,7 +43,7 @@ const ico = (name, alt) => { const i = h('img', 'ico'); i.src = `${UI}${name}.pn
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 /** cb = { cmd({type,i}), pause(), speed(), exit(), retry(), next() } */
-export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null, talk = null, isNet = false }, cb) {
+export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAuto = false, leader = null, foeDeck = null, foeLeader = null, cons = null, consOff = false, talk = null, isNet = false }, cb) {
   let useCons = null;   // 시작 카드에서 고른 편의품
   const root = h('div', 'idg-hud' + (FLOAT_HUD ? ' float' : '')); host.appendChild(root);
   /* 대표님 «PC 에서 위 글씨 · 숫자가 너무 작다» (11/11) : HUD 전체를 화면 크기에 맞춰 키운다 (폰 가로 = 1 · PC 1280×800 ≈ 1.33 · 최대 1.7) */
@@ -179,7 +179,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     /* 11/12 대표님 : 그림이 창의 절반 넘게 · 현판은 용 머리 위 · 별은 용 아래 · 그림은 보상 판 가운데 줄(양 끝 뾰족한 곳)까지 내려와 금 줄로 끝남 */
     const scene = h('div', 'idg-res-scene'), body = h('div', 'idg-res-body');
     scene.appendChild(img(`${RES}${win ? 'banner_win' : 'banner_lose'}.webp`, 'idg-res-banner', win ? '승리!' : '패배'));
-    { const st = h('div', 'idg-res-stars'); for (let i = 0; i < 3; i++) { const on = win && i < info.stars,   /* 패배 = 꺼진 별 3개 (11/12 대표님) */ w = h('span', 'star' + (on ? ' on' : '')), s = img(`${RES}${on ? 'star_on' : 'star_off'}.webp`); w.style.animationDelay = `${0.25 + i * 0.3}s`; w.appendChild(s); st.appendChild(w); } scene.appendChild(st); }
+    { const st = h('div', 'idg-res-stars' + (info.diff === 'hard' ? ' red' : info.diff === 'master' ? ' purple' : '')); for (let i = 0; i < 3; i++) { const on = win && i < info.stars,   /* 패배 = 꺼진 별 3개 (11/12 대표님) */ w = h('span', 'star' + (on ? ' on' : '')), s = img(`${RES}${on ? 'star_on' : 'star_off'}.webp`); w.style.animationDelay = `${0.25 + i * 0.3}s`; w.appendChild(s); st.appendChild(w); } scene.appendChild(st); }
     /* 보상 판 (칸막이 2개 = 3칸) */
     const bar = h('div', 'idg-res-bar'), cell = (src, txt) => { const c = h('div', 'cell'); c.append(img(src), h('b', null, txt)); return c; };
     bar.append(cell(`${RES}timer.webp`, clock(info.t || 0)), cell(`${RES}coin_crown.webp`, `+${fmt(info.coins || 0)}`), cell('/assets/iandragon_game/ui/lobby/icon_gem_v3.png', `+${info.gems || 0}`));   /* 승리 · 패배 모두 : 시간 → 동전 → 젬 (11/12 대표님 «다른 배치는 없어») */
@@ -223,7 +223,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     }
     else if (kind === 'intro') {   /* 스테이지 카드 (기획서 11.4) : 이름 · 기믹 · 오늘의 좀비 · 별 조건 */
       box.append(h('h2', null, `${stage.id} ${stage.name}`));
-      if (stage.diff && stage.diff !== 'normal') box.append(h('p', 'idg-diff ' + stage.diff, stage.diff === 'hard' ? '어려움 — 좀비가 1.35배 세요 · 붉은 별' : '쉬움 — 좀비가 약해요 · 별은 2개까지'));
+      if (stage.diff && stage.diff !== 'normal') box.append(h('p', 'idg-diff ' + stage.diff, stage.diff === 'hard' ? '어려움 — 붉은 별 · 출전 드래곤 Lv21 이상' : stage.diff === 'master' ? `초고수 — 보라 별 · ${stage.limit}초 · 부화 «+» · 편의품은 안 통해요` : '쉬움 — 좀비가 약해요 · 별은 2개까지'));
       if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
       const zs = h('div', 'idg-intro-z');
       for (const tr of [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))]) { const ic = h('img', 'idg-attr'); ic.src = `/assets/iandragon_game/ui/hud_attr_${tr}_s.png`; ic.alt = ''; ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; zs.appendChild(ic); }   // 이 판의 특별한 좀비 (유령 · 거대 · 그림자 · 수정)
@@ -236,7 +236,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     else {
       box.append(h('h2', kind === 'win' ? 'win' : 'lose', info.title || (kind === 'win' ? '승리!' : '아쉬워요…')));
       if (info.pvp) { box.append(h('p', null, `${clock(info.t || 0)} · 코인 +${fmt(info.coins || 0)}`), h('p', 'small', info.rec || '')); if (info.hint) box.append(h('p', 'hint', info.hint)); }
-      else if (kind === 'win') { const st = h('div', 'idg-stars' + (info.red ? ' red' : '')); for (let i = 0; i < 3; i++) { const s = h('span', i < info.stars ? 'on' : '', '★'); s.style.animationDelay = `${0.3 + i * 0.35}s`; st.appendChild(s); } box.appendChild(st); }
+      else if (kind === 'win') { const st = h('div', 'idg-stars' + (info.red ? ' red' : info.purple ? ' purple' : '')); for (let i = 0; i < 3; i++) { const s = h('span', i < info.stars ? 'on' : '', '★'); s.style.animationDelay = `${0.3 + i * 0.35}s`; st.appendChild(s); } box.appendChild(st); }
       if (!info.pvp) box.append(h('p', null, `${clock(info.t || 0)}${kind === 'win' && info.coins ? ` · 코인 +${fmt(info.coins)}` : ''}${kind === 'win' && info.gems ? ` · 젬 +${info.gems}` : ''}${info.daily ? ' (오늘 첫 승리 +10)' : ''}${info.gold ? ` · 황금 좀비 +${fmt(info.gold)}` : ''}`));
       if (kind === 'lose' && info.hint && !info.pvp) box.append(h('p', 'hint', info.hint));
     }
@@ -250,7 +250,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     if (kind === 'pause') add('계속', () => cb.pause(), 'main');
     if (kind === 'intro' && cons && cons.length) {   /* 편의품 (판마다 1개) */
       const cr = h('div', 'idg-cons-row');
-      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
+      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
       draw(); box.appendChild(cr);
     }
     if (kind === 'intro') { add('출격!', () => cb.go(useCons), 'main'); add(text.exit, () => cb.exit()); box.appendChild(row); panel.appendChild(box); panel.classList.add('on'); return; }

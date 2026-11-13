@@ -1,0 +1,101 @@
+/*
+ * 좀비와 드래곤 — 계정 레벨 배지 100 단위 색 · 열림 연출(자물쇠) · 레벨 선물 상자 (11/13 · 난이도 4단계 묶음 · 보조 D)
+ *
+ * 레벨 배지 : .idg-lv[data-tier="0" ~ "9"] (tier = floor(Lv ÷ 100)) · data-d = 자릿수
+ *   로비 왼쪽 위(.l2-lv.idg-lv) · 명예의 전당 줄의 작은 배지(보조 H)가 같은 클래스를 쓴다.
+ *   바탕 = lv_badge.webp 9조각(금) 을 ::before 에 깔고 색만 filter 로 바꾼다 (빛번짐 없음 · 도트 테두리 색만).
+ *   색 10단계는 임시 — 그림 담당이 색표를 정하면 --lvf · --ob 만 바꾼다.
+ * 글씨 = 1px 8방향 딱딱한 외곽선 (흐린 text-shadow · 글로우 금지).
+ */
+.idg-lv { --ob: #4a2200; --lvb: 4px 5px; position: relative; isolation: isolate; display: inline-flex; align-items: baseline; justify-content: center; gap: .08em; box-sizing: border-box;
+  padding: 3px 7px 2px; color: #fff; font-weight: 900; line-height: 1; white-space: nowrap; letter-spacing: 0;
+  text-shadow: 1px 0 var(--ob), -1px 0 var(--ob), 0 1px var(--ob), 0 -1px var(--ob), 1px 1px var(--ob), -1px 1px var(--ob), 1px -1px var(--ob), -1px -1px var(--ob); }
+.idg-lv::before { content: ''; position: absolute; inset: 0; z-index: -1; box-sizing: border-box; border: solid transparent; border-width: var(--lvb);
+  border-image: url(/assets/iandragon_game/ai/lobby2/lv_badge.webp) 30 fill / var(--lvb) stretch; image-rendering: pixelated; filter: var(--lvf, none); }
+.idg-lv small { font-size: .66em; font-weight: 900; color: #fff4c8; }
+.idg-lv b { font-weight: 900; }
+/* 100 단위 색 (임시 10단계) : 금 · 구리빛 붉음 · 은 · 밝은 금 + 흰 점 · 초록 · 파랑 · 자주 · 루비 · 흑요석 · 무지개빛 분홍 */
+.idg-lv[data-tier="1"] { --lvf: hue-rotate(-32deg) saturate(1.35) brightness(.92); --ob: #4a1000; }
+.idg-lv[data-tier="2"] { --lvf: grayscale(1) brightness(1.18) contrast(1.1); --ob: #23283a; }
+.idg-lv[data-tier="3"] { --lvf: saturate(1.5) brightness(1.12); --ob: #5a3000; }
+.idg-lv[data-tier="4"] { --lvf: hue-rotate(78deg) saturate(1.2); --ob: #0d3a14; }
+.idg-lv[data-tier="5"] { --lvf: hue-rotate(168deg) saturate(1.3); --ob: #0c2050; }
+.idg-lv[data-tier="6"] { --lvf: hue-rotate(228deg) saturate(1.2); --ob: #2e0c50; }
+.idg-lv[data-tier="7"] { --lvf: hue-rotate(-52deg) saturate(1.9) brightness(.9); --ob: #4a0010; }
+.idg-lv[data-tier="8"] { --lvf: grayscale(.7) brightness(.55) contrast(1.3); --ob: #000; }
+.idg-lv[data-tier="9"] { --lvf: hue-rotate(290deg) saturate(1.7) brightness(1.08); --ob: #4a0038; }
+/* 300 · 900 = 흰 점 2개 (도트 2px 네모 · 그림자 아님) */
+.idg-lv[data-tier="3"]::after, .idg-lv[data-tier="9"]::after { content: ''; position: absolute; top: 2px; left: 4px; width: 2px; height: 2px; background: #fff; box-shadow: 3px 0 0 #fff; pointer-events: none; }
+
+/* 로비 위 띠 배지 = 원래 .l2-lv 크기 그대로 · 바탕만 ::before 로 옮김 (세 자리면 글자 폭만큼 늘어나고 닉네임이 조금 줄어 말줄임) */
+.l2-lv.idg-lv { border-image: none; padding: 0 calc(var(--h) * .04); }
+.l2-lv.idg-lv::before { inset: calc(var(--h) * -.22) calc(var(--h) * -.24); --lvb: calc(var(--h) * .22) calc(var(--h) * .24); }
+.l2-lv.idg-lv[data-tier="3"]::after, .l2-lv.idg-lv[data-tier="9"]::after { top: calc(var(--h) * -.06); left: calc(var(--h) * .02); }
+.l2-name:has(.idg-lv[data-d="3"]) .l2-nick { width: 4.6em; }
+
+/* ── 한 번만 보는 안내 창 (기존 로비 창 · 리본 현판 그대로) ── */
+.dialog.idg-note { max-width: 360px; text-align: center; }
+.dialog.idg-note .idg-note-text { margin: .4em 0; font-weight: 700; line-height: 1.5; word-break: keep-all; }
+.dialog.idg-note .idg-note-text.big { font-size: 1.2em; font-weight: 900; color: #ffe08a; text-shadow: var(--idg-pxo-fire); }
+.idg-note-stars { display: flex; align-items: center; justify-content: center; gap: 6px; margin: .3em 0; }
+.idg-note-stars img { height: 30px; image-rendering: pixelated; }
+.idg-note-stars.red img { filter: hue-rotate(-42deg) saturate(1.5); }
+.idg-note-stars b { font-size: 1.5em; font-weight: 900; color: #fff; text-shadow: var(--idg-pxo-red); }
+.idg-note-lvwrap { display: flex; justify-content: center; margin: .6em 0 .4em; }
+.idg-lv.big { font-size: 34px; padding: 8px 16px 6px; --lvb: 9px 11px; animation: idgLvIn .5s steps(5) both; }
+@keyframes idgLvIn { 0% { transform: scale(.4); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+/* 자물쇠 연출 : thud = 위에서 떨어져 쿵 (흔들 2번) · break = 쿵 → 네 조각으로 깨져 바닥에 남음 (투명하게 사라지지 않음) */
+.idg-lockfx { position: relative; width: 120px; height: 92px; margin: .3em auto .2em; }
+.idg-lockfx-floor { position: absolute; left: 6px; right: 6px; bottom: 14px; height: 4px; background: #3a2350; box-shadow: 0 2px 0 #1a0c28; }
+.idg-lockfx-lock, .idg-lockfx-bit { position: absolute; left: 36px; bottom: 18px; width: 48px; height: 48px; background: center / 100% 100% no-repeat; image-rendering: pixelated; }
+.idg-lockfx.thud .idg-lockfx-lock { animation: idgLockDrop .7s steps(7) .25s both; }
+@keyframes idgLockDrop { 0% { transform: translateY(-80px); } 55% { transform: translateY(0); } 70% { transform: translateY(-8px); } 85% { transform: translateY(0) translateX(-2px); } 100% { transform: translateY(0); } }
+.idg-lockfx-label { position: absolute; left: 0; right: 0; bottom: -10px; font-size: 13px; font-weight: 900; color: #e3c8ff; text-shadow: var(--idg-pxo); }
+/* 조각 = 같은 자물쇠 그림을 네 칸으로 자름 → 먼저 한 덩어리로 쿵, 그 뒤 흩어져 바닥에 멈춤 */
+.idg-lockfx-bit.b1 { clip-path: polygon(0 0, 55% 0, 45% 50%, 0 45%); --x: -36px; --y: 16px; --r: -80deg; }
+.idg-lockfx-bit.b2 { clip-path: polygon(55% 0, 100% 0, 100% 50%, 45% 50%); --x: 34px; --y: 14px; --r: 95deg; }
+.idg-lockfx-bit.b3 { clip-path: polygon(0 45%, 45% 50%, 50% 100%, 0 100%); --x: -14px; --y: 2px; --r: -12deg; }
+.idg-lockfx-bit.b4 { clip-path: polygon(45% 50%, 100% 50%, 100% 100%, 50% 100%); --x: 14px; --y: 2px; --r: 10deg; }
+.idg-lockfx.break .idg-lockfx-bit { animation: idgLockBreak 1.4s steps(12) .2s both; }
+@keyframes idgLockBreak {
+  0% { transform: translateY(-80px); } 30% { transform: translateY(0); } 42% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 0); }
+  70% { transform: translate(calc(var(--x) * .7), -22px) rotate(calc(var(--r) * .7)); }
+  100% { transform: translate(var(--x), var(--y)) rotate(var(--r)); } }
+
+/* ── 레벨 선물 상자 (겜팀장 그림 ui/lvgift_* · 11/13) : 흔들(기운 그림 2장 + ±12° 회전 · 코드) → 펑 = 열린 상자 + 뚜껑이 날아가 옆 바닥에 떨어짐 + 조각 4개가 바닥에 남음 (투명하게 사라지지 않음) → 받은 것 ── */
+.idg-gift-stage { display: flex; justify-content: center; margin: .1em 0 .3em; }
+.idg-gbox { --s: 108px; position: relative; width: calc(var(--s) * 2); height: calc(var(--s) * 1.3); cursor: pointer; outline: none; }
+.idg-gbox img { position: absolute; image-rendering: pixelated; pointer-events: none; }
+.idg-gbox-floor { position: absolute; left: 4%; right: 4%; bottom: 6px; height: 4px; background: #2a1840; box-shadow: 0 2px 0 #12081e; }
+.idg-gbox-body { left: 50%; bottom: 8px; width: var(--s); height: auto; transform-origin: 50% 100%; transform: translateX(-50%) rotate(var(--rot, 0deg)); }
+.idg-gbox.pop .idg-gbox-body { width: calc(var(--s) * 1.0); }
+.idg-gbox-lid, .idg-gbox-bit { visibility: hidden; }
+.idg-gbox-lid { left: calc(50% - var(--s) * .5); bottom: calc(8px + var(--s) * .55); width: var(--s); }
+.idg-gbox.pop .idg-gbox-lid { visibility: visible; animation: idgGiftLid .7s steps(7) both; }
+@keyframes idgGiftLid { 0% { transform: none; } 45% { transform: translate(calc(var(--s) * -.35), calc(var(--s) * -.7)) rotate(-25deg); } 100% { transform: translate(calc(var(--s) * -.62), calc(var(--s) * .6)) rotate(-12deg) scale(.82); } }
+.idg-gbox-bit { left: calc(50% - var(--s) * .14); bottom: calc(8px + var(--s) * .5); width: calc(var(--s) * .28); }
+.idg-gbox.pop .idg-gbox-bit { visibility: visible; animation: idgGiftBit .8s steps(8) both; }
+.idg-gbox-bit.b1 { --x: -.95; --y: -.5; --r: -20deg; } .idg-gbox-bit.b2 { --x: .62; --y: -.5; --r: 35deg; } .idg-gbox-bit.b3 { --x: .85; --y: -.5; --r: 8deg; width: calc(var(--s) * .22); } .idg-gbox-bit.b4 { --x: -.6; --y: -.5; --r: -10deg; width: calc(var(--s) * .22); }
+.idg-gbox-n { position: absolute; right: 4px; top: 0; font-size: 20px; font-weight: 900; color: #fff; text-shadow: var(--idg-pxo-fire); }
+@keyframes idgGiftBit { 0% { transform: none; } 45% { transform: translate(calc(var(--s) * var(--x) * .5), calc(var(--s) * -.45)) rotate(calc(var(--r) * .5)); } 100% { transform: translate(calc(var(--s) * var(--x)), calc(var(--s) * var(--y) * -1 - 0px)) rotate(var(--r)); } }
+/* 받은 것 : 열린 뒤에 보임 */
+.dialog.idg-gift .idg-gift-list, .dialog.idg-gift .idg-gift-gems { visibility: hidden; }
+.dialog.idg-gift.open .idg-gift-list, .dialog.idg-gift.open .idg-gift-gems { visibility: visible; animation: idgLvIn .4s steps(4) both; }
+.idg-gift-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-height: 40vh; overflow-y: auto; padding: 2px; }
+.idg-gift-card { --tc: #8a93a6; position: relative; width: 92px; box-sizing: border-box; padding: 4px 4px 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: #241338; border: 2px solid var(--tc); box-shadow: 0 2px 0 #12081e; }
+.idg-gift-card.t-common { --tc: #8fc06a; } .idg-gift-card.t-uncommon { --tc: #4da6ff; } .idg-gift-card.t-rare { --tc: #b07cff; } .idg-gift-card.t-epic { --tc: #ffc93c; } .idg-gift-card.t-gem { --tc: #6fd8ff; }
+.idg-gift-lv { align-self: flex-start; font-size: 10px; font-weight: 800; color: #d8c8f0; text-shadow: var(--idg-pxo); }
+.idg-gift-pic { width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; }
+.idg-gift-name { min-height: 2.4em; display: flex; align-items: center; font-size: 11px; font-weight: 800; line-height: 1.2; color: #fff; text-shadow: var(--idg-pxo); word-break: keep-all; }
+.idg-gift-tier { align-self: stretch; margin: 0 -4px; padding: 2px 0 1px; background: var(--tc); color: #fff; font-size: 11px; font-weight: 900; line-height: 1.1; --o: #1a0c28;
+  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+.idg-gift-gems { display: flex; align-items: center; justify-content: center; gap: 4px; margin: .4em 0 .1em; }
+.idg-gift-gems img { height: 26px; image-rendering: pixelated; }
+.idg-gift-gems b { font-size: 1.3em; font-weight: 900; color: #fff; text-shadow: var(--idg-pxo); }
+.dialog .idg-gift-odds { margin: .3em 0 0; font-size: 10px; color: #b8a8d0; }
+@media (prefers-reduced-motion: reduce) { .idg-gbox:not(.pop), .idg-lockfx * , .idg-gbox * { animation-duration: .01s !important; animation-iteration-count: 1 !important; } }
+/* 낮은 가로 화면 : 상자 · 자물쇠를 작게 (받은 것이 스크롤 없이 더 보이게) */
+@media (orientation: landscape) and (max-height: 500px) { .idg-gbox { --s: 62px; } .idg-lockfx { transform: scale(.8); margin: 0 auto; } .idg-gift-pic { width: 40px; height: 40px; } .idg-gift-card { width: 84px; } }
+@media (max-height: 680px) and (orientation: portrait) { .idg-gbox { --s: 84px; } }

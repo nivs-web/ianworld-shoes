@@ -15,7 +15,7 @@ import { el, button, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
 import { kitSection, kitRow, kitKeepScroll } from './idgKit.js';   /* UI 키트 (11/12) — 가져다 쓰기만 */
 import { dressedCanvas } from './idgDressed.js';
-import { SLOTS, SLOT_NAME, LOOKS, TITLES, encodeLook, decodeLook, hasItem, artOf } from '../games/iandragon_game/data/looks.js';
+import { SLOTS, SLOT_NAME, LOOKS, TITLES, encodeLook, decodeLook, hasItem, artOf, artFilter, titleVisible, visibleLooks } from '../games/iandragon_game/data/looks.js';
 import { LEADERS } from '../games/iandragon_game/data/leaders.js';
 import { leaderFor, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
 import '../styles/idg-look.css';
@@ -23,13 +23,13 @@ import '../styles/idg-look.css';
 const AI = '/assets/iandragon_game/ai/';
 const B = '/assets/iandragon_game/';
 const imgFor = artOf;   // 보조 그림 이름 맞춤 (looks.js)
-const FRAME_COLOR = { wood: '#a0703a', silver: '#c8d0d8', gold: '#FFC93C', fire: '#ff6b2b' };
+const FRAME_COLOR = { wood: '#a0703a', silver: '#c8d0d8', gold: '#FFC93C', fire: '#ff6b2b', red: '#e0262e', violet: '#9b4dff', lvstar: '#6fc8ff', lvgem: '#3fd08a' };   // 11/13 붉은 · 보라 불꽃 · 레벨 선물 테두리
 const CW = 360, CH = 300;   // 미리보기 캔버스 속 크기 (CSS 가 칸에 맞춰 늘림 · 도트 그대로)
 
 /** 그림이 없으면 글자로 */
 function pic(slot, id, name, style) {
   const wrap = el('span', { style: 'display:grid;place-items:center;overflow:hidden;font-size:9px;color:#bba;text-align:center;' + (style || 'width:36px;height:36px') });
-  const img = el('img', { src: imgFor(slot, id), alt: '', style: 'width:100%;height:100%;object-fit:contain;image-rendering:pixelated' });
+  const img = el('img', { src: imgFor(slot, id), alt: '', style: 'width:100%;height:100%;object-fit:contain;image-rendering:pixelated' + (artFilter(slot, id) ? `;filter:${artFilter(slot, id)}` : '') });   // 새 테두리 = 기존 그림 + 색 필터 (11/13)
   img.onerror = () => { wrap.replaceChildren(document.createTextNode(String(name || id).slice(0, 4))); };
   wrap.append(img);
   return wrap;
@@ -203,7 +203,7 @@ export function showLook({ idg, save, onClose }) {
   function buildSlots() {
     const secs = [];
     for (const slot of SLOTS) {
-      const owned = LOOKS[slot].filter((x) => hasItem(cur, slot, x.id));
+      const owned = visibleLooks(cur)[slot].filter((x) => hasItem(cur, slot, x.id));   // 보이면 안 되는 물건(vis)은 한 곳(visibleLooks)에서 거름
       const row = el('div.idg-leader-row');
       const m = slotBtns[slot] = new Map();
       const add = (id, kids) => {
@@ -217,7 +217,7 @@ export function showLook({ idg, save, onClose }) {
       if (!owned.length) sec.appendChild(el('div.idg-look-hint', slot === 'frame' ? '명예의 전당 시즌 보상으로 받아요' : slot === 'title' ? '도전 과제와 기록으로 얻어요' : '용 시장에서 사 보세요'));
       if (slot === 'title') {
         // 아직 못 얻은 칭호는 얻는 방법만 보여 준다
-        for (const t of TITLES.filter((x) => !x.has(cur))) sec.appendChild(el('div.idg-look-hint.lock', null, [el('img.idg-lock-ico', { src: `${AI}lobby/ico_lock.png`, alt: '잠김' }), el('b', `«${t.name}»`), ` ${t.how}`]));
+        for (const t of TITLES.filter((x) => !x.has(cur) && titleVisible(x, cur))) sec.appendChild(el('div.idg-look-hint.lock', null, [el('img.idg-lock-ico', { src: `${AI}lobby/ico_lock.png`, alt: '잠김' }), el('b', `«${t.name}»`), ` ${t.how}`]));
       }
       secs.push(sec);
     }

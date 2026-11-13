@@ -35,12 +35,13 @@ import { showLab } from './idgLab.js';
 import { showMulti } from './idgMulti.js';
 import { showShop } from './idgShop.js';
 import { showLook } from './idgLook.js';
-import { showHall } from './idgHall.js';
+import { showHall, checkRaidFrame } from './idgHall.js';   /* 주간 습격 테두리 = 전당 쪽 판 (51위 아래도 받게 · 보조 H) */
 import { TITLES, titleOf, decodeLook } from '../games/iandragon_game/data/looks.js';
-import { fetchIdgBoard } from '../services/idgRank.js';
-import { weekKey } from '../games/iandragon_game/render/battleSetup.js';
 import { currentUser } from '../services/auth.js';
-import { DIFF, hardOpen } from '../games/iandragon_game/render/battleSetup.js';
+import { DIFF, diffUnlocked, diffVisible, diffOpen, diffNext, diffRun } from '../games/iandragon_game/render/battleSetup.js';
+import { SEEN, seenBit, withSeen } from '../services/iandragonGameState.js';
+import { GIFT_TIERS, GIFT_ODDS, parseKey, artOf, artFilter } from '../games/iandragon_game/data/looks.js';
+import '../styles/idg-lvbadge.css';   /* 레벨 배지 100 단위 색 · 열림 연출 · 레벨 선물 (11/13 · 난이도 4단계 묶음) */
 import { isOn } from '../services/switches.js';
 import { MUST, SONGS, EDM_NOTE, EDM_MUST, EDM_SONGS } from '../games/iandragon_game/data/musicCredits.js';
 import { showQuests } from './idgQuests.js';
@@ -81,24 +82,42 @@ function showCredits() {
 
 /** 스테이지 고르기 (B4 최소판 · 2026-11-11 야간) — 월드 1~5 × 10판 · 별 · 잠금(깬 다음 판까지만 열림) */
 const WORLD_NAMES = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 쇠 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤 성'];
+/* 난이도별 별 색 (붉은 · 보라 = 노란 별 그림에 색 필터 · idg-subwin.css) */
+const STAR_CLS = { hard: '.red', master: '.purple' };
+const LOCK_NOTE = { hard: '보통 10-10 을 깨면 열려요', master: '어려움 10-10 을 깨면 열려요' }, LOCK_LINE = { hard: '어려움은 보통 10-10 을 깨면 열려요.', master: '초고수는 어려움 10-10 을 깨면 열려요.' };
+/** 로비가 따를 난이도 (어려움 · 초고수를 골랐고 열려 있을 때만 · 아니면 null = 보통 흐름) */
+const diffNow = (g) => { const d = g?.diff; return isOn('zdOpt', 'diff') && DIFF[d]?.stages && diffVisible(g, d) && diffUnlocked(g, d) ? d : null; };
 function showStages(onPick) {
   Sfx.play('sfx_menu_select');
-  const g = G.idg(), open = Math.min(100, g.cleared + 1);
-  let w = Math.min(10, Math.floor((open - 1) / 10) + 1);
-  const grid = el('div.idg-stage-grid'), tabs = el('div.idg-world-tabs'), name = el('div.idg-world-name'), diffRow = el('div.idg-diff-row'), diffNote = el('div.idg-diff-note');
+  const g = G.idg();
   const diffOn = isOn('zdOpt', 'diff');
+  /* 지금 고른 난이도 (잠겼거나 단추가 없는 난이도면 보통으로 보여 줌 · 저장값은 diffFor 가 판마다 다시 확인) */
+  const curD = () => { const d = G.idg().diff; return !diffOn || !DIFF[d] || (DIFF[d].stages && !(diffVisible(g, d) && diffUnlocked(g, d))) ? 'normal' : d; };
+  const openOf = (d) => (DIFF[d]?.stages ? diffNext(g, d) : Math.min(100, g.cleared + 1));   // 그 난이도에서 열린 마지막 판
+  let w = Math.min(10, Math.floor((openOf(curD()) - 1) / 10) + 1);
+  const grid = el('div.idg-stage-grid'), tabs = el('div.idg-world-tabs'), name = el('div.idg-world-name'), diffRow = el('div.idg-diff-row'), diffNote = el('div.idg-diff-note');
   function draw() {
+    const cur = curD(), D = DIFF[cur], open = openOf(cur);
+    if ((w - 1) * 10 + 1 > open) w = Math.floor((open - 1) / 10) + 1;   // 난이도를 바꿔 이 월드가 잠기면 열린 마지막 월드로
     tabs.replaceChildren(...WORLD_NAMES.map((_, i) => el('button.idg-world-tab' + (i + 1 === w ? '.on' : ''), { type: 'button', disabled: i * 10 + 1 > open, onclick: () => { w = i + 1; draw(); } }, [String(i + 1)])));
     name.textContent = `월드 ${w} · ${WORLD_NAMES[w - 1]}`;
-    /* 난이도 (운영자 스위치 · 어려움은 이 월드를 다 깨야 열림) */
-    const cur = G.idg().diff, hOk = hardOpen(w * 10, g);
-    diffRow.replaceChildren(...(diffOn ? Object.entries(DIFF).map(([k, d]) => el('button.idg-diff-btn' + (cur === k ? '.on' : '') + '.' + k, { type: 'button', disabled: k === 'hard' && !hOk, title: k === 'hard' && !hOk ? '이 월드를 다 깨면 열려요' : '', onclick: () => { G.saveIdg({ diff: k }); draw(); } }, [d.name, ...(k === 'hard' && !hOk ? [el('img.idg-lock-ico', { src: `${AL}ico_lock.png`, alt: '잠김' })] : [])]   /* 🔒 글자 → 도트 자물쇠 */)) : []));
-    diffNote.textContent = diffOn && !hOk ? `어려움(좀비 1.35배 · 붉은 별)은 월드 ${w}의 10판을 모두 깨면 열려요.` : '';   /* 대표님 «어려움은 왜 잠겨 있고 언제 풀리나» */
-    const hard = diffOn && cur === 'hard' && hOk;
+    /* 난이도 단추 (§A-2) : 쉬움 · 보통 · 어려움(자물쇠) — 초고수는 보통 10-10 을 깬 계정에만 «만든다» (숨김 X) · 3개든 4개든 줄을 꽉 채움 */
+    const keys = Object.keys(DIFF).filter((k) => diffVisible(g, k));
+    diffRow.dataset.n = String(keys.length);
+    diffRow.replaceChildren(...(diffOn ? keys.map((k) => {
+      const lock = !diffUnlocked(g, k);
+      return el('button.idg-diff-btn' + (cur === k ? '.on' : '') + '.' + k + (lock ? '.lock' : ''), { type: 'button', disabled: lock, 'aria-label': lock ? `${DIFF[k].name} — ${LOCK_NOTE[k]}` : DIFF[k].name,
+        onclick: () => { Sfx.play('sfx_menu_select'); G.saveIdg({ diff: k }); w = Math.min(10, Math.floor((openOf(k) - 1) / 10) + 1); draw(); } },
+      [DIFF[k].name, ...(lock ? [el('img.idg-lock-ico', { src: `${AL}ico_lock.png`, alt: '' })] : [])]);   /* 🔒 글자 → 도트 자물쇠 */
+    }) : []));
+    /* 안내 글 : 잠긴 난이도가 있으면 그 조건 한 줄 (초고수 단추가 없는 계정에는 초고수 이야기를 안 한다) */
+    const locked = diffOn ? keys.filter((k) => DIFF[k].stages && !diffUnlocked(g, k)) : [];
+    diffNote.textContent = locked.length ? LOCK_LINE[locked[0]] : '';
+    const sk = D.star || 'stars', cls = STAR_CLS[cur] || '';
     grid.replaceChildren(...Array.from({ length: 10 }, (_, k) => {
-      const no = (w - 1) * 10 + k + 1, st = Number((hard ? g.hardStars : g.stars)[no - 1]) || 0, locked = no > open;
-      return el('button.idg-stage-btn' + (locked ? '.locked' : '') + (k === 9 ? '.boss' : ''), { type: 'button', disabled: locked, onclick: () => { close(); onPick(no); } }, [
-        el('b', `${w}-${k + 1}`), el('span.idg-stage-stars' + (hard ? '.red' : ''), { 'data-px': '1' }, locked ? [el('img.idg-lock-ico', { src: `${AL}ico_lock.png`, alt: '잠김' })] : [0, 1, 2].map((i) => el('img.idg-star-ico', { src: `/assets/iandragon_game/ai/result/star_${i < st ? 'on' : 'off'}.webp`, alt: i < st ? '★' : '☆' }))),   /* ★☆ 글자 → 결과 창 별 그림 */
+      const no = (w - 1) * 10 + k + 1, st = Number((g[sk] || '')[no - 1]) || 0, isLocked = D.stages ? !diffOpen(no, g, cur) : no > open;
+      return el('button.idg-stage-btn' + (isLocked ? '.locked' : '') + (k === 9 ? '.boss' : ''), { type: 'button', disabled: isLocked, onclick: () => { close(); onPick(no); } }, [
+        el('b', `${w}-${k + 1}`), el('span.idg-stage-stars' + cls, { 'data-px': '1' }, isLocked ? [el('img.idg-lock-ico', { src: `${AL}ico_lock.png`, alt: '잠김' })] : [0, 1, 2].map((i) => el('img.idg-star-ico', { src: `/assets/iandragon_game/ai/result/star_${i < st ? 'on' : 'off'}.webp`, alt: i < st ? '★' : '☆' }))),   /* ★☆ 글자 → 결과 창 별 그림 */
       ]);
     }));
   }
@@ -162,27 +181,129 @@ function lobbyMusic() {
 
 /** 새로 얻은 칭호 알림 (꾸미기에서 달 수 있음) */
 function checkTitles() {
-  const g = G.idg(), got = TITLES.filter((t) => t.has(g)).map((t) => t.id), fresh = got.filter((id) => !g.tGot.includes(id));
+  /* 10-10 테두리 (§A-4) : 결과 창에서 준다 · 저장이 어긋났을 때를 위해 여기서 한 번 더 (어려움은 «새 어려움»으로 깬 기록 hardWon 기준 · 옛 붉은 별로는 안 줌) */
+  { const g0 = G.idg(), add = [];
+    if (g0.hardWon[99] === '1' && !g0.owned.includes('frame:red')) add.push('frame:red');
+    if (Number(g0.masterStars[99]) > 0 && !g0.owned.includes('frame:violet')) add.push('frame:violet');
+    if (add.length) G.saveIdg({ owned: [...g0.owned, ...add] }); }
+  const g = G.idg(), got = TITLES.filter((t) => t.has(g) && (!t.vis || t.vis(g))).map((t) => t.id), fresh = got.filter((id) => !g.tGot.includes(id));
   if (!fresh.length) return;
   G.saveIdg({ tGot: [...g.tGot, ...fresh] });
   Sfx.play('sfx_purchase');
   toast(`칭호 획득! «${TITLES.filter((t) => fresh.includes(t.id)).map((t) => t.name).join(' · ')}» — 꾸미기에서 달 수 있어요`, 3200);
 }
-/** 지난주 주간 습격 1~3위 → 금 · 은 · 나무 테두리 (META 5장 · 한 주에 한 번 · 서버 순위를 보고 기기에서 준다) */
-async function checkRaidFrame(onGot) {
-  const prev = weekKey(Date.now() - 7 * 864e5), g = G.idg(), uid = currentUser()?.uid;
-  if (!uid || g.frameW >= prev.idx) return;
-  const r = await fetchIdgBoard('raid', 50).catch(() => null);
-  if (!r?.ok) return;
-  const rows = r.rows.filter((x) => Math.floor((x.raid || 0) / 100) === prev.idx).sort((a, b) => (b.raid % 100) - (a.raid % 100));
-  const place = rows.findIndex((x) => x.uid === uid);
-  const frame = ['gold', 'silver', 'wood'][place];
-  G.saveIdg({ frameW: prev.idx, ...(place >= 0 && place < 10 ? { weekTop: prev.idx } : {}), ...(frame ? { owned: [...G.idg().owned, `frame:${frame}`] } : {}) });
-  if (frame) { Sfx.play('sfx_purchase'); toast(`지난주 주간 습격 ${place + 1}위! ${frame === 'gold' ? '금' : frame === 'silver' ? '은' : '나무'} 테두리를 받았어요`, 3600); onGot?.(); }
+
+/*
+ * ── 한 번만 보는 안내 · 열림 연출 · 레벨 선물 (IDG_DIFFICULTY_PLAN §A-2 · §A-5 · §C-2 · §C-5 · 11/13) ──
+ *  창 모양 = 기존 로비 창(리본 현판 · 확인 = 초록 단추) 그대로. 하나씩 차례로 띄우고, 띄우는 순간 seen 비트를 켠다(다시 안 뜸 · 기기 사이 합집합).
+ *  자물쇠 · 선물 상자는 도트 CSS (그림이 나오면 바꿔 끼움) · 부서지는 것은 조각이 바닥에 남는다 (투명하게 사라지지 않음).
+ */
+const GEM_ICO = '/assets/iandragon_game/ui/lobby/icon_gem_v3.png', UI_GIFT = '/assets/iandragon_game/ui/';
+const lvTier = (lv) => Math.min(9, Math.floor(lv / 100));
+const lvBadge = (lv, cls = '') => el('span.idg-lv' + cls, { 'data-tier': String(lvTier(lv)), 'data-d': String(String(lv).length), 'aria-label': `레벨 ${lv}` }, [el('small', 'Lv.'), el('b', String(lv))]);
+function noteWin(cls, title, body, foot) {
+  return new Promise((done) => {
+    const box = el(`div.dialog.idg-how.idg-note.${cls}`, { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', title), ...body, el('div.idg-row.idg-foot2', null, foot(() => close()))]);
+    const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
+    let shut = false;
+    const closeO = presentOverlay(overlay, () => { if (!shut) { shut = true; done(); } });
+    const close = () => { closeO(); if (!shut) { shut = true; done(); } };
+  });
+}
+const okBtn = (close, text = '알겠어요') => [button(text, () => close(), { primary: true, class: 'green' })];
+/** 도트 자물쇠 (ico_lock 그림) — mode : 'thud' 위에서 쿵 · 'break' 쿵 뒤 네 조각으로 깨져 바닥에 남음 */
+const lockFx = (mode, label) => el(`div.idg-lockfx.${mode}`, { 'aria-hidden': 'true' }, [
+  el('i.idg-lockfx-floor'),
+  ...(mode === 'break' ? [1, 2, 3, 4].map((k) => el(`i.idg-lockfx-bit.b${k}`, { style: `background-image:url(${AL}ico_lock.png)` })) : [el('i.idg-lockfx-lock', { style: `background-image:url(${AL}ico_lock.png)` })]),
+  label ? el('b.idg-lockfx-label', label) : null,
+]);
+/** 선물 상자 연출 + 받은 것 목록 */
+function giftWin(list, onTry) {
+  const n = list.length, gems = list.reduce((a, r) => a + r.gems, 0);
+  const tierName = Object.fromEntries(GIFT_TIERS.map((t) => [t.id, t.name]));
+  const card = (r) => {
+    const p = r.key ? parseKey(r.key) : null;
+    const pic = p ? el('img.idg-gift-pic', { src: artOf(p.slot, p.id), alt: '', style: artFilter(p.slot, p.id) ? `filter:${artFilter(p.slot, p.id)}` : null, onerror: hideBad }) : el('img.idg-gift-pic', { src: GEM_ICO, alt: '' });
+    const nm = p ? (p.slot === 'title' ? `칭호 «${p.item.name}»` : p.item.name) : '다 모았어요!';
+    return el(`div.idg-gift-card.t-${r.tier || 'gem'}`, null, [el('small.idg-gift-lv', `Lv.${r.lv}`), pic, el('b.idg-gift-name', nm), el('span.idg-gift-tier', r.tier ? tierName[r.tier] : '젬 선물')]);
+  };
+  /* 겜팀장 그림 (ui/lvgift_*) : 닫힘 · 왼쪽 기움 · 오른쪽 기움 · 열림 · 뚜껑 · 조각 4 */
+  const GI = (k) => `${UI_GIFT}lvgift_${k}.webp`;
+  const body = el('img.idg-gbox-body', { src: GI('closed'), alt: '' });
+  const boxEl = el('div.idg-gbox', { role: 'button', tabindex: '0', 'aria-label': '선물 상자 열기' }, [
+    el('i.idg-gbox-floor'), ...[1, 2, 3, 4].map((k) => el(`img.idg-gbox-bit.b${k}`, { src: GI(`shard${k}`), alt: '' })), body, el('img.idg-gbox-lid', { src: GI('lid'), alt: '' }),
+    ...(n > 1 ? [el('b.idg-gbox-n', `×${n}`)] : []),
+  ]);
+  /* 흔들 : 기운 그림 2장 + ±12° 회전 (한 번 흔들고 잠깐 쉼) */
+  const SHAKE = [['closed', 0], ['tilt_l', -12], ['closed', 0], ['tilt_r', 12], ['tilt_l', -8], ['closed', 0], ['closed', 0], ['closed', 0]];
+  let fi = 0;
+  const shake = setInterval(() => { if (!boxEl.isConnected && fi > 2) { clearInterval(shake); return; } const [k, r] = SHAKE[fi++ % SHAKE.length]; body.src = GI(k); body.style.setProperty('--rot', `${r}deg`); }, 110);
+  const listEl = el('div.idg-gift-list', null, list.map(card));
+  const gemEl = el('div.idg-gift-gems', null, [el('img', { src: GEM_ICO, alt: '' }), el('b', `+${gems}`)]);
+  let popped = false;
+  const pop = () => { if (popped) return; popped = true; clearInterval(shake); body.src = GI('open'); body.style.setProperty('--rot', '0deg'); boxEl.classList.add('pop'); try { Sfx.play('sfx_purchase'); } catch { /* */ } setTimeout(() => boxEl.closest('.idg-gift')?.classList.add('open'), 520); };
+  boxEl.onclick = pop; boxEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') pop(); };
+  setTimeout(pop, 1800);   // 흔들 두 번 → 펑 (눌러도 바로)
+  return noteWin('idg-gift', n > 1 ? `선물 상자 ${n}개` : `Lv.${list[0].lv} 선물`, [
+    el('div.idg-gift-stage', null, [boxEl]), listEl, gemEl,
+    el('p.idg-gift-odds', GIFT_ODDS),
+  ], (close) => [button('입어 보기', () => { close(); onTry?.(); }, { primary: true, class: 'green' }), button('닫기', () => close())]);
+}
+let noticeBusy = false;
+/** 로비에 들어올 때 차례로 (onLook = 꾸미기 창 · onDone = 로비 다시 그리기) */
+async function runNotices({ onLook, onDone }) {
+  if (noticeBusy) return; noticeBusy = true;
+  let changed = false;
+  try {
+    const mark = (bit) => G.saveIdg({ seen: withSeen(G.idg().seen, bit) });
+    let g = G.idg();
+    /* ① 붉은 별 기존 사용자 (보통 10-10 못 깸 + 붉은 별 있음 · §A-5) */
+    if ((g.cleared || 0) < 100 && [...g.hardStars].some((c) => c !== '0') && !seenBit(g, SEEN.hardV2)) {
+      mark(SEEN.hardV2);
+      const n = [...g.hardStars].reduce((a, c) => a + (Number(c) || 0), 0);
+      await noteWin('idg-note-v2', '어려움이 돌아와요', [
+        el('div.idg-note-stars.red', null, [el('img', { src: '/assets/iandragon_game/ai/result/star_on.webp', alt: '' }), el('b', String(n))]),
+        el('p.idg-note-text', '어려움이 더 강해져서 돌아왔어요. 모은 붉은 별은 그대로예요. 보통 10-10 을 깨면 다시 도전할 수 있어요.'),
+      ], okBtn);
+    }
+    /* ② 어려움 열림 (보통 10-10 승리 뒤 · 초고수 자물쇠가 쿵) */
+    g = G.idg();
+    if ((g.cleared || 0) >= 100 && !seenBit(g, SEEN.hardOpen)) {
+      mark(SEEN.hardOpen);
+      await noteWin('idg-note-open', '어려움이 열렸다!', [
+        el('p.idg-note-text.big', '붉은 별에 도전!'), lockFx('thud', '초고수'),
+        el('p.idg-note-text', '어려움 1-1 부터 차례로 · 출전 드래곤은 Lv21 부터. 어려움 10-10 을 깨면 자물쇠가 풀려요.'),
+      ], okBtn);
+    }
+    /* ③ 초고수 열림 (어려움 10-10 뒤 · 자물쇠가 깨져 조각이 바닥에 남음) */
+    g = G.idg();
+    if (diffUnlocked(g, 'master') && !seenBit(g, SEEN.masterOpen)) {
+      mark(SEEN.masterOpen);
+      await noteWin('idg-note-open', '초고수가 열렸다', [
+        lockFx('break', '초고수'),
+        el('p.idg-note-text.big', '이제 실력만 통한다'),
+        el('p.idg-note-text', '보라 별 · 부화 «+» 와 편의품은 안 통해요. 덱 · 리더 · 화로 · 브레스 타이밍으로 이겨요.'),
+      ], okBtn);
+    }
+    /* ④ 레벨 100 첫 달성 */
+    g = G.idg();
+    if (G.levelOf(g) >= 100 && !seenBit(g, SEEN.lv100)) {
+      mark(SEEN.lv100);
+      await noteWin('idg-note-lv', '레벨 100 달성!', [el('div.idg-note-lvwrap', null, [lvBadge(G.levelOf(g), '.big')]), el('p.idg-note-text', '배지 테두리 색이 바뀌었어요. 100 레벨마다 한 단계씩!')], okBtn);
+    }
+    /* ⑤ 레벨 선물 (밀린 것 한꺼번에) */
+    if (G.pendingGifts(G.idg()).length) {
+      const got = G.claimGifts(currentUser()?.uid);
+      if (got.length) { changed = true; let look = false; await giftWin(got, () => { look = true; }); if (look) { onLook?.(); changed = false; } }
+    }
+  } catch (e) { console.warn('[좀비와 드래곤] 안내 창 실패', e); }
+  noticeBusy = false;
+  if (changed) onDone?.();
 }
 
 export default function IanDragonGameLobby(nav) {
   setTimeout(checkTitles, 900);
+  setTimeout(() => runNotices({ onLook: () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() }), onDone: () => nav.refresh?.() }), 700);   // 열림 연출 · 안내 · 레벨 선물 (11/13)
   { const rj = G.takeRejoin(); if (rj) setTimeout(() => showMulti((room) => { G.pickNet(room); start(room.stageNo); }, rj), 300); }   // 멀티 «한 판 더»
   setTimeout(() => checkRaidFrame(() => nav.refresh?.()), 1500);
   setTimeout(() => IanDragonGame.prefetch?.(), 1200);   // 한가할 때 게임 코드를 미리 받아 둔다
@@ -207,7 +328,7 @@ export default function IanDragonGameLobby(nav) {
   function start(stageNo) {
     Sfx.play('sfx_menu_select');
     enterFullscreen();
-    G.pickStage(typeof stageNo === 'number' ? stageNo : null);
+    G.pickStage(typeof stageNo === 'number' ? stageNo : diffNow(G.idg()) ? diffNext(G.idg(), diffNow(G.idg())) : null);   // 어려움 · 초고수를 골라 두었으면 «모험 시작» = 그 난이도의 다음 판
     nav.push(IanDragonGame);
   }
   /* 가로 로비 왼쪽 위 «전체 화면» 단추 (11/12 대표님 · 프로필 얼굴 아래 · 모양 = idg-subwin.css .idg-lfs · 세로에선 숨김)
@@ -316,11 +437,13 @@ export default function IanDragonGameLobby(nav) {
       /* 결과 창과 같은 글꼴 (Pretendard Variable · 전투 HUD 와 같은 링크 id 라 한 번만 붙는다) */
       if (!document.getElementById('idg-res-font')) document.head.appendChild(Object.assign(document.createElement('link'), { id: 'idg-res-font', rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css' }));
       /* 레벨 (보이기만) : 별 5개마다 1 레벨 · 막대 = 다음 레벨까지 */
-      const stars = G.totalStars(g), lv = 1 + Math.floor(stars / 5), xp = (stars % 5) / 5;
+      /* 레벨 = 보통 + 붉은 + 보라 별 · 5개마다 1 · 상한 999 (§C-2) — 하늘 폭죽 수는 예전처럼 보통 별로 */
+      const stars = G.totalStars(g), all = G.allStars(g), lv = G.levelOf(g), xp = (all % 5) / 5;
       const ttl = titleOf(g.title);
       const face = el('div.l2-face', { 'aria-hidden': 'true' });
       headCanvas(leaderOf(g), g.look, 64).then((c) => { c.className = 'l2-face-c'; face.prepend(c); }).catch(() => {});
-      const done = g.cleared >= 100, no = Math.min(100, G.nextStage(g)), got = done ? 3 : Number(g.stars[no - 1]) || 0;
+      const dN = diffNow(g), dStars = dN ? g[DIFF[dN].star] : g.stars;   // 다음 판 카드 : 어려움 · 초고수를 골랐으면 그 난이도의 다음 판 · 별 색
+      const done = dN ? diffRun(dStars) >= 100 : g.cleared >= 100, no = dN ? diffNext(g, dN) : Math.min(100, G.nextStage(g)), got = done ? 3 : Number(dStars[no - 1]) || 0;
       const back = () => nav.reset(Portal);
       const skyEl = el('div.l2-sky', { 'aria-hidden': 'true', style: `--fwk:${(1.6 - Math.min(1, stars / 60) * 0.8).toFixed(2)}` }, sky(stars >= 40 ? 3 : stars >= 15 ? 2 : 1));
       /* 앞 겹(성 · 길 · 무대) + 부엉이 · 도깨비불 · 장착 깃발 (누를 수 없음 · idgLobbyFun.js) */
@@ -343,8 +466,8 @@ export default function IanDragonGameLobby(nav) {
             face,
             el('div.l2-plate', null, [
               ttl ? el('button.l2-ttl', { type: 'button', 'aria-label': `칭호 ${ttl.name}`, onclick: () => { Sfx.play('sfx_menu_select'); toast(`칭호 «${ttl.name}» · 얻는 법 : ${ttl.how}`, 2600); } }, [el('i', '칭호'), el('span', ttl.name)]) : null,
-              el('div.l2-name', null, [el('span.l2-lv', { 'aria-label': `레벨 ${lv}` }, [el('small', 'Lv.'), el('b', String(lv))]), el('span.l2-nick', p.nickname || '???')]),
-              el('span.l2-xp', { title: `별 ${stars}개 · 다음 레벨까지 ${5 - (stars % 5)}개` }, [el('i', { style: `width:${Math.round(xp * 100)}%` })]),
+              el('div.l2-name', null, [lvBadge(lv, '.l2-lv'), el('span.l2-nick', p.nickname || '???')]),
+              el('span.l2-xp', { title: `별 ${all}개 · 다음 레벨까지 ${5 - (all % 5)}개` }, [el('i', { style: `width:${Math.round(xp * 100)}%` })]),
             ]),
           ]),
           el('div.l2-cur', null, [money('coin', `${L2}coin_round.webp`, g.coins), money('gem', `${UI}icon_gem_v3.png`, g.gems)]),
@@ -359,7 +482,7 @@ export default function IanDragonGameLobby(nav) {
         ]),
         el('div.l2-nextwrap', null, [el('div.l2-next', null, [
           el('b.l2-next-t', done ? '모든 모험 끝!' : S.idgStatNext(G.stageLabel(no))),
-          el('div.l2-stars', null, [0, 1, 2].map((k) => el('img', { src: `${RES}star_${k < got ? 'on' : 'off'}.webp`, alt: k < got ? '★' : '☆' }))),
+          el('div.l2-stars' + (STAR_CLS[dN] || ''), null, [0, 1, 2].map((k) => el('img', { src: `${RES}star_${k < got ? 'on' : 'off'}.webp`, alt: k < got ? '★' : '☆' }))),
         ])]),
         /* 처음 온 사람 : 박쥐가 «모험시작» 을 가리킨다 */
         ...((g.cleared || 0) === 0 ? [el('div.l2-hint', { 'aria-hidden': 'true' }, [el('i.l2-hint-bat'), el('b', '여기!')])] : []),

@@ -108,6 +108,11 @@
 .idg-stage-stars { display: flex; justify-content: center; gap: 1px; }
 .idg-stage-stars .idg-star-ico { height: 13px; width: auto; image-rendering: pixelated; }
 .idg-stage-stars.red .idg-star-ico[alt="★"] { filter: hue-rotate(-42deg) saturate(1.5); }
+.idg-stage-stars.purple .idg-star-ico[alt="★"], .l2-stars.purple img[alt="★"] { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92); }   /* 초고수 보라 별 (11/13) */
+.l2-stars.red img[alt="★"] { filter: hue-rotate(-42deg) saturate(1.5); }
+/* 난이도 단추 3개 · 4개 : 줄을 꽉 채워 나눔 (빈칸 없음 · §A-2) */
+.idg-diff-row { display: flex; width: 100%; box-sizing: border-box; } .idg-diff-row .idg-diff-btn { flex: 1 1 0; min-width: 0; white-space: nowrap; }
+.dialog.idg-k[class*="idg-"] .idg-diff-btn.on.master { color: #e3c8ff; }
 .idg-stage-btn.locked .idg-stage-stars .idg-lock-ico { height: 16px; margin: 0; }
 
 /* 너무 작은 글씨 키우기 (음악 출처 11px · 어려움 안내 · 월드 이름 · 하는 법) */

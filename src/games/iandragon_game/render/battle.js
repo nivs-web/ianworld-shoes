@@ -14,7 +14,8 @@ import { createBattleSound } from './battleSound.js';
 import { superData } from './breathInfo.js';
 import { earlyCastle, makeLoads, starsFor, stageByNo, LAST_STAGE, pvpStage, pvpLoad, PVP_DAY, DIFF, diffFor, raidStage, raidWaves, weekKey } from './battleSetup.js';
 import { isOn } from '../../../services/switches.js';
-import { decodeLook, CONSUMABLES } from '../data/looks.js';
+import { decodeLook, CONSUMABLES, TITLES } from '../data/looks.js';
+import { loadDiffStages } from '../data/stages/diffLoad.js';   // 어려움 · 초고수 판 100개 (보조 S · 필요할 때만 받음)
 import { sendChat, subscribeChat, leaveRoom } from '../../../services/multiplayer.js';
 import { pickRejoin } from '../../../services/iandragonGame.js';
 
@@ -34,8 +35,15 @@ export async function startBattle(ctx, opts) {
   const raid = !opts.net && opts.raid ? weekKey() : null;   // 주간 좀비 습격 (혼자 · 모두 같은 조건)
   const base0 = pvp ? pvpStage() : raid ? raidStage(raid.key) : stageByNo(opts.stageNo);
   /* 난이도 : 혼자 할 때만 (멀티는 두 기기 숫자가 같아야 해서 보통) */
-  const dk = opts.net || raid ? 'normal' : diffFor(base0.g, opts.save, isOn('zdOpt', 'diff')), DF = DIFF[dk];
-  const stage = { ...base0, mag: base0.mag * tz.hp * DF.mag, atkMag: (base0.atkMag || base0.mag) * tz.atk * DF.mag, diff: dk, ...earlyCastle(base0, pvp || raid) };
+  let dk = opts.net || raid ? 'normal' : diffFor(base0.g, opts.save, isOn('zdOpt', 'diff'));
+  /* 어려움 · 초고수 = 판 정의를 통째로 바꿔 끼운다 (계산기 맞춤 100판 · mag · atkMag · 성 · 제한 시간 · 별 시간이 최종값 → DF.mag 를 또 곱하지 않음 · 초반 성 바닥도 안 씀)
+     판 자료를 못 받으면 조용히 보통 (별 · 보상도 보통) */
+  let ds = null;
+  if (DIFF[dk].stages) { try { ds = (await loadDiffStages(dk))?.[base0.g - 1] || null; } catch (e) { console.warn('[좀비와 드래곤] 난이도 판 자료를 못 읽었다', e); } if (!ds) dk = 'normal'; }
+  const DF = DIFF[dk];
+  const stage = ds
+    ? { ...base0, ...ds, unlocks: undefined, mag: ds.mag * tz.hp, atkMag: (ds.atkMag || ds.mag) * tz.atk, diff: dk }   // 운영자 손잡이(tz)는 그대로 곱한다
+    : { ...base0, mag: base0.mag * tz.hp * DF.mag, atkMag: (base0.atkMag || base0.mag) * tz.atk * DF.mag, diff: dk, ...earlyCastle(base0, pvp || raid) };
   const { deck, skills, loads, speedMax: speedMax0 } = makeLoads(raid ? stageByNo(Math.max(20, Math.min(LAST_STAGE, opts.save?.cleared || 1))) : stage, opts.save);
   if (raid) { const one = pvpLoad(loads[0], 0); loads.length = 0; loads.push(one); }   // 습격 = 내 덱 6칸 · 모두 Lv20 · 보너스 없음
   /* 습격 · 대결 편성은 보너스가 비어 있다({}) — 없는 값을 나누면 NaN 이 돼 불씨 «NaN/2800» · 성 체력이 사라졌다 (대표님 11/11 «주간 습격 안 죽어») */
@@ -51,7 +59,7 @@ export async function startBattle(ctx, opts) {
   const mirror = pvp && me === 1;   // 대결 : 누구나 자기가 왼쪽 (오른쪽 편은 화면만 뒤집는다)
   const S = createBattle(stage, loads, superData(D), net ? net.seed : (Date.now() % 1e9) | 0);   /* 초강력 브레스 (breathInfo.js · 대표님 11/11) */
   /* 부화장 «+» (겹친 용 하나당 체력 · 공격 +2% · 최대 +10 = +20%) — 혼자 하는 스테이지만 (멀티 · 습격은 모두 같은 조건) */
-  if (!net && !raid) for (const d of S.players[0].deck) { const p = opts.save?.units?.[d.id]?.[1] || 0; if (p > 0) d.mul *= 1 + 0.02 * Math.min(10, p); }
+  if (!net && !raid && !DF.noPlus) for (const d of S.players[0].deck) { /* 초고수 = «+» 무효 (§E) */ const p = opts.save?.units?.[d.id]?.[1] || 0; if (p > 0) d.mul *= 1 + 0.02 * Math.min(10, p); }
   const ls = net ? createLockstep({ seat: me, seats: net.seats }) : null;
   /* 빠른 말 : 서버 방에서만 (탭 시험은 code 없음) — 상대 말은 친구 띠 아래 말풍선 2.5초 */
   const talkOff = net?.code ? subscribeChat(net.code, (rows) => {
@@ -75,12 +83,12 @@ export async function startBattle(ctx, opts) {
   const speedMax = 2;   /* ×2 배속 단추 (대표님 11/11 «다시 작동») — 처음부터 ×2 까지 · 운영자 스위치로 끌 수 있다 */
   const ui = { me, side: pvp ? me : 0, net: !!net, speed: net ? 1 : Math.min(opts.save?.speed || 1, speedMax), paused: false, warn: 0, done: false, auto: false, intro: true };
   /* 자동 전투 (B6) : 별을 1개 이상 딴 스테이지만 — 기준 AI(코어 aiCommands)가 대신 누른다 */
-  const canAuto = (Number((opts.save?.stars || '')[stage.g - 1]) || 0) > 0;
+  const canAuto = (Number((opts.save?.[DF.star || 'stars'] || '')[stage.g - 1]) || 0) > 0;   // 어려움 · 초고수는 그 난이도 별을 딴 판만
   const autoPol = { walletTarget: 3, useSkills: true, useRage: true }, autoMem = {};
   const cmds = [];
   let acc = 0, bossSeen = false, gone = false, goldKills = 0;
   const goldSeen = new Set();   // 황금 좀비 쓰러뜨린 수 (판 끝 코인 +5% 씩)
-  const hud = createHud(ctx.host || opts.hudHost, { stage, isNet: !!net, deck: myDeck, leader: loads[me].leader, cons: net || raid ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
+  const hud = createHud(ctx.host || opts.hudHost, { stage, isNet: !!net, deck: myDeck, leader: loads[me].leader, cons: net || raid ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), consOff: !!DF.noItems, foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) {
       if (S.over) return;
       sound.touch();
@@ -95,7 +103,7 @@ export async function startBattle(ctx, opts) {
       ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '', myDeck.map((d) => d.id));
       /* 편의품 (META 3장 · 판마다 1개 · 혼자 하기만) — 판을 시작하며 1개 쓴다 · 도중에 나가도 돌려주지 않는다 */
       const have = opts.save?.cons?.[useCons] || 0;
-      if (!net && !raid && useCons && have > 0) {
+      if (!net && !raid && !DF.noItems && useCons && have > 0) {   // 초고수 = 편의품 무효 (단추 회색)
         const P = S.players[0];
         if (useCons === 'ember50') P.money += 50;
         else if (useCons === 'brazier') P.wl = Math.max(P.wl, Math.min(1, S.D.wallet.length - 1));
@@ -157,12 +165,25 @@ export async function startBattle(ctx, opts) {
       const ahead = coop && stage.g > (save.cleared || 0) + 1, pull = coop && stage.g === (save.cleared || 0) + 1;
       if (coop) info.stars = pull ? 1 : 0;
       info.stars = Math.min(info.stars, DF.maxStar); info.diff = dk;
-      if (dk === 'hard') {   /* 어려움 : 붉은 별은 따로 · 진행 · 보통 별은 그대로 · 코인 ×1.5 · 첫 어려움 클리어 젬 +5 */
-        const hs = (save.hardStars || '').padEnd(stage.g, '0').split(''), hOld = Number(hs[stage.g - 1]) || 0;
+      if (DF.stages) {   /* 어려움 · 초고수 (§A-4) : 별은 따로(붉은 · 보라) · 보통 진행 · 별은 그대로 · 코인 = 보통의 1.5 / 2배 · 젬 = 새 별 8 / 10 · x-5 처음 40 / 80 · x-10 처음 100 / 200 */
+        /* «처음» = 새 어려움(11/13 · hardWon)으로 처음 깸 — 옛 붉은 별이 있던 판도 새 어려움으로 깨면 젬 40 / 100 · 칭호 · 테두리를 받는다 (별은 더 높을 때만 갱신) */
+        const key = DF.star, hs = (save[key] || '').padEnd(stage.g, '0').split(''), hOld = Number(hs[stage.g - 1]) || 0;
+        const won = dk === 'hard' ? (save.hardWon || '').padEnd(100, '0').split('') : null, first = won ? won[stage.g - 1] !== '1' : hOld === 0;
+        if (won) won[stage.g - 1] = '1';
         hs[stage.g - 1] = String(Math.max(hOld, info.stars));
-        const base = ECON.coin(stage.g);
-        info.coins = Math.round(base * (hOld ? ECON.replay : 1) * DF.coin); info.gems = hOld ? 0 : 5; info.red = true;
-        const part = { hardStars: hs.join(''), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, stat };
+        const base = ECON.coin(stage.g), newStars = Math.max(0, info.stars - hOld);
+        info.coins = Math.round(base * (hOld ? ECON.replay : 1) * DF.coin);
+        info.gems = newStars * DF.gem.star + (first && stage.s === 5 ? DF.gem.mid : 0) + (first && stage.s === 10 ? DF.gem.boss : 0);
+        info.red = dk === 'hard'; info.purple = dk === 'master'; info.final = false;   // «모든 모험 끝» 글은 보통 10-10 에서만
+        /* 칭호 · 테두리 : 10-10 처음 = 붉은 테두리 / 보라 불꽃 테두리 · 칭호는 조건으로 얻는다(looks.js TITLES) → 이번 판으로 새로 얻은 것만 결과 창 «새로 열림» */
+        const owned = [...(save.owned || [])], fr = first && stage.g === LAST_STAGE ? (dk === 'hard' ? 'frame:red' : 'frame:violet') : null;
+        if (fr && !owned.includes(fr)) owned.push(fr);
+        const after = { ...save, [key]: hs.join(''), ...(won ? { hardWon: won.join('') } : {}) }, tGot = save.tGot || [];
+        const fresh = TITLES.filter((t) => t.has(after) && !t.has(save) && !tGot.includes(t.id));
+        const got = [...fresh.map((t) => `칭호 «${t.name}»`), ...(fr && !(save.owned || []).includes(fr) ? [dk === 'hard' ? '붉은 테두리' : '보라 불꽃 테두리'] : [])];
+        if (got.length) info.unlocks = got;
+        const part = { [key]: hs.join(''), ...(won ? { hardWon: won.join('') } : {}), coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, stat,
+          ...(owned.length !== (save.owned || []).length ? { owned } : {}), ...(fresh.length ? { tGot: [...tGot, ...fresh.map((t) => t.id)] } : {}) };
         try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
         setTimeout(() => { if (gone) return; hud.showPanel('win', info); sound.stars(info.stars); }, END_MS);
         return;

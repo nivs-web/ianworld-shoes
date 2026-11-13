@@ -6,9 +6,12 @@
 
 /** 칸 이름 (저장 글자 순서 · 화면 순서) */
 export const SLOTS = ['hat', 'neck', 'breath', 'flag', 'frame', 'title'];
-export const SLOT_NAME = { hat: '모자', neck: '목 장식', breath: '브레스 색', flag: '성 깃발', frame: '테두리', title: '칭호' };
+export const SLOT_NAME = { hat: '모자', neck: '목 장식', breath: '브레스 색', flag: '드래곤캐슬 깃발', frame: '테두리', title: '칭호' };
 /** 저장 글자의 칸 머리글 (h3.n1.b2.f4.r0.t7) */
-const LETTER = { hat: 'h', neck: 'n', breath: 'b', flag: 'f', frame: 'r', title: 't' };
+/* 11/13 모으기 기획 §10 : 새 칸(드래곤 오라 · 펫 · 드래곤캐슬 지붕 · 문 · 마당)의 머리글자 — 물건은 아직 없음 · 옛 글자는 그대로 읽힌다 */
+export const NEW_SLOTS = ['aura', 'pet', 'roof', 'gate', 'yard'];
+export const ALL_SLOTS = [...SLOTS, ...NEW_SLOTS];
+const LETTER = { hat: 'h', neck: 'n', breath: 'b', flag: 'f', frame: 'r', title: 't', aura: 'a', pet: 'p', roof: 'o', gate: 'g', yard: 'y' };
 const SLOT_OF = Object.fromEntries(Object.entries(LETTER).map(([s, l]) => [l, s]));
 
 /**
@@ -19,47 +22,53 @@ const SLOT_OF = Object.fromEntries(Object.entries(LETTER).map(([s, l]) => [l, s]
  */
 export const LOOKS = {
   hat: [
-    { id: 'crown', name: '왕관', price: 150, gem: true },
-    { id: 'pirate', name: '해적 모자', price: 8000 },
-    { id: 'wizard', name: '마법사 고깔', price: 12000 },
-    { id: 'pumpkin', name: '호박 모자', price: 3000 },
-    { id: 'helmet', name: '헬멧', price: 6000 },
-    { id: 'ribbon', name: '리본', price: 3000 },
-    { id: 'party', name: '파티 고깔', price: 4000 },
-    { id: 'viking', name: '바이킹 투구', price: 10000 },
+    { id: 'crown', name: '왕관', price: 150, gem: true, tier: 'epic' },
+    { id: 'pirate', name: '해적 모자', price: 8000, tier: 'uncommon' },
+    { id: 'wizard', name: '마법사 고깔', price: 12000, tier: 'rare' },
+    { id: 'pumpkin', name: '호박 모자', price: 3000, tier: 'common' },
+    { id: 'helmet', name: '헬멧', price: 6000, tier: 'uncommon' },
+    { id: 'ribbon', name: '리본', price: 3000, tier: 'common' },
+    { id: 'party', name: '파티 고깔', price: 4000, tier: 'common' },
+    { id: 'viking', name: '바이킹 투구', price: 10000, tier: 'rare' },
   ],
   neck: [
-    { id: 'cape', name: '망토', price: 8000 },
-    { id: 'scarf', name: '목도리', price: 3000 },
-    { id: 'medal', name: '메달', price: 10000 },
-    { id: 'skull', name: '해골 목걸이', price: 80, gem: true },
-    { id: 'bow', name: '나비 리본', price: 3000 },
-    { id: 'bell', name: '방울', price: 4000 },
+    { id: 'cape', name: '망토', price: 8000, tier: 'uncommon' },
+    { id: 'scarf', name: '목도리', price: 3000, tier: 'common' },
+    { id: 'medal', name: '메달', price: 10000, tier: 'rare' },
+    { id: 'skull', name: '해골 목걸이', price: 80, gem: true, tier: 'epic' },
+    { id: 'bow', name: '나비 리본', price: 3000, tier: 'common' },
+    { id: 'bell', name: '방울', price: 4000, tier: 'common' },
   ],
   breath: [
     { id: 'basic', name: '기본 불꽃', price: 0 },       // 늘 가짐 (판매 X)
-    { id: 'rainbow', name: '무지개 브레스', price: 15000 },
-    { id: 'ghost', name: '보라 유령불', price: 12000 },
-    { id: 'gold', name: '황금 브레스', price: 200, gem: true },
-    { id: 'ice', name: '얼음 파랑', price: 10000 },
+    { id: 'rainbow', name: '무지개 브레스', price: 15000, tier: 'rare' },
+    { id: 'ghost', name: '보라 유령불', price: 12000, tier: 'rare' },
+    { id: 'gold', name: '황금 브레스', price: 200, gem: true, tier: 'epic' },
+    { id: 'ice', name: '얼음 파랑', price: 10000, tier: 'rare' },
   ],
   flag: [
-    { id: 'dragon', name: '용 깃발', price: 6000 },     /* 보조 그림 이름에 맞춤 (11/11) */
-    { id: 'moon', name: '달 깃발', price: 4000 },
-    { id: 'skull', name: '해골 깃발', price: 50, gem: true },
-    { id: 'star', name: '별 깃발', price: 4000 },
-    { id: 'heart', name: '하트 깃발', price: 3000 },
-    { id: 'flame', name: '불꽃 깃발', price: 5000 },
-    { id: 'crown', name: '왕관 깃발', price: 8000 },
-    { id: 'rainbow', name: '무지개 깃발', price: 5000 },
+    { id: 'dragon', name: '드래곤 깃발', price: 6000, tier: 'uncommon' },     /* 보조 그림 이름에 맞춤 (11/11) */
+    { id: 'moon', name: '달 깃발', price: 4000, tier: 'common' },
+    { id: 'skull', name: '해골 깃발', price: 50, gem: true, tier: 'epic' },
+    { id: 'star', name: '별 깃발', price: 4000, tier: 'common' },
+    { id: 'heart', name: '하트 깃발', price: 3000, tier: 'common' },
+    { id: 'flame', name: '불꽃 깃발', price: 5000, tier: 'uncommon' },
+    { id: 'crown', name: '왕관 깃발', price: 8000, tier: 'uncommon' },
+    { id: 'rainbow', name: '무지개 깃발', price: 5000, tier: 'uncommon' },
   ],
   frame: [   // 명예의 전당 시즌 보상 — 상점 판매 X (price 없음)
     { id: 'wood', name: '나무 테두리' },
     { id: 'silver', name: '은 테두리' },
     { id: 'gold', name: '금 테두리' },
     { id: 'fire', name: '불꽃 테두리' },
+    /* 11/13 난이도 4단계 · 레벨 선물 (맨 뒤에만 추가) — 그림은 아직 없어 기존 테두리 그림 + 색 필터(FRAME_ART) */
+    { id: 'red', name: '붉은 테두리' },          // 어려움 10-10 처음
+    { id: 'violet', name: '보라 불꽃 테두리' },   // 초고수 10-10 처음 (그 계정에만 생김)
+    { id: 'lvstar', name: '별빛 테두리', tier: 'rare', gift: true },   // 레벨 선물 전용
+    { id: 'lvgem', name: '보석 테두리', tier: 'rare', gift: true },    // 레벨 선물 전용
   ],
   title: [],   // 아래 TITLES 로 채운다 (퀘스트 보상 — 상점 판매 X)
+  aura: [], pet: [], roof: [], gate: [], yard: [],   // 새 칸 (모으기 묶음에서 채움 · 맨 뒤에만 추가)
 };
 
 /**
@@ -77,6 +86,13 @@ export const BREATH_COLORS = {
 /* ───────── 칭호 12개 (퀘스트 · 기록으로만 얻음) — has(g) : g = idg 저장값 ───────── */
 const sumStars = (s) => [...(typeof s === 'string' ? s : '')].reduce((a, c) => a + (Number(c) || 0), 0);
 const st = (g, k) => Number(g?.stat?.[k]) || 0;
+const starAt = (s, g) => Number((typeof s === 'string' ? s : '')[g - 1]) > 0;
+/** 초고수 관련 항목을 보여도 되는 계정 (보통 10-10 을 깸) */
+export const SEES_MASTER = (g) => (g?.cleared || 0) >= 100;
+const MW = ['hill', 'volcano', 'sky', 'ice', 'mine', 'grave', 'desert', 'swamp', 'crystal', 'castle'];
+const LV_TITLES = [
+  { id: 'lv_spark', name: '반짝반짝 성장왕', tier: 'common', gift: true }, { id: 'lv_moon', name: '달빛 모험가', tier: 'common', gift: true }, { id: 'lv_rocket', name: '쑥쑥 로켓', tier: 'common', gift: true }, { id: 'lv_crown', name: '별빛 왕관', tier: 'common', gift: true },
+];
 export const TITLES = [
   { id: 'zombie_hunter', name: '좀비 사냥꾼', how: '좀비 1,000마리 쓰러뜨리기', has: (g) => st(g, 'kills') >= 1000 },
   { id: 'star_collector', name: '별 수집가', how: '별 100개 모으기', has: (g) => sumStars(g?.stars) >= 100 },
@@ -87,39 +103,58 @@ export const TITLES = [
   { id: 'breath_master', name: '브레스 달인', how: '브레스 1,000번 뿜기', has: (g) => st(g, 'breath') >= 1000 },
   { id: 'egg_rich', name: '알 부자', how: '알 50개 부화하기', has: (g) => st(g, 'hatch') >= 50 },
   { id: 'brazier_master', name: '화로 달인', how: '화로 Lv8 만들기', has: (g) => st(g, 'maxWl') >= 8 },
-  { id: 'duelist', name: '용 대결 용사', how: '용 대결 10번 이기기', has: (g) => (Number(g?.pvp?.w) || 0) >= 10 },
+  { id: 'duelist', name: '드래곤 대결 용사', how: '드래곤 대결 10번 이기기', has: (g) => (Number(g?.pvp?.w) || 0) >= 10 },
   { id: 'first_world', name: '첫 모험가', how: '월드 1 깨기 (스테이지 10)', has: (g) => (g?.cleared || 0) >= 10 },
   { id: 'hundred_wins', name: '백전백승', how: '100판 이기기', has: (g) => st(g, 'wins') >= 100 },
   { id: 'week_hero', name: '이번 주 용사', how: '주간 좀비 습격 10위 안에 들기', has: (g) => (g?.weekTop || 0) > 0 },   // 맨 뒤에만 더한다 (꾸미기 번호)
+  /* ── 11/13 난이도 4단계 (§A-4) — 맨 뒤에만 ── */
+  /* 어려움 칭호는 «새 어려움»(11/13 · hardWon)으로 깨야 받는다 — 옛 붉은 별로는 미리 주지 않음 (별 · 레벨은 그대로) */
+  { id: 'hard_lord', name: '붉은 별의 주인', how: '어려움 10-10 깨기', has: (g) => (g?.hardWon || '')[99] === '1' },
+  { id: 'hard_perfect', name: '완벽한 정복자', how: '붉은 별 300개 모으기 (어려움 100판 모두 깨기)', has: (g) => sumStars(g?.hardStars) >= 300 && !/0/.test((g?.hardWon || '').padEnd(100, '0')) },
+  /* 초고수 칭호 : vis = 보통 10-10 을 깬 계정에만 목록에 보인다 (그 전에는 «초고수»라는 글자가 어디에도 없어야 함) */
+  { id: 'master_top', name: '초고수', how: '초고수 10-10 깨기', has: (g) => starAt(g?.masterStars, 100), vis: SEES_MASTER },
+  { id: 'master_legend', name: '전설의 드래곤 조련사', how: '보라 별 300개 모으기', has: (g) => sumStars(g?.masterStars) >= 300, vis: SEES_MASTER },
+  ...['달밤 언덕', '부글 화산', '구름 하늘섬', '꽁꽁 얼음골', '덜컹 쇠 광산', '으스스 묘지', '모래바람 사막', '끈적 독 늪', '반짝 수정 동굴', '좀비 드래곤 성'].map((nm, i) => (
+    { id: `mw_${MW[i]}`, name: `${nm}의 전설`, how: `초고수 ${i + 1}-10 깨기`, has: (g) => starAt(g?.masterStars, (i + 1) * 10), vis: SEES_MASTER })),
+  /* 레벨 선물 전용 (§C-5 · 상점 판매 X · 받으면 lvGifts 에 'title:<id>' 로 남는다) */
+  ...LV_TITLES.map((t) => ({ ...t, how: '레벨 선물에서 나와요', has: (g) => Object.values(g?.lvGifts || {}).includes(`title:${t.id}`) })),
 ];
-LOOKS.title = TITLES.map((t) => ({ id: t.id, name: t.name }));
+LOOKS.title = TITLES.map((t) => ({ id: t.id, name: t.name, ...(t.tier ? { tier: t.tier } : {}), ...(t.gift ? { gift: true } : {}), ...(t.vis ? { vis: t.vis } : {}) }));
 /** 그림 경로 — 보조 파일 이름과 다른 것만 따로 (브레스 기본 = breath_default · 칭호 = badge_<그림 이름>) */
-const BADGE = { zombie_hunter: 'hunter', star_collector: 'stars', hundred_dragon: 'hundred', hard_conqueror: 'hard', coop_friend: 'buddies', boss_slayer: 'boss', breath_master: 'breath', egg_rich: 'egg', brazier_master: 'nest', duelist: 'duel', first_world: 'explorer', hundred_wins: 'wins', week_hero: 'weekhero' };
-export const artOf = (slot, id) => `/assets/iandragon_game/ai/meta/${slot === 'title' ? `badge_${BADGE[id] || id}` : slot === 'breath' && id === 'basic' ? 'breath_default' : `${slot}_${id}`}.png`;
+const BADGE = { zombie_hunter: 'hunter', star_collector: 'stars', hundred_dragon: 'hundred', hard_conqueror: 'hard', coop_friend: 'buddies', boss_slayer: 'boss', breath_master: 'breath', egg_rich: 'egg', brazier_master: 'nest', duelist: 'duel', first_world: 'explorer', hundred_wins: 'wins', week_hero: 'weekhero',
+  /* 11/13 새 칭호 — 전용 배지 그림이 나올 때까지 남는 배지 그림을 빌려 쓴다 (겜부장 그림 목록) */
+  hard_lord: 'hard', hard_perfect: 'flaghill', master_top: 'storm', master_legend: 'claw', lv_spark: 'sunrise', lv_moon: 'moon', lv_rocket: 'thumbs', lv_crown: 'rich',
+  ...Object.fromEntries(MW.map((w) => [`mw_${w}`, 'boss'])) };
+/** 새 테두리 = 기존 테두리 그림 + 색 필터 (전용 그림이 나오면 이 표에서 빼면 된다) */
+export const FRAME_ART = { red: ['fire', 'hue-rotate(-28deg) saturate(1.5)'], violet: ['fire', 'hue-rotate(-110deg) saturate(1.3)'], lvstar: ['silver', 'hue-rotate(190deg) saturate(2)'], lvgem: ['gold', 'hue-rotate(110deg) saturate(1.4)'] };
+export const artOf = (slot, id) => `/assets/iandragon_game/ai/meta/${slot === 'title' ? `badge_${BADGE[id] || id}` : slot === 'breath' && id === 'basic' ? 'breath_default' : slot === 'frame' && FRAME_ART[id] ? `frame_${FRAME_ART[id][0]}` : `${slot}_${id}`}.png`;
+/** 그림에 씌울 CSS 필터 (없으면 '') */
+export const artFilter = (slot, id) => (slot === 'frame' && FRAME_ART[id] ? FRAME_ART[id][1] : '');
+/** 칭호 목록에 보여도 되나 (초고수 칭호는 보통 10-10 을 깬 계정에만) */
+export const titleVisible = (t, g) => !!t && (!t.vis || t.vis(g));
 export const titleOf = (id) => TITLES.find((t) => t.id === id) || null;
 
 /** 편의품 — 판마다 1개 · 혼자 하기(스테이지)만. 능력치가 아주 약하게만 오른다 (저장 cons[id] = 가진 개수) */
 export const CONSUMABLES = [
   { id: 'ember50', name: '시작 불씨 +50', price: 300, desc: '이번 판 시작 불씨 +50' },
   { id: 'brazier', name: '화로 1단계 무료', price: 500, desc: '이번 판 화로가 Lv2 로 시작' },
-  { id: 'basehp', name: '성 체력 +5%', price: 800, desc: '이번 판 성 체력 +5%' },
+  { id: 'basehp', name: '드래곤캐슬 체력 +5%', price: 800, desc: '이번 판 드래곤캐슬 체력 +5%' },
 ];
 export const CONS_MAX = 99;
 
 /* ───────── 꾸미기 글자 ───────── */
 /** { hat, neck, breath, flag, frame, title } (id 또는 null) → 'h3.n1.b2.f4.r0.t7' (번호 = 표 순서+1, 0 = 없음) */
 export function encodeLook(look = {}) {
-  return SLOTS.map((s) => {
-    const i = LOOKS[s].findIndex((x) => x.id === look?.[s]);
-    return `${LETTER[s]}${i + 1}`;
-  }).join('.');
+  const parts = SLOTS.map((s) => `${LETTER[s]}${LOOKS[s].findIndex((x) => x.id === look?.[s]) + 1}`);
+  for (const s of NEW_SLOTS) { const i = LOOKS[s].findIndex((x) => x.id === look?.[s]); if (i >= 0) parts.push(`${LETTER[s]}${i + 1}`); }   // 새 칸은 고른 것만 (옛 기기 · 멀티 글자 길이 그대로)
+  return parts.join('.');
 }
 /** 글자 → { hat, neck, breath, flag, frame, title } (id 또는 null). 이상한 값은 무시(없음) */
 export function decodeLook(str) {
-  const out = Object.fromEntries(SLOTS.map((s) => [s, null]));
-  if (typeof str !== 'string' || str.length > 60) return out;
+  const out = Object.fromEntries(ALL_SLOTS.map((s) => [s, null]));
+  if (typeof str !== 'string' || str.length > 120) return out;
   for (const part of str.split('.')) {
-    const m = /^([hnbfrt])(\d{1,3})$/.exec(part);
+    const m = /^([hnbfrtapogy])(\d{1,3})$/.exec(part);
     if (!m) continue;
     const slot = SLOT_OF[m[1]], n = Number(m[2]);
     if (n >= 1 && n <= LOOKS[slot].length) out[slot] = LOOKS[slot][n - 1].id;
@@ -130,7 +165,7 @@ export function decodeLook(str) {
 /* ───────── 아이템 열쇠 'hat:crown' ───────── */
 export const keyOf = (slot, id) => `${slot}:${id}`;
 export function parseKey(key) {
-  const m = /^(hat|neck|breath|flag|frame|title):([a-z0-9_]{1,24})$/.exec(String(key));
+  const m = /^(hat|neck|breath|flag|frame|title|aura|pet|roof|gate|yard):([a-z0-9_]{1,24})$/.exec(String(key));
   if (!m) return null;
   const item = LOOKS[m[1]].find((x) => x.id === m[2]);
   return item ? { slot: m[1], id: m[2], item } : null;
@@ -164,4 +199,43 @@ export function dealsFor(dateStr) {
   const out = [];
   while (out.length < 3 && pool.length) out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
   return out;
+}
+
+/* ───────── 레벨 선물 (IDG_DIFFICULTY_PLAN §C-5 · 대표님 11/13 · 모으기 기획 §10 정리) ─────────
+ *  Lv10 · 20 … 180 마다 꾸미기 1개(랜덤) + 젬 20 (Lv100 = 젬 50). 이번 묶음은 멋 · 젬만 (능력치 효과 없음).
+ *  후보 = 상점 꾸미기 26개 + 레벨 선물 전용 칭호 4 · 테두리 2 — 물건마다 tier 를 따로 적는다(값으로 나누지 않음) · 보이는(열린) 것만.
+ *  등급 : 보통 60 · 고급 28 · 희귀 10 · 영웅 2. 가진 것은 안 나옴 → 뽑힌 등급이 비면 아래 등급으로만 → 다 비면 젬 50.
+ *  씨앗 = 계정 id + 레벨 → 다시 뽑기 · 기기 바꿔 뽑기 없음 (결과는 저장 lvGifts 에 남는다). */
+export const GIFT_EVERY = 10, GIFT_LAST = 180, GIFT_ALL_GEMS = 50;
+export const GIFT_TIERS = [
+  { id: 'common', name: '보통', p: 60 },
+  { id: 'uncommon', name: '고급', p: 28 },
+  { id: 'rare', name: '희귀', p: 10 },
+  { id: 'epic', name: '영웅', p: 2 },
+];
+export const GIFT_ODDS = GIFT_TIERS.map((t) => `${t.name} ${t.p}`).join(' · ');
+export const giftGems = (lv) => (lv === 100 ? 50 : 20);
+/** 이 계정에 보여도 되는 꾸미기 (칸마다 · 물건에 vis 가 있으면 그 조건 · 지금은 초고수 칭호만 걸림) — 거르는 곳은 여기 한 곳 */
+export const visibleLooks = (g) => Object.fromEntries(Object.entries(LOOKS).map(([slot, list]) => [slot, list.filter((x) => !x.vis || x.vis(g))]));
+/** 레벨 선물 후보 열쇠 (등급별 · 보이는 것 중 상점 판매품 + 선물 전용) */
+export function giftPool(g) {
+  const P = Object.fromEntries(GIFT_TIERS.map((t) => [t.id, []])), V = visibleLooks(g);
+  for (const [slot, list] of Object.entries(V)) for (const x of list) if (x.tier && P[x.tier] && (x.gift || x.price > 0)) P[x.tier].push(keyOf(slot, x.id));
+  return P;
+}
+/** 이 열쇠를 이미 가졌나 (칭호는 조건 · 나머지는 owned) */
+export const hasKey = (g, key) => { const p = parseKey(key); return !!p && hasItem(g, p.slot, p.id); };
+/** 선물 하나 뽑기 (결정적) — g = 지금 저장값(앞 선물까지 반영) · seed = 계정 id 글자 */
+export function pickGift(g, lv, seed) {
+  let h = 2166136261;
+  for (const c of `idg-gift:${seed}:${lv}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  const rnd = mulberry(h >>> 0), roll = rnd() * 100, pick = rnd();
+  let acc = 0, ti = GIFT_TIERS.length - 1;
+  for (let i = 0; i < GIFT_TIERS.length; i++) { acc += GIFT_TIERS[i].p; if (roll < acc) { ti = i; break; } }
+  const P = giftPool(g);
+  for (let i = ti; i >= 0; i--) {   // 뽑힌 등급 → 아래 등급으로만
+    const left = P[GIFT_TIERS[i].id].filter((k) => !hasKey(g, k));
+    if (left.length) return { lv, key: left[Math.floor(pick * left.length)], tier: GIFT_TIERS[i].id, gems: giftGems(lv) };
+  }
+  return { lv, key: null, tier: null, gems: giftGems(lv) + GIFT_ALL_GEMS };
 }

@@ -26,6 +26,15 @@ const starsStr = (s) => (typeof s === 'string' ? s : '').slice(0, STAGES).replac
 /** 비트 문자열(도감 · 과제) — 0/1 만 */
 const bits = (s, max) => (typeof s === 'string' ? s : '').slice(0, max).replace(/[^01]/g, '0');
 
+/**
+ * 한 번만 보는 안내 (난이도 4단계 · 11/13) — `seen` 비트 문자열의 뒤쪽 칸을 쓴다 (앞쪽은 도감 · 튜토리얼 몫으로 남겨 둠).
+ * 병합은 비트 합집합이라 한 기기에서 본 안내는 다른 기기에서도 다시 안 뜬다.
+ */
+export const SEEN = { hardOpen: 500, masterOpen: 501, hardV2: 502, lv100: 503 };
+export const seenBit = (g, i) => (g?.seen || '')[i] === '1';
+/** 그 비트를 켠 새 seen 문자열 (모자라면 0 으로 채움) */
+export const withSeen = (seen, i) => { const s = (typeof seen === 'string' ? seen : '').padEnd(i + 1, '0').split(''); s[i] = '1'; return s.join(''); };
+
 function units(raw) {
   const out = {};
   if (!raw || typeof raw !== 'object') return { kkomul: [1, 0] };
@@ -39,11 +48,13 @@ function units(raw) {
 
 /** 쌓인 기록 : 쓰러뜨린 좀비 · 이긴 판 · 브레스 · 화로 최고 단계 · 보스 · 알 */
 /* 용 시장 · 꾸미기 (META 2 · 3장) */
-const KEY = /^(hat|neck|breath|flag|frame):[a-z0-9_]{1,24}$/;
-const ownedKeys = (a) => [...new Set((Array.isArray(a) ? a : []).filter((s) => typeof s === 'string' && KEY.test(s)))].slice(0, 200);
+/* 11/13 모으기 기획 §10 : 새 칸(aura · pet · roof · gate · yard)도 버리지 않게 · 가진 것 512개까지 */
+const KEY = /^(hat|neck|breath|flag|frame|aura|pet|roof|gate|yard):[a-z0-9_]{1,24}$/;
+const OWNED_MAX = 512;
+const ownedKeys = (a) => [...new Set((Array.isArray(a) ? a : []).filter((s) => typeof s === 'string' && KEY.test(s)))].slice(0, OWNED_MAX);
 const CONS_IDS = ['ember50', 'brazier', 'basehp'];
 const consObj = (o) => Object.fromEntries(CONS_IDS.map((k) => [k, n0(o && typeof o === 'object' ? o[k] : 0, 99)]));
-const lookStr = (s) => (typeof s === 'string' && /^[a-z0-9.]{0,40}$/.test(s) ? s : '');
+const lookStr = (s) => (typeof s === 'string' && /^[a-z0-9.]{0,80}$/.test(s) ? s : '');   // 입은 모습 글자 80자까지 (새 칸 머리글자 a · p · o · g · y)
 const STAT_KEYS = ['kills', 'wins', 'breath', 'maxWl', 'boss', 'hatch', 'coop'];   // coop = 같이 깨기 이긴 판 (명예의 전당)
 function stats(raw) {
   const r = raw && typeof raw === 'object' ? raw : {};
@@ -78,15 +89,28 @@ export function normIdg(raw) {
     owned: ownedKeys(r.owned),                // 가진 꾸미기 'hat:crown' (용 시장 · 명예의 전당 보상)
     cons: consObj(r.cons),                    // 편의품 개수
     look: lookStr(r.look),                    // 꾸민 모습 'h3.n1.b2.f4.r0.t7'
+    clook: lookStr(r.clook),                  // 드래곤캐슬 꾸미기 (자리만 · 모으기 묶음에서 씀)
     title: str(r.title, 24, ''),              // 단 칭호 id
-    tGot: [...new Set((Array.isArray(r.tGot) ? r.tGot : []).filter((x) => typeof x === 'string' && /^[a-z_]{1,24}$/.test(x)))].slice(0, 32),                    // 알림을 보여 준 칭호들 (새로 얻으면 로비에서 «칭호 획득!»)
+    tGot: [...new Set((Array.isArray(r.tGot) ? r.tGot : []).filter((x) => typeof x === 'string' && /^[a-z_]{1,24}$/.test(x)))].slice(0, 64),                    // 알림을 보여 준 칭호들 (새로 얻으면 로비에서 «칭호 획득!»)
     frameW: n0(r.frameW, 999999),
     weekTop: n0(r.weekTop, 999999),            // 주간 습격 10위 안에 든 주 (칭호 «이번 주 용사»)             // 주간 습격 테두리를 받은 주 (한 주에 한 번)
     raid: { w: n0(r.raid?.w, 999999), best: n0(r.raid?.best, 40) },   // 주간 습격 : 주 번호(년×100+주) · 그 주 최고 웨이브
-    diff: ['easy', 'normal', 'hard'].includes(r.diff) ? r.diff : 'normal',   // 고른 난이도 (META 4장)
+    diff: ['easy', 'normal', 'hard', 'master'].includes(r.diff) ? r.diff : 'normal',   // 고른 난이도 (META 4장 · 잠긴 값은 battleSetup diffFor 가 조용히 보통으로)
     hardStars: starsStr(r.hardStars),           // 어려움 «붉은 별» (판마다 0~3)
-    pvp: { w: n0(r.pvp?.w), l: n0(r.pvp?.l), d: n0(r.pvp?.d), day: str(r.pvp?.day, 10, ''), n: n0(r.pvp?.n, 99) },   // 용 대결 전적 · 오늘 보상 판 수 (3차 M5)
+    hardWon: bits(r.hardWon, 100),              // 새 어려움(11/13 · 2회차)으로 깬 판 — 옛 붉은 별로는 첫 클리어 보상(젬 · 칭호 · 초고수 열림)을 미리 주지 않는다
+    masterStars: starsStr(r.masterStars),       // 초고수 «보라 별» (판마다 0~3 · 11/13)
+    lvGifts: gifts(r.lvGifts),                  // 레벨 선물 받은 기록 { "10": "hat:ribbon", "20": "gem" } (§C-5 · 11/13)
+    pvp: { w: n0(r.pvp?.w), l: n0(r.pvp?.l), d: n0(r.pvp?.d), day: str(r.pvp?.day, 10, ''), n: n0(r.pvp?.n, 99) },   // 드래곤 대결 전적 · 오늘 보상 판 수 (3차 M5)
   };
+}
+
+/** 레벨 선물 기록 : 열쇠 = 10 · 20 … 180 · 값 = 꾸미기 열쇠('hat:ribbon' · 'title:lv_moon') 또는 'gem'(다 가져서 젬) */
+const GIFT_VAL = /^(gem|(hat|neck|breath|flag|frame|title|aura|pet|roof|gate|yard):[a-z0-9_]{1,24})$/;
+function gifts(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [k, v] of Object.entries(raw)) { const n = Number(k); if (Number.isInteger(n) && n >= 10 && n <= 180 && n % 10 === 0 && typeof v === 'string' && GIFT_VAL.test(v)) out[String(n)] = v; }
+  return out;
 }
 
 const maxStars = (a, b) => {
@@ -129,16 +153,20 @@ export function mergeIdg(localRaw, remoteRaw) {
     daily: a.daily > b.daily ? a.daily : b.daily,
     speed: remoteRaw.speed ? b.speed : a.speed,
     stat: Object.fromEntries(STAT_KEYS.map((k) => [k, Math.max(a.stat[k], b.stat[k])])),
-    owned: [...new Set([...a.owned, ...b.owned])].slice(0, 200),   // 합집합 (산 걸 잃지 않게)
+    owned: [...new Set([...a.owned, ...b.owned])].slice(0, OWNED_MAX),   // 합집합 (산 걸 잃지 않게)
     cons: remoteRaw.cons ? b.cons : a.cons,
     look: remoteRaw.look ? b.look : a.look,
+    clook: remoteRaw.clook ? b.clook : a.clook,
     title: remoteRaw.title ? b.title : a.title,
-    tGot: [...new Set([...a.tGot, ...b.tGot])].slice(0, 32),
+    tGot: [...new Set([...a.tGot, ...b.tGot])].slice(0, 64),
     frameW: Math.max(a.frameW, b.frameW),
     weekTop: Math.max(a.weekTop, b.weekTop),
     raid: a.raid.w !== b.raid.w ? (a.raid.w > b.raid.w ? a.raid : b.raid) : { w: a.raid.w, best: Math.max(a.raid.best, b.raid.best) },
     diff: remoteRaw.diff ? b.diff : a.diff,
     hardStars: maxStars(a.hardStars, b.hardStars),
+    hardWon: orBits(a.hardWon, b.hardWon),
+    masterStars: maxStars(a.masterStars, b.masterStars),
+    lvGifts: { ...b.lvGifts, ...a.lvGifts },   // 합집합 (같은 레벨이면 이 기기 값 — 씨앗이 같아 보통 같은 값)
     pvp: { w: Math.max(a.pvp.w, b.pvp.w), l: Math.max(a.pvp.l, b.pvp.l), d: Math.max(a.pvp.d, b.pvp.d), day: a.pvp.day > b.pvp.day ? a.pvp.day : b.pvp.day,
       n: a.pvp.day === b.pvp.day ? Math.max(a.pvp.n, b.pvp.n) : a.pvp.day > b.pvp.day ? a.pvp.n : b.pvp.n },
   };

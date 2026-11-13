@@ -91,21 +91,44 @@ export function makeLoads(stage, save) {
     deck,
     skills: un.skills,
     speedMax: un.speedMax,
-    loads: [{ side: 0, deck, leader, leaderLv: Math.max(1, stage.expLevel || 1), skills: un.skills, bonus: bonusFor(stage.w, save) }],
+    /* 어려움 · 초고수 = 내가 실제로 쌓은 보너스만 (계산기 맞춤도 «내 키우기» 기준 · 기준 보너스를 덤으로 주면 «안 키움»이 권장 키우기만큼 세진다 · §B-1) */
+    loads: [{ side: 0, deck, leader, leaderLv: Math.max(1, stage.expLevel || 1), skills: un.skills, bonus: DIFF[stage.diff]?.stages ? realBonus(save) : bonusFor(stage.w, save) }],
   };
 }
 
-/** 난이도 (META 4장) — 적 체력 · 공격 배율 · 코인 배율 · 별 상한. 어려움은 그 월드를 보통으로 다 깨면 열린다 */
+/**
+ * 난이도 4단계 (IDG_DIFFICULTY_PLAN §A · §F-3 · 11/13) — 쉬움 · 보통은 그대로(한 글자도 안 바꿈).
+ *  어려움 = 보통 10-10 을 깨면 열림 · 붉은 별(hardStars) · 1-1 부터 차례로.
+ *  초고수 = 어려움 10-10 을 깨면 열림 · 보라 별(masterStars) · 1-1 부터 차례로 · 부화 «+» · 편의품 무효.
+ *  어려움 · 초고수는 판 정의를 통째로 바꿔 끼운다(data/stages/diffLoad.js · mag · atkMag 는 최종값) → mag 가 없다.
+ */
 export const DIFF = {
   easy: { name: '쉬움', mag: 0.75, coin: 0.7, maxStar: 2 },
   normal: { name: '보통', mag: 1, coin: 1, maxStar: 3 },
-  hard: { name: '어려움', mag: 1.35, coin: 1.5, maxStar: 3 },
+  hard: { name: '어려움', coin: 1.5, maxStar: 3, floorLv: 21, stages: 'hard', star: 'hardStars', gem: { star: 8, mid: 40, boss: 100 } },   // 별 하나 처음 젬 8 (11/13 겜부장 확정)
+  master: { name: '초고수', coin: 2, maxStar: 3, floorLv: 21, stages: 'master', star: 'masterStars', gem: { star: 10, mid: 80, boss: 200 }, noPlus: true, noItems: true },
 };
-export const hardOpen = (g, save) => (save?.cleared || 0) >= Math.ceil(g / 10) * 10;
-/** 이 판에서 실제로 쓸 난이도 (운영자가 끄면 · 어려움이 아직 안 열렸으면 보통) */
+/** 앞에서부터 이어 깬 판 수 (별 문자열 · 배열 둘 다) */
+export const diffRun = (arr) => { let n = 0; while (n < 100 && Number(arr?.[n]) > 0) n++; return n; };
+/** 그 난이도 자체가 열렸나 (어려움 = 보통 10-10 · 초고수 = 어려움 1-1 ~ 10-10 붉은 별 + 10-10 을 «새 어려움»으로 깸 · 옛 붉은 별만으로는 안 열림) */
+export const diffUnlocked = (save, d) =>
+  d === 'hard' ? (save?.cleared || 0) >= 100 : d === 'master' ? diffRun(save?.hardStars) >= 100 && (save?.hardWon || '')[99] === '1' : !!DIFF[d];
+/** 단추를 만들지 말지 — 초고수는 보통 10-10 을 깬 계정에만 (숨김이 아니라 아예 안 만든다) */
+export const diffVisible = (save, d) => (d !== 'master' || (save?.cleared || 0) >= 100) && !!DIFF[d];
+/** 이 판(g)에 그 난이도로 들어갈 수 있나 — 1-1 · 앞 판 별 · 이미 별을 딴 판 */
+export const diffOpen = (g, save, d) => {
+  const D = DIFF[d]; if (!D) return false;
+  if (!D.stages) return true;
+  const s = save?.[D.star];
+  return diffUnlocked(save, d) && (g === 1 || Number(s?.[g - 2]) > 0 || Number(s?.[g - 1]) > 0);
+};
+/** 그 난이도에서 다음에 할 판 (이어 깬 수 + 1 · 최대 100) */
+export const diffNext = (save, d) => Math.min(LAST_STAGE, diffRun(save?.[DIFF[d]?.star]) + 1);
+/** 이 판에서 실제로 쓸 난이도 (운영자가 끄면 · 잠겼으면 조용히 보통) */
 export function diffFor(g, save, enabled = true) {
   const d = enabled ? save?.diff || 'normal' : 'normal';
-  return d === 'hard' && !hardOpen(g, save) ? 'normal' : DIFF[d] ? d : 'normal';
+  if (!DIFF[d]) return 'normal';
+  return DIFF[d].stages && !diffOpen(g, save, d) ? 'normal' : d;
 }
 
 /**
@@ -154,7 +177,7 @@ export const NET_V = (() => { const s = JSON.stringify([UNITS, ENEMIES, LEADERS,
 /** 멀티 편성 → 글자 (방 `players/$uid/ld` · 500자 이하) */
 export function loadToLd(load, look = '') {
   const b = {}; for (const [k, v] of Object.entries(load.bonus || {})) b[k] = Math.round(v * 1000) / 1000;
-  return JSON.stringify({ v: NET_V, o: String(look || '').slice(0, 40), d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b });
+  return JSON.stringify({ v: NET_V, o: String(look || '').slice(0, 80), d: load.deck.map((x) => [x.id, x.lv]), l: load.leader, q: load.leaderLv, k: load.skills || [], b });
 }
 /** 글자 → 편성 (받은 값은 범위 안으로 자르고 확인 · 이상하면 null → 시작하지 않는다) */
 export function ldToLoad(str) {
@@ -165,7 +188,7 @@ export function ldToLoad(str) {
   if (!LEADERS[o.l]) return null;
   const skills = (Array.isArray(o.k) ? o.k : []).filter((id) => SKILLS[id]).slice(0, 2);
   const bonus = {}; for (const [k, v] of Object.entries(o.b || {})) if (Number.isFinite(v)) bonus[k] = Math.max(0, Math.min(k === 'startMoney' ? 2000 : 5, v));
-  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus, v: String(o.v || ''), look: typeof o.o === 'string' && /^[a-z0-9.]{0,40}$/.test(o.o) ? o.o : '' };
+  return { side: 0, deck, leader: o.l, leaderLv: Math.max(1, Math.min(30, Math.round(o.q) || 1)), skills, bonus, v: String(o.v || ''), look: typeof o.o === 'string' && /^[a-z0-9.]{0,80}$/.test(o.o) ? o.o : '' };
 }
 
 /** 별 : ★ 깨면 · ★★ star2 초 안 · ★★★ star3 초 안 (1배속 전투 시간) */
