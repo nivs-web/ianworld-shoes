@@ -17,6 +17,7 @@ const K = {
   GUARD_FLY: 0.3, CANNON_FLY: 0.5,  // 드래곤캐슬 : 수호 불꽃 · 포탄이 날아가는 시간(쏜 자리에 떨어져 둘레를 친다)
   GUARD_VS: ['ghost', 'shadow'],    // 브레스 색 «유령 · 그림자에 +» 가 붙는 속성
   PVP_BOUNTY: 0.2,                  // 대전 : 상대 유닛 처치 시 그 유닛 비용의 20%
+  BREATH_WIND: 12,                  // 브레스 : 누르고 12틱(0.4초) 뒤에 불이 나간다 — 캐슬 위 드래곤이 내려와 커지는 시간 (기획 13.1)
 };
 
 function mulberry32(seed) {

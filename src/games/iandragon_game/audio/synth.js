@@ -31,8 +31,17 @@ function noiseBuffer(c) {
   return noiseBuf;
 }
 
+/** pan = -1(왼쪽)~1(오른쪽) 또는 [시작, 끝] (지나가는 소리) — 11/12 필살기 회오리 */
+function out(A, g, bus, pan, t, dur) {
+  const dst = bus ?? A.sfxBus;
+  if (pan == null || !A.ctx.createStereoPanner) { g.connect(dst); return; }
+  const p = A.ctx.createStereoPanner(), [p0, p1] = Array.isArray(pan) ? pan : [pan, pan];
+  p.pan.setValueAtTime(p0, t); if (p1 !== p0) p.pan.linearRampToValueAtTime(p1, t + dur);
+  g.connect(p); p.connect(dst);
+}
+
 /** 음 하나: type · f0→f1(Hz) · dur(초) · vol · at(시작 지연) · bus */
-export function tone({ type = 'square', f0 = 440, f1 = f0, dur = 0.12, vol = 0.3, at = 0, attack = 0.005, bus, detune = 0, vib, trem }) {
+export function tone({ type = 'square', f0 = 440, f1 = f0, dur = 0.12, vol = 0.3, at = 0, attack = 0.005, bus, detune = 0, vib, trem, pan, hold = false }) {   // hold = 끝 직전까지 크기 유지(길게 이어지는 소리)
   const A = audio(); if (!A) return;
   const t = A.ctx.currentTime + at;
   const o = A.ctx.createOscillator(), g = A.ctx.createGain();
@@ -41,26 +50,29 @@ export function tone({ type = 'square', f0 = 440, f1 = f0, dur = 0.12, vol = 0.3
   if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(vol, t + attack);
+  if (hold) g.gain.setValueAtTime(vol, t + Math.max(attack, dur - Math.min(0.2, dur * 0.3)));
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(bus ?? A.sfxBus);
+  o.connect(g); out(A, g, bus, pan, t, dur);
   /* vib = { rate, depth(센트) } 떨림 · trem = { rate, depth(0~1) } 소리 크기 떨림 (방귀 · 으르렁 · 트롬본) */
   const lfos = [];
   if (vib) { const l = A.ctx.createOscillator(), lg = A.ctx.createGain(); l.frequency.value = vib.rate; lg.gain.value = vib.depth; l.connect(lg); lg.connect(o.detune); lfos.push(l); }
-  if (trem) { const l = A.ctx.createOscillator(), lg = A.ctx.createGain(), tg = A.ctx.createGain(); l.type = 'square'; l.frequency.value = trem.rate; lg.gain.value = trem.depth * 0.5; tg.gain.value = 1 - trem.depth * 0.5; l.connect(lg); lg.connect(tg.gain); g.disconnect(); g.connect(tg); tg.connect(bus ?? A.sfxBus); lfos.push(l); }
+  if (trem) { const l = A.ctx.createOscillator(), lg = A.ctx.createGain(), tg = A.ctx.createGain(); l.type = 'square'; l.frequency.value = trem.rate; lg.gain.value = trem.depth * 0.5; tg.gain.value = 1 - trem.depth * 0.5; l.connect(lg); lg.connect(tg.gain); g.disconnect(); g.connect(tg); out(A, tg, bus, pan, t, dur); lfos.push(l); }
   o.start(t); o.stop(t + dur + 0.02);
   for (const l of lfos) { l.start(t); l.stop(t + dur + 0.02); }
 }
 
 /** 잡음 하나: dur · vol · 필터(lp/hp/bp 주파수 f0→f1) */
-export function noise({ dur = 0.15, vol = 0.3, at = 0, filter = 'lowpass', f0 = 3000, f1 = f0, q = 1, bus }) {
+export function noise({ dur = 0.15, vol = 0.3, at = 0, filter = 'lowpass', f0 = 3000, f1 = f0, q = 1, bus, pan, swell = 0 }) {   // swell = 커지는 시간(초)
   const A = audio(); if (!A) return;
   const t = A.ctx.currentTime + at;
   const s = A.ctx.createBufferSource(); s.buffer = noiseBuffer(A.ctx);
   const fl = A.ctx.createBiquadFilter(); fl.type = filter; fl.Q.value = q;
   fl.frequency.setValueAtTime(f0, t); if (f1 !== f0) fl.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
   const g = A.ctx.createGain();
-  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  s.connect(fl); fl.connect(g); g.connect(bus ?? A.sfxBus);
+  /* swell > 0 이면 서서히 커져서 끝 직전까지 유지한 뒤 사라진다(휘이이잉 · 화르르르 같은 이어지는 소리) */
+  if (swell > 0) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + swell); g.gain.setValueAtTime(vol, t + Math.max(swell, dur - Math.min(0.2, dur * 0.3))); } else g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(fl); fl.connect(g); out(A, g, bus, pan, t, dur);
   s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
 }
 

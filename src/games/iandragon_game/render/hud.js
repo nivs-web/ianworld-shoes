@@ -41,7 +41,7 @@ const FLOAT_HUD = true;
  * 잘라 낼 칸 : 위 하늘 CROP.top · 아래 흙 CROP.bottom (합 49칸 = 540/491 ≈ 1.1배). 전투 ZOOM_AT 초부터 ZOOM_DUR 초 동안 부드럽게.
  * 개발 서버에서만 window.__idgCropTop 으로 위쪽 칸을 바꿔 비교할 수 있다.
  */
-const CROP = { top: 33, bottom: 16 }, ZOOM_AT = 5, ZOOM_DUR = 1.2;   /* 아래는 단추와 땅 줄 사이 여백이 남게 */
+const CROP = { top: 33, bottom: 16 }, ZOOM_AT = 5, ZOOM_DUR = 1.2, GUARD_UP = 40;   /* 아래는 단추와 땅 줄 사이 여백이 남게 */
 const cropTop = () => (import.meta.env?.DEV && window.__idgCropTop != null ? window.__idgCropTop : CROP.top);
 /** 아이콘 그림 (없으면 글자 fallback) */
 const ico = (name, alt) => { const i = h('img', 'ico'); i.src = `${UI}${name}.png`; i.alt = alt; i.draggable = false; i.onerror = () => { i.replaceWith(h('span', 'ico-t', alt)); }; return i; };
@@ -54,9 +54,11 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   /* 대표님 «PC 에서 위 글씨 · 숫자가 너무 작다» (11/11) : HUD 전체를 화면 크기에 맞춰 키운다 (폰 가로 = 1 · PC 1280×800 ≈ 1.33 · 최대 1.7) */
   /* 2026-11-11 대표님 태블릿 «아래 단추가 사라진다» : CSS zoom 은 옛 크롬 · 삼성 인터넷에서 크기 계산이 달라 HUD 가 화면보다 커지며 아래가 잘렸다
    * → 어느 브라우저든 같은 transform 확대 (상자 크기를 1/z 로 줄이고 z 배로 키움 = 늘 화면에 꼭 맞음) */
+  let hudZ = 1;   /* HUD 확대 배율 (sendIns 가 레이아웃 좌표 → CSS px 로 바꿀 때) */
   const fitHud = () => {
     const port = host.clientHeight > host.clientWidth * 1.05;   /* 세로 : 폭 520 · 높이 900 기준 (세로 태블릿에서 창 · 단추가 너무 작지 않게) */
     const z = Math.round(Math.max(1, Math.min(1.7, host.clientWidth / (port ? 520 : 960), host.clientHeight / (port ? 900 : 540))) * 100) / 100;
+    hudZ = z;
     Object.assign(root.style, { zoom: '', transformOrigin: '0 0', transform: z === 1 ? '' : `scale(${z})`, width: z === 1 ? '' : `${100 / z}%`, height: z === 1 ? '' : `${100 / z}%`, right: z === 1 ? '' : 'auto', bottom: z === 1 ? '' : 'auto' });
   };
   /* 위 · 아래 띠 높이를 캔버스에 알려 전장이 띠에 가리지 않게 한다 (app.js 'idg-insets') */
@@ -67,9 +69,14 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     const H = host.getBoundingClientRect(), tb = root.querySelector('.idg-top')?.getBoundingClientRect(), bb = root.querySelector('.idg-bot')?.getBoundingClientRect();
     if (!tb || !bb) return;
     /* 떠 있는 HUD (11/11 대표님 «위 · 아래 띠가 게임 화면을 가린다 · 단추는 공중에 떠 있게») : 띠 판이 없으니 캔버스는 화면 전체 — 띠 높이를 0 으로 알린다 */
-    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { ...cropOf(zoomK), bar: Math.round(Math.max(0, H.bottom - bb.top)), hudTop: Math.round(Math.max(0, (root.querySelector('.idg-hp')?.getBoundingClientRect().bottom ?? H.top) - H.top) + 12) } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
+    /* 단추 줄 높이 · 위 체력 줄 아래 끝은 «레이아웃 좌표»(offsetTop)로 잰다 — 화면 방향 고정(rot.js)으로 전투 틀이 90° 돌아가 있으면
+     * getBoundingClientRect 는 돌아간 화면 좌표라 띠 높이가 화면 높이만큼 나와 전장이 통째로 밀려 올라갔다(11/12 · 세로 기기 «가로 고정»에서 검은 화면) */
+    const lt = (el) => { let y = 0; for (let e = el; e && e !== root; e = e.offsetParent) y += e.offsetTop; return y; };
+    const botEl = root.querySelector('.idg-bot'), hpEl = root.querySelector('.idg-hp'), RH = root.offsetHeight;
+    const barL = Math.round(Math.max(0, (RH - lt(botEl)) * hudZ)), hudTopL = Math.round(Math.max(0, hpEl ? (lt(hpEl) + hpEl.offsetHeight) * hudZ : 0) + 12);
+    host.dispatchEvent(new CustomEvent('idg-insets', { detail: FLOAT_HUD ? { t: 0, b: 0, f: { ...cropOf(zoomK), bar: barL, hudTop: hudTopL } } : { t: Math.max(0, tb.bottom - H.top), b: Math.max(0, H.bottom - bb.top) } }));
   });
-  const onRs = () => { fitHud(); sendIns(); };
+  const onRs = () => { fitHud(); fitRound(); sendIns(); };   /* fitRound = 가로 둥근 단추 한 줄 · 두 단 (아래) */
   fitHud(); window.addEventListener('resize', onRs);
   /* 위 */
   const top = h('div', 'idg-top'); root.appendChild(top);
@@ -142,10 +149,12 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
   const sk = skills.map((id, i) => {
     const def = SKILLS[id] || {}, b = h('button', 'idg-btn idg-skill'); b.type = 'button'; b.title = `${def.name || id} : ${def.line || ''} (한 판에 ${def.charges || 1}번)`;
     const cdI = h('i', 'cd'), n = h('em', 'n', String(def.charges || 1));
-    b.append(ico(`hud_skill_${id}`, (def.name || id).slice(0, 2)), cdI, h('b', 'nm', def.name || id), n);
+    b.append(ico(`hud_skill_${id === 'gust' ? 'gust2' : id}`, (def.name || id).slice(0, 2)), cdI,   /* 돌풍 = 새 그림 gust2 (11/13 · 전투 단추만) */ h('b', 'nm', def.name || id), n);
     b.onclick = () => cb.cmd({ type: 'skill', i }); right.appendChild(b); b._cd = cdI; b._n = n; return b;
   });
-  const rage = h('button', 'idg-btn idg-rage', '으르렁!'); rage.type = 'button'; rage.onclick = () => cb.cmd({ type: 'rage' }); right.appendChild(rage);
+  /* 으르렁 (11/12 대표님 «아이콘 없이 글씨만») : 다른 스킬과 같은 양식 — 도트 아이콘(포효하는 용 · ui/hud_rage) + 아래 이름 */
+  const rage = h('button', 'idg-btn idg-skill idg-rage'); rage.type = 'button'; rage.title = '으르렁! : 잠깐 모든 용이 세져요'; rage.onclick = () => cb.cmd({ type: 'rage' });
+  rage.append(ico('hud_rage', '으르'), h('b', 'nm', '으르렁')); right.appendChild(rage);
   const breath = h('button', 'idg-btn idg-breath'); breath.type = 'button'; breath.onclick = () => cb.cmd({ type: 'breath' }); breath.onpointerdown = () => cb.aim?.(true); breath.onpointerleave = breath.onpointerup = () => cb.aim?.(false);   /* 누르고 있는 동안 전장에 브레스 사거리 (대표님 11/11) */
   const bFill = h('i', 'fill'); breath.append(bFill, h('b', null, '브레스'));
   bot.append(wallet, deckBox, right, breath);
@@ -162,7 +171,23 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     round.forEach((e, j) => { const inGrid = j < free; e.style.setProperty('--gr', String(inGrid ? top + rows : 1)); e.style.setProperty('--gc', String(COLS - (inGrid ? j : j - free))); e.classList.toggle('in-row', !inGrid); });
     bot.classList.toggle('has-act', !!top);
   }
-  sendIns(); setTimeout(sendIns, 300);   // 글꼴 · 그림이 늦게 와서 높이가 바뀔 수 있다   // 스킬 · 포효 = 아래 띠 안 브레스 왼쪽 (예전 오른쪽 위는 좀비 성 체력 숫자를 가렸다)
+  /*
+   * 가로 (11/12 대표님 «치명적인 버그» → 대표님 결정) : 한 줄 = [화로 · 카드 · 스킬 … 브레스(맨 오른쪽 · 가장 큼)].
+   * «으르렁»은 줄에서 빼 브레스 바로 위에 세로로 맞춰 띄운다(.rage-up · 가운데 맞춤 --rx) — 꺼져 있으면 그 자리만 비고 카드 줄 폭에는 영향 없음.
+   * 그래도 넘치거나 카드가 52px 보다 좁아지면 카드를 더 좁게 허용(.tight 44px → .tight2 38px). 세로(격자 배치)는 위 자리표 그대로.
+   * 단추 영역 높이(footFit 기준)는 .idg-bot 상자 = 카드 줄 위끝 — 위에 뜬 으르렁은 넣지 않는다.
+   */
+  function fitRound() {
+    bot.classList.remove('stack', 'tight', 'tight2', 'rage-up'); rage.style.removeProperty('--rx');
+    if (getComputedStyle(bot).display === 'grid') return;
+    bot.classList.add('rage-up');
+    const over = () => bot.scrollWidth > bot.clientWidth + 1;
+    if (over() || Math.min(...dbtn.map((q) => q.b.offsetWidth || 99)) < 52) bot.classList.add('tight');
+    if (over()) bot.classList.add('tight2');
+    rage.style.setProperty('--rx', `${Math.round(breath.offsetLeft + (breath.offsetWidth - rage.offsetWidth) / 2)}px`);
+  }
+  fitRound();
+  sendIns(); setTimeout(() => { fitRound(); sendIns(); }, 300);   // 글꼴 · 그림이 늦게 와서 높이가 바뀔 수 있다   // 스킬 · 포효 = 아래 띠 안 브레스 왼쪽 (예전 오른쪽 위는 좀비 성 체력 숫자를 가렸다)
 
   /** 일시정지 판의 소리 설정 : 배경음 · 효과음 각각 켜기 + 크기 */
   /** 일시정지 판의 «음향 설정» (로비 더보기와 같은 판 · soundPrefs.js) */
@@ -266,7 +291,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     /* 편의품 (판마다 1개) */
     if (!raid && !pvp && cons && cons.length) {
       const cr = h('div', 'idg-cons-row');
-      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
+      const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { if (c.auto) return h('span', 'idg-cons on auto', c.name); /* 브레스 UP = 자동 사용 · 켜진 표시만 */ const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
       draw(); body.appendChild(cr);
     }
     const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(`${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
@@ -289,19 +314,59 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     return box;
   }
 
+  /* ── 판 · 대결 시작 창 = 원래 모양(대표님 11/13 «시작할 때 화면 원래가 더 좋았던 것 같다 — 되돌리고, 새 디자인은 기획부터 다시») ──
+   *  f0f3a83 의 시작 카드 그대로 : idg-card · 제목 «4-8 펭귄 썰매 부대» 한 줄 · (난이도 줄) · (기믹) · 좀비 얼굴 줄 · «★ 깨면 · ★★ N초 안에 · ★★★ N초 안에» · 편의품 줄 · «출격!» + «나가기»
+   *  대결 = «드래곤 대결!» · 양쪽 덱 얼굴 · 규칙 한 줄. 주간 습격 소개는 새 모양(introCard) 그대로. 글자는 h() 가 ko() 로 낱말을 고친다(용 → 드래곤 · 좀비 성 → 좀비 탑) */
+  function starPill() {   /* 원래 시작 창 안의 별 알약 (11/13 대표님 3차) : 칸막이 없는 판(plate_pill) · 별 3개 → 2개 → 1개 순서 · 시간은 결과 창 초시계 아이콘 + 초 · 난이도 색 별(붉은 · 보라) */
+    fontOnce();
+    const bar = h('div', 'idg-sp2' + (stage.diff === 'hard' ? ' red' : stage.diff === 'master' ? ' purple' : ''));
+    const pic = (src, cls) => { const im = h('img', cls); im.src = src; im.alt = ''; im.draggable = false; return im; };
+    const cell = (n, sec) => { const c = h('div', 'cell'), ss = h('span', 'ss'); for (let i = 0; i < n; i++) ss.appendChild(pic(`${RES}star_on.webp`)); c.append(ss); if (sec) { const t = h('span', 't'); t.append(pic(`${RES}timer.webp`, 'tm'), h('b', null, `${sec}초`)); c.append(t); } else c.append(h('b', null, '깨기')); return c; };
+    bar.append(cell(3, stage.star3), cell(2, stage.star2), cell(1, 0));
+    return bar;
+  }
+  function startCard() {
+    const box = h('div', 'idg-card');
+    if (stage.pvp) {
+      box.append(h('h2', null, '용 대결!'));
+      const face = (list, ld) => { const z = h('div', 'idg-intro-z'); for (const id of [ld, ...(list || []).map((d) => d.id)].filter(Boolean)) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.style.display = 'none'; }; z.appendChild(im); } return z; };
+      box.append(h('p', 'small', '나'), face(deck, leader), h('p', 'small', 'VS 친구'), face(foeDeck || [], foeLeader));
+      box.append(h('p', 'small', '상대 드래곤캐슬을 먼저 무너뜨리면 승리 · 3분 · 90초부터 불꽃 타임 · 모두 Lv20'));
+    } else {
+      box.append(h('h2', null, `${stage.id} ${stage.name}`));
+      if (stage.diff && stage.diff !== 'normal') box.append(h('p', 'idg-diff ' + stage.diff, stage.diff === 'hard' ? '어려움 — 붉은 별 · 출전 드래곤 Lv21 이상' : stage.diff === 'master' ? `초고수 — 보라 별 · ${stage.limit ? `${stage.limit}초 · ` : ''}부화 «+» · 편의품은 안 통해요` : '쉬움 — 좀비가 약해요 · 별은 2개까지'));
+      if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
+      const zs = h('div', 'idg-intro-z');
+      for (const tr of [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))]) { const ic = h('img', 'idg-attr'); ic.src = `/assets/iandragon_game/ui/hud_attr_${tr}_s.png`; ic.alt = ''; ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; zs.appendChild(ic); }   // 이 판의 특별한 좀비
+      for (const id of [...new Set(stage.lines.map((l) => ZART[l.id] || l.id))]) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
+      box.append(zs, starPill());   /* 별 기준 = 새 창의 짙은 알약 (대표님 11/13 · «★ 깨기 | ★★ N초 | ★★★ N초») */
+      if (cons && cons.length) {   /* 편의품 (판마다 1개) */
+        const cr = h('div', 'idg-cons-row');
+        const draw = () => cr.replaceChildren(h('span', null, '편의품'), ...cons.map((c) => { if (c.auto) return h('span', 'idg-cons on auto', c.name); /* 브레스 UP = 자동 사용 · 켜진 표시만 */ const b = h('button', 'idg-cons' + (useCons === c.id ? ' on' : ''), `${c.name} ×${c.n}`); b.type = 'button'; b.disabled = consOff; /* 초고수 = 회색 · 못 누름 */ b.onclick = () => { useCons = useCons === c.id ? null : c.id; draw(); }; return b; }));
+        draw(); box.appendChild(cr);
+      }
+    }
+    const row = h('div', 'idg-row');
+    const add = (label, fn, cls = '') => { const b = h('button', 'idg-btn ' + cls, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
+    add('출격!', () => cb.go(useCons), 'main'); add(text.exit, () => cb.exit());
+    box.appendChild(row);
+    return box;
+  }
+
   function showPanel(kind, info = {}) {
     panel.replaceChildren();
     if (kind === 'powerup') {   /* 판 사이 파워업 (powerPage.js) — 돌아가기 = 방금 결과 창 */
       /* 한 페이지 파워업 (powerPage.js · 대표님 «한 페이지에서 슬롯 끼고 빼고 업글») */
       const back = () => showPanel(info.back, info.backInfo);
       const btns = info.back === 'win' && info.backInfo?.hasNext ? [['전투 개시!', () => cb.next(), 'main big'], ['돌아가기', back]] : [['다시하기', () => cb.retry(), 'main big'], ['돌아가기', back]];
-      panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, cls: 'idg-card idg-pp' }));
+      panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, exit: () => cb.exit(), shop: cb.shop ? () => cb.shop(() => showPanel('powerup', info)) : null, cls: 'idg-card idg-pp' }));   /* exit = «나가기»(로비 · 결과 창 나가기와 같음 · 11/12 대표님 3차) */
       panel.classList.add('on'); return;
     }
     /* 일시정지 · 시작(판 · 습격 · 대결) · 결과 = 모두 결과 창과 같은 틀(docs/IDG_UI_PATTERNS.md §0 · §1 · §2) */
-    const card = kind === 'pause' ? pauseCard() : kind === 'intro' ? introCard(info) : resultCard(kind, info);
+    const card = kind === 'pause' ? pauseCard() : kind === 'intro' ? (stage.raid ? introCard(info) : startCard()) : resultCard(kind, info);   /* 판 · 대결 시작 = 원래 창(startCard) · 주간 습격 = 새 소개 창 */
     panel.appendChild(card);
     panel.classList.add('on');
+    if (kind === 'intro' && !stage.raid) return;   /* 원래 시작 창은 짧아서 스크롤 화살표 없음 */
     /* 아래로 더 있으면 금 화살표 (대표님 11/13 · 공용 idgMore.js) : 일시정지 카드는 카드째 스크롤, 시작 · 결과는 가운데 칸(.idg-res-body)이 스크롤 */
     if (kind === 'pause') scrollHint(card, { host: panel, lift: 30 });
     else { const body = card.querySelector('.idg-res-body'); if (body) scrollHint(body, { host: card, lift: 3 }); }
@@ -362,7 +427,8 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       const bc = Math.min(1, p.breathT / p.breathCharge);
       bFill.style.setProperty('--p', String(bc)); breath.classList.toggle('can', bc >= 1);
       const foeOn = S.units.some((u) => u.alive && u.side !== p.side);   // 좀비가 없을 때 누르면 횟수만 날아간다 → 그때는 못 누름
-      sk.forEach((b, i) => { const s = p.skills[i], left = s ? s.left : 0; b.disabled = !s || left <= 0 || s.cdT > 0 || !foeOn; b._n.textContent = String(left); b.classList.toggle('used', left <= 0); b._cd.style.setProperty('--p', s && left > 0 && s.cdT > 0 ? String(s.cdT / s.def.cd) : '0'); });
+      /* .chg = 다시 차는 중 (11/13 대표님 : 차기 전에는 살짝 회색 · 어둡게 — CSS «전투 단추 기다림») */
+      sk.forEach((b, i) => { const s = p.skills[i], left = s ? s.left : 0; b.disabled = !s || left <= 0 || s.cdT > 0 || !foeOn; b._n.textContent = String(left); b.classList.toggle('used', left <= 0); b.classList.toggle('chg', !!s && left > 0 && s.cdT > 0); b._cd.style.setProperty('--p', s && left > 0 && s.cdT > 0 ? String(s.cdT / s.def.cd) : '0'); });
       rage.classList.toggle('on', p.rage >= 100);
       const bs = S.boss;
       boss.classList.toggle('on', !!(bs && bs.alive));
@@ -385,6 +451,17 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       }
       tip.textContent = ko(ui.tip || ''); tip.classList.toggle('on', !!ui.tip); tip.dataset.at = ui.tipAt || '';
       root.classList.toggle('fever', S.t >= S.feverAt);
+    },
+    /** 아래 단추 줄 근처인가 (화면 px · 전장 끌기 · 확대가 쓴다 — 대표님 11/13 «출전 단추를 누르다 실수로 맵을 건드리면 화면이 돌아간다»)
+     *  .idg-bot(화로 · 출전 · 필살기 · 브레스 줄) 위끝에서 GUARD_UP px 위부터 아래 전부. 줄 위에 떠 있는 으르렁은 그 둘레 40px 도. 화면을 돌려 그리면(rot.js) «게임 위쪽» = 화면 오른쪽(cw) · 왼쪽(ccw) */
+    inGuard(x, y) {
+      if (!bot.isConnected) return false;
+      const r = bot.getBoundingClientRect(); if (!r.width || !r.height) return false;
+      const ru = bot.classList.contains('rage-up') ? rage.getBoundingClientRect() : null, rt = rotated();
+      if (ru && ru.width && x >= ru.left - GUARD_UP && x <= ru.right + GUARD_UP && y >= ru.top - GUARD_UP && y <= ru.bottom + GUARD_UP) return true;   /* 줄 위에 떠 있는 으르렁 둘레 */
+      if (rt === 'cw') return x <= r.right + GUARD_UP;
+      if (rt === 'ccw') return x >= r.left - GUARD_UP;
+      return y >= r.top - GUARD_UP;
     },
     showPanel,
     hidePanel() { panel.classList.remove('on'); panel.replaceChildren(); },

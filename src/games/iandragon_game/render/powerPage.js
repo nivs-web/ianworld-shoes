@@ -32,8 +32,21 @@ const play = (n) => { try { Audio.init(); Audio.play(n); } catch { /* */ } };
 export const MIN_DECK = 2;
 /* 다시하기 = 도트 되돌리기 화살표 (흰 + 짙은 보라 외곽선 · tools 에서 계산해 만든 14×16 칸) */
 const RETRY_SVG = '<svg viewBox="0 0 14 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2a1238" d="M0 6h1v1h-1zM0 7h1v1h-1zM0 8h1v1h-1zM0 9h1v1h-1zM0 10h1v1h-1zM0 11h1v1h-1zM1 4h1v1h-1zM1 5h1v1h-1zM1 6h1v1h-1zM1 11h1v1h-1zM1 12h1v1h-1zM1 13h1v1h-1zM2 3h1v1h-1zM2 4h1v1h-1zM2 13h1v1h-1zM2 14h1v1h-1zM3 3h1v1h-1zM3 14h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 7h1v1h-1zM4 8h1v1h-1zM4 9h1v1h-1zM4 10h1v1h-1zM4 14h1v1h-1zM4 15h1v1h-1zM5 2h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM5 10h1v1h-1zM5 11h1v1h-1zM5 15h1v1h-1zM6 2h1v1h-1zM6 6h1v1h-1zM6 11h1v1h-1zM6 15h1v1h-1zM7 0h1v1h-1zM7 1h1v1h-1zM7 2h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM7 8h1v1h-1zM7 11h1v1h-1zM7 15h1v1h-1zM8 0h1v1h-1zM8 8h1v1h-1zM8 10h1v1h-1zM8 11h1v1h-1zM8 15h1v1h-1zM9 0h1v1h-1zM9 1h1v1h-1zM9 7h1v1h-1zM9 8h1v1h-1zM9 9h1v1h-1zM9 10h1v1h-1zM9 14h1v1h-1zM9 15h1v1h-1zM10 1h1v1h-1zM10 2h1v1h-1zM10 6h1v1h-1zM10 7h1v1h-1zM10 8h1v1h-1zM10 14h1v1h-1zM11 2h1v1h-1zM11 3h1v1h-1zM11 5h1v1h-1zM11 6h1v1h-1zM11 8h1v1h-1zM11 13h1v1h-1zM11 14h1v1h-1zM12 3h1v1h-1zM12 4h1v1h-1zM12 5h1v1h-1zM12 8h1v1h-1zM12 11h1v1h-1zM12 12h1v1h-1zM12 13h1v1h-1zM13 8h1v1h-1zM13 9h1v1h-1zM13 10h1v1h-1zM13 11h1v1h-1z"/><path fill="#fff" d="M1 7h1v1h-1zM1 8h1v1h-1zM1 9h1v1h-1zM1 10h1v1h-1zM2 5h1v1h-1zM2 6h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM2 9h1v1h-1zM2 10h1v1h-1zM2 11h1v1h-1zM2 12h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 7h1v1h-1zM3 8h1v1h-1zM3 9h1v1h-1zM3 10h1v1h-1zM3 11h1v1h-1zM3 12h1v1h-1zM3 13h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 11h1v1h-1zM4 12h1v1h-1zM4 13h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM5 5h1v1h-1zM5 12h1v1h-1zM5 13h1v1h-1zM5 14h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 12h1v1h-1zM6 13h1v1h-1zM6 14h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 5h1v1h-1zM7 12h1v1h-1zM7 13h1v1h-1zM7 14h1v1h-1zM8 1h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM8 4h1v1h-1zM8 5h1v1h-1zM8 6h1v1h-1zM8 7h1v1h-1zM8 12h1v1h-1zM8 13h1v1h-1zM8 14h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 4h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1zM9 11h1v1h-1zM9 12h1v1h-1zM9 13h1v1h-1zM10 3h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 9h1v1h-1zM10 10h1v1h-1zM10 11h1v1h-1zM10 12h1v1h-1zM10 13h1v1h-1zM11 4h1v1h-1zM11 9h1v1h-1zM11 10h1v1h-1zM11 11h1v1h-1zM11 12h1v1h-1zM12 9h1v1h-1zM12 10h1v1h-1z"/></svg>';
+/* 안내 줄 앞 도트 아이콘 (4차) : 카드 넣고 빼기 = 카드 + ⇄ · 순서 바꾸기 = ⇅ */
+const ICO_INOUT = '<svg viewBox="0 0 13 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="#7a3a12" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM0 1h1v1h-1zM4 1h1v1h-1zM10 1h1v1h-1zM0 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM9 2h1v1h-1zM10 2h1v1h-1zM11 2h1v1h-1zM0 3h1v1h-1zM4 3h1v1h-1zM10 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1zM0 5h1v1h-1zM4 5h1v1h-1zM7 5h1v1h-1zM0 6h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM0 7h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM7 7h1v1h-1z"/></svg>';
+const ICO_ORDER = '<svg viewBox="0 0 12 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="#7a3a12" d="M2 0h1v1h-1zM8 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM8 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM8 2h1v1h-1zM2 3h1v1h-1zM8 3h1v1h-1zM2 4h1v1h-1zM8 4h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM2 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM9 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1z"/></svg>';
 const EMBER = '/assets/iandragon_game/ui/hud_ember_s.png';   /* 전투 HUD 불씨 마크 (hud.js .idg-ico-ember 와 같은 그림) */
 export const MIN_DECK_MSG = '최소 2개 이상의 용을 넣어 주세요';
+const SLOT_MAX = 10;   /* 출전 칸은 늘 10칸을 보여 준다 · 아직 안 열린 칸 = 빈 칸 + 자물쇠 (11/13 대표님) */
+/* 카드 정렬 (가로만) : 불씨 = 처음 누르면 싼 순서(▼) · 체력 · 공격 · 사거리 = 처음 누르면 높은 순서(▲) · 한 번 더 = 반대 */
+const SORTS = [['cost', '불씨', true], ['hp', '체력', false], ['atk', '공격', false], ['range', '사거리', false]];   /* [키, 글씨, 처음 = 낮은 순?] */
+/* 도트 화살표 7×4 (▲ 높은 순 · ▼ 낮은 순) */
+const ARW_UP = '<svg viewBox="0 0 7 4" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M3 0h1v1H3zM2 1h3v1H2zM1 2h5v1H1zM0 3h7v1H0z"/></svg>';
+const ARW_DN = '<svg viewBox="0 0 7 4" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h7v1H0zM1 1h5v1H1zM2 2h3v1H2zM3 3h1v1H3z"/></svg>';
+/* 로비로 : 도트 집 (흰 면 + 짙은 보라 1칸 외곽선 · 닫기 X 와 같은 그림 방식 · 11/13 대표님 «창닫기와 조화롭게») */
+const HOME_SVG = '<svg viewBox="0 0 11 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2a1238" d="M4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM3 1h1v1h-1zM7 1h1v1h-1zM2 2h1v1h-1zM8 2h1v1h-1zM1 3h1v1h-1zM9 3h1v1h-1zM0 4h1v1h-1zM10 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM9 6h1v1h-1zM1 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM9 7h1v1h-1zM1 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM9 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM7 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1z"/><path fill="#fff" d="M4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z"/></svg>';
+/* 아이템샵 : 도트 장바구니 수레 (흰 면 + 짙은 보라 외곽선 = 집 · X 와 같은 방식 · 11/13 대표님 «아이콘 별로») */
+const BAG_SVG = '<svg viewBox="0 0 12 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2a1238" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM10 1h1v1h-1zM11 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM11 2h1v1h-1zM2 3h1v1h-1zM5 3h1v1h-1zM8 3h1v1h-1zM11 3h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM8 4h1v1h-1zM11 4h1v1h-1zM2 5h1v1h-1zM11 5h1v1h-1zM3 6h1v1h-1zM10 6h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM2 9h1v1h-1zM4 9h1v1h-1zM7 9h1v1h-1zM9 9h1v1h-1zM2 10h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1z"/><path fill="#fff" d="M1 1h1v1h-1zM2 1h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM9 2h1v1h-1zM10 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM9 3h1v1h-1zM10 3h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM9 6h1v1h-1zM3 9h1v1h-1zM8 9h1v1h-1z"/></svg>';
 /* 닫기 X : 도트 X 아이콘 (10칸 · 흰 X + 짙은 보라 1칸 외곽선) */
 const X_SVG = '<svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2a1238" d="M0 0h3v1h1v1h2V1h1V0h3v3H9v1H8v2h1v1h1v3H7V9H6V8H4v1H3v1H0V7h1V6h1V4H1V3H0z"/><path fill="#fff" d="M1 1h2v1h1v1h2V2h1V1h2v2H8v1H7v2h1v1h1v2H7V8H6V7H4v1H3v1H1V7h1V6h1V4H2V3H1z"/></svg>';
 /** 게임 화면이 가로인가 (전투 틀을 시계 방향으로 돌려 그리면 기기는 세로여도 가로) */
@@ -50,12 +63,21 @@ const fitCls = (box) => { const l = isLand(); box.classList.toggle('land', l); b
  */
 export function powerPage(h, o) {
   const box = h('div', (o.cls || 'idg-pp') + ' pp2');
-  /** 카드 글줄 (2차) : 1줄 «Lv 10 (권장 14)» · 2줄 «비용 [불씨] 50» — 비용 = 전투에서 쓰는 불씨 */
+  /** 카드 글줄 (2차 · 5차 «비용» 대신 «불씨») : 1줄 «Lv 10 (권장 14)» · 2줄 «불씨 [불꽃] 50» — 전투에서 쓰는 불씨 */
+  /** «파워업» 로고 (3차 · 4차 대표님) : 금색 굵은 «파워업» 글씨만 · 1px 도트 외곽선 — 리본 제목 대신 */
+  const logo = () => { const lg = h('div', 'idg-pp-logo'); lg.setAttribute('role', 'heading'); lg.setAttribute('aria-level', '2'); lg.append(h('b', null, '파워업')); return lg; };   /* 4차 : 화살표 빼고 글씨만 */
+  /** 고정 안내 2줄 (3차 → 4차 문구 «카드를 슬롯에 넣고 빼세요» · «카드 순서를 바꿀 수 있어요») */
+  const guide = () => { const gd = h('div', 'idg-pp-guide'); const ln = (ico, t) => { const p = h('p'); const i = h('i', 'gi'); i.innerHTML = ico; p.append(i, h('span', null, t)); return p; }; gd.append(ln(ICO_INOUT, '카드를 슬롯에 넣고 빼세요'), ln(ICO_ORDER, '카드 순서를 바꿀 수 있어요')); return gd; };   /* 4차 문구 · 줄 앞 도트 아이콘 */
+  /** 가로 안내 : 10번 칸 옆 빈 2칸 자리에 들어가는 글씨만 (11/13 대표님 · 그림 없음 · 굵게 아님 · 종이 판 위) */
+  const guideCell = () => { const gd = h('div', 'idg-pp-guide cell'); gd.append(h('p', null, '카드를 슬롯에 넣고 빼세요'), h('p', null, '순서도 바꿀 수 있어요')); return gd; };
+  /** «나가기» = 로비로 (결과 창 «나가기» 와 같은 동작 · 전투 판 사이만 o.exit) */
+  const exitBtn = (extra = '') => { const b = h('button', 'idg-btn idg-pp-exit' + extra); b.type = 'button'; const ic = h('img', 'ico'); ic.src = `${AI}result/ico_exit.svg`; ic.alt = ''; ic.draggable = false; b.append(ic, h('span', 'lb', '나가기')); b.onclick = guard(() => o.exit()); return b; };
   const lvLine = (lv, exp, cost) => { const sp = h('span', 'lv'); const c = h('span', 'cost'), im = h('img'); im.src = EMBER; im.alt = '불씨'; im.draggable = false; c.append('불씨 ', im, h('b', null, String(cost))); sp.append(h('span', 'l1', `Lv ${lv}${exp > lv ? ` (권장 ${exp})` : ''}`), c); return sp; };
   let swapFor = null;   /* 꽉 찼을 때 넣으려는 용 → 바꿀 칸을 고르는 중 */
   let sel = null;       /* 고른 출전 칸 번호 (0부터) */
   let work = null;      /* 지금 화면의 덱 (2개 미만이어도 여기에만 · 저장은 2개 이상일 때만) */
   let lastCoins = null, toastT = 0, eatClick = 0;
+  let sortBy = null;    /* 가로 카드 정렬 { k: 'cost'|'hp'|'atk'|'range', low: 낮은 순이면 true } · 처음엔 없음(원래 순서) */
   let need = MIN_DECK;  /* 꼭 넣어야 하는 수 = 2 (가진 용이 1마리뿐인 처음에는 1 — 창이 영영 안 닫히지 않게) */
   const closeIdx = (() => { for (let k = o.buttons.length - 1; k >= 0; k--) if (!/\bmain\b/.test(o.buttons[k][2] || '')) return k; return -1; })();
 
@@ -85,7 +107,6 @@ export function powerPage(h, o) {
 
     /* 머리 : 왼쪽 출전 칸 수 · 가운데 리본 · 오른쪽 지갑 + 닫기 X */
     const head = h('div', 'idg-pp-head');
-    const slotsPill = h('span', 'idg-pp-pill slots' + (deck.length < need ? ' short' : ''), `출전 ${deck.length} / ${un.deckCap}칸`);
     const wallet = h('div', 'idg-pp-band'), coinEl = money('coin', g.coins || 0);
     wallet.append(coinEl, h('i', 'sep'), money('gem', g.gems || 0));
     /* 레벨업으로 금화가 줄면 숫자가 통 튀고 깜박 + «-900» 이 떠올랐다 사라짐 (11/12 대표님 «레벨업 할 때마다 금화가 줄어드는 게 바로 보이게») */
@@ -99,8 +120,7 @@ export function powerPage(h, o) {
       x.innerHTML = X_SVG; x.append(h('span', null, '닫기'));
       x.onclick = guard(fn); right.append(x);
     }
-    const left = h('div', 'idg-pp-hl'); left.append(slotsPill);
-    head.append(left, h('h2', 'idg-pp-title', '파워업'), right);
+    head.append(logo(), right);   /* 3차 : 리본 제목 → «파워업 + UP 화살표» 로고 (가로 · 세로 통일) */
 
     const bs = breathStats(ld, g), lead = h('div', 'idg-pp-lead');
     const face = h('img'); face.src = `${AI}${ld}/head.png`; face.alt = '';
@@ -108,7 +128,8 @@ export function powerPage(h, o) {
 
     /* 출전 칸 (번호 = 단축키) */
     const slots = h('div', 'idg-pp-slots' + (swapFor ? ' pick' : '') + (sel != null ? ' has-sel' : ''));
-    for (let i = 0; i < un.deckCap; i++) {
+    for (let i = 0; i < SLOT_MAX; i++) {
+      if (i >= un.deckCap) { const lk = h('div', 'idg-pp-slot empty locked'); lk.append(h('i', 'no', String(i + 1)), h('i', 'lock')); lk.setAttribute('role', 'img'); lk.setAttribute('aria-label', `${i + 1}번 칸 잠김`); slots.appendChild(lk); continue; }
       const id = deck[i], b = h('button', 'idg-pp-slot' + (id ? '' : ' empty') + (sel === i ? ' sel' : '')); b.type = 'button'; b.dataset.i = String(i);
       b.append(h('i', 'no', String(i + 1)));
       if (id) {
@@ -125,12 +146,15 @@ export function powerPage(h, o) {
     const hint = h('p', 'idg-pp-hint' + (short ? ' bad' : ''), swapFor ? `«${UNITS[swapFor].name}» 과 바꿀 칸을 고르세요`
       : short ? MIN_DECK_MSG
         : sel != null ? `${sel + 1}번 칸을 골랐어요 · 다른 칸을 누르면 자리 바꿈 · 한 번 더 누르면 빠져요`
-          : box.classList.contains('land') ? '칸을 눌러 고른 뒤 다른 칸을 누르면 자리가 바뀌어요' : '카드를 누르면 넣고 빼요 · 칸을 눌러(끌어) 순서를 바꿔요');
+          : '');   /* 평소 안내는 고정 2줄(guide) · 여기는 고름 · 바꾸기 · 모자람 때만 */
+    if (!hint.textContent) hint.hidden = true;
     const limit = next.costMax ? h('p', 'idg-pp-limit', `다음 판 ${next.id} : 불씨 ${next.costMax} 이하만`) : null;
 
     /* 용 목록 */
     const list = h('div', 'idg-pp-list');
-    for (const id of ids) {
+    const statOf = (id) => { const U = UNITS[id], m = powerMul(Math.max(g.units?.[id]?.[0] || 1, exp)); return { cost: U.cost, hp: U.hp * m, atk: U.atk * m, range: U.range || 40 }; };
+    const shown = box.classList.contains('land') && sortBy ? ids.map((id, n) => [id, n, statOf(id)[sortBy.k]]).sort((a, b) => (sortBy.low ? a[2] - b[2] : b[2] - a[2]) || a[1] - b[1]).map((r) => r[0]) : ids;
+    for (const id of shown) {
       const U = UNITS[id], lv = g.units?.[id]?.[0] || 1, cost = ECON.lvCost(lv), max = lv >= cap, poor = (g.coins || 0) < cost;
       const on = deck.includes(id), over = next.costMax && U.cost > next.costMax;
       const evo = (lv + 1 === 10 && U.forms?.[1]) || (lv + 1 === 20 && U.forms?.[2]);
@@ -180,25 +204,43 @@ export function powerPage(h, o) {
        *  왼쪽 칸 : 머리 판 «출전 카드 < 출전 n/10 >» (고정) + 번호 붙은 3열 출전 칸(넘치면 이 칸만 스크롤) + 순서 바꾸기 안내
        *  가운데 칸 : 머리 판 «파워업 카드 < n카드 보유 >» (고정) + 한 줄에 카드 3개 (이 칸만 스크롤)
        *  오른쪽 띠 (전투 판 사이만) : 큰 빨간 «다시하기» · «전투 개시!» + 아래 «돌아가기» — 로비는 띠 없이 카드 칸이 넓어짐 */
-      const top = h('div', 'idg-pp-top2'); top.append(wallet, h('h2', 'idg-pp-title', '파워업'), right.querySelector('.idg-pp-x') || h('i'));   /* 가운데 = 리본 현판 «파워업» (2차 · 낮고 넓게) */
+      /* 3차 : 가운데 리본 제목 없음 · 전투 판 사이 = 로고는 오른쪽 띠 맨 위 · 로비 = 띠가 없으니 로고를 머리 줄 오른쪽(닫기 X 왼쪽)에 */
+      const top = h('div', 'idg-pp-top2'); top.append(wallet, logo(), right.querySelector('.idg-pp-x') || h('i'));   /* 11/13 : «파워업» 제목은 늘 머리 줄 정중앙 (전투 판 사이도 띠 위가 아니라 여기) */
       const plate = (a, b) => { const p = h('div', 'idg-pp-plate'); p.append(h('b', null, a), h('span', null, `< ${b} >`)); return p; };
       const sScroll = h('div', 'idg-pp-sbody'); sScroll.append(slots);
+      slots.append(guideCell());   /* 10번 칸 옆 빈 2칸 */
       const sCol = h('div', 'idg-pp-col slots'); sCol.append(plate('출전 카드', `출전 ${deck.length}/${un.deckCap}`), sScroll, h('i', 'idg-dlg-more'), hint); if (limit) sCol.append(limit);
       if (deck.length < need) sCol.firstChild.classList.add('short');
       body.append(list);
-      const cCol = h('div', 'idg-pp-col cards'); cCol.append(plate('파워업 카드', `${ids.length}카드 보유`), body, h('i', 'idg-dlg-more'));
+      const cPlate = plate('파워업 카드', `${ids.length}카드 보유`); cPlate.classList.add('sorts');
+      const sortBar = h('div', 'idg-pp-sort'); sortBar.append(h('b', null, '정렬:'));
+      for (const [k, lb, lowFirst] of SORTS) {
+        const on = sortBy?.k === k, low = on ? sortBy.low : lowFirst;
+        const sb = h('button', 'idg-pp-sortb' + (on ? ' on' : '')); sb.type = 'button'; sb.dataset.k = k; sb.setAttribute('aria-pressed', on ? 'true' : 'false');
+        sb.setAttribute('aria-label', `${lb} ${on ? (low ? '낮은 순' : '높은 순') : (low ? '낮은 순으로' : '높은 순으로')} 정렬`);
+        const ar = h('i', 'ar'); ar.innerHTML = low ? ARW_DN : ARW_UP; sb.append(h('span', null, lb), ar);
+        sb.onclick = () => { sortBy = on ? { k, low: !sortBy.low } : { k, low: lowFirst }; play('button'); draw(); const bd = box.querySelector('.idg-pp-body'); if (bd) bd.scrollTop = 0; };
+        sortBar.append(sb);
+      }
+      cPlate.append(sortBar);
+      const cCol = h('div', 'idg-pp-col cards'); cCol.append(cPlate, body, h('i', 'idg-dlg-more'));
       const grid = h('div', 'idg-pp-grid' + (mains.length ? ' has-strip' : '')); grid.append(sCol, cCol);
       if (mains.length) {
         const strip = h('div', 'idg-pp-strip');
         mains.forEach((bt, k) => { const b = mkBtn(bt, k === 0 ? ' idg-pp-go' : ''); if (k === 0) { const ic = h('span', 'ico'); if (/전투/.test(bt[0])) { const im = h('img'); im.src = `${AI}result/ico_fight.webp`; im.alt = ''; im.draggable = false; ic.append(im); } else ic.innerHTML = RETRY_SVG; b.replaceChildren(ic, h('span', 'lb', bt[0])); } strip.append(b); });
-        if (closeIdx >= 0) strip.append(mkBtn(o.buttons[closeIdx], ' idg-pp-back'));
+        /* 11/13 대표님 : 전투 개시 아래로 · 길게 → «로비로»(나가기 그림) → 맨 아래 «X 창닫기»(결과 창으로 · 오른쪽 위 닫기 X 와 같은 동작) — 둘 다 금테 없는 보라 단추 */
+        const sub = h('div', 'idg-pp-subs');
+        if (o.exit) { const lb = exitBtn(' idg-pp-back'); const ic = h('i', 'ico'); ic.innerHTML = HOME_SVG; lb.replaceChildren(ic, h('span', 'lb', '로비로')); sub.append(lb); }
+        if (o.shop) { const sb = h('button', 'idg-btn idg-pp-back idg-pp-shop'); sb.type = 'button'; const ic = h('i', 'ico'); ic.innerHTML = BAG_SVG; sb.append(ic, h('span', 'lb', '아이템샵')); sb.onclick = guard(() => o.shop()); sub.append(sb); }   /* 11/13 대표님 : 편의품을 판 사이에 바로 사러 (주황) */
+        if (closeIdx >= 0) { const cb = mkBtn(o.buttons[closeIdx], ' idg-pp-back idg-pp-close'); const ic = h('i', 'ico'); ic.innerHTML = X_SVG; cb.replaceChildren(ic, h('span', 'lb', '창닫기')); sub.append(cb); }
+        strip.append(sub);   /* 3차 : «돌아가기» → «나가기»(로비) · 결과 창으로는 오른쪽 위 닫기 X */
         grid.append(strip);
       }
       box.replaceChildren(top, grid, ...(t ? [t] : []));
       box.classList.toggle('more-host', false);
     } else {
-      if (o.buttons.length) { row = h('div', 'idg-row idg-pp-row'); for (const bt of o.buttons) row.appendChild(mkBtn(bt)); }   /* 세로 = 예전 단추 줄 (로비 «닫기» · 전투 «전투 개시!/다시하기» + «돌아가기») */
-      const side = h('div', 'idg-pp-side'); side.append(lead, slots, hint); if (limit) side.append(limit);
+      if (o.buttons.length) { row = h('div', 'idg-row idg-pp-row'); for (const [k, bt] of o.buttons.entries()) row.appendChild(o.exit && k === closeIdx ? exitBtn() : mkBtn(bt)); }   /* 3차 : 전투 판 사이 세로도 «돌아가기» → «나가기»(로비) */   /* 세로 = 예전 단추 줄 (로비 «닫기» · 전투 «전투 개시!/다시하기» + «돌아가기») */
+      const side = h('div', 'idg-pp-side'); side.append(lead, slots, hint, guide()); if (limit) side.append(limit);
       /* 고정 틀 : 머리는 위에 고정 · 가운데만 스크롤 · (전투 안) 앞으로 가는 단추 한 줄은 아래에 고정
        * 가운데 칸은 겉 상자(.idg-pp-bodyw) 안에서 스크롤 → 금 도트 줄(겉 상자 위 · 아래 테)은 스크롤 칸 밖이라 내용이 줄을 넘어 그려지지 않는다 (11/12 대표님) */
       const bodyW = h('div', 'idg-pp-bodyw');
@@ -240,7 +282,7 @@ export function powerPage(h, o) {
     if (e.button > 0 || swapFor) return;
     const x0 = e.clientX, y0 = e.clientY, el = e.currentTarget;
     let ghost = null, over = null;
-    const at = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.idg-pp-slot');
+    const at = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.idg-pp-slot:not(.locked)');
     const move = (ev) => {
       if (!ghost) {
         if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 8) return;

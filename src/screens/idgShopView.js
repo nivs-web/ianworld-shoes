@@ -17,6 +17,7 @@ import { el, presentOverlay, toast as uiToast } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
 import { kitWallet, kitTabs, kitPaper, kitRow, kitBtn, kitCheck, kitScroll, kitLock, kitCoin, kitGem, kitFmt, kitClose } from './idgKit.js';
 import { CONSUMABLES, CONS_MAX, todayKst } from '../games/iandragon_game/data/looks.js';
+import { bpOffer, bpOwned } from '../games/iandragon_game/data/breathUp.js';   /* 브레스 UP (11/13) */
 import { SHOP_SLOT, RARITY, itemsOf, dealsOf, dealPrice, isOwned, isWorn, stateOf, canPay, lockText, loadCatalog } from './shopCatalog.js';
 import { wearPart } from './idgLookParts/wear.js';
 import { recoCard } from './shopPanels/_reco.js';
@@ -45,12 +46,29 @@ function artBox(it) {
   return wrap;
 }
 
-export function showShop({ idg, save, onClose }) {
+export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → 편의품 칸으로 바로 (판 사이 파워업 «아이템샵» · 11/13) */
   Sfx.play('sfx_menu_select');
-  let cur = idg, big = 'dragon', gen = 0, dead = false, offPanel = null;
+  let cur = idg, big = BIG.some(([k]) => k === tab) ? tab : 'dragon', gen = 0, dead = false, offPanel = null;
   const sub = { dragon: firstSub('dragon'), castle: firstSub('castle') };
   let onlyMissing = false;
   const fresh = new Set();   // 이번에 방금 산 열쇠 — 맨 위에 두고 «바로 입기»
+
+  /** 브레스 UP (11/13) — 같은 판을 드래곤캐슬이 무너져 3번 이상 연속으로 진 사람에게만 편의품 맨 위에 · 한 번에 1개 · 그 판 전용 · 시작하면 자동으로 쓴다 */
+  function bpRows() {
+    const off = bpOffer(cur), own = bpOwned(cur), fx = (m) => `힘 · 거리 · 차는 속도 +${Math.round((m - 1) * 100)}%`, rows = [];
+    const priceBtn = (price, onclick) => { const poor = cur.coins < price; return el(`button.idg-k-btn.price.green.sm${poor ? '.poor' : ''}`, { type: 'button', disabled: poor, 'aria-label': `금화 ${kitFmt(price)}`, onclick }, [kitCoin(price, { cls: poor ? 'short' : '' })]); };
+    if (off && !(own && own.key === off.key && own.tier === off.tier)) {
+      rows.push(kitRow({ title: off.name, sub: `같은 판을 ${off.n}번 연속으로 진 사람에게만 보여요 · ${off.label} 전용 · ${fx(off.mul)}`,
+        right: own ? kitBtn({ kind: 'purple', text: '가지고 있음', size: 'sm', disabled: true }) : priceBtn(off.price, () => {
+          const now = cur, o2 = bpOffer(now);
+          if (bpOwned(now) || !o2 || o2.key !== off.key || o2.tier !== off.tier || now.coins < o2.price) { Sfx.play('sfx_denied'); return; }   // 최신값으로 다시 확인 (두 번 눌러도 한 번만)
+          ctx.save({ coins: now.coins - o2.price, bpUp: `${o2.key}:${o2.tier}` });
+          Sfx.play('sfx_purchase'); draw(false);
+        }) }));
+    }
+    if (own) rows.push(kitRow({ title: own.name, sub: `${own.label} 전용 · ${fx(own.mul)} · 그 판을 시작하면 자동으로 써요`, right: kitBtn({ kind: 'purple', text: '가지고 있음', size: 'sm', disabled: true }) }));
+    return rows;
+  }
 
   /* ── 저장 · 알림 ── */
   const ctx = {
@@ -170,9 +188,9 @@ export function showShop({ idg, save, onClose }) {
     }
     if (big === 'cons') {
       setInfo(false);
-      help.replaceChildren(kitPaper(['편의품은 한 판에 ', el('b', '하나만'), ' 쓸 수 있어요. 혼자 하기(스테이지)에서만 써요.']));
+      help.replaceChildren(kitPaper(['편의품은 한 판에 ', el('b', '하나만'), ' 쓸 수 있어요. 혼자 하기(스테이지)에서만 써요.', el('small', '명예의 전당 도전 · 같이 깨기 · 드래곤 대결에서는 못 써요.')]));
       content.classList.add('is-list');
-      return place(CONSUMABLES.map((c) => {
+      return place([...bpRows(), ...CONSUMABLES.map((c) => {
         const n = Number(cur.cons?.[c.id]) || 0, can = cur.coins >= c.price && n < CONS_MAX;
         const buyC = () => {
           const now = cur, have0 = Number(now.cons?.[c.id]) || 0;
@@ -184,7 +202,7 @@ export function showShop({ idg, save, onClose }) {
         return kitRow({ title: `${c.name} (가진 수 ${n})`, sub: c.desc,
           right: n >= CONS_MAX ? kitBtn({ kind: 'purple', text: '가득 찼어요', size: 'sm', disabled: true })
             : el(`button.idg-k-btn.price.green.sm${poor ? '.poor' : ''}`, { type: 'button', disabled: poor, 'aria-label': `금화 ${kitFmt(c.price)}`, onclick: buyC }, [kitCoin(c.price, { cls: poor ? 'short' : '' })]) });
-      }));
+      })]);
     }
     /* 드래곤 · 드래곤캐슬 */
     const [id, , panel] = SUBS[big].find((s) => s[0] === sub[big]) || SUBS[big][0];

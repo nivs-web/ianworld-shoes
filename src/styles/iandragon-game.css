@@ -327,6 +327,7 @@ html.idg-wide body { width: 100%; }
 .idg-cons-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin: 6px 0; font: 12px 'Neo둥근모', monospace; color: #ffe9b0; }
 .idg-cons { min-height: 32px; padding: 0 10px; border-radius: 10px; border: 2px solid #c9963a; background: rgba(26, 14, 52, .85); color: #e8dcff; font: 700 12px 'Neo둥근모', monospace; }
 .idg-cons.on { background: #2f8a4a; color: #fff; border-color: #9fffb0; }
+.idg-cons.auto { display: inline-flex; align-items: center; cursor: default; letter-spacing: .06em; }   /* 브레스 UP = 자동 사용 · 켜진 표시만 (11/13) */
 
 /* 빠른 말 (멀티) */
 .idg-talk { position: absolute; left: 50%; top: 88px; transform: translateX(-50%); padding: 4px 14px; border-radius: 14px; background: #fff; color: #1a1033; font: 700 13px 'Neo둥근모', monospace; display: none; pointer-events: none; box-shadow: 0 2px 0 #0006; }
@@ -1382,6 +1383,17 @@ html.idg-rot.ccw .idg-hud.float .idg-breath.in-row { width: 62px; }
 html.idg-rot.ccw .idg-hud.float .idg-skill, html.idg-rot.ccw .idg-hud.float .idg-rage { justify-self: center; align-self: center; width: min(100%, 52px); height: auto; aspect-ratio: 1 / 1; }
 html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; } html.idg-rot.ccw .idg-hud.float .idg-rage.on { visibility: visible; }
 
+/* ════ 가로 둥근 단추 (11/12 대표님 «치명적인 버그» → 대표님 결정 : 으르렁은 브레스 바로 위) ════
+ *  한 줄 = 화로 · 카드 · 스킬 · 브레스(맨 오른쪽). 으르렁 = 브레스 위에 세로 정렬로 떠 있다(hud.js fitRound 가 .rage-up · --rx). 꺼지면 숨기만 하고 줄 폭은 그대로.
+ *  넘치면 카드를 더 좁게(.tight 44px · .tight2 38px). 세로 배치는 «세로 전투 4차». */
+.idg-hud.float .idg-bot .idg-rage { display: grid; visibility: hidden; }
+.idg-hud.float .idg-bot .idg-rage.on { visibility: visible; }
+.idg-hud.float .idg-bot.rage-up .idg-rage { position: absolute; left: var(--rx, auto); right: auto; top: auto; bottom: calc(100% + 3px); width: 46px; height: 46px; }   /* 오른쪽 끝 = 좀비 성 앞이라 작게 (46px) */
+.idg-hud.float .idg-bot.rage-up .idg-rage .ico { width: 24px; height: 24px; margin-top: -8px; }
+.idg-hud.float .idg-bot.rage-up .idg-rage .nm { bottom: 7px; font-size: 9px; }
+.idg-hud.float .idg-bot.tight .idg-deck .idg-unit { min-width: 44px; }
+.idg-hud.float .idg-bot.tight2 .idg-deck { gap: 2px; } .idg-hud.float .idg-bot.tight2 .idg-deck .idg-unit { min-width: 38px; } .idg-hud.float .idg-bot.tight2 .idg-wallet { width: 46px; }
+
 /* ════ 결과 창 새 디자인 (11/12 대표님 · 조립판 6차 · 확인용 · 배포 전) ════
  *  우리 호박 창 테 하나 · 그림이 창의 절반 넘게 : 위 «승리!/패배» 현판(용 머리 위) → 용들(가운데) → 별(용 아래) → 그림은 보상 판 가운데 줄에서 금 줄로 끝남
  *  보상 판(시간 → 동전 → 젬 · 칸막이 35.4% · 67.7% 에 맞춘 칸 가운데) + 붙은 꼬리표 → 큰 단추(빨강 · 초록) → 작은 평범한 단추
@@ -1564,3 +1576,72 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 /* 일시정지 오른쪽 위 X (키트 X · PAUSE_X 켰을 때만) : 카드가 스크롤돼도 붙어 있게 sticky 줄 안에 */
 .idg-pause-xw { position: sticky; top: 0; z-index: 6; height: 0; display: flex; justify-content: flex-end; pointer-events: none; }
 .idg-pause-xw .idg-k-close { pointer-events: auto; width: 32px; height: 32px; margin: -4px -6px 0 0; }
+
+/* ════ 전투 단추 기다림 (11/13 대표님 3차 «원래대로 + 살짝») ════
+ *  차오름은 원래 시계 덮개(conic) 그대로 · 차기 전(필살기 .chg · 브레스 :not(.can) · 출전 .wait)에만 단추 전체를 살짝 회색 · 어둡게(금 테도 같이 가라앉음) + 덮개 조금 진하게
+ *  다 차면 원래 모양 그대로 (테 · 반짝 · 들썩 · 팡 없음) · 회색 세기 = --idg-wg(회색) · --idg-wb(밝기) */
+.idg-hud { --idg-wg: .6; --idg-wb: .9; }
+.idg-hud .idg-skill.chg, .idg-hud .idg-breath:not(.can), .idg-hud .idg-unit.wait { filter: grayscale(var(--idg-wg)) brightness(var(--idg-wb)); }
+.idg-hud .idg-skill.chg .cd, .idg-hud .idg-unit.wait .cd { background: conic-gradient(rgba(0, 0, 0, .72) calc(var(--p, 0) * 360deg), transparent 0); }
+.idg-hud .idg-unit.wait .cost { color: #a59fb0; }   /* 불씨 숫자도 차기 전에는 흐리게 */
+/* 돌풍 · 얼음 (11/13 대표님 «그림을 조금 크게 · 글씨는 으르렁 글씨처럼 크게») : 그림 = 단추의 약 65% · 이름 = 으르렁과 같은 비율(단추의 약 19.5%) · 같은 글꼴 · 외곽선 */
+.idg-hud .idg-skill:not(.idg-rage) .ico { width: 38px; height: 38px; margin-top: -13px; }
+.idg-hud .idg-skill:not(.idg-rage) .nm { font-size: 11px; bottom: 5px; }
+@media (max-height: 430px) {
+  .idg-hud .idg-skill:not(.idg-rage) .ico { width: 30px; height: 30px; margin-top: -10px; }
+  .idg-hud .idg-skill:not(.idg-rage) .nm { font-size: 10px; bottom: 5px; }
+}
+/* 2배속 : 켜짐 = 눌린 판 + 2px 가라앉음 + 안쪽을 어두운 호박색으로 채움(흰 글씨가 또렷하게) · 꺼짐 = 원래 그대로 (자동 단추도 같은 모양) */
+.idg-hud .idg-top .idg-speed { isolation: isolate; }
+.idg-hud .idg-top .idg-speed::before { content: ''; position: absolute; z-index: -1; left: 9.4%; right: 12.5%; top: 12.5%; bottom: 9.4%; border-radius: 50%; }   /* 눌린 판(32칸) 안쪽 둥근 면 : 왼 3 · 위 4 · 폭 25칸 */
+.idg-hud .idg-top .idg-speed.on { translate: 0 2px; filter: none; color: #fff; text-shadow: var(--idg-pxo-fire); background-image: url(/assets/iandragon_game/ui/hud_btn_round_pressed.png); }
+.idg-hud .idg-top .idg-speed.on::before { background: #c9780f; box-shadow: inset 0 3px 0 #6b3300, inset 0 -2px 0 #dd9a3a; }
+
+/* ════ 11/13 대표님 (b3ui) — 시작 창 별 알약 · 결과 창 전적 글씨 · 도움말 한 줄 ════ */
+/* ① 판 시작 창(원래 창) 안의 별 알약 : 결과 창 · 새 시작 창과 같은 부품(.idg-res-bar · plate_reward) · 창 가운데 · 칸마다 가운데 */
+.idg-card .idg-sp { --o: #2a1238; box-sizing: border-box; width: min(280px, 100%); margin: 8px auto 6px; align-self: center; font: 800 12px/1 'Pretendard Variable', Pretendard, 'Neo둥근모', sans-serif; color: #fff; word-spacing: normal; text-align: center; }
+.idg-card .idg-sp .cell { justify-content: center; text-align: center; gap: .25em; }
+.idg-card .idg-sp .ss img { height: .82em; margin-left: -.2em; } .idg-card .idg-sp .ss img:first-child { margin-left: 0; }   /* 별 3개 + 세 자리 초가 칸 칸막이에 닿지 않게 */
+/* ② 내 전적 · 큰 글씨 : 1px · 2px 8방향 딱딱한 외곽선 + 아래쪽 딱딱한 그림자(0 흐림) · 바닥에서 5px 위로 */
+.idg-res-big { --sh: #130a1e; }
+.idg-res-big b { text-shadow: 3px 0 var(--o), -3px 0 var(--o), 0 3px var(--o), 0 -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o),
+  3px 5px var(--sh), -3px 5px var(--sh), 0 6px var(--sh), 3px 6px var(--sh), -3px 6px var(--sh), 0 4px var(--sh), 3px 4px var(--sh), -3px 4px var(--sh); }
+.idg-res-big small { text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o),
+  2px 3px var(--sh), -2px 3px var(--sh), 0 4px var(--sh), 2px 4px var(--sh), -2px 4px var(--sh), 0 3px var(--sh); }
+@container (min-aspect-ratio: 1/1) { .idg-res-big { bottom: calc(8.5% + 5px); } }
+@container (max-aspect-ratio: 1/1) { .idg-res-big { bottom: calc(8% + 5px); } }
+/* ③ 결과 창 도움말 한 줄(«새로 열림 : …») : 머리글 줄바꿈 금지 · 글씨 한 단계 작게(t4 .85em → t5 .72em) · 굵지 않게 · 글자 간격 한 단계 좁게 */
+.idg-res:not(.idg-int) .idg-res-new { font-size: .72em; letter-spacing: -.03em; }
+.idg-res:not(.idg-int) .idg-res-new em { font-weight: 500; white-space: nowrap; flex: none; }
+.idg-res:not(.idg-int) .idg-res-new span { font-weight: 500; }
+/* 시작 창 별 알약 2차 (11/13 대표님 «별이 너무 작고 이상해») : 별을 글씨보다 크게 · 겹치지 않게 · 큰 그림을 줄일 땐 부드럽게(도트로 깎으면 뭉개짐) · 알약 조금 크게 */
+.idg-card .idg-sp { width: min(330px, 100%); margin: 10px auto 8px; font-size: 14px; }
+.idg-card .idg-sp .cell { gap: .3em; }
+.idg-card .idg-sp .ss { display: inline-flex; align-items: center; gap: 1px; flex: none; }
+.idg-card .idg-sp .ss img, .idg-card .idg-sp .ss img:first-child { height: 1.42em; width: auto; margin: 0; image-rendering: auto; filter: drop-shadow(0 1px 0 #1a0c24); }
+.idg-card .idg-sp .cell b { font-size: 1em; }
+.idg-card .idg-sp { width: min(384px, 100%); font-size: 13.5px; }
+.idg-card .idg-sp .cell { gap: .22em; }
+.idg-card .idg-sp .ss img, .idg-card .idg-sp .ss img:first-child { height: 1.34em; }
+.idg-card .idg-sp.red .ss img, .idg-card .idg-sp.red .ss img:first-child { filter: hue-rotate(-42deg) saturate(1.5) drop-shadow(0 1px 0 #1a0c24); }
+.idg-card .idg-sp.purple .ss img, .idg-card .idg-sp.purple .ss img:first-child { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92) drop-shadow(0 1px 0 #1a0c24); }
+.idg-card .idg-sp { width: 384px; max-width: calc(100vw - 96px); }   /* 좁은 카드(좀비 얼굴 하나)에서도 알약이 줄지 않게 — 카드가 알약만큼 넓어진다 */
+/* 배포 전 점검 (11/13) : 3번째 칸 «★★★ 205초» 가 칸막이에 닿지 않게 — 별 사이 1px 겹침 · 칸 안쪽 여백 · 브레스 UP 표시는 «%» 가 뭉개지지 않는 글꼴 */
+.idg-card .idg-sp .ss { gap: 0; }
+.idg-card .idg-sp .ss img + img { margin-left: -1px; }
+.idg-card .idg-sp .ss img, .idg-card .idg-sp .ss img:first-child { height: 1.28em; }
+.idg-card .idg-sp .cell:nth-child(3) { padding-left: .45em; }
+.idg-cons.auto { font-family: 'Pretendard Variable', Pretendard, sans-serif; font-weight: 800; letter-spacing: 0; }
+/* 시작 창 별 알약 3차 (11/13 대표님) : 칸막이 금선 없는 판 · ★★★ 30초 → ★★ 40초 → ★ 깨기 · 초 앞에 결과 창 초시계 · 세 묶음을 판 안에 고르게(양 끝 장식 피해서) */
+.idg-card .idg-sp2 { --o: #1a0c24; box-sizing: border-box; display: flex; align-items: center; justify-content: space-evenly; width: 400px; max-width: calc(100vw - 96px); aspect-ratio: 1200 / 167; margin: 10px auto 8px; padding: 0 7.5% 1px; align-self: center;
+  background: url(/assets/iandragon_game/ai/result/plate_pill.webp) center / 100% 100% no-repeat; image-rendering: pixelated;
+  font: 800 15px/1 'Pretendard Variable', Pretendard, sans-serif; color: #fff; word-spacing: normal; letter-spacing: 0; }
+.idg-card .idg-sp2 .cell { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.idg-card .idg-sp2 .ss { display: inline-flex; align-items: center; }
+.idg-card .idg-sp2 .ss img { height: 19px; width: auto; image-rendering: auto; filter: drop-shadow(0 1px 0 #0c0614); }
+.idg-card .idg-sp2 .ss img + img { margin-left: -2px; }
+.idg-card .idg-sp2 .t { display: inline-flex; align-items: center; gap: 3px; }
+.idg-card .idg-sp2 .tm { height: 15px; width: auto; image-rendering: auto; }
+.idg-card .idg-sp2 b { font-weight: 800; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+.idg-card .idg-sp2.red .ss img { filter: hue-rotate(-42deg) saturate(1.5) drop-shadow(0 1px 0 #0c0614); }
+.idg-card .idg-sp2.purple .ss img { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92) drop-shadow(0 1px 0 #0c0614); }

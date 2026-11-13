@@ -17,6 +17,7 @@ import { createAmbient } from './ambient.js';
 import { createBossFx } from './bossFx.js';
 import { createGuardFx } from './guardFx.js';   // 수호 불꽃 · 대포 · 경보 종 (⑤ · 코어 사건 S.ev 만 읽음)
 import { BREATH_PAL } from '../data/lookFx.js';
+import { createSkillFx } from './skillFx.js';
 import { BREATH_COLORS } from '../data/looks.js';
 import { lightsFor, fxFrames, makeBreath, tileMirror } from './living.js';
 import { lanesFor, laneY } from './lanes.js';
@@ -47,6 +48,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   /* WebP 먼저 (11/11 밤 «로딩이 엄청 느려졌다» — 배경 · 성 PNG 33MB → WebP 9MB · 하늘 한 장 1.1MB → 0.14MB · tools/idg-webp-bg.mjs), 없으면 PNG */
   const img = (base) => tryLoad(`${base}.webp`).then((t) => t || tryLoad(`${base}.png`));
   const towerImg = (n) => (wN === '01' ? img(`${AI}castles/tower_${n}`) : img(`${AI}castles/tower_w${wN}_${n}`).then((t) => t || img(`${AI}castles/tower_${n}`)));
+  /* 드래곤캐슬(둥지) = 꼭대기 빨간 해골 깃발 · 깃대를 지운 _noflag 그림 (11/13 대표님 «깃발이 왜 2개야» — 깃발은 캐슬 앞 땅 깃발 하나만 · tools/_nest-noflag.py) · 못 받으면(R2 올리기 전) 원래 그림 */
+  const nestImg = (n) => img(`${AI}castles/nest_${n}_noflag`).then((t) => t || img(`${AI}castles/nest_${n}`));
   /*
    * 11/12 속도 : 서로 기다릴 필요 없는 것은 한꺼번에 받기 시작한다. 예전엔 캐릭터 → 배경 → 성 → 체력 바 → 운석 → 횃불 → 꾸미기 → 상태 아이콘을
    * 하나씩 기다려(차례 12번) R2 첫 방문 때 전투가 뜨기까지 오래 걸렸다. 받는 그림 · 쓰는 자리 · 없을 때 대신하는 방법은 그대로.
@@ -66,7 +69,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   /* 꾸미기 그림(깃발 · 모자 · 모자용 머리 · 목 장식)도 미리 받아 둔다 — 아래 wearRig · dress 가 같은 주소를 부르면 이미 받은 것을 쓴다 */
   const prefetchLook = (art, lk) => {
     if (!lk) return;
-    if (lk.flag) tryLoad(`${AI}meta/flag_${lk.flag}.png`);
+    tryLoad(`${AI}meta/flag_${lk.flag || 'pumpkin'}.png`);   /* 안 달았으면 호박 깃발 (dress) */
     WEARP.then((T) => {
       const pl = wearPlan(art, lk, T), fs = [pl.hat?.file, ...Object.values(pl.hat?.heads || {}), pl.neck?.file];
       for (const f of fs) if (f) tryLoad('/assets/iandragon_game/' + f);
@@ -83,6 +86,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
    */
   const LN = await lanesP;
   const [S0, S1] = LN.spawnY, CY = LN.castleY, GC = Math.round((S0 + S1) / 2);
+  /* 캐슬 그리는 자리 (11/13 대표님 «캐슬이 공중에 떠 있다») : 둥지 그림은 밑에 빈 줄이 15칸 있어 castleY 에 두면 땅에서 떠 보였다 → 맵마다 lanes.json nestY · towerY
+   * (그림 앵커 = 밑 가운데 · 없으면 castleY · 대결은 오른쪽도 둥지라 nestY). 그리기 전용 — 코어 거리 · 판정 · 땅 깃발(S0) 은 그대로. 횃불 · 리더 · 알 · 무너짐이 같이 따라간다 */
+  const NY = LN.nestY ?? CY, TY = pvp ? NY : LN.towerY ?? CY;
   /* 싸움 줄은 늘 단추 줄 위 (11/12 대표님 «어떤 월드 · 확대 · 가로 · 세로에서도 단추에 캐릭터가 가려지지 않게») : 가장 아래 발(S1 + 보스 6칸)을 화면 맞춤(app.js footFit)에 알린다
    * → 넘치면 캔버스를 올리고, 그래도 모자라면 view.lift 칸만큼 전장을 올려 그린다(아래 camera · underBox). 그리기 전용 — 코어는 x 만 쓴다. */
   ctx.setFoot?.(S1 + 6);
@@ -149,8 +155,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       skyBox.addChild(funSky);   // 달 얼굴 · 자전거 · 박쥐는 숨결 위
     });
   } else if (bgTex) { tileMirror(frontBox, bgTex, FIELD); tileMirror(underBox, bgTex, FIELD); }
-  const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, CY);
-  const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, CY); if (pvp) tower.scale.x = -1;
+  const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, NY);
+  const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, TY); if (pvp) tower.scale.x = -1;
   stage.addChild(nest, tower, units, fx);
   /* 드래곤캐슬 꾸밈 (11/13 · castleKit) : 지붕 · 성문 · 앞마당 · 끼운 장비 = 성 앞에 얹고, 성이 금 가는 동안(hp0 ~ hp2)만 보인다 */
   const A = await anchorP, dtx = decoTexP ? await decoTexP : null;
@@ -204,7 +210,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const lead2 = pvp && foeLeader && rigs[foeLeader] ? createRigged(await wearRig(rigs[foeLeader], foeLeader, lookR), LEAD_K, -1) : null;   // 대결 : 오른쪽 둥지 위 상대 리더
   /* 리더 발 = 둥지 그림 위에서 66px (짚 가운데 · 대표님 11/11 «둥지와 용을 조금 아래로») — 대결 상대도 같은 자리(좌우 대칭) */
   const LEAD_FEET = 66;
-  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, CY - tower.height + LEAD_FEET); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
+  if (lead2) { lead2.set('idle'); lead2.root.position.set(tower.x - 4, TY - tower.height + LEAD_FEET); stage.addChildAt(lead2.root, stage.getChildIndex(units)); }
   /* 꾸미기 (META 2장) : 대장 용 머리 위 모자 · 목 장식 + 성 꼭대기 깃발 — 그림은 보조 ai/meta/*, 없으면 안 붙인다 */
   /* 착용 (11/13 겜보조 1 · 대표님 «드래곤마다 덩치가 달라 아이템이 안 맞음») — 꾸미기 그림 하나 + 대장 용마다 기준점 3개(head · neck · back) · 크기 : render/wearKit.js */
   async function wear(R, art, lk) {
@@ -212,7 +218,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     follow.push(...await attachWear(R, rigs[art], art, lk, await WEARP, (f) => tryLoad('/assets/iandragon_game/' + f)));   // 표 = wear_anchor.json · wear_items.json · 그림 = 꾸미기 그림을 도트 칸에 맞게 굽은 ai/meta/wear/fit/
   }
   async function dress(rig, lk, castle, art) {
-    const flagT = castle === nest && dtx?.flag ? dtx.flag : lk.flag ? await tryLoad(`${AI}meta/flag_${lk.flag}.png`) : null;   // 내 성 : 새 꾸미기 깃발(png · webp 둘 다)
+    /* 안 달았으면 호박 깃발 (11/12 대표님) · 내 드래곤캐슬은 새 꾸미기 깃발(dtx.flag) 먼저 · 장착 깃발 그림을 못 받으면 호박으로 */
+    const flagT = castle === nest && dtx?.flag ? dtx.flag : castle ? (lk?.flag && (await tryLoad(`${AI}meta/flag_${lk.flag}.png`))) || (await tryLoad(`${AI}meta/flag_pumpkin.png`)) : null;
     if (rig) await wear(rig, art, lk);
     if (flagT && castle) groundFlag(castle, flagT);
   }
@@ -282,7 +289,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       const o = k >= 0 ? NEST_OFF[k] : b.c === nest && tex === nestFallT[0] ? FALL0_OFF : b.off;
       if (o !== b.off) {
         const sx = Math.sign(b.c.scale.x) || 1, dx = (o[0] - b.off[0]) * sx, dy = o[1] - b.off[1];
-        b.R.root.x += dx; b.R.root.y += dy; if (b.R.baseY != null) b.R.baseY += dy;
+        if (b.R.dive) { b.R.dive.hx += dx; b.R.dive.hy += dy; } else { b.R.root.x += dx; b.R.root.y += dy; }   /* 브레스로 내려가 있으면 돌아올 자리만 옮김 (skillFx) */
+        if (b.R.baseY != null) b.R.baseY += dy;
         for (const m of b.move) m.position.set(o[0], o[1]);
         b.off = o;
       }
@@ -318,6 +326,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const BS = BREATH[leader] || BREATH.novart;
   const guardFx = createGuardFx({ layer: fx, M, gy: GC, rigs: [lead, lead2], castles: [nest, tower], breath: [look.breath, lookR.breath], pal: { ...BREATH_PAL, ...BREATH_COLORS } });   // 드래곤캐슬 연출 (guardFx.js)
   const bossFx = createBossFx({ layer: app.stage, fx, M, GY: GC, band: [S0 - 10, S1 + 8], view, artOf: (def) => artOf(def._art), shake: (t) => { shakes.screen = Math.max(shakes.screen, t); } });   // 보스 컷인 · 큰 공격 경고 (bossFx.js)
+  /* 필살기 연출 (11/12 대표님 «화면을 확 감싸는 압도적인 연출») — 이름 도장 · 얼음 · 돌풍 · 으르렁 · 브레스 더하기 (skillFx.js · 화면 전용) */
+  const sfx = createSkillFx({ app, fx, view, M, FIELD, GC, S1, mirror, getCam: () => camX, shake: (t) => { shakes.screen = Math.max(shakes.screen, t); }, torchFx, leaders: () => [lead, lead2], stage, units, castles: () => [nest, tower], flagTop: S0 + 1 - Math.min(FLAG_H, S0 + 1 - FLAG_TOP - 8) - 5 });   // stage · units · castles = 브레스 때 대장 드래곤이 캐슬 앞으로 내려와 커지는 자리 · 층 (기획 13.1) · flagTop = 땅 깃발 꼭지 y (커진 키 상한 · 11/13 대표님 «1층 = 깃발 높이까지만»)
 
   /* 상태 아이콘 : 약해짐(보라) > 되살아날 유령 > 방패 > 안 밀림 > 독 공격 > 정화 공격 */
   const stTex = Object.fromEntries(await stP);   // ST · stP = 위에서 미리 받기 시작
@@ -358,8 +368,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
         v.h = Math.min(220, R.root.height || 60);
       }
       v.y = Math.round(laneMap(v.y0));   // 화면 맞춤이 바뀌면(확대 · 회전) 눌러 담기도 따라감
-      if (!v.flee) v.x += (M + u.x - v.x) * Math.min(1, dt * 18);   // 도망치는 좀비는 코어 위치를 안 따름
-      const R = v.R;
+      if (!v.flee && !v.hold) v.x += (M + u.x - v.x) * Math.min(1, dt * 18);   // 도망치는 좀비는 코어 위치를 안 따름 · 으르렁 중인 용은 그 자리에 멈춰 섬(끝나면 따라잡음)
+      const R = v.R, o = sfx.unit(u, v, dt);   // 필살기 연출 : 얼음 껍질 · 휘청 · 움찔 · 불탐 · 으르렁 자세
       if (u.hp < v.hp) { api.hits++; api.bigHit = v.hp - u.hp > u.maxHp * 0.25; v.flash = 0.08; if (u.hp > 0) puff(v.x, v.y - 30, u.side ? 0xfff0a0 : 0xffffff, 4, 60, 0.25, 1.6); }
       v.hp = u.hp;
       if (u.state !== v.st) {
@@ -368,15 +378,15 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
         v.st = u.state;
       }
       const st = u.state === 'back' && v.hitT > 0 ? 'hit' : u.state;
-      R.set(st); v.hitT -= dt;
+      R.set(o.pose || st); v.hitT -= dt;
       const frozen = u.freezeT > 0, buried = u.burrowT > 0 || u.burrowed, corpse = u.corpseT > 0;
-      R.root.tint = frozen ? 0x9fe8ff : u.weakT > 0 ? 0xc9a0ff : 0xffffff;
+      R.root.tint = o.tint ?? (frozen ? 0x9fe8ff : u.weakT > 0 ? 0xc9a0ff : 0xffffff);
       if (!frozen && !corpse) R.update(dt * (u.slowT > 0 ? 0.5 : 1));
       let dy = 0;
       if (u.state === 'kb') { v.kbT += dt; dy = -Math.sin(Math.min(1, v.kbT / 0.35) * Math.PI) * (u.boss ? 6 : 14); }
       R.root.alpha = buried ? 0 : corpse ? 0.5 : 1;
-      R.root.rotation = corpse ? (u.side ? -1.3 : 1.3) : 0;
-      R.root.position.set(Math.round(v.x), Math.round(v.y + dy));
+      R.root.rotation = corpse ? (u.side ? -1.3 : 1.3) : o.rot;
+      R.root.position.set(Math.round(v.x + o.dx), Math.round(v.y + dy + o.dy));
       v.flash -= dt; R.root.filters = v.flash > 0 ? [white] : null;
       if (u.hp < u.maxHp && v.flash > 0) v.barT = 1.5;
       if ((v.barT = (v.barT || 0) - dt) > 0 && u.alive && !buried) {   // 체력바 : 맞으면 잠깐
@@ -395,10 +405,15 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     }
     for (const [id, v] of V) {
       if (alive.has(id) && v.dieT < 0) continue;
-      if (v.dieT < 0) { v.dieT = 0; puff(v.x, v.y - 30, 0xfff6c0, 10, 110, 0.5, 2); }
+      if (v.dieT < 0) { v.dieT = 0; v.ash = sfx.die(v); if (!v.ash) puff(v.x, v.y - 30, 0xfff6c0, 10, 110, 0.5, 2); }   /* 브레스에 쓰러지면 재 더미 (skillFx) */
       if (v.badge) v.badge.visible = false;
       if (v.bar) v.bar.visible = false;
-      v.dieT += dt; v.R.root.alpha = Math.max(0, 1 - v.dieT / 0.35); v.R.root.y = v.y - v.dieT * 30;
+      v.dieT += dt;
+      if (v.ash) {   /* 브레스에 쓰러짐 : 깜짝 → 불탐 → 무너져 재 더미 (skillFx corpse · 투명 페이드 없음) — 끝나면 몸을 지운다 */
+        if (sfx.corpse(v, dt)) { v.R.root.destroy({ children: true }); v.badge?.destroy(); v.bar?.destroy(); V.delete(id); }
+        continue;
+      }
+      v.R.root.alpha = Math.max(0, 1 - v.dieT / 0.35); v.R.root.y = v.y - v.dieT * 30;
       if (v.dieT > 0.35) { v.R.root.destroy({ children: true }); v.badge?.destroy(); v.bar?.destroy(); V.delete(id); }
     }
   }
@@ -422,7 +437,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       if (T[i]) spr.texture = T[i];
       const key = side ? 'tower' : 'nest'; shakes[key] -= dt;
       spr.x = (side ? M + L + 40 : M - 40) + (shakes[key] > 0 ? (Math.random() * 4 - 2) : 0);
-      const cb = castleBars[side]; if (cb) { cb.set(r); cb.position.set(side ? M + L + 40 : M - 40, CY - spr.height - ((side ? lead2 : lead) ? 96 : 16)); cb.visible = !S.stage.raid || !side; cb.scale.x = mirror ? -1 : 1; }   /* 리더 용이 서 있으면 그 머리 위 */
+      const cb = castleBars[side]; if (cb) { cb.set(r); cb.position.set(side ? M + L + 40 : M - 40, (side ? TY : NY) - spr.height - ((side ? lead2 : lead) ? 96 : 16)); cb.visible = !S.stage.raid || !side; cb.scale.x = mirror ? -1 : 1; }   /* 리더 용이 서 있으면 그 머리 위 */
     }
   }
   function effects(S, dt) {
@@ -431,36 +446,27 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     if (p && allBreath > seen.breath) {
       let who = 0; S.players.forEach((q, i) => { if (q.st.breath > (seen.by[i] || 0)) who = i; seen.by[i] = q.st.breath; });
       seen.breath = allBreath; breathFx = 0.001; bP = S.players[who]; bSide = pvp ? bP.side : 0; const lkB = bSide ? lookR : look; bBS = BREATH_COLORS[lkB.breath] ? { ...((bSide && BREATH[foeLeader]) || BS), c: BREATH_COLORS[lkB.breath] } : (bSide && BREATH[foeLeader]) || BS;   // 브레스 색 꾸미기 (양쪽)   // 내 브레스 색 꾸미기
-      const L0 = bSide ? lead2 : lead; if (L0) L0.set('hit');
+      const L0 = bSide ? lead2 : lead; if (L0 && !sfx.diving(bSide)) L0.set('hit');   /* 보통은 캐슬 앞으로 내려와 커진 드래곤이 뿜는다(skillFx 13.1) — 못 내려왔을 때만 앉은 채 입 벌림 */
+      /* 불 (11/13 2차) : 커진 드래곤 입에서 수평으로 사거리 끝(코어 leader.range)까지 · 끝은 가늘고 듬성하게 · 맞은 좀비 깜짝 → 불탐 → 재 (skillFx) */
+      const rch = M + (bP ? bP.leader.range : 600), f0 = bSide ? -1 : 1;
+      sfx.breath({ side: bSide, x0: L0 ? L0.root.x + f0 * 26 : bx(M), y0: L0 ? L0.root.y - 62 : GC - 80, x1: bx(rch), cols: bBS.c, S, V });
     }
     if (breathFx > 0) {
       const b0 = breathFx; breathFx += dt;
-      shade.alpha = breathFx < 0.2 ? 0.45 : Math.max(0, 0.45 - (breathFx - 0.2) * 0.9);
       const reach = M + (bP ? bP.leader.range : 600);
-      /* 초강력 (대표님 11/11 «냥코 대포처럼») : 0.2초(소리 «쾅»)에 번쩍 · 크게 흔들림 · 땅을 따라 큰 불길이 쭉 */
-      if (b0 < 0.2 && breathFx >= 0.2) {
-        flashT = 0.22; flashC = bBS.c[0]; shakes.screen = 0.6;
-        if (torchFx) for (let i = 0; i < 12; i++) {
-          const f = new AnimatedSprite(torchFx.frames); f.anchor.set(0.5, 1); f.scale.set(1.3 + Math.random() * 0.5); f.tint = bBS.c[i % bBS.c.length]; f.loop = false;
-          f.animationSpeed = torchFx.meta.fps / 60 * 1.6; f.position.set(bx(M + 30 + ((reach - M - 30) * (i + Math.random() * 0.6)) / 12), S1 + 6); f.onComplete = () => f.destroy(); fx.addChild(f); f.gotoAndPlay((Math.random() * 3) | 0);
-        }
-      }
-      if (breathFx < 0.9) for (let i = 0; i < 14; i++) {
-        const x = M - 20 + (reach - M + 20) * Math.min(1, breathFx / 0.45) * Math.random();
-        const col = bBS.c[(Math.random() * bBS.c.length) | 0];
-        const sz = bBS.r + Math.round(Math.random() * 8);   /* 도트 불티 (네모) */
-        const g = bBS.spin ? new Graphics().ellipse(0, 0, bBS.r + 3, bBS.r - 1).fill(col) : new Graphics().rect(-sz / 2, -sz / 2, sz, sz).fill(col);
-        g.blendMode = 'add'; g.position.set(bx(x), GC - 10 - Math.random() * 110); fx.addChild(g);
-        parts.push({ g, vx: bSide ? -120 : 120, vy: bBS.vy * (0.6 + Math.random() * 0.8), life: 0.55, t: 0, grav: bBS.g });
-      }
+      /*
+       * 2차 (11/13 대표님) : 화면을 어둡게 덮는 그늘 · 번쩍 · 땅을 따라 가는 큰 불길 · 들판 불티를 뺐다 — 커진 드래곤이 어두워지지 않고,
+       * 불은 skillFx 의 «입에서 수평으로 쭉» 하나만. 0.2초(소리 «쾅»)의 크게 흔들림만 남김.
+       */
+      if (b0 < 0.2 && breathFx >= 0.2) shakes.screen = 0.6;
       if (breathFx < 0.5 && (bBS.bolt || bBS.ray) && Math.random() < 0.35) {   // 번개 줄기 · 햇살 기둥
-        const x = M + 40 + (reach - M - 40) * Math.random();
+        const x = M + 200 + (reach - M - 200) * Math.random();   /* 커진 드래곤 앞에서만 */
         const g = new Graphics();
         if (bBS.bolt) { let px = bx(x), py = 30; g.moveTo(px, py); while (py < S1) { px += Math.random() * 24 - 12; py += 26 + Math.random() * 20; g.lineTo(px, py); } g.stroke({ width: 3, color: 0xfffbe0 }).stroke({ width: 8, color: 0xc08bff, alpha: 0.35 }); }
         else g.rect(bx(x) - 10, 0, 20, S1).fill({ color: 0xfff1a0, alpha: 0.35 });
         g.blendMode = 'add'; fx.addChild(g); parts.push({ g, vx: 0, vy: 0, life: 0.22, t: 0, grav: 0 });
       }
-      if (breathFx > 1.4) { breathFx = 0; if (lead) lead.set('idle'); if (lead2) lead2.set('idle'); }
+      if (breathFx > 1.4) { breathFx = 0; if (lead && !sfx.diving(0)) lead.set('idle'); if (lead2 && !sfx.diving(1)) lead2.set('idle'); }
     }
     /*
      * 브레스 사거리 (대표님 11/11 «필살기 사거리가 나왔으면») : 준비되면 바닥에 도트 불꽃 테두리 — 반투명 띠가 아니라 4px 칸 불꽃이 끝까지 줄지어 깜박이고, 끝에 불꽃 말뚝.
@@ -475,9 +481,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       rangeG.rect(R - 9, S1 - 74, 18, 8).fill(cols[0]).rect(R - 5, S1 - 82, 10, 8).fill(cols[1] || cols[0]);
     }
     { const rg = S.players.reduce((a, q) => a + q.st.rageUse, 0), sk = S.players.reduce((a, q) => a + q.st.skill, 0);
-      if (rg > (seen.rage || 0)) { flashT = 0.35; flashC = 0xffd84a; shakes.screen = Math.max(shakes.screen, 0.2); }   // 포효 : 금빛 번쩍 (GDD 660)
-      if (sk > (seen.skill || 0)) {   // 스킬 : 푸른 번쩍 · 운석은 하늘에서 떨어져 쾅 (대표님 11/11 «운석을 눌러도 아무 반응이 없다»)
-        flashT = 0.25; flashC = 0x9fd8ff; shakes.screen = Math.max(shakes.screen, 0.15);
+      if (rg > (seen.rage || 0)) { flashT = 0.12; flashC = 0xffd84a; shakes.screen = Math.max(shakes.screen, 0.2); }   // 포효 : 금빛 번쩍 (GDD 660 · 짧게 — 쿵 쿵 쿵 · 음파 고리는 skillFx)
+      if (sk > (seen.skill || 0)) {   // 스킬 : 짧은 번쩍 · 운석은 하늘에서 떨어져 쾅 (대표님 11/11 «운석을 눌러도 아무 반응이 없다») · 얼음 · 돌풍 연출은 skillFx
+        flashT = 0.1; flashC = 0x9fd8ff; shakes.screen = Math.max(shakes.screen, 0.15);
         const who = S.players.find((q) => q.skills.some((k) => k.id === 'meteor' && k.cdT > k.def.cd - 0.2));
         if (who) { let fx0 = null; for (const u of S.units) if (u.alive && u.side !== who.side && (fx0 == null || (who.side ? u.x > fx0 : u.x < fx0))) fx0 = u.x; if (fx0 != null) mets.push({ x: M + fx0, t: 0 }); flashT = 0; }
       }
@@ -538,9 +544,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
    */
   function collapse(spr, rubT, dt, fallT = []) {
     for (let i = smokes.length - 1; i >= 0; i--) { const m = smokes[i]; m.t += dt; m.g.scale.set(Math.min(1, 0.55 + m.t * 6) * m.k); m.g.y -= dt * 6; if (m.t > m.life) { m.g.destroy(); smokes.splice(i, 1); } }
-    const t = overT - 0.4, cx = colX0 ?? spr.x, top = CY - spr.height;   /* 0.4초 : 카메라가 성으로 가는 동안 */
+    const t = overT - 0.4, cx = colX0 ?? spr.x, gY = spr === nest ? NY : TY, top = gY - spr.height;   /* 0.4초 : 카메라가 성으로 가는 동안 */
     if (t < 0) return;
-    if (!colMask) { colY0 = spr.y; colX0 = spr.x; colMask = new Graphics().rect(cx - 260, -2000, 520, CY + 4 + 2000).fill(0xffffff); stage.addChild(colMask); spr.mask = colMask; }   /* 땅 아래로는 안 보이게(투명 아님 · 묻힘) */
+    if (!colMask) { colY0 = spr.y; colX0 = spr.x; colMask = new Graphics().rect(cx - 260, -2000, 520, gY + 4 + 2000).fill(0xffffff); stage.addChild(colMask); spr.mask = colMask; }   /* 땅 아래로는 안 보이게(투명 아님 · 묻힘) */
     while (colN < 14 && t >= colN * 0.09 + (colN % 3) * 0.012) {   /* ① 바바바박 */
       for (let j = 0; j < 2; j++) {   /* 한 번에 두 덩이 · 앞 덩이가 남아 있는 동안 쌓인다 */
         const g = smokeBlob(18 + Math.random() * 14), k = 0.9 + Math.random() * 0.4;
@@ -555,15 +561,15 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       spr.tint = 0xffffff;
       if (fallT[1] && spr.texture !== fallT[1]) spr.texture = fallT[1];   /* 무너지는 중 */
       const k = (t - 1.25) / 0.95; if (!rubT) spr.y = colY0 + spr.height * 0.38 * k * k; spr.x = cx + Math.sin(t * 60) * 1.2; shakes.screen = 0.12;   /* 잔해 그림이 없을 때만 묻는다 */
-      if (crumbleFx && t - dt < 1.25) { const c = new AnimatedSprite(crumbleFx.frames); c.anchor.set(0.5, 1); c.scale.set(spr.width / crumbleFx.meta.w); c.position.set(cx, CY + 2); c.loop = false; c.animationSpeed = crumbleFx.meta.fps / 60; c.onComplete = () => c.destroy(); fx.addChild(c); c.play(); }
-      if (Math.random() < 0.6) puff(cx + (Math.random() - 0.5) * spr.width * 0.8, CY - 10 - Math.random() * 30, 0x8c7c74, 3, 90, 0.9, 4);
+      if (crumbleFx && t - dt < 1.25) { const c = new AnimatedSprite(crumbleFx.frames); c.anchor.set(0.5, 1); c.scale.set(spr.width / crumbleFx.meta.w); c.position.set(cx, gY + 2); c.loop = false; c.animationSpeed = crumbleFx.meta.fps / 60; c.onComplete = () => c.destroy(); fx.addChild(c); c.play(); }
+      if (Math.random() < 0.6) puff(cx + (Math.random() - 0.5) * spr.width * 0.8, gY - 10 - Math.random() * 30, 0x8c7c74, 3, 90, 0.9, 4);
       if (Math.random() < 0.3) puff(cx + (Math.random() - 0.5) * spr.width * 0.6, top + spr.height * (0.2 + k * 0.6), 0x5a4c58, 2, 160, 0.7, 5);   /* 돌조각 */
-      if (Math.random() < 0.25) { const g = smokeBlob(10 + Math.random() * 8); g.position.set(Math.round(cx + (Math.random() - 0.5) * spr.width), CY - 16); fx.addChild(g); smokes.push({ g, t: 0, k: 1, life: 0.35 }); }   /* 땅 먼지 */
+      if (Math.random() < 0.25) { const g = smokeBlob(10 + Math.random() * 8); g.position.set(Math.round(cx + (Math.random() - 0.5) * spr.width), gY - 16); fx.addChild(g); smokes.push({ g, t: 0, k: 1, life: 0.35 }); }   /* 땅 먼지 */
     } else if (!colDone) {   /* ③ 잔해가 남는다 */
       colDone = true; spr.tint = 0xffffff; spr.x = cx;
       if (rubT) { spr.mask = null; colMask.visible = false; spr.texture = rubT; spr.y = colY0; }   /* 잔해 그림 (그림 담당) */
       else spr.y = colY0 + spr.height * 0.38;   /* 잔해 그림이 오기 전 : 무너진 성을 반쯤 묻어 둔다 */
-      for (let i = 0; i < 4; i++) { const g = smokeBlob(12 + i * 3); g.position.set(Math.round(cx + (i - 1.5) * spr.width * 0.25), CY - 14); fx.addChild(g); smokes.push({ g, t: 0, k: 1, life: 0.3 + i * 0.05 }); }
+      for (let i = 0; i < 4; i++) { const g = smokeBlob(12 + i * 3); g.position.set(Math.round(cx + (i - 1.5) * spr.width * 0.25), gY - 14); fx.addChild(g); smokes.push({ g, t: 0, k: 1, life: 0.3 + i * 0.05 }); }
     }
   }
   function ending(S, dt) {
@@ -588,13 +594,14 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const fingers = new Map(); let pinch = 0, zoomF = 0.5, lastW = view.w;   /* zoomF = 확대 · 축소 기준점 (캔버스 가로 비율 · 두 손가락 가운데 / 휠은 마우스 자리) */
   const fracX = (clientX) => { const r = canvas.getBoundingClientRect(); return r.width ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0.5; };
   const gap = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
-  const onDown = (e) => { fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (fingers.size === 2) { drag = null; pinch = gap(); } else drag = { x: px(e), cam: camX }; handT = 3; };
+  /* 아래 단추 줄 근처에서 시작한 손가락은 맵을 움직이지 않는다 (대표님 11/13 «출전 단추를 누르다 실수로 맵을 건드리면 화면이 돌아간다») : api.guard(clientX, clientY) = HUD 가 알려 주는 «단추 줄 + 위로 40px» 안인지 */
+  const onDown = (e) => { if (api.guard?.(e.clientX, e.clientY)) return; fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (fingers.size === 2) { drag = null; pinch = gap(); } else drag = { x: px(e), cam: camX }; handT = 3; };
   const onMove = (e) => {
     if (fingers.has(e.pointerId)) fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (fingers.size >= 2 && pinch) { const g = gap(); if (g > 0 && Math.abs(Math.log(g / pinch)) > 0.02) { const [a, b] = [...fingers.values()]; zoomF = fracX((a.x + b.x) / 2); api.onZoom?.(Math.log(g / pinch) * 3); pinch = g; } handT = 3; return; }
-    if (!drag) return; camX = Math.max(0, Math.min(FIELD - view.w, drag.cam - (mirror ? -1 : 1) * toWorld(px(e) - drag.x))); handT = 3;
+    if (!drag || !fingers.has(e.pointerId)) return; camX = Math.max(0, Math.min(FIELD - view.w, drag.cam - (mirror ? -1 : 1) * toWorld(px(e) - drag.x))); handT = 3;
   };
-  const onUp = (e) => { if (e?.pointerId != null) fingers.delete(e.pointerId); else fingers.clear(); if (fingers.size < 2) pinch = 0; drag = null; };
+  const onUp = (e) => { if (e?.pointerId != null && !fingers.has(e.pointerId)) return; if (e?.pointerId != null) fingers.delete(e.pointerId); else fingers.clear(); if (fingers.size < 2) pinch = 0; drag = null; };
   const onWheel = (e) => { e.preventDefault(); zoomF = fracX(e.clientX); api.onZoom?.(-Math.sign(e.deltaY) * Math.min(1, Math.abs(e.deltaY) / 100) * 0.25); handT = 3; };
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.style.touchAction = 'none';
@@ -619,8 +626,8 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     const sx = shakes.screen > 0 ? Math.round(Math.random() * 4 - 2) : 0, sy = shakes.screen > 0 ? Math.round(Math.random() * 2 - 1) : 0;
     const lift = view.lift || 0; underBox.visible = lift > 0;   /* 싸움 줄을 단추 줄 위로 (app.js footFit) */
     if (skyBase) { const d = Math.max(0, Math.round((view.topRow || 0) + 45 - skyBase[0])); if (spots.sky[0] !== skyBase[0] + d) spots.sky = [skyBase[0] + d, skyBase[1] + d]; }
-    if (mirror) { root.scale.x = -1; root.position.set(Math.round(camX + view.w) + sx, sy - lift); }   // 오른쪽 편 = 좌우 뒤집어 그린다
-    else root.position.set(-Math.round(camX) + sx, sy - lift);
+    if (mirror) { root.scale.x = -1; root.position.set(Math.round(camX + view.w) + sx, sy - lift + sfx.offY); }   // sfx.offY = 으르렁 쿵 (아래로 툭)   // 오른쪽 편 = 좌우 뒤집어 그린다
+    else root.position.set(-Math.round(camX) + sx, sy - lift + sfx.offY);
     skyBox.x = Math.round(camX * 0.65);   // 하늘 겹 = 카메라의 0.35배 (뒤집힌 편도 같은 식)
   }
 
@@ -629,7 +636,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     update(S, dt) {
       lastS = S;
       if (S.stage.fog) { let a = 0; for (const u of S.units) if (u.alive && u.side === 0) a = Math.max(a, u.x); const fx0 = M + a + 260; fog.clear(); for (let i = 0; i < 6; i++) fog.rect(fx0 + i * 30, 0, FIELD, 660).fill({ color: 0x8a90b8, alpha: 0.16 }); }
-      syncUnits(S, dt); bases(S, dt); effects(S, dt); ending(S, dt); camera(S, dt);
+      sfx.pre(S, dt); syncUnits(S, dt); bases(S, dt); effects(S, dt); sfx.update(S, dt, V); ending(S, dt); camera(S, dt);
       fun.update(dt); amb.update(dt); bossFx.update(S, dt, V); guardFx.update(S, dt); if (living) for (const b of living) b.update(dt);
       if (lead) lead.update(dt);
       if (lead2) lead2.update(dt);
@@ -648,7 +655,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     destroy() {
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('wheel', onWheel); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp); window.removeEventListener('blur', onUp);
-      guardFx.destroy(); bossFx.destroy(); root.destroy({ children: true });
+      guardFx.destroy(); bossFx.destroy(); sfx.destroy(); root.destroy({ children: true });
     },
   };
   return api;

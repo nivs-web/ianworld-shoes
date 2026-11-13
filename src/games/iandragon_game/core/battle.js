@@ -30,13 +30,13 @@ function createBattle(stage, loads, D, seed) {
       deck: ld.deck.map(d => ({ id: d.id, lv: d.lv, def: resolveDef(D.units[d.id], d.lv), mul: powerMul(d.lv) })),
       cd: ld.deck.map(() => 0),
       money: D.startMoney + B.startMoney + (stage.startMoney || 0),
-      breathT: 0, breathCharge: leader.charge / B.breathCharge,
+      breathT: 0, breathCharge: leader.charge / B.breathCharge, windT: 0,   // windT = 브레스를 누른 뒤 불이 나갈 때까지 남은 틱
       skills: (ld.skills || []).map(id => ({ id, def: D.skills[id], left: D.skills[id].charges, cdT: D.skills[id].first || 0 })),
       rage: 0, rageT: 0,
       guard: ld.guard ? Object.assign({}, ld.guard, { dmg: ld.guard.dmg * B.guardDmg }) : null, guardT: 0,
       cannon: ld.cannon ? Object.assign({}, ld.cannon) : null, cannonT: 0, shots: [],
       cap: Math.floor((stage.capAlly || K.CAP_UNITS) / perSide[ld.side]) + (perSide[ld.side] > 1 ? 1 : 0),
-      st: { spawned: 0, lost: 0, breath: 0, walletUps: 0, skill: 0, rageUse: 0, earned: 0, spent: 0, peak: 0 },
+      st: { spawned: 0, lost: 0, breath: 0, wind: 0, walletUps: 0, skill: 0, rageUse: 0, earned: 0, spent: 0, peak: 0 },   // wind = breathWind 사건 수(누름) · breath = 실제로 뿜은 수
     });
     // 기지 체력 : 리더 레벨을 따른다. 같은 편이 둘이면 더 높은 쪽 ×1.5
     const hp = Math.round(D.playerBaseHp * lmul * B.baseHp);
@@ -130,8 +130,14 @@ function applyCommand(S, cmd) {
     p.money -= w.cost; p.st.spent += w.cost; p.wl++; p.st.walletUps++;
     return true;
   }
-  if (cmd.type === 'breath') {                                       // 리더 브레스 : 내 기지 앞 range 안의 적 전부
-    if (p.breathT < p.breathCharge) return false;
+  if (cmd.type === 'breath') {                                       // 리더 브레스 누름 = breathWind 사건 : 충전 0 · 불은 K.BREATH_WIND 틱 뒤 (기획 13.1)
+    if (p.breathT < p.breathCharge || p.windT > 0) return false;
+    p.breathT = 0; p.windT = K.BREATH_WIND; p.st.wind++;
+    return true;
+  }
+  if (cmd.type === 'breathFire') {                                   // 브레스 불 : 내 기지 앞 range 안의 적 전부 — step 이 windT 가 1 일 때만 부른다(밖에서 보낸 명령은 통하지 않음)
+    if (p.windT !== 1) return false;
+    p.windT = 0;
     const ld = p.leader, dmg = ld.dmg * p.lmul * p.B.breathDmg;
     let top = null;
     for (const u of S.units) if (targetable(u) && u.side === foe && distFromBase(S, p.side, u) <= ld.range && (!top || u.hp > top.hp)) top = u;
@@ -149,7 +155,7 @@ function applyCommand(S, cmd) {
       if (ld.freeze) u.freezeT = Math.max(u.freezeT, ld.freeze * half);
       if (ld.weaken) u.weakT = Math.max(u.weakT, ld.weaken * half);
     }
-    p.breathT = 0; p.st.breath++;
+    p.st.breath++;
     return true;
   }
   if (cmd.type === 'skill') {                                        // 장착 스킬 : 판마다 횟수 제한

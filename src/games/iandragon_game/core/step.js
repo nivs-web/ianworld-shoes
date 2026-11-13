@@ -37,7 +37,12 @@ function step(S, cmds) {
     }
   }
 
-  // ── 3. 플레이어 명령
+  // ── 3. 플레이어 명령 (먼저 : 누른 지 K.BREATH_WIND 틱이 된 브레스가 불을 뿜는다)
+  for (let pi = 0; pi < S.players.length; pi++) {
+    const p = S.players[pi];
+    if (p.windT > 1) p.windT--;
+    else if (p.windT === 1) applyCommand(S, { p: pi, type: 'breathFire' });
+  }
   if (cmds) for (const c of cmds) applyCommand(S, c);
 
   // ── 3b. 드래곤캐슬 : 수호 불꽃 · 대포 · 수리 · 경보 종 (키우기가 없는 판은 건너뛴다)

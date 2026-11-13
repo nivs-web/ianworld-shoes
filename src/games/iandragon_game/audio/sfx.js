@@ -244,6 +244,62 @@ export const SFX = {
     tone({ type: 'triangle', f0: 110, f1: 45, dur: 0.4, vol: 0.5, at: 0.35 }); noise({ dur: 1.2, vol: 0.1, filter: 'highpass', f0: 5000, at: 0.35 });
     FX.sparkle(0.5); tone({ type: 'sine', f0: midi(96), dur: 1.2, vol: 0.06, at: 0.6 });
   },
+  /* ───── 필살기 4종 연출 박자용 (2026-11-12 겜부장 부탁 · 대표님 새 필살기 연출) — 전부 합성(받을 파일 0) ───── */
+  ult_stamp: () => {                                                                                  // 이름 도장 «쾅/척» — 모든 필살기 공통, 발동 0.05초
+    tone({ type: 'triangle', f0: 170, f1: 55, dur: 0.16, vol: 0.85 });
+    tone({ type: 'sine', f0: 95, f1: 45, dur: 0.18, vol: 0.6 });
+    noise({ dur: 0.06, vol: 0.55, filter: 'bandpass', f0: 2200, q: 2 });
+    tone({ type: 'square', f0: 1500, f1: 700, dur: 0.05, vol: 0.16 });
+  },
+  ult_ice_spread: () => {                                                                             // 얼음 번짐 «쩌저적» 0.4초 — 잔금이 점점 촘촘하게
+    for (let i = 0; i < 16; i++) {
+      const a = 0.4 * Math.pow(i / 16, 0.8) + Math.random() * 0.008;
+      noise({ dur: 0.02, vol: 0.1 + i * 0.006, filter: 'highpass', f0: 3000 + Math.random() * 4000, at: a });
+      if (i % 3 === 0) tone({ type: 'triangle', f0: 2200 + Math.random() * 2200, dur: 0.035, vol: 0.05, at: a });
+    }
+    tone({ type: 'sawtooth', f0: 320, f1: 210, dur: 0.4, vol: 0.05, vib: { rate: 34, depth: 90 } });  // 얼음이 끼익 조여드는 낮은 결
+  },
+  ult_ice_shatter: () => {                                                                            // 얼음 깨짐 «쨍그랑» — 풀릴 때 한 번 크게
+    tone({ type: 'triangle', f0: 140, f1: 60, dur: 0.15, vol: 0.32 });
+    noise({ dur: 0.45, vol: 0.32, filter: 'highpass', f0: 2600, f1: 5200 });
+    noise({ dur: 0.18, vol: 0.2, filter: 'bandpass', f0: 1800, q: 1.5 });
+    for (let i = 0; i < 12; i++) {                                                                    // 흩어지는 유리 조각 딸랑딸랑
+      const a = 0.03 + i * 0.045 + Math.random() * 0.03;
+      tone({ type: Math.random() < 0.5 ? 'sine' : 'triangle', f0: 2400 + Math.random() * 3000, dur: 0.07 + Math.random() * 0.12, vol: 0.09 * (1 - i / 14), at: a });
+    }
+  },
+  ult_gust_pass: () => {                                                                              // 회오리 통과 «휘이이잉» 0.8초 — 왼쪽 → 오른쪽
+    noise({ dur: 0.8, vol: 0.7, filter: 'bandpass', f0: 450, f1: 1700, q: 2.5, swell: 0.22, pan: [-0.9, 0.9] });
+    noise({ dur: 0.8, vol: 0.3, filter: 'bandpass', f0: 2600, f1: 1200, q: 5, swell: 0.28, pan: [-0.8, 0.8] });
+    tone({ type: 'sine', f0: 820, f1: 1250, dur: 0.78, vol: 0.07, attack: 0.25, hold: true, vib: { rate: 7, depth: 70 }, pan: [-0.9, 0.9] });   // 휘파람 결
+    noise({ dur: 0.8, vol: 0.3, filter: 'lowpass', f0: 260, swell: 0.2, pan: [-0.6, 0.6] });     // 바닥 바람 무게
+  },
+  ult_roar_thumps: () => {                                                                            // 으르렁 «쿵 · 쿵 · 쿵» — 0.12 · 0.42 · 0.72초 (roar 와 따로)
+    [0.12, 0.42, 0.72].forEach((a, i) => {
+      tone({ type: 'sine', f0: 72 - i * 4, f1: 34, dur: 0.32, vol: 0.55 + i * 0.05, at: a });
+      noise({ dur: 0.2, vol: 0.2 + i * 0.03, filter: 'lowpass', f0: 240, at: a });
+    });
+  },
+  ult_breath_pillar: () => {                                                                          // 브레스 불기둥 «화르르르» 약 1초
+    noise({ dur: 1.0, vol: 0.45, filter: 'bandpass', f0: 380, f1: 1100, q: 0.9, swell: 0.08 });
+    noise({ dur: 0.95, vol: 0.14, filter: 'highpass', f0: 3200, swell: 0.12 });
+    tone({ type: 'sawtooth', f0: 85, f1: 60, dur: 1.0, vol: 0.14, attack: 0.06, trem: { rate: 14, depth: 0.6 } });   // 르르르 떨림
+    for (let i = 0; i < 9; i++) noise({ dur: 0.03, vol: 0.12, filter: 'bandpass', f0: 1800 + Math.random() * 1800, q: 3, at: 0.1 + i * 0.1 + Math.random() * 0.05 });   // 탁탁 튀는 불티
+  },
+  ult_zombie_burn: () => {                                                                            // 좀비 불탐 «치익»
+    noise({ dur: 0.35, vol: 0.2, filter: 'highpass', f0: 4200 });
+    noise({ dur: 0.3, vol: 0.12, filter: 'bandpass', f0: 2600, f1: 1800, q: 6 });
+    tone({ type: 'triangle', f0: 600, f1: 260, dur: 0.06, vol: 0.08 });
+  },
+  ult_ash_crumble: () => {                                                                            // 재 무너짐 «푸스스»
+    noise({ dur: 0.6, vol: 0.4, filter: 'lowpass', f0: 1600, f1: 380, swell: 0.04 });
+    for (let i = 0; i < 10; i++) noise({ dur: 0.03, vol: 0.2 * (1 - i / 12), filter: 'bandpass', f0: 1100 + Math.random() * 900, q: 4, at: 0.04 + i * 0.05 + Math.random() * 0.03 });
+  },
+  ult_zombie_flinch: () => {                                                                          // (선택) 좀비 움찔 «히익!»
+    const p = 0.9 + Math.random() * 0.25;
+    tone({ type: 'sawtooth', f0: 420 * p, f1: 980 * p, dur: 0.18, vol: 0.22, hold: true, vib: { rate: 30, depth: 80 } });
+    noise({ dur: 0.16, vol: 0.22, filter: 'bandpass', f0: 2000, q: 4 });
+  },
   /* 새 id — 긴장 · 웃음 연출 (겜부장에게 목록 전달) */
   ...Object.fromEntries(Object.entries(FX).map(([k, f]) => [k, () => f(0)])),
 };

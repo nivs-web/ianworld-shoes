@@ -18,6 +18,7 @@ import { isOn } from '../../../services/switches.js';
 import { currentUser } from '../../../services/auth.js';
 import { stampOf } from '../../../services/iandragonGameState.js';   // 도감 도장 (부팅 묶음의 작은 순수 함수)
 import { decodeLook, CONSUMABLES, TITLES } from '../data/looks.js';
+import { bpFor, bpKey, BP_MIN } from '../data/breathUp.js';   // 브레스 UP (11/13) — 같은 판 연속 패배 아이템
 import { loadDiffStages } from '../data/stages/diffLoad.js';   // 어려움 · 초고수 판 100개 (보조 S · 필요할 때만 받음)
 import { sendChat, subscribeChat, leaveRoom } from '../../../services/multiplayer.js';
 import { pickRejoin } from '../../../services/iandragonGame.js';
@@ -79,7 +80,7 @@ export async function startBattle(ctx, opts) {
   let tickN = 0, sendT = 0, nextHash = 150, waitT = 0;
   const enemyIds = [...new Set(stage.lines.map((l) => l.id))];
   const view = await createBattleView(ctx, { world: stage.w, L: stage.length, dragons: allDragons, enemies: enemyIds, leader: loads[0].leader, pvp, mirror, foeLeader: pvp ? loads[1].leader : null, look: decodeLook(pvp ? (me === 0 ? opts.save?.look : net.loads?.[0]?.look) || '' : opts.save?.look || ''), lookR: decodeLook(pvp ? (me === 1 ? opts.save?.look : net.loads?.[1]?.look) || '' : ''), deco: pvp || !opts.save ? null : decoOf(opts.save) });   // 내 대장 용 꾸미기 (모자 · 목 · 브레스 색)
-  view.onZoom = (d) => hud.zoomBy(d); view.me = me;   /* 맵 확대 · 축소 (두 손가락 · 휠) */
+  view.onZoom = (d) => hud.zoomBy(d); view.guard = (x, y) => hud.inGuard(x, y); view.me = me;   /* 맵 확대 · 축소 (두 손가락 · 휠) */
 
   const sound = createBattleSound(stage, me);
   /* 멀티는 1배속 고정 */
@@ -91,7 +92,18 @@ export async function startBattle(ctx, opts) {
   const cmds = [];
   let acc = 0, bossSeen = false, gone = false, goldKills = 0;
   const goldSeen = new Set();   // 황금 좀비 쓰러뜨린 수 (판 끝 코인 +5% 씩)
-  const hud = createHud(ctx.host || opts.hudHost, { stage, isNet: !!net, deck: myDeck, leader: loads[me].leader, cons: net || raid ? null : CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), consOff: !!DF.noItems, foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
+  /* 브레스 UP (대표님 11/13) : 이 판 전용으로 산 것이 있으면 판을 시작할 때 자동으로 쓴다 — 코어는 그대로, 리더 자료(이 판 사본)의 공격력 · 사거리 × m · 차는 시간 ÷ m */
+  const bp = !net && !raid && !DF.noItems ? bpFor(opts.save, dk, stage.g) : null;
+  let bpUsed = false;
+  const useBp = () => {
+    if (!bp || bpUsed || S.over) return;
+    bpUsed = true;
+    const P = S.players[0], L = P.leader;
+    P.leader = { ...L, dmg: L.dmg * bp.mul, range: Math.round(L.range * bp.mul) };
+    P.breathCharge = P.breathCharge / bp.mul;
+    try { opts.save = opts.onSave?.({ bpUp: '' }) || opts.save; } catch { /* */ }   // 쓰면 없어진다 (이기든 지든)
+  };
+  const hud = createHud(ctx.host || opts.hudHost, { stage, isNet: !!net, deck: myDeck, leader: loads[me].leader, cons: net || raid ? null : [...CONSUMABLES.filter((c) => (opts.save?.cons?.[c.id] || 0) > 0).map((c) => ({ ...c, n: opts.save.cons[c.id] })), ...(bp ? [{ id: 'bp', name: bp.name, auto: true }] : [])], consOff: !!DF.noItems, foeDeck: pvp ? loads[1 - me].deck : null, talk: net?.code ? TALK[pvp ? 'pvp' : 'coop'] : null, foeLeader: pvp ? loads[1 - me].leader : null, skills: pvp ? loads[me].skills : net?.loads?.[me]?.skills || skills, text: opts.text, speedMax, canAuto }, {
     cmd(c) {
       if (S.over) return;
       sound.touch();
@@ -114,6 +126,7 @@ export async function startBattle(ctx, opts) {
         else if (useCons === 'basehp') { S.base[0].maxHp = Math.round(S.base[0].maxHp * 1.05); S.base[0].hp = S.base[0].maxHp; }
         try { opts.save = opts.onSave?.({ cons: { ...opts.save.cons, [useCons]: have - 1 } }) || opts.save; } catch { /* */ }
       }
+      useBp();
     },
     music(on) { sound.setMusic(on); },
     soundRefresh() { sound.refresh(); },
@@ -126,6 +139,7 @@ export async function startBattle(ctx, opts) {
     retry() { opts.restart(raid ? 'raid' : stage.g, true); },
     next() { opts.restart(Math.min(LAST_STAGE, stage.g + 1)); },
     /* 판 사이 파워 업 : 저장 읽기 · 쓰기 (로비 «용 둥지»와 같은 저장) */
+    shop(done) { const write = (part) => { try { opts.save = opts.onSave?.(part) || { ...opts.save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); } return opts.save; }; import('../../../screens/idgShop.js').then((m) => m.showShop({ idg: opts.save || {}, save: write, tab: 'cons', onClose: () => done?.() })).catch((e) => console.warn('[좀비와 드래곤] 아이템샵을 열지 못했다', e)); },   // 판 사이 파워업 «아이템샵» → 편의품 칸 (11/13 대표님)
     puSave: () => opts.save || {},
     puWrite: (part) => { try { opts.save = opts.onSave?.(part) || { ...opts.save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); } return opts.save; },
     aim(on) { view.aim = !!on; },   /* 브레스 단추를 누르고 있는 동안 사거리 */
@@ -180,6 +194,13 @@ export async function startBattle(ctx, opts) {
     if (raid) { finishRaid(); return; }
     if (net && ls.mismatch() >= 0) { setTimeout(() => { if (!gone) hud.showPanel('lose', { mode: 'void', t: S.t, coins: 0, gems: 0, plate: '판이 어긋났어요', big: '기록 없음', line: '연결이 어긋났어요 · 이 판은 기록하지 않아요 — 한 판 더 해요!' }); }, 900); return; }   // 기획 3.6 : 무효
     const win = S.over.winner === 0;
+    /* 같은 판 연속 패배 세기 (브레스 UP · 대표님 11/13) — 혼자 하기 보통 · 쉬움 · 어려움만 · 드래곤캐슬이 무너지거나 시간이 다 돼 진 것만(중간에 나간 판 · 비김은 안 셈) · 그 판을 이기면 0 */
+    let lossN = 0;
+    if (!net && dk !== 'master' && (win || S.over.winner === 1)) {
+      const lk = bpKey(dk, stage.g), run = { ...(opts.save?.lossRun || {}) };
+      if (win) { if (lk in run) { delete run[lk]; try { opts.save = opts.onSave?.({ lossRun: run, ...(opts.save?.lossAt === lk ? { lossAt: '' } : {}) }) || opts.save; } catch { /* */ } } }
+      else { lossN = Math.min(99, (run[lk] || 0) + 1); delete run[lk]; run[lk] = lossN; try { opts.save = opts.onSave?.({ lossRun: run, lossAt: lk }) || opts.save; } catch { /* */ } }
+    }
     const info = { t: S.t, hasNext: stage.g < LAST_STAGE, final: win && stage.g === LAST_STAGE, ...(coop ? { mode: 'coop' } : {}) };
     { const fb = S.base[1]; if (fb && fb.maxHp) info.foeHp = Math.max(0, Math.round((fb.hp / fb.maxHp) * 100)); }   // 결과 창 «좀비 성 남은 체력» (11/12)
     /* 쌓인 기록 (도전 과제) — 이겨도 져도 */
@@ -244,7 +265,11 @@ export async function startBattle(ctx, opts) {
       if (dr.lines.length) info.unlocks = [...(info.unlocks || []), ...dr.lines];
       const part = { cleared: clearedNow, stars: starsNow, coins: (save.coins || 0) + info.coins, gems: (save.gems || 0) + info.gems, daily: today, stat, ...(owned.length !== (save.owned || []).length ? { owned } : {}), ...dr.part };
       try { opts.save = opts.onSave?.(part) || { ...save, ...part }; } catch (e) { console.warn('[좀비와 드래곤] 저장 실패', e); }
-    } else info.hint = loseHint(S, me);
+    } else {
+      info.hint = loseHint(S, me);
+      /* «파워업 먼저» : 같은 판 3연패 이상인데 출전 카드 평균 레벨이 이 판 권장(카드의 «권장 n»)보다 낮으면 안내 줄을 바꾼다 */
+      if (lossN >= BP_MIN && myDeck.length) { const avg = myDeck.reduce((a, d) => a + (opts.save?.units?.[d.id]?.[0] || 1), 0) / myDeck.length; if (avg < (base0.expLevel || 1)) info.hint = '카드 레벨이 권장보다 낮아요 → 파워업 먼저!'; }
+    }
     if (net && ls.mismatch() >= 0) info.hint = '연결이 어긋났어요 — 이 판은 기록하지 않아요. 한 판 더?';
     setTimeout(() => { if (gone) return; hud.showPanel(win ? 'win' : 'lose', info); if (win) sound.stars(info.stars); }, END_MS);
   }
@@ -319,7 +344,7 @@ export async function startBattle(ctx, opts) {
   };
   ctx.app.ticker.add(tick);
   ui.paused = true; hud.showPanel('intro', { best: raid && opts.save?.raid?.w === raid.idx ? opts.save.raid.best || 0 : 0 });   // 스테이지 카드 → «출격!»
-  if (opts.quick && !net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : '', myDeck.map((d) => d.id)); } }, 50);   // 다시 하기 = 1터치 (기획 GDD 137)
+  if (opts.quick && !net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); useBp(); sound.start(raid ? 'raid' : '', myDeck.map((d) => d.id)); } }, 50);   // 다시 하기 = 1터치 (기획 GDD 137)
   if (net) setTimeout(() => { if (!gone && ui.intro) { ui.intro = false; ui.paused = false; hud.hidePanel(); sound.start(raid ? 'raid' : coop ? 'coop' : '', myDeck.map((d) => d.id)); } }, pvp ? 3000 : 4000);   // 멀티 : 카드를 잠깐 보여 주고 둘이 같이 시작 (한쪽만 기다리지 않게)
   const onHide = () => { if (document.hidden && !net && !ui.done && !ui.paused) { ui.paused = true; sound.pause(true); hud.showPanel('pause'); } };   // 앱을 내리면 일시정지
   document.addEventListener('visibilitychange', onHide);

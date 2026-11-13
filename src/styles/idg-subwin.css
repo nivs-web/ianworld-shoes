@@ -601,3 +601,171 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-card .st { column-gap: 5px; }
 .idg-pp.pp2.land > .idg-pp-top2 > * { grid-area: auto; }
 .idg-pp.pp2 .idg-pp-pick .lv .cost img { display: inline-block; grid-row: auto; width: 1.15em; height: 1.15em; padding: 0; border: 0; background: none; object-fit: contain; }
+/* ── 3차 (11/12 대표님) : 리본 제목 → «파워업 + UP 화살표» 로고 · 다시하기 얇은 금테 · 나가기 · 고정 안내 2줄 ── */
+.idg-pp.pp2.land > .idg-pp-top2 { display: flex; align-items: center; gap: 10px; }
+.idg-pp.pp2.land > .idg-pp-top2 > .gap { flex: 1 1 auto; }
+/* 로고 : 초록 UP 화살표 + 금색 굵은 «파워업» (1px 도트 외곽선 · 아래 1px 짙은 주황 = 도트 두께) */
+.idg-pp-logo { --o: #3a1400; display: inline-flex; align-items: center; justify-content: center; gap: 1px; flex: none; margin: 0; pointer-events: none; user-select: none; }
+.idg-pp-logo .up { width: 26px; height: auto; flex: none; image-rendering: pixelated; transform: translateY(-2px) rotate(-8deg); }
+.idg-pp-logo b { font: 900 22px/1 var(--sw-font); color: #ffd45a; letter-spacing: .02em; word-spacing: normal; white-space: nowrap;
+  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o), 0 2px 0 var(--o), 1px 2px 0 var(--o), -1px 2px 0 var(--o); }
+.idg-pp.pp2.short .idg-pp-logo b { font-size: 20px; } .idg-pp.pp2.short .idg-pp-logo .up { width: 23px; }
+.idg-pp-strip > .idg-pp-logo { align-self: center; margin: 2px 0 0; }
+.idg-pp.pp2.port .idg-pp-logo { grid-area: t; }
+.idg-pp.pp2.port .idg-pp-logo b { font-size: 24px; } .idg-pp.pp2.port .idg-pp-logo .up { width: 28px; }
+/* 다시하기 · 전투 개시! : 얇은 금테 판 (btn_sq_red_thin = btn_sq_red 금테 가운데 줄을 깎은 새 파일 · tools/_ppbtn-thin.py) → 단추 면이 크게 */
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go { border-width: 14px 14px 22px; border-image: url(/assets/iandragon_game/ai/kit/btn_sq_red_thin.webp) 36 36 56 fill / 14px 14px 22px stretch; padding: 0 2px 2px; }
+/* 나가기 (보라 단추 + 결과 창 나가기 그림) */
+.idg-pp-exit { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.idg-pp-exit .ico { width: 1.25em; height: 1.25em; flex: none; image-rendering: pixelated; }
+/* 고정 안내 2줄 : 키트 종이 판 (짙은 갈색 글씨 · 외곽선 없음) — 가로 = 왼쪽 칸 맨 아래 고정 · 세로 = 출전 칸 아래 */
+.idg-pp-guide { flex: none; margin: 0; padding: 1px 4px; border: solid transparent; border-width: 8px 9px; border-image: url(/assets/iandragon_game/ai/kit/paper.webp) 34 fill / 8px 9px stretch; image-rendering: pixelated; box-sizing: border-box; }
+.idg-pp-guide p { margin: 0; font: 800 12.5px/1.4 var(--sw-font); color: #4a2c12; text-align: center; text-shadow: none; word-break: keep-all; letter-spacing: 0; word-spacing: normal; }
+.idg-pp.pp2.short .idg-pp-guide p { font-size: 11.5px; line-height: 1.32; }
+.idg-pp.pp2.port .idg-pp-guide p { font-size: 13px; }
+.idg-pp.pp2 .idg-pp-hint[hidden] { display: none; }
+.idg-pp.pp2 .idg-pp-guide p, .dialog.idg-k .idg-pp.pp2 .idg-pp-guide p { color: #4a2c12; text-shadow: none; }
+/* ── 4차 (11/12 대표님) : 위쪽 바짝 · 금 띠 없음 · 안내 판 반 높이 + 도트 아이콘 · 출전 칸 9칸이 스크롤 없이 · 제목 판 낮게 · 카드 촘촘히 ── */
+.idg-pp.pp2.land > .idg-pp-top2 { background: none; margin-top: -10px; padding: 0 0 3px; min-height: 0; gap: 8px; }
+.idg-pp.pp2.land.short > .idg-pp-top2 { margin-top: -8px; }
+.idg-pp.pp2.land .idg-pp-top2 .idg-pp-x { min-height: 32px; padding: 0 12px 0 9px; font-size: 16px; }
+.idg-pp.pp2.land .idg-pp-top2 .idg-pp-x svg { width: 16px; height: 16px; }
+.idg-pp.pp2.land .idg-pp-top2 .idg-pp-band { font-size: 12px; border-width: 5px 12px; border-image-width: 5px 12px; padding: 0 6px; }
+.idg-pp.pp2.land .idg-pp-top2 .idg-pp-band .idg-cash { font-size: 12px; }
+.idg-pp.pp2.land .idg-pp-grid { padding-top: 2px; column-gap: 7px; }
+.idg-pp.pp2.land .idg-pp-col { gap: 4px; }
+/* 로고 = 글씨만 */
+.idg-pp-logo .up { display: none; }
+/* 제목 판 낮게 */
+.idg-pp.pp2 .idg-pp-plate { min-height: 26px; font-size: 13px; border-width: 4px 12px; border-image-width: 4px 12px; padding: 0 4px; line-height: 1.05; }
+/* 출전 칸 : 칸 크기 = 칸 영역 높이의 1/3 와 폭의 1/3 중 작은 쪽 → 3줄(9칸)이 스크롤 없이 · 칸 사이 4px */
+.idg-pp.pp2.land .idg-pp-sbody { container-type: size; padding: 4px 3px 2px; }
+.idg-pp.pp2.land .idg-pp-slots { gap: 4px; grid-template-columns: repeat(3, min(calc((100cqw - 8px) / 3), calc((100cqh - 8px) / 3))); justify-content: center; }
+.idg-pp.pp2.land .idg-pp-slot { border-width: 6px; border-image-width: 6px; }
+.idg-pp.pp2.land .idg-pp-slot em { font-size: 12px; bottom: 0; }
+/* 안내 판 : 높이 반 · 줄 앞 도트 아이콘 */
+.idg-pp-guide { padding: 0 4px; border-width: 5px 7px; border-image-width: 5px 7px; }
+.idg-pp-guide p, .dialog.idg-k .idg-pp.pp2 .idg-pp-guide p { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; line-height: 1.22; }
+.idg-pp.pp2.short .idg-pp-guide p { font-size: 11.5px; line-height: 1.18; }
+.idg-pp-guide .gi { display: inline-block; flex: none; width: 15px; height: 10px; }
+.idg-pp-guide .gi svg { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+/* 카드 : 테 · 안쪽 여백 · 줄 간격 촘촘히 (글씨 · 게이지 · 단추 크기는 그대로) */
+.idg-pp.pp2.land .idg-pp-card { border-width: 9px; border-image-width: 9px; padding: 0 2px; gap: 2px; }
+.idg-pp.pp2.land .idg-pp-card .idg-pp-up.idg-buy { min-height: 34px; margin-top: 2px; }
+.idg-pp.pp2.land .idg-pp-card .st { gap: 0 5px; line-height: 1.15; }
+.idg-pp.pp2.land .idg-pp-list { gap: 5px; }
+.idg-pp.pp2.land .idg-pp-pick { row-gap: 0; }
+.idg-pp-guide { padding: 0 4px; border-width: 3px 6px; border-image-width: 3px 6px; }
+.idg-pp-guide p, .dialog.idg-k .idg-pp.pp2 .idg-pp-guide p { font-size: 11.5px; line-height: 1.12; }
+.idg-pp.pp2.short .idg-pp-guide p { font-size: 11px; line-height: 1.1; }
+.idg-pp.pp2.land .idg-pp-top2 .idg-pp-x { min-height: 30px; }
+.idg-pp.pp2.land .idg-pp-top2 .idg-pp-band { line-height: 1; }
+.idg-pp.pp2.land .idg-pp-top2 .idg-pp-x { box-sizing: border-box; height: 30px; min-height: 0; }
+.idg-pp-guide p, .dialog.idg-k .idg-pp.pp2 .idg-pp-guide p { font-size: 11px; line-height: 1.06; }
+.idg-pp.pp2.short .idg-pp-guide p { font-size: 11px; line-height: 1.04; }
+.idg-pp.pp2.port .idg-pp-guide p, .dialog.idg-k .idg-pp.pp2.port .idg-pp-guide p { font-size: 12.5px; line-height: 1.3; }
+.idg-pp.pp2.land.short .idg-pp-top2 .idg-pp-x { height: 30px; min-height: 0; }
+.idg-pp.pp2.land .idg-pp-card { border-width: 8px; border-image-width: 8px; }
+.idg-pp.pp2.land .idg-pp-card .st { line-height: 1.05; }
+.idg-pp.pp2.land .idg-pp-card .st .idg-k-gauge { height: 10px; }
+.idg-pp.pp2.land .idg-pp-pick .lv { line-height: 1.15; }
+.idg-pp.pp2.land .idg-pp-card .idg-pp-up.idg-buy { min-height: 32px; border-width: 7px 13px; border-image-width: 7px 13px; }
+.idg-pp.pp2.land > .idg-pp-top2, .idg-pp.pp2.land.short > .idg-pp-top2 { margin-top: -3px; }
+/* 세로 머리 : 1줄 = 로고 가운데 · 2줄 = 출전 알약 | 지갑 (지갑이 두 줄로 꺾이지 않게) */
+.idg-pp.pp2.port > .idg-pp-head { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "t t" "l w"; }
+.idg-pp.pp2.port .idg-pp-logo { justify-self: center; }
+.idg-pp.pp2.port .idg-pp-band { flex-wrap: nowrap; white-space: nowrap; }
+/* 5차 : «레벨업 [금화] 10,000» 이 단추 밖으로 넘치던 것 → 글씨 한 단계 작게 · 사이 간격 좁게 · 양옆 테 얇게 (6,500 · 10,000 확인) */
+.idg-hud .idg-pp.pp2 .idg-pp-card .idg-pp-up.idg-buy, .dialog .idg-pp.pp2 .idg-pp-card .idg-pp-up.idg-buy, .idg-pp.pp2 .idg-pp-card .idg-pp-up.idg-buy {
+  gap: 3px; padding: 0; font-size: 12.5px; letter-spacing: 0; border-width: 8px 10px; border-image-width: 8px 10px; }
+.idg-pp.pp2 .idg-pp-card .idg-pp-up .idg-cash { gap: 2px; font-size: 12.5px; }
+.idg-pp.pp2 .idg-pp-card .idg-pp-up .idg-cash-ico, .idg-pp.pp2 .idg-pp-card .idg-pp-up .idg-cash.coin .idg-cash-ico { width: 1.1em; height: 1.1em; }
+.idg-pp.pp2.land .idg-pp-card .idg-pp-up.idg-buy { border-width: 7px 10px; border-image-width: 7px 10px; }
+
+/* 가로 머리 줄 «파워업» 글씨가 오른쪽 위 «닫기» 단추에 바짝 붙던 것 → 사이 띄우기 (배포 2차 묶음 · 8px → 22px) */
+.idg-pp.pp2.land > .idg-pp-top2 > .idg-pp-logo { margin-right: 14px; }
+
+/* ════ 파워업 B3 (11/13 대표님) : 가로 = 닫기 X 안 잘림 · «파워업» 정중앙 · 정렬 단추 · 출전 칸 4줄 한 화면 + 안내 글씨는 10번 칸 옆 · 카드 4열 / 세로 = 지갑 왼쪽 · 출전 알약 없음 · 10칸 + 자물쇠 ════ */
+/* 머리 줄 : 지갑(왼쪽) · «파워업»(정중앙) · 닫기 X(오른쪽) — 가운데 칸을 양옆 1fr 로 맞춰야 진짜 정중앙 · 위에 2px 띄워 닫기 단추 윗줄이 창 테에 잘리지 않게 */
+.idg-pp.pp2.land > .idg-pp-top2, .idg-pp.pp2.land.short > .idg-pp-top2 { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; margin-top: 4px; padding: 0 0 3px; }
+.idg-pp.pp2.land > .idg-pp-top2 > .idg-pp-band { justify-self: start; }
+.idg-pp.pp2.land > .idg-pp-top2 > .idg-pp-logo { justify-self: center; margin: 0; }
+.idg-pp.pp2.land > .idg-pp-top2 > .idg-pp-x, .idg-pp.pp2.land > .idg-pp-top2 > i { justify-self: end; }
+/* 정렬 단추 (카드 제목 판 오른쪽) : 얇고 작은 보라 단추 4개 · 켜진 것 = 금테 + 밝은 보라 + 금 화살표 */
+.idg-pp-plate.sorts { justify-content: flex-start; flex-wrap: nowrap; gap: 0 6px; padding: 0 4px 0 8px; }
+.idg-pp-plate.sorts > b { margin-left: auto; }
+.idg-pp-plate.sorts > span { margin-right: auto; }
+.idg-pp-sort { --o: #2a1238; flex: none; display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+.idg-pp-plate .idg-pp-sort > b { font: 800 11px/1 var(--sw-font); color: #e6dcff; margin-right: 1px; white-space: nowrap;
+  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+.idg-pp-plate .idg-pp-sortb { --o: #2a1238; display: inline-flex; align-items: center; gap: 2px; flex: none; height: 17px; margin: 0; padding: 0 4px 0 5px; box-sizing: border-box; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  border: 1px solid #6a5a9a; border-radius: 3px; background: linear-gradient(180deg, #43357a, #33275f); box-shadow: 0 1px 0 #1d1233;
+  font: 800 10.5px/1 var(--sw-font); color: #cfc4ee; white-space: nowrap; letter-spacing: 0; word-spacing: normal;
+  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+.idg-pp-plate .idg-pp-sortb span { color: inherit; font-weight: inherit; }
+.idg-pp-sortb .ar { display: inline-block; flex: none; width: 7px; height: 4px; color: #9a8cc8; }
+.idg-pp-sortb .ar svg { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.idg-pp-plate .idg-pp-sortb.on { border-color: #ffd45a; background: linear-gradient(180deg, #7a5fcf, #5a44a8); color: #fff; }
+.idg-pp-sortb.on .ar { color: #ffd45a; }
+.idg-pp-sortb:active { filter: brightness(.86); transform: translateY(1px); }
+/* 왼쪽 출전 칸 : 3열 × 4줄(10칸)이 스크롤 없이 한 화면 — 칸 높이 = 영역 높이를 4등분(살짝 납작) · 10번 칸 옆 빈 2칸 = 안내 글씨 */
+.idg-pp.pp2.land .idg-pp-sbody { padding: 4px 3px 2px; }
+.idg-pp.pp2.land .idg-pp-slots { height: 100cqh; gap: 4px; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); justify-content: stretch; align-content: stretch; }
+.idg-pp.pp2.land .idg-pp-slot { aspect-ratio: auto; width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.idg-pp.pp2.land .idg-pp-slot img { width: 82%; height: 82%; }
+/* 안 열린 칸 = 빈 칸 + 자물쇠 (단추 아님 · 못 누름) */
+.idg-pp-slot.locked { cursor: default; pointer-events: none; }
+.idg-pp-slot.locked .lock { display: block; height: 62%; max-height: 40px; aspect-ratio: 1; background: url(/assets/iandragon_game/ai/lobby/ico_lock.png) center / contain no-repeat; image-rendering: pixelated; opacity: .92; }
+.idg-pp.pp2.land .idg-pp-slots > .idg-pp-guide.cell { grid-column: 2 / span 2; grid-row: 4; display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 0; padding: 0 2px; border-width: 6px 8px; border-image-width: 6px 8px; overflow: hidden; }
+.idg-pp.pp2.land .idg-pp-slots > .idg-pp-guide.cell p { display: block; margin: 0; font: 500 min(11px, 4.5cqw)/1.3 var(--sw-font); color: #4a2c12; text-align: center; white-space: nowrap; text-shadow: none; }
+/* 오른쪽 카드 : 1줄 4개 */
+.idg-pp.pp2.land .idg-pp-list { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+/* 세로 : 지갑(코인 · 젬) = 왼쪽 · «출전 n/10칸» 알약 없음 · 큰 숫자도 안 겹치게 */
+.idg-pp.pp2.port > .idg-pp-head { grid-template-columns: minmax(0, 1fr); grid-template-areas: "t" "w"; }
+.idg-pp.pp2.port .idg-pp-band { justify-self: start; justify-content: flex-start; max-width: 100%; font-size: clamp(11px, 3.5vw, 14px); }
+.idg-pp.pp2.port .idg-pp-band .idg-cash.pill { font-size: inherit; }
+/* 카드 4열 : 칸이 좁아져 머리 줄을 «이름(맨 위 한 줄) → 얼굴 · Lv · 불씨 → 출전/대기 표» 로 · 글씨 · 단추 · 테를 한 단계씩 작게 (색 · 모양은 그대로) */
+.idg-pp.pp2.land .idg-pp-card { border-width: 7px; border-image-width: 7px; }
+.idg-pp.pp2.land .idg-pp-pick { grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 4px; row-gap: 0; align-items: start; }
+.idg-pp.pp2.land .idg-pp-pick .nm { grid-column: 1 / -1; grid-row: 1; font-size: 13px; line-height: 1.2; }
+.idg-pp.pp2.land .idg-pp-pick img { grid-column: 1; grid-row: 2; width: 32px; height: 32px; }
+.idg-pp.pp2.land .idg-pp-pick .lv { grid-column: 2; grid-row: 2 / span 2; font-size: 10.5px; line-height: 1.2; }
+.idg-pp.pp2.land .idg-pp-pick .tag { grid-column: 1; grid-row: 3; justify-self: start; align-self: start; margin-top: 1px; padding: 0 3px; font-size: 10px; line-height: 14px; }
+.idg-pp.pp2.land .idg-pp-card .st { grid-template-columns: 31px minmax(0, 1fr); column-gap: 3px; font-size: 10.5px; }
+.idg-pp.pp2.land .idg-pp-card .idg-pp-up.idg-buy { gap: 2px; font-size: 11px; border-width: 7px 6px; border-image-width: 7px 6px; }
+.idg-pp.pp2.land .idg-pp-card .idg-pp-up .idg-cash { gap: 1px; font-size: 11px; }
+.idg-pp.pp2.land .idg-pp-card .idg-pp-up.idg-buy.plain { font-size: 10.5px; }
+/* 카드 줄 칸 수 : 카드 칸(가운데 열)이 420px 보다 좁으면(폰 667 가로 · 전투 판 사이 등) 한 줄 3개로 — 4개면 카드가 너무 좁아 글이 잘린다 */
+.idg-pp.pp2.land .idg-pp-col.cards { container: ppcards / inline-size; }
+@container ppcards (max-width: 420px) { .idg-pp.pp2.land .idg-pp-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.idg-pp.pp2.land .idg-pp-card { border-width: 6px; border-image-width: 6px; }
+.idg-pp.pp2.land .idg-pp-pick { grid-template-columns: 30px minmax(0, 1fr); column-gap: 3px; }
+.idg-pp.pp2.land .idg-pp-pick img { width: 30px; height: 30px; }
+.idg-pp.pp2.land .idg-pp-pick .lv { font-size: 10px; }
+/* 제목 판이 좁으면(폰 667 가로) : 제목은 한 줄 유지 · 먼저 «정렬:» 글자를 접고 · 더 좁으면 «n카드 보유» 도 접는다 */
+.idg-pp-plate.sorts > b { white-space: nowrap; }
+@container ppcards (max-width: 440px) { .idg-pp-plate .idg-pp-sort > b { display: none; } }
+@container ppcards (max-width: 340px) { .idg-pp-plate.sorts > span { display: none; } }
+/* 세로 지갑 : 창 안 왼쪽 끝 정렬(«파워업» 제목 아래 줄 왼쪽) — 알약을 한 단계 작게 줄여 가운데로 보이지 않게 */
+.idg-pp.pp2.port .idg-pp-head .idg-pp-band { justify-self: start; margin-left: 0; width: fit-content; gap: 6px; padding: 0 4px; font-size: clamp(11px, 3.1vw, 13px); border-width: 6px 14px; border-image-width: 6px 14px; }
+/* 가로 오른쪽 띠 (11/13 대표님) : 전투 개시! = 아래로 내리고 조금 길게 · «로비로» · «X 창닫기» = 금테 없는 보라 단추(조금 두툼) */
+.idg-pp-strip { justify-content: flex-end; }
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go { aspect-ratio: 1 / 1.32; flex: 0 1 auto; }
+.idg-pp-subs { display: flex; flex-direction: column; gap: 8px; flex: none; }
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; min-height: 50px; padding: 0 4px 4px;
+  border: 3px solid #1c0b28; border-image: none; border-radius: 4px; background: #5a3a8e; box-shadow: inset 0 3px 0 #8466bf, inset 0 -5px 0 #3a2160; font-size: 17px; }
+.idg-pp.pp2.short .idg-pp-strip .idg-btn.idg-pp-back { min-height: 44px; font-size: 15px; }
+.idg-pp-strip .idg-pp-back .ico { display: block; width: 1.25em; height: 1.25em; flex: none; image-rendering: pixelated; }
+.idg-pp-strip .idg-pp-back .ico svg { display: block; width: 100%; height: 100%; }
+/* 아이템샵 (11/13 대표님) : 로비로 · 창닫기와 같은 모양 · 주황 */
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-shop, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-shop { --o: #4a1c00; border-color: #2e1000; background: #e2771c; box-shadow: inset 0 3px 0 #ffb256, inset 0 -5px 0 #a64c0c; color: #fff; }
+.idg-pp-subs { gap: 6px; }
+/* 큰 화면(태블릿 · PC 가로) : 전투 개시! 를 남는 높이만큼 길게 (11/13 대표님) */
+@media (min-height: 600px) and (orientation: landscape) {
+  .idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-go { flex: 1 1 auto; aspect-ratio: auto; max-height: none; }
+}
+/* 띠 단추 색 (11/13 대표님) : 전투 개시!(빨강) 아래로 점점 어둡게 — 로비로 = 빨강에 가까운 어두운 주황 · 아이템샵 = 조금 더 어두운 주황 · 창닫기 = 거의 검은 주황 */
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back { --o: #3a0e00; border-color: #2a0a00; background: #c4461c; box-shadow: inset 0 3px 0 #e8743f, inset 0 -5px 0 #8a2c0c; color: #fff; }
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-shop, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-shop { --o: #2e1000; border-color: #241000; background: #a3510f; box-shadow: inset 0 3px 0 #c97632, inset 0 -5px 0 #6a3208; }
+.idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-close, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back.idg-pp-close { --o: #0e0603; border-color: #0c0502; background: #36200f; box-shadow: inset 0 3px 0 #563620, inset 0 -5px 0 #1c0f06; color: #f4e6d8; }
+.idg-pp-strip .idg-pp-shop .ico { width: 1.4em; height: 1.3em; }
