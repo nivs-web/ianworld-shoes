@@ -125,7 +125,7 @@ html.idg-lobby-on body { width: 100%; }
  *  --cardPx = --cardH 를 카드 자리(.l2-nextwrap) 에서 px 로 굳힘 (@property) → 카드 안 --c = min(그 값, 자리 높이 100cqh)
  *  세로 레이아웃 테두리(border-width) 위 · 아래 = dialog9 금줄 안쪽 면(원본 위 81px · 아래 54px / 조각 104px) → 내용 상자 = 테 안쪽 면 · 가운데 맞춤이 곧 면 가운데 */
 @property --cardPx { syntax: '<length>'; inherits: true; initial-value: 60px; }
-.l2-next { cursor: pointer; }
+.l2-next { cursor: pointer; pointer-events: auto; }   /* 직속 자식은 클릭 통과인데 이 카드는 div 라 눌리지 않던 것 (11/14) */
 .l2-next:active { translate: 0 1px; }
 .l2-next:focus-visible { outline: 2px solid #ffd45a; outline-offset: 2px; }
 .l2-nextwrap { --cardPx: var(--cardH); container-type: size; display: flex; align-items: center; justify-content: center; min-height: 0; }
