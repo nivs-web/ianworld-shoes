@@ -278,15 +278,17 @@ service cloud.firestore {
     // ── 좀비와 드래곤 명예의 전당 (2026-11-11) ──────────────────────────────
     // 계정당 한 장(`idgPlayers/{uid}`). 다른 게임 기록과 섞지 않는다 (`services/idgRank.js`).
     // ★ 색인이 필요 없다(필드 하나로만 정렬). ★ 기록은 내려가지 않는다 · 상한을 여기서 강제한다.
+    // 2026-11-13 lv(계정 레벨 1 ~ 999 · 없어도 됨 — 옛 앱은 안 보낸다). 게시 전에는 앱이 lv 를 빼고 다시 쓴다(idgRank.js). 초고수 기록 필드는 없다.
     function igInt(v, maxV) { return v is int && v >= 0 && v <= maxV; }
     function igValid(d) {
-      return d.keys().hasOnly(['nickname', 'look', 'title', 'cleared', 'stars', 'hard', 'kills', 'coop', 'pvpW', 'pvpL', 'raid', 'at'])
+      return d.keys().hasOnly(['nickname', 'look', 'title', 'cleared', 'stars', 'hard', 'kills', 'coop', 'pvpW', 'pvpL', 'raid', 'lv', 'at'])
           && d.nickname is string && d.nickname.size() <= 16
           && d.look is string && d.look.size() <= 64
           && d.title is string && d.title.size() <= 24
           && igInt(d.cleared, 100) && igInt(d.stars, 300) && igInt(d.hard, 300)
           && igInt(d.kills, 100000000) && igInt(d.coop, 1000000)
           && igInt(d.pvpW, 1000000) && igInt(d.pvpL, 1000000) && igInt(d.raid, 1000000000)
+          && (d.get('lv', 1) is int && d.get('lv', 1) >= 1 && d.get('lv', 1) <= 999)
           && d.at is int;
     }
     function igNotDown(n, o) {
