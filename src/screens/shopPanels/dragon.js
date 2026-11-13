@@ -6,6 +6,8 @@
 import { LEADERS } from '../../games/iandragon_game/data/leaders.js';
 import { S, ICON, LEAD_SHOP, LEAD_ORDER, LEAD_MAX, leadUpCost, LEAD_FLAME_PER_LV, LEAD_AURA_PER_LV, leadOwn, leadLv, leadSave, worldsCleared, canPay, pay, commit, stepOf } from './_data.js';
 import { kitBtn } from '../idgKit.js';
+import { el } from '../ui.js';
+import { formsOf } from '../shopCatalog.js';
 import { panelRoot, note, row, list, line, buyBtn, plainBtn, statRow, lockLine, snd } from './_ui.js';
 
 /**
@@ -46,12 +48,29 @@ export default function render(box, ctx, opts = {}) {
     return pickable(row({ id: 'auto', face: ICON.face(id), name: S.auto, l1: S.autoSub, tag: on ? S.lead : null, on, rows: [line(`${S.autoNow} ${LEADERS[id]?.ko || id}`)] }), 'auto');
   }
 
+  /* 꾸미기 «대장» 줄 : 변신 모습 고르기 — 기본 · 붉은 · 보라 동그라미 (그림이 오기 전 색 점) · 안 가진 것은 자물쇠 */
+  function formDots(id, g) {
+    const fs = formsOf(id, g);
+    if (!fs.length) return null;
+    const cur = g?.lead?.form?.[id] || '';
+    const pick = (kind) => {
+      const lead = leadSave(g), form = { ...lead.form };
+      if (kind) form[id] = kind; else delete form[id];
+      snd('sfx_menu_select'); commit(ctx, { lead: { ...lead, form } }); draw();
+    };
+    const dot = (kind, name, own) => el(`button.idg-sp-form.${kind || 'base'}${(cur || '') === (kind || '') ? '.on' : ''}${own ? '' : '.off'}`, {
+      type: 'button', disabled: !own, 'aria-label': name, 'aria-pressed': (cur || '') === (kind || '') ? 'true' : 'false', title: own ? name : `${name} (잠김)`,
+      onclick: (e) => { e.stopPropagation(); if (own) pick(kind); },
+    }, [own ? null : el('img', { src: ICON.lock, alt: '', draggable: 'false' })]);
+    return el('div.idg-sp-forms', null, [el('span', S.form), dot('', S.formBase, true), ...fs.map((f) => dot(f.kind, f.name, f.own))]);
+  }
+
   function ownedCard(id, g) {
     const L = LEADERS[id], lv = leadLv(g, id), cost = leadUpCost(lv), flame = LEAD_FLAME_PER_LV * (lv - 1), aura = LEAD_AURA_PER_LV * (lv - 1);
     const c = row({
       id, face: ICON.face(id), name: L.ko, l1: `Lv ${lv}`, tag: isLead(id, g) ? S.lead : null, on: isLead(id, g),
       rows: [statRow(S.statFlame, flame, LEAD_FLAME_PER_LV * (LEAD_MAX - 1), 'orange', `+${flame}%`), statRow(S.statAura, aura, LEAD_AURA_PER_LV * (LEAD_MAX - 1), 'blue', `+${aura}%`)],
-      foot: lv >= LEAD_MAX ? plainBtn(S.max) : buyBtn(cost, { label: S.lvUp, poor: !canPay(g, cost), onClick: () => levelUp(id) }),
+      foot: [lv >= LEAD_MAX ? plainBtn(S.max) : buyBtn(cost, { label: S.lvUp, poor: !canPay(g, cost), onClick: () => levelUp(id) }), look ? formDots(id, g) : null].filter(Boolean),
     });
     return look ? pickable(c, id) : c;
   }

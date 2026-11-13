@@ -29,6 +29,7 @@ export const S = {
   lead: '대장', curCastle: '내 드래곤캐슬', slots: (n) => `장비 칸 ${n}`,
   gearLv: (n) => (n ? `Lv ${n}` : '아직 없어요'),
   reco: '추천 강화', sells: '아이템 샵에서 팔아요', goShop: '샵 가기', auto: '자동', autoSub: '월드 추천', autoNow: '지금은',
+  form: '모습', formBase: '기본 모습',
   rangeFoot: '처음엔 60% · 드래곤 레벨과 브레스 색으로도 넓어져요',
 };
 

@@ -36,6 +36,12 @@ const RID = { common: 'common', fine: 'uncommon', rare: 'rare', hero: 'epic', le
 let C = null, loading = null;
 export const loadCatalog = () => loading || (loading = import('../games/iandragon_game/data/catalog.js').then((m) => (C = m)).catch(() => { loading = null; return null; }));
 export const catalogReady = () => !!C;
+/** 대장 드래곤 변신 모습 3개(기본 · 붉은 · 보라) 가짐 · 보임 — 꾸미기 «대장» 줄이 쓴다. 카탈로그를 아직 못 받았으면 [] */
+export function formsOf(id, g) {
+  if (!C) return [];
+  const see = C.seesMaster(g), has = (kind) => { const r = C.LEAD_FORMS.find((f) => f.lead === id && f.kind === kind); return r ? { kind, own: !!C.condMet(r, g), name: r.name, text: C.lockText?.(r, g) || '' } : null; };
+  return [has('red'), see ? has('purple') : null].filter(Boolean);
+}
 
 /* ── 효과 한 줄 (lookFx 값에서 만든다) ── */
 const pct = (v) => `${Math.round(v * 1000) / 10}`;

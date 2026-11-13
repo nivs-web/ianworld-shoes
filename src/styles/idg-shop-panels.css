@@ -116,3 +116,17 @@
 /* 목록 줄 칸의 위 안내 종이 : 한 덩이 낮게 (줄이 5 ~ 6개 보이게) */
 .idg-sp:has(.idg-sp-list.rows) > .idg-k-paper { font-size: 11px; line-height: 1.3; padding-top: 2px; padding-bottom: 2px; }
 .idg-sp:has(.idg-sp-list.rows) > .idg-k-paper small { display: none; }
+
+/* 변신 모습 점 (꾸미기 «대장» 줄) : 기본 = 청록 · 붉은 · 보라 — 고른 것은 노란 테 · 안 가진 것은 자물쇠 */
+.idg-sp-forms { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #d8ccff; }
+.idg-sp-forms > span { width: 26px; text-align: right; }
+.idg-sp-form { position: relative; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; margin: 0; border: 2px solid #1b1030; border-radius: 0; background: #2fb0b8; image-rendering: pixelated; cursor: pointer; }
+.idg-sp-form.red { background: #d83a3a; } .idg-sp-form.purple { background: #8a4ad8; }
+.idg-sp-form.on { outline: 2px solid #ffd45a; outline-offset: 1px; }
+.idg-sp-form.off { background: #3b2a6e; cursor: default; }
+.idg-sp-form img { width: 12px; height: 12px; image-rendering: pixelated; }
+.idg-sp-form:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+/* 목록 줄 안에서는 점을 가격 단추 밑에 (이름 줄을 가리지 않게) */
+.idg-sp-row .idg-sp-forms { justify-content: center; gap: 5px; margin-top: 2px; }
+.idg-sp-row .idg-sp-forms > span { display: none; }
+.idg-sp-row .idg-sp-form { width: 18px; height: 18px; }
