@@ -24,7 +24,7 @@ const AI = '/assets/iandragon_game/ai/';
 export const GY = 440;
 export const M = 170;
 /** 코어 id → 그림 id (이름이 다른 것만) */
-const ART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant' };
+const ART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant', shieldFirm: 'helmet', lavaFirm: 'lava', gearFirm: 'gear', shroomFirm: 'shroom' };   // *Firm = 초고수 굳센 좀비(원본 그림 그대로)
 const artOf = (id) => ART[id] || id;
 const nearest = (t) => { t.source.scaleMode = 'nearest'; return t; };
 const tryLoad = (url) => Assets.load(url).then(nearest).catch(() => null);

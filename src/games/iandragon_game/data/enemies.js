@@ -45,3 +45,10 @@ export const ENEMIES = {
   "bossCrystal": {"name":"수정 드래곤 좀비","w":9,"boss":true,"hp":8000,"atk":190,"range":180,"speed":30,"fore":1,"back":1.6,"kb":3,"bounty":1800,"area":true,"splash":60,"traits":["crystal"],"barrier":300},
   "bossLord": {"name":"좀비 드래곤 로드","w":10,"boss":true,"hp":14000,"atk":240,"range":220,"speed":26,"fore":1.1,"back":1.7,"kbImmune":true,"bounty":3000,"area":true,"splash":70,"traits":["red","giant"]},
 };
+/** 굳센 좀비 — 초고수 판에만 나온다(원본 + kbImmune · 그림 · 이름은 firmOf 원본). 도감 · 습격에는 쓰지 않는다 */
+export const ENEMIES_FIRM = {
+  "shieldFirm": {"name":"헬멧 좀비","w":1,"hp":900,"atk":22,"range":45,"speed":42,"fore":0.5,"back":1,"kb":1,"bounty":110,"kbImmune":true,"firmOf":"shield"},
+  "lavaFirm": {"name":"용암 덩이","w":2,"hp":700,"atk":80,"range":60,"speed":40,"fore":0.6,"back":1.2,"kb":2,"bounty":120,"area":true,"splash":30,"traits":["red"],"kbImmune":true,"firmOf":"lava"},
+  "gearFirm": {"name":"톱니 기사","w":5,"hp":150,"atk":45,"range":45,"speed":45,"fore":0.5,"back":1,"kb":1,"bounty":120,"metal":true,"traits":["metal"],"kbImmune":true,"firmOf":"gear"},
+  "shroomFirm": {"name":"독버섯 좀비","w":8,"hp":260,"atk":10,"range":150,"speed":50,"fore":0.6,"back":1.2,"kb":2,"bounty":70,"area":true,"splash":40,"poison":0.06,"kbImmune":true,"firmOf":"shroom"},
+};

@@ -6,7 +6,7 @@
 import { lanesFor } from './lanes.js';
 
 const AI = '/assets/iandragon_game/ai/';
-const ART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant' };   // battleView 와 같은 표
+const ART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant', shieldFirm: 'helmet', lavaFirm: 'lava', gearFirm: 'gear', shroomFirm: 'shroom' };   // battleView 와 같은 표 (*Firm = 초고수 굳센 좀비 · 원본 그림)
 const get = (u) => fetch(u, { priority: 'low' }).then((r) => (r.ok ? r : null)).catch(() => null);
 const json = (u) => get(u).then((r) => (r ? r.json() : null)).catch(() => null);
 let done = '';

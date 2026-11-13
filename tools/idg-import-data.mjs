@@ -8,8 +8,9 @@
  *       계산기 `engine.js` 의 줄을 **한 글자도 바꾸지 않고** 잘라 붙인다 (require/exports 만 ESM 으로).
  *       잘라 붙인 뒤 원본의 모든 줄이 빠짐없이 들어갔는지 스스로 대조한다.
  *  2. src/games/iandragon_game/data/{units,enemies,leaders,skills,wallet,econ}.js · data/stages/w01~w10.js · data/stages/index.js
+ *     + data/stages/hard.js · master.js (어려움 · 초고수 100판씩) · data/stages/diffLoad.js (그 둘을 따로 묶음으로 불러옴)
  *  3. src/games/iandragon_game/data/artManifest.js — 1차(월드 1~5)에 필요한 그림 프레임 이름 (팀 계획서 2.1)
- *  4. tools/idg-golden.json — 계산기 golden.js 가 뽑은 정답표 (`npm run qa:idg-core` 가 대조)
+ *  4. tools/idg-golden.json · tools/idg-golden-diff.json — 계산기 golden.js 가 뽑은 정답표 (보통 300 · 어려움/초고수 60, `npm run qa:idg-core` 가 대조)
  */
 
 import fs from 'node:fs';
@@ -71,13 +72,16 @@ const D = require('./data.js');
 const noFn = (o, where) => JSON.stringify(o, (k, v) => { if (typeof v === 'function') fail(`${where}.${k} 가 함수 — JSON 으로 못 옮김`); return v; });
 const objLines = (o) => '{\n' + Object.entries(o).map(([k, v]) => `  ${JSON.stringify(k)}: ${noFn(v, k)},`).join('\n') + '\n}';
 files.push(write('src/games/iandragon_game/data/units.js', HEAD('data.js') + `export const UNITS = ${objLines(D.units)};\n`));
-files.push(write('src/games/iandragon_game/data/enemies.js', HEAD('data.js') + `export const ENEMIES = ${objLines(D.enemies)};\n`));
+/* 굳센 좀비(firmOf 가 있는 것 · 초고수 전용)는 ENEMIES 와 따로 둔다 → 도감 · 주간 습격 뽑기 등 ENEMIES 목록을 쓰는 곳은 그대로. 전투 D 에만 합친다 */
+const enemiesOf = (firm) => Object.fromEntries(Object.entries(D.enemies).filter(([, e]) => !!e.firmOf === firm));
+files.push(write('src/games/iandragon_game/data/enemies.js', HEAD('data.js') + `export const ENEMIES = ${objLines(enemiesOf(false))};\n` +
+  `/** 굳센 좀비 — 초고수 판에만 나온다(원본 + kbImmune · 그림 · 이름은 firmOf 원본). 도감 · 습격에는 쓰지 않는다 */\nexport const ENEMIES_FIRM = ${objLines(enemiesOf(true))};\n`));
 files.push(write('src/games/iandragon_game/data/leaders.js', HEAD('data.js') + `export const LEADERS = ${objLines(D.leaders)};\n`));
 files.push(write('src/games/iandragon_game/data/skills.js', HEAD('data.js') + `export const SKILLS = ${objLines(D.skills)};\n`));
 files.push(write('src/games/iandragon_game/data/wallet.js', HEAD('data.js') + `export const WALLET = ${noFn(D.wallet, 'wallet')};\nexport const START_MONEY = ${D.startMoney};\nexport const PLAYER_BASE_HP = ${D.playerBaseHp};\n`));
 files.push(write('src/games/iandragon_game/data/battleData.js', HEAD('data.js') +
-  `import { UNITS } from './units.js';\nimport { ENEMIES } from './enemies.js';\nimport { LEADERS } from './leaders.js';\nimport { SKILLS } from './skills.js';\nimport { WALLET, START_MONEY, PLAYER_BASE_HP } from './wallet.js';\n\n` +
-  `/** 전투 코어에 넣는 D (계산기 data.js 와 같은 모양) */\nexport const D = { units: UNITS, enemies: ENEMIES, wallet: WALLET, leaders: LEADERS, skills: SKILLS, startMoney: START_MONEY, playerBaseHp: PLAYER_BASE_HP };\n`));
+  `import { UNITS } from './units.js';\nimport { ENEMIES, ENEMIES_FIRM } from './enemies.js';\nimport { LEADERS } from './leaders.js';\nimport { SKILLS } from './skills.js';\nimport { WALLET, START_MONEY, PLAYER_BASE_HP } from './wallet.js';\n\n` +
+  `/** 전투 코어에 넣는 D (계산기 data.js 와 같은 모양) */\nexport const D = { units: UNITS, enemies: { ...ENEMIES, ...ENEMIES_FIRM }, wallet: WALLET, leaders: LEADERS, skills: SKILLS, startMoney: START_MONEY, playerBaseHp: PLAYER_BASE_HP };\n`));
 
 /* 경제표 : gen-docs.js 의 ECON 블록을 글자 그대로 (함수가 섞여 있다) */
 const gd = fs.readFileSync(path.join(SIM, 'gen-docs.js'), 'utf8').replace(/\r\n/g, '\n');
@@ -94,6 +98,25 @@ for (const w of worlds) {
 files.push(write('src/games/iandragon_game/data/stages/index.js', HEAD('stages.generated.json') +
   worlds.map((w) => `import w${String(w).padStart(2, '0')} from './w${String(w).padStart(2, '0')}.js';`).join('\n') +
   `\n\n/** 스테이지 전부 (순번 g 순서) — 객체는 전투 코어 createBattle/simulate 에 그대로 들어간다 */\nexport const STAGES = [${worlds.map((w) => '...w' + String(w).padStart(2, '0')).join(', ')}];\nexport const STAGE_BY_ID = Object.fromEntries(STAGES.map((s) => [s.id, s]));\n`));
+
+/* 어려움 · 초고수 100판씩 (난이도 기획 2026-11-13) : 계산기 stages.<d>.generated.json → data/stages/<d>.js
+ * diffLoad.js 가 동적 import 로 따로 묶음(chunk)으로 불러온다 — 보통 판 묶음에 붙지 않게. 판 g = 배열 [g - 1].
+ * mag · atkMag 는 최종값(게임이 난이도 배율을 또 곱하지 않는다) · reward 는 보통 판 값 그대로(배율은 게임 코드가) · key(최고 정책)는 게임에 넣지 않는다 */
+const DIFF_KO = { hard: '어려움', master: '초고수' };
+for (const d of Object.keys(DIFF_KO)) {
+  if (!fs.existsSync(path.join(SIM, `stages.${d}.generated.json`))) fail(`계산기에 stages.${d}.generated.json 이 없다 — 먼저 diff/report.js --all`);
+  const arr = require(`./stages.${d}.generated.json`);
+  if (arr.length !== 100 || arr.some((s, i) => s.g !== i + 1 || s.diff !== d)) fail(`stages.${d}.generated.json 이 100판 · g 순서 · diff '${d}' 가 아니다`);
+  for (const s of arr) for (const ln of s.lines) if (!D.enemies[ln.id]) fail(`${d} ${s.id} : 좀비 ${ln.id} 가 data.js 에 없다`);
+  const bad = arr.filter((s) => s.fail);
+  if (bad.length) console.warn(`⚠ ${DIFF_KO[d]} 합격선 미달 ${bad.length}판 : ${bad.map((s) => `${s.id}(${s.fail.join(' / ')})`).join(' · ')}`);
+  const rows = arr.map(({ key, ...s }) => '  ' + JSON.stringify(s) + ',');
+  files.push(write(`src/games/iandragon_game/data/stages/${d}.js`, HEAD(`stages.${d}.generated.json`) +
+    `/* ${DIFF_KO[d]} 100판 — 판 g = 배열 [g - 1]. 보통 판과 같은 모양 + diff. 직접 import 하지 말고 diffLoad.js 의 loadDiffStages('${d}') 로 (따로 묶음) */\nexport default [\n${rows.join('\n')}\n];\n`));
+}
+files.push(write('src/games/iandragon_game/data/stages/diffLoad.js', HEAD('stages.hard/master.generated.json') +
+  `/** 어려움 · 초고수 판 100개를 따로 묶음으로 불러온다 : d = 'hard' | 'master' (그 밖은 null). 판 g = 배열 [g - 1].\n *  판의 mag · atkMag 는 최종값 — 난이도 배율을 또 곱하지 않는다. */\n` +
+  `export const loadDiffStages = (d) => d === 'hard' ? import('./hard.js').then((m) => m.default) : d === 'master' ? import('./master.js').then((m) => m.default) : Promise.resolve(null);\n`));
 
 // ── 3. 그림 프레임 목록 (1차 = 월드 1~5) ───────────────────────────────────
 const SS = require('./stages.js');
@@ -142,5 +165,9 @@ const gp = path.join(SIM, 'golden.json');
 if (!fs.existsSync(gp)) fail('계산기에 golden.json 이 없다 — 먼저 `node golden.js`');
 fs.copyFileSync(gp, path.join(ROOT, 'tools/idg-golden.json'));
 files.push('tools/idg-golden.json');
+const gdp = path.join(SIM, 'golden.diff.json');   // 어려움 · 초고수 정답 (난이도마다 30줄)
+if (!fs.existsSync(gdp)) fail('계산기에 golden.diff.json 이 없다 — 먼저 `node golden.js`');
+fs.copyFileSync(gdp, path.join(ROOT, 'tools/idg-golden-diff.json'));
+files.push('tools/idg-golden-diff.json');
 
 console.log(`옮김 ${files.length}개 · 코어 줄 대조 OK (${want.length}줄) · 그림 프레임 ${names.length}개 (용 ${dragons.length} · 좀비 ${[...enemySet].filter((i) => !isBoss(i)).length} · 보스 ${[...enemySet].filter(isBoss).length} · 리더 ${leaders.length})`);

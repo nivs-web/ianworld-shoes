@@ -25,7 +25,7 @@ const GIM = {
   rush: '보스가 줄줄이 나와요! 보스 러시', wind: '앞에서 거센 바람이 불어요 — 용들이 느리게 걸어요', fog: '안개 — 멀리 있는 좀비가 잘 안 보여요',
   cost: '불씨 300 이하인 용만 나갈 수 있어요', money: '용돈 듬뿍! 불씨를 많이 들고 시작해요', fever: '불꽃 타임이 빨리 와요',
 };
-const ZART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant' };
+const ZART = { chubby: 'cone', shield: 'helmet', bossFat: 'bossGiant', shieldFirm: 'helmet', lavaFirm: 'lava', gearFirm: 'gear', shroomFirm: 'shroom' };   // *Firm = 초고수 굳센 좀비(원본 그림 그대로)
 const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 const UI = '/assets/iandragon_game/ui/';
@@ -227,7 +227,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
       if (stage.gim && GIM[stage.gim]) box.append(h('p', 'gim', GIM[stage.gim]));
       const zs = h('div', 'idg-intro-z');
       for (const tr of [...new Set(stage.lines.flatMap((l) => (ENEMIES[l.id]?.traits || []).filter((t) => ['ghost', 'giant', 'shadow', 'crystal'].includes(t))))]) { const ic = h('img', 'idg-attr'); ic.src = `/assets/iandragon_game/ui/hud_attr_${tr}_s.png`; ic.alt = ''; ic.title = ATTR_KO[tr]; ic.onerror = () => { ic.style.display = 'none'; }; zs.appendChild(ic); }   // 이 판의 특별한 좀비 (유령 · 거대 · 그림자 · 수정)
-      for (const id of [...new Set(stage.lines.map((l) => l.id))]) { const im = h('img'); im.src = `${AI}${ZART[id] || id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${ZART[id] || id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
+      for (const id of [...new Set(stage.lines.map((l) => ZART[l.id] || l.id))]) { const im = h('img'); im.src = `${AI}${id}/head.png`; im.alt = ''; im.onerror = () => { im.onerror = null; im.src = `${AI}${id}/torso.png`; }; zs.appendChild(im); }   // 머리 조각이 없는 좀비(박쥐)는 몸 그림
       box.append(zs, h('p', 'small', `★ 깨면 · ★★ ${stage.star2}초 안에 · ★★★ ${stage.star3}초 안에`));
     }
     else if ((kind === 'win' || kind === 'lose') && !info.pvp && !isNet && !stage.raid) {   /* 새 결과 창 (대표님 11/12 시안) */
