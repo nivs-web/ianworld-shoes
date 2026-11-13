@@ -10,7 +10,7 @@
 /*
  * 11/12 서브창2 (대표님 «화면 방향을 로비화면 · 게임화면 둘로») — 옛 키 'idgOrient'(하나짜리)는 읽지 않는다 → 모든 접속자가 새 기본값으로
  *  게임화면 = 가로 고정 (지금은 가로만 · 설정 창의 «자동» · «세로» 는 잠금 모양) — 전투 틀은 늘 아래 keepOrient 의 가로 돌려 그리기
- *  로비화면 = 키 'idgLobbyOrient' · 기본 세로('port') · «자동»(기기 그대로) · «가로» 로 바꿀 수 있다 — 로비 · 로비 창은 screen.orientation.lock 으로 따른다
+ *  로비화면 = 키 'idgLobbyOrient' · 기본 = 기기에 맞춤(폰 세로 · 그 밖 가로 · 11/13) · 설정 → 화면에서 «자동»(기기 그대로) · «가로» · «세로» 로 바꿀 수 있다 — 로비 · 로비 창은 screen.orientation.lock 으로 따른다
  *            (잠금이 되는 기기 = 안드로이드 전체 화면 · 설치 앱. 아이폰 · PC 는 잠금이 없어 기기 방향 그대로)
  */
 const LOBBY_KEY = 'idgLobbyOrient';
@@ -18,8 +18,25 @@ export const ORIENTS = [{ v: 'auto', label: '자동' }, { v: 'land', label: '가
 /** 게임화면 방향 : 지금은 가로만 */
 export const GAME_ORIENT = 'land';
 export const gameOrientPref = () => GAME_ORIENT;
-/** 로비화면 방향 : 'port'(기본) · 'auto' · 'land' */
-export const lobbyOrientPref = () => { try { const v = localStorage.getItem(LOBBY_KEY); return v === 'auto' || v === 'land' ? v : 'port'; } catch { return 'port'; } };
+/**
+ * 휴대폰인가 (11/13 대표님 «설정 바꿀 필요 없이 기기에 맞게») — 터치 + 화면 짧은 변 600px 미만 + 사용자 에이전트(Mobi · iPhone · Android Mobile) 셋 다.
+ * 아이패드(UA 에 iPad 또는 «맥인데 터치») · 안드로이드 태블릿(UA 에 Mobile 없음)은 폰이 아니다.
+ */
+export function isPhone() {
+  try {
+    const ua = navigator.userAgent || '';
+    if (/iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return false;
+    const touch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+    const short = Math.min(screen.width || innerWidth, screen.height || innerHeight) < 600;   /* 기기 화면의 짧은 변 */
+    return touch && short && /Mobi|iPhone|Android.+Mobile/i.test(ua);
+  } catch { return false; }
+}
+/** 사람이 [설정 → 화면]에서 직접 고른 값 ('auto' · 'land' · 'port') — 안 골랐으면 null */
+export const lobbyOrientChosen = () => { try { const v = localStorage.getItem(LOBBY_KEY); return v === 'auto' || v === 'land' || v === 'port' ? v : null; } catch { return null; } };
+/** 기기에 맞춘 처음 값 : 폰 = 세로 · 그 밖(태블릿 · PC · TV) = 가로 */
+export const lobbyOrientDefault = () => (isPhone() ? 'port' : 'land');
+/** 로비화면 방향 : 직접 고른 값이 먼저 · 없으면 기기에 맞춘 값 */
+export const lobbyOrientPref = () => lobbyOrientChosen() || lobbyOrientDefault();
 export function setLobbyOrientPref(v) { try { localStorage.setItem(LOBBY_KEY, v === 'auto' || v === 'land' ? v : 'port'); } catch { /* */ } if (!document.documentElement.classList.contains('idg-wide')) lockLobby(); }
 /** (옛 이름 · 전투 틀이 쓰는 방향) = 게임화면 방향 */
 export const orientPref = gameOrientPref;

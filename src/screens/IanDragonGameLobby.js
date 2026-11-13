@@ -18,7 +18,7 @@ import { getSettings } from '../audio/audio.js';
 import * as Sfx from '../audio/sfx.js';
 import '../styles/iandragon-game.css';
 import '../styles/idg-lobby2.css';   /* 새 로비 (11/12) — 위 파일 끝은 다른 사람이 자동으로 고치므로 따로 */
-import { soundPanel, soundPrefs, applySound, bgmStyleNow } from '../games/iandragon_game/render/soundPrefs.js';
+import { soundPrefs, applySound, bgmStyleNow } from '../games/iandragon_game/render/soundPrefs.js';
 import { lockLobby } from '../games/iandragon_game/render/rot.js';   /* 로비화면 방향 (기본 세로 · 음향 설정 «로비화면» · 11/12 서브창2) */
 import * as IdgAudio from '../games/iandragon_game/audio/index.js';
 import { lobbyScene } from './idgLobbyFun.js';
@@ -50,6 +50,8 @@ import '../styles/idg-lvbadge.css';   /* 레벨 배지 100 단위 색 · 열림 
 import { isOn } from '../services/switches.js';
 import { MUST, SONGS, EDM_NOTE, EDM_MUST, EDM_SONGS } from '../games/iandragon_game/data/musicCredits.js';
 import { showQuests } from './idgQuests.js';
+import { showSettings } from './idgSettings.js';   /* 설정 = 음향 · 화면 · 키보드 탭 (11/13 밤) */
+import './idgKeys.js';   /* 키보드만으로 로비 · 모든 창 다니기 (11/13 밤) */
 import { claimable } from '../services/iandragonQuests.js';
 import { OPEN_AT } from '../services/iandragonHatch.js';
 
@@ -146,7 +148,7 @@ function tile(key, label, fn, locked = false, dot = false) {
     el('img', { src: `${UI}icon_${key}.png`, alt: '', onerror: (e) => { if (ICO[key] && !e.target.dataset.f) { e.target.dataset.f = 1; e.target.src = `${AL}${ICO[key]}.png`; } else hideBad(e); } }), el('span', label),
   ]);
 }
-/** «더보기» 창 : 도감 · 게임하는 법 · 음향 설정 · 명예의 전당 · 음악 출처 */
+/** «더보기» 창 : 도감 · 게임하는 법 · 설정(음향 · 화면 · 키보드) · 명예의 전당 · 음악 출처 */
 function showMore(go = {}) {
   const pick = (fn) => () => { close(); fn(); };
   const box = el('div.dialog.idg-more.idg-xw', { onclick: (e) => e.stopPropagation() }, [
@@ -154,7 +156,7 @@ function showMore(go = {}) {
     el('div.idg-menu', null, [
       tile('codex', '도감', pick(() => showCodex(go))),
       tile('how', '게임하는 법', pick(showHow)),
-      tile('sound', '음향 설정', pick(showSound)),
+      tile('sound', '설정', pick(() => showSettings({ onSound: ({ mute }) => { if (mute === false) lobbyMusic(); } }))),   /* 전체 소리를 다시 켜면 로비 곡도 다시 */
       tile('hall', '명예의 전당', pick(showHall)),
       tile('music', '음악 출처', pick(showCredits)),
     ]),
@@ -162,16 +164,6 @@ function showMore(go = {}) {
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const close = presentOverlay(overlay);
 }
-/** «음향 설정» 창 (대표님 «설정 대신 음향 설정») — 전투 일시정지와 같은 판 */
-function showSound() {
-  Sfx.play('sfx_menu_select');
-  const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
-  /* 전체 소리를 다시 켜면 로비 곡도 다시 (끄면 setMuteAll 이 곡을 멈춘다) */
-  const box = el('div.dialog.idg-soundset.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('음향 설정', () => close()), soundPanel(mk, ({ mute }) => { if (mute === false) lobbyMusic(); })]);   /* 닫기 = 머리 X */
-  const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
-  const close = presentOverlay(overlay);
-}
-
 /*
  * 로비 배경음악 (11/12 대표님 «무섭고 으스스한 오케스트라») — 곡 바꾸기는 LOBBY_SONG 한 곳만 (music/music.json 의 키).
  *  지금 = 'lobby' (겜팀장 · 베를리오즈 «마녀들의 밤의 꿈» · music/lobby_lt) · 고리로 계속 돈다(music.json loop).

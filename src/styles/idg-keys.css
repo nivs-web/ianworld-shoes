@@ -1,0 +1,30 @@
+/* 좀비와 드래곤 키보드 포커스 표시 (11/13 밤) — 2px 딱딱한 금색 테 + 1px 검은 바깥 테 · 흐린 그림자 · 글로우 없음
+ * 테두리는 화면 맨 위에 떠 있는 상자 하나(.idg-kring · idgKeys.js 가 포커스 자리로 옮긴다) — 단추 자체의 모양 · 그림자는 건드리지 않고, 창의 overflow 에도 안 잘린다.
+ * 키보드를 쓰는 동안만(html.idg-kb) · 마우스 · 터치를 쓰면 숨는다. */
+.idg-kring {
+  position: fixed; left: 0; top: 0; z-index: 2147483000; display: none; box-sizing: border-box; pointer-events: none;
+  border: 2px solid #ffd23f; box-shadow: 0 0 0 1px #000; image-rendering: pixelated;
+}
+.idg-kring.on { display: block; }
+/* 브라우저 기본 포커스 줄은 우리 테두리와 겹치니 키보드로 쓰는 동안은 끈다 */
+html.idg-kb.idg-lobby-on :focus, html.idg-kb.idg-wide :focus { outline: none !important; }
+
+/* 설정 창 «키보드» 탭 표 (idgSettings.js) */
+.idg-keytab { display: flex; flex-direction: column; gap: 4px; }
+.idg-keytab .idg-k-row { min-height: 0; }
+.idg-key-chip { display: inline-block; min-width: 3.2em; padding: 3px 8px; box-sizing: border-box; text-align: center; font-weight: 800; font-size: 13px; line-height: 1.2; color: #fff6d8; background: #2a1238; border: 2px solid #7a5a2a; white-space: nowrap; }
+.idg-key-chip.wait { color: #ffd23f; border-color: #ffd23f; font-weight: 700; font-size: 12px; }
+.idg-key-chip.fixed { border-color: #5a4a6e; color: #d9cdea; }
+.idg-key-note { margin: 2px 0 6px; font-size: 12px; line-height: 1.4; opacity: .9; }
+.idg-keytab .idg-key-fixed .idg-k-row-txt span { font-size: 11.5px; line-height: 1.35; }
+.idg-set-note { margin: 6px 2px 0; font-size: 12px; line-height: 1.45; opacity: .9; }
+.idg-set-body { min-height: 0; }
+
+/* 전투 단추 귀퉁이 키 글자 (idgKeys.js hintKeys) — 키보드를 쓰거나 폰이 아닐 때만(html.idg-kh-on) · 터치하면 숨음 · 1px 딱딱한 외곽선 · 흐린 그림자 없음 */
+.idg-hud .idg-khint { display: none; position: absolute; left: 2px; top: -3px; z-index: 4; pointer-events: none; font: 700 16px/1 'Neo둥근모', monospace; font-style: normal; letter-spacing: 0; white-space: nowrap; color: #fff6d8;
+  text-shadow: 1px 0 0 #1a0c38, -1px 0 0 #1a0c38, 0 1px 0 #1a0c38, 0 -1px 0 #1a0c38, 1px 1px 0 #1a0c38, -1px 1px 0 #1a0c38, 1px -1px 0 #1a0c38, -1px -1px 0 #1a0c38; }
+html.idg-kh-on .idg-hud .idg-khint { display: block; }
+.idg-hud .idg-wallet { position: relative; }
+.idg-hud .idg-wallet .idg-khint { left: 5px; top: 1px; }   /* 출전 칸 숫자는 오른쪽 위 · 화로는 왼쪽 위 */
+.idg-hud .idg-khint.sym { font-size: 28px; top: -8px; }
+.idg-hud .idg-wallet .idg-khint.sym { top: 4px; left: 9px; font-size: 24px; }

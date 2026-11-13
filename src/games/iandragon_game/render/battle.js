@@ -150,6 +150,7 @@ export async function startBattle(ctx, opts) {
     aim(on) { view.aim = !!on; },   /* 브레스 단추를 누르고 있는 동안 사거리 */
     talk(t) { if (net?.code) { sendChat(net.code, t).catch?.(() => {}); ui.myTalk = t; ui.myTalkT = 1.6; } },
     look(f) { view.setCam((mirror ? 1 - f : f) * view.FIELD - ctx.view.w / 2); },
+    pan(d) { view.setCam(view.cam + d * ctx.view.w * (mirror ? -1 : 1)); },   /* 키보드 ← → : d = 화면 폭 비율(오른쪽 +) */
   });
 
   /* 처음 하는 아이를 위한 한 줄 안내 (튜토리얼 최소판) — 해당 행동을 하면 사라진다 */
