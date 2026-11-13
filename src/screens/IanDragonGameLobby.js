@@ -121,7 +121,7 @@ function showStages(onPick) {
     }) : []));
     /* 안내 글 : 잠긴 난이도가 있으면 그 조건 한 줄 (초고수 단추가 없는 계정에는 초고수 이야기를 안 한다) */
     const locked = diffOn ? keys.filter((k) => DIFF[k].stages && !diffUnlocked(g, k)) : [];
-    diffNote.textContent = locked.length ? LOCK_LINE[locked[0]] : '';
+    diffNote.textContent = cur === 'hard' ? '어려움은 드래곤 · 드래곤캐슬을 최대로 키워야 깰 수 있어요' : (locked.length ? LOCK_LINE[locked[0]] : '');   /* 대표님 11/13 : 어려움을 고르면 한 줄 안내 */
     const sk = D.star || 'stars', cls = STAR_CLS[cur] || '';
     grid.replaceChildren(...Array.from({ length: 10 }, (_, k) => {
       const no = (w - 1) * 10 + k + 1, st = Number((g[sk] || '')[no - 1]) || 0, isLocked = D.stages ? !diffOpen(no, g, cur) : no > open;
@@ -500,7 +500,8 @@ export default function IanDragonGameLobby(nav) {
           stone('raid', '좀비습격', () => { if ((G.idg().cleared || 0) < 20) { toast('좀비습격은 2-10을 깨면 열려요', 2200); return; } G.pickRaid(); start(); }, { locked: (g.cleared || 0) < 20 }),
           stone('quest', '도전과제', () => showQuests(() => nav.refresh?.()), { dot: claimable(g) > 0 }),
         ]),
-        el('div.l2-nextwrap', null, [el('div.l2-next', null, [
+        el('div.l2-nextwrap', null, [el('div.l2-next', { role: 'button', tabindex: '0', 'aria-label': '스테이지 고르기', onclick: () => showStages((n2) => start(n2)), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showStages((n2) => start(n2)); } } }, [   /* 누르면 [스테이지] 단추와 같은 창 (대표님 11/13) */
+          
           el('b.l2-next-t', done ? '모든 모험 끝!' : S.idgStatNext(G.stageLabel(no))),
           el('div.l2-stars' + (STAR_CLS[dN] || ''), null, [0, 1, 2].map((k) => el('img', { src: `${RES}star_${k < got ? 'on' : 'off'}.webp`, alt: k < got ? '★' : '☆' }))),
         ])]),
