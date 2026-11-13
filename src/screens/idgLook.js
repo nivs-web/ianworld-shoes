@@ -151,7 +151,7 @@ function openLook({ idg, save, onClose, tab }) {
   }
   const bigTabs = kitTabs({ old: true, label: '꾸미기 칸', tabs: [{ id: 'dragon', label: '드래곤 꾸미기' }, { id: 'castle', label: '드래곤캐슬 꾸미기' }], value: big, onPick: switchBig });
 
-  const list = el('div.idg-lk-list', null, [bar, trialBar, bigTabs, smallTabs, content]);
+  const list = el('div.idg-lk-list', null, [el('div.idg-lk-head', null, [bar, trialBar, bigTabs, smallTabs]), content]);   /* 머리 줄들을 한 묶음으로 (가로 낮은 화면에서 고정 · idg-land.css) */
   switchBig(big);
 
   const wrap = el('div.idg-lk', null, [side, list]);

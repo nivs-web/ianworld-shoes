@@ -4,6 +4,7 @@
 
 /* ── 위쪽 줄 : 코디 · 주사위 확인 · 큰 탭 · 작은 단추 ── */
 .idg-lk-list > * { min-width: 0; }
+.idg-lk-head { display: flex; flex-direction: column; gap: inherit; min-width: 0; }
 .idg-ob { display: flex; flex-wrap: wrap; align-items: center; gap: .3em .35em; }
 .idg-ob-label { color: var(--k-gold-hi, #ffd45a); font-size: .9em; margin-right: .1em; }
 .idg-ob-slots { display: flex; gap: .25em; }
