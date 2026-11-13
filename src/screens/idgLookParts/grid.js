@@ -34,6 +34,7 @@ export function itemGrid(items, o) {
       foot: it.owned ? [] : [lockLine(it.lock || '아이템 샵에서 팔아요'), ...(o.goShop ? [kitBtn({ kind: 'purple', size: 'sm', text: '샵 가기', cls: 'idg-lg-go', onClick: (e) => { e.stopPropagation(); o.goShop(); } })] : [])],
     });
     if (r) c.style.setProperty('--rc', r.c), c.classList.add(`r${it.rarity}`);
+    if (it.filter) { const im = c.querySelector('img'); if (im) im.style.filter = it.filter; }   /* 새 테두리 = 기존 그림 + 색 필터 (미리보기 카드 한정 · 전투 아님) */
     if (!it.owned) {
       c.querySelector('.idg-sp-top')?.append(el('img.idg-lg-lockmini', { src: ICON.lock, alt: '', draggable: 'false' }));
       c.addEventListener('click', () => { snd('sfx_menu_select'); say(it); });

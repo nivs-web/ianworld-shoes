@@ -40,9 +40,9 @@ const pick1 = (a) => a[Math.floor(Math.random() * a.length)];
 /** 물건 목록(data/catalog.js)을 받은 뒤 연다 — 못 받아도 열린다(물건 칸은 비어 보임) */
 export const showLook = (opts) => loadCatalog().then(() => openLook(opts));
 
-function openLook({ idg, save, onClose }) {
+function openLook({ idg, save, onClose, tab }) {
   Sfx.play('sfx_menu_select');
-  let cur = idg, big = 'dragon', trial = null, panelH = null;
+  let cur = idg, big = tab === 'castle' ? 'castle' : 'dragon', trial = null, panelH = null;   // tab = 처음 열 큰 칸 (로비 무대를 누르면 보이던 것 쪽)
   const small = { dragon: 'dragon', castle: 'skin' };
   const saveSync = (part) => { const n = save(part); if (n) cur = n; return n; };
 
@@ -61,12 +61,9 @@ function openLook({ idg, save, onClose }) {
   const dragonBox = el('div.idg-lk-dbox'), live = liveDragon(dragonBox);
   const nameEl = el('b.idg-lk-name'), titleEl = el('span.idg-lk-title');
   const flame = el('img.idg-lk-breath-img.idg-lk-flame', { alt: '' }), flameBox = el('div.idg-lk-breath', { role: 'img' }, [flame]);
-  const ph = (cls, label) => el(`i.idg-ph.${cls}`, { 'aria-hidden': 'true', title: `${label} (자리 · 그림 준비 중)` }, [el('small', label)]);   /* 임시 점선 네모 */
-  const auraPh = ph('aura', '오라'), petPh = ph('pet', '펫');
-  const dragonStage = el('div.idg-lk-stage', null, [el('i.idg-lk-slab'), auraPh, dragonBox, petPh, flameBox, el('div.idg-lk-tag', null, [nameEl, titleEl])]);
-  /** 고른 물건 이름 (그림이 아직 없는 오라 · 펫은 점선 칸에 이름이 적힌다) */
+  const dragonStage = el('div.idg-lk-stage', null, [el('i.idg-lk-slab'), dragonBox, flameBox, el('div.idg-lk-tag', null, [nameEl, titleEl])]);
+  /** 고른 물건 이름 */
   const nameOfItem = (slot, id) => catalogFor(slot, cur).find((x) => x.id === id)?.name || '';
-  const labelPh = (node, base, slot, id) => { node.querySelector('small').textContent = id ? nameOfItem(slot, id) : base; node.classList.toggle('on', !!id); };
   const cs = castleStage();
   const side = el('div.idg-lk-side');
   let shownKey = '';
@@ -76,17 +73,15 @@ function openLook({ idg, save, onClose }) {
     dragonStage.classList.toggle('framed', !!FRAME_COLOR[keep.frame]);
     nameEl.textContent = LEADERS[ld]?.ko || ld;
     titleEl.textContent = t ? `«${t.name}»` : ''; titleEl.hidden = !t;
-    const key = `${ld}|${w.hat || ''}|${w.neck || ''}`;
-    if (key !== shownKey) { shownKey = key; live.show(ld, encodeLook({ hat: w.hat, neck: w.neck })); }
+    const key = `${ld}|${w.hat || ''}|${w.neck || ''}|${w.aura || ''}|${w.pet || ''}`;
+    if (key !== shownKey) { shownKey = key; live.show(ld, encodeLook({ hat: w.hat, neck: w.neck }), { aura: w.aura, pet: w.pet }); }
     const br = w.breath || 'basic';
     flame.onerror = () => { flame.onerror = null; flame.src = artOf('breath', 'basic'); };   /* 새 브레스 색 그림이 아직 없으면 기본 불꽃 */
     flame.src = artOf('breath', br);
     flameBox.setAttribute('aria-label', `브레스 색 : ${br === 'basic' ? '기본 불꽃' : nameOfItem('breath', br)}`);
-    labelPh(auraPh, '오라', 'aura', w.aura); labelPh(petPh, '펫', 'pet', w.pet);
-    dragonStage.classList.toggle('has-aura', !!w.aura); dragonStage.classList.toggle('has-pet', !!w.pet);
   }
   const gearSlots = () => { const c = castleOf(cur), n = CASTLE_LV[c.lv - 1].slots; return Array.from({ length: n }, (_, i) => (GEAR.some((g) => g.id === c.slots[i]) && gearLv(cur, c.slots[i]) ? c.slots[i] : null)); };
-  const drawStage = () => (big === 'dragon' ? drawDragon() : cs.update(shown(), gearSlots(), (slot, id) => nameOfItem(slot, id)));
+  const drawStage = () => (big === 'dragon' ? drawDragon() : cs.update(shown(), gearSlots(), (id) => gearLv(cur, id)));
 
   /* ── 코디 줄 · 주사위 확인 줄 ── */
   const fitsOf = () => [0, 1, 2].map((i) => { const f = Array.isArray(cur.fits) ? cur.fits[i] : null; return { look: typeof f?.look === 'string' ? f.look : '', clook: typeof f?.clook === 'string' ? f.clook : '' }; });
@@ -157,13 +152,13 @@ function openLook({ idg, save, onClose }) {
   const bigTabs = kitTabs({ old: true, label: '꾸미기 칸', tabs: [{ id: 'dragon', label: '드래곤 꾸미기' }, { id: 'castle', label: '드래곤캐슬 꾸미기' }], value: big, onPick: switchBig });
 
   const list = el('div.idg-lk-list', null, [bar, trialBar, bigTabs, smallTabs, content]);
-  switchBig('dragon');
+  switchBig(big);
 
   const wrap = el('div.idg-lk', null, [side, list]);
   const box = el('div.dialog.idg-look.idg-look2.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['꾸미기', kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X (아래 단추가 목록을 가리지 않게) */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   let done = false;
-  const ended = () => { if (done) return; done = true; live.kill(); onClose?.(); };   // 닫으면(뒤로가기 포함) 로비 다시 그리기 — 무대 드래곤 · 코인 · 젬
+  const ended = () => { if (done) return; done = true; live.kill(); cs.kill(); onClose?.(); };   // 닫으면(뒤로가기 포함) 로비 다시 그리기 — 무대 드래곤 · 코인 · 젬
   const closeO = presentOverlay(overlay, ended);
   const close = () => { closeO(); ended(); };
 }

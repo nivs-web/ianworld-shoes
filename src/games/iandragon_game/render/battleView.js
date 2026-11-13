@@ -20,6 +20,7 @@ import { BREATH_PAL } from '../data/lookFx.js';
 import { BREATH_COLORS } from '../data/looks.js';
 import { lightsFor, fxFrames, makeBreath, tileMirror } from './living.js';
 import { lanesFor, laneY } from './lanes.js';
+import { keepBase, anchorsOf, loadDecoTex, buildDeco, makeFlag, wave, makeAura, makePet } from './castleKit.js';
 
 const AI = '/assets/iandragon_game/ai/';
 /** 예전 한 줄 땅 높이 (11/12 부터 전투는 월드마다 lanes.js — 발 높이 spawnY · 성 밑동 castleY). 밖에서 쓰는 곳을 위해 남겨 둠 */
@@ -31,9 +32,12 @@ const artOf = (id) => ART[id] || id;
 const nearest = (t) => { t.source.scaleMode = 'nearest'; return t; };
 const tryLoad = (url) => Assets.load(url).then(nearest).catch(() => null);
 
-export async function createBattleView(ctx, { world, L, dragons, enemies, leader = 'novart', pvp = false, mirror = false, foeLeader = null, look = {}, lookR = {} }) {   // look = 왼쪽(0번 편) · lookR = 오른쪽(대결 상대)
+export async function createBattleView(ctx, { world, L, dragons, enemies, leader = 'novart', pvp = false, mirror = false, foeLeader = null, look = {}, lookR = {}, deco = null }) {   // look = 왼쪽(0번 편) · lookR = 오른쪽(대결 상대) · deco = 내 드래곤캐슬 꾸밈(castleKit.decoOf · 대결은 늘 1단계)
   const { app, view } = ctx;
   const FIELD = M + L + M;
+  /* 내 드래곤캐슬 단계(모습) — 1단계 = 옛 nest_* · 2 ~ 10단계 = keep_sNN_* (8상태 이어짐). 대결은 양쪽 둥지 그대로 */
+  const skin = pvp ? 1 : deco?.skin || 1, dc = pvp ? null : deco;
+  const decoTexP = dc ? loadDecoTex(dc).catch(() => null) : null, anchorP = anchorsOf(skin);
   /* ── 그림 받기 */
   const ids = [...new Set([...dragons.flatMap((d) => (d.lv >= 10 ? [d.id, d.id + '_2'] : [d.id])), ...enemies.map(artOf), leader, ...(foeLeader ? [foeLeader] : []), 'kkomul', 'walker'])];
   const rigs = {};
@@ -50,7 +54,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   /* 앞 겹 = lanes.json 의 그 월드 front (1 · 3 · 6 · 10 = 다시 그린 _v3 · 11/12 대표님 확정) — 못 받으면 원래 wNN_front */
   const lanesP = lanesFor(world);
   const layersP = Promise.all([img(`${AI}bg/layers/w${wN}_sky`), lanesP.then((ln) => img(`${AI}bg/layers/${ln.front.replace(/\.(png|webp)$/, '')}`)).then((t) => t || img(`${AI}bg/layers/w${wN}_front`))]);
-  const nestP = img(`${AI}castles/nest_hp0`), towerP = towerImg('hp0');
+  const nestP = img(keepBase(skin, 'hp0')), towerP = towerImg('hp0');
   const eggP = Promise.all(['egg_rare', 'egg_super'].map((n) => tryLoad(`${AI}eggs/${n}.png`)));   /* 둥지에서 품는 알 = 부화장 알 그림 재사용 (아래 brood) */
   const hpP = Promise.all([...['hp_unit_frame', 'hp_unit_fill_me', 'hp_unit_fill_foe', 'hp_castle_frame', 'hp_castle_fill'].map((n) => tryLoad(`${AI}hud/${n}.png`)), fetch(`${AI}hud/hp_bars.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
   const fxP = Promise.all([tryLoad(`${AI}fx/meteor.png`), fxFrames('boom').catch(() => null)]);
@@ -92,7 +96,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     towerP.then((t) => [t, null, null, null]),
   ]);
   const funP = loadFun().catch(() => null);   /* 재미 요소 그림(약 0.4MB)은 기다리지 않는다 — 전투가 뜬 뒤 오면 그때부터 (11/11 밤 속도) */
-  setTimeout(() => { for (const i of [1, 2, 3]) { img(`${AI}castles/nest_hp${i}`).then((t) => { nestT[i] = t; if (pvp) towerT[i] = t; }); if (!pvp) towerImg(`hp${i}`).then((t) => { towerT[i] = t; }); } }, 800);
+  setTimeout(() => { for (const i of [1, 2, 3]) { img(keepBase(skin, `hp${i}`)).then((t) => { nestT[i] = t; if (pvp) towerT[i] = t; }); if (!pvp) towerImg(`hp${i}`).then((t) => { towerT[i] = t; }); } }, 800);
 
   /* 체력 바 도트 그림 (그림 담당 hp_bars.json · 2026-11-11 대표님 «생명 게이지가 도트가 아니다») — 없으면 예전 막대 */
   const [hpUF, hpUMe, hpUFoe, hpCF, hpCFill, hpMeta] = await hpP;
@@ -109,9 +113,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   setTimeout(() => {
     Promise.all([
       Promise.all([0, 1].map((i) => towerImg(`fall${i}`))),
-      Promise.all([0, 1].map((i) => img(`${AI}castles/nest_fall${i}`))),
+      Promise.all([0, 1].map((i) => img(keepBase(skin, `fall${i}`)))),
       Promise.all([0, 1, 2, 3, 4, 5].map((i) => tryLoad(`${AI}fx/smoke_${i}.png`))).then((a) => a.filter(Boolean)),
-      towerImg('rubble'), img(`${AI}castles/nest_rubble`), fxFrames('crumble').catch(() => null),
+      towerImg('rubble'), img(keepBase(skin, 'rubble')), fxFrames('crumble').catch(() => null),
     ]).then(([a, b2, c, d, e, f]) => { towerFallT = a; nestFallT = b2; smokeT = c; towerRubT = d; nestRubT = e; crumbleFx = f; }).catch(() => {});
   }, 1500);
   /** 도트 체력 바 하나 : 테두리 + 채움(왼쪽 맞춤 · 비율만큼 가로로 줄임). W = 화면 너비 */
@@ -150,8 +154,13 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
   const nest = new Sprite(nestT[0]); nest.anchor.set(0.5, 1); nest.position.set(M - 40, CY);
   const tower = new Sprite(towerT[0]); tower.anchor.set(0.5, 1); tower.position.set(M + L + 40, CY); if (pvp) tower.scale.x = -1;
   stage.addChild(nest, tower, units, fx);
+  /* 드래곤캐슬 꾸밈 (11/13 · castleKit) : 지붕 · 성문 · 앞마당 · 끼운 장비 = 성 앞에 얹고, 성이 금 가는 동안(hp0 ~ hp2)만 보인다 */
+  const A = await anchorP, dtx = decoTexP ? await decoTexP : null;
+  nest.scale.set(A.k);   // 키 큰 캐슬은 FIT_H 로 줄여 그린다 (castleKit)
+  const decoL = dtx ? buildDeco(A, dc, dtx) : null;
+  if (decoL) stage.addChildAt(decoL.front, stage.getChildIndex(units));
   const torches = [];
-  if (torchFx && !pvp) for (const lx of [28, 177]) { const a = new AnimatedSprite(torchFx.frames); a.anchor.set(0.5, 1); a.scale.set(0.62); a.animationSpeed = (torchFx.meta.fps / 60) * (0.9 + Math.random() * 0.2); a.gotoAndPlay((Math.random() * torchFx.frames.length) | 0); a.position.set(nest.x - nest.width / 2 + lx, CY - nest.height + 197); stage.addChildAt(a, stage.getChildIndex(nest) + 1); torches.push(a); }
+  if (torchFx && !pvp && skin === 1) for (const lx of [28, 177]) { const a = new AnimatedSprite(torchFx.frames); a.anchor.set(0.5, 1); a.scale.set(0.62); a.animationSpeed = (torchFx.meta.fps / 60) * (0.9 + Math.random() * 0.2); a.gotoAndPlay((Math.random() * torchFx.frames.length) | 0); a.position.set(nest.x - nest.width / 2 + lx, CY - nest.height + 197); stage.addChildAt(a, stage.getChildIndex(nest) + 1); torches.push(a); }
   const castleBars = [];   /* 성 체력 게이지는 HUD 위 숫자 옆으로 옮김 (11/11 · 떠 있는 HUD) — 성 위 캔버스 바는 쓰지 않음 */
   const shade = new Graphics().rect(-50, -50, FIELD + 100, 700).fill(0x000000); shade.alpha = 0; root.addChild(shade);
   /* 안개 기믹 : 내 맨 앞 + 260칸 너머를 짙은 안개로 (화면 전용) */
@@ -223,7 +232,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     }
   }
   async function dress(rig, lk, castle, art) {
-    const flagT = lk.flag ? await tryLoad(`${AI}meta/flag_${lk.flag}.png`) : null;
+    const flagT = castle === nest && dtx?.flag ? dtx.flag : lk.flag ? await tryLoad(`${AI}meta/flag_${lk.flag}.png`) : null;   // 내 성 : 새 꾸미기 깃발(png · webp 둘 다)
     if (rig) await wear(rig, art, lk);
     if (flagT && castle) groundFlag(castle, flagT);
   }
@@ -236,21 +245,22 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
    * 천은 밑동 위 FLAG_H 라 서 있는 보통 유닛 머리보다 높다. 내 성 = 성 오른쪽 · 천은 들판 쪽으로 펄럭 / 대결 상대 성 = 좌우 대칭.
    * FLAG_SIDE -1 = 성 왼쪽 안(비교용 · 화면 왼쪽 끝 · 왼쪽 화로와 겹쳐 오른쪽을 기본으로).
    */
-  const FLAG_SIDE = 1, FLAG_H = 150, FLAG_W = 44, FLAG_HH = 64;
+  const FLAG_SIDE = 1;
   function groundFlag(castle, flagT) {
     const me = castle === nest, out = me ? 1 : -1;   // out = 그 성에서 들판 쪽
-    const dx = FLAG_SIDE > 0 ? 108 : -84, dir = FLAG_SIDE > 0 ? out : -out;   // 깃대 자리 · 천 방향 (오른쪽 안 : 오른쪽 화로 바로 바깥 — 세로 화면에서도 천이 다 보이게 · 왼쪽 안 : 성 왼쪽 기둥 앞, 천은 바깥으로)
-    const baseY = S0 + 1, h = Math.min(FLAG_H, baseY - FLAG_TOP - 8);
-    const box = new Container(); box.position.set(Math.round(castle.x + out * dx), baseY);
-    const pole = new Graphics()
-      .rect(-5, -2, 10, 3).fill(0x3a2a1e)                                   /* 꽂힌 자리 흙 */
-      .rect(-2, -h, 4, h).fill(0x3a2410).rect(-1, -h, 2, h).fill(0x6a4424)  /* 깃대 */
-      .rect(-3, -h - 5, 6, 6).fill(0x5a3a10).rect(-2, -h - 4, 4, 4).fill(0xe0b040);   /* 꼭지 */
-    const f = new Sprite(flagT); f.anchor.set(0, 0); f.width = FLAG_W; f.height = FLAG_HH; if (dir < 0) f.scale.x *= -1; f.position.set(dir * 2, -h + 2);
-    box.addChild(pole, f); stage.addChildAt(box, stage.getChildIndex(units)); flags.push(f); flagBox[me ? 0 : 1] = box;
+    const dx = FLAG_SIDE > 0 ? Math.round(castle.width / 2) + 2 : -84, dir = FLAG_SIDE > 0 ? out : -out;   // 깃대 자리 = 성 오른쪽 밑동 바로 바깥 (성 너비에 맞춤) · 천 방향
+    const baseY = S0 + 1;
+    /* 깃발은 미리보기 · 로비 · 전투가 같은 함수(castleKit.makeFlag) : 깃대 높이 = 성 높이의 60% (위 체력 막대에 안 가리게 상한) · 모든 깃발 같은 크기 */
+    const { box, cloth } = makeFlag(flagT, me ? A.h : castle.height, { poleMax: baseY - FLAG_TOP - 8, dir });
+    box.position.set(Math.round(castle.x + out * dx), baseY);
+    stage.addChildAt(box, stage.getChildIndex(units)); flags.push(cloth); flagBox[me ? 0 : 1] = box;
   }
   await Promise.all([dress(lead, look, nest, leader), dress(lead2, lookR, pvp ? tower : null, foeLeader)]);
-  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + 4, CY - nest.height + LEAD_FEET); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }
+  if (lead) { lead.set('idle'); lead.root.position.set(nest.x + A.seat[0], CY + A.seat[1]); stage.addChildAt(lead.root, stage.getChildIndex(units)); lead.baseY = lead.root.y; }   // 둥지 자리 = 단계마다 castle_anchor.json (1단계 = 예전 +4 · 66 그대로)
+  /* 오라 = 드래곤 발밑 · 펫 = 드래곤 옆에 둥둥 (castleKit · 시트에서 칸을 잘라 쓴다) */
+  let aura = null, pet = null;
+  if (lead && dtx?.aura) { aura = makeAura(dtx.aura, 150); aura.position.set(lead.root.x, lead.baseY + 14); stage.addChildAt(aura, stage.getChildIndex(lead.root)); }   // 발밑 : 용 · 알 · 짚 뒤에 깔려 아랫부분이 둥지 아래로 비친다
+  if (lead && dtx?.pet) { pet = makePet(dtx.pet, 52); pet.position.set(lead.root.x + 54, lead.baseY - 86); }
   if (lead2) lead2.baseY = lead2.root.y;
   /*
    * 알 품기 (11/12 대표님 «알을 품고 있는 느낌이 전혀 없다» · 오래 반복) : 둥지 그림 속 알(작다)이 리더 몸에 다 가렸다.
@@ -279,6 +289,13 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     broods.push({ c: castle, R, back, front, lip, move: [eggsB, eggsF, mask], T: castle === nest ? nestT : towerT, off: [0, 0] });
   }
   /** 매 장면 : 성 흔들림 · 금 간 그림 · 깜박임을 따라간다 (리더는 흔들리지 않고 짚 자리만 따라감 · 대결 승리 깡충은 그대로) */
+  /** 꾸밈이 성(흔들림 · 금 간 그림)을 따라감 · 성이 무너지면(hp3 · 기울어짐) 숨김 */
+  function decoUpdate() {
+    if (decoL) { const k = nestT.indexOf(nest.texture); decoL.front.visible = decoL.top.visible = k >= 0 && k <= 2; decoL.front.position.set(nest.x, nest.y); decoL.top.position.copyFrom(decoL.front.position); }
+    const on = !!lead?.root.visible;
+    if (aura) { aura.visible = on; aura.x = lead.root.x; }
+    if (pet) { pet.visible = on; pet.y = lead.baseY - 86 - (Math.floor(performance.now() / 420) % 2) * 3; }   // 둥둥 : 3칸 오르내림 (보간 없이)
+  }
   function broodUpdate() {
     for (const b of broods) {
       const on = b.R.root.visible, tex = b.c.texture, k = b.T.indexOf(tex);
@@ -293,7 +310,10 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       b.lip.texture = tex; b.lip.tint = b.c.tint;
     }
   }
-  brood(nest, lead); brood(tower, lead2);
+  if (skin === 1) brood(nest, lead);   // 알 품기(둥지 그림 좌표)는 1단계 둥지 탑 전용 — 2 ~ 10단계 그림은 둥지와 알이 그림 안에 있다
+  brood(tower, lead2);
+  /* 층 : … 리더 → 앞 알 · 짚 띠 → 지붕 → 펫 (지붕은 용 · 짚 뒤에 가리면 안 된다) */
+  for (const o of [decoL?.top, pet]) if (o) stage.addChildAt(o, stage.getChildIndex(units));
 
   const white = new ColorMatrixFilter();
   white.matrix = [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0];
@@ -634,8 +654,9 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
       if (lead) lead.update(dt);
       if (lead2) lead2.update(dt);
       broodUpdate();   // 알 · 앞 짚 · 리더가 둥지(흔들림 · 금 간 그림)를 따라감
+      decoUpdate();
       for (const [b, t] of follow) { if (b.destroyed || t.destroyed) continue; b.position.copyFrom(t.position); b.rotation = t.rotation; }
-      for (const f of flags) f.skew.y = Math.sin(performance.now() / 260 + f.x) * 0.06;   // 깃발 펄럭
+      for (const f of flags) wave(f);   // 깃발 펄럭
     },
     /** 미니맵 · 시작 위치 */
     setCam(x) { camX = Math.max(0, Math.min(FIELD - view.w, x)); handT = 3; },

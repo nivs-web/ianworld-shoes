@@ -1,0 +1,11 @@
+/* 프로필 창 (겜보조 2 · 11/13) — 머리 줄(얼굴 · 이름 · 레벨) + 테두리 · 칭호 격자. 카드는 꾸미기 창과 같은 .idg-lg */
+.dialog.idg-profile .idg-pf-info { display: flex; align-items: center; gap: .6em; padding: .2em .3em .5em; }
+.dialog.idg-profile .idg-pf-info:empty { display: none; }
+.idg-pf-info .l2-face { --fs: 68px; flex: none; width: var(--fs); height: calc(var(--fs) * 1.073); position: relative; }
+.idg-pf-info .l2-face::before { content: ''; position: absolute; left: 10%; width: 80%; top: 16%; height: 74.5%; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #7a48c0 0 40%, #4a2380 70%, #2a1250 100%); }
+.idg-pf-info .l2-face::after { content: ''; position: absolute; inset: 0; background: url(/assets/iandragon_game/ai/lobby2/ring.webp) center / 100% 100% no-repeat; image-rendering: pixelated; }
+.idg-pf-info .l2-face-c { position: absolute; z-index: 1; left: 17%; width: 66%; top: 21.4%; height: 61.5%; image-rendering: pixelated; }
+.idg-pf-info .idg-pf-who { display: flex; flex-direction: column; gap: .3em; min-width: 0; }
+.idg-pf-info .idg-pf-nick { font: 900 1.05em / 1.1 'Pretendard Variable', Pretendard, sans-serif; color: #fff; text-shadow: 1px 0 #1a0c38, -1px 0 #1a0c38, 0 1px #1a0c38, 0 -1px #1a0c38, 1px 1px #1a0c38, -1px 1px #1a0c38, 1px -1px #1a0c38, -1px -1px #1a0c38; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.idg-pf-info .idg-pf-ttl { font-size: .8em; color: #ffe7a6; }
+.idg-pf-content { min-height: 0; }

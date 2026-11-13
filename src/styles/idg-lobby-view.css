@@ -1,0 +1,19 @@
+/* 로비 드래곤 ↔ 드래곤캐슬 전환 (겜보조 2 · 11/13) — 단추 · 먼지 · 통통. 글씨 외곽선 = 1px 8방향 도트만 · 빛번짐 없음 */
+.screen.idg-lobby2 > .l2-switch { position: absolute; z-index: 2; left: 50%; top: calc(var(--sty) + var(--foot) * var(--sc) + 10 * var(--sc)); transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: .35em; margin: 0; padding: .28em .8em .28em .5em; box-sizing: border-box; white-space: nowrap; cursor: pointer;
+  font: 900 calc(var(--fs, 28px) * .26) / 1 'Pretendard Variable', Pretendard, sans-serif; color: #fff7d6; text-shadow: var(--t1);
+  background: rgba(255, 201, 60, .5); border: 2px solid rgba(255, 233, 160, .92); border-radius: .5em; box-shadow: 0 2px 0 rgba(60, 28, 0, .55); }
+.screen.idg-lobby2 > .l2-switch:active { transform: translateX(-50%) translateY(1px); background: rgba(255, 201, 60, .72); }
+.l2-sw-ico { flex: none; width: 1.25em; height: 1.25em; image-rendering: pixelated; background: center / 100% 100% no-repeat
+  url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%20shape-rendering='crispEdges'%3E%3Cpath%20fill='%233a1c00'%20d='M1%203h9v2H1zM10%201h1v6h-1zM11%202h1v4h-1zM12%203h1v2h-1zM6%2011h9v2H6zM5%209h1v6H5zM4%2010h1v4H4zM3%2011h1v2H3z'/%3E%3C/svg%3E"); }
+/* 먼지 «펑» : 무대 한가운데 2~3칸 (칸 교체 · 번짐 없음) */
+.screen.idg-lobby2 > .l2-puff { position: absolute; z-index: 3; left: 50%; top: calc(var(--sty) + var(--foot) * var(--sc)); height: calc(var(--dk) * var(--sc)); aspect-ratio: 420 / 330; transform: translate(-50%, -100%); pointer-events: none; display: grid; place-items: center; }
+.l2-puff img { width: 46%; image-rendering: pixelated; }
+/* «통통» : 0.3초 · 3칸 뚝뚝 (크기 0.8 → 1.12 → 1) */
+.l2-dragon.pop { animation: l2Pop .3s steps(1) 1; }
+@keyframes l2Pop { 0% { scale: .8; } 34% { scale: 1.12; } 67% { scale: .96; } 100% { scale: 1; } }
+.l2-dragon.l2-castle::before { display: none; }
+@media (prefers-reduced-motion: reduce) { .l2-dragon.pop { animation: none; } }
+/* 캐슬을 보는 동안 : 무대 옆 장면 깃발(드래곤 무대용)은 숨긴다 — 캐슬이 자기 깃발을 들고 있다 */
+.screen.idg-lobby2.view-castle .l2-flag { display: none; }
+.screen.idg-lobby2 .l2-player { cursor: pointer; }

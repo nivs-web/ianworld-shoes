@@ -4,19 +4,22 @@
  */
 import { dressedCanvas } from '../idgDressed.js';
 import { decodeLook } from '../../games/iandragon_game/data/looks.js';
+import { loadDecoTex, makeAura, makePet } from '../../games/iandragon_game/render/castleKit.js';
 
 const B = '/assets/iandragon_game/';
-export const CW = 360, CH = 300;   // 미리보기 캔버스 속 크기 (CSS 가 칸에 맞춰 늘림 · 도트 그대로)
+export const CW = 360, CH = 300;
+const PET_Y = Math.round(CH * 0.66);   // 미리보기 캔버스 속 크기 (CSS 가 칸에 맞춰 늘림 · 도트 그대로)
 
 /**
  * 살아 있는 용 한 마리 (로비 myDragon · liveRig 와 같은 방법 : rig idle + wear.json 모자 · 목 장식) — Pixi 캔버스 하나를 창이 닫힐 때까지 다시 쓴다.
  * WebGL 이 안 되면 꾸민 정지 그림(dressedCanvas)으로.
  */
 export function liveDragon(host) {
-  let app = null, appP = null, gen = 0, R = null, follow = [], dead = false;
+  let app = null, appP = null, gen = 0, R = null, follow = [], dead = false, fxs = [], pet = null;
   const tick = (tk) => {
-    if (!host.isConnected) { kill(); return; }   // 창이 사라졌으면 스스로 정리
+    if (!host.isConnected) return;   // 탭을 바꿔 잠깐 빠져 있는 동안은 쉰다 (창이 닫히면 idgLook 이 kill)
     if (R) { R.update(Math.min(0.1, tk.deltaMS / 1000)); for (const [bx, t] of follow) bx.position.copyFrom(t.position); }
+    if (pet) pet.y = PET_Y - (Math.floor(performance.now() / 420) % 2) * 3;   // 둥둥 : 3칸 오르내림 (보간 없이)
   };
   function ensureApp(Application) {
     if (!appP) appP = (async () => {
@@ -61,14 +64,19 @@ export function liveDragon(host) {
       host.replaceChildren(c);
     }).catch(() => {});
   }
-  async function show(ld, look) {
+  async function show(ld, look, fx = {}) {
     const my = ++gen;
     try {
-      const { r, fl, Application } = await build(ld, look);
+      const [{ r, fl, Application }, tex] = await Promise.all([build(ld, look), fx.aura || fx.pet ? loadDecoTex({ aura: fx.aura, pet: fx.pet, gear: [] }) : null]);
       const a = await ensureApp(Application);
       if (my !== gen || dead) { r.root.destroy({ children: true }); return; }
       if (R) { a.stage.removeChild(R.root); R.root.destroy({ children: true }); }
+      for (const o of fxs) { a.stage.removeChild(o); o.destroy(); }
+      fxs = []; pet = null;
+      /* 오라 = 발밑(용 뒤) · 펫 = 용 옆에 둥둥 — 로비 · 전투와 같은 castleKit 함수 */
+      if (tex?.aura) { const o = makeAura(tex.aura, Math.round(CW * 0.5)); o.position.set(CW / 2, CH - 14); a.stage.addChild(o); fxs.push(o); }
       R = r; follow = fl; a.stage.addChild(r.root);
+      if (tex?.pet) { pet = makePet(tex.pet, Math.round(CW * 0.2)); pet.position.set(Math.round(CW * 0.82), PET_Y); a.stage.addChild(pet); fxs.push(pet); }
       if (a.canvas.parentNode !== host) host.replaceChildren(a.canvas);
     } catch {
       if (my === gen && !dead) still(ld, look, my);

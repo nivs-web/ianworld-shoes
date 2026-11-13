@@ -22,6 +22,8 @@ import { soundPanel, soundPrefs, applySound, bgmStyleNow } from '../games/iandra
 import { lockLobby } from '../games/iandragon_game/render/rot.js';   /* 로비화면 방향 (기본 세로 · 음향 설정 «로비화면» · 11/12 서브창2) */
 import * as IdgAudio from '../games/iandragon_game/audio/index.js';
 import { lobbyScene } from './idgLobbyFun.js';
+import { viewOf, castleBox, switchButton, flip } from './idgLobbyView.js';   /* 드래곤 ↔ 드래곤캐슬 전환 (11/13) */
+import { decoOf, loadDecoTex, makeAura, makePet } from '../games/iandragon_game/render/castleKit.js';
 /* 재미 요소 층 (촛불 · 등불 · 창문 · 호박 · 무덤 좀비 · 마녀 순환 — 다른 보조의 lobbyFx.js · idg-lobby-fx.css). 파일이 아직 없어도 터지지 않게 glob (없으면 빈 묶음) */
 const FXMOD = import.meta.glob(['./lobbyFx.js', '../styles/idg-lobby-fx.css']);
 import { showNest } from './idgNest.js';
@@ -35,6 +37,7 @@ import { showLab } from './idgLab.js';
 import { showMulti } from './idgMulti.js';
 import { showShop } from './idgShop.js';
 import { showLook } from './idgLook.js';
+import { showProfile } from './idgProfile.js';   /* 프로필 창 : 테두리 · 칭호 고르기 (꾸미기에서 옮김 · 11/13) */
 import { showHall, checkRaidFrame } from './idgHall.js';   /* 주간 습격 테두리 = 전당 쪽 판 (51위 아래도 받게 · 보조 H) */
 import { TITLES, titleOf, decodeLook } from '../games/iandragon_game/data/looks.js';
 import { currentUser } from '../services/auth.js';
@@ -311,6 +314,7 @@ async function runNotices({ onLook, onDone }) {
 }
 
 export default function IanDragonGameLobby(nav) {
+  let stageNow = null;   // 지금 무대 노드 (드래곤캐슬이면 kill 로 Pixi 캔버스를 치운다)
   setTimeout(checkTitles, 900);
   setTimeout(() => runNotices({ onLook: () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() }), onDone: () => nav.refresh?.() }), 700);   // 열림 연출 · 안내 · 레벨 선물 (11/13)
   { const rj = G.takeRejoin(); if (rj) setTimeout(() => showMulti((room) => { G.pickNet(room); start(room.stageNo); }, rj), 300); }   // 멀티 «한 판 더»
@@ -328,7 +332,7 @@ export default function IanDragonGameLobby(nav) {
   /* 로비 곡 : 들어오면 바로 · 자동재생이 막혔으면 첫 터치에서 (떠나면 멈춤 — 전투는 자기 월드 곡, 오락실은 조용히) */
   const kick = () => lobbyMusic();
   document.addEventListener('pointerdown', kick, { capture: true });
-  const leave = () => { document.documentElement.classList.remove('idg-lobby-on'); killLive(); document.removeEventListener('pointerdown', kick, { capture: true }); try { IdgAudio.stopBgm(); } catch { /* */ } };
+  const leave = () => { document.documentElement.classList.remove('idg-lobby-on'); killLive(); stageNow?.kill?.(); document.removeEventListener('pointerdown', kick, { capture: true }); try { IdgAudio.stopBgm(); } catch { /* */ } };
 
   /**
    * 「모험 시작」 — 전체화면은 클릭 핸들러 안에서 곧바로 요청해야 받아 준다(await 먼저 금지).
@@ -365,13 +369,13 @@ export default function IanDragonGameLobby(nav) {
     /* 살아 있는 용 (11/12 대표님) : 전투에서 서 있을 때와 같은 부품 움직임(rig idle · 숨쉬기 · 날개 · 꼬리 · 깜박) — 모든 용 공통.
        작은 Pixi 캔버스가 안 되면(WebGL 없음 등) 예전처럼 꾸민 정지 그림 + 약한 숨쉬기 */
     const still = (e) => { if (e?.message !== 'stale') dressedCanvas(ld, g.look, opt).then((c) => { c.className = cls; box.appendChild(c); }).catch(() => {}); };
-    liveRig(ld, g.look, opt).then((app) => { app.canvas.className = cls + ' live'; box.appendChild(app.canvas); }).catch(still);
+    liveRig(ld, g.look, { ...opt, fx: decoOf(g) }).then((app) => { app.canvas.className = cls + ' live'; box.appendChild(app.canvas); }).catch(still);
     return box;
   }
   /** 리더 rig 를 작은 Pixi 캔버스에 (전투 battleView 의 wearRig · wear 와 같은 방법으로 모자 · 목 장식을 붙인다) — 발 = 캔버스 아래 가운데 */
   let liveApp = null, liveGen = 0;   // liveGen : 다시 그리기 · 화면 떠남이면 늦게 끝난 옛 캔버스를 버린다
   const killLive = () => { liveGen++; const a = liveApp; liveApp = null; try { a?.destroy(true, { children: true }); } catch { /* */ } };
-  async function liveRig(ld, look, { W = 420, H = 330, pad = 3 } = {}) {
+  async function liveRig(ld, look, { W = 420, H = 330, pad = 3, fx = null } = {}) {
     killLive(); const my = liveGen;
     const [{ Application, Assets, Container, Sprite }, { loadRig, createRigged }] = await Promise.all([import('pixi.js'), import('../games/iandragon_game/render/rig.js')]);
     const B = '/assets/iandragon_game/';
@@ -396,12 +400,17 @@ export default function IanDragonGameLobby(nav) {
     const b = R.root.getLocalBounds(), up = -b.y, half = Math.max(-b.x, b.x + b.width);
     const k = Math.min((H - pad * 2) / up, (W / 2 - pad) / half) * 0.94;   // 날개를 펄럭여도 안 잘리게 6% 여유
     R.root.scale.set(k * R.root.scale.x, k * R.root.scale.y); R.root.position.set(W / 2, H - pad);   // 발(rig 원점) = 아래 가운데 = 무대 한가운데
+    const tx = fx && (fx.aura || fx.pet) ? await loadDecoTex({ aura: fx.aura, pet: fx.pet, gear: [] }) : null;   // 입은 오라 · 펫 그림만
     const app = new Application();
     await app.init({ width: W, height: H, backgroundAlpha: 0, antialias: false, resolution: 1, autoDensity: false, preference: 'webgl' });
     if (my !== liveGen) { app.destroy(true, { children: true }); throw new Error('stale'); }
+    /* 오라 = 발밑(용 뒤) · 펫 = 용 옆에 둥둥 — 전투 · 꾸미기와 같은 castleKit 함수 (펫은 3칸 오르내림 · 보간 없음) */
+    if (tx?.aura) { const a = makeAura(tx.aura, Math.round(W * 0.5)); a.position.set(W / 2, H - pad - 14); app.stage.addChild(a); }
     app.stage.addChild(R.root);
+    const petY = Math.round(H * 0.66); let pet = null;
+    if (tx?.pet) { pet = makePet(tx.pet, Math.round(W * 0.2)); pet.position.set(Math.round(W * 0.82), petY); app.stage.addChild(pet); }
     app.ticker.maxFPS = 30;
-    app.ticker.add((tk) => { R.update(Math.min(0.1, tk.deltaMS / 1000)); for (const [bx, t] of follow) bx.position.copyFrom(t.position); });
+    app.ticker.add((tk) => { R.update(Math.min(0.1, tk.deltaMS / 1000)); for (const [bx, t] of follow) bx.position.copyFrom(t.position); if (pet) pet.y = petY - (Math.floor(performance.now() / 420) % 2) * 3; });
     liveApp = app;
     return app;
   }
@@ -441,14 +450,25 @@ export default function IanDragonGameLobby(nav) {
     render() {
       const p = getProfile();
       const g = G.idg();
+      const vw = viewOf(g);   // 무대에 보이는 것 (드래곤 | 드래곤캐슬) — 캐슬이면 장면 깃발은 CSS 로 숨기고 캐슬 자기 깃발만
+      let switchBtn = null;
       document.documentElement.classList.add('idg-lobby-on');
       lockLobby(); setTimeout(lockLobby, 0);   /* 로비화면 방향으로 잠금 (전투에서 돌아올 때 전투 화면이 잠금을 푼 뒤에도 다시) */
       /* 결과 창과 같은 글꼴 (Pretendard Variable · 전투 HUD 와 같은 링크 id 라 한 번만 붙는다) */
       if (!document.getElementById('idg-res-font')) document.head.appendChild(Object.assign(document.createElement('link'), { id: 'idg-res-font', rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css' }));
       /* 레벨 (보이기만) : 별 5개마다 1 레벨 · 막대 = 다음 레벨까지 */
       /* 레벨 = 보통 + 붉은 + 보라 별 · 5개마다 1 · 상한 999 (§C-2) — 하늘 폭죽 수는 예전처럼 보통 별로 */
+      const buildStage = (v, gg) => (v === 'castle' ? castleBox(gg, () => { Sfx.play('sfx_menu_select'); showLook({ idg: G.idg(), save: G.saveIdg, tab: 'castle', onClose: () => nav.refresh?.() }); }) : myDragon('button.l2-dragon', gg, 'l2-leader', { fit: true, W: 420, H: 330, pad: 3 }));
+      const toggle = (gg) => { Sfx.play('sfx_menu_select'); const next = viewOf(G.idg()) === 'castle' ? 'dragon' : 'castle'; flip({ screen: scr, old: stageNow, next, build: (v) => buildStage(v, G.idg()), save: G.saveIdg, done: (nu) => { stageNow = nu; switchBtn.set(next); scr.classList.toggle('view-castle', next === 'castle'); } }); };
       const stars = G.totalStars(g), all = G.allStars(g), lv = G.levelOf(g), xp = (all % 5) / 5;
       const ttl = titleOf(g.title);
+      /* 프로필 창 : 얼굴 · 이름 · 레벨 줄은 로비 것을 그대로 (열 때의 값으로 다시 만든다) */
+      const profileInfo = () => {
+        const gg = G.idg(), tt = titleOf(gg.title), f = el('div.l2-face', { 'aria-hidden': 'true' });
+        headCanvas(leaderOf(gg), gg.look, 64).then((c) => { c.className = 'l2-face-c'; f.prepend(c); }).catch(() => {});
+        return el('div.idg-pf-row', { style: 'display:contents' }, [f, el('div.idg-pf-who', null, [el('span.idg-pf-nick', p.nickname || '???'), lvBadge(G.levelOf(gg), '.l2-lv'), tt ? el('span.idg-pf-ttl', `«${tt.name}»`) : null])]);
+      };
+      const openProfile = () => { showProfile({ idg: G.idg(), save: G.saveIdg, info: profileInfo, onClose: () => nav.refresh?.() }); };
       const face = el('div.l2-face', { 'aria-hidden': 'true' });
       headCanvas(leaderOf(g), g.look, 64).then((c) => { c.className = 'l2-face-c'; face.prepend(c); }).catch(() => {});
       const dN = diffNow(g), dStars = dN ? g[DIFF[dN].star] : g.stars;   // 다음 판 카드 : 어려움 · 초고수를 골랐으면 그 난이도의 다음 판 · 별 색
@@ -467,14 +487,15 @@ export default function IanDragonGameLobby(nav) {
         /* 별을 많이 모을수록 폭죽이 자주 · 많이 (별 0 → 1곳 느리게 · 15개 → 2곳 · 40개 → 3곳 · 빠르기 최대 2배) */
         skyEl, sceneEl, fxLayer,
         /* 리더 드래곤 = 배경 돌 무대 한가운데 (누르면 이름 외침 + 깡충) */
-        myDragon('button.l2-dragon', g, 'l2-leader', { fit: true, W: 420, H: 330, pad: 3 }),
+        (stageNow?.kill?.(), stageNow = buildStage(vw, g)),
+        (switchBtn = switchButton(vw, () => toggle(g))),
         el('header.l2-top', null, [
           /* 프로필 (11/12 대표님 «Lv · 경험치가 얼굴을 가린다») : 얼굴 동그라미는 아무것도 안 덮는다 —
              칭호 리본은 이름 판 위 · Lv 알약은 이름 판 안 왼쪽(이름 옆) · 경험치 막대는 이름 판 아래 (모두 얼굴 오른쪽) */
-          el('div.l2-player', null, [
+          el('div.l2-player', { role: 'button', tabindex: '0', 'aria-label': '프로필 · 테두리 · 칭호 고르기', onclick: openProfile, onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfile(); } } }, [
             face,
             el('div.l2-plate', null, [
-              ttl ? el('button.l2-ttl', { type: 'button', 'aria-label': `칭호 ${ttl.name}`, onclick: () => { Sfx.play('sfx_menu_select'); toast(`칭호 «${ttl.name}» · 얻는 법 : ${ttl.how}`, 2600); } }, [el('i', '칭호'), el('span', ttl.name)]) : null,
+              ttl ? el('button.l2-ttl', { type: 'button', 'aria-label': `칭호 ${ttl.name} · 프로필 열기`, tabindex: '-1' }, [el('i', '칭호'), el('span', ttl.name)]) : null,
               el('div.l2-name', null, [lvBadge(lv, '.l2-lv'), el('span.l2-nick', p.nickname || '???')]),
               el('span.l2-xp', { title: `별 ${all}개 · 다음 레벨까지 ${5 - (all % 5)}개` }, [el('i', { style: `width:${Math.round(xp * 100)}%` })]),
             ]),
@@ -510,7 +531,7 @@ export default function IanDragonGameLobby(nav) {
         /* 박쥐 날개 긴 단추 — 가로 · 세로 모두 «이안오락실로» (11/12 대표님 · 띄어쓰기 없이 여섯 글자) · 화면 왼쪽 아래 끝에 붙음 */
         (() => { const b = backButton('이안오락실로', back); b.className = 'l2-back'; b.setAttribute('aria-label', '이안오락실로 돌아가기'); b.replaceChildren(el('span.l2-back-in', null, [el('span', '이안오락실로')])); return b; })(),
       );
-      scr.classList.add('idg-lobby2');
+      scr.classList.add('idg-lobby2'); scr.classList.toggle('view-castle', vw === 'castle');
       return scr;
     },
   };
