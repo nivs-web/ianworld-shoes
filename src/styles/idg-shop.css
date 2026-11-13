@@ -130,5 +130,3 @@
 /* 갈무리11 (11/14) : 글자 폭이 넓어 작은 탭 «대장 드래곤 · 브레스 강화» 가 잘리던 것 — 작은 탭 글씨 한 단계 작게 · 자간 좁게 · 좌우 여백 줄임 */
 .idg-shop-sub .idg-k-tab { font-size: .82em; letter-spacing: -.04em; padding-left: 2px; padding-right: 2px; white-space: nowrap; overflow: visible; }
 .idg-shop-sub .idg-k-tab { font-size: .74em; letter-spacing: -.05em; }
-/* 갈무리11 보통 (11/14) : 고른 탭 글씨가 2px 테 + 굵기 때문에 번져 보이던 것 — 1px 테 · 보통 굵기 */
-.idg-k-tab[aria-selected="true"] { font-weight: 400; text-shadow: var(--k-o1); }
