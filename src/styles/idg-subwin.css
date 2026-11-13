@@ -746,3 +746,5 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-plate.sorts > b { white-space: nowrap; }
 @container ppcards (max-width: 440px) { .idg-pp-plate .idg-pp-sort > b { display: none; } }
 @container ppcards (max-width: 340px) { .idg-pp-plate.sorts > span { display: none; } }
+/* 세로 지갑 : 창 안 왼쪽 끝 정렬(«파워업» 제목 아래 줄 왼쪽) — 알약을 한 단계 작게 줄여 가운데로 보이지 않게 */
+.idg-pp.pp2.port .idg-pp-head .idg-pp-band { justify-self: start; margin-left: 0; width: fit-content; gap: 6px; padding: 0 4px; font-size: clamp(11px, 3.1vw, 13px); border-width: 6px 14px; border-image-width: 6px 14px; }
