@@ -1,0 +1,116 @@
+/* ════ «꾸미기» 창 개편 (11/13 · 겜보조 2 · idgLook.js + idgLookParts/*) ════
+ *  큰 탭 2 → 작은 단추 → 물건 격자(샵 카드 = idg-shop-panels.css 의 .idg-sp-card) · 코디 줄 · 드래곤캐슬 무대
+ *  규칙 : 새 모양 없음 · 글씨 1px 8방향 외곽선 · 빛번짐 없음 · 보간 없는 픽셀 */
+
+/* ── 위쪽 줄 : 코디 · 주사위 확인 · 큰 탭 · 작은 단추 ── */
+.idg-lk-list > * { min-width: 0; }
+.idg-ob { display: flex; flex-wrap: wrap; align-items: center; gap: .3em .35em; }
+.idg-ob-label { color: var(--k-gold-hi, #ffd45a); font-size: .9em; margin-right: .1em; }
+.idg-ob-slots { display: flex; gap: .25em; }
+.dialog.idg-k .idg-ob .idg-k-btn { min-width: 0; padding-inline: .5em; }
+.dialog.idg-k .idg-ob-slot { position: relative; min-width: 2.2em; }
+.dialog.idg-k .idg-ob-slot.on { outline: 2px solid #ffd45a; outline-offset: -2px; }
+.dialog.idg-k .idg-ob-slot.full::after { content: ''; position: absolute; right: .25em; top: .2em; width: .45em; height: .45em; background: #6bdc6b; box-shadow: 0 0 0 1px #12301a; }
+.idg-ob-msg { flex: 1 1 100%; min-height: 1.2em; font-size: .75em; line-height: 1.2; color: var(--k-sub, #e6dcff); }
+.idg-ob-msg:empty { display: none; }
+.idg-trial { display: flex; flex-wrap: wrap; align-items: center; gap: .35em; padding: .3em .5em; border: 2px solid #ffd45a; background: #2a1650; font-size: .85em; }
+.idg-trial[hidden] { display: none; }
+.idg-trial > span { flex: 1 1 100%; color: #fff; }
+.idg-lk-small .idg-k-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .3em; }
+.idg-lk-small .idg-k-tab { font-size: .85em; }
+.idg-lk-content { min-width: 0; }
+
+/* ── 물건 카드(샵 카드 위에 덧입힘) : 눌러서 입기 · 등급 색 테 + ★ ── */
+.idg-sp-card.pick, .idg-sp-row.pick { cursor: pointer; }
+.idg-sp-card.pick:active, .idg-sp-row.pick:active { translate: 0 1px; }
+.idg-sp-card.pick:focus-visible, .idg-sp-row.pick:focus-visible { outline: 2px solid #ffd45a; outline-offset: -2px; }
+.idg-sp-card .stars { color: var(--rc, #9aa3b0); font-size: 11px; letter-spacing: 1px; text-shadow: 1px 0 #1a0c38, -1px 0 #1a0c38, 0 1px #1a0c38, 0 -1px #1a0c38; }
+.idg-sp-card .stars small { color: #d8ccff; letter-spacing: 0; font-size: 10px; text-shadow: none; }
+.idg-sp-card[class*=" r"] .idg-sp-top img { border-color: var(--rc); }
+.idg-sp-card.r6 .idg-sp-top img { border-color: #ff7ad0; box-shadow: 0 0 0 2px #ffe14d, 0 0 0 4px #4da6ff; }
+.idg-sp-card.none .idg-sp-top { grid-template-columns: minmax(0, 1fr); }
+.idg-sp-card.none .idg-sp-top img { display: none; }
+.idg-sp-card.none .idg-sp-top .nm, .idg-sp-card.none .idg-sp-top .lv { grid-column: 1; }
+.idg-sp-card .idg-sp-foot .idg-lg-go { flex: 0 0 auto; min-height: 36px; }
+.idg-lg-empty { display: flex; align-items: center; gap: .5em; padding: .8em; border: 2px dashed #8e7bcc; color: #cdbfff; font-size: .85em; }
+.idg-lg-empty i { width: 2em; height: 2em; border: 2px dashed #8e7bcc; flex: none; }
+
+/* ── 점선 자리(임시) : 오라 · 펫 · 지붕 · 정문 · 앞마당 그림이 오면 지운다 ── */
+.idg-ph { position: absolute; z-index: 1; display: grid; place-items: center; box-sizing: border-box; border: 2px dashed #8e7bcc; pointer-events: none; }
+.idg-ph small { font-size: .6em; line-height: 1; color: #cdbfff; white-space: nowrap; }
+.idg-lk-stage .idg-ph.aura { left: 50%; bottom: 6%; width: 42%; height: 1.1em; transform: translateX(-50%); }
+.idg-lk-stage .idg-ph.pet { right: 4%; top: 28%; width: 2.6em; height: 2.6em; }
+
+/* ── 드래곤캐슬 무대 ── */
+.idg-lc-castle { position: absolute; left: 50%; bottom: calc(3% + 1em); width: 48%; max-height: 66%; transform: translateX(-50%); object-fit: contain; object-position: 50% 100%; image-rendering: pixelated; }
+.idg-lc-stage .idg-ph.roof { left: 50%; top: 9%; width: 3em; height: 1.4em; transform: translateX(-50%); }
+.idg-lc-stage .idg-ph.gate { left: 50%; bottom: 11%; width: 2.4em; height: 1.8em; transform: translateX(-50%); }
+.idg-lc-stage .idg-ph.yard { left: 5%; bottom: 9%; width: 3.2em; height: 2.2em; }
+.idg-lc-gears { position: absolute; left: .3em; top: .3em; z-index: 3; display: flex; gap: .25em; }
+.idg-lc-gears[hidden] { display: none; }
+.idg-lc-gear { display: grid; place-items: center; width: 2em; height: 2em; box-sizing: border-box; border: 2px dashed #8e7bcc; background: #170d36; }
+.idg-lc-gear.on { border: 2px solid #ffd45a; }
+.idg-lc-gear img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.idg-lc-stage .idg-lk-name { left: 50%; }
+.idg-lc-stage .idg-lk-flag { height: 58%; width: 18%; }   /* 깃대 = 캐슬 높이의 55~65% (기획 §3) */
+
+/* ── 닫기 = 머리 오른쪽 X (11/13 겜부장 점검) : 리본 오른쪽 바깥 빈 자리에 ── */
+.dialog.idg-look2 > .idg-how-title { width: calc(100% - 88px); min-width: 0; box-sizing: border-box; }   /* 양옆 44px 비워 오른쪽에 X 자리 · 리본은 가운데 */
+.dialog.idg-look2 > .idg-how-title > .idg-k-close { position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); font-size: 15px; z-index: 6; }
+.dialog.idg-look2 > .idg-how-title > .idg-k-close:active { transform: translateY(calc(-50% + 1px)); }
+
+/* ── 점선 임시 칸은 이름표(석판) 위로 비킨다 : 이름표 자리 = 아래 3% + 1.9em ── */
+.idg-lk-stage { --nm: calc(3% + 1.9em); }
+.idg-lk-stage .idg-ph.aura { bottom: var(--nm); }
+.idg-lc-stage .idg-ph.gate { bottom: var(--nm); }
+.idg-lc-stage .idg-ph.yard { bottom: var(--nm); }
+
+/* ── 설명 줄(세로에서만 · 카드를 누르면 채워짐) · 잠김 작은 자물쇠 ── */
+.idg-lg-desc { display: none; }
+.idg-lg-lockmini { display: none; }
+
+/* ── 세로 : 미리보기 70% · 물건 격자 3칸 작은 카드(그림 + 이름 + ★만) ── */
+@media (orientation: portrait) {
+  .idg-lk-stage { height: clamp(120px, 19dvh, 162px); }
+  .idg-lg .idg-sp-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .idg-lg .idg-sp-card { position: relative; align-items: center; border-width: 10px; border-image-width: 10px; padding: 0; gap: 0; }
+  .idg-lg .idg-sp-top { display: flex; flex-direction: column; align-items: center; row-gap: 2px; width: 100%; text-align: center; }
+  .idg-lg .idg-sp-top img:not(.idg-lg-lockmini) { width: 36px; height: 36px; }
+  .idg-lg .idg-sp-top .nm { font-size: 12px; line-height: 1.15; max-width: 100%; word-break: keep-all; overflow-wrap: anywhere; }
+  .idg-lg .idg-sp-top .lv { font-size: 10px; max-width: 100%; }
+  .idg-lg .idg-sp-top .lv .l1 { display: flex; flex-wrap: wrap; justify-content: center; }
+  .idg-sp-card .stars { font-size: 10px; letter-spacing: 0; }
+  .idg-lg .stars small, .idg-lg .idg-sp-top .tag { display: none; }
+  .idg-lg .idg-sp-card.none .idg-sp-top .nm, .idg-lg .idg-sp-card.none .idg-sp-top .lv { grid-column: auto; }
+  .idg-lg .idg-sp-line, .idg-lg .idg-sp-foot { display: none; }
+  .idg-lg .idg-sp-card.locked .idg-lg-lockmini { display: block; position: absolute; right: -2px; top: -2px; width: 14px; height: 14px; image-rendering: pixelated; background: none; border: 0; filter: none; }
+  .idg-lg-desc { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; position: sticky; bottom: 0; z-index: 2; margin-top: 6px; padding: 5px 7px; box-sizing: border-box; border: 2px solid #ffd45a; background: #2a1650; color: #d8ccff; font-size: 12px; line-height: 1.3; word-break: keep-all; }
+  .idg-lg-desc:empty { display: none; }
+  .idg-lg-desc > b { color: #fff; font-size: 13px; text-shadow: 1px 0 #1a0c38, -1px 0 #1a0c38, 0 1px #1a0c38, 0 -1px #1a0c38; }
+  .idg-lg-desc > span { flex: 1 1 100%; }
+  .idg-lg-desc .idg-sp-lock { flex: 1 1 auto; min-height: 0; }
+  .idg-lg-desc .idg-lg-go { flex: 0 0 auto; min-height: 32px; }
+}
+@media (orientation: portrait) and (min-width: 700px) { .idg-lg .idg-sp-list { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* ── 작은 폰(세로 · 화면 높이 700 이하 · 360×640) : 위쪽을 낮춰 격자가 2.5줄 이상 보이게 ── */
+@media (orientation: portrait) and (max-height: 700px) {
+  .idg-lk-stage { height: clamp(100px, 16dvh, 120px); }
+  .idg-lk, .idg-lk-list { gap: .35em; }
+  .idg-ob { gap: .2em .25em; }
+  .idg-ob { flex-wrap: nowrap; }
+  .idg-ob-label { display: none; }   /* «코디» 글자는 단추들(1 2 3 · 저장 · 불러오기 · 주사위 코디)이 말해 줌 — 한 줄에 넣으려고 */
+  .idg-ob-slots { gap: .15em; flex: none; }
+  .dialog.idg-k .idg-ob .idg-k-btn { flex: 0 1 auto; padding-inline: .2em; font-size: .74em; white-space: nowrap; }
+  .dialog.idg-k .idg-ob .idg-ob-slot { min-width: 22px; flex: none; }
+  .idg-ob-msg { position: absolute; left: 0; right: 0; bottom: 100%; z-index: 5; flex: none; padding: .15em .4em; background: #2a1650; border: 2px solid #ffd45a; }
+  .idg-ob { position: relative; }
+  /* 작은 단추 = 한 줄 가로 밀림 */
+  .idg-lk-small .idg-k-tabs { display: flex; flex-wrap: nowrap; gap: .3em; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; touch-action: pan-x; -webkit-overflow-scrolling: touch; }
+  .idg-lk-small .idg-k-tabs::-webkit-scrollbar { display: none; }
+  .idg-lk-small .idg-k-tab { flex: 0 0 auto; min-width: 4.4em; min-height: 2.1em; white-space: nowrap; }
+}
+
+/* 고른 오라 · 펫 · 지붕 · 정문 · 앞마당 : 그림이 오기 전엔 점선 칸에 이름이 적히고 테가 금색 실선 */
+.idg-ph.on { border: 2px solid #ffd45a; background: rgba(23, 13, 54, .75); }
+.idg-ph.on small { color: #fff; white-space: normal; text-align: center; max-width: 100%; line-height: 1.05; }
