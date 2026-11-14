@@ -76,6 +76,19 @@
 .v12 .tt::before, .v12 .tt::after { content: ''; position: absolute; top: 50%; width: calc(var(--wh) * 175 / 196); height: var(--wh); margin-top: calc(var(--wh) * -.42); background: url(/assets/iandragon_game/ai/result/banner_win_open.webp) 0 0 / calc(var(--wh) * 720 / 196) var(--wh) no-repeat; }
 .v12 .tt::before { right: calc(100% - .55em); }
 .v12 .tt::after { left: calc(100% - .55em); background-position: calc(var(--wh) * -545 / 196) 0; }
+/* 13 = 12 정정 (11/14 대표님) : 글씨 위 여백만 3px 줄임(위 = 아래 여백) → 알약 높이 3px 낮추고 글씨를 1.5px 위로 · 글씨 위 절반 더 밝게 */
+.v13 .tt { --wh: 3.3em; height: calc(2.3em - 3px); padding: 0 2.25em; top: calc(var(--fs) * -.7 - 5px); border: 2px solid transparent; border-radius: 1.2em;
+  background: linear-gradient(#433578 0%, #35296a 63%, #271c4a 64%, #241a44 100%) padding-box,
+              linear-gradient(#fff0b8 0%, #f2c45a 30%, #d9a441 60%, #a8742a 100%) border-box;
+  box-shadow: 0 0 0 3px var(--o), 2px 3px 0 3px rgba(0, 0, 0, .45); }
+.v13 .tt b { position: relative; top: -1.5px; font-size: 1.5em; color: #ffffff;
+  text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o),
+    4px 4px 0 #000, 3px 4px 0 #000, 4px 3px 0 #000, 4px 2px 0 #000, 2px 4px 0 #000; }
+.v13 .tt b::after { content: attr(data-t); position: absolute; inset: 0; color: transparent; text-shadow: none; background: linear-gradient(#ffffff 0 52%, #d9c690 52% 100%); -webkit-background-clip: text; background-clip: text; }
+.v13 .tt i.gl { display: none; }
+.v13 .tt::before, .v13 .tt::after { content: ''; position: absolute; top: 50%; width: calc(var(--wh) * 175 / 196); height: var(--wh); margin-top: calc(var(--wh) * -.42); background: url(/assets/iandragon_game/ai/result/banner_win_open.webp) 0 0 / calc(var(--wh) * 720 / 196) var(--wh) no-repeat; }
+.v13 .tt::before { right: calc(100% - .55em); }
+.v13 .tt::after { left: calc(100% - .55em); background-position: calc(var(--wh) * -545 / 196) 0; }
 /* 4 꼬리 리본 (ribbon · 보라 갈색 — 빨강 아님) */
 .v4 .tt { height: 2.8em; min-width: 14em; padding: 0 3em .25em; border: solid transparent; border-width: .6em 2.6em; border-image: url(/assets/iandragon_game/ai/result/ribbon.webp) 40 150 fill / .6em 2.6em stretch; }
 /* 5 날개 현판 (승리 창 날개 + 짙은 알약) */
@@ -102,5 +115,5 @@
 const v = new URLSearchParams(location.search).get('v') || '1';
 document.body.classList.add('v' + v);
 fill('g', ITEMS.map((i) => cardHTML(i)).join(''));
-tag({ 1: '제목 1 — 폴더 탭 : 창 판이 위로 솟음 (그림 0)', 2: '제목 2 — 화려한 남색 알약 (결과 창 그림)', 3: '제목 3 — 뾰족 현판 (결과 창 그림)', 4: '제목 4 — 꼬리 리본 (보라 · 빨강 아님)', 5: '제목 5 — 날개 현판 (승리 창 날개)', 12: '날개 현판 (정정 2)', 11: '날개 현판 (정정)', 10: '날개 현판 최종', 9: '날개 현판 확정안 — 금테 알약 · 넉넉한 여백 · 살짝 큰 알약 · 그림자', 7: '제목 5 다듬기 — 한 색 판 · 글씨 검은 테 2px · 리본만큼 크게', 8: '제목 5 다듬기 (판 없이) — 날개 + 글씨만', 6: '제목 3 다듬기 — 창보다 살짝 어두운 색 · 2px 위 · 두꺼운 검은 테만' }[v]);
+tag({ 1: '제목 1 — 폴더 탭 : 창 판이 위로 솟음 (그림 0)', 2: '제목 2 — 화려한 남색 알약 (결과 창 그림)', 3: '제목 3 — 뾰족 현판 (결과 창 그림)', 4: '제목 4 — 꼬리 리본 (보라 · 빨강 아님)', 5: '제목 5 — 날개 현판 (승리 창 날개)', 13: '날개 현판 (정정 3)', 12: '날개 현판 (정정 2)', 11: '날개 현판 (정정)', 10: '날개 현판 최종', 9: '날개 현판 확정안 — 금테 알약 · 넉넉한 여백 · 살짝 큰 알약 · 그림자', 7: '제목 5 다듬기 — 한 색 판 · 글씨 검은 테 2px · 리본만큼 크게', 8: '제목 5 다듬기 (판 없이) — 날개 + 글씨만', 6: '제목 3 다듬기 — 창보다 살짝 어두운 색 · 2px 위 · 두꺼운 검은 테만' }[v]);
 </script>
