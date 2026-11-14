@@ -101,10 +101,12 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
   const reco = el('div.idg-shop-reco');
   const main = el('div.idg-shop-main', null, [reco, bigTabs, subSlot, scroll]);
   const wrap = el('div.idg-shop-wrap', null, [side, main]);
-  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['아이템샵', kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X 하나 (IDG_UI_PATTERNS §5) */
+  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['아이템샵', el('button.idg-title-sw', { type: 'button', 'aria-label': '꾸미기로 바로 가기', onclick: () => switchToLook() }, '꾸미기'), kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X 하나 (IDG_UI_PATTERNS §5) */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const closeO = presentOverlay(overlay);
-  const close = () => { dead = true; leavePanel(); closeO(); onClose?.(); };   // 닫으면 로비 코인 · 젬 다시 그리기
+  const close = () => { dead = true; leavePanel(); closeO(); onClose?.(); };
+  /* 꾸미기 ↔ 아이템샵 빠른 오가기 (대표님 11/14) : 닫는 알림(onClose)은 마지막 창이 닫힐 때 한 번만 */
+  const switchToLook = () => { dead = true; leavePanel(); closeO(); import('./idgLook.js').then((m) => m.showLook({ idg: cur, save, onClose })); };   // 닫으면 로비 코인 · 젬 다시 그리기
   function leavePanel() { if (typeof offPanel === 'function') { try { offPanel(); } catch { /* 무시 */ } } offPanel = null; }
 
   /* ── 사기 · 입기 ── */

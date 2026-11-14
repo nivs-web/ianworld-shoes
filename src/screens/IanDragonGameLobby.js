@@ -99,6 +99,10 @@ const diffNow = (g) => {
   /* 보통 10-10 까지 다 깼으면 «모험 시작» · 다음 판 카드는 어려움 다음 판으로 (대표님 11/13 «보통 10-10 을 깨면 어려움 1-1 부터 차례로») */
   return isOn('zdOpt', 'diff') && (g?.cleared || 0) >= 100 && diffUnlocked(g, 'hard') ? 'hard' : null;
 };
+/* 다음 스테이지 카드로 고른 판 (나가기 해도 유지 · 판을 새로 깨면 mark 가 달라져 자동으로 풀림) */
+let lobbyPick = null;
+const pickMark = (g) => { const d = diffNow(g); return (d || 'normal') + ':' + (d ? diffNext(g, d) : g.cleared); };
+const pickedNow = (g) => (lobbyPick && lobbyPick.mark === pickMark(g) ? lobbyPick.no : null);
 function showStages(onPick) {
   Sfx.play('sfx_menu_select');
   const g = G.idg();
@@ -155,6 +159,7 @@ function showMore(go = {}) {
   const box = el('div.dialog.idg-more.idg-xw', { onclick: (e) => e.stopPropagation() }, [
     xTitle('더보기', () => close()),
     el('div.idg-menu', null, [
+      ...(go.stage ? [tile('stage', '스테이지', pick(go.stage))] : []),   /* 11/14 대표님 : 로비 바깥 [스테이지] 단추 → 더보기 안으로 (다음 스테이지 카드를 눌러도 같은 창) */
       tile('codex', '도감', pick(() => showCodex(go))),
       tile('how', '게임하는 법', pick(showHow)),
       tile('sound', '설정', pick(() => showSettings({ onSound: ({ mute }) => { if (mute === false) lobbyMusic(); } }))),   /* 전체 소리를 다시 켜면 로비 곡도 다시 */
@@ -335,7 +340,9 @@ export default function IanDragonGameLobby(nav) {
   function start(stageNo) {
     Sfx.play('sfx_menu_select');
     enterFullscreen();
-    G.pickStage(typeof stageNo === 'number' ? stageNo : diffNow(G.idg()) ? diffNext(G.idg(), diffNow(G.idg())) : null);   // 어려움 · 초고수를 골라 두었으면 «모험 시작» = 그 난이도의 다음 판
+    if (typeof stageNo === 'number') lobbyPick = { no: stageNo, mark: pickMark(G.idg()) };
+    const pk = pickedNow(G.idg());
+    G.pickStage(typeof stageNo === 'number' ? stageNo : pk ? pk : diffNow(G.idg()) ? diffNext(G.idg(), diffNow(G.idg())) : null);   // 어려움 · 초고수를 골라 두었으면 «모험 시작» = 그 난이도의 다음 판
     nav.push(IanDragonGame);
   }
   /* 가로 로비 왼쪽 위 «전체 화면» 단추 (11/12 대표님 · 프로필 얼굴 아래 · 모양 = idg-subwin.css .idg-lfs · 세로에선 숨김)
@@ -440,6 +447,7 @@ export default function IanDragonGameLobby(nav) {
       /* 결과 창과 같은 글꼴 (Pretendard Variable · 전투 HUD 와 같은 링크 id 라 한 번만 붙는다) */
       /* 레벨 (보이기만) : 별 5개마다 1 레벨 · 막대 = 다음 레벨까지 */
       /* 레벨 = 보통 + 붉은 + 보라 별 · 5개마다 1 · 상한 999 (§C-2) — 하늘 폭죽 수는 예전처럼 보통 별로 */
+      let logoEl, nextEl, btnsEl;
       const buildStage = (v, gg) => (v === 'castle' ? castleBox(gg, () => { Sfx.play('sfx_menu_select'); showLook({ idg: G.idg(), save: G.saveIdg, tab: 'castle', onClose: () => nav.refresh?.() }); }) : myDragon('button.l2-dragon', gg, 'l2-leader', { fit: true, W: 420, H: 330, pad: 3 }));
       const toggle = (gg) => { Sfx.play('sfx_menu_select'); const next = viewOf(G.idg()) === 'castle' ? 'dragon' : 'castle'; flip({ screen: scr, old: stageNow, next, build: (v) => buildStage(v, G.idg()), save: G.saveIdg, done: (nu) => { stageNow = nu; switchBtn.set(next); scr.classList.toggle('view-castle', next === 'castle'); } }); };
       const stars = G.totalStars(g), all = G.allStars(g), lv = G.levelOf(g), xp = (all % 5) / 5;
@@ -454,7 +462,7 @@ export default function IanDragonGameLobby(nav) {
       const face = el('div.l2-face', { 'aria-hidden': 'true' });
       headCanvas(leaderOf(g), g.look, 64).then((c) => { c.className = 'l2-face-c'; face.prepend(c); }).catch(() => {});
       const dN = diffNow(g), dStars = dN ? g[DIFF[dN].star] : g.stars;   // 다음 판 카드 : 어려움 · 초고수를 골랐으면 그 난이도의 다음 판 · 별 색
-      const done = dN ? diffRun(dStars) >= 100 : g.cleared >= 100, no = dN ? diffNext(g, dN) : Math.min(100, G.nextStage(g)), got = done ? 3 : Number(dStars[no - 1]) || 0;
+      const done = dN ? diffRun(dStars) >= 100 : g.cleared >= 100, no = pickedNow(g) || (dN ? diffNext(g, dN) : Math.min(100, G.nextStage(g))), got = done ? 3 : Number(dStars[no - 1]) || 0;
       const back = () => nav.reset(Portal);
       const skyEl = el('div.l2-sky', { 'aria-hidden': 'true', style: `--fwk:${(1.6 - Math.min(1, stars / 60) * 0.8).toFixed(2)}` }, sky(stars >= 40 ? 3 : stars >= 15 ? 2 : 1));
       /* 앞 겹(성 · 길 · 무대) + 부엉이 · 도깨비불 · 장착 깃발 (누를 수 없음 · idgLobbyFun.js) */
@@ -485,27 +493,26 @@ export default function IanDragonGameLobby(nav) {
           el('div.l2-cur', null, [money('coin', `${L2}coin_round.webp`, g.coins), money('gem', `${UI}icon_gem_v3.png`, g.gems)]),
         ]),
         lobbyFs(),
-        el('div.l2-logo', null, [el('img', { src: `${AL}title_logo.webp`, alt: '좀비와 드래곤 ZOMBIE & DRAGON', decoding: 'async' })]),
+        (logoEl = el('div.l2-logo', null, [el('img', { src: `${AL}title_logo.webp`, alt: '좀비와 드래곤 ZOMBIE & DRAGON', decoding: 'async', onload: () => placeNext() })])),
         el('nav.l2-side', null, [
           g.cleared >= OPEN_AT ? stone('hatch', '부화장', () => showHatch(() => nav.refresh?.())) : stone('hatch', '부화장', () => toast('부화장은 2-5를 깨면 열려요', 2200), { locked: true }),
           stone('coop', '멀티게임', () => showMulti((room) => { G.pickNet(room); start(room.stageNo); })),
           stone('raid', '좀비습격', () => { if ((G.idg().cleared || 0) < 20) { toast('좀비습격은 2-10을 깨면 열려요', 2200); return; } G.pickRaid(); start(); }, { locked: (g.cleared || 0) < 20 }),
           stone('quest', '도전과제', () => showQuests(() => nav.refresh?.()), { dot: claimable(g) > 0 }),
         ]),
-        el('div.l2-nextwrap', null, [el('div.l2-next', { role: 'button', tabindex: '0', 'aria-label': '스테이지 고르기', onclick: () => showStages((n2) => start(n2)), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showStages((n2) => start(n2)); } } }, [   /* 누르면 [스테이지] 단추와 같은 창 (대표님 11/13) */
+        (nextEl = el('div.l2-nextwrap', null, [el('div.l2-next', { role: 'button', tabindex: '0', 'aria-label': '스테이지 고르기', onclick: () => showStages((n2) => start(n2)), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showStages((n2) => start(n2)); } } }, [   /* 누르면 [스테이지] 단추와 같은 창 (대표님 11/13) */
           
           el('b.l2-next-t', done ? '모든 모험 끝!' : S.idgStatNext(G.stageLabel(no))),
           el('div.l2-stars' + (STAR_CLS[dN] || ''), null, [0, 1, 2].map((k) => el('img', { src: `${RES}star_${k < got ? 'on' : 'off'}.webp`, alt: k < got ? '★' : '☆' }))),
-        ])]),
+        ])])),
         /* 처음 온 사람 : 박쥐가 «모험시작» 을 가리킨다 */
         ...((g.cleared || 0) === 0 ? [el('div.l2-hint', { 'aria-hidden': 'true' }, [el('i.l2-hint-bat'), el('b', '여기!')])] : []),
-        el('div.l2-btns', null, [
+        (btnsEl = el('div.l2-btns', null, [
           /* 모험시작 = 크고 멋지게 (결과 창 빨간 단추 btn_red3 · 큰 칼 아이콘 · 지나가는 빛줄기 · 살짝 숨쉬기) */
           el('button.l2-btn.red.go', { type: 'button', onclick: () => start() }, [el('img.ico', { src: `${RES}ico_fight.webp`, alt: '', onerror: hideBad }), el('span', S.idgLobbyStart), el('i.l2-shine', { 'aria-hidden': 'true' })]),
           el('button.l2-btn.green', { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); showNest(() => nav.refresh?.()); } }, [el('span.l2-pico', null, [el('img.ico', { src: `${L2}ico_power_clean.webp`, alt: '', onerror: hideBad })]), el('span', '파워업'), el('i.l2-spark.a', { 'aria-hidden': 'true' }, [el('i')]), el('i.l2-spark.b', { 'aria-hidden': 'true' }, [el('i')])]),
-        ]),
+        ])),
         el('nav.l2-bottom', null, [
-          stone('stage', '스테이지', () => showStages((n2) => start(n2))),
           stone('lab', '연구소', () => showLab(() => nav.refresh?.())),
           stone('shop', '아이템샵', shop),
           stone('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
@@ -515,6 +522,18 @@ export default function IanDragonGameLobby(nav) {
         (() => { const b = backButton('이안오락실로', back); b.className = 'l2-back'; b.setAttribute('aria-label', '이안오락실로 돌아가기'); b.replaceChildren(el('span.l2-back-in', null, [el('span', '이안오락실로')])); return b; })(),
       );
       scr.classList.add('idg-lobby2'); scr.classList.toggle('view-castle', vw === 'castle');
+      /* 가로 [다음 스테이지] 카드 자리 (11/14 대표님) : [드래곤캐슬 전환] 단추 아래가 넉넉하면 그 아래 · 좁으면 로고 바로 아래 빈 하늘 */
+      function placeNext() {
+        if (!scr.isConnected) { if (placed) { removeEventListener('resize', placeNext); placed = false; } return; }
+        if (!matchMedia('(orientation: landscape)').matches) { nextEl.style.top = ''; return; }
+        const r = scr.getBoundingClientRect(), sw = switchBtn.getBoundingClientRect(), bt = btnsEl.getBoundingClientRect(), lg = logoEl.getBoundingClientRect();
+        const h = nextEl.offsetHeight, gap = Math.max(4, r.height * .012);
+        const under = sw.bottom + gap;
+        nextEl.style.top = `${Math.round((under + h <= bt.top - gap ? under : lg.bottom + gap * .5) - r.top)}px`;
+      }
+      let placed = false;
+      requestAnimationFrame(() => { placeNext(); if (!placed) { addEventListener('resize', placeNext); placed = true; } });
+      setTimeout(placeNext, 400);
       return scr;
     },
   };

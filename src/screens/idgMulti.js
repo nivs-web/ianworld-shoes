@@ -91,7 +91,7 @@ export function showMulti(onStart, rejoinCode = null) {
   }
 
   if (rejoinCode) { Room.resetRoom(rejoinCode).catch?.(() => {}); wait(rejoinCode); } else menu();   // 한 판 더 : 같은 방을 대기 상태로 되돌리고 대기실로
-  const box = el('div.dialog.idg-nest.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('친구랑 같이 깨기', () => close()), body]);
+  const box = el('div.dialog.idg-nest.idg-xw', { onclick: (e) => e.stopPropagation() }, [xTitle('멀티게임', () => close()), body]);
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const closeO = presentOverlay(overlay);
   const close = () => { off?.(); closeO(); };

@@ -10,6 +10,7 @@ import '../styles/idg-kit.css';      /* UI 키트 모양 (다른 보조 작 · �
 import { moreDown } from './idgMore.js';   /* «아래로 더 있음» 화살표 공용 규칙 (11/13) */
 import '../styles/idg-subwin.css';   /* 서브 창 다듬기 (11/12) — 키트를 옛 창(.dialog.idg-*)에 입히기 · 스크롤 표시 · 픽셀 바꿔 끼우기 */
 import '../styles/idg-titlebar.css';   /* 창 머리 현판 50% · X 오른쪽 위 · 글씨 1단계 (11/14) */
+import '../styles/idg-window-rules.css';   /* 창 규칙표 1판 (11/14) */
 
 /* 스크롤 표시 (11/12 대표님 «목록이 닫기 단추 위에서 뚝 잘려 보인다 → 스크롤 영역임을 알 수 있게 · 그림자 대신 도트 테두리 / 화살표»)
  *  가운데 칸이 넘치면 창에 .scrolls · 아래가 더 있으면 .more-down(아래 화살표) · 위로 올릴 게 있으면 .more-up — 모양은 idg-subwin.css */

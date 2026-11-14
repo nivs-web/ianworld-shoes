@@ -18,3 +18,5 @@
 /* 캐슬을 보는 동안 : 무대 옆 장면 깃발(드래곤 무대용)은 숨긴다 — 캐슬이 자기 깃발을 들고 있다 */
 .screen.idg-lobby2.view-castle .l2-flag { display: none; }
 .screen.idg-lobby2 .l2-player { cursor: pointer; }
+/* 11/14 대표님 : 캐슬이 용에 비해 작고 공중에 떠 보임 → 20% 크게 (로고 · 화면 위로 넘쳐도 됨) · 무대 바닥 동그라미 한가운데에 밑동이 닿게 살짝 내림 · 가로 가운데 */
+.screen.idg-lobby2 > .l2-dragon.l2-castle { transform-origin: 50% 100%; transform: translate(-50%, -100%) translateY(calc(var(--dk) * var(--sc) * .075)) scale(1.2); }

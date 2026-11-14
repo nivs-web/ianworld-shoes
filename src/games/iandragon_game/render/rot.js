@@ -36,7 +36,9 @@ export const lobbyOrientChosen = () => { try { const v = localStorage.getItem(LO
 /** 기기에 맞춘 처음 값 : 폰 = 세로 · 그 밖(태블릿 · PC · TV) = 가로 */
 export const lobbyOrientDefault = () => (isPhone() ? 'port' : 'land');
 /** 로비화면 방향 : 직접 고른 값이 먼저 · 없으면 기기에 맞춘 값 */
-export const lobbyOrientPref = () => lobbyOrientChosen() || lobbyOrientDefault();
+/** 11/14 대표님 «당분간 가로 고정으로 해 본다» — true 면 로비도 늘 가로 (고른 값 · 기기 맞춤 무시 · 되돌리려면 false) */
+export const LOBBY_FORCE_LAND = true;
+export const lobbyOrientPref = () => (LOBBY_FORCE_LAND ? 'land' : lobbyOrientChosen() || lobbyOrientDefault());
 export function setLobbyOrientPref(v) { try { localStorage.setItem(LOBBY_KEY, v === 'auto' || v === 'land' ? v : 'port'); } catch { /* */ } if (!document.documentElement.classList.contains('idg-wide')) lockLobby(); }
 /** (옛 이름 · 전투 틀이 쓰는 방향) = 게임화면 방향 */
 export const orientPref = gameOrientPref;

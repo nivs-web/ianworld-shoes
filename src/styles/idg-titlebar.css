@@ -3,13 +3,13 @@
  *  ② X 단추 = 늘 창 오른쪽 위에 고정 · 살짝 크게
  *  ③ 제목 글씨 한 단계 크게 (현판 밖으로 튀어나와도 됨)
  *  X 는 현판 안 자식이라 현판 폭(=창의 50%) 기준 % 로 창 오른쪽 끝을 잡는다 : 창 오른쪽 끝 = 현판 왼쪽 + 150% */
-.dialog[class*="idg-"][class*="idg-"] > .idg-how-title { width: calc((100% + 2 * var(--tp, 38px)) * .5) !important; min-width: 0 !important; max-width: none !important; box-sizing: border-box; align-self: center; white-space: nowrap; overflow: visible; font-size: 19px; text-align: center;
+.dialog[class*="idg-"][class*="idg-"]:not(.idg-hall) > .idg-how-title { width: calc((100% + 2 * var(--tp, 38px)) * .5) !important; min-width: 0 !important; max-width: none !important; box-sizing: border-box; align-self: center; white-space: nowrap; overflow: visible; text-align: center;
   display: flex !important; align-items: center; justify-content: center; min-height: 46px; }   /* X 가 현판 높이를 받치던 것(11/14 이전)을 최소 높이로 대신 — 현판이 얇아지지 않게 */
-.dialog[class*="idg-"][class*="idg-"] > .idg-how-title > .idg-k-close { position: absolute !important; left: auto !important; right: auto !important; top: -3px !important; margin: 0 !important; transform: none !important;
+.dialog[class*="idg-"][class*="idg-"]:not(.idg-hall) > .idg-how-title > .idg-k-close { position: absolute !important; left: auto !important; right: auto !important; top: -3px !important; margin: 0 !important; transform: none !important;
   font-size: 18px; width: 2.4em; height: 2.4em; left: calc(150% - 2.4em - (var(--tp, 38px) - 6px) - 5px) !important;   /* 창 테두리 안쪽(잘리지 않는 자리)에 붙임 */ z-index: 8; }
-.dialog[class*="idg-"][class*="idg-"] > .idg-how-title > .idg-k-close:active { transform: translateY(1px) !important; }
-@media (max-height: 560px) { .dialog[class*="idg-"][class*="idg-"] > .idg-how-title { min-height: 38px; } .dialog[class*="idg-"] { --tp: 30px; } .dialog[class*="idg-"][class*="idg-"] > .idg-how-title { font-size: 17px; } .dialog[class*="idg-"][class*="idg-"] > .idg-how-title > .idg-k-close { font-size: 16px; } }
-@media (orientation: landscape) and (min-height: 561px) { .dialog[class*="idg-"][class*="idg-"] > .idg-how-title { font-size: max(19px, 2.4vh); } }
+.dialog[class*="idg-"][class*="idg-"]:not(.idg-hall) > .idg-how-title > .idg-k-close:active { transform: translateY(1px) !important; }
+@media (max-height: 560px) { .dialog[class*="idg-"][class*="idg-"]:not(.idg-hall) > .idg-how-title { min-height: 38px; } .dialog[class*="idg-"] { --tp: 30px; } .dialog[class*="idg-"][class*="idg-"]:not(.idg-hall) > .idg-how-title > .idg-k-close { font-size: 16px; } }
+/* 제목 글씨 크기 = 원래대로 (11/14 대표님 «1단계 키운 것 취소») */
 
 /* 카드 · 줄 제목은 거의 흰색, 보조 글씨는 한 단계 어둡게 (대표님 11/14 «위 아래 색이 같으니 이상해») */
 .idg-shop-name, .idg-k-row:not(.locked) .idg-k-row-txt > b, .idg-cons-name { color: #ffffff !important; }
@@ -17,6 +17,43 @@
 
 /* 습격 · 대결 시작 카드의 3줄 안내 글씨 = 상점 «오늘의 특가» 종이 글씨와 같은 크기 (대표님 11/14 «안 어울리게 너무 커») :
  *  상점 종이 글씨 = 창 글씨(--k-fs)의 .7배 · 가로 = max(clamp(13px, 3.4vh, 16px), 2.22vh) × .7 · 세로폰 = 약 12.2px */
-.idg-int .idg-int-line { font-size: clamp(11px, 3.1vw, 13px) !important; min-height: 2.6em !important; }
+.idg-int .idg-int-line { font-size: clamp(10px, 2.7vw, 11.5px) !important; min-height: 2.6em !important; }
 .idg-int .idg-int-line span { font-size: 1em !important; }
-@media (orientation: landscape) { .idg-int .idg-int-line { font-size: calc(max(clamp(13px, 3.4vh, 16px), 2.22vh) * .7) !important; } }
+@media (orientation: landscape) { .idg-int .idg-int-line { font-size: calc(max(clamp(13px, 3.4vh, 16px), 2.22vh) * .6) !important; } }
+
+/* X 단추 = 현판 세로 가운데 (위로 치우쳐 보이던 것) · 바로가기 알약(꾸미기 ↔ 아이템샵) = X 바로 왼쪽 (대표님 11/14) */
+.dialog[class*="idg-"][class*="idg-"]:not(.idg-hall) > .idg-how-title > .idg-k-close { top: calc(50% + var(--xdy, 5px)) !important; transform: translateY(-50%) !important; }   /* 11/14 대표님 : 위로 쏠림 → 위 여백 = 오른쪽 여백 */
+.dialog[class*="idg-"][class*="idg-"]:not(.idg-hall) > .idg-how-title > .idg-k-close:active { transform: translateY(calc(-50% + 1px)) !important; }
+.idg-how-title > .idg-title-sw { position: absolute; top: 50%; left: calc(150% - 2.4 * 18px - (var(--tp, 38px) - 6px) - 5px - 6px); transform: translate(-100%, -50%); z-index: 8; white-space: nowrap;
+  height: 34px; padding: 0 14px; border: 2px solid #2a1238; border-radius: 8px; background: linear-gradient(180deg, #8a6ee0, #5a44a8); box-shadow: inset 0 0 0 1px #c9b8ff, 0 2px 0 #1a0c38;
+  font: 900 15px/1 'Galmuri11', sans-serif; color: #fff; text-shadow: 1px 0 #2a1238, -1px 0 #2a1238, 0 1px #2a1238, 0 -1px #2a1238; cursor: pointer; touch-action: manipulation; }
+.idg-how-title > .idg-title-sw:active { transform: translate(-100%, calc(-50% + 1px)); filter: brightness(.9); }
+@media (max-height: 560px) { .idg-how-title > .idg-title-sw { height: 30px; font-size: 13px; padding: 0 10px; left: calc(150% - 2.4 * 16px - (var(--tp, 30px) - 6px) - 5px - 6px); } }
+
+/* 현판 뒤 네모 판(보라 상자 · 돌판) 전부 없앰 — 승리 · 패배 열린 현판처럼 날개 + 글씨만 (대표님 11/14 «여기만 아니라 전부») */
+.idg-res-plate .p, .idg-res-plate.stone .p { background: none !important; border: 0 !important; box-shadow: none !important; }
+
+/* 편의품 칸 = 확실히 «누르는 단추» 모양 (대표님 11/14) : 도톰한 아래 그림자 + 윗면 하이라이트 + 눌리면 내려앉음 · 꺼짐 = 보라 · 켜짐 = 초록 + ✓ */
+.idg-cons { position: relative; min-height: 38px !important; padding: 0 14px !important; border: 3px solid #1d1233 !important; border-radius: 9px !important; cursor: pointer;
+  background: linear-gradient(180deg, #8a6ee0 0 48%, #6a4fc4 52% 100%) !important; color: #fff !important; font: 900 13px 'Galmuri11', sans-serif !important; letter-spacing: 0;
+  text-shadow: 1px 0 #2a1238, -1px 0 #2a1238, 0 1px #2a1238, 0 -1px #2a1238;
+  box-shadow: inset 0 2px 0 #cdbcff, inset 0 -2px 0 #4a3499, 0 0 0 2px #e2ad45, 0 4px 0 2px #1d1233 !important; margin-bottom: 4px; touch-action: manipulation; }
+.idg-cons:hover:not(:disabled) { filter: brightness(1.1); }
+.idg-cons:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 2px 0 #cdbcff, inset 0 -2px 0 #4a3499, 0 0 0 2px #e2ad45, 0 1px 0 2px #1d1233 !important; }
+.idg-cons.on { background: linear-gradient(180deg, #5fe07a 0 48%, #2fa84e 52% 100%) !important; border-color: #123a1e !important; color: #fff !important;
+  box-shadow: inset 0 2px 0 #c8ffd2, inset 0 -2px 0 #1f7a38, 0 0 0 2px #ffe27a, 0 4px 0 2px #123a1e !important; }
+.idg-cons.on::before { content: '✓ '; font-weight: 900; }
+.idg-cons.auto { cursor: default; }
+.idg-cons:disabled { opacity: .6; }
+
+/* 로비 큰 단추 글씨 (모험시작 · 파워업) 테두리 3px (대표님 11/14 «2단계 두껍게 · 선명하게») — 둥근 3px 링 */
+.l2-btn, .l2-btn.red.go span, .l2-btn.green span { text-shadow: -3px -1px 0 var(--o), -3px 0px 0 var(--o), -3px 1px 0 var(--o), -2px -2px 0 var(--o), -2px -1px 0 var(--o), -2px 0px 0 var(--o), -2px 1px 0 var(--o), -2px 2px 0 var(--o), -1px -3px 0 var(--o), -1px -2px 0 var(--o), -1px -1px 0 var(--o), -1px 0px 0 var(--o), -1px 1px 0 var(--o), -1px 2px 0 var(--o), -1px 3px 0 var(--o), 0px -3px 0 var(--o), 0px -2px 0 var(--o), 0px -1px 0 var(--o), 0px 1px 0 var(--o), 0px 2px 0 var(--o), 0px 3px 0 var(--o), 1px -3px 0 var(--o), 1px -2px 0 var(--o), 1px -1px 0 var(--o), 1px 0px 0 var(--o), 1px 1px 0 var(--o), 1px 2px 0 var(--o), 1px 3px 0 var(--o), 2px -2px 0 var(--o), 2px -1px 0 var(--o), 2px 0px 0 var(--o), 2px 1px 0 var(--o), 2px 2px 0 var(--o), 3px -1px 0 var(--o), 3px 0px 0 var(--o), 3px 1px 0 var(--o); }
+
+/* 빨강 · 초록 단추 = 로비 «모험시작 · 파워업» 과 같은 그림 · 같은 3px 글씨 테두리 (대표님 11/14 «글귀만 다르고 디자인은 같게») — 결과 창 · 시작 카드 · 파워업 등 모든 .idg-res-btn */
+.idg-res-btn.red { --o: #2a1238; border: solid transparent; border-width: 12px 20px; border-image: url(/assets/iandragon_game/ai/result/btn_red2.webp) 46 70 fill / 12px 20px stretch; }
+.idg-res-btn.green { --o: #2a1238; border: solid transparent; border-width: 12px 20px; border-image: url(/assets/iandragon_game/ai/result/btn_green3.webp) 92 140 fill / 12px 20px stretch; }
+.idg-res-btn.red, .idg-res-btn.green { border-radius: 0; background: none; box-shadow: none; font-weight: 900; text-shadow: -3px -1px 0 var(--o), -3px 0px 0 var(--o), -3px 1px 0 var(--o), -2px -2px 0 var(--o), -2px -1px 0 var(--o), -2px 0px 0 var(--o), -2px 1px 0 var(--o), -2px 2px 0 var(--o), -1px -3px 0 var(--o), -1px -2px 0 var(--o), -1px -1px 0 var(--o), -1px 0px 0 var(--o), -1px 1px 0 var(--o), -1px 2px 0 var(--o), -1px 3px 0 var(--o), 0px -3px 0 var(--o), 0px -2px 0 var(--o), 0px -1px 0 var(--o), 0px 1px 0 var(--o), 0px 2px 0 var(--o), 0px 3px 0 var(--o), 1px -3px 0 var(--o), 1px -2px 0 var(--o), 1px -1px 0 var(--o), 1px 0px 0 var(--o), 1px 1px 0 var(--o), 1px 2px 0 var(--o), 1px 3px 0 var(--o), 2px -2px 0 var(--o), 2px -1px 0 var(--o), 2px 0px 0 var(--o), 2px 1px 0 var(--o), 2px 2px 0 var(--o), 3px -1px 0 var(--o), 3px 0px 0 var(--o), 3px 1px 0 var(--o); }
+.idg-res-btn.red:active, .idg-res-btn.green:active { filter: brightness(.85); transform: translateY(1px); }
+/* X 위 여백 = 오른쪽 여백 (실측 : 844×390 29 = 29 · 1280×720 은 현판이 높아 2px 만 내림) · 바로가기 알약도 X 와 같은 높이 */
+@media (min-height: 561px) { .dialog[class*="idg-"] { --xdy: 2px; } }
+.idg-how-title > .idg-title-sw { top: calc(50% + var(--xdy, 5px)); }

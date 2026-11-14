@@ -224,7 +224,7 @@ export function powerPage(h, o) {
       if (deck.length < need) sCol.firstChild.classList.add('short');
       body.append(list);
       const cPlate = plate('파워업 카드', `${ids.length}카드 보유`); cPlate.classList.add('sorts');
-      const sortBar = h('div', 'idg-pp-sort'); sortBar.append(h('b', null, '정렬:'));
+      const sortBar = h('div', 'idg-pp-sort');   /* «정렬:» 글씨 없이 단추만 (11/14 대표님) */
       for (const [k, lb, lowFirst] of SORTS) {
         const on = sortBy?.k === k, low = on ? sortBy.low : lowFirst;
         const sb = h('button', 'idg-pp-sortb' + (on ? ' on' : '')); sb.type = 'button'; sb.dataset.k = k; sb.setAttribute('aria-pressed', on ? 'true' : 'false');

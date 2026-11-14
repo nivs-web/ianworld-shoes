@@ -155,10 +155,12 @@ function openLook({ idg, save, onClose, tab }) {
   switchBig(big);
 
   const wrap = el('div.idg-lk', null, [side, list]);
-  const box = el('div.dialog.idg-look.idg-look2.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['꾸미기', kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X (아래 단추가 목록을 가리지 않게) */
+  const box = el('div.dialog.idg-look.idg-look2.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['꾸미기', el('button.idg-title-sw', { type: 'button', 'aria-label': '아이템샵으로 바로 가기', onclick: () => switchToShop() }, '아이템샵'), kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X (아래 단추가 목록을 가리지 않게) */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   let done = false;
   const ended = () => { if (done) return; done = true; live.kill(); cs.kill(); onClose?.(); };   // 닫으면(뒤로가기 포함) 로비 다시 그리기 — 무대 드래곤 · 코인 · 젬
   const closeO = presentOverlay(overlay, ended);
   const close = () => { closeO(); ended(); };
+  /* 꾸미기 ↔ 아이템샵 빠른 오가기 (대표님 11/14) */
+  const switchToShop = () => { if (done) return; done = true; live.kill(); cs.kill(); closeO(); import('./idgShopView.js').then((m) => m.showShop({ idg: cur, save, onClose })); };
 }

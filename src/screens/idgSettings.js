@@ -12,7 +12,7 @@ import * as Sfx from '../audio/sfx.js';
 import { kitTabs, kitRow, kitBtn, kitSection, kitScroll, kitPaper } from './idgKit.js';
 import { xTitle } from './idgXwin.js';
 import { soundPanel } from '../games/iandragon_game/render/soundPrefs.js';
-import { ORIENTS, lobbyOrientPref, lobbyOrientChosen, setLobbyOrientPref, GAME_ORIENT, isPhone } from '../games/iandragon_game/render/rot.js';
+import { ORIENTS, lobbyOrientPref, lobbyOrientChosen, setLobbyOrientPref, GAME_ORIENT, isPhone, LOBBY_FORCE_LAND } from '../games/iandragon_game/render/rot.js';
 import { KEY_ACTIONS, FIXED_KEYS, keyLabel, keyName, setKey, resetKeys, captureKey, cancelCapture } from './idgKeys.js';
 
 const TABS = [{ id: 'sound', label: '음향' }, { id: 'screen', label: '화면' }, { id: 'keys', label: '키보드' }];
@@ -26,6 +26,14 @@ export function screenTab() {
   };
   const tabs = kitTabs({ label: '로비화면 방향', tabs: ORIENTS.map(({ v, label }) => ({ id: v, label })), value: lobbyOrientPref(), onPick: (v) => { setLobbyOrientPref(v); paint(); } });
   paint();
+  if (LOBBY_FORCE_LAND) {   /* 11/14 대표님 : 모든 기기 가로만 · 화면 회전 단추는 전부 잠금(누를 수 없음) — 대표님이 말할 때까지 */
+    const locked = (label) => { const t = kitTabs({ label, tabs: ORIENTS.map(({ v, label: l }) => ({ id: v, label: l })), value: 'land', onPick: (v) => { if (v !== 'land') { t.set('land'); toast('지금은 가로만 할 수 있어요', 1800); } } });
+      t.querySelectorAll('.idg-k-tab').forEach((b) => { if (b.dataset.id !== 'land') { b.classList.add('locked'); b.setAttribute('aria-disabled', 'true'); b.title = '지금은 가로만 할 수 있어요'; } }); return t; };
+    return [
+      kitRow({ title: '로비화면', sub: '로비와 로비 창은 가로만 돼요', right: locked('로비화면 방향') }),
+      kitRow({ title: '게임화면', sub: '싸울 때도 가로만 돼요', right: locked('게임화면 방향') }),
+    ];
+  }
   return [
     kitRow({ title: '로비화면', sub: '로비와 로비 창의 방향', right: tabs }),
     kitRow({ title: '게임화면', sub: '싸울 때는 늘 가로예요', right: el('span.idg-key-chip.fixed', GAME_ORIENT === 'land' ? '가로' : '세로') }),

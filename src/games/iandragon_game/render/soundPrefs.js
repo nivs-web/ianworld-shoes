@@ -9,7 +9,7 @@
  */
 import * as Audio from '../audio/index.js';
 import { isOn } from '../../../services/switches.js';
-import { ORIENTS, lobbyOrientPref, setLobbyOrientPref, GAME_ORIENT } from './rot.js';
+import { ORIENTS, lobbyOrientPref, setLobbyOrientPref, GAME_ORIENT, LOBBY_FORCE_LAND } from './rot.js';
 import { el, toast } from '../../../screens/ui.js';
 import { kitRow, kitSlider, kitToggle, kitTabs } from '../../../screens/idgKit.js';   /* UI 키트 (11/12) */
 
@@ -63,7 +63,9 @@ export function soundPanel(h, onChange = () => {}, opt = {}) {   /* opt.screen =
    *  로비화면 : 기본 세로 · 자동 · 가로 고를 수 있음 / 게임화면 : 지금은 가로만 — «자동» · «세로» 는 흐린 잠금 모양, 누르면 안내만 */
   /** 화면 방향 두 줄 (일시정지 판 = 그대로 · 로비 설정은 «화면» 탭이 따로 만든다) */
   const screenRows = () => {
-    const lobbyTabs = kitTabs({ label: '로비화면 방향', tabs: ORIENTS.map(({ v, label }) => ({ id: v, label })), value: lobbyOrientPref(), onPick: (v) => setLobbyOrientPref(v) });
+    const lobbyTabs = kitTabs({ label: '로비화면 방향', tabs: ORIENTS.map(({ v, label }) => ({ id: v, label })), value: lobbyOrientPref(),
+      onPick: (v) => { if (!LOBBY_FORCE_LAND) return setLobbyOrientPref(v); if (v !== 'land') { lobbyTabs.set('land'); toast('지금은 가로만 할 수 있어요', 1800); } } });
+    if (LOBBY_FORCE_LAND) lobbyTabs.querySelectorAll('.idg-k-tab').forEach((b) => { if (b.dataset.id !== 'land') { b.classList.add('locked'); b.setAttribute('aria-disabled', 'true'); b.title = '지금은 가로만 할 수 있어요'; } });
     const gameTabs = kitTabs({ label: '게임화면 방향', tabs: ORIENTS.map(({ v, label }) => ({ id: v, label })), value: GAME_ORIENT,
       onPick: (v) => { if (v !== GAME_ORIENT) { gameTabs.set(GAME_ORIENT); toast('지금은 가로만 할 수 있어요', 1800); } } });
     gameTabs.querySelectorAll('.idg-k-tab').forEach((b) => { if (b.dataset.id !== GAME_ORIENT) { b.classList.add('locked'); b.setAttribute('aria-disabled', 'true'); b.title = '지금은 가로만 할 수 있어요'; } });
