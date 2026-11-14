@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.two { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .6em; }
+.big { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3em; min-height: 0; padding: .5em .6em .6em; border: 2px solid var(--o); border-radius: 10px; background: var(--bg2); box-shadow: inset 0 0 0 1px #5a4a8a; }
+.big.on { box-shadow: inset 0 0 0 3px var(--gold-hi); background: #2c2150; }
+.big .ttl { display: flex; align-items: center; gap: .3em; font-size: 1.2em; } .big .ttl img { height: 1.5em; }
+.big .pic { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: .3em; border-radius: 8px; background: radial-gradient(#4d3b80, #241a40 72%); }
+.big .pic img { height: 80%; max-width: 40%; object-fit: contain; } .big .pic b { font-size: 1.2em; color: var(--gold-hi); }
+.big .ds { font-size: .78em; color: var(--sub); text-shadow: 1px 1px 0 var(--o); text-align: center; }
+.big .ok { position: absolute; right: -.4em; top: -.4em; padding: .1em .5em; border-radius: .8em; background: var(--gold-hi); color: #2a1238; text-shadow: none; box-shadow: 0 0 0 2px var(--o); font-size: .75em; }
+.bar { flex: none; display: flex; align-items: center; gap: .5em; }
+.inp { flex: 1; min-width: 0; display: flex; align-items: center; gap: .4em; height: 2.2em; padding: 0 .6em; border: 2px solid var(--o); border-radius: 8px; background: var(--bg2); box-shadow: inset 0 0 0 1px #5a4a8a; color: var(--mute); font-size: .85em; white-space: nowrap; overflow: hidden; }
+.inp img { height: 1.3em; } .btn img { height: 1.3em; }
+</style>
+<div class="scene"></div>
+<div class="win">
+  <div class="head"><h1>멀티게임</h1><div class="grow"></div><span id="cash"></span><div class="x">✕</div></div>
+  <div class="body" style="flex-direction:column">
+    <div class="two">
+      <div class="big on"><i class="ok">고름</i>
+        <div class="ttl"><img src="/assets/iandragon_game/ai/lobby/ico_coop.png">같이 깨기</div>
+        <div class="pic"><img id="c1"><b>+</b><img id="c2"></div>
+        <div class="ds">둘이 함께 <b style="color:var(--gold-hi)">2-5</b> 에 도전해요<br>드래곤은 각자 덱에서 나가요</div>
+      </div>
+      <div class="big">
+        <div class="ttl"><img src="/assets/iandragon_game/ai/lobby/ico_raid.png">드래곤 대결</div>
+        <div class="pic"><img id="v1"><b>VS</b><img id="v2" style="transform:scaleX(-1)"></div>
+        <div class="ds">오늘 보상 <b style="color:var(--gold-hi)">5/5</b>판 · 12승 8패</div>
+      </div>
+    </div>
+    <div class="bar">
+      <span class="btn p"><img src="/assets/iandragon_game/ai/lobby/ico_nest.png">공개방 만들기</span>
+      <span class="btn p"><img src="/assets/iandragon_game/ai/lobby/ico_lock.png">비번방 만들기</span>
+      <div class="inp"><img src="/assets/iandragon_game/ai/lobby/ico_key.png">방 번호 6자리</div>
+      <span class="btn p">들어가기</span>
+      <span class="btn r" style="min-height:2.4em">빠른 시작</span>
+    </div>
+  </div>
+</div>
+<script>
+c1.src = head('novart'); c2.src = head('aquantis'); v1.src = head('crimsonde'); v2.src = head('frostwing');
+tag('멀티 B — 큰 카드 둘 «같이 깨기» / «대결» 중 고르고, 아래 줄에서 방 만들기 · 코드 · 빠른 시작');</script>

@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.keeper { flex: 0 0 24%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: .4em; border-radius: 10px; background: radial-gradient(ellipse at 50% 85%, #4a3a7a, transparent 70%); }
+.keeper img { width: 92%; max-height: 66%; object-fit: contain; }
+.chip .badge { position: relative; right: auto; top: auto; margin-left: .3em; }
+</style>
+<div class="scene"></div>
+<div class="win">
+  <div class="head"><h1>아이템샵</h1>
+    <div class="chips" style="margin-left:.8em"><span class="chip on">특가<i class="badge">3</i></span><span class="chip">드래곤</span><span class="chip">드래곤캐슬</span><span class="chip">편의품</span><span class="chip">선물함<i class="badge">2</i></span></div>
+    <div class="grow"></div><span id="cash"></span><div class="x">✕</div></div>
+  <div class="body">
+    <div class="keeper"><div class="paper" style="width:100%">어서 와!<br>오늘은 깃발이 <b>30%</b> 싸.</div><img src="/assets/iandragon_game/ai/meta/shopkeeper.png"></div>
+    <div class="main"><div class="grid" id="g" style="grid-template-columns:repeat(auto-fill,minmax(8.4em,1fr))"></div></div>
+  </div>
+</div>
+<script>fill('g', ITEMS.map((i) => cardHTML(i)).join('')); tag('아이템샵 B — 위 탭 알약 + 왼쪽 큰 상인(말풍선) + 오른쪽 물건 칸');</script>

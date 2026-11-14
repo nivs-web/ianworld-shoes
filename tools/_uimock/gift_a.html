@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.win { width: min(72vw, 820px); }
+.list { flex: 1; display: flex; flex-direction: column; gap: .4em; overflow: auto; padding: .1em .1em .5em; }
+.row .art { width: 2.8em; height: 2.8em; border-radius: 8px; background: radial-gradient(#4a3a7a, #241a40 70%); }
+.row .from { font-size: .62em; padding: .1em .45em; border-radius: 1em; margin-left: .4em; vertical-align: middle; text-shadow: 1px 1px 0 var(--o); }
+.f-lv { background: #2f7ad8; } .f-quest { background: #3f9f4f; } .f-hall { background: #b8872c; } .f-team { background: #c0408a; }
+.row .left { font-size: .62em; color: #ff9f8f; }
+.foot { flex: none; display: flex; align-items: center; gap: .6em; }
+.foot .paper { flex: 1; text-align: left; }
+</style>
+<div class="scene"></div>
+<div class="win">
+  <div class="head"><h1>선물함</h1><span class="chip on" style="margin-left:.6em">받을 선물 4</span><div class="grow"></div><span id="cash"></span><div class="x">✕</div></div>
+  <div class="list" id="l"></div>
+  <div class="foot"><div class="paper">선물은 <b>30일</b> 동안 보관돼요. 꾸미기 선물은 받으면 바로 [꾸미기]에 들어가요.</div><span class="btn g" style="min-height:2.4em;font-size:1em">모두 받기</span></div>
+</div>
+<script>
+const G = [
+  { img: M + 'flag_moon.png', t: 'Lv.30 선물 — 달 깃발', s: '드래곤캐슬 꾸미기 · 젬 20 함께', f: ['f-lv', '레벨 선물'], left: '29일 남음' },
+  { img: GEM, t: '젬 50', s: '«10판 연속 별 3개» 도전과제를 깼어요', f: ['f-quest', '도전과제'], left: '12일 남음' },
+  { img: M + 'frame_gold.png', t: '금 테두리', s: '명예의 전당 지난 주 3위 상', f: ['f-hall', '명예의 전당'], left: '5일 남음' },
+  { img: COIN, t: '코인 3,000', s: '이안오락실 오픈 기념 선물', f: ['f-team', '운영진'], left: '2일 남음' },
+];
+fill('l', G.map((g) => `<div class="row"><div class="art"><img src="${g.img}"></div><div class="txt"><b>${g.t}<span class="from ${g.f[0]}">${g.f[1]}</span></b><small>${g.s}</small></div><span class="left">${g.left}</span><span class="btn g">받기</span></div>`).join(''));
+tag('선물함 — 로비 위 줄 [선물] 단추 숫자 배지 → 이 창 · 아이템샵 왼쪽 메뉴에도 [선물함]');
+</script>

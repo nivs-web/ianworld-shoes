@@ -1,0 +1,38 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.list { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: .4em; padding: .2em .1em .4em; }
+.row .art { width: 2.8em; height: 2.8em; border-radius: 50%; background: radial-gradient(#4d3b80, #241a40 72%); } .row .art img { max-height: 2.5em; }
+.row .mode { font-size: .72em; padding: .1em .5em; border-radius: .8em; border: 2px solid var(--o); background: var(--bg3); color: var(--sub); text-shadow: none; }
+.row img.lk { height: 1.4em; }
+.inp { flex: 1; display: flex; align-items: center; gap: .4em; height: 2.2em; padding: 0 .6em; border: 2px solid var(--o); border-radius: 8px; background: var(--bg2); box-shadow: inset 0 0 0 1px #5a4a8a; color: var(--mute); font-size: .9em; }
+.inp img { height: 1.3em; }
+.rbtn img { height: 1.5em; }
+</style>
+<div class="scene"></div>
+<div class="win">
+  <div class="head"><h1>멀티게임</h1><div class="grow"></div><span id="cash"></span><div class="x">✕</div></div>
+  <div class="body">
+    <div class="rail">
+      <div class="rbtn on"><img src="/assets/iandragon_game/ai/lobby/ico_coop.png">방 목록</div>
+      <div class="rbtn"><img src="/assets/iandragon_game/ai/lobby/ico_nest.png">공개방 만들기</div>
+      <div class="rbtn"><img src="/assets/iandragon_game/ai/lobby/ico_lock.png">비번방 만들기</div>
+      <div style="flex:1"></div>
+      <div class="paper">둘이 함께 <b>2-5</b> 에<br>도전해요</div>
+      <span class="btn r wide" style="min-height:2.4em">빠른 시작</span>
+    </div>
+    <div class="main">
+      <div class="chips"><span class="chip on">전체</span><span class="chip">같이 깨기</span><span class="chip">드래곤 대결</span></div>
+      <div class="list" id="l"></div>
+      <div class="row"><div class="inp"><img src="/assets/iandragon_game/ai/lobby/ico_key.png">방 번호 6자리</div><span class="btn p">코드로 들어가기</span></div>
+    </div>
+  </div>
+</div>
+<script>
+const R = [
+  ['포포', 'novart', '같이 깨기', '2-3', 0, '1/2'],
+  ['별이', 'volttail', '드래곤 대결', '', 0, '1/2'],
+  ['바다', 'aquantis', '같이 깨기', '1-9', 1, '1/2'],
+  ['하늘', 'solaris', '같이 깨기', '2-5', 0, '1/2'],
+];
+fill('l', R.map(([n, d, m, s, lk, c]) => `<div class="row"><div class="art"><img src="${head(d)}"></div><div class="txt"><b>${n}의 방</b><small>${m}${s ? ' · ' + s : ''} · ${c}명</small></div><span class="mode">${lk ? '비번방' : '공개방'}</span>${lk ? `<img class="lk" src="${L}ico_lock.png">` : ''}<span class="btn p">들어가기</span></div>`).join(''));
+tag('멀티 A — 왼쪽 방 만들기(공개/비번) + 빠른 시작, 오른쪽 열린 방 목록 + 코드 입력');</script>

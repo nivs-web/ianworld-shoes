@@ -1,0 +1,53 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.win { width: min(80vw, 960px); }
+.left { flex: 0 0 40%; position: relative; display: flex; flex-direction: column; gap: .45em; padding: .5em .6em; border: 2px solid var(--o); border-radius: 10px; overflow: hidden; background: #120826; }
+.left::before { content: ''; position: absolute; inset: 0; background: var(--wbg) center 55% / cover; image-rendering: pixelated; }
+.left::after { content: ''; position: absolute; inset: 0; background: linear-gradient(rgba(14, 6, 30, .35), rgba(14, 6, 30, .1) 40%, rgba(14, 6, 30, .75)); }
+.left > * { position: relative; z-index: 1; }
+.st { font-size: 1.05em; color: #fff7d6; text-shadow: var(--t3); }
+.diff { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35em; }
+.diff .btn { min-height: 1.9em; font-size: .82em; }
+.worlds { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4em; justify-items: center; margin-top: .2em; }
+.wb { width: 2.4em; height: 2.4em; border-radius: 50%; border: 3px solid var(--o); background: linear-gradient(#8a6ee0 0 50%, #6a4fc4 50%); box-shadow: inset 0 2px 0 #cdbcff, 0 3px 0 var(--o); display: grid; place-items: center; font-size: 1.05em; }
+.wb.on { background: linear-gradient(#ffe27a 0 50%, #f0b52c 50%); color: #fff; box-shadow: inset 0 2px 0 #fff3c0, 0 0 0 2px #fff, 0 3px 0 var(--o); }
+.wb.lock { background: #4a4458; color: #9a94aa; box-shadow: 0 3px 0 var(--o); }
+.wname { margin-top: auto; align-self: center; padding: .25em .9em; border-radius: 1em; background: rgba(14, 6, 30, .7); box-shadow: 0 0 0 2px var(--o); font-size: .95em; color: #fff7d6; }
+.right { flex: 1; display: flex; flex-direction: column; gap: .45em; min-width: 0; }
+.stages { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: 1fr 1fr; gap: .45em; }
+.sb { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2em; border: 2px solid var(--o); border-radius: 10px; background: linear-gradient(var(--bg3) 0 50%, #2c2150 50%); box-shadow: inset 0 0 0 1px #8e7bcc, 0 3px 0 var(--o); font-size: 1.05em; }
+.sb .stars img { height: .95em; }
+.sb.boss { background: linear-gradient(#a8303a 0 50%, #7a1a2a 50%); box-shadow: inset 0 0 0 2px var(--gold-hi), 0 3px 0 var(--o); }
+.sb.now { box-shadow: inset 0 0 0 3px var(--gold-hi), 0 0 0 2px #fff, 0 3px 0 var(--o); }
+.sb.lock { background: #3a3448; color: #8a849a; }
+.sb.lock img.lk { height: 1.1em; }
+.toast { position: absolute; left: 50%; bottom: 3.2em; transform: translateX(-50%); white-space: nowrap; padding: .35em .8em; border-radius: 8px; background: rgba(10, 4, 22, .9); box-shadow: 0 0 0 2px var(--o); font-size: .75em; z-index: 3; }
+</style>
+<div class="scene"></div>
+<div class="win">
+  <div class="head"><h1>스테이지 고르기</h1><div class="grow"></div><div class="x">✕</div></div>
+  <div class="body">
+    <div class="left" id="left">
+      <div class="st">월드 선택</div>
+      <div class="diff"><span class="btn p" style="filter:saturate(.6) brightness(.85)">쉬움</span><span class="btn p" style="box-shadow:inset 0 0 0 2px var(--gold-hi),0 3px 0 var(--o)">보통</span><span class="btn x0"><img src="/assets/iandragon_game/ai/lobby/ico_lock.png">어려움</span></div>
+      <div class="worlds" id="w"></div>
+      <div class="wname" id="wn"></div>
+      <div class="toast">🔒 보통 난이도를 전부 깨면 어려움이 열려요</div>
+    </div>
+    <div class="right">
+      <div class="st">스테이지 선택</div>
+      <div class="stages" id="s"></div>
+    </div>
+  </div>
+</div>
+<script>
+const WN = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 쇠 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤캐슬'];
+const W = Number(new URLSearchParams(location.search).get('w') || 3);
+document.getElementById('left').style.setProperty('--wbg', `url(${A}bg/w${String(W).padStart(2, '0')}_panel.png)`);
+fill('w', Array.from({ length: 10 }, (_, i) => `<span class="wb ${i + 1 === W ? 'on' : i > 5 ? 'lock' : ''}">${i > 5 ? '🔒' : i + 1}</span>`).join(''));
+document.getElementById('wn').textContent = `월드 ${W} · ${WN[W - 1]}`;
+const star = (n) => [0, 1, 2].map((k) => `<img src="${A}result/star_${k < n ? 'on' : 'off'}.webp">`).join('');
+const got = [3, 3, 2, 3, 1, 0, 0, 0, 0, 0];
+fill('s', got.map((g, k) => { const no = k + 1, lock = k > 5, now = k === 5; return `<div class="sb ${k === 9 ? 'boss' : ''} ${now ? 'now' : ''} ${lock ? 'lock' : ''}"><b>${W}-${no}</b>${lock ? `<img class="lk" src="${L}ico_lock.png">` : `<span class="stars">${star(g)}</span>`}</div>`; }).join(''));
+tag('스테이지 A — 대표님 말씀대로 : 왼쪽 = 월드 선택(난이도 · 동그라미 1~10 · 그 월드 배경) · 오른쪽 = 스테이지');
+</script>

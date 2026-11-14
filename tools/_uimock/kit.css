@@ -1,0 +1,73 @@
+/* ═══ 좀비와 드래곤 창 디자인 규칙 2판 — 시안용 공통 바탕 (11/14 · 겜부장) ═══
+ * 모든 A·B·C 시안이 이 한 장만 쓴다 → 어느 창이든 같은 틀 · 같은 단추 · 같은 글씨.
+ *  틀  : 화면 가로 80% 이하 · 세로 92% · 짙은 보라 판 + 바깥 검보라 3px + 안쪽 금 1px (리본 · 금띠 없음)
+ *  머리 : 왼쪽 위 = 제목(큰 글씨 · 3px 테) · 오른쪽 위 = 재화 알약 + 빨간 X (위 · 오른쪽 여백 같게)
+ *  몸  : (필요하면) 왼쪽 30% = 메뉴 단추 줄 · 오른쪽 = 고르는 물건만
+ *  단추 뜻 : 빨강 = 싸우러 가기 · 초록 = 사기 · 강화 · 받기 · 보라 = 고르기 · 탭 · 주황 = 다른 창 바로가기 · 회색 = 잠김 · 빨간 네모 X = 닫기 */
+@font-face { font-family: 'Galmuri11'; src: url(https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11-Bold.woff2) format('woff2'); font-weight: 100 900; }
+:root {
+  --o: #1c0d2e; --gold: #d9a441; --gold-hi: #ffd45a; --bg: #2a1f45; --bg2: #1d1233; --bg3: #352858;
+  --pur: #6a52b0; --pur2: #4a3888; --pur-b: #a894ee; --sub: #bdb0e0; --mute: #8f82b8; --red: #e0402c; --green: #3fbf4f; --orange: #e08a2c;
+  --t2: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o);
+  --t3: 3px 0 var(--o), -3px 0 var(--o), 0 3px var(--o), 0 -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o), 2px 3px var(--o), -2px 3px var(--o), 3px 2px var(--o), -3px 2px var(--o);
+  --fs: clamp(12px, 3.3vh, 18px);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+body { font: 800 var(--fs)/1.25 'Galmuri11', sans-serif; color: #fff; text-shadow: var(--t2); letter-spacing: -.02em; }
+img { image-rendering: pixelated; }
+.scene { position: fixed; inset: 0; background: url(/assets/iandragon_game/ai/lobby/bg_land.webp) center / cover; }
+.scene::after { content: ''; position: absolute; inset: 0; background: rgba(8, 2, 20, .62); }
+.tag { position: fixed; left: 8px; top: 6px; z-index: 9; padding: 2px 8px; border-radius: 6px; background: #ffd45a; color: #2a1238; text-shadow: none; font-size: 13px; }
+
+/* ── 틀 ── */
+.win { position: fixed; z-index: 2; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(80vw, 1100px); height: min(92vh, 640px); display: flex; flex-direction: column;
+  background: var(--bg); border: 3px solid var(--o); border-radius: 12px; box-shadow: inset 0 0 0 2px var(--gold), inset 0 0 0 4px var(--o), 0 6px 0 rgba(0,0,0,.5); padding: calc(var(--fs) * .7); gap: calc(var(--fs) * .5); }
+.win.narrow { width: min(72vw, 760px); }
+.head { flex: none; display: flex; align-items: center; gap: .5em; height: 2.3em; }
+.head h1 { margin: 0; font-size: 1.45em; line-height: 1; color: #fff7d6; text-shadow: var(--t3); white-space: nowrap; }
+.head .grow { flex: 1; }
+.cash { display: flex; align-items: center; gap: .25em; height: 1.9em; padding: 0 .55em 0 .2em; border-radius: 1em; background: var(--bg2); box-shadow: 0 0 0 2px var(--o), inset 0 0 0 1px #5a4a8a; font-size: .9em; }
+.cash img { height: 1.4em; } .cash.coin b { color: var(--gold-hi); } .cash.gem b { color: #f0b8ff; }
+.x { flex: none; width: 2.3em; height: 2.3em; border: 3px solid var(--o); border-radius: 8px; background: linear-gradient(#ff6a4f 0 50%, #d8381f 50%); box-shadow: inset 0 2px 0 #ffb09e, inset 0 -3px 0 #8e1f0f; color: #fff; font: 900 1.2em/1 'Galmuri11'; text-shadow: var(--t2); display: grid; place-items: center; }
+.body { flex: 1 1 auto; min-height: 0; display: flex; gap: calc(var(--fs) * .6); }
+
+/* ── 왼쪽 30% 메뉴 줄 ── */
+.rail { flex: 0 0 28%; display: flex; flex-direction: column; gap: .4em; min-height: 0; }
+.rbtn { position: relative; display: flex; align-items: center; gap: .5em; height: 2.6em; padding: 0 .6em; border: 2px solid var(--o); border-radius: 9px; background: linear-gradient(var(--bg3) 0 50%, #2c2150 50%); box-shadow: inset 0 0 0 1px #5a4a8a, 0 3px 0 var(--o); color: var(--sub); font-size: 1em; }
+.rbtn img { height: 1.8em; }
+.rbtn.on { background: linear-gradient(#8a6ee0 0 50%, #6a4fc4 50%); color: #fff; box-shadow: inset 0 0 0 2px var(--gold-hi), 0 3px 0 var(--o); }
+.rbtn.on::after { content: ''; position: absolute; right: -.75em; top: 50%; margin-top: -.45em; border: .45em solid transparent; border-left-color: var(--gold-hi); }
+.badge { position: absolute; right: -.45em; top: -.45em; min-width: 1.35em; height: 1.35em; padding: 0 .3em; border-radius: .7em; background: #ff3b30; box-shadow: 0 0 0 2px var(--o); color: #fff; font-size: .78em; line-height: 1.35em; text-align: center; text-shadow: 1px 1px 0 var(--o); }
+.badge.dot { min-width: .9em; height: .9em; padding: 0; }
+
+/* ── 오른쪽 물건 ── */
+.main { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .45em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.2em, 1fr)); gap: .5em; overflow: auto; align-content: start; padding: .2em .1em .6em; }
+.card { position: relative; display: flex; flex-direction: column; align-items: center; gap: .2em; padding: .45em .35em .4em; border: 2px solid var(--o); border-radius: 9px; background: var(--bg2); box-shadow: inset 0 0 0 1px #5a4a8a; text-align: center; }
+.card .art { width: 100%; height: 4.2em; display: grid; place-items: center; border-radius: 6px; background: radial-gradient(#3d2f6a, #241a40 70%); }
+.card .art img { max-height: 3.8em; max-width: 90%; }
+.card .nm { font-size: .82em; color: #fff; } .card .fx { font-size: .68em; color: var(--sub); text-shadow: 1px 1px 0 var(--o); }
+.card.rare { box-shadow: inset 0 0 0 2px #4aa0ff; } .card.epic { box-shadow: inset 0 0 0 2px #c06aff; } .card.leg { box-shadow: inset 0 0 0 2px var(--gold-hi); }
+.card .off { position: absolute; left: -.3em; top: -.3em; padding: .05em .35em; border-radius: 5px; background: #ff3b30; box-shadow: 0 0 0 2px var(--o); font-size: .7em; }
+.row { display: flex; align-items: center; gap: .6em; padding: .4em .6em; border: 2px solid var(--o); border-radius: 9px; background: var(--bg2); box-shadow: inset 0 0 0 1px #5a4a8a; }
+.row .art { width: 2.6em; height: 2.6em; display: grid; place-items: center; } .row .art img { max-height: 2.4em; }
+.row .txt { flex: 1; min-width: 0; } .row .txt b { display: block; } .row .txt small { display: block; font-size: .7em; color: var(--sub); text-shadow: 1px 1px 0 var(--o); }
+
+/* ── 단추 (뜻이 정해진 5색) ── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .25em; min-height: 2em; padding: 0 .8em; border: 2px solid var(--o); border-radius: 8px; color: #fff; font: 900 .9em/1 'Galmuri11'; text-shadow: var(--t2); white-space: nowrap; box-shadow: 0 3px 0 var(--o); }
+.btn img { height: 1.15em; }
+.btn.g { background: linear-gradient(#6ee07a 0 50%, #32a948 50%); box-shadow: inset 0 2px 0 #c8ffd2, inset 0 -3px 0 #1f7a38, 0 3px 0 var(--o); }   /* 사기 · 강화 · 받기 */
+.btn.r { background: linear-gradient(#ff7a4f 0 50%, #e0402c 50%); box-shadow: inset 0 2px 0 #ffc0a8, inset 0 -3px 0 #8e1f0f, 0 3px 0 var(--o); }  /* 싸우러 가기 */
+.btn.p { background: linear-gradient(#8a6ee0 0 50%, #6a4fc4 50%); box-shadow: inset 0 2px 0 #cdbcff, inset 0 -3px 0 #4a3499, 0 3px 0 var(--o); }  /* 고르기 · 탭 */
+.btn.o { background: linear-gradient(#ffb04f 0 50%, #e0852c 50%); box-shadow: inset 0 2px 0 #ffe0a8, inset 0 -3px 0 #8e4a0f, 0 3px 0 var(--o); }  /* 다른 창 바로가기 */
+.btn.x0 { background: #5a5468; color: #c8c2d6; box-shadow: inset 0 -3px 0 #3a3448, 0 3px 0 var(--o); }  /* 잠김 · 못 함 */
+.btn.wide { width: 100%; }
+.chips { display: flex; gap: .35em; flex-wrap: wrap; }
+.chip { height: 1.8em; padding: 0 .7em; border: 2px solid var(--o); border-radius: 1em; background: var(--bg3); color: var(--sub); font-size: .8em; display: inline-flex; align-items: center; box-shadow: inset 0 0 0 1px #5a4a8a; }
+.chip.on { background: linear-gradient(#8a6ee0 0 50%, #6a4fc4 50%); color: #fff; box-shadow: inset 0 0 0 2px var(--gold-hi); }
+
+/* ── 종이 위 글씨 (하나만) ── */
+.paper { padding: .45em .7em; border: 3px solid #6a3e14; border-radius: 6px; background: #f3dfae; box-shadow: inset 0 0 0 2px #fff0c8, 0 3px 0 var(--o); color: #4a2c12; text-shadow: none; font-size: .78em; line-height: 1.4; text-align: center; }
+.paper b { color: #8a2a10; }
+.sec { font-size: .8em; color: var(--gold-hi); margin: .1em 0 -.1em; }

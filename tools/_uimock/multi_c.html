@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.info { flex: 0 0 28%; display: flex; flex-direction: column; gap: .5em; min-height: 0; }
+.code { text-align: center; padding: .4em .5em .5em; border: 2px solid var(--o); border-radius: 9px; background: var(--bg2); box-shadow: inset 0 0 0 1px #5a4a8a; }
+.code small { display: block; font-size: .7em; color: var(--sub); text-shadow: 1px 1px 0 var(--o); }
+.code b { display: block; font-size: 2em; line-height: 1.1; letter-spacing: .12em; color: var(--gold-hi); text-shadow: var(--t3); }
+.stg { display: flex; align-items: center; gap: .4em; } .stg .v { flex: 1; text-align: center; font-size: 1.2em; color: var(--gold-hi); }
+.stg .btn { padding: 0; width: 2em; }
+.seats { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .6em; }
+.seat { position: relative; display: flex; flex-direction: column; align-items: center; gap: .25em; min-height: 0; padding: .5em; border: 2px solid var(--o); border-radius: 10px; background: var(--bg2); box-shadow: inset 0 0 0 1px #5a4a8a; }
+.seat.host { box-shadow: inset 0 0 0 2px var(--gold-hi); }
+.seat .no { position: absolute; left: .4em; top: .4em; width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--pur); border: 2px solid var(--o); display: grid; place-items: center; font-size: .8em; z-index: 1; }
+.seat .pic { flex: 1; min-height: 0; width: 100%; display: grid; place-items: center; border-radius: 8px; background: radial-gradient(#4d3b80, #241a40 72%); }
+.seat .pic img { max-height: 92%; max-width: 70%; object-fit: contain; }
+.seat .st { font-size: .75em; color: #9af0a4; }
+.seat .hb { padding: .05em .5em; border-radius: .8em; background: var(--gold-hi); color: #2a1238; text-shadow: none; font-size: .7em; }
+.go { flex: none; display: flex; align-items: center; gap: .6em; }
+.go .paper { flex: 1; padding: .3em .6em; }
+.state { margin-top: auto; }
+</style>
+<div class="scene"></div>
+<div class="win">
+  <div class="head"><h1>멀티게임</h1><div class="grow"></div><span id="cash"></span><div class="x">✕</div></div>
+  <div class="body">
+    <div class="info">
+      <div class="code"><small>방 번호 · 친구에게 알려 주세요</small><b>482 915</b></div>
+      <div class="chips"><span class="chip on">공개방</span><span class="chip">비번방</span><span class="chip">같이 깨기</span></div>
+      <div class="sec">스테이지</div>
+      <div class="stg"><span class="btn p">‹</span><span class="v">2-5</span><span class="btn p">›</span></div>
+      <div class="paper">둘이 함께 <b>2-5</b> 에 도전해요<br>드래곤은 각자 덱에서 나가요</div>
+      <div class="paper" style="margin-top:auto">방장만 스테이지를<br>바꿀 수 있어요</div>
+    </div>
+    <div class="main">
+      <div class="seats">
+        <div class="seat host"><span class="no">1</span><div class="pic"><img id="s1"></div><div class="nm">포포</div><span class="hb">방장</span><span class="st">준비 완료</span></div>
+        <div class="seat"><span class="no">2</span><div class="pic"><img id="s2"></div><div class="nm">별이</div><span class="hb" style="visibility:hidden">방장</span><span class="st">준비 완료</span></div>
+      </div>
+      <div class="go"><div class="paper">둘 다 모였어요! 방장이 시작해요</div><span class="btn r" style="min-height:2.6em;padding:0 1.6em;font-size:1.1em">시작!</span></div>
+    </div>
+  </div>
+</div>
+<script>
+s1.src = head('novart'); s2.src = head('volttail');
+tag('멀티 C — 대기실 : 왼쪽 방 번호 · 공개/비번 · 스테이지 고르기, 가운데 두 자리 + 시작 (실제는 2인방)');</script>

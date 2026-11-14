@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.win { width: min(92vw, 1100px); height: min(94vh, 680px); }
+.tbl { flex: 1; display: grid; grid-template-columns: 9.5em 11em 1fr; gap: .45em .8em; align-items: center; overflow: auto; font-size: .9em; }
+.tbl .h { color: var(--gold-hi); font-size: .85em; }
+.tbl small { color: var(--sub); font-size: .78em; text-shadow: 1px 1px 0 var(--o); line-height: 1.35; }
+.big { min-height: 2.6em; font-size: 1.05em; padding: 0 1.2em; }
+.redbig { display: inline-flex; align-items: center; justify-content: center; height: 2.6em; padding: 0 1.3em; border: solid transparent; border-width: 10px 16px; border-image: url(/assets/iandragon_game/ai/result/btn_red2.webp) 46 70 fill / 10px 16px stretch; font-size: 1.05em; text-shadow: var(--t3); }
+.greenbig { display: inline-flex; align-items: center; justify-content: center; height: 2.6em; padding: 0 1.3em; border: solid transparent; border-width: 10px 16px; border-image: url(/assets/iandragon_game/ai/result/btn_green3.webp) 92 140 fill / 10px 16px stretch; font-size: 1.05em; text-shadow: var(--t3); }
+.rel { position: relative; display: inline-block; justify-self: start; }
+</style>
+<div class="scene"></div>
+<div class="win">
+  <div class="head"><h1>단추 규칙표</h1><span class="chip on" style="margin-left:.6em">어떤 때 · 어떤 단추</span><div class="grow"></div><div class="x">✕</div></div>
+  <div class="tbl">
+    <div class="h">이름</div><div class="h">모양</div><div class="h">언제 쓰나 (이것 말고는 쓰지 않음)</div>
+    <b>큰 빨강</b><span class="redbig">모험시작</span><small>싸우러 들어가는 단추 하나만 — 모험시작 · 출격! · 다시하기 · 전투개시! · 다음 판. 한 화면에 하나.</small>
+    <b>큰 초록</b><span class="greenbig">파워업</span><small>강해지러 가는 큰 단추 — 로비 파워업 · 결과 창 파워업. 한 화면에 하나.</small>
+    <b>작은 초록</b><span class="btn g"><img src="/assets/iandragon_game/ai/ui/coin.svg">2,800</span><small>사기 · 레벨업 · 받기 · 모두 받기. 값이 있으면 코인/젬 그림 + 숫자. 돈이 모자라면 숫자만 빨간 글씨.</small>
+    <b>보라</b><span class="btn p">드래곤</span><small>고르기 · 탭 · 정렬 · 나가기 · 닫기 아닌 «돌아가기». 골라진 것 = 노란 테.</small>
+    <b>주황</b><span class="btn o">꾸미기 ›</span><small>다른 창으로 바로 가기 — 아이템샵 ↔ 꾸미기 · 로비로 · 파워업에서 아이템샵. 끝에 › 표시.</small>
+    <b>회색</b><span class="btn x0"><img src="/assets/iandragon_game/ai/lobby/ico_lock.png">어려움</span><small>잠김 · 지금 못 함. 누르면 «왜 잠겼는지» 한 줄 안내만.</small>
+    <b>빨간 네모 X</b><span class="x" style="display:inline-grid">✕</span><small>창 닫기 하나만. 늘 오른쪽 위 · 위 여백 = 오른쪽 여백.</small>
+    <b>왼쪽 메뉴</b><span class="rbtn on" style="width:9em"><img src="/assets/iandragon_game/ai/lobby/ico_gift.png">선물함</span><small>창 안 분류 (아이템샵 · 도감 · 연구소). 왼쪽 30% 세로 줄 · 골라진 것 = 밝은 보라 + 노란 테 + 오른쪽 화살표.</small>
+    <b>알림 배지</b><span class="rel"><span class="btn p">도전과제</span><i class="badge">3</i></span><small>받을 것이 있으면 빨간 동그라미 + 숫자(브롤스타즈식). 숫자를 셀 수 없는 새 소식은 빨간 점. 받으면 바로 사라짐.</small>
+  </div>
+</div>
+<script>tag('단추 규칙표 — 모든 창이 이 표만 따른다');</script>

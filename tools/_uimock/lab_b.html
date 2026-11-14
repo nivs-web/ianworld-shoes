@@ -1,0 +1,76 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.lv { flex:none; width:2.5em; height:2.2em; display:grid; place-items:center; border:2px solid var(--o); border-radius:7px; background:linear-gradient(#8a6ee0 0 50%, #6a4fc4 50%); box-shadow:inset 0 0 0 1px #cdbcff; font-size:.85em; }
+.lv.z { background:#3a3254; box-shadow:inset 0 0 0 1px #5a4a8a; color:var(--mute); }
+.pips { display:flex; gap:.15em; align-items:center; }
+.pips i { width:.62em; height:.9em; border:1.5px solid var(--o); border-radius:2px; background:#150a26; box-shadow:inset 0 0 0 1px #5a4a8a; }
+.pips i.on { background:linear-gradient(#ffe27a 0 50%, #d9a441 50%); box-shadow:inset 0 0 0 1px #fff0b0; }
+.pips i.lk { background:repeating-linear-gradient(135deg, #2c2540 0 3px, #1a1430 3px 6px); box-shadow:none; opacity:.8; }
+.row.lab { padding:.22em .5em; gap:.5em; flex:1 1 0; min-height:0; max-height:3.9em; }
+.row.lab .txt b { font-size:.95em; line-height:1.15; } .row.lab .txt small { font-size:.68em; line-height:1.2; }
+.row.lab .btn { min-height:1.9em; font-size:.82em; padding:0 .55em; }
+.wallet { display:flex; gap:.4em; align-items:center; }
+.sc { display:flex; align-items:center; gap:.2em; }
+.sc img { height:1.05em; } .sc img.off { filter:grayscale(1) brightness(.5); }
+.sc em { font-style:normal; font-size:.65em; color:var(--sub); margin-right:.3em; text-shadow:1px 1px 0 var(--o); }
+.sc em.on { color:var(--gold-hi); }
+.pg { position:relative; height:.9em; border:2px solid var(--o); border-radius:.5em; background:#150a26; box-shadow:inset 0 0 0 1px #5a4a8a; overflow:hidden; }
+.pg > i { display:block; height:100%; background:linear-gradient(#ffe27a 0 50%, #d9a441 50%); }
+.pg > u { position:absolute; top:0; bottom:0; width:2px; background:var(--o); }
+.tcard { position:relative; display:flex; flex-direction:column; gap:.25em; padding:.3em; border:2px solid var(--o); border-radius:9px; background:var(--bg2); box-shadow:inset 0 0 0 1px #5a4a8a; min-width:0; }
+.tcard.full { box-shadow:inset 0 0 0 2px var(--gold-hi); }
+.tcard .th { position:relative; height:3em; border-radius:6px; overflow:hidden; box-shadow:inset 0 0 0 1px var(--o); }
+.tcard .th img { width:100%; height:100%; object-fit:cover; }
+.tcard .th b { position:absolute; left:.3em; bottom:.1em; font-size:.8em; text-shadow:var(--t2); }
+.tcard .ef { font-size:.7em; color:var(--gold-hi); text-shadow:1px 1px 0 var(--o); line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tcard .ef small { color:var(--sub); }
+.tcard.off .th img { filter:grayscale(1) brightness(.4); }
+.tcard.off .ef { color:var(--mute); }
+.th .lock { position:absolute; inset:0; display:grid; place-items:center; } .th .lock img { height:1.8em; width:auto; filter:none; }
+.ldr { position:relative; display:flex; flex-direction:column; align-items:center; gap:.1em; padding:.3em .2em .25em; border:2px solid var(--o); border-radius:9px; background:var(--bg2); box-shadow:inset 0 0 0 1px #5a4a8a; text-align:center; min-width:0; }
+.ldr.on { box-shadow:inset 0 0 0 2px var(--gold-hi), 0 0 0 2px var(--o); background:#3a2c66; }
+.ldr .a { width:100%; flex:1 1 auto; min-height:2.2em; display:grid; place-items:center; border-radius:6px; background:radial-gradient(#3d2f6a, #241a40 70%); }
+.ldr .a img { max-height:2.4em; max-width:90%; }
+.ldr b { font-size:.74em; white-space:nowrap; } .ldr small { font-size:.62em; color:var(--sub); text-shadow:1px 1px 0 var(--o); white-space:nowrap; }
+.ldr .a.auto { font-size:.95em; color:var(--gold-hi); }
+.ldr .ck { position:absolute; right:-.3em; top:-.3em; padding:.05em .35em; border-radius:5px; background:var(--green); box-shadow:0 0 0 2px var(--o); font-size:.6em; }
+.rbtn .badge { right:.3em; top:-.5em; }
+</style>
+
+<script>
+const IC = (n) => `/assets/iandragon_game/ai/lobby/${n}.png`;
+const SO = '/assets/iandragon_game/ai/result/star_on.webp', SF = '/assets/iandragon_game/ai/result/star_off.webp';
+const LABS = [['불씨 생산', .02, 1, 3], ['불씨 최대', .05, 1, 2], ['시작 불씨', 20, 0, 4], ['기지 체력', .05, 1, 1], ['브레스 피해', .05, 1, 2], ['브레스 충전', .02, 1, 0], ['현상금', .03, 1, 2]];
+const CAP = 4;
+const effL = (L, n) => (L[2] ? `+${Math.round(L[1] * n * 100)}%` : `+${L[1] * n}`);
+const cost = (n) => 300 * (n + 1);
+const pips = (n) => `<span class="pips">${Array.from({ length: 9 }, (_, i) => `<i class="${i < n ? 'on' : i >= CAP ? 'lk' : ''}"></i>`).join('')}</span>`;
+const upBtn = (n) => (n >= CAP ? '<span class="btn x0">MAX</span>' : `<span class="btn g"><img src="${COIN}">${fmt(cost(n))}</span>`);
+const TRE = [['불씨 생산', .04], ['공격', .03], ['재생산', .03], ['기지 체력', .10], ['불씨 최대', .10], ['현상금', .05], ['브레스 충전', .05], ['체력', .03], ['브레스 피해', .10], ['시작 불씨', 25, 1]];
+const WN = ['달밤 초록 언덕', '부글부글 화산', '뭉게구름 하늘섬', '꽁꽁 얼음골', '덜컹덜컹 쇠 광산', '으스스 유령 묘지', '모래바람 사막', '끈적끈적 독 늪', '반짝반짝 수정 동굴', '좀비 드래곤캐슬'];
+const STARS = [30, 27, 21, 12, 0, 0, 0, 0, 0, 0];
+const tlv = (s) => (s >= 30 ? 3 : s >= 20 ? 2 : s >= 10 ? 1 : 0);
+const teff = (w, n) => { const T = TRE[w]; return `${T[0]} ${T[2] ? '+' + T[1] * n : '+' + Math.round(T[1] * n * 100) + '%'}`; };
+const panel = (w) => `${A}bg/w${String(w + 1).padStart(2, '0')}_panel.png`;
+const stars3 = (n, lab = true) => `<span class="sc">${[10, 20, 30].map((t, i) => `<img class="${i < n ? '' : 'off'}" src="${i < n ? SO : SF}">${lab ? `<em class="${i < n ? 'on' : ''}">${t}</em>` : ''}`).join('')}</span>`;
+const LEAD = [['auto', '자동', '월드 추천'], ['novart', '노바트', '기본기 만점'], ['aquantis', '아쿠안티스', '물대포 · 느리게'], ['forestia', '포레스티아', '덩굴 · 묶는다'], ['crimsonde', '크림슨드', '짧고 굵은 불'], ['volttail', '볼트테일', '벼락 · 강철 뚫음']];
+const ldr = (L, on) => `<div class="ldr ${on ? 'on' : ''}">${on ? '<i class="ck">선택</i>' : ''}<div class="a ${L[0] === 'auto' ? 'auto' : ''}">${L[0] === 'auto' ? '자동' : `<img src="${head(L[0]).replace('head_big', 'head')}">`}</div><b>${L[1]}</b><small>${L[2]}</small></div>`;
+</script>
+
+<div class="scene"></div>
+<div class="win">
+  <div class="head"><h1>연구소</h1><div class="grow"></div><span id="cash"></span><div class="x">✕</div></div>
+  <div class="body">
+    <div class="main" style="flex:1.1 1 0"><div class="sec">연구소 — 최대 Lv4 (깬 월드 수)</div><div id="rows" style="display:flex;flex-direction:column;gap:.28em;overflow:auto;flex:1 1 0;min-height:0"></div></div>
+    <div class="main" style="flex:1 1 0">
+      <div class="sec">리더 (캐슬 위에서 브레스)</div><div id="ld" style="display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:.3em;flex:1.3 1 0;min-height:0"></div>
+      <div class="sec" style="margin-top:.2em">보물 — 월드마다 별 10 · 20 · 30</div><div id="tr" style="display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:.3em;flex:1 1 0;min-height:0"></div>
+    </div>
+  </div>
+</div>
+<script>
+fill('rows', LABS.map((L) => { const n = L[3]; return `<div class="row lab"><div class="txt" style="flex:0 0 5.6em"><b>${L[0]}</b><small>${n ? effL(L, n) : '아직 0'}</small></div>${pips(n)}<span style="flex:1"></span>${upBtn(n)}</div>`; }).join(''));
+fill('ld', LEAD.map((L, i) => ldr(L, i === 0)).join(''));
+fill('tr', TRE.map((T, w) => { const s = STARS[w], n = tlv(s), open = w < 5; return `<div class="tcard ${open ? '' : 'off'} ${n === 3 ? 'full' : ''}" style="padding:.2em;gap:.15em"><div class="th" style="height:auto;flex:1 1 auto;min-height:1.5em"><img src="${panel(w)}"><b style="font-size:.7em">월드 ${w + 1}</b>${open ? '' : `<div class="lock" style="place-items:center end;padding-right:.15em"><img src="${IC('ico_lock')}" style="height:1.2em"></div>`}</div>${stars3(n, false)}</div>`; }).join(''));
+</script>
+<script>tag('연구소 B — 탭 없이 한 화면 : 왼쪽 연구소 칸 길 + 오른쪽 위 리더 · 아래 보물 한눈에');</script>

@@ -1,0 +1,113 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.pill { display:flex; align-items:center; gap:.4em; height:1.9em; padding:0 .7em; border-radius:1em; background:var(--bg2); box-shadow:0 0 0 2px var(--o), inset 0 0 0 1px #5a4a8a; font-size:.85em; white-space:nowrap; }
+.pill b { color: var(--gold-hi); }
+.gauge { position:relative; height:.9em; border:2px solid var(--o); border-radius:.5em; background:#150a26; box-shadow:inset 0 0 0 1px #5a4a8a; overflow:hidden; }
+.gauge > i { display:block; height:100%; background:linear-gradient(#ffe27a 0 50%, #d9a441 50%); }
+.rbtn .cnt { margin-left:auto; font-size:.72em; color:var(--sub); text-shadow:1px 1px 0 var(--o); }
+.rbtn.on .cnt { color:#fff; }
+.rbtn .badge { right:.3em; top:-.5em; }
+.tile { padding:.3em .25em .25em; gap:.1em; }
+.tile .art { height:3.1em; position:relative; }
+.tile .art img { max-height:2.8em; }
+.tile .nm { font-size:.7em; line-height:1.15; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tile .nw { position:absolute; left:-.3em; top:-.3em; z-index:2; padding:.05em .3em; border-radius:5px; background:#ff3b30; box-shadow:0 0 0 2px var(--o); font-size:.62em; font-style:normal; }
+.tile.sel { box-shadow: inset 0 0 0 2px var(--gold-hi), 0 0 0 2px var(--o); background:#3a2c66; }
+.tile.off { background:#1a1230; }
+.tile.off .art img { filter: brightness(0) opacity(.45); }
+.tile.off .art::after { content:'?'; position:absolute; inset:0; display:grid; place-items:center; font-size:1.7em; color:#b8aee0; text-shadow:var(--t2); }
+.tile.off .nm { color:var(--mute); }
+.tile .art img.world { width:100%; height:100%; max-width:none; max-height:none; object-fit:cover; border-radius:5px; }
+.stat { display:flex; align-items:center; gap:.4em; font-size:.76em; }
+.stat span { flex:none; width:3.4em; color:var(--sub); text-shadow:1px 1px 0 var(--o); }
+.stat i { flex:1; height:.85em; border:2px solid var(--o); border-radius:.45em; background:#150a26; box-shadow:inset 0 0 0 1px #5a4a8a; overflow:hidden; }
+.stat i b { display:block; height:100%; }
+.stat .gr { background:linear-gradient(#7cf08a 0 50%, #32a948 50%); } .stat .or { background:linear-gradient(#ffc070 0 50%, #e0852c 50%); }
+.stat .bl { background:linear-gradient(#7cc0ff 0 50%, #3a7fd8 50%); } .stat .pu { background:linear-gradient(#c8a8ff 0 50%, #8a5ee0 50%); }
+.stats { display:flex; flex-direction:column; gap:.3em; }
+.stage { position:relative; flex:1 1 auto; min-height:0; display:grid; place-items:center; border-radius:8px; background:radial-gradient(ellipse at 50% 80%, #4d3d86, #241a40 72%); box-shadow:inset 0 0 0 2px var(--o), inset 0 0 0 3px #5a4a8a; overflow:hidden; }
+.stage > img { position:absolute; left:8%; top:8%; width:84%; height:84%; object-fit:contain; }
+.stage .tl { position:absolute; left:.4em; top:.4em; display:flex; gap:.3em; align-items:center; }
+.stage .tl .chip { height:1.6em; font-size:.72em; }
+.nwb { padding:.1em .45em; border-radius:6px; background:#ff3b30; box-shadow:0 0 0 2px var(--o); font-size:.7em; font-style:normal; }
+.dname { font-size:1.15em; color:#fff7d6; text-shadow:var(--t2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dsub { font-size:.72em; color:var(--sub); text-shadow:1px 1px 0 var(--o); }
+.btns { display:flex; gap:.4em; } .btns .btn { flex:1; min-width:0; padding:0 .4em; font-size:.82em; }
+.paper.l { text-align:left; }
+.chip.leg { background:linear-gradient(#ffe27a 0 50%, #d9a441 50%); color:#4a2c12; text-shadow:none; }
+.chip.epic { background:linear-gradient(#c88aff 0 50%, #9a52e0 50%); color:#fff; }
+.chip.rare { background:linear-gradient(#7cc0ff 0 50%, #3a7fd8 50%); color:#fff; }
+</style>
+
+<script>
+const dm = (id, nm, rl, r, have, st, get, nw) => ({ k: 'd', id, nm, rl, r, have, st, get, nw, img: `${A}${id}/head_big.png` });
+const zm = (id, nm, rl, k, have, st, get, art, nw) => ({ k, id, nm, rl, r: '', have, st, get, nw, img: `${A}${art || id}/${id === 'bat' ? 'torso' : 'head'}.png` });
+const DRG = [
+  dm('novart', '노바트', '스토리', '', 1, [60, 55, 50, 55], '처음부터 함께해요'), dm('aquantis', '아쿠안티스', '스토리', '', 1, [70, 50, 62, 45], '1-1 을 깨면 함께해요'),
+  dm('solaris', '솔라리스', '스토리', '', 1, [55, 70, 55, 50], '2-1 을 깨면 함께해요'), dm('frostwing', '프로스트윙', '스토리', '', 1, [50, 60, 70, 60], '3-1 을 깨면 함께해요'),
+  dm('goldrex', '골드렉스', '전설', 'leg', 1, [95, 90, 60, 70], '알 부화장 · 전설 1.2%', 1), dm('shadowfen', '섀도펜', '스토리', '', 1, [60, 65, 55, 80], '5-1 을 깨면 함께해요'),
+  dm('forestia', '포레스티아', '스토리', '', 1, [75, 40, 50, 40], '6-1 을 깨면 함께해요'), dm('volttail', '볼트테일', '스토리', '', 1, [55, 80, 60, 75], '7-1 을 깨면 함께해요'),
+  dm('sandscale', '샌드스케일', '스토리', '', 1, [85, 45, 45, 35], '8-1 을 깨면 함께해요', 1), dm('crimsonde', '크림슨드', '스토리', '', 1, [60, 85, 35, 60], '9-1 을 깨면 함께해요'),
+  dm('kkomul', '꼬물이', '희귀', 'rare', 1, [50, 50, 50, 70], '알 부화장 · 희귀 4.0%'), dm('twetwe', '튀튀', '영웅', 'epic', 1, [65, 70, 55, 85], '알 부화장 · 영웅 2.5%'),
+  dm('novart_red', '붉은 노바트', '영웅', 'epic', 0, [75, 80, 55, 60], '알 부화장 · 영웅 2.5%'), dm('aquantis_red', '붉은 아쿠안티스', '영웅', 'epic', 0, [80, 70, 65, 50], '알 부화장 · 영웅 2.5%'),
+  dm('solaris_red', '붉은 솔라리스', '영웅', 'epic', 0, [70, 85, 60, 55], '알 부화장 · 영웅 2.5%'), dm('frostwing_red', '붉은 프로스트윙', '영웅', 'epic', 0, [65, 75, 75, 65], '알 부화장 · 영웅 2.5%'),
+];
+const ZMB = [
+  zm('walker', '어슬렁 좀비', '좀비', 'z', 1, [30, 25, 15, 55], '1-1 에서 만나요', 0, 1), zm('chubby', '고깔 좀비', '좀비', 'z', 1, [45, 30, 15, 45], '1-3 에서 만나요', 'cone'),
+  zm('shield', '헬멧 좀비', '좀비', 'z', 1, [60, 30, 15, 40], '1-5 에서 만나요', 'helmet'), zm('skull', '불타는 해골', '좀비', 'z', 1, [35, 55, 20, 65], '2-1 에서 만나요'),
+  zm('bat', '박쥐떼', '좀비', 'z', 1, [25, 35, 20, 90], '3-1 에서 만나요'), zm('ghost', '흐물 유령', '좀비', 'z', 1, [40, 45, 40, 50], '6-1 에서 만나요'),
+  zm('pup', '뼈다귀 멍멍이', '좀비', 'z', 1, [30, 30, 10, 85], '1-7 에서 만나요'), zm('archer', '새총 좀비', '좀비', 'z', 1, [25, 35, 70, 40], '1-8 에서 만나요'),
+  zm('fart', '방귀 좀비', '좀비', 'z', 1, [40, 30, 25, 45], '2-3 에서 만나요'), zm('bomb', '폭탄 좀비', '좀비', 'z', 1, [20, 90, 10, 60], '2-6 에서 만나요'),
+  zm('mummy', '붕대 미라', '좀비', 'z', 0, [60, 50, 20, 40], '7-1 에서 만나요'), zm('golem', '모래 골렘', '좀비', 'z', 0, [90, 60, 20, 25], '7-3 에서 만나요'),
+  zm('penguin', '미끄럼 펭귄 좀비', '좀비', 'z', 0, [40, 35, 20, 75], '4-1 에서 만나요'), zm('can', '깡통 좀비', '좀비', 'z', 0, [55, 40, 20, 40], '5-1 에서 만나요'),
+  zm('frog', '개구리 좀비', '좀비', 'z', 0, [45, 40, 30, 70], '8-1 에서 만나요'), zm('shroom', '독버섯 좀비', '좀비', 'z', 0, [50, 45, 35, 45], '8-4 에서 만나요'),
+];
+const BSS = [
+  zm('bossFat', '거대 좀비', '보스', 'b', 1, [85, 55, 25, 25], '1-10 에서 만나요', 'bossGiant'), zm('bossVolcano', '화산 좀비 킹', '보스', 'b', 1, [60, 65, 25, 40], '2-10 에서 만나요'),
+  zm('bossRider', '좀비 라이더', '보스', 'b', 1, [55, 50, 55, 60], '3-10 에서 만나요'), zm('bossAvalanche', '눈사태 거인', '보스', 'b', 1, [85, 55, 30, 30], '4-10 에서 만나요'),
+  zm('bossRobot', '고철 대왕 로봇', '보스', 'b', 1, [20, 80, 25, 35], '5-10 에서 만나요'), zm('bossGhost', '유령 대왕', '보스', 'b', 1, [75, 65, 45, 45], '6-10 에서 만나요', 0, 1),
+  zm('bossPharaoh', '파라오 좀비', '보스', 'b', 0, [90, 75, 35, 30], '7-10 에서 만나요'), zm('bossWitch', '늪의 마녀', '보스', 'b', 0, [80, 50, 55, 40], '8-10 에서 만나요'),
+  zm('bossCrystal', '수정 드래곤 좀비', '보스', 'b', 0, [95, 85, 40, 35], '9-10 에서 만나요'), zm('bossLord', '좀비 드래곤 로드', '보스', 'b', 0, [100, 95, 45, 25], '10-10 에서 만나요'),
+];
+const IC = (n) => `/assets/iandragon_game/ai/lobby/${n}.png`;
+const tile = (it, sel, extra = '') => `<div ${extra} class="card tile ${it.r} ${it.have ? '' : 'off'} ${sel ? 'sel' : ''}">${it.nw && it.have ? '<i class="nw">NEW</i>' : ''}<div class="art"><img src="${it.img}"></div><div class="nm">${it.nm}</div></div>`;
+const stat = (l, v, c, on = true) => `<div class="stat"><span>${l}</span><i><b class="${c}" style="width:${on ? v : 0}%"></b></i></div>`;
+const stats4 = (it) => `<div class="stats">${stat('체력', it.st[0], 'gr', it.have)}${stat('공격', it.st[1], 'or', it.have)}${stat('사거리', it.st[2], 'bl', it.have)}${stat('빠르기', it.st[3], 'pu', it.have)}</div>`;
+const gauge = (p) => `<div class="gauge"><i style="width:${p}%"></i></div>`;
+const SND = `<img src="${IC('ico_sound')}">`;
+const goBtnS = (it, st) => it.k === 'd' ? (it.have ? '<span class="btn o">파워업 키우기 ›</span>' : '<span class="btn o">부화장 가기 ›</span>') : `<span class="btn r">${st} 싸우러 가기</span>`;
+const btns2 = (it, st) => `<div class="btns"><span class="btn p">${SND}다시 듣기</span>${goBtnS(it, st)}</div>`;
+const rarChip = (it) => `<span class="chip ${it.r}">${it.rl}</span>`;
+const byId = (a, id) => a.find((x) => x.id === id);
+</script>
+
+<div class="scene"></div>
+<style>#tn .nm{display:none} #tn .tile .art{height:3.6em} #tn .tile .art img{max-height:3.3em}</style><div class="win">
+  <div class="head"><h1>도감</h1>
+    <div class="chips" style="margin-left:.8em;flex-wrap:nowrap"><span class="chip">드래곤 12/23</span><span class="chip">좀비 26/34</span><span class="chip on">보스 6/10</span><span class="chip">배경 5/10</span></div>
+    <div class="grow"></div><span class="pill">전체 <b>65/77</b> · 84%</span><div class="x">✕</div></div>
+  <div class="body" style="flex-direction:column;gap:.4em">
+    <div style="flex:1 1 auto;min-height:0;display:flex;align-items:stretch;gap:.4em">
+      <span class="btn p" style="align-self:center;width:2em;min-height:3.4em;padding:0;font-size:1.1em">‹</span>
+      <div id="bk" style="flex:1;min-width:0;display:flex;border-radius:10px;border:2px solid var(--o);box-shadow:inset 0 0 0 1px var(--gold), 0 3px 0 var(--o);overflow:hidden"></div>
+      <span class="btn p" style="align-self:center;width:2em;min-height:3.4em;padding:0;font-size:1.1em">›</span>
+    </div>
+    <div style="flex:none;display:flex;align-items:center;gap:.5em">
+      <div id="tn" style="flex:1;min-width:0;display:flex;gap:.3em;padding:.45em .3em .35em"></div>
+      <span class="pill" style="font-size:.78em">6 / 10</span>
+    </div>
+  </div>
+</div>
+<script>
+const sel = byId(BSS, 'bossGhost');
+fill('tn', BSS.map((i) => tile(i, i === sel, 'style="flex:1 1 0;max-width:5em;min-width:0"')).join(''));
+fill('bk', `<div style="flex:1 1 50%;min-width:0;position:relative;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 75%, #4d3d86, #241a40 75%)">
+  <div style="position:absolute;left:.5em;top:.5em">${rarChip(sel)}</div><i class="nwb" style="position:absolute;right:.5em;top:.5em">NEW</i>
+  <img src="${sel.img}" style="position:absolute;left:10%;top:12%;width:80%;height:78%;object-fit:contain">
+</div>
+<div style="flex:0 0 .5em;background:linear-gradient(90deg, rgba(0,0,0,.55), #0e0620 50%, rgba(0,0,0,.55))"></div>
+<div style="flex:1 1 50%;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:.45em;padding:.7em .8em;background:var(--bg2)">
+  <div class="dname" style="font-size:1.6em;line-height:1.1">${sel.nm}</div><div class="dsub" style="margin-top:-.3em">보스 · 월드 6 · 유령 묘지</div><div style="height:.2em"></div>${stats4(sel)}
+  <div class="paper l">처음 만나는 판 · <b>6-10</b></div>${btns2(sel, '6-10')}</div>`);
+</script>
+<script>tag('도감 C — 책 펼침 (왼쪽 그림 쪽 · 오른쪽 설명 쪽) + ‹ › 넘기기 + 아래 작은 그림 줄');</script>

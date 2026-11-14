@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.stagebox { flex: 1 1 52%; min-width: 0; position: relative; display: grid; place-items: center; border-radius: 10px; background: radial-gradient(ellipse at 50% 60%, #5a4590, #241a40 72%); border: 2px solid var(--o); box-shadow: inset 0 0 0 1px #5a4a8a; overflow: hidden; }
+.stagebox .egg { height: 82%; max-width: 70%; object-fit: contain; position: relative; z-index: 1; }
+.stagebox .sp { position: absolute; width: 22%; opacity: .8; }
+.stagebox .floor { position: absolute; bottom: 8%; left: 22%; right: 22%; height: 11%; border-radius: 50%; background: radial-gradient(#0008, transparent 70%); }
+.side { flex: 1 1 44%; min-width: 0; display: flex; flex-direction: column; gap: .5em; }
+.own { display: grid; grid-template-columns: repeat(4, 1fr); gap: .25em; margin-top: .3em; } .own img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: var(--bg2); } .own img.no { opacity: .28; filter: grayscale(1); }
+.rate { display: flex; align-items: center; gap: .4em; }
+.rate i { width: .8em; height: .8em; border-radius: 50%; border: 2px solid var(--o); } .rate b { margin-left: auto; }
+.bar { height: 1em; border-radius: .5em; background: var(--bg2); border: 2px solid var(--o); box-shadow: inset 0 0 0 1px #5a4a8a; overflow: hidden; }
+.bar u { display: block; height: 100%; width: 26%; background: linear-gradient(var(--gold-hi) 0 50%, var(--gold) 50%); }
+.rbtn .pc { margin-left: auto; font-size: .9em; }
+.offt { padding: .1em .35em; border-radius: 5px; background: #ff3b30; box-shadow: 0 0 0 2px var(--o); font-size: .75em; font-style: normal; }
+</style>
+<div class="scene"></div>
+<div class="win">
+  <div class="head"><h1>부화장</h1><div class="grow"></div><span id="cash"></span><div class="x">✕</div></div>
+  <div class="body">
+    <div class="rail">
+      <div class="rbtn on"><img src="/assets/iandragon_game/ai/eggs/egg_rare.png">희귀 알<span class="pc">70%</span></div>
+      <div class="rbtn"><img src="/assets/iandragon_game/ai/eggs/egg_super.png">슈퍼 알<span class="pc">25%</span></div>
+      <div class="rbtn"><img src="/assets/iandragon_game/ai/eggs/egg_legend.png">전설 알<span class="pc">5%</span></div>
+      <div class="paper" style="margin-top:.2em">모은 용 <b>8</b> / 12<div class="own" id="own"></div></div>
+      <div style="flex:1"></div>
+      <span class="btn o wide"><img src="/assets/iandragon_game/ai/lobby/ico_codex.png">용 도감 ›</span>
+    </div>
+    <div class="main" style="flex-direction:row;gap:.6em">
+      <div class="stagebox"><img class="sp" style="left:6%;top:12%" src="/assets/iandragon_game/ai/eggs/sparkle.png"><img class="sp" style="right:6%;bottom:22%;width:16%" src="/assets/iandragon_game/ai/eggs/sparkle.png"><span class="floor"></span><img class="egg" src="/assets/iandragon_game/ai/eggs/egg_rare.png"></div>
+      <div class="side">
+        <div class="paper" style="text-align:left">
+          <div class="rate"><i style="background:#4aa0ff"></i>희귀<b>70%</b></div>
+          <div class="rate"><i style="background:#c06aff"></i>슈퍼<b>25%</b></div>
+          <div class="rate"><i style="background:var(--gold-hi)"></i>전설<b>5%</b></div>
+        </div>
+        <div class="paper" style="padding:.4em .6em">전설까지 <b>37번</b> 남음<div class="bar" style="margin-top:.3em"><u></u></div></div>
+        <div style="flex:1"></div>
+        <span class="btn g wide" style="min-height:2.3em">알 1개 <img src="/assets/iandragon_game/ai/ui/gem.svg">100</span>
+        <span class="btn g wide" style="min-height:2.3em">알 10개 <img src="/assets/iandragon_game/ai/ui/gem.svg">900 <i class="offt">-10%</i></span>
+      </div>
+    </div>
+  </div>
+</div>
+<script>fill('own', DR.slice(0,12).map((d,i)=>`<img class="${i<8?'':'no'}" src="${head(d)}">`).join(''));tag('부화장 A — 왼쪽 알 종류 메뉴 + 가운데 큰 알 + 오른쪽 확률 · 천장 · 부화 단추');</script>
