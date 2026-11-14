@@ -17,7 +17,7 @@
 
 .idg-sp-top { display: grid; grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 6px; row-gap: 1px; align-items: start; min-width: 0; }
 .idg-sp-top img { grid-row: 1 / span 2; width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; background: #170d36; border: 2px solid #1b1030; box-sizing: border-box; }
-.idg-sp-top .nm { grid-column: 2; grid-row: 1; min-width: 0; color: #fff; font-size: 14px; line-height: 1.2; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); word-break: keep-all; overflow-wrap: normal; }
+.idg-sp-top .nm { grid-column: 2; grid-row: 1; min-width: 0; color: #fff; font-size: 14px; line-height: 1.2; text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); word-break: keep-all; overflow-wrap: normal; }
 .idg-sp-top .lv { grid-column: 2; grid-row: 2; font-size: 11px; line-height: 1.25; color: #FFC93C; word-break: keep-all; }
 .idg-sp-top .lv .l1, .idg-sp-top .lv .l2 { display: block; }
 .idg-sp-top .lv .l2 { color: #ffd9a8; }
@@ -46,7 +46,7 @@
 
 /* 값 단추 = 파워업 레벨업 단추와 같은 결과 창 테 */
 .idg-sp-buy { display: flex; flex: 1 1 0; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 4px; min-width: 0; min-height: 40px; margin: 0; padding: 0 2px; border: solid transparent; border-width: 8px 14px; border-radius: 0; background: none; box-shadow: none; color: #fff; font-size: 13px; line-height: 1.1;
-  border-image-width: 8px 14px; image-rendering: pixelated; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  border-image-width: 8px 14px; image-rendering: pixelated; text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-sp-buy.green { border-image: url(/assets/iandragon_game/ai/result/btn_green3.webp) 92 140 fill / 8px 14px stretch; }
 .idg-sp-buy.red { border-image: url(/assets/iandragon_game/ai/result/btn_red3.webp) 92 140 fill / 8px 14px stretch; }
 .idg-sp-buy.plain { border: 2px solid #8e7bcc; border-image: none; border-radius: 8px; background: linear-gradient(180deg, #57458c, #44356e); color: #d8ccff; font-size: 12px; text-shadow: none; }
@@ -92,7 +92,7 @@
 .idg-sp-row.locked > img { filter: grayscale(1) brightness(.55); }
 .idg-sp-row .mid { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .idg-sp-row .t { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; min-width: 0; }
-.idg-sp-row .nm { color: #fff; font-size: 13px; line-height: 1.2; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); word-break: keep-all; }
+.idg-sp-row .nm { color: #fff; font-size: 13px; line-height: 1.2; text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); word-break: keep-all; }
 .idg-sp-row.locked .nm { color: #b9a8e8; }
 .idg-sp-row .l1 { font-size: 11px; color: #FFC93C; white-space: nowrap; }
 .idg-sp-row .l2 { font-size: 10px; line-height: 1.2; color: #ffd9a8; }

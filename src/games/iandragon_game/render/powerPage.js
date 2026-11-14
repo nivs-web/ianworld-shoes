@@ -225,8 +225,6 @@ export function powerPage(h, o) {
       body.append(list);
       const cPlate = plate('파워업 카드', `${ids.length}카드 보유`); cPlate.classList.add('sorts');
       const sortBar = h('div', 'idg-pp-sort'); sortBar.append(h('b', null, '정렬:'));
-      { const on = sortBy?.k === 'deck'; const db = h('button', 'idg-pp-sortb deckb' + (on ? ' on' : '')); db.type = 'button'; db.dataset.k = 'deck'; db.setAttribute('aria-pressed', on ? 'true' : 'false'); db.setAttribute('aria-label', '출전덱 1번부터 순서대로 정렬');
-        db.append(h('span', null, '출전덱순')); db.onclick = () => { sortBy = { k: 'deck', low: true }; play('button'); draw(); const bd = box.querySelector('.idg-pp-body'); if (bd) bd.scrollTop = 0; }; sortBar.append(db); }
       for (const [k, lb, lowFirst] of SORTS) {
         const on = sortBy?.k === k, low = on ? sortBy.low : lowFirst;
         const sb = h('button', 'idg-pp-sortb' + (on ? ' on' : '')); sb.type = 'button'; sb.dataset.k = k; sb.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -235,6 +233,8 @@ export function powerPage(h, o) {
         sb.onclick = () => { sortBy = on ? { k, low: !sortBy.low } : { k, low: lowFirst }; play('button'); draw(); const bd = box.querySelector('.idg-pp-body'); if (bd) bd.scrollTop = 0; };
         sortBar.append(sb);
       }
+      { const on = sortBy?.k === 'deck'; const db = h('button', 'idg-pp-sortb deckb' + (on ? ' on' : '')); db.type = 'button'; db.dataset.k = 'deck'; db.setAttribute('aria-pressed', on ? 'true' : 'false'); db.setAttribute('aria-label', '출전 1번부터 순서대로 정렬');
+        db.append(h('span', null, '출전순'), (() => { const ar = h('i', 'ar'); ar.innerHTML = ARW_UP; return ar; })()); db.onclick = () => { sortBy = { k: 'deck', low: true }; play('button'); draw(); const bd = box.querySelector('.idg-pp-body'); if (bd) bd.scrollTop = 0; }; sortBar.append(db); }
       cPlate.append(sortBar);
       const cCol = h('div', 'idg-pp-col cards'); cCol.append(cPlate, body, h('i', 'idg-dlg-more'));
       const grid = h('div', 'idg-pp-grid' + (mains.length ? ' has-strip' : '')); grid.append(sCol, cCol);

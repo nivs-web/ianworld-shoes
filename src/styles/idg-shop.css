@@ -130,3 +130,15 @@
 /* 갈무리11 (11/14) : 글자 폭이 넓어 작은 탭 «대장 드래곤 · 브레스 강화» 가 잘리던 것 — 작은 탭 글씨 한 단계 작게 · 자간 좁게 · 좌우 여백 줄임 */
 .idg-shop-sub .idg-k-tab { font-size: .82em; letter-spacing: -.04em; padding-left: 2px; padding-right: 2px; white-space: nowrap; overflow: visible; }
 .idg-shop-sub .idg-k-tab { font-size: .74em; letter-spacing: -.05em; }
+
+/* 11/14 : (1) 편의품 · 특가처럼 칸 수가 적은 탭에서 상점 본체가 안쪽 내용 폭으로 쪼그라들던 것 → 창 폭 가득 (2) 가게 주인 좀비를 크게 :
+ *  가로 = 왼쪽 열을 가득 채움 · 세로 = 지금의 두 배 가까이 */
+.dialog.idg-shop.idg-framed > .idg-dlg-body > .idg-shop-wrap { width: 100%; align-self: stretch; }
+.idg-shop-wal .idg-shopkeeper { height: 6.4em; }
+@media (orientation: landscape) {
+  .idg-shop-wal .idg-shopkeeper { height: 10.6em; max-width: 100%; object-fit: contain; }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .idg-shop-wal .idg-shopkeeper { height: 8.4em; }
+}
+.dialog.idg-shop .idg-shop-side .idg-shopkeeper { max-height: none !important; }

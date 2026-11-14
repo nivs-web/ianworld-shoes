@@ -67,16 +67,16 @@ html.idg-lobby-on body { width: 100%; }
   border: solid transparent; border-width: calc(var(--h) * .2) calc(var(--h) * .55) calc(var(--h) * .27); border-image: url(/assets/iandragon_game/ai/lobby2/ribbon_v3.webp) 20 52 26 fill / calc(var(--h) * .2) calc(var(--h) * .55) calc(var(--h) * .27) stretch; }
 .l2-ttl:active { filter: brightness(.88); }
 .l2-ttl i { flex: none; font-style: normal; font-size: calc(var(--fs) * .116); font-weight: 900; line-height: 1; color: #f2b34a;
-  --ob: #4a2200; text-shadow: 1px 0 var(--ob), -1px 0 var(--ob), 0 1px var(--ob), 0 -1px var(--ob), 1px 1px var(--ob), -1px 1px var(--ob), 1px -1px var(--ob), -1px -1px var(--ob); }   /* 앞의 작은 «칭호» (무엇인지 알게 · 11/12 대표님) */
+  --ob: #4a2200; text-shadow: 2px 0px var(--ob), -2px 0px var(--ob), 0px 2px var(--ob), 0px -2px var(--ob), 2px 2px var(--ob), -2px 2px var(--ob), 2px -2px var(--ob), -2px -2px var(--ob); }   /* 앞의 작은 «칭호» (무엇인지 알게 · 11/12 대표님) */
 .l2-ttl span { font-size: calc(var(--fs) * .13); font-weight: 800; line-height: 1; color: #ffe7a6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  --ob: #4a2200; text-shadow: 1px 0 var(--ob), -1px 0 var(--ob), 0 1px var(--ob), 0 -1px var(--ob), 1px 1px var(--ob), -1px 1px var(--ob), 1px -1px var(--ob), -1px -1px var(--ob); }
+  --ob: #4a2200; text-shadow: 2px 0px var(--ob), -2px 0px var(--ob), 0px 2px var(--ob), 0px -2px var(--ob), 2px 2px var(--ob), -2px 2px var(--ob), 2px -2px var(--ob), -2px -2px var(--ob); }
 /* Lv 배지 = 이름 판 안 왼쪽 (닉네임 바로 옆)
    6차 (11/12 대표님 «Lv 글씨 · 배지가 안 어울린다») : 속이 빈 갈색 알약 → 꽉 찬 금 배지(lv_badge · 9조각 · 모서리 30px 그대로 · 가운데만 늘어남)
    글씨 = 작은 «Lv.» + 굵고 큰 숫자 · 흰 글씨 + 짙은 갈색 1px 8방향 외곽선 · 배지 높이 가운데 = 닉네임 가운데 (이름 판 flex 가운데) · Lv.8 · 31 · 99 모두 배지 안 */
 .l2-lv { --h: calc(var(--fs) * .3); --ob: #4a2200; position: relative; top: 1px; flex: none; display: flex; align-items: baseline; justify-content: center; gap: .08em; height: var(--h); min-width: calc(var(--h) * 1.7); padding: 0 calc(var(--h) * .04); box-sizing: border-box;
   border: solid transparent; border-width: calc(var(--h) * .22) calc(var(--h) * .24); border-image: url(/assets/iandragon_game/ai/lobby2/lv_badge.webp) 30 fill / calc(var(--h) * .22) calc(var(--h) * .24) stretch; image-rendering: pixelated;
   font-size: calc(var(--fs) * .165); font-weight: 900; line-height: 1; color: #fff; white-space: nowrap;
-  text-shadow: 1px 0 var(--ob), -1px 0 var(--ob), 0 1px var(--ob), 0 -1px var(--ob), 1px 1px var(--ob), -1px 1px var(--ob), 1px -1px var(--ob), -1px -1px var(--ob); }
+  text-shadow: 2px 0px var(--ob), -2px 0px var(--ob), 0px 2px var(--ob), 0px -2px var(--ob), 2px 2px var(--ob), -2px 2px var(--ob), 2px -2px var(--ob), -2px -2px var(--ob); }
 .l2-lv small { font-size: .66em; font-weight: 900; color: #fff4c8; }
 .l2-lv b { font-weight: 900; letter-spacing: .01em; }
 .l2-lv small, .l2-lv b { position: relative; top: 1px; }   /* 6차 : 배지 금 면 안 위아래 여백 같게 (잰 값 · 위가 좁았음) */

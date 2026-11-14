@@ -17,7 +17,7 @@
   --k-purple2: #44356e;
   --k-purple-b: #8e7bcc;   /* 평범한 단추 테 */
   --k-text: #ffffff;       /* 본문 글씨 */
-  --k-sub: #e6dcff;        /* 보조 글씨 */
+  --k-sub: #bdb0e0;        /* 보조 글씨 */
   --k-mute: #b3a3dc;       /* 흐린 안내 (잠김 · 꺼짐) */
   --k-good: #8af06a;       /* 좋음 · 켜짐 */
   --k-bad: #ff8f7f;        /* 모자람 · 경고 */
@@ -27,8 +27,8 @@
   --k-ink2: #7a4f22;       /* 종이 판 위 보조 글씨 */
   --k-font: 'Galmuri11', 'Neo둥근모', sans-serif;
   /* 1px 8방향 딱딱한 외곽선 (작은 글씨) · 2px (큰 글씨 · 단추) */
-  --k-o1: 1px 0 var(--k-o), -1px 0 var(--k-o), 0 1px var(--k-o), 0 -1px var(--k-o), 1px 1px var(--k-o), -1px 1px var(--k-o), 1px -1px var(--k-o), -1px -1px var(--k-o);
-  --k-o2: var(--k-o1);   /* 갈무리11 (11/14) : 11px 도트 글꼴에 2px 테는 글자가 뭉개져 1px 로 통일 */
+  --k-o1: 2px 0 var(--k-o), -2px 0 var(--k-o), 0 2px var(--k-o), 0 -2px var(--k-o), 2px 2px var(--k-o), -2px 2px var(--k-o), 2px -2px var(--k-o), -2px -2px var(--k-o);   /* 글씨 테두리 (11/14 대표님 «딱 1px 더») 1px → 2px */
+  --k-o2: 3px 0 var(--k-o), -3px 0 var(--k-o), 0 3px var(--k-o), 0 -3px var(--k-o), 3px 3px var(--k-o), -3px 3px var(--k-o), 3px -3px var(--k-o), -3px -3px var(--k-o);   /* 큰 글씨 2px → 3px */
   --k-fs: clamp(14px, 3.9vw, 18px);   /* 기준 글씨 = 1em */
   font-size: var(--k-fs); font-family: var(--k-font); font-weight: 700; line-height: 1.25; color: var(--k-text);
   text-shadow: var(--k-o1); word-spacing: normal; letter-spacing: 0; -webkit-tap-highlight-color: transparent;
@@ -63,7 +63,7 @@
 /* 창 머리 현판 : 빨간 리본 (부화장 창과 같은 ai/lobby/ribbon.webp · slice 30 72) */
 .idg-k-title { display: inline-flex; align-items: center; justify-content: center; min-width: 9em; max-width: 86%; margin: 0; padding: .05em .6em .2em;
   border: solid transparent; border-width: .7em 1.6em; border-image: url(/assets/iandragon_game/ai/lobby/ribbon.webp) 30 72 fill / .7em 1.6em stretch;
-  font-size: 1.3em; font-weight: 900; line-height: 1.2; color: #fff; white-space: nowrap; text-shadow: 1px 0 #4a0a10, -1px 0 #4a0a10, 0 1px #4a0a10, 0 -1px #4a0a10, 1px 1px #4a0a10, -1px 1px #4a0a10, 1px -1px #4a0a10, -1px -1px #4a0a10; }
+  font-size: 1.3em; font-weight: 900; line-height: 1.2; color: #fff; white-space: nowrap; text-shadow: 2px 0px #4a0a10, -2px 0px #4a0a10, 0px 2px #4a0a10, 0px -2px #4a0a10, 2px 2px #4a0a10, -2px 2px #4a0a10, 2px -2px #4a0a10, -2px -2px #4a0a10; }
 
 /* ── 단추 ── */
 .idg-k-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .4em; min-width: 0; min-height: 2.75em; margin: 0; padding: 0 .3em; background: none; border: 0;

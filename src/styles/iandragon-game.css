@@ -1428,7 +1428,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-res-bar .cell { display: flex; align-items: center; justify-content: center; gap: .45em; min-width: 0; }
 .idg-res-bar .cell img { height: 1.08em; width: auto; image-rendering: pixelated; }
 .idg-res-bar .cell b { font-weight: 800; white-space: nowrap; letter-spacing: .3px;
-  text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+  text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
 .idg-res-new { position: absolute; left: 50%; top: 88%; z-index: -1; transform: translateX(-50%); width: 88%; display: flex; align-items: center; justify-content: center; gap: .4em; box-sizing: border-box; min-height: 1.95em; padding: .3em 0 .05em; line-height: 1.15;
   border: 14px solid transparent; border-width: .5em 1.1em; border-image: url(/assets/iandragon_game/ai/result/plate_tab.webp) 40 60 fill / .5em 1.1em stretch; white-space: normal; text-align: center; font-size: .85em; }   /* 한 줄 글씨 = 규칙 t4(.85em) · 길면 두 줄(칸이 자라고 보상 판 아래 여백은 JS 가 맞춤) · 11/13 */
 .idg-res-new em { font-style: normal; font-weight: 800; color: #ffd45a; }
@@ -1438,7 +1438,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-res-row { display: flex; justify-content: center; }
 .idg-res-btn { display: flex; align-items: center; justify-content: center; gap: .4em; min-width: 0; margin: 0; padding: 0; cursor: pointer; pointer-events: auto; touch-action: manipulation; box-sizing: border-box; background: none;
   font-family: inherit; font-weight: 900; white-space: nowrap; color: #fff; letter-spacing: .5px;
-  text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+  text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
 .idg-res-btn .ico { height: 1.45em; width: auto; flex: none; image-rendering: pixelated; }
 .idg-res-btn.red { flex: 1.5 1 0; border: 14px solid transparent; border-width: 12px 20px; border-image: url(/assets/iandragon_game/ai/result/btn_red3.webp) 92 140 fill / 12px 20px stretch; }
 .idg-res-btn.green { flex: 1 1 0; border: 14px solid transparent; border-width: 12px 20px; border-image: url(/assets/iandragon_game/ai/result/btn_green3.webp) 92 140 fill / 12px 20px stretch; }
@@ -1487,7 +1487,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-res-plate .p b.mid { font-size: 9cqw; } .idg-res-plate .p b.long { font-size: 6.8cqw; }
 .idg-res-big { position: absolute; left: 0; right: 0; z-index: 3; display: flex; align-items: baseline; justify-content: center; gap: .4em; line-height: 1; font-family: inherit; white-space: nowrap; animation: idgResStar .45s cubic-bezier(.2, 1.6, .4, 1) both; }
 .idg-res-big b { font-weight: 900; color: #ffd34d; text-shadow: 3px 0 var(--o), -3px 0 var(--o), 0 3px var(--o), 0 -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
-.idg-res-big small { font-weight: 800; color: #fff; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+.idg-res-big small { font-weight: 800; color: #fff; text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
 @container (min-aspect-ratio: 1/1) {
   .idg-res-banner.idg-res-plate { width: min(36%, 330px); top: 1%; } .idg-res.lose .idg-res-banner.idg-res-plate { width: min(36%, 330px); top: 0; }
   .idg-res-big { bottom: 8.5%; } .idg-res-big b { font-size: 10.5cqh; } .idg-res-big.sm b { font-size: 8cqh; } .idg-res-big small { font-size: 3.6cqh; }
@@ -1514,12 +1514,12 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-int-bar .ss { display: inline-flex; } .idg-int-bar .ss img { height: .95em; width: auto; margin-left: -.12em; } .idg-int-bar .ss img:first-child { margin-left: 0; }
 .idg-int-bar.red .ss img { filter: hue-rotate(-42deg) saturate(1.5); } .idg-int-bar.purple .ss img { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92); }
 .idg-hud .idg-card.idg-int .idg-int-goal { margin: 0; text-align: center; font-weight: 900; color: #ffdf7a; white-space: nowrap;
-  text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+  text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
 .idg-int-lines { display: flex; flex-direction: column; align-items: center; gap: .3em; width: 100%; }
 .idg-int .idg-int-line { position: relative; left: auto; top: auto; z-index: auto; transform: none; width: auto; max-width: 100%; height: auto; min-height: 1.9em; padding: .12em 0; font-size: 1em; display: flex; justify-content: center; }
 .idg-int .idg-int-line .ico { height: 1.25em; width: auto; image-rendering: pixelated; flex: none; } .idg-int .idg-int-line .attrs { display: inline-flex; gap: .15em; } .idg-int .idg-int-line .attrs img { height: 1.3em; width: auto; }
 .idg-int .idg-int-line span { color: #ffe9c0; font-weight: 700; overflow: visible; white-space: nowrap;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-int .idg-int-line.diff.hard span { color: #ff9a8a; } .idg-int .idg-int-line.diff.master span { color: #d9a8ff; } .idg-int .idg-int-line.best span { color: #ffd45a; font-weight: 800; }
 .idg-int .idg-cons-row { display: flex; align-items: center; justify-content: center; gap: .4em; font-weight: 800; font-size: .9em; }
 .idg-int .idg-res-row.big .idg-res-btn.purple { flex: 1 1 0; font-weight: 800; }
@@ -1545,13 +1545,13 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 }
 
 .idg-int-best { position: absolute; left: 50%; bottom: 4%; z-index: 3; transform: translateX(-50%); padding: .15em .9em .2em; white-space: nowrap; font-weight: 800; color: #ffd45a; background: rgba(29, 18, 51, .88); border: 2px solid var(--gold); border-radius: 999px; box-shadow: 0 0 0 2px #2a1238;
-  font-size: 2.9cqh; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  font-size: 2.9cqh; text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 @container (max-aspect-ratio: 1/1) { .idg-int-best { font-size: 3.8cqw; } }
 
 /* 대결 시작 카드 : 내 덱 VS 친구 덱 얼굴 칸 */
 .idg-int-vs { position: absolute; left: 0; right: 0; z-index: 2; display: flex; justify-content: center; align-items: flex-end; gap: 1.6cqw; padding: 0 2%; }
-.idg-int-vs .grp { display: flex; flex-direction: column; align-items: center; gap: .4cqh; } .idg-int-vs .grp i { font-style: normal; font-weight: 800; font-size: 2.8cqh; color: #fff; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
-.idg-int-vs b { font-weight: 900; color: #ffd34d; font-size: 6cqh; line-height: 1; margin-bottom: 1cqh; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+.idg-int-vs .grp { display: flex; flex-direction: column; align-items: center; gap: .4cqh; } .idg-int-vs .grp i { font-style: normal; font-weight: 800; font-size: 2.8cqh; color: #fff; text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+.idg-int-vs b { font-weight: 900; color: #ffd34d; font-size: 6cqh; line-height: 1; margin-bottom: 1cqh; text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
 .idg-int-faces.in { position: static; padding: 0; gap: 3px; flex-wrap: nowrap; }
 @container (min-aspect-ratio: 1/1) {
   .idg-int-vs { bottom: 7.4cqh; } .idg-int-vs .idg-int-faces .face { width: 6.8cqh; height: 6.8cqh; }
@@ -1566,11 +1566,11 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 
 /* ── 전투 중 띠 · 안내 (11/13 창 패턴 §0) : 종이 띠 판 + Pretendard 굵게 + 딱딱한 외곽선 · 흐린 그림자 · 글로우 없음 ── */
 .idg-hud .idg-tip, .idg-hud .idg-net, .idg-hud .idg-mate, .idg-hud .idg-talk { --o: #2a1238; font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 800; color: #ffe9c0; background: none; border: solid transparent; border-width: 8px 16px; border-image: url(/assets/iandragon_game/ai/result/plate_tab.webp) 40 60 fill / 8px 16px stretch; border-radius: 0; box-shadow: none; padding: 3px 4px 1px;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-hud .idg-net { color: #bfe6ff; } .idg-hud .idg-mate.foe { color: #ffc4b8; } .idg-hud .idg-talk.mine { color: #ffe27a; }
-.idg-hud .idg-warn { font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 900; font-size: 26px; letter-spacing: 2px; color: #ffdf7a; --o: #5a0a0a; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); border-top: 3px solid #d9a441; border-bottom: 3px solid #d9a441; }
+.idg-hud .idg-warn { font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 900; font-size: 26px; letter-spacing: 2px; color: #ffdf7a; --o: #5a0a0a; text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); border-top: 3px solid #d9a441; border-bottom: 3px solid #d9a441; }
 .idg-hud .idg-bossname { background: #3a0f22; border-top: 3px solid #d9a441; border-bottom: 3px solid #d9a441; }
-.idg-hud .idg-bossname b { font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 900; letter-spacing: 1px; --o: #2a1238; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+.idg-hud .idg-bossname b { font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 900; letter-spacing: 1px; --o: #2a1238; text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
 .idg-hud .idg-boss { font-family: 'Galmuri11', 'Neo둥근모', sans-serif; word-spacing: normal; font-weight: 800; }
 .idg-res-body::-webkit-scrollbar { display: none; }
 /* 일시정지 오른쪽 위 X (키트 X · PAUSE_X 켰을 때만) : 카드가 스크롤돼도 붙어 있게 sticky 줄 안에 */
@@ -1606,8 +1606,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-res-big { --sh: #130a1e; }
 .idg-res-big b { text-shadow: 3px 0 var(--o), -3px 0 var(--o), 0 3px var(--o), 0 -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o),
   3px 5px var(--sh), -3px 5px var(--sh), 0 6px var(--sh), 3px 6px var(--sh), -3px 6px var(--sh), 0 4px var(--sh), 3px 4px var(--sh), -3px 4px var(--sh); }
-.idg-res-big small { text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o),
-  2px 3px var(--sh), -2px 3px var(--sh), 0 4px var(--sh), 2px 4px var(--sh), -2px 4px var(--sh), 0 3px var(--sh); }
+.idg-res-big small { text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o), 2px 3px var(--sh), -2px 3px var(--sh), 0 4px var(--sh), 2px 4px var(--sh), -2px 4px var(--sh), 0 3px var(--sh); }
 @container (min-aspect-ratio: 1/1) { .idg-res-big { bottom: calc(8.5% + 5px); } }
 @container (max-aspect-ratio: 1/1) { .idg-res-big { bottom: calc(8% + 5px); } }
 /* ③ 결과 창 도움말 한 줄(«새로 열림 : …») : 머리글 줄바꿈 금지 · 글씨 한 단계 작게(t4 .85em → t5 .72em) · 굵지 않게 · 글자 간격 한 단계 좁게 */
@@ -1642,7 +1641,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-card .idg-sp2 .ss img + img { margin-left: -2px; }
 .idg-card .idg-sp2 .t { display: inline-flex; align-items: center; gap: 3px; }
 .idg-card .idg-sp2 .tm { height: 15px; width: auto; image-rendering: auto; }
-.idg-card .idg-sp2 b { font-weight: 800; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+.idg-card .idg-sp2 b { font-weight: 800; text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-card .idg-sp2.red .ss img { filter: hue-rotate(-42deg) saturate(1.5) drop-shadow(0 1px 0 #0c0614); }
 .idg-card .idg-sp2.purple .ss img { filter: hue-rotate(-138deg) saturate(1.9) brightness(.92) drop-shadow(0 1px 0 #0c0614); }
 /* 결과 창 · 낮은 가로 화면(폰 844×390 등) : 장면 그림 칸을 조금 줄여 «나가기» 가 아래 테에 걸리거나 스크롤 화살표가 뜨지 않게 (겜보조 1 점검 11/13) */
@@ -1692,7 +1691,7 @@ html.idg-rot.ccw .idg-hud.float .idg-rage { display: grid; visibility: hidden; }
 .idg-hud .idg-pause-card .idg-btn.idg-p2-go { --o: #5a0e00; flex: 1 1 auto; min-height: 80px; margin: 0; padding: 0 2px 4px; border: solid transparent; border-width: 14px 14px 22px; border-radius: 0;
   border-image: url(/assets/iandragon_game/ai/kit/btn_sq_red_thin.webp) 36 36 56 fill / 14px 14px 22px stretch; background: none; box-shadow: none; image-rendering: pixelated;
   font: 900 clamp(20px, 3.4vw, 28px)/1 var(--sw-font); color: #fff; letter-spacing: 0; word-spacing: normal;
-  text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+  text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
 .idg-hud .idg-pause-card .idg-btn.idg-p2-sub { --o: #2a0a00; flex: none; min-height: 46px; margin: 0; padding: 0 4px 4px; border: 3px solid #2a0a00; border-radius: 6px; border-image: none;
   font: 900 17px/1 var(--sw-font); color: #fff; letter-spacing: 0; word-spacing: normal; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o); }
 .idg-hud .idg-pause-card .idg-btn.idg-p2-sub.retry { background: #c4461c; box-shadow: inset 0 3px 0 #e8743f, inset 0 -5px 0 #8a2c0c; }

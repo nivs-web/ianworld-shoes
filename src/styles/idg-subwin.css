@@ -10,7 +10,7 @@
 .idg-cash-ico { height: 1.2em; width: auto; flex: none; image-rendering: pixelated; display: block; }
 .idg-cash.coin .idg-cash-ico { width: 1.2em; }   /* 금화 = 정원 */
 .idg-cash b { font-family: var(--sw-font); font-weight: 800; letter-spacing: .2px;
-  text-shadow: 1px 0 var(--sw-o), -1px 0 var(--sw-o), 0 1px var(--sw-o), 0 -1px var(--sw-o), 1px 1px var(--sw-o), -1px 1px var(--sw-o), 1px -1px var(--sw-o), -1px -1px var(--sw-o); }
+  text-shadow: 2px 0px var(--sw-o), -2px 0px var(--sw-o), 0px 2px var(--sw-o), 0px -2px var(--sw-o), 2px 2px var(--sw-o), -2px 2px var(--sw-o), 2px -2px var(--sw-o), -2px -2px var(--sw-o); }
 .idg-cash.coin b { color: #ffd45a; } .idg-cash.gem b { color: #f0b8ff; }
 .idg-cash.pill { gap: .35em; padding: .22em .7em .22em .32em; border: 2px solid #d9a441; border-radius: 999px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238; }
 .idg-cash.pill .idg-cash-ico { height: 1.35em; } .idg-cash.coin.pill .idg-cash-ico { width: 1.35em; }
@@ -19,7 +19,7 @@
 .idg-buy { --o: #0b3a12; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .35em; box-sizing: border-box; min-width: 96px; min-height: 44px; margin: 0; padding: 0 2px;
   border: 0 solid transparent; border-width: 9px 15px; border-radius: 0; background: none; box-shadow: none; cursor: pointer; touch-action: manipulation; flex: none;
   font: 900 14px/1 var(--sw-font); color: #fff; white-space: nowrap; letter-spacing: .3px; word-spacing: normal;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-buy.green { border-image: url(/assets/iandragon_game/ai/result/btn_green3.webp) 92 140 fill / 9px 15px stretch; }
 .idg-buy.red { --o: #5a0e00; border-image: url(/assets/iandragon_game/ai/result/btn_red3.webp) 92 140 fill / 9px 15px stretch; }
 .idg-buy.plain { --o: #2a1238; border: 2px solid #8e7bcc; border-radius: 10px; padding: 0 12px; background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233; font-weight: 700; color: #f2ecff; }
@@ -32,7 +32,7 @@
 .idg-buy.poor .idg-cash b { color: #ff9a8a; }
 .idg-buy-tag { position: absolute; right: -10px; top: -17px; z-index: 2; padding: 3px 7px; border: 2px solid #ffd45a; border-radius: 6px; background: #d8261c; box-shadow: 0 2px 0 #5a0e00;
   font: 900 11px/1 var(--sw-font); font-style: normal; color: #fff; --o: #5a0e00;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-hud .idg-buy, .dialog[class*="idg-"] .idg-buy { word-spacing: normal; }
 
 /* ════ ③ 키트를 옛 창에 입히기 (idgFrame.js 가 모든 로비 창 .dialog.idg-* 에 .idg-k 를 붙인다) ════ */
@@ -42,7 +42,7 @@
 .dialog.idg-k[class*="idg-"] { --k-fs: clamp(14px, 3.9vw, 17px); }
 @media (orientation: landscape) { .dialog.idg-k[class*="idg-"] { --k-fs: clamp(13px, 3.4vh, 16px); } }
 /* 현판(리본 제목) : 글씨 굵게 · 짙은 빨강 2px 외곽선 (키트 .idg-k-title 과 같게) */
-.dialog.idg-k[class*="idg-"] > .idg-how-title { font-weight: 900; letter-spacing: .5px; text-shadow: 1px 0 #4a0a10, -1px 0 #4a0a10, 0 1px #4a0a10, 0 -1px #4a0a10, 1px 1px #4a0a10, -1px 1px #4a0a10, 1px -1px #4a0a10, -1px -1px #4a0a10; }
+.dialog.idg-k[class*="idg-"] > .idg-how-title { font-weight: 900; letter-spacing: .5px; text-shadow: 2px 0px #4a0a10, -2px 0px #4a0a10, 0px 2px #4a0a10, 0px -2px #4a0a10, 2px 2px #4a0a10, -2px 2px #4a0a10, 2px -2px #4a0a10, -2px -2px #4a0a10; }
 /* 폰 가로 : 리본이 창 폭만큼 납작하게 늘어나던 것 → 글씨에 맞는 크기 */
 @media (orientation: landscape) and (max-height: 560px) {
   .dialog.idg-framed[class*="idg-"] > .idg-how-title { min-width: 0; width: auto; align-self: center; padding: 11px 42px 10px; font-size: 16px; }
@@ -165,7 +165,7 @@
   border: 0 solid transparent; border-width: 8px 18px; border-image: url(/assets/iandragon_game/ai/kit/wallet.webp) 26 60 fill / 8px 18px stretch; }
 .idg-pp-band .idg-cash.pill { font-size: 14px; padding: 0; border: 0; background: none; box-shadow: none; }
 .idg-hud .idg-pp-card .idg-pp-up.idg-buy, .dialog .idg-pp-card .idg-pp-up.idg-buy { display: flex; width: 100%; min-width: 0; min-height: 40px; margin-top: 4px; padding: 0 2px; border-width: 8px 14px; border-radius: 0; background: none; box-shadow: none; color: #fff; font-size: 14px;
-  border-image-width: 8px 14px; text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  border-image-width: 8px 14px; text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-hud .idg-pp-card .idg-pp-up.idg-buy.green, .dialog .idg-pp-card .idg-pp-up.idg-buy.green { border-image: url(/assets/iandragon_game/ai/result/btn_green3.webp) 92 140 fill / 8px 14px stretch; }
 .idg-hud .idg-pp-card .idg-pp-up.idg-buy.red, .dialog .idg-pp-card .idg-pp-up.idg-buy.red { border-image: url(/assets/iandragon_game/ai/result/btn_red3.webp) 92 140 fill / 8px 14px stretch; }
 .idg-hud .idg-pp-card .idg-pp-up.idg-buy.plain, .dialog .idg-pp-card .idg-pp-up.idg-buy.plain { border: 2px solid #8e7bcc; border-image: none; border-radius: 8px; background: linear-gradient(180deg, #57458c, #44356e); color: #d8ccff; font-size: 12px; }
@@ -191,7 +191,7 @@
 /* 파워업 제목 : 맨 금글씨 → 다른 창과 같은 빨간 리본 현판 */
 .idg-pp-title { align-self: center; width: auto; min-width: 7em; margin: 0 auto 2px; padding: 3px 26px 5px; border: 0 solid transparent; border-width: 11px 26px; border-image: url(/assets/iandragon_game/ai/lobby/ribbon.webp) 30 72 fill / 11px 26px stretch;
   font-family: var(--sw-font); font-size: 17px; font-weight: 900; line-height: 1.1; color: #fff; text-align: center; white-space: nowrap;
-  text-shadow: 1px 0 #4a0a10, -1px 0 #4a0a10, 0 1px #4a0a10, 0 -1px #4a0a10, 1px 1px #4a0a10, -1px 1px #4a0a10, 1px -1px #4a0a10, -1px -1px #4a0a10; }
+  text-shadow: 2px 0px #4a0a10, -2px 0px #4a0a10, 0px 2px #4a0a10, 0px -2px #4a0a10, 2px 2px #4a0a10, -2px 2px #4a0a10, 2px -2px #4a0a10, -2px -2px #4a0a10; }
 /* 파워업 안 글씨도 Pretendard (로비 창) */
 .dialog.idg-k .idg-pp, .dialog.idg-k .idg-pp *:not(img) { font-family: var(--k-font); }
 /* 명예의 전당 : 순위 줄 · «내 기록» 상자 = 키트 목록 줄 그림 (빨간 네모 테 없앰) */
@@ -204,7 +204,7 @@
 /* 로비 알림(토스트 · «2-5를 깨면 열려요» 같은 잠금 안내) : 검은 네모 → 키트 목록 줄 판 + 굵은 외곽선 글씨 */
 html.idg-lobby-on .toast { padding: 6px 13px; border: solid transparent; border-width: 6px 7px; border-image: url(/assets/iandragon_game/ai/kit/row2_hi.webp) 14 fill / 6px 7px stretch; image-rendering: pixelated; background: none; max-width: 92vw; box-sizing: border-box;
   font: 800 15px/1.35 var(--sw-font); color: #fff; text-align: center; word-spacing: normal; --o: #2a1238;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 @media (orientation: landscape) and (max-height: 560px) {
   /* 맨 아래 닫기 단추 : 창 폭 전체 → 가운데 알맞은 폭 (결과 창 단추처럼) */
   .dialog.idg-k.idg-framed[class*="idg-"] > .pbtn:last-child { align-self: center; width: min(100%, 20em); }
@@ -279,7 +279,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-band .sep { width: 2px; height: 1.1em; background: #d9a441; box-shadow: 1px 0 0 #2a1238, -1px 0 0 #2a1238; }
 .idg-pp-pill { display: inline-flex; align-items: center; padding: 3px 10px; border: 2px solid #8e7bcc; border-radius: 999px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238;
   font: 800 13px/1.1 var(--sw-font); color: #e6dcff; white-space: nowrap; --o: #2a1238;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-pp-pill.limit { color: #ffb0a0; border-color: #c25a4a; }
 
 /* 3) 폰 가로 : 목록이 최소 3줄 보이게 (드래곤샵 = 왼쪽 묶음 | 오른쪽 탭 · 목록 · 연구소 · 도전과제 = 위 여백 줄임) */
@@ -444,7 +444,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-x { --o: #2a1238; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; min-height: 40px; margin: 0; padding: 0 13px 0 9px; border: 2px solid #8e7bcc; border-radius: 8px;
   background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   font: 800 16px/1 var(--sw-font); color: #f2ecff; white-space: nowrap;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-pp-x svg { display: block; width: 18px; height: 18px; flex: none; image-rendering: pixelated; }
 .idg-pp-x:active { filter: brightness(.86); transform: translateY(1px); }
 .idg-pp.pp2.short .idg-pp-x { min-height: 36px; font-size: 15px; padding: 0 11px 0 8px; }
@@ -454,7 +454,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-band .idg-cash.drop b { animation: idgPpDrop .72s steps(1, end) 1; }
 @keyframes idgPpDrop { 0% { transform: translateY(-4px); color: #ff8f7f; } 17% { transform: translateY(0); color: #fff; } 33% { transform: translateY(-2px); color: #ff8f7f; } 50% { transform: translateY(0); color: #fff; } 67% { color: #ff8f7f; } 84%, 100% { transform: none; color: #fff; } }
 .idg-pp-minus { --o: #5a0e00; position: absolute; left: 34%; top: 72%; z-index: 9; pointer-events: none; font: 900 14px/1 var(--sw-font); font-style: normal; color: #ff8f7f; white-space: nowrap;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); animation: idgPpMinus .9s steps(6, end) forwards; }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); animation: idgPpMinus .9s steps(6, end) forwards; }
 @keyframes idgPpMinus { 0% { transform: translateY(0); } 99% { transform: translateY(-16px); visibility: visible; } 100% { transform: translateY(-16px); visibility: hidden; } }
 .idg-pp.pp2.short .idg-pp-band, .idg-pp.pp2.short .idg-pp-band .idg-cash.pill { font-size: 13px; }
 .idg-pp-pill.slots.short { color: #ff8f7f; border-color: #c25a4a; }
@@ -484,7 +484,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp.pp2 .idg-pp-slot { position: relative; overflow: visible; }
 .idg-pp.pp2 .idg-pp-slot:not(.empty) { touch-action: none; }
 .idg-pp-slot .no { --o: #2a1238; position: absolute; left: -3px; top: -4px; z-index: 2; min-width: 1.15em; font: 900 12px/1 var(--sw-font); font-style: normal; color: #ffd45a; text-align: left; pointer-events: none;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-pp-slot.empty .no { color: #8d84a8; }
 .idg-pp-slot.sel { outline: 3px solid #ffd45a; outline-offset: 0; box-shadow: 0 0 0 5px #2a1238; z-index: 1; animation: idgPpSel .9s steps(2, jump-none) infinite; }
 @keyframes idgPpSel { 50% { outline-color: #fff3cf; } }
@@ -500,7 +500,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-toast { --o: #2a1238; position: absolute; left: 50%; top: 50%; z-index: 30; width: max-content; max-width: 92%; transform: translate(-50%, -50%); padding: 8px 16px; pointer-events: none;
   border: solid transparent; border-width: 6px 7px; border-image: url(/assets/iandragon_game/ai/kit/row2_hi.webp) 14 fill / 6px 7px stretch; image-rendering: pixelated; box-sizing: border-box;
   font: 900 16px/1.35 var(--sw-font); color: #fff; text-align: center; word-break: keep-all;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-pp-toast.on { animation: idgPpToast .3s steps(3, end); }
 @keyframes idgPpToast { 0% { transform: translate(-50%, -50%) scale(.8); } 50% { transform: translate(-50%, -50%) scale(1.06); } 100% { transform: translate(-50%, -50%); } }
 .idg-pp-card .idg-pp-pick .tag { white-space: nowrap; }
@@ -533,7 +533,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-plate { --o: #2a1238; flex: none; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 .45em; min-height: 40px; padding: 0 6px; box-sizing: border-box;
   border: solid transparent; border-width: 7px 16px; border-image: url(/assets/iandragon_game/ai/kit/wallet.webp) 26 60 fill / 7px 16px stretch; background: none; box-shadow: none; image-rendering: pixelated;
   font: 900 15px/1.1 var(--sw-font); color: #ffd45a; text-align: center;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-pp-plate b { font-weight: 900; color: #ffd45a; }
 .idg-pp-plate span { color: #fff; font-weight: 800; white-space: nowrap; }
 .idg-pp-plate.short span { color: #ff8f7f; }
@@ -561,7 +561,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
   width: 100%; aspect-ratio: 1 / 1.08; min-width: 0; min-height: 0; max-height: 100%; margin: 0; padding: 0 2px 4px;
   border: solid transparent; border-width: 22px 22px 30px; border-radius: 0; border-image: url(/assets/iandragon_game/ai/kit/btn_sq_red.webp) 44 44 60 fill / 22px 22px 30px stretch; background: none; box-shadow: none; image-rendering: pixelated;
   font: 900 clamp(17px, 2.1vw, 26px)/1.1 var(--sw-font); color: #fff; white-space: normal; word-break: keep-all; overflow-wrap: normal; letter-spacing: 0; word-spacing: normal;
-  text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
+  text-shadow: 3px 0px var(--o), -3px 0px var(--o), 0px 3px var(--o), 0px -3px var(--o), 3px 3px var(--o), -3px 3px var(--o), 3px -3px var(--o), -3px -3px var(--o); }
 .idg-pp-strip .idg-pp-go .ico { display: block; width: 46%; max-width: 64px; aspect-ratio: 14 / 16; flex: none; }
 .idg-pp-strip .idg-pp-go .ico svg, .idg-pp-strip .idg-pp-go .ico img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 .idg-pp-strip .idg-pp-go .ico img { filter: drop-shadow(1px 0 0 #2a1238) drop-shadow(-1px 0 0 #2a1238) drop-shadow(0 1px 0 #2a1238) drop-shadow(0 -1px 0 #2a1238); }
@@ -569,7 +569,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-hud .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back, .idg-pp.pp2 .idg-pp-strip .idg-btn.idg-pp-back { --o: #2a1238; flex: none; width: 100%; min-width: 0; min-height: 54px; margin: auto 0 0; padding: 0 2px 2px;
   border: solid transparent; border-width: 12px 14px 16px; border-radius: 0; border-image: url(/assets/iandragon_game/ai/kit/btn_wide_purple.webp) 40 40 52 fill / 12px 14px 16px stretch; background: none; box-shadow: none; image-rendering: pixelated;
   font: 900 17px/1 var(--sw-font); color: #f2ecff; white-space: nowrap; letter-spacing: 0; word-spacing: normal;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-pp.pp2.short .idg-pp-strip .idg-btn.idg-pp-back { min-height: 46px; font-size: 15px; }
 .idg-pp-strip .idg-btn:active { filter: brightness(.86); transform: translateY(1px); }
 .idg-pp-strip .idg-btn ~ .idg-btn.idg-pp-go { flex: 0 0 auto; aspect-ratio: auto; min-height: 56px; }
@@ -608,7 +608,7 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-logo { --o: #3a1400; display: inline-flex; align-items: center; justify-content: center; gap: 1px; flex: none; margin: 0; pointer-events: none; user-select: none; }
 .idg-pp-logo .up { width: 26px; height: auto; flex: none; image-rendering: pixelated; transform: translateY(-2px) rotate(-8deg); }
 .idg-pp-logo b { font: 900 22px/1 var(--sw-font); color: #ffd45a; letter-spacing: .02em; word-spacing: normal; white-space: nowrap;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o), 0 2px 0 var(--o), 1px 2px 0 var(--o), -1px 2px 0 var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o), 0 2px 0 var(--o), 1px 2px 0 var(--o), -1px 2px 0 var(--o); }
 .idg-pp.pp2.short .idg-pp-logo b { font-size: 20px; } .idg-pp.pp2.short .idg-pp-logo .up { width: 23px; }
 .idg-pp-strip > .idg-pp-logo { align-self: center; margin: 2px 0 0; }
 .idg-pp.pp2.port .idg-pp-logo { grid-area: t; }
@@ -697,11 +697,11 @@ html.idg-lobby-on .toast { word-break: keep-all; }
 .idg-pp-plate.sorts > span { margin-right: auto; }
 .idg-pp-sort { --o: #2a1238; flex: none; display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
 .idg-pp-plate .idg-pp-sort > b { font: 800 11px/1 var(--sw-font); color: #e6dcff; margin-right: 1px; white-space: nowrap;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-pp-plate .idg-pp-sortb { --o: #2a1238; display: inline-flex; align-items: center; gap: 2px; flex: none; height: 17px; margin: 0; padding: 0 4px 0 5px; box-sizing: border-box; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   border: 1px solid #6a5a9a; border-radius: 3px; background: linear-gradient(180deg, #43357a, #33275f); box-shadow: 0 1px 0 #1d1233;
   font: 800 10.5px/1 var(--sw-font); color: #cfc4ee; white-space: nowrap; letter-spacing: 0; word-spacing: normal;
-  text-shadow: 1px 0 var(--o), -1px 0 var(--o), 0 1px var(--o), 0 -1px var(--o), 1px 1px var(--o), -1px 1px var(--o), 1px -1px var(--o), -1px -1px var(--o); }
+  text-shadow: 2px 0px var(--o), -2px 0px var(--o), 0px 2px var(--o), 0px -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o); }
 .idg-pp-plate .idg-pp-sortb span { color: inherit; font-weight: inherit; }
 .idg-pp-sortb .ar { display: inline-block; flex: none; width: 7px; height: 4px; color: #9a8cc8; }
 .idg-pp-sortb .ar svg { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
