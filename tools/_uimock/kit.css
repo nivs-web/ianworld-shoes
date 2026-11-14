@@ -73,10 +73,10 @@ img { image-rendering: pixelated; }
 .sec { font-size: .8em; color: var(--gold-hi); margin: .1em 0 -.1em; }
 
 /* ═══ 2판 머리 (11/14 대표님 확정) : 호박 모서리 틀(dialog9) · 제목 = 가운데 위 날개 현판 · 재화 = 왼쪽 위 · X(옛 그림) + 같은 크기 바로가기 = 오른쪽 위 ═══ */
-.win.v2 { top: calc(50% + 1.1em); height: min(calc(92vh - 2.2em), 620px); overflow: visible; padding: 4px 6px 6px; border: solid transparent; border-width: 30px 28px; border-radius: 0;
+.win.v2 { top: calc(50% + .6em); height: min(calc(92vh - 1.2em), 620px); overflow: visible; padding: 4px 6px 6px; border: solid transparent; border-width: 30px 28px; border-radius: 0;
   border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / 30px 28px stretch; background: var(--bg) padding-box; box-shadow: none; }
-.win.v2 > .head { position: relative; margin-top: -14px; }
-.win.v2 > .head .tt { position: absolute; left: 50%; top: calc(-30px - .2em); transform: translate(-50%, -50%); z-index: 3; display: flex; align-items: center; justify-content: center; white-space: nowrap;
+.win.v2 > .head { position: static; margin-top: -14px; }   /* 제목은 틀(.win)을 기준으로 — 제목 가운데 = 틀 윗줄 한가운데 */
+.win.v2 > .head .tt { position: absolute; left: 50%; top: -15px; transform: translate(-50%, -50%); z-index: 3; display: flex; align-items: center; justify-content: center; white-space: nowrap;
   --wh: 3.3em; height: calc(2.3em - 3px); padding: 0 2.25em; border: 2px solid transparent; border-radius: 1.2em;
   background: linear-gradient(#433578 0%, #35296a 63%, #271c4a 64%, #241a44 100%) padding-box, linear-gradient(#fff0b8 0%, #f2c45a 30%, #d9a441 60%, #a8742a 100%) border-box; box-shadow: 0 0 0 3px var(--o), 2px 3px 0 3px rgba(0, 0, 0, .45); }
 .win.v2 > .head .tt b { position: relative; top: -1.5px; font-size: 1.5em; color: #fff; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o), 4px 4px 0 #000, 3px 4px 0 #000, 4px 3px 0 #000, 4px 2px 0 #000, 2px 4px 0 #000; }

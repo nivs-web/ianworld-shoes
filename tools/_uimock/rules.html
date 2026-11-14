@@ -1,124 +1,219 @@
 <!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
 <style>
-/* 디자인 규칙표 (11/14 대표님) — 한 페이지에 모든 양식. 글씨 = 그라데이션 없음 · 검은 테 2px 만 */
+/* 디자인 규칙표 2판 (11/14 대표님) — 1순위 = 이 표 · 2순위 = 레이아웃
+ *  글씨 : 그라데이션 금지 · 작은 글씨 = 검은 테 1px · 큰 글씨(모험시작 · 파워업 · 제목 크기) = 검은 테 2px · 8방향 딱딱한 테
+ *  이 판은 돈 0원 (지금 게임 그림 + 코드) */
 html, body { height: auto; overflow: auto; background: #120a22; }
-body { --k: #000; padding: 22px 26px 40px; text-shadow: 2px 0 var(--k), -2px 0 var(--k), 0 2px var(--k), 0 -2px var(--k), 2px 2px var(--k), -2px 2px var(--k), 2px -2px var(--k), -2px -2px var(--k); font-size: 16px; }
-h2 { margin: 26px 0 10px; font-size: 20px; color: #fff; }
-h2 small { margin-left: 10px; font-size: 13px; color: #c9bde8; }
+body { --t1: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px 1px #000, 1px -1px #000, -1px -1px #000;
+  --t2b: 2px 0 #000, -2px 0 #000, 0 2px #000, 0 -2px #000, 2px 2px #000, -2px 2px #000, 2px -2px #000, -2px -2px #000;
+  padding: 22px 26px 40px; text-shadow: var(--t1); font-size: 15px; }
+h2 { margin: 6px 0 4px; font-size: 24px; color: #fff; text-shadow: var(--t2b); }
+.note { margin: 0 0 14px; font-size: 13px; color: #d8cff0; }
 .sheet { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
 .box { position: relative; padding: 14px 16px; border: 3px solid #000; border-radius: 12px; background: var(--bg); box-shadow: inset 0 0 0 2px var(--gold); }
 .box.wide { grid-column: 1 / -1; }
-.lbl { display: block; margin-bottom: 10px; font-size: 15px; color: #fff; }
+.lbl { display: block; margin-bottom: 10px; font-size: 16px; color: #fff; }
 .lbl em { font-style: normal; color: #c9bde8; font-size: 12px; margin-left: 6px; }
+.ok, .old, .wait { display: inline-block; margin-left: 6px; padding: 1px 7px; border: 2px solid #000; border-radius: 6px; font-size: 12px; color: #fff; }
+.ok { background: #3fbf4f; } .old { background: #5a5468; color: #e0dbe8; } .wait { background: #e0852c; }
 .rowx { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
 .cap { font-size: 12px; color: #c9bde8; }
-/* 제목 (확정 · 정정 3) */
-.tt { position: relative; display: inline-flex; align-items: center; justify-content: center; --wh: 3.3em; height: calc(2.3em - 3px); padding: 0 2.25em; margin: 18px 70px 10px; border: 2px solid transparent; border-radius: 1.2em;
+.sub { margin: 12px 0 6px; font-size: 13px; color: #fff; }
+/* 제목 (채택 · 정정 3) */
+.tt { position: relative; display: inline-flex; align-items: center; justify-content: center; --wh: 3.3em; height: calc(2.3em - 3px); padding: 0 2.25em; border: 2px solid transparent; border-radius: 1.2em; white-space: nowrap;
   background: linear-gradient(#433578 0%, #35296a 63%, #271c4a 64%, #241a44 100%) padding-box, linear-gradient(#fff0b8 0%, #f2c45a 30%, #d9a441 60%, #a8742a 100%) border-box; box-shadow: 0 0 0 3px var(--o), 2px 3px 0 3px rgba(0, 0, 0, .45); font-size: 18px; }
-.tt b { position: relative; top: -1.5px; font-size: 1.5em; color: #fff; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o), 4px 4px 0 #000, 3px 4px 0 #000, 4px 3px 0 #000, 4px 2px 0 #000, 2px 4px 0 #000; }
+.tt b { position: relative; top: -1.5px; font-size: 1.5em; color: #fff; text-shadow: var(--t2b), 4px 4px 0 #000, 3px 4px 0 #000, 4px 3px 0 #000, 4px 2px 0 #000, 2px 4px 0 #000; }
 .tt b::after { content: attr(data-t); position: absolute; inset: 0; color: transparent; text-shadow: none; background: linear-gradient(#fff 0 52%, #d9c690 52% 100%); -webkit-background-clip: text; background-clip: text; }
 .tt::before, .tt::after { content: ''; position: absolute; top: 50%; width: calc(var(--wh) * 175 / 196); height: var(--wh); margin-top: calc(var(--wh) * -.42); background: url(/assets/iandragon_game/ai/result/banner_win_open.webp) 0 0 / calc(var(--wh) * 720 / 196) var(--wh) no-repeat; }
 .tt::before { right: calc(100% - .55em); } .tt::after { left: calc(100% - .55em); background-position: calc(var(--wh) * -545 / 196) 0; }
-/* 메인 큰 빨강 · 초록 = 로비 그대로 */
-.big { display: inline-flex; align-items: center; justify-content: center; gap: .3em; height: 64px; padding: 0 10px; font-size: 26px; color: #fff; }
+/* 창 틀 : 제목 가운데 = 틀 윗줄 한가운데 (대표님 «박스 위에 떠 있으면 안 됨») */
+.frame { position: relative; width: 100%; max-width: 560px; height: 170px; margin: 30px auto 6px; border: solid transparent; border-width: 30px 28px; border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / 30px 28px stretch; background: var(--bg) padding-box; }
+.frame .tt { position: absolute; left: 50%; top: -15px; transform: translate(-50%, -50%); z-index: 2; }
+.frame .xbtn { position: absolute; right: -4px; top: -4px; width: 40px; height: 40px; }
+.frame .pill { position: absolute; left: -4px; top: -2px; font-size: 13px; }
+/* 메인 큰 단추 = 2px */
+.big { display: inline-flex; align-items: center; justify-content: center; gap: .3em; height: 64px; padding: 0 10px; font-size: 26px; color: #fff; text-shadow: var(--t2b); }
 .big.red { width: 270px; border: solid transparent; border-width: 11px 17px; border-image: url(/assets/iandragon_game/ai/result/btn_red2.webp) 46 70 fill / 11px 17px stretch; }
 .big.green { width: 190px; border: solid transparent; border-width: 11px 17px; border-image: url(/assets/iandragon_game/ai/result/btn_green3.webp) 92 140 fill / 11px 17px stretch; }
 .big img { height: 1.5em; }
-/* 작은 단추 : 글씨 한 색 + 검은 2px */
+/* 작은 단추 = 1px */
 .sb { display: inline-flex; align-items: center; justify-content: center; gap: .3em; min-height: 36px; padding: 0 14px; border: 3px solid #000; border-radius: 9px; color: #fff; font-size: 15px; }
-.sb img { height: 1.1em; }
+.sb img { height: 1.15em; }
 .sb.g { background: #3fbf4f; box-shadow: inset 0 3px 0 #8ff09a, inset 0 -4px 0 #1f7a38; }
-.sb.p { border: 2px solid #8e7bcc; background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233; color: #f2ecff; }   /* = 결과 창 «다시하기 · 나가기» 보라 (.idg-res-btn.purple) */
+.sb.p { border: 2px solid #8e7bcc; background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233; color: #f2ecff; }
 .sb.p.on { border-color: #ffd45a; }
 .sb.o { background: #e0852c; box-shadow: inset 0 3px 0 #ffc77a, inset 0 -4px 0 #8e4a0f; }
 .sb.x0 { background: #5a5468; color: #cfc9dc; box-shadow: inset 0 -4px 0 #3a3448; }
 .sb .bad { color: #ff8f7f; }
-/* 빨간 X = 그 전 디자인 (게임 kit/btn_close) */
+/* 닫기 X : 채택 + 후보 3 (지금 게임 그림 + 도트 X · 돈 0) */
 .xbtn { width: 48px; height: 48px; background: url(/assets/iandragon_game/ai/kit/btn_close.webp) center / 100% 100% no-repeat; }
-/* 편의품 단추 (게임 시작 카드 · .idg-cons) */
+.xc { position: relative; width: 48px; height: 48px; display: grid; place-items: center; }
+.xc svg { width: 52%; height: 52%; filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, .35)); }
+.xc.a { background: url(/assets/iandragon_game/ai/kit/btn_sq_red.webp) center / 100% 100% no-repeat; }
+.xc.b { background: url(/assets/iandragon_game/ai/kit/btn_sq_red_thin.webp) center / 100% 100% no-repeat; }
+.xc.c { border-radius: 50%; background: radial-gradient(circle at 50% 38%, #ff7a4f 0 30%, #e0402c 31% 62%, #a8202a 63% 100%); box-shadow: 0 0 0 3px #f2c45a, 0 0 0 5px #6a3e14, 0 3px 0 5px #000; width: 42px; height: 42px; margin: 3px; }
+.xlab { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; }
+.go2 { position: relative; width: 48px; height: 48px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #3a1a08; border-radius: 8px; background: #e0852c; box-shadow: inset 0 0 0 2px #f2c45a, inset 0 4px 0 1px #ffc77a, inset 0 -4px 0 1px #8e4a0f; }
+.go2 img { height: 24px; margin-top: -3px; } .go2 span { font-size: 9px; line-height: 1; }
+.badge2 { position: relative; display: inline-block; } .badge2 .badge { font-size: 13px; text-shadow: var(--t1); }
 .cons { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border: 3px solid #1d1233; border-radius: 9px; font-size: 14px; color: #fff; background: #6a4fc4;
   box-shadow: inset 0 2px 0 #cdbcff, inset 0 -2px 0 #4a3499, 0 0 0 2px #e2ad45, 0 4px 0 2px #1d1233; }
 .cons.on { background: #3fbf4f; border-color: #123a1e; box-shadow: inset 0 2px 0 #c8ffd2, inset 0 -2px 0 #1f7a38, 0 0 0 2px #ffe27a, 0 4px 0 2px #123a1e; }
 .cons.on::before { content: '✓ '; }
-/* 출전순 버튼 (파워업 정렬 · .idg-pp-sortb) */
 .srt { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 8px; border: 2px solid #6a5a9a; border-radius: 5px; background: #3b2e6c; color: #cfc4ee; font-size: 14px; box-shadow: 0 2px 0 #1d1233; }
 .srt.on { border-color: #ffd45a; background: #6a50c0; color: #fff; }
 .srt svg { width: 11px; height: 7px; color: #9a8cc8; } .srt.on svg { color: #ffd45a; }
-/* 스테이지 카드 (옛 돌 판 + 월드 그림 흐리게 + 월드 번호) */
-.st { position: relative; width: 104px; height: 104px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: url(/assets/iandragon_game/ai/lobby/tile.webp) center / 100% 100% no-repeat; }
-.st::before { content: ''; position: absolute; inset: 13% 12% 16%; border-radius: 3px; background: var(--wb) center / cover; opacity: .62; image-rendering: pixelated; }
+.allp { display: inline-flex; align-items: center; gap: .35em; height: 34px; padding: 0 .8em; border: 2px solid #d9a441; border-radius: 999px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238; font-size: 16px; }
+.allp b { color: #ffd45a; } .allp i { width: 2px; height: 1.1em; background: #5a4a8a; }
+/* 스테이지 카드 1 · 2 */
+.st { position: relative; width: 96px; height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: url(/assets/iandragon_game/ai/lobby/tile.webp) center / 100% 100% no-repeat; }
+.st b { font-size: 20px; line-height: 1; text-shadow: var(--t1); } .st .s img { height: 14px; }
+.st.boss { height: 110px; background-image: url(/assets/iandragon_game/ai/lobby/tile_boss.webp); justify-content: flex-end; padding-bottom: 15px; }
+.st.lock { width: 100px; background-image: url(/assets/iandragon_game/ai/lobby/tile_locked.webp); color: #b8b3c6; }
+.v2c::before { content: ''; position: absolute; inset: 13% 12% 16%; border-radius: 3px; background: var(--wb) center / cover; opacity: .62; }
+.v2c.boss::before { inset: 22% 13% 13%; } .v2c.lock::before { display: none; }
 .st > * { position: relative; }
-.st .w { font-size: 10px; padding: 1px 6px; border-radius: 6px; background: rgba(14, 6, 30, .75); color: #ffd45a; text-shadow: 1px 1px 0 #000; }
-.st b { font-size: 22px; line-height: 1; }
-.st .s img { height: 15px; }
-.st.boss { height: 120px; background-image: url(/assets/iandragon_game/ai/lobby/tile_boss.webp); justify-content: flex-end; padding-bottom: 16px; }
-.st.boss::before { inset: 22% 13% 13%; }
-.st.lock { width: 108px; background-image: url(/assets/iandragon_game/ai/lobby/tile_locked.webp); color: #b8b3c6; }
-.st.lock::before { display: none; }
-.st.now { filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 2px #ffd45a); }
+.st .w { font-size: 10px; padding: 1px 6px; border-radius: 6px; background: rgba(14, 6, 30, .75); color: #ffd45a; }
+/* 스테이지 카드 3 = 포커 · 타로 카드 (코드 · 돈 0) */
+.pc { position: relative; width: 104px; height: 146px; border-radius: 9px; padding: 5px; background: linear-gradient(#fff0b8, #f2c45a 30%, #d9a441 62%, #a8742a); box-shadow: 0 0 0 3px #000, 2px 3px 0 3px rgba(0, 0, 0, .45); }
+.pc .in { position: relative; height: 100%; border-radius: 5px; overflow: hidden; border: 2px solid #2a1238; background: var(--wb) center / cover; display: flex; flex-direction: column; align-items: center; }
+.pc .in::before { content: ''; position: absolute; inset: 0; background: linear-gradient(rgba(20, 10, 40, .25) 0 56%, rgba(10, 4, 24, .62) 56% 100%); }
+.pc .in::after { content: ''; position: absolute; inset: 3px; border: 1px solid rgba(255, 228, 150, .55); border-radius: 3px; pointer-events: none; }
+.pc .in > * { position: relative; z-index: 1; }
+.pc .df { margin-top: 6px; padding: 1px 8px; border-radius: 6px; background: rgba(14, 6, 30, .72); font-size: 12px; color: #ffe27a; letter-spacing: .12em; }
+.pc .df.hard { color: #ff8f7f; } .pc .df.easy { color: #9fe8a8; }
+.pc .no { margin-top: auto; font-size: 25px; line-height: 1; color: #fff; text-shadow: var(--t2b); }
+.pc .ss img { height: 14px; }
+.pc .wl { margin-top: auto; font-size: 10px; color: #e8dcff; }
+.pc .wn { width: 26px; height: 26px; margin: 2px 0 6px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; border: 2px solid #000; background: var(--wc); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .35), inset 0 -3px 0 rgba(0, 0, 0, .3); }
+.pc.boss { background: linear-gradient(#ffb0a0, #e0402c 35%, #a8202a 70%, #6a1018); }
+.pc.boss .df::before { content: '☠ '; }
+.pc.lock { background: linear-gradient(#b8b3c6, #7a7488); } .pc.lock .in { background: #3a3448; } .pc.lock .in::before { display: none; } .pc.lock .no { color: #b8b3c6; }
+.pc.now { box-shadow: 0 0 0 3px #000, 0 0 0 6px #fff, 2px 3px 0 6px rgba(0, 0, 0, .45); }
+/* 월드 동그라미 */
+.wt { width: 44px; height: 40px; border-radius: 10px; border: 2px solid #FFC93C; background: #1a1033; color: #FFC93C; display: grid; place-items: center; font-size: 16px; }
+.wt.on { background: #FFC93C; color: #1a1033; text-shadow: none; }
+.wc { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: #c9bde8; }
+.wc i { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 18px; color: #fff; text-shadow: var(--t2b); border: 3px solid #000; background: var(--wc); box-shadow: inset 0 4px 0 rgba(255, 255, 255, .35), inset 0 -4px 0 rgba(0, 0, 0, .3), 0 3px 0 #000; }
+.wc i.on { box-shadow: inset 0 4px 0 rgba(255, 255, 255, .35), inset 0 -4px 0 rgba(0, 0, 0, .3), 0 0 0 3px #fff, 0 3px 0 3px #000; }
 /* 재화 */
-.money { position: relative; display: flex; align-items: center; justify-content: flex-end; height: 40px; min-width: 176px; padding-right: 31px; border: solid transparent; border-width: 8px 14px 8px 40px; border-image: url(/assets/iandragon_game/ai/lobby2/cur_bar.webp) 22 38 22 112 fill / 8px 14px 8px 40px stretch; font-size: 20px; }
+.money { position: relative; display: flex; align-items: center; justify-content: flex-end; height: 40px; min-width: 176px; padding-right: 31px; border: solid transparent; border-width: 8px 14px 8px 40px; border-image: url(/assets/iandragon_game/ai/lobby2/cur_bar.webp) 22 38 22 112 fill / 8px 14px 8px 40px stretch; font-size: 20px; text-shadow: var(--t2b); }
 .money img.i { position: absolute; left: -42px; top: 50%; height: 48px; transform: translateY(-50%); }
 .money .plus { position: absolute; right: -16px; top: 50%; width: 43px; height: 43px; transform: translateY(-50%); background: url(/assets/iandragon_game/ai/lobby2/plus.webp) center / 100% 100% no-repeat; }
 .pill { display: inline-flex; align-items: center; gap: .35em; padding: .22em .7em .22em .32em; border: 2px solid #d9a441; border-radius: 999px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238; font-size: 16px; }
 .pill img { height: 1.35em; } .pill .c { color: #ffd45a; } .pill .gm { color: #f0b8ff; } .pill i { width: 2px; height: 1.1em; background: #5a4a8a; }
-.badge2 { position: relative; display: inline-block; }
-.badge2 .badge { font-size: 13px; }
-.win { position: static; transform: none; width: auto; height: auto; }
+/* 탭 · 종이 · 설정 부품 (지금 게임 키트 그림) */
+.ktab { display: inline-flex; align-items: center; justify-content: center; min-width: 120px; height: 40px; padding: 0 8px; border: solid transparent; border-width: 9px; border-image: url(/assets/iandragon_game/ai/kit/tab_off.webp) 36 fill / 9px stretch; color: #b3a3dc; font-size: 15px; }
+.ktab.on { border-image-source: url(/assets/iandragon_game/ai/kit/tab_on.webp); color: #fff; }
+.kpaper { display: inline-block; padding: 4px 10px; border: solid transparent; border-width: 12px; border-image: url(/assets/iandragon_game/ai/kit/paper.webp) 56 fill / 12px stretch; color: #4a2c12; text-shadow: none; font-size: 13px; text-align: center; line-height: 1.4; }
+.kpaper b { color: #8a2a10; }
+.tog { width: 70px; height: 31px; background: url(/assets/iandragon_game/ai/kit/toggle_off.webp) center / 100% 100% no-repeat; } .tog.on { background-image: url(/assets/iandragon_game/ai/kit/toggle_on.webp); }
+.chk { width: 30px; height: 30px; background: url(/assets/iandragon_game/ai/kit/check_off.webp) center / 100% 100% no-repeat; } .chk.on { background-image: url(/assets/iandragon_game/ai/kit/check_on.webp); }
+.sld { position: relative; width: 220px; height: 26px; background: url(/assets/iandragon_game/ai/kit/slider_groove.webp) center / 100% 100% no-repeat; }
+.sld i { position: absolute; left: 3%; top: 10%; bottom: 10%; width: 60%; background: url(/assets/iandragon_game/ai/kit/slider_fill.webp) left / 100% 100% no-repeat; }
+.sld u { position: absolute; left: calc(60% - 14px); top: -3px; width: 32px; height: 32px; background: url(/assets/iandragon_game/ai/kit/slider_knob.webp) center / 100% 100% no-repeat; }
+/* 왼쪽 메뉴 · 물건 카드 · 줄 */
+.rb { position: relative; display: flex; align-items: center; gap: 8px; width: 200px; height: 40px; padding: 0 10px; border: 2px solid #000; border-radius: 9px; background: #352858; box-shadow: inset 0 0 0 1px #5a4a8a, 0 3px 0 #000; color: #bdb0e0; font-size: 15px; }
+.rb img { height: 26px; } .rb.on { background: #6a4fc4; color: #fff; box-shadow: inset 0 0 0 2px #ffd45a, 0 3px 0 #000; }
+.rb .badge { font-size: 12px; text-shadow: var(--t1); }
+.icard { position: relative; width: 120px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 6px 6px; border: 2px solid #000; border-radius: 9px; background: #1d1233; box-shadow: inset 0 0 0 2px #4aa0ff; text-align: center; }
+.icard .a { width: 100%; height: 62px; display: grid; place-items: center; border-radius: 6px; background: #2c2150; } .icard .a img { max-height: 56px; }
+.icard .n { font-size: 13px; } .icard .f { font-size: 11px; color: #bdb0e0; }
+.icard .off { position: absolute; left: -4px; top: -4px; padding: 0 5px; border-radius: 5px; background: #ff3b30; box-shadow: 0 0 0 2px #000; font-size: 11px; font-style: normal; }
+.krow { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 520px; padding: 6px 10px; border: 2px solid #000; border-radius: 9px; background: #1d1233; box-shadow: inset 0 0 0 1px #5a4a8a; }
+.krow .lv { padding: 2px 6px; border: 2px solid #000; border-radius: 5px; background: #4a3888; font-size: 12px; }
+.krow .t { flex: 1; } .krow .t small { display: block; font-size: 11px; color: #bdb0e0; }
 .ref { width: min(100%, 640px); margin: 0 auto; border: 3px solid #000; border-radius: 10px; display: block; }
-.go2 { position: relative; width: 48px; height: 48px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #3a1a08; border-radius: 8px; background: #e0852c; box-shadow: inset 0 0 0 2px #f2c45a, inset 0 4px 0 1px #ffc77a, inset 0 -4px 0 1px #8e4a0f; }
-.go2 img { height: 24px; margin-top: -3px; } .go2 span { font-size: 9px; line-height: 1; text-shadow: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000; }
 </style>
 
-<h2>좀비와 드래곤 — 디자인 규칙표 <small>이 한 장에 있는 양식만 쓴다 · 글씨는 그라데이션 없이 검은 테 2px</small></h2>
+<h2>좀비와 드래곤 — 디자인 규칙표 2판</h2>
+<p class="note">1순위 = 이 표 · 2순위 = 레이아웃 &nbsp;|&nbsp; 글씨 : 그라데이션 없음 · 작은 글씨 = 검은 테 1px · 큰 글씨(모험시작 · 파워업 · 제목) = 검은 테 2px &nbsp;|&nbsp; <span class="ok">채택</span> 지금 쓰는 것 · <span class="old">이전</span> 버리지 않고 보관 · <span class="wait">고르실 것</span> &nbsp;|&nbsp; 이 판은 돈 0원 (지금 게임 그림 + 코드)</p>
 
 <div class="sheet">
-  <div class="box wide"><span class="lbl">① 제목 양식 <em>제목이 있는 모든 창 · 가운데 · 창 위로 살짝 튀어나옴 (대표님 확정)</em></span>
-    <div class="rowx" style="justify-content:center"><span class="tt"><b data-t="아이템샵">아이템샵</b></span><span class="tt"><b data-t="도감">도감</b></span><span class="tt"><b data-t="스테이지 고르기">스테이지 고르기</b></span></div></div>
+  <div class="box wide"><span class="lbl">① 창 틀 + 제목 <span class="ok">채택</span><em>호박 모서리 틀 · 제목 가운데 = 틀 윗줄 한가운데 · 왼쪽 위 재화 · 오른쪽 위 X</em></span>
+    <div class="frame"><span class="tt"><b data-t="아이템샵">아이템샵</b></span><span class="pill"><img src="/assets/iandragon_game/ai/ui/coin.svg"><b class="c">99,999</b><i></i><img src="/assets/iandragon_game/ai/ui/gem.svg"><b class="gm">999</b></span><span class="xbtn"></span></div></div>
 
-  <div class="box wide"><span class="lbl">② 메인 큰 빨강 · 메인 큰 초록 <em>로비와 똑같은 그림 · 한 화면에 하나씩</em></span>
+  <div class="box wide"><span class="lbl">② 메인 큰 빨강 · 메인 큰 초록 <span class="ok">채택</span><em>로비 그대로 · 글씨 2px · 한 화면에 하나씩</em></span>
     <div class="rowx"><span class="big red"><img src="/assets/iandragon_game/ai/result/ico_fight.webp">모험시작</span><span class="big green"><img src="/assets/iandragon_game/ai/lobby2/ico_power_clean.webp">파워업</span>
-      <span class="cap">빨강 = 싸우러 가기 (모험시작 · 출격! · 전투개시! · 다시하기 · 다음 판)<br>초록 = 강해지러 가기 (파워업)</span></div></div>
+      <span class="cap">빨강 = 싸우러 가기 (모험시작 · 출격! · 전투개시! · 다시하기 · 다음 판) · 초록 = 강해지러 가기 (파워업)</span></div></div>
 
-  <div class="box"><span class="lbl">③ 작은 단추 4색</span>
+  <div class="box"><span class="lbl">③ 작은 단추 4색 <span class="ok">채택</span><em>글씨 1px</em></span>
     <div class="rowx"><span class="sb g"><img src="/assets/iandragon_game/ai/ui/coin.svg">2,800</span><span class="sb g">받기</span><span class="sb g"><img src="/assets/iandragon_game/ai/ui/coin.svg"><span class="bad">9,000</span></span></div>
     <div class="cap" style="margin:6px 0 10px">초록 = 사기 · 레벨업 · 받기 (돈이 모자라면 숫자만 빨강)</div>
     <div class="rowx"><span class="sb p">드래곤</span><span class="sb p on">드래곤캐슬</span><span class="sb o">꾸미기 ›</span><span class="sb x0">🔒 어려움</span></div>
-    <div class="cap" style="margin-top:6px">보라 = 고르기 · 탭 · 다시하기 · 나가기 (결과 창 보라와 같은 모양 · 골라진 것 = 노란 테) · 주황 = 다른 창 바로가기 · 회색 = 잠김</div></div>
+    <div class="cap" style="margin-top:6px">보라 = 고르기 · 탭 · 다시하기 · 나가기 · 주황 = 다른 창 바로가기 · 회색 = 잠김</div></div>
 
-  <div class="box"><span class="lbl">④ 닫기 X <em>그 전 디자인으로 · 늘 오른쪽 위 · 위 여백 = 오른쪽 여백</em></span>
-    <div class="rowx"><span class="xbtn"></span><span class="cap">창 닫기 하나만</span></div>
-    <span class="lbl" style="margin-top:14px">⑤ 알림 배지 <em>받을 것 = 빨간 동그라미 + 숫자</em></span>
+  <div class="box"><span class="lbl">④ 닫기 X <em>지금 + 후보 3 (지금 게임 그림 + 도트 X · 돈 0)</em></span>
+    <div class="rowx" style="gap:22px"><span class="xlab"><span class="xbtn"></span>지금 <span class="ok" style="margin:0">채택</span></span><span class="xlab"><span class="xc a" id="xa"></span>A <span class="wait" style="margin:0">고르실 것</span></span><span class="xlab"><span class="xc b" id="xb"></span>B</span><span class="xlab"><span class="xc c" id="xcc"></span>C</span></div></div>
+
+  <div class="box"><span class="lbl">⑤ 바로가기 단추 <span class="ok">채택</span><em>X 바로 옆 · X 와 같은 크기</em></span>
+    <div class="rowx"><span class="go2"><img src="/assets/iandragon_game/ui/lobby/icon_look.png"><span>꾸미기</span></span><span class="go2"><img src="/assets/iandragon_game/ui/lobby/icon_shop.png"><span>아이템샵</span></span><span class="xbtn"></span></div></div>
+
+  <div class="box"><span class="lbl">⑥ 알림 배지 <span class="ok">채택</span><em>받을 것 = 빨간 동그라미 + 숫자</em></span>
     <div class="rowx"><span class="badge2"><span class="sb p">도전과제</span><i class="badge">3</i></span><span class="badge2"><span class="sb p">선물함</span><i class="badge">2</i></span></div></div>
 
-  <div class="box"><span class="lbl">⑥ 편의품 단추 <em>게임 시작 카드 · 누르면 초록 + ✓</em></span>
+  <div class="box"><span class="lbl">⑦ 편의품 단추 <span class="ok">채택</span><em>게임 시작 카드 · 누르면 초록 + ✓</em></span>
     <div class="rowx"><span class="cons">시작 불씨 +50 ×2</span><span class="cons on">화로 1단계 무료 ×1</span></div></div>
 
-  <div class="box"><span class="lbl">⑦ 출전순 버튼 <em>파워업 오른쪽 위 정렬 · 위 화살표만</em></span>
+  <div class="box"><span class="lbl">⑧ 출전순 버튼 <span class="ok">채택</span><em>파워업 오른쪽 위 정렬 · 위 화살표만</em></span>
     <div class="rowx" id="srt"></div></div>
 
-  <div class="box wide"><span class="lbl">⑧ 스테이지 카드 <em>옛 돌 판 그대로 + 월드 번호 + 열린 판은 그 월드 그림을 흐리게 · 잠긴 판은 그림 없음</em></span>
-    <div class="rowx" id="stc"></div></div>
+  <div class="box"><span class="lbl">⑨ 도감 전체 단추 <span class="ok">채택</span><em>도감 왼쪽 위 · 누르는 단추 아님 · 모양은 대표님이 따로</em></span>
+    <div class="rowx"><span class="allp">전체 <b>65/77</b><i></i><b>84%</b></span></div></div>
 
-  <div class="box"><span class="lbl">⑨ 재화 — 로비 (따라다니는 코인 · 젬)</span>
-    <div class="rowx" style="gap:60px;padding-left:44px"><span class="money"><img class="i" src="/assets/iandragon_game/ai/lobby2/coin_round.webp"><b>12,345</b><i class="plus"></i></span><span class="money"><img class="i" src="/assets/iandragon_game/ui/lobby/icon_gem_v3.png"><b>678</b><i class="plus"></i></span></div></div>
+  <div class="box"><span class="lbl">⑩ 탭 <span class="ok">채택</span><em>지금 게임 키트 그림</em></span>
+    <div class="rowx"><span class="ktab on">드래곤</span><span class="ktab">드래곤캐슬</span><span class="ktab">편의품</span></div></div>
 
-  <div class="box"><span class="lbl">⑩ 재화 — 창 안 (알약)</span>
+  <div class="box wide"><span class="lbl">⑪ 스테이지 카드 <em>셋 다 보관 · 2 와 3 을 비교해 고르심</em></span>
+    <div class="sub">버전 1 — 옛 돌 판 (지금 게임) <span class="old">이전</span></div><div class="rowx" id="st1"></div>
+    <div class="sub">버전 2 — 돌 판 + 월드 그림 흐리게 + 월드 번호 (폰용 보관) <span class="old">보관</span> <span class="wait">고르실 것</span></div><div class="rowx" id="st2"></div>
+    <div class="sub">버전 3 — 포커 · 타로 카드 : 위 난이도 · 가운데 3-1 + 별 · 아래 «월드» + 월드 색 동그라미 번호 · 월드 배경 · 아래 절반 어둡게 <span class="wait">고르실 것</span></div><div class="rowx" id="st3"></div></div>
+
+  <div class="box wide"><span class="lbl">⑫ 월드 고르기 동그라미</span>
+    <div class="sub">지금 게임 <span class="old">이전</span></div><div class="rowx" id="wt"></div>
+    <div class="sub">새로 — 월드마다 그 배경을 닮은 서로 다른 10색 (같은 색 없음) <span class="wait">고르실 것</span></div><div class="rowx" id="wc"></div></div>
+
+  <div class="box"><span class="lbl">⑬ 재화 — 로비 <span class="ok">채택</span><em>숫자 2px</em></span>
+    <div class="rowx" style="gap:60px;padding-left:44px"><span class="money"><img class="i" src="/assets/iandragon_game/ai/lobby2/coin_round.webp"><b>12,345</b><i class="plus"></i></span></div></div>
+
+  <div class="box"><span class="lbl">⑭ 재화 — 창 안 알약 <span class="ok">채택</span><em>창 왼쪽 위</em></span>
     <div class="rowx"><span class="pill"><img src="/assets/iandragon_game/ai/ui/coin.svg"><b class="c">99,999</b><i></i><img src="/assets/iandragon_game/ai/ui/gem.svg"><b class="gm">999</b></span></div></div>
 
-  <div class="box"><span class="lbl">⑫ 도감 전체 단추 <em>도감 왼쪽 위 · 모은 수 + 비율 알약 (누르는 단추는 아님 · 디자인은 대표님이 따로 정함)</em></span>
-    <div class="rowx"><span class="pill" style="font-size:16px">전체 <b class="c">65/77</b><i></i><b class="c">84%</b></span></div></div>
-  <div class="box"><span class="lbl">⑬ 바로가기 단추 <em>X 바로 옆 · X 와 같은 크기 · 아이템샵 ↔ 꾸미기</em></span>
-    <div class="rowx"><span class="go2"><img src="/assets/iandragon_game/ui/lobby/icon_look.png"><span>꾸미기</span></span><span class="go2"><img src="/assets/iandragon_game/ui/lobby/icon_shop.png"><span>아이템샵</span></span><span class="xbtn"></span></div></div>
-  <div class="box wide"><span class="lbl">⑪ 승리 창 <em>지금 게임 그대로 (모든 결과 창의 본보기)</em></span>
+  <div class="box"><span class="lbl">⑮ 종이 위 글씨 <span class="ok">채택</span><em>어느 창이든 같은 크기 · 짙은 갈색 · 테 없음</em></span>
+    <div class="rowx"><span class="kpaper">오늘의 특가 · 꾸미기 3개가 <b>30%</b> 싸요<br>한국 시간 자정에 바뀌어요</span></div></div>
+
+  <div class="box"><span class="lbl">⑯ 설정 부품 <span class="ok">채택</span><em>켜기 · 끄기 · 체크 · 밀대</em></span>
+    <div class="rowx"><span class="tog on"></span><span class="tog"></span><span class="chk on"></span><span class="chk"></span><span class="sld"><i></i><u></u></span></div></div>
+
+  <div class="box"><span class="lbl">⑰ 왼쪽 메뉴 단추 <span class="ok">채택</span><em>레이아웃 A (아이템샵 · 도감 · 멀티 · 연구소)</em></span>
+    <div style="display:flex;flex-direction:column;gap:8px"><span class="rb on"><img src="/assets/iandragon_game/ai/lobby/ico_star_empty.png">특가<i class="badge">3</i></span><span class="rb"><img src="/assets/iandragon_game/ai/novart/head_big.png">드래곤</span></div></div>
+
+  <div class="box"><span class="lbl">⑱ 물건 카드 <span class="ok">채택</span><em>아이템샵 · 테 색 = 등급</em></span>
+    <div class="rowx"><span class="icard"><i class="off">-30%</i><span class="a"><img src="/assets/iandragon_game/ai/meta/flag_moon.png"></span><span class="n">달 깃발</span><span class="f">캐슬 체력 +0.5%</span><span class="sb g" style="min-height:28px;font-size:13px;width:100%"><img src="/assets/iandragon_game/ai/ui/coin.svg">2,800</span></span></div></div>
+
+  <div class="box wide"><span class="lbl">⑲ 줄 (올리기 · 목록) <span class="ok">채택</span><em>연구소 · 선물함 · 멀티 방 목록</em></span>
+    <div class="krow"><span class="lv">Lv3</span><span class="t">불씨 생산<small>+6% → +8%</small></span><span class="sb g" style="min-height:30px;font-size:13px"><img src="/assets/iandragon_game/ai/ui/coin.svg">1,200</span></div></div>
+
+  <div class="box wide"><span class="lbl">⑳ 승리 창 <span class="ok">채택</span><em>지금 게임 그대로 · 모든 결과 창의 본보기</em></span>
     <img class="ref" src="ref/win_crop.png"></div>
 </div>
 <script>
 const UP = '<svg viewBox="0 0 7 4" shape-rendering="crispEdges"><path fill="currentColor" d="M3 0h1v1H3zM2 1h3v1H2zM1 2h5v1H1zM0 3h7v1H0z"/></svg>';
 const DN = '<svg viewBox="0 0 7 4" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h7v1H0zM1 1h5v1H1zM2 2h3v1H2zM3 3h1v1H3z"/></svg>';
+const XS = '<svg viewBox="0 0 9 9" shape-rendering="crispEdges"><path fill="#2a1238" d="M0 1h1v-1h2v1h1v1h1v-1h1v-1h2v1h1v2h-1v1h-1v1h1v1h1v2h-1v1h-2v-1h-1v-1h-1v1h-1v1h-2v-1h-1v-2h1v-1h1v-1h-1v-1h-1z"/><path fill="#fff" d="M1 1h2v1h1v1h1v-1h1v-1h2v2h-1v1h-1v1h1v1h1v2h-2v-1h-1v-1h-1v1h-1v1h-2v-2h1v-1h1v-1h-1v-1h-1z"/></svg>';
+['xa', 'xb', 'xcc'].forEach((id) => { document.getElementById(id).innerHTML = XS; });
 fill('srt', [['불씨', DN], ['체력', UP], ['공격', UP], ['사거리', UP]].map(([t, a]) => `<span class="srt">${t}${a}</span>`).join('') + `<span class="srt on">출전순${UP}</span>`);
 const star = (n) => [0, 1, 2].map((k) => `<img src="${A}result/star_${k < n ? 'on' : 'off'}.webp">`).join('');
-const card = (w, s, n, cls = '') => `<div class="st ${cls}" style="--wb:url(${A}bg/w${String(w).padStart(2, '0')}_panel.png)"><span class="w">월드 ${w}</span><b>${w}-${s}</b>${cls.includes('lock') ? `<img src="${L}ico_lock.png" style="height:20px">` : `<span class="s">${star(n)}</span>`}</div>`;
-fill('stc', card(3, 1, 3) + card(3, 2, 2) + card(3, 6, 0, 'now') + card(3, 7, 0, 'lock') + card(3, 10, 0, 'boss') + card(6, 4, 3) + card(9, 2, 1) + card(10, 10, 3, 'boss'));
-document.querySelector('.ref').src = 'ref/win_crop.png';
+const WB = (w) => `url(${A}bg/w${String(w).padStart(2, '0')}_panel.png)`;
+const card = (w, s, n, cls = '', v2 = false) => `<div class="st ${cls} ${v2 ? 'v2c' : ''}" style="--wb:${WB(w)}">${v2 ? `<span class="w">월드 ${w}</span>` : ''}<b>${w}-${s}</b>${cls.includes('lock') ? `<img src="${L}ico_lock.png" style="height:18px">` : `<span class="s">${star(n)}</span>`}</div>`;
+fill('st1', card(3, 1, 3) + card(3, 2, 2) + card(3, 7, 0, 'lock') + card(3, 10, 0, 'boss'));
+fill('st2', card(3, 1, 3, '', 1) + card(3, 2, 2, '', 1) + card(3, 7, 0, 'lock', 1) + card(3, 10, 0, 'boss', 1) + card(6, 4, 3, '', 1) + card(9, 2, 1, '', 1));
+/* 월드 색 : 이름 · 배경 느낌을 닮게, 열 개 모두 다르게 */
+const WC = ['#3fae5a', '#d4502e', '#5aa0e8', '#5fd0e0', '#7a86a0', '#8a5ad0', '#d9a45a', '#8ac83a', '#d06ac8', '#b02a4a'];
+const DF = { easy: '쉬움', normal: '보통', hard: '어려움' };
+const pc = (w, s, n, d = 'normal', cls = '') => `<div class="pc ${cls}" style="--wb:${WB(w)};--wc:${WC[w - 1]}"><div class="in"><span class="df ${d}">${DF[d]}</span><b class="no">${w}-${s}</b>${cls.includes('lock') ? `<img src="${L}ico_lock.png" style="height:18px;margin-top:4px">` : `<span class="ss">${star(n)}</span>`}<span class="wl">월드</span><span class="wn">${w}</span></div></div>`;
+fill('st3', pc(3, 1, 3) + pc(3, 2, 2) + pc(3, 6, 0, 'normal', 'now') + pc(3, 7, 0, 'normal', 'lock') + pc(3, 10, 0, 'normal', 'boss') + pc(6, 4, 3, 'easy') + pc(9, 2, 1, 'hard'));
+fill('wt', Array.from({ length: 10 }, (_, i) => `<span class="wt ${i === 2 ? 'on' : ''}">${i + 1}</span>`).join(''));
+const WN = ['달밤 초록', '화산', '하늘섬', '얼음골', '쇠 광산', '유령 묘지', '사막', '독 늪', '수정 동굴', '드래곤캐슬'];
+fill('wc', WC.map((c, i) => `<span class="wc"><i class="${i === 2 ? 'on' : ''}" style="--wc:${c}">${i + 1}</i>${WN[i]}</span>`).join(''));
 </script>
