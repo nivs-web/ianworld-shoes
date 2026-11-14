@@ -1,0 +1,88 @@
+/* ═══ 멀티게임 «A» 레이아웃 (11/14 대표님 선택 · tools/_uimock/multi_a2.html · 디자인 규칙표 2판 ⑰ 왼쪽 메뉴 단추 · ⑲ 줄 · ⑮ 종이) ═══
+ *  틀 · 위 줄 = idg-v2.css (겜부장 · 고치지 않음) — 여기는 몸(.idg-mx)만 · 창 상자 = .idg-nest.idg-multi (도전과제 .idg-nest 와 구분)
+ *  몸 = 왼쪽 28% 메뉴 줄(모드 단추 · 종이 안내 · 빨강 빠른 시작) + 오른쪽 내용(줄 · 보라 방 만들기 · 맨 아래 방 번호 입력)
+ *  글씨 : 그라데이션 없음 · 작은 글씨 = 검은 테 1px · 큰 글씨(빠른 시작 · 방 번호) = 2px · 종이 위 = 테 없음 */
+
+/* 창 폭 = «큰» 80% (최대 1400px) — 큰 화면에서 옛 640px 상한(idg-window-rules)이 v2 폭을 이기던 것을 이 창만 되돌림 */
+.dialog-overlay > .dialog.idg-v2.idg-multi.idg-k[class*="idg-"]:not(.idg-shop):not(.idg-hall) { max-width: min(80vw, 1400px) !important; }
+
+.dialog.idg-v2.idg-multi.idg-framed > .idg-dlg-body { display: flex !important; flex-direction: column; overflow: hidden !important; background: none !important; padding: 0 !important; }
+.dialog.idg-v2.idg-multi .idg-mx {
+  --t1: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px 1px #000, 1px -1px #000, -1px -1px #000;
+  --t2: 2px 0 #000, -2px 0 #000, 0 2px #000, 0 -2px #000, 2px 2px #000, -2px 2px #000, 2px -2px #000, -2px -2px #000;
+  flex: 1 1 auto; align-self: stretch; width: 100%; min-height: 0; display: flex; gap: .75em; color: #fff; text-shadow: var(--t1); text-align: left; }
+.idg-mx .idg-mx-grow { flex: 1 1 0; min-height: 0; }
+
+/* ── 왼쪽 메뉴 줄 ── */
+.idg-mx .idg-mx-rail { flex: 0 0 28%; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .45em; }
+/* 규칙표 ⑰ 왼쪽 메뉴 단추 */
+.idg-mx .idg-mx-rb { position: relative; flex: none; display: flex; align-items: center; gap: .5em; width: 100%; height: 2.6em; margin: 0; padding: 0 .6em; box-sizing: border-box;
+  border: 2px solid #000; border-radius: 9px; background: #352858; box-shadow: inset 0 0 0 1px #5a4a8a, 0 3px 0 #000; color: #bdb0e0; font: inherit; font-weight: 900; text-shadow: var(--t1); text-align: left; cursor: pointer; }
+.idg-mx .idg-mx-rb img { height: 1.7em; width: auto; flex: none; image-rendering: pixelated; }
+.idg-mx .idg-mx-rb span { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.idg-mx .idg-mx-rb img.lk { height: 1.2em; margin-left: auto; }
+.idg-mx .idg-mx-rb.on { background: #6a4fc4; color: #fff; box-shadow: inset 0 0 0 2px #ffd45a, 0 3px 0 #000; }
+.idg-mx .idg-mx-rb.lock:not(.on) { color: #8f82b8; }
+.idg-mx .idg-mx-rb.lock:not(.on) img:not(.lk) { filter: grayscale(1); opacity: .6; }
+.idg-mx .idg-mx-rb:active { transform: translateY(1px); }
+
+/* 종이 위 글씨 (규칙표 ⑮) */
+.dialog.idg-v2.idg-multi .idg-mx .idg-k-paper.idg-mx-paper { flex: none; margin: 0; padding: 0 .3em !important; font-size: .8em !important; line-height: 1.35 !important;
+  color: #2e1806 !important; font-weight: 900; text-shadow: none; text-align: center; letter-spacing: -.04em; word-spacing: -.22em; }
+.dialog.idg-v2.idg-multi .idg-mx .idg-k-paper.idg-mx-paper b { color: #7a1e04; }
+
+/* ── 단추 (규칙표 ③ : 빨강 = 싸우러 가기 · 시작 / 보라 = 고르기 · 탭 / 회색 = 잠김) ── */
+.idg-mx .idg-mx-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: .3em; min-height: 2.25em; margin: 0; padding: 0 .85em 2px; box-sizing: border-box;
+  border: 3px solid #000; border-radius: 9px; color: #fff; font: inherit; font-weight: 900; text-shadow: var(--t1); white-space: nowrap; cursor: pointer; }
+.idg-mx .idg-mx-btn img { height: 1.15em; width: auto; display: block; image-rendering: pixelated; }
+.idg-mx .idg-mx-btn.p { border: 2px solid #8e7bcc; background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233; color: #f2ecff; }
+.idg-mx .idg-mx-btn.x0 { background: #5a5468; color: #cfc9dc; box-shadow: inset 0 -4px 0 #3a3448; cursor: default; }
+.idg-mx .idg-mx-btn:active:not(:disabled) { transform: translateY(1px); filter: brightness(.9); }
+/* 큰 빨강 = 규칙표 ② 메인 큰 빨강 그림 · 글씨 2px (창 하나에 하나) */
+.idg-mx .idg-mx-btn.r { min-height: 2.7em; padding: 0 .2em; border: solid transparent; border-width: .6em .95em; border-radius: 0;
+  border-image: url(/assets/iandragon_game/ai/result/btn_red2.webp) 46 70 fill / .6em .95em stretch; background: none; box-shadow: none; text-shadow: var(--t2); }
+.idg-mx .idg-mx-btn.big { width: 100%; font-size: 1.15em; }
+.idg-mx .idg-mx-btn.x0.big { font-size: 1em; min-height: 2.5em; }
+
+/* ── 오른쪽 내용 ── */
+.idg-mx .idg-mx-main { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .4em; overflow-y: auto; overflow-x: hidden; }
+.idg-mx .idg-mx-sec { flex: none; font-size: .8em; color: #ffd45a; }
+.idg-mx .idg-mx-list { flex: none; display: flex; flex-direction: column; gap: .4em; }
+/* 규칙표 ⑲ 줄 */
+.idg-mx .idg-mx-row { display: flex; align-items: center; gap: .6em; min-height: 2.6em; padding: .3em .6em; box-sizing: border-box; border: 2px solid #000; border-radius: 9px; background: #1d1233; box-shadow: inset 0 0 0 1px #5a4a8a; }
+.idg-mx .idg-mx-row .lv { flex: none; min-width: 2.2em; padding: .1em .4em; border: 2px solid #000; border-radius: 5px; background: #4a3888; font-size: .8em; text-align: center; }
+.idg-mx .idg-mx-row .t { flex: 1 1 auto; min-width: 0; }
+.idg-mx .idg-mx-row .t b { display: block; font-weight: 900; line-height: 1.2; }
+.idg-mx .idg-mx-row .t small { display: block; margin-top: .1em; font-size: .72em; line-height: 1.2; color: #bdb0e0; }
+.idg-mx .idg-mx-row .val { flex: none; color: #ffe680; font-weight: 900; white-space: nowrap; }
+.idg-mx .idg-mx-row .val.host { padding: .1em .55em .15em; border: 2px solid #a37d3c; border-radius: 1em; background: #2a1f45; font-size: .78em; }
+.idg-mx .idg-mx-arw { flex: none; display: flex; gap: .3em; }
+.idg-mx .idg-mx-arw .idg-mx-btn { min-width: 2.3em; padding: 0 .4em 2px; }
+/* 방 번호 입력 줄 */
+.idg-mx .idg-mx-join { flex: none; display: flex; align-items: center; gap: .5em; }
+.idg-mx .idg-mx-inp { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: .4em; height: 2.3em; padding: 0 .6em; box-sizing: border-box;
+  border: 2px solid #1c0d2e; border-radius: 8px; background: #1d1233; box-shadow: inset 0 0 0 1px #5a4a8a, 0 0 0 1px #5a4a8a; cursor: text; }
+.idg-mx .idg-mx-inp img { flex: none; height: 1.3em; width: auto; image-rendering: pixelated; }
+.dialog.idg-v2.idg-multi .idg-mx .idg-mx-inp input.idg-mx-code { flex: 1 1 auto; min-width: 0; width: auto; height: 100%; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; outline: none;
+  background: none; box-shadow: none; color: #fff; font: inherit; font-weight: 900; letter-spacing: .12em; text-shadow: var(--t1); }
+.dialog.idg-v2.idg-multi .idg-mx .idg-mx-inp input.idg-mx-code::placeholder { color: #8f82b8; letter-spacing: 0; text-shadow: none; opacity: 1; }
+.idg-mx .idg-mx-inp:focus-within { border-color: #a37d3c; }
+
+/* ── 대기실 ── */
+.idg-mx .idg-mx-room { flex: none; display: flex; flex-direction: column; align-items: center; gap: .15em; padding: .45em .4em .55em; border: 2px solid #a37d3c; border-radius: 9px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238; }
+.idg-mx .idg-mx-room span { font-size: .78em; color: #bdb0e0; }
+.idg-mx .idg-mx-room b { font-size: 1.9em; line-height: 1; letter-spacing: .08em; color: #ffe680; text-shadow: var(--t2); }
+.idg-mx .idg-mx-start { flex: none; display: flex; flex-direction: column; }
+.idg-mx .idg-mx-stage { flex: none; }
+
+/* ── 기다림 · 안내 (한가운데) ── */
+.idg-mx .idg-mx-msg { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .9em; }
+.dialog.idg-v2.idg-multi .idg-mx .idg-mx-msg .idg-k-paper.idg-mx-paper { max-width: 24em; font-size: .9em !important; }
+.idg-mx .idg-mx-msg .idg-mx-btn { min-width: 8em; }
+
+/* 낮은 화면 (폰 가로 · 390px 안팎) */
+@media (max-height: 460px) {
+  .idg-mx .idg-mx-main, .idg-mx .idg-mx-list, .idg-mx .idg-mx-rail { gap: .32em; }
+  .idg-mx .idg-mx-row { min-height: 2.35em; padding: .2em .55em; }
+  .idg-mx .idg-mx-rb { height: 2.4em; }
+}

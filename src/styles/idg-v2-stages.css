@@ -1,0 +1,99 @@
+/* ═══ 스테이지 고르기 — 가로 창 · 큰 카드 (대표님 11/14 «스테이지 A» 채택) ═══
+ *  창 틀 = idg-v2.css «큰»(80%) 그대로 · 왼쪽 약 40% = 월드 선택(난이도 · 동그라미 1~5 / 6~10 · 월드 이름 · 뒤 = 그 월드 그림)
+ *  오른쪽 = 스테이지 10칸(5×2) = 규칙표 ⑪ «버전 3 큰 카드» (rules.html .sc · .easy · .hard · .boss · .lock · .now 를 그대로 옮김)
+ *  카드 크기 : 104×146 원본 비율을 그대로 키우고 줄임 — --W(카드 폭)를 격자 칸 크기(cq 단위)에서 계산 · 원본 1px = var(--u)
+ *  글씨 : 그라데이션 없음 · 작은 글씨 검은 테 1px · 큰 글씨(카드 3-1) 2px
+ *  옛 규칙(iandragon-game.css · idg-land.css · idg-subwin.css 의 .idg-stage-btn …)은 선택자를 높여 덮는다 */
+.dialog.idg-v2s.idg-v2 {
+  --s1: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px 1px #000, 1px -1px #000, -1px -1px #000;
+  --s2: 2px 0 #000, -2px 0 #000, 0 2px #000, 0 -2px #000, 2px 2px #000, -2px 2px #000, 2px -2px #000, -2px -2px #000;
+}
+.dialog.idg-v2s.idg-framed[class*="idg-"] > .idg-dlg-body { display: flex; flex-direction: column; overflow: hidden; background: none; padding-top: 0 !important; padding-bottom: 0 !important; }
+.dialog.idg-v2s.idg-v2 > .idg-dlg-more { display: none !important; }   /* 이 창은 스크롤이 없다 */
+.dialog.idg-v2s .v2s { flex: 1 1 auto; min-height: 0; display: flex; gap: .55em; text-shadow: var(--s1); }
+.dialog.idg-v2s .v2s-h { flex: none; font-size: 1em; line-height: 1.2; font-weight: 900; color: #fff7d6; text-shadow: var(--s1); }
+
+/* ── 왼쪽 : 월드 선택 ── */
+.dialog.idg-v2s .v2s-left { flex: 0 0 40%; min-width: 0; position: relative; display: flex; flex-direction: column; gap: .5em; padding: .5em .6em .55em;
+  border: 2px solid #000; border-radius: 10px; overflow: hidden; background: #120826; box-shadow: inset 0 0 0 1px var(--gold-d, #a37d3c); }
+.dialog.idg-v2s .v2s-left::before { content: ''; position: absolute; inset: 0; background: var(--wbg) center 55% / cover no-repeat; image-rendering: pixelated; }
+.dialog.idg-v2s .v2s-left::after { content: ''; position: absolute; inset: 0; background: rgba(14, 6, 30, .38); }   /* 글씨가 읽히게 고르게 어둡게 (그라데이션 X) */
+.dialog.idg-v2s .v2s-left > * { position: relative; z-index: 1; }
+/* 난이도 단추 (규칙표 ③ : 보라 = 고르기 · 고른 것 = 노란 테 · 잠김 = 회색 + 자물쇠) */
+.dialog.idg-v2s .v2s-diff { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4em; }
+.dialog.idg-v2s .v2s-diff[data-n="4"] { grid-template-columns: repeat(4, 1fr); }
+.dialog.idg-v2s .v2s-diff[hidden], .dialog.idg-v2s .v2s-note[hidden] { display: none; }
+.dialog.idg-v2s .v2s-db { display: inline-flex; align-items: center; justify-content: center; gap: .25em; min-width: 0; height: 2.1em; padding: 0 .3em; margin: 0;
+  border: 2px solid #8e7bcc; border-radius: 9px; background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233;
+  color: #f2ecff; font: inherit; font-size: .9em; font-weight: 900; line-height: 1; white-space: nowrap; text-shadow: var(--s1); cursor: pointer; }
+.dialog.idg-v2s .v2s-db.on { border-color: #ffd45a; color: #fff; }
+.dialog.idg-v2s .v2s-db.lock { border: 3px solid #000; background: #5a5468; color: #cfc9dc; box-shadow: inset 0 -4px 0 #3a3448; }
+.dialog.idg-v2s .v2s-db img { height: 1.1em; width: auto; flex: none; image-rendering: pixelated; }
+.dialog.idg-v2s .v2s-db:active { transform: translateY(1px); }
+.dialog.idg-v2s .v2s-note { align-self: center; max-width: 100%; margin-top: -.15em; padding: .15em .6em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 6px; background: rgba(10, 4, 22, .78); box-shadow: 0 0 0 2px #000;
+  font-size: .72em; line-height: 1.25; color: #ffb3a6; text-align: center; }
+/* 월드 동그라미 (규칙표 ⑫ «새로» : 어두운 거의 회색 10색 · 흰 숫자 2px 테 · 고른 것 = 광택 노랑 + 흰 원) */
+.dialog.idg-v2s .v2s-worlds { display: grid; grid-template-columns: repeat(5, 1fr); gap: .45em .2em; justify-items: center; margin: auto 0; }
+.dialog.idg-v2s .v2s-wd { width: 2.55em; height: 2.55em; padding: 0; margin: 0; border-radius: 50%; display: grid; place-items: center; font: inherit; font-size: 1.05em; font-weight: 900; line-height: 1; color: #fff; text-shadow: var(--s2);
+  border: 3px solid #000; background: var(--wc, #3f3552); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .14), 0 3px 0 #000; cursor: pointer; }
+.dialog.idg-v2s .v2s-wd.on { background: radial-gradient(circle at 50% 30%, #fff6b0 0 18%, #ffd93a 42%, #e8a20c 78%, #b8740a 100%); box-shadow: inset 0 -3px 0 rgba(120, 60, 0, .35), 0 0 0 3px #fff, 0 3px 0 3px #000; }
+.dialog.idg-v2s .v2s-wd.lock { background: #2a2733; box-shadow: 0 3px 0 #000; cursor: default; }
+.dialog.idg-v2s .v2s-wd.lock img { width: 52%; height: auto; image-rendering: pixelated; filter: brightness(.8); }
+.dialog.idg-v2s .v2s-wd:not(.lock):active { transform: translateY(1px); }
+/* 월드 이름 */
+.dialog.idg-v2s .v2s-wname { align-self: center; max-width: 100%; padding: .25em .9em; border-radius: 1em; background: rgba(14, 6, 30, .78); box-shadow: 0 0 0 2px #000, inset 0 0 0 1px var(--gold-d, #a37d3c);
+  font-size: .95em; line-height: 1.2; color: #fff7d6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 잠긴 난이도를 누르면 뜨는 안내 (칸 아래쪽 · 잠깐) */
+.dialog.idg-v2s .v2s-pop { position: absolute; z-index: 3; left: 0; right: 0; bottom: 3em; width: max-content; max-width: 94%; margin: 0 auto; padding: .4em .8em; border-radius: 8px;
+  background: rgba(10, 4, 22, .94); box-shadow: 0 0 0 2px #000, inset 0 0 0 1px var(--gold-d, #a37d3c); font-size: .8em; line-height: 1.3; color: #fff; text-align: center; word-break: keep-all; display: none; }
+.dialog.idg-v2s .v2s-pop.on { display: block; }
+
+/* ── 오른쪽 : 스테이지 선택 (5×2) ── */
+.dialog.idg-v2s .v2s-right { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .4em; }
+.dialog.idg-v2s .v2s-grid.idg-stage-grid { --g: .5em; flex: 1 1 auto; min-height: 0; margin: 0; container-type: size;
+  /* 카드 폭 : 칸 가로 5개 · 세로 2줄(보통 146 + 보스 164) 둘 다 들어가는 크기 — 가로 창이 길어도 카드는 원래 비율 그대로 */
+  --W: min((100cqw - 4 * var(--g) - 8px) / 5, (100cqh - 2 * var(--g) - 1.4em - 12px) * 104 / 310);
+  --u: calc(var(--W) / 104);
+  display: grid; grid-template-columns: repeat(5, auto); grid-auto-rows: auto;   /* 칸 폭은 카드(자식)가 --W 로 정함 — cq 단위는 격자 안에서만 풀린다 */ gap: var(--g); justify-content: center; align-content: center; align-items: end; }
+.dialog.idg-v2s .v2s-grid > .v2s-gh { grid-column: 1 / -1; align-self: end; height: 1.3em; margin-bottom: -.1em; }   /* «스테이지 선택» = 격자 첫 줄 (cq 계산에서 1.4em 뺌) */
+@supports not (width: 1cqw) { .dialog.idg-v2s .v2s-grid.idg-stage-grid { --W: 4.4em; } }
+/* 카드 (rules.html .sc · 원본 104×146 · 1px = var(--u)) */
+.dialog.idg-v2s .v2s-grid > .idg-stage-btn.v2s-sc { position: relative; display: block; width: var(--W); height: calc(146 * var(--u)); min-height: 0; margin: 0; padding: 0;
+  border: 0; border-radius: 0; background: none; box-shadow: none; opacity: 1; color: #fff; font: inherit; font-weight: 900; text-shadow: none; cursor: pointer; overflow: visible; }
+.dialog.idg-v2s .v2s-sc > .wb, .dialog.idg-v2s .v2s-sc > .dk { position: absolute; inset: calc(15 * var(--u)) calc(15 * var(--u)) calc(21 * var(--u)); border-radius: 2px; }
+.dialog.idg-v2s .v2s-sc > .wb { background: var(--wb) center / cover no-repeat; opacity: .42; image-rendering: pixelated; }
+.dialog.idg-v2s .v2s-sc > .dk { background: linear-gradient(rgba(14, 6, 30, .1) 0 50%, rgba(10, 4, 24, .55) 50% 100%); }   /* 정확히 절반 아래 어둡게 (두 칸 · 번지지 않음) */
+.dialog.idg-v2s .v2s-sc > .fr { position: absolute; inset: 0; border: solid transparent; border-width: calc(16 * var(--u)) calc(16 * var(--u)) calc(21 * var(--u));
+  border-image: url(/assets/iandragon_game/ai/lobby/tile.webp) 40 40 52 / calc(16 * var(--u)) calc(16 * var(--u)) calc(21 * var(--u)) stretch; image-rendering: pixelated; }
+.dialog.idg-v2s .v2s-sc.easy > .fr { filter: sepia(.75) saturate(2.2) hue-rotate(55deg) brightness(.92); }   /* 쉬움 = 초록 돌 */
+.dialog.idg-v2s .v2s-sc.hard > .fr { filter: sepia(.85) saturate(1.7) hue-rotate(-38deg) brightness(.6); }   /* 어려움 = 검붉은 돌 */
+.dialog.idg-v2s .v2s-sc > .mid { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(4 * var(--u)); }
+.dialog.idg-v2s .v2s-sc > .mid > b { font-size: calc(24 * var(--u)); line-height: 1; color: #fff; text-shadow: var(--s2); white-space: nowrap; }
+.dialog.idg-v2s .v2s-sc .idg-stage-stars.s { display: flex; justify-content: center; gap: 1px; }
+.dialog.idg-v2s .v2s-sc .idg-stage-stars.s .idg-star-ico { height: calc(15 * var(--u)); width: auto; margin: 0; image-rendering: pixelated; }
+.dialog.idg-v2s .v2s-sc > .wl { position: absolute; left: 0; right: 0; bottom: calc(27 * var(--u)); z-index: 2; text-align: center; font-size: calc(9 * var(--u)); line-height: 1; letter-spacing: .18em; color: rgba(255, 255, 255, .38); text-shadow: none; white-space: nowrap; }
+/* 보스 판 n-10 = 해골 뿔 판 (뿔 비율 유지 · 어느 난이도든 같은 빨간 판) */
+.dialog.idg-v2s .v2s-grid > .idg-stage-btn.v2s-sc.boss { height: calc(164 * var(--u)); }
+.dialog.idg-v2s .v2s-sc.boss > .fr { filter: none; border-width: calc(37 * var(--u)) calc(16 * var(--u)) calc(21 * var(--u));
+  border-image: url(/assets/iandragon_game/ai/lobby/tile_boss.webp) 95 40 52 / calc(37 * var(--u)) calc(16 * var(--u)) calc(21 * var(--u)) stretch; }
+.dialog.idg-v2s .v2s-sc.boss > .wb, .dialog.idg-v2s .v2s-sc.boss > .dk { inset: calc(35 * var(--u)) calc(15 * var(--u)) calc(21 * var(--u)); }
+.dialog.idg-v2s .v2s-sc.boss > .mid { top: calc(22 * var(--u)); }
+/* 잠긴 판 = 사슬 돌 판 (난이도 상관없이 같음) · WORLD 글씨 없음 · 큰 자물쇠를 사슬 가운데 */
+.dialog.idg-v2s .v2s-sc.lock { cursor: default; }
+.dialog.idg-v2s .v2s-sc.lock > .fr { filter: none; border-width: calc(16 * var(--u)) calc(16 * var(--u)) calc(21 * var(--u));
+  border-image: url(/assets/iandragon_game/ai/lobby/tile_locked.webp) 40 40 52 fill / calc(16 * var(--u)) calc(16 * var(--u)) calc(21 * var(--u)) stretch; }
+.dialog.idg-v2s .v2s-sc.lock > .mid { justify-content: flex-start; padding-top: calc(36 * var(--u)); }
+.dialog.idg-v2s .v2s-sc.lock > .mid > b { color: #b8b3c6; }
+.dialog.idg-v2s .v2s-sc.lock > .lk2 { position: absolute; left: 50%; top: 66%; z-index: 3; width: calc(30 * var(--u)); height: auto; transform: translate(-50%, -50%); image-rendering: pixelated; filter: drop-shadow(0 2px 0 #000); }
+.dialog.idg-v2s .v2s-grid > .idg-stage-btn.v2s-sc.boss.lock { height: calc(146 * var(--u)); }   /* 잠긴 보스 판도 같은 사슬 판 */
+.dialog.idg-v2s .v2s-sc.boss.lock > .mid { top: 0; }
+/* 지금 할 판 = 노란 테 */
+.dialog.idg-v2s .v2s-sc.now::after { content: ''; position: absolute; inset: -4px; z-index: 4; border: 3px solid #ffd45a; border-radius: 8px; box-shadow: 0 0 0 2px #000; pointer-events: none; }
+.dialog.idg-v2s .v2s-sc.boss.now::after { top: calc(18 * var(--u)); }
+.dialog.idg-v2s .v2s-sc:not(.lock):active { transform: translateY(1px); }
+.dialog.idg-v2s .v2s-sc:focus-visible { outline: 2px solid #ffd45a; outline-offset: 3px; }
+
+/* 큰 화면(세로 860px 이상) : 옛 창 규칙(idg-window-rules.css 의 «640px 상한»)이 2판 «큰 80%» 를 덮어 창이 좁아지던 것 — 이 창만 80% 로 되돌림 */
+@media (orientation: landscape) and (min-height: 860px) {
+  .dialog-overlay > .dialog.idg-v2.idg-v2s.idg-k[class*="idg-"]:not(.idg-shop):not(.idg-hall) { max-width: min(80vw, 1400px) !important; }
+}

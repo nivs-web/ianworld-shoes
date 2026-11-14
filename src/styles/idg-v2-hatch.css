@@ -1,0 +1,95 @@
+/* ═══ 부화장 «C» 레이아웃 (11/14 대표님 선택 · tools/_uimock/hatch_c2.html · 디자인 규칙표 2판) ═══
+ *  틀 · 위 줄 = idg-v2.css (겜부장 · 고치지 않음) — 여기는 몸(.idg-hc)만
+ *  몸 = 왼쪽 정보 칸 27% · 가운데 받침대 + 큰 알 · 오른쪽 «방금 나온 용» + 초록 사기 단추 29%
+ *  글씨 : 그라데이션 없음 · 작은 글씨 = 검은 테 1px · 종이 위 = 테 없음(규칙표 ⑮) · 단추 색 = 초록 사기 · 주황 바로가기 */
+
+/* 창 폭 = «큰» 80% (최대 1400px) — 큰 화면에서 옛 640px 상한(idg-window-rules)이 v2 폭을 이기던 것을 이 창만 되돌림 */
+.dialog-overlay > .dialog.idg-v2.idg-hatch.idg-k[class*="idg-"]:not(.idg-shop):not(.idg-hall) { max-width: min(80vw, 1400px) !important; }
+
+.dialog.idg-v2.idg-hatch.idg-framed > .idg-dlg-body { display: flex !important; flex-direction: column; overflow: hidden !important; background: none !important; padding: 0 !important; }
+.dialog.idg-v2.idg-hatch .idg-hc {
+  --t1: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px 1px #000, 1px -1px #000, -1px -1px #000;
+  --o: #1c0d2e; --rare: #4aa0ff; --super: #c06aff; --legend: #ffd45a;
+  flex: 1 1 auto; align-self: stretch; width: 100%; min-height: 0; display: flex; gap: .6em; color: #fff; text-shadow: var(--t1); }
+
+/* ── 왼쪽 정보 칸 ── */
+.idg-hc .idg-hc-info { flex: 0 0 27%; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .4em; overflow: hidden; }
+.dialog.idg-v2.idg-hatch .idg-hc .idg-k-paper.idg-hc-paper { flex: none; margin: 0; padding: 0 .3em !important; font-size: .8em !important; line-height: 1.35 !important;
+  color: #2e1806 !important; font-weight: 900; text-shadow: none; text-align: center; letter-spacing: -.04em; word-spacing: -.22em; }   /* 규칙표 ⑮ 종이 위 글씨 */
+.dialog.idg-v2.idg-hatch .idg-hc .idg-k-paper.idg-hc-paper b { color: #7a1e04; }
+.idg-hc .idg-hc-rate { display: flex; align-items: center; gap: .4em; text-align: left; }
+.idg-hc .idg-hc-rate i { flex: none; width: .8em; height: .8em; border-radius: 50%; border: 2px solid #2e1806; box-sizing: border-box; }
+.idg-hc .idg-hc-rate b { margin-left: auto; }
+.idg-hc .idg-hc-rate.rare i { background: var(--rare); } .idg-hc .idg-hc-rate.rare span { color: #1d5fb0; }
+.idg-hc .idg-hc-rate.super i { background: var(--super); } .idg-hc .idg-hc-rate.super span { color: #7a2fc0; }
+.idg-hc .idg-hc-rate.legend i { background: var(--legend); } .idg-hc .idg-hc-rate.legend span { color: #a65a00; }
+.idg-hc .idg-hc-bar { height: 1em; margin: .25em 0 .1em; border-radius: .5em; background: #1d1233; border: 2px solid #2e1806; box-shadow: inset 0 0 0 1px #5a4a8a; overflow: hidden; box-sizing: border-box; }
+.idg-hc .idg-hc-bar u { display: block; height: 100%; background: linear-gradient(#ffd45a 0 50%, #d9a441 50%); }
+.idg-hc .idg-hc-own { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .25em; margin-top: .25em; }
+.idg-hc .idg-hc-own img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 5px; background: #2c2150; image-rendering: pixelated; outline: 2px solid var(--rare); outline-offset: -2px; }
+.idg-hc .idg-hc-own img.super { outline-color: var(--super); } .idg-hc .idg-hc-own img.legend { outline-color: var(--legend); }
+.idg-hc .idg-hc-own img.no { opacity: .3; filter: grayscale(1); outline-color: #5a4a8a; }
+.idg-hc .idg-hc-grow { flex: 1 1 0; min-height: 0; }
+/* 주황 = 다른 창 바로가기 (규칙표 ③) */
+.idg-hc .idg-hc-go { flex: none; display: flex; align-items: center; justify-content: center; gap: .35em; width: 100%; min-height: 2.3em; margin: 0; padding: 0 .6em 2px; box-sizing: border-box;
+  border: 3px solid #000; border-radius: 9px; background: #e0852c; box-shadow: inset 0 3px 0 #ffc77a, inset 0 -4px 0 #8e4a0f; color: #fff; font: inherit; font-weight: 900; text-shadow: var(--t1); cursor: pointer; }
+.idg-hc .idg-hc-go img { height: 1.5em; width: auto; image-rendering: pixelated; }
+.idg-hc .idg-hc-go i { display: block; width: .36em; height: .63em; margin-left: .1em; color: #fff; }
+.idg-hc .idg-hc-go i svg { display: block; width: 100%; height: 100%; }
+.idg-hc .idg-hc-go:active { transform: translateY(1px); filter: brightness(.9); }
+
+/* ── 가운데 받침대 + 큰 알 ── */
+.idg-hc .idg-hc-nest { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; border-radius: 10px; border: 2px solid var(--o); box-sizing: border-box; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 45%, #6a55a8 0, #3a2c68 40%, #1d1233 80%); box-shadow: inset 0 0 0 1px #5a4a8a; }
+.idg-hc .idg-hc-sp { position: absolute; z-index: 3; width: 14%; height: auto; opacity: .85; image-rendering: pixelated; pointer-events: none; }
+.idg-hc .idg-hc-sp.a { left: 12%; top: 14%; } .idg-hc .idg-hc-sp.b { right: 12%; top: 30%; width: 10%; }
+.idg-hc .idg-hc-nest:has(.idg-hc-grid) .idg-hc-sp { display: none; }   /* 카드 10장 사이로 반짝이가 비치지 않게 */
+.idg-hc .idg-hc-ped { position: absolute; left: 50%; bottom: 8%; width: min(60%, 24em); height: 28%; transform: translateX(-50%); }
+.idg-hc .idg-hc-ped::before { content: ''; position: absolute; inset: 0 0 38% 0; z-index: 1; border-radius: 50%; background: radial-gradient(#d9c9ff, #7a62c0 70%); border: 2px solid var(--o); }
+.idg-hc .idg-hc-ped::after { content: ''; position: absolute; left: 10%; right: 10%; top: 30%; bottom: 0; border-radius: 0 0 50% 50%; background: linear-gradient(#5a4590, #2c2150); border: 2px solid var(--o); border-top: 0; }
+/* 알 (흔들림 · 금 연출은 iandragon-game.css 의 .idg-egg.shake / .crack 을 그대로 씀 — 가운데 맞춤은 translate 로 따로) */
+.idg-hc .idg-egg.idg-hc-egg { position: absolute; z-index: 2; left: 50%; bottom: 25%; width: auto; height: 58%; aspect-ratio: 4 / 5; translate: -50% 0; transform-origin: 50% 90%; border-radius: 0; background: none; }
+.idg-hc .idg-egg.idg-hc-egg.crack { transform: scale(1.12); filter: drop-shadow(0 0 6px var(--glow, #9cf)); }   /* 빛번짐은 은은하게만 */
+.idg-hc .idg-hc-born { position: absolute; z-index: 2; left: 50%; bottom: 26%; height: 56%; aspect-ratio: 1; translate: -50% 0; animation: idgPop .35s backwards cubic-bezier(.3, 1.6, .5, 1); }
+.idg-hc .idg-hc-born img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+/* 10개 결과 = 카드 5 × 2 */
+.idg-hc .idg-hc-grid { position: absolute; z-index: 4; inset: .45em; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 9.5em)); align-content: center; gap: .35em; }
+.idg-hc .idg-hc-mini { min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1em; padding: .2em; border: 2px solid #000; border-radius: 8px; box-sizing: border-box;
+  background: #1d1233; box-shadow: inset 0 0 0 2px var(--rare); animation: idgPop .35s backwards cubic-bezier(.3, 1.6, .5, 1); }
+.idg-hc .idg-hc-mini.super { box-shadow: inset 0 0 0 2px var(--super); } .idg-hc .idg-hc-mini.legend { box-shadow: inset 0 0 0 2px var(--legend); background: #2c2150; }
+.idg-hc .idg-hc-mini img { flex: 1 1 auto; min-height: 0; max-height: 3.2em; width: 100%; object-fit: contain; image-rendering: pixelated; }
+.idg-hc .idg-hc-mini b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .7em; line-height: 1.15; }
+.idg-hc .idg-hc-mini span { font-size: .62em; line-height: 1.1; color: #ffe680; }
+
+/* ── 오른쪽 «방금 나온 용» + 사기 단추 ── */
+.idg-hc .idg-hc-act { flex: 0 0 29%; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .5em; }
+.idg-hc .idg-hc-last { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: .3em; }
+.idg-hc .idg-hc-sec { flex: none; font-size: .8em; color: #ffd45a; }
+.idg-hc .idg-hc-card { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2em; padding: .45em .4em .4em; box-sizing: border-box;
+  border: 2px solid #000; border-radius: 9px; background: #1d1233; box-shadow: inset 0 0 0 2px var(--rare); text-align: center; }   /* 규칙표 ⑱ 카드 · 테 색 = 등급 */
+.idg-hc .idg-hc-card.super { box-shadow: inset 0 0 0 2px var(--super); } .idg-hc .idg-hc-card.legend { box-shadow: inset 0 0 0 2px var(--legend); } .idg-hc .idg-hc-card.none { box-shadow: inset 0 0 0 1px #5a4a8a; }
+.idg-hc .idg-hc-card .art { flex: 1 1 auto; min-height: 0; width: 100%; display: grid; place-items: center; border-radius: 6px; background: #2c2150; overflow: hidden; }
+.idg-hc .idg-hc-card .art img { max-width: 86%; max-height: 86%; min-height: 0; object-fit: contain; image-rendering: pixelated; }
+.idg-hc .idg-hc-card.none .art img { max-height: 60%; opacity: .45; filter: grayscale(1); }
+.idg-hc .idg-hc-card .nm { flex: none; font-size: .95em; line-height: 1.15; color: #fff; }
+.idg-hc .idg-hc-card .fx { flex: none; font-size: .72em; line-height: 1.15; color: #bdb0e0; }
+.idg-hc .idg-hc-card.legend .fx { color: #ffe680; } .idg-hc .idg-hc-card.super .fx { color: #e4c2ff; }
+.idg-hc .idg-hc-buy { flex: none; display: flex; flex-direction: column; gap: .45em; }
+/* 초록 = 사기 (규칙표 ③ 작은 단추) · 젬이 모자라면 숫자만 빨강 */
+.idg-hc .idg-hc-btn { position: relative; display: flex; align-items: center; justify-content: center; gap: .3em; width: 100%; min-height: 2.35em; margin: 0; padding: 0 .5em 2px; box-sizing: border-box;
+  border: 3px solid #000; border-radius: 9px; background: #3fbf4f; box-shadow: inset 0 3px 0 #8ff09a, inset 0 -4px 0 #1f7a38; color: #fff; font: inherit; font-weight: 900; text-shadow: var(--t1); white-space: nowrap; cursor: pointer; }
+.idg-hc .idg-hc-btn img { height: 1.15em; width: auto; }
+.idg-hc .idg-hc-btn b { font-weight: 900; }
+.idg-hc .idg-hc-btn.poor b { color: #ff8f7f; }
+.idg-hc .idg-hc-btn:disabled { cursor: default; }
+.idg-hc .idg-hc-btn:disabled:not(.poor) { filter: brightness(.7); }
+.idg-hc .idg-hc-btn:active:not(:disabled) { transform: translateY(1px); filter: brightness(.9); }
+.idg-hc .idg-hc-off { position: absolute; right: -.4em; top: -.75em; padding: .1em .35em .15em; border-radius: 5px; background: #ff3b30; box-shadow: 0 0 0 2px #000; font-size: .72em; font-style: normal; line-height: 1; }
+
+/* 낮은 화면 (폰 가로 · 390px 안팎) : 정보 칸이 넘치지 않게 촘촘히 */
+@media (max-height: 460px) {
+  .idg-hc .idg-hc-info { gap: .3em; }
+  .idg-hc .idg-hc-own { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .15em; }
+  .dialog.idg-v2.idg-hatch .idg-hc .idg-k-paper.idg-hc-paper { font-size: .76em !important; line-height: 1.25 !important; }
+  .idg-hc .idg-hc-bar { height: .85em; margin-top: .15em; }
+}

@@ -1,0 +1,105 @@
+/* ═══ 연구소 창 — «연구소 A» (대표님 11/14 채택 · tools/_uimock/lab_a2.html) ═══
+ *  창 틀 = idg-v2.css «큰»(80%) 그대로 · 머리 = 재화 알약(왼쪽) · «연구소» 현판 · X
+ *  왼쪽 메뉴 = 규칙표 ⑰ (연구소 · 보물 · 리더 + ⑥ 빨간 배지) · 오른쪽 = ⑲ 줄 (Lv 칸 · 효과 «+6% → +8%» · 칸 막대 · ③ 초록 가격 단추 / MAX 회색)
+ *  글씨 : 그라데이션 없음 · 작은 글씨 = 검은 테 1px · 큰 글씨 2px · 어두운 노란색 = #a37d3c
+ *  .idg-lab 은 아이템샵 · 꾸미기 · 프로필 창도 같이 쓰는 이름이라 이 창은 .idg-labv2 로만 고른다 */
+.dialog.idg-labv2.idg-v2 {
+  --l1: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px 1px #000, 1px -1px #000, -1px -1px #000;
+  --l2: 2px 0 #000, -2px 0 #000, 0 2px #000, 0 -2px #000, 2px 2px #000, -2px 2px #000, 2px -2px #000, -2px -2px #000;
+}
+.dialog.idg-labv2.idg-framed[class*="idg-"] > .idg-dlg-body { display: flex; flex-direction: column; overflow: hidden; background: none; padding-top: 0 !important; padding-bottom: 0 !important; }
+.dialog.idg-labv2.idg-v2 > .idg-dlg-more { display: none !important; }   /* 창 전체는 스크롤 없음 · 오른쪽 칸 화살표(scrollHint)만 */
+.dialog.idg-labv2 .v2lab { flex: 1 1 auto; min-height: 0; display: flex; gap: .7em; text-shadow: var(--l1); }
+
+/* ── 왼쪽 메뉴 (규칙표 ⑰) ── */
+.dialog.idg-labv2 .v2lab-rail { flex: 0 0 27%; max-width: 14em; min-width: 0; display: flex; flex-direction: column; gap: .5em; padding-top: .35em; }
+.dialog.idg-labv2 .v2lab-rb { position: relative; display: flex; align-items: center; gap: .5em; width: 100%; height: 2.65em; padding: 0 .65em; margin: 0;
+  border: 2px solid #000; border-radius: 9px; background: #352858; box-shadow: inset 0 0 0 1px #5a4a8a, 0 3px 0 #000;
+  color: #bdb0e0; font: inherit; font-size: 1em; font-weight: 900; line-height: 1; text-align: left; text-shadow: var(--l1); cursor: pointer; }
+.dialog.idg-labv2 .v2lab-rb img { height: 1.75em; width: 1.75em; object-fit: contain; flex: none; image-rendering: pixelated; }
+.dialog.idg-labv2 .v2lab-rb span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dialog.idg-labv2 .v2lab-rb.on { background: #6a4fc4; color: #fff; box-shadow: inset 0 0 0 2px #ffd45a, 0 3px 0 #000; }
+.dialog.idg-labv2 .v2lab-rb:active { transform: translateY(1px); }
+/* 알림 배지 (규칙표 ⑥ : 빨간 동그라미 + 숫자 · 기울임 없음) */
+.dialog.idg-labv2 .v2lab-badge { position: absolute; right: -.45em; top: -.5em; min-width: 1.4em; height: 1.4em; padding: 0 .32em; border-radius: .7em; background: #ff3b30; box-shadow: 0 0 0 2px #000;
+  font-style: normal; font-size: .8em; font-weight: 900; line-height: 1.4em; color: #fff; text-align: center; text-shadow: var(--l1); }
+.dialog.idg-labv2 .v2lab-gap { flex: 1 1 auto; min-height: .3em; }
+/* 종이 위 글씨 (규칙표 ⑮) */
+.dialog.idg-labv2 .v2lab-paper { padding: .2em .5em; border: solid transparent; border-width: .75em; border-image: url(/assets/iandragon_game/ai/kit/paper.webp) 56 fill / .75em stretch;
+  color: #2e1806; text-shadow: none; font-size: .78em; font-weight: 900; text-align: center; line-height: 1.4; letter-spacing: -.04em; word-spacing: -.12em; image-rendering: pixelated; }
+.dialog.idg-labv2 .v2lab-paper b { color: #7a1e04; }
+
+/* ── 오른쪽 ── */
+.dialog.idg-labv2 .v2lab-main { position: relative; flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .35em; }
+.dialog.idg-labv2 .v2lab-sec { flex: none; font-size: .85em; font-weight: 900; line-height: 1.2; color: #ffd45a; text-shadow: var(--l1); }
+.dialog.idg-labv2 .v2lab-list { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: .32em; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; overflow-anchor: none;
+  padding: 2px 2px 4px; scrollbar-width: thin; scrollbar-color: #a37d3c #1d1233; }
+.dialog.idg-labv2 .v2lab-list > * { flex-shrink: 0; }
+
+/* 연구소 줄 (규칙표 ⑲) */
+.dialog.idg-labv2 .v2lab-row { display: flex; align-items: center; gap: .55em; min-height: 2.6em; padding: .25em .55em; border: 2px solid #000; border-radius: 9px; background: #1d1233; box-shadow: inset 0 0 0 1px #5a4a8a; }
+.dialog.idg-labv2 .v2lab-lv { flex: none; min-width: 2.6em; padding: .18em .35em; border: 2px solid #000; border-radius: 5px; background: #4a3888; font-size: .8em; font-weight: 900; line-height: 1.1; text-align: center; color: #fff; }
+.dialog.idg-labv2 .v2lab-lv.z { background: #3a3254; color: #9a8fc0; }
+.dialog.idg-labv2 .v2lab-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: .05em; }
+.dialog.idg-labv2 .v2lab-t b { font-size: .95em; line-height: 1.15; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dialog.idg-labv2 .v2lab-t small { font-size: .74em; line-height: 1.2; color: #bdb0e0; white-space: nowrap; }
+/* 칸 막대 : 9칸 · 올린 칸 = 노랑 · 아직 못 올리는 칸(깬 월드 수 위) = 빗금 */
+.dialog.idg-labv2 .v2lab-pips { flex: none; display: flex; gap: .14em; align-items: center; }
+.dialog.idg-labv2 .v2lab-pips i { width: .6em; height: .9em; border: 1.5px solid #000; border-radius: 2px; background: #150a26; box-shadow: inset 0 0 0 1px #5a4a8a; }
+.dialog.idg-labv2 .v2lab-pips i.on { background: #ffd45a; box-shadow: inset 0 -.2em 0 #d9a441, inset 0 0 0 1px #fff0b0; }
+.dialog.idg-labv2 .v2lab-pips i.lk { background: repeating-linear-gradient(135deg, #2c2540 0 3px, #1a1430 3px 6px); box-shadow: none; }
+/* 단추 (규칙표 ③ : 초록 = 올리기 · 돈 모자라면 숫자만 빨강 · 회색 = MAX / 잠김) */
+.dialog.idg-labv2 .v2lab-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: .3em; min-width: 5.6em; min-height: 2.1em; padding: 0 .7em; margin: 0;
+  border: 3px solid #000; border-radius: 9px; color: #fff; font: inherit; font-size: .85em; font-weight: 900; line-height: 1; white-space: nowrap; text-shadow: var(--l1); cursor: pointer; }
+.dialog.idg-labv2 .v2lab-btn img { height: 1.15em; width: auto; }
+.dialog.idg-labv2 .v2lab-btn.g { background: #3fbf4f; box-shadow: inset 0 3px 0 #8ff09a, inset 0 -4px 0 #1f7a38; }
+.dialog.idg-labv2 .v2lab-btn.g.poor b { color: #ff8f7f; }
+.dialog.idg-labv2 .v2lab-btn.x0 { background: #5a5468; color: #cfc9dc; box-shadow: inset 0 -4px 0 #3a3448; cursor: default; }
+.dialog.idg-labv2 .v2lab-btn.g:active { transform: translateY(1px); box-shadow: inset 0 2px 0 #8ff09a, inset 0 -2px 0 #1f7a38; }
+
+/* 보물 카드 (lab_a2.html .tcard) */
+.dialog.idg-labv2 .v2lab-tgrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .4em; }
+.dialog.idg-labv2 .v2lab-tc { position: relative; display: flex; flex-direction: column; gap: .2em; min-width: 0; padding: .3em; border: 2px solid #000; border-radius: 9px; background: #1d1233; box-shadow: inset 0 0 0 1px #5a4a8a; }
+.dialog.idg-labv2 .v2lab-tc.full { box-shadow: inset 0 0 0 2px #ffd45a; }
+.dialog.idg-labv2 .v2lab-tc .th { position: relative; display: block; height: 3.1em; border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px #000; }
+.dialog.idg-labv2 .v2lab-tc .th img { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: pixelated; }
+.dialog.idg-labv2 .v2lab-tc .th b { position: absolute; left: .3em; bottom: .15em; font-size: .8em; line-height: 1; color: #fff; text-shadow: var(--l1); }
+.dialog.idg-labv2 .v2lab-tc.off .th img { filter: grayscale(1) brightness(.45); }
+.dialog.idg-labv2 .v2lab-tc .th > i.st { position: absolute; right: .25em; top: .2em; display: inline-flex; align-items: center; gap: .1em; padding: .05em .3em; border-radius: 5px; background: rgba(10, 4, 22, .8); box-shadow: 0 0 0 1px #000;
+  font-style: normal; font-size: .62em; line-height: 1.2; color: #fff; text-shadow: var(--l1); }
+.dialog.idg-labv2 .v2lab-tc .th > i.st img { width: auto; height: 1em; object-fit: contain; }
+.dialog.idg-labv2 .v2lab-tc .ef { display: flex; flex-direction: column; gap: .05em; min-width: 0; line-height: 1.15; }
+.dialog.idg-labv2 .v2lab-tc .ef small { font-size: .66em; color: #bdb0e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dialog.idg-labv2 .v2lab-tc .ef b { font-size: .82em; color: #ffd45a; white-space: nowrap; }
+.dialog.idg-labv2 .v2lab-tc.off .ef b { color: #9a8fc0; }
+.dialog.idg-labv2 .v2lab-tc .sc { display: flex; align-items: center; justify-content: space-between; gap: .1em; }
+.dialog.idg-labv2 .v2lab-tc .sc > span { display: inline-flex; align-items: center; gap: .05em; }
+.dialog.idg-labv2 .v2lab-tc .sc img { height: 1em; width: auto; image-rendering: pixelated; }
+.dialog.idg-labv2 .v2lab-tc .sc > span:not(.on) img { filter: grayscale(1) brightness(.6); }
+.dialog.idg-labv2 .v2lab-tc .sc em { font-style: normal; font-size: .6em; color: #9a8fc0; }
+.dialog.idg-labv2 .v2lab-tc .sc > span.on em { color: #ffd45a; }
+
+/* 리더 카드 (lab_a2.html .ldr) */
+.dialog.idg-labv2 .v2lab-lgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.4em, 1fr)); gap: .5em; padding-top: .35em; }
+.dialog.idg-labv2 .v2lab-ld { position: relative; display: flex; flex-direction: column; align-items: center; gap: .15em; min-width: 0; padding: .35em .25em .3em; margin: 0;
+  border: 2px solid #000; border-radius: 9px; background: #1d1233; box-shadow: inset 0 0 0 1px #5a4a8a; color: #fff; font: inherit; text-align: center; text-shadow: var(--l1); cursor: pointer; }
+.dialog.idg-labv2 .v2lab-ld.on { background: #3a2c66; box-shadow: inset 0 0 0 2px #ffd45a, 0 0 0 2px #000; }
+.dialog.idg-labv2 .v2lab-ld .a { width: 100%; height: 3em; display: grid; place-items: center; border-radius: 6px; background: #2c2150; }
+.dialog.idg-labv2 .v2lab-ld .a img { max-height: 2.7em; max-width: 90%; image-rendering: pixelated; }
+.dialog.idg-labv2 .v2lab-ld .a.auto { font-size: 1em; font-weight: 900; color: #ffd45a; }
+.dialog.idg-labv2 .v2lab-ld b { font-size: .8em; line-height: 1.15; white-space: nowrap; }
+.dialog.idg-labv2 .v2lab-ld small { max-width: 100%; min-height: 2.4em; font-size: .64em; line-height: 1.2; color: #bdb0e0; word-break: keep-all; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.dialog.idg-labv2 .v2lab-ld .ck { position: absolute; right: -.35em; top: -.45em; padding: .1em .38em; border-radius: 5px; background: #3fbf4f; box-shadow: 0 0 0 2px #000; font-style: normal; font-size: .62em; font-weight: 900; line-height: 1.2; }
+.dialog.idg-labv2 .v2lab-ld:active { transform: translateY(1px); }
+
+/* 폰 가로 (낮은 화면) : 줄을 조금 더 촘촘히 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .dialog.idg-labv2 .v2lab-row { min-height: 2.35em; padding: .15em .5em; }
+  .dialog.idg-labv2 .v2lab-list { gap: .26em; }
+  .dialog.idg-labv2 .v2lab-rb { height: 2.4em; }
+}
+
+/* 큰 화면(세로 860px 이상) : 옛 창 규칙(idg-window-rules.css 의 «640px 상한»)이 2판 «큰 80%» 를 덮어 창이 좁아지던 것 — 이 창만 80% 로 되돌림 */
+@media (orientation: landscape) and (min-height: 860px) {
+  .dialog-overlay > .dialog.idg-v2.idg-labv2.idg-k[class*="idg-"]:not(.idg-shop):not(.idg-hall) { max-width: min(80vw, 1400px) !important; }
+}

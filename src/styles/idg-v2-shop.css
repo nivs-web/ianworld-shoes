@@ -1,0 +1,181 @@
+/* ═══ 아이템샵 A (11/14 대표님 고름 · tools/_uimock/shop_a2.html) — 창 틀 2판(idg-v2.css) 안 배치 ═══
+ *  1순위 = 디자인 규칙표(tools/_uimock/rules.html) : 글씨 뒤 그라데이션 없음 · 작은 글씨 = 검은 테 1px · 큰 글씨 = 2px
+ *   ③ 작은 단추 : 초록 = 사기 · 강화 · 받기(돈 모자라면 숫자만 빨강) · 보라 = 고르기 · 탭 · 주황 = 다른 창 바로가기 · 회색 = 잠김
+ *   ⑥ 알림 배지(기울임 없음) · ⑮ 종이 위 글씨 · ⑰ 왼쪽 메뉴 단추 · ⑱ 물건 카드(테 색 = 등급) · ⑲ 줄(올리기 · 목록)
+ *  몸 = 왼쪽 28% 메뉴 줄(드래곤 · 드래곤캐슬 · 특가 · 편의품) + 아래 좀비 상인 · 종이 / 오른쪽 = 고른 분류 물건만
+ *  선택자 = .dialog.idg-v2.idg-shop.v2shop (프로필 창도 .idg-shop 을 쓰므로 v2shop 으로 샵만) — 옛 idg-shop.css 규칙을 이걸로 덮는다 */
+
+.dialog.idg-v2.idg-shop.v2shop {
+  --o: #000; --k-o: #000;
+  --k-o1: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px 1px #000, 1px -1px #000, -1px -1px #000;   /* 작은 글씨 = 1px */
+  --s-gold: #ffd45a; --s-gold-d: #a37d3c; --s-bg2: #1d1233; --s-bg3: #352858; --s-line: #5a4a8a; --s-sub: #bdb0e0;
+}
+/* 창 글씨 크기 = 다른 로비 창(idg-v2.css)과 같게 — 옛 샵 규칙(max(…, 2.22vh))을 덮는다 · 제목 현판이 창마다 같은 크기 */
+.dialog-overlay > .dialog.idg-v2.idg-shop.v2shop.idg-k { --k-fs: clamp(13px, 3.4vh, 18px); }
+@media (orientation: landscape) and (min-height: 860px) { .dialog-overlay > .dialog.idg-v2.idg-shop.v2shop.idg-k { --k-fs: 21px; } }
+@media (orientation: landscape) and (min-height: 1000px) { .dialog-overlay > .dialog.idg-v2.idg-shop.v2shop.idg-k { --k-fs: 25px; } }
+
+/* ── 몸 : 왼쪽 메뉴 줄 | 오른쪽 물건 ── */
+.dialog.idg-v2.idg-shop.v2shop > .idg-dlg-body { display: flex; flex-direction: column; overflow: hidden; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-wrap { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: row; gap: .7em; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-rail { flex: 0 0 28%; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .45em; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-main { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: .45em; container-type: inline-size; }
+
+/* ── 왼쪽 메뉴 단추 (규칙표 ⑰) ── */
+.dialog.idg-v2.idg-shop.v2shop .v2s-menu { flex: none; display: flex; flex-direction: column; gap: .45em; padding: .3em .9em 0 0; }   /* 위 .3em = 배지 자리 · 오른쪽 = 고른 단추 화살표 자리 */
+.dialog.idg-v2.idg-shop.v2shop .v2s-rb { position: relative; display: flex; align-items: center; gap: .5em; width: 100%; height: 2.65em; margin: 0; padding: 0 .65em; box-sizing: border-box;
+  border: 2px solid #000; border-radius: 9px; background: var(--s-bg3); box-shadow: inset 0 0 0 1px var(--s-line), 0 3px 0 #000;
+  font: 800 1em/1 var(--k-font), sans-serif; color: var(--s-sub); text-shadow: var(--k-o1); text-align: left; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-rb > img { flex: none; height: 1.75em; width: 1.9em; object-fit: contain; image-rendering: pixelated; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-rb > span { min-width: 0; overflow: hidden; text-overflow: clip; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-rb.on { background: #6a4fc4; color: #fff; box-shadow: inset 0 0 0 2px var(--s-gold), 0 3px 0 #000; cursor: default; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-rb.on::after { content: ''; position: absolute; right: -.8em; top: 50%; margin-top: -.45em; border: .45em solid transparent; border-left-color: var(--s-gold); }   /* 고른 메뉴 → 오른쪽 물건 */
+.dialog.idg-v2.idg-shop.v2shop .v2s-rb:active:not(.on) { transform: translateY(1px); }
+.dialog.idg-v2.idg-shop.v2shop .v2s-rb:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+/* 알림 배지 (규칙표 ⑥ : 빨간 동그라미 + 숫자 · 기울임 없음) */
+.dialog.idg-v2.idg-shop.v2shop .v2s-badge { position: absolute; right: -.45em; top: -.45em; z-index: 2; min-width: 1.35em; height: 1.35em; padding: 0 .3em; box-sizing: border-box; border-radius: .7em;
+  background: #ff3b30; box-shadow: 0 0 0 2px #000; color: #fff; font-size: .78em; font-style: normal; font-weight: 900; line-height: 1.35em; text-align: center; text-shadow: var(--k-o1); pointer-events: none; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-badge[hidden] { display: none; }
+
+/* ── 메뉴 아래 : 종이 안내 + 좀비 상인 (빈 자리를 상인이 채움) ── */
+.dialog.idg-v2.idg-shop.v2shop .v2s-foot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: .2em; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-say { flex: none; width: 100%; display: flex; justify-content: center; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-say:empty { display: none; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-keeper { flex: 0 1 auto; min-height: 0; width: 100%; height: auto; aspect-ratio: 1; max-height: none; margin: 0; object-fit: contain; object-position: center bottom; }   /* 자리가 남으면 줄 폭만큼 크게 · 모자라면 줄어듦 · 종이는 바로 머리 위 */
+/* 종이 위 글씨 (규칙표 ⑮ : 진한 갈색 굵게 · 중요한 말 더 진한 갈색 · 글자 · 띄어쓰기 간격 줄임 · 가운데) */
+/*  (idg-window-rules.css ⑤ 가 종이 글씨를 12px !important 로 묶어 둬서 여기도 !important — 창 글씨를 따라 커지게) */
+.dialog.idg-v2.idg-shop.v2shop .v2s-say .idg-k-paper { max-width: 100%; margin: 0; padding: 0 .2em !important; box-sizing: border-box; font-size: .78em !important; font-weight: 900; line-height: 1.4 !important; color: #2e1806; text-align: center;
+  letter-spacing: -.04em; word-spacing: -.22em; word-break: keep-all; text-shadow: none; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-say .idg-k-paper b { color: #7a1e04; font-weight: 900; }
+/* 낮은 가로(폰) : 상인 왼쪽 · 종이 오른쪽 (시안 그대로) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .dialog.idg-v2.idg-shop.v2shop .v2s-menu { gap: .4em; }
+  .dialog.idg-v2.idg-shop.v2shop .v2s-rb { height: 2.4em; }
+  .dialog.idg-v2.idg-shop.v2shop .v2s-foot { flex-direction: row; align-items: flex-end; justify-content: flex-start; gap: .15em; }
+  .dialog.idg-v2.idg-shop.v2shop .v2s-keeper { order: -1; flex: 0 0 auto; width: auto; height: 100%; max-width: 40%; aspect-ratio: auto; object-position: left bottom; }
+  .dialog.idg-v2.idg-shop.v2shop .v2s-say { flex: 1 1 0; min-width: 0; align-self: flex-end; }
+  .dialog.idg-v2.idg-shop.v2shop .v2s-say .idg-k-paper { font-size: .72em !important; border-width: 9px; border-image-width: 9px; padding: 0 !important; }
+}
+
+/* ── 오른쪽 위 : 하위 메뉴 (규칙표 ③ 보라 = 고르기 · 탭 · 고른 것 = 노란 테) ── */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-subslot { flex: none; order: 0; }   /* 옛 규칙의 order(탭 줄을 아래로 보냄)를 되돌림 */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-subslot:empty { display: none; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-sub.idg-k-tabs { display: flex; flex-wrap: wrap; gap: .35em .3em; overflow: visible; grid-template-columns: none; padding: 0 0 3px; border: 0; background: none; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-sub .idg-k-tab { flex: 1 1 auto; min-width: 0; height: 2.1em; min-height: 0; margin: 0; padding: 0 .55em; box-sizing: border-box;
+  border: 2px solid #8e7bcc; border-image: none; border-radius: 8px; background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233;
+  font: 800 .8em/1 var(--k-font), sans-serif; letter-spacing: -.03em; color: #f2ecff; text-shadow: var(--k-o1); white-space: nowrap; grid-column: auto; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-sub .idg-k-tab::before, .dialog.idg-v2.idg-shop.v2shop .idg-shop-sub .idg-k-tab::after { display: none; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-sub .idg-k-tab[aria-selected="true"] { border-color: var(--s-gold); background: #6a4fc4; color: #fff; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-sub .idg-k-tab:active { transform: translateY(1px); }
+
+/* «모은 수 · 안 가진 것만» 한 줄 */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-info { order: 0; flex: none; flex-direction: row; align-items: center; justify-content: space-between; gap: .6em; padding: 0 .15em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-count { font-size: .85em; color: var(--s-gold); text-shadow: var(--k-o1); text-align: left; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-info .idg-k-checkline { font-size: .8em; }
+
+/* ── 스크롤 칸 (추천 강화 + 물건) ── */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-scroll { flex: 1 1 auto; min-height: 0; order: 0; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-scroll > .idg-k-scroll-in { height: 100%; max-height: none; display: block; padding: .45em .3em .7em; box-sizing: border-box; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-reco { order: 0; margin-bottom: .5em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-reco:empty { display: none; }
+
+/* ── 물건 카드 (규칙표 ⑱ : 검은 테 2px + 안쪽 등급 색 2px · 그림 판 · 이름 · 효과 · 초록 값 단추) — 가로를 꽉 쓰는 격자 ── */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-content.is-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.2em, 1fr)); gap: .6em .5em; align-items: stretch; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-content.is-grid > .idg-k-paper { grid-column: 1 / -1; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card { --rc: #9aa3b2; position: relative; display: flex; flex-direction: column; align-items: center; gap: .2em; min-width: 0; padding: .45em .4em .4em;
+  border: 2px solid #000; border-image: none; border-radius: 9px; background: var(--s-bg2); box-shadow: inset 0 0 0 2px var(--rc); text-align: center; filter: none; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.r-common { --rc: #9aa3b2; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.r-uncommon { --rc: #5fd35f; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.r-rare { --rc: #4aa0ff; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.r-epic { --rc: #c06aff; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.r-legend { --rc: #ffb43c; }
+/* 신화 = 안쪽 무지개 띠 (6단 도트) */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.r-myth { box-shadow: none; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.r-myth::before { content: ''; position: absolute; inset: 0; border-radius: 7px; padding: 2px; pointer-events: none;
+  background: linear-gradient(90deg, #ff4d4d 0 16.66%, #ffa94d 0 33.33%, #ffe14d 0 50%, #6bdc6b 0 66.66%, #4da6ff 0 83.33%, #a56bff 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-artwrap { position: relative; width: 100%; height: 4.2em; max-height: none; aspect-ratio: auto; display: grid; place-items: center; border-radius: 6px; background: #2c2150; box-shadow: none; overflow: hidden; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-art { width: 100%; height: 100%; display: grid; place-items: center; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-art img { width: auto; height: auto; max-width: 90%; max-height: 3.8em; object-fit: contain; image-rendering: pixelated; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-stars { left: .2em; top: .2em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-stars img { width: .75em; height: .75em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card:has(.idg-shop-sale) .idg-shop-stars { left: auto; right: .2em; }   /* 특가 배지(왼쪽 위)와 겹치지 않게 */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-name { min-height: 0; margin-top: .1em; font-size: .85em; font-weight: 800; line-height: 1.15; color: #fff; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-fx { font-size: .7em; line-height: 1.2; color: var(--s-sub); text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.got { filter: none; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.got .idg-shop-art img { filter: saturate(.8) brightness(.9); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.locked .idg-shop-art img { filter: grayscale(1) brightness(.55); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-card.buy.poor .idg-shop-art { filter: none; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-lock { min-height: 2.3em; font-size: .68em; color: #a89cc8; text-shadow: var(--k-o1); }
+/* 특가 배지 (규칙표 ⑱ : 왼쪽 위 빨간 «-30%») */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-sale { position: absolute; left: -.35em; top: -.45em; z-index: 3; display: grid; place-items: center; height: 1.6em; padding: 0 .4em; box-sizing: border-box;
+  border: 0; border-radius: 6px; background: #ff3b30; box-shadow: 0 0 0 2px #000; font-size: .7em; font-style: normal; font-weight: 900; line-height: 1; color: #fff; text-shadow: var(--k-o1); }
+
+/* ── 작은 단추 (규칙표 ③) : 카드 · 줄 · 패널 안 초록 값 단추 · 보라 고르기 ── */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-foot { width: 100%; margin-top: auto; padding-top: .15em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-k-btn.green,
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-buy.green {
+  display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .05em .3em; min-height: 2.1em; min-width: 0; margin: 0; padding: .1em .45em .2em; box-sizing: border-box;
+  border: 2px solid #000; border-image: none; border-radius: 8px; background: #3fbf4f; box-shadow: inset 0 3px 0 #8ff09a, inset 0 -4px 0 #1f7a38; filter: none;
+  font: 900 .85em/1.05 var(--k-font), sans-serif; color: #fff; text-shadow: var(--k-o1); image-rendering: auto; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-foot .idg-k-btn { width: 100%; font-size: .82em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-k-btn.green .idg-cash, .dialog.idg-v2.idg-shop.v2shop .idg-sp-buy .idg-cash { font-size: 1em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-k-btn.green .idg-cash b, .dialog.idg-v2.idg-shop.v2shop .idg-sp-buy .idg-cash b { color: #fff; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-k-btn.green .idg-cash-ico, .dialog.idg-v2.idg-shop.v2shop .idg-sp-buy .idg-cash-ico { height: 1.15em; width: auto; }
+.dialog.idg-v2.idg-shop.v2shop .idg-k-btn.green:active:not(:disabled), .dialog.idg-v2.idg-shop.v2shop .idg-sp-buy.green:active:not(:disabled) { transform: translateY(1px); }
+/* 돈이 모자람 = 단추 색은 그대로 · 숫자만 빨강 (규칙표 ③) */
+.dialog.idg-v2.idg-shop.v2shop .idg-k-btn.green:disabled, .dialog.idg-v2.idg-shop.v2shop .idg-k-btn.green.poor,
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-buy.green.poor { filter: none; opacity: 1; cursor: not-allowed; }
+.dialog.idg-v2.idg-shop.v2shop .idg-k-btn.green.poor .idg-cash b, .dialog.idg-v2.idg-shop.v2shop .idg-k-btn .idg-cash.short b,
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-buy.green.poor .idg-cash b { color: #ff8f7f; }
+/* 보라 = 가졌어요 · 입는 중 · 가득 찼어요 · 최고 단계 (못 누름) */
+.dialog.idg-v2.idg-shop.v2shop .idg-k-btn.purple, .dialog.idg-v2.idg-shop.v2shop .idg-sp-buy.plain {
+  min-height: 2.1em; padding: 0 .5em; border: 2px solid #8e7bcc; border-image: none; border-radius: 8px; background: linear-gradient(180deg, #57458c, #44356e); box-shadow: 0 0 0 2px #1d1233;
+  font: 800 .82em/1.05 var(--k-font), sans-serif; color: #f2ecff; text-shadow: var(--k-o1); filter: none; }
+.dialog.idg-v2.idg-shop.v2shop .idg-k-btn.purple:disabled, .dialog.idg-v2.idg-shop.v2shop .idg-sp-buy.plain:disabled { color: #c9bde8; background: #3a3058; border-color: #6a5c96; }
+/* 주황 = 다른 창 바로가기 (장비 «꾸미기에서 끼우기») */
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-go.idg-k-btn { align-self: flex-start; border: 2px solid #3a1a08; border-radius: 8px; background: #e0852c; box-shadow: inset 0 3px 0 #ffc77a, inset 0 -4px 0 #8e4a0f; color: #fff; }
+
+/* ── 편의품 · 브레스 UP 줄 (규칙표 ⑲) — 넓으면 두 줄씩 ── */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-content.is-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: .45em; }
+@container (min-width: 38em) { .dialog.idg-v2.idg-shop.v2shop .idg-shop-content.is-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-content .idg-k-row { min-height: 3.2em; margin: 0; padding: .4em .6em; box-sizing: border-box; border: 2px solid #000; border-image: none; border-radius: 9px; background: var(--s-bg2); box-shadow: inset 0 0 0 1px var(--s-line); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-content .idg-k-row-txt b { font-size: .92em; color: #fff; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-content .idg-k-row-txt > span { font-size: .72em; line-height: 1.3; color: var(--s-sub); text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-content .idg-k-row-txt small { color: var(--s-gold); font-size: 1em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-content .idg-k-row-end .idg-k-btn { min-width: 5.6em; }
+
+/* ── 칸 패널 (드래곤 · 브레스 강화 · 캐슬 단계 · 장비 — shopPanels) : 샵 안에서만 ⑲ 줄 모양 · 글씨는 창 글씨(em)를 따라감 ── */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-panel { --o: #000; --k-fs: inherit; font-size: 1em; gap: .5em; }   /* 패널 뿌리도 .idg-k 라 키트 기본 글씨(18px 까지)로 돌아가던 것 → 창 글씨 그대로 */
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-panel > .idg-k-paper { display: none; }   /* 긴 안내 종이 → 왼쪽 상인 옆 종이에 짧게 */
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-list.rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5em; }
+@container (min-width: 38em) { .dialog.idg-v2.idg-shop.v2shop .idg-sp-list.rows:not(.one) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row { grid-template-columns: 2.9em minmax(0, 1fr) auto; column-gap: .55em; padding: .4em .5em; border: 2px solid #000; border-image: none; border-radius: 9px; background: var(--s-bg2); box-shadow: inset 0 0 0 1px var(--s-line); }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row.on { box-shadow: inset 0 0 0 2px #5fd35f; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row > img, .dialog.idg-v2.idg-shop.v2shop .idg-sp-row > .idg-sp-fire { width: 2.9em; height: 2.9em; border: 0; border-radius: 6px; background: #2c2150; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .idg-sp-fire i { width: 1.7em; height: 2.55em; background-size: auto 2.55em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .mid { gap: .15em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .nm { font-size: .92em; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .l1 { font-size: .75em; color: var(--s-gold); text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .l2 { font-size: .7em; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .tag { font-size: .7em; border-radius: 4px; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .st { grid-template-columns: 2.4em minmax(0, 1fr) auto; column-gap: .35em; font-size: .7em; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .st > em { font-size: 1em; min-width: 3em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .st .idg-k-gauge { height: .9em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .idg-sp-line { font-size: .7em; line-height: 1.3; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .idg-sp-steps { height: .75em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .idg-sp-lock { gap: .3em; padding: .15em .35em; border: 0; border-radius: 5px; background: #2a1f45; font-size: .68em; color: #a89cc8; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .idg-sp-lock img { width: 1.3em; height: 1.3em; flex-basis: 1.3em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .act { width: 6.2em; gap: .3em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-row .idg-sp-buy { width: 100%; min-height: 2.5em; font-size: .78em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-buy .idg-buy-label { flex: 0 0 100%; font-size: .95em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-buy.plain { width: 100%; font-size: .75em; }
+
+/* 맨 위 «추천 강화» 한 줄 (⑲ 줄 + 초록 안쪽 테) */
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-reco { gap: .55em; padding: .35em .55em; border: 2px solid #000; border-image: none; border-radius: 9px; background: var(--s-bg2); box-shadow: inset 0 0 0 2px #5fd35f; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-reco-face { display: grid; width: 2.4em; height: 2.4em; border: 0; border-radius: 6px; background: #2c2150; }
+.dialog.idg-v2.idg-shop.v2shop .idg-sp-reco-txt { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 .5em; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-reco .idg-sp-reco-txt small { font-size: .72em; color: var(--s-gold); text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-reco .idg-sp-reco-txt b { font-size: .9em; text-shadow: var(--k-o1); white-space: normal; }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-reco .idg-sp-reco-txt span { font-size: .75em; color: #ffd9a8; text-shadow: var(--k-o1); }
+.dialog.idg-v2.idg-shop.v2shop .idg-shop-reco .idg-sp-reco .idg-sp-buy { flex: 0 0 auto; min-width: 6em; min-height: 2.3em; font-size: .78em; }

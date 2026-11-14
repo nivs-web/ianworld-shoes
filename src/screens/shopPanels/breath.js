@@ -9,7 +9,7 @@ import { panelRoot, note, row, list, line, fireFace, buyBtn, plainBtn, stepBar, 
 
 const KINDS = [
   { key: 'pow', name: S.power, T: BREATH_POWER, icon: () => fireFace('orange'), pre: '지금 ',
-    now: (n) => (n ? `+${BREATH_POWER.pct[n - 1]}%` : '지금 그대로'), nx: (n) => `+${BREATH_POWER.pct[n]}%` },
+    now: (n) => (n ? `+${BREATH_POWER.pct[n - 1]}%` : '그대로'), nx: (n) => `+${BREATH_POWER.pct[n]}%` },
   { key: 'rng', name: S.range, T: BREATH_RANGE, icon: () => fireFace('green'), pre: '지금 ',
     now: (n) => `${BREATH_RANGE.base + (n ? BREATH_RANGE.pct[n - 1] : 0)}%`, nx: (n) => `${BREATH_RANGE.base + BREATH_RANGE.pct[n]}%` },
 ];
