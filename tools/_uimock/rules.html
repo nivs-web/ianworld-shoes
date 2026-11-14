@@ -29,11 +29,11 @@ h2 { margin: 6px 0 4px; font-size: 24px; color: #fff; text-shadow: var(--t2b); }
 /* 창 틀 : 제목 가운데 = 틀 윗줄 한가운데 (대표님 «박스 위에 떠 있으면 안 됨») */
 .frame { position: relative; width: 100%; max-width: 560px; height: 170px; margin: 30px auto 6px; border: solid transparent; border-width: 30px 28px; border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / 30px 28px stretch; background: var(--bg) padding-box; }
 .frame::before { content: ''; position: absolute; top: -6.3px; left: -13.7px; right: -13.7px; bottom: -16.4px; background: var(--bg); clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px); }
-.frame .tt { position: absolute; left: 50%; top: -9px; transform: translate(-50%, -50%); z-index: 2; }
-.frame .xbtn { position: absolute; right: calc(3px - 13.7px); top: calc(3px - 6.3px); width: 40px; height: 40px; }
-.frame .go2 { position: absolute; right: calc(3px - 13.7px + 46px); top: calc(3px - 6.3px); width: 40px; height: 40px; }
-.frame .pill { position: absolute; left: calc(3px - 13.7px); top: calc(3px - 6.3px); font-size: 13px; }
-.frame .inner { position: absolute; left: calc(5px - 13.7px); right: calc(5px - 13.7px); top: 44px; bottom: calc(5px - 16.4px); border: 2px dashed rgba(255, 228, 150, .45); border-radius: 4px; display: grid; place-items: center; font-size: 12px; color: #c9bde8; }
+.frame .tt { position: absolute; left: 50%; top: -15px; transform: translate(-50%, -50%); z-index: 2; }
+.frame .xbtn { position: absolute; right: calc(7px - 13.7px); top: calc(7px - 6.3px); width: 40px; height: 40px; }
+.frame .go2 { position: absolute; right: calc(7px - 13.7px + 46px); top: calc(7px - 6.3px); width: 40px; height: 40px; }
+.frame .pill { position: absolute; left: calc(7px - 13.7px); top: calc(10px - 6.3px); font-size: 13px; border-color: #a8802e; }
+.frame .inner { position: absolute; left: calc(7px - 13.7px); right: calc(7px - 13.7px); top: calc(7px + 40px + 5px - 6.3px); bottom: calc(7px - 16.4px); border: 2px dashed rgba(255, 228, 150, .45); border-radius: 4px; display: grid; place-items: center; font-size: 12px; color: #c9bde8; }
 /* 메인 큰 단추 = 2px */
 .big { display: inline-flex; align-items: center; justify-content: center; gap: .3em; height: 64px; padding: 0 10px; font-size: 26px; color: #fff; text-shadow: var(--t2b); }
 .big.red { width: 270px; border: solid transparent; border-width: 11px 17px; border-image: url(/assets/iandragon_game/ai/result/btn_red2.webp) 46 70 fill / 11px 17px stretch; }
@@ -134,8 +134,8 @@ h2 { margin: 6px 0 4px; font-size: 24px; color: #fff; text-shadow: var(--t2b); }
 
 <div class="sheet">
   <div class="box wide"><span class="lbl">① 틀 디자인 <span class="ok">채택</span><em>대표님 11/14 지시</em></span>
-    <div class="cap" style="line-height:1.6">· 호박 모서리 틀 그대로 · 금색 띠 안쪽 연보라 → 창 바탕(짙은 남보라)으로 바꿔 위화감 없앰<br>· 제목 = 보라 띠 가로 정중앙 · 글씨 두 톤 나뉘는 줄 = 금색 띠가 시작되는 줄 (살짝 위)<br>· 위 줄 단추(왼쪽 재화 · 오른쪽 바로가기 + X) = 금색 띠에서 3px 아래부터<br>· 내용(스크롤 칸) = 금색 띠 안쪽에서 위 · 오른쪽 · 아래 · 왼쪽 모두 5px</div>
-    <div class="frame"><span class="tt"><b data-t="아이템샵">아이템샵</b></span><span class="pill"><img src="/assets/iandragon_game/ai/ui/coin.svg"><b class="c">99,999</b><i></i><img src="/assets/iandragon_game/ai/ui/gem.svg"><b class="gm">999</b></span><span class="go2"><img src="/assets/iandragon_game/ui/lobby/icon_look.png"><span>꾸미기</span></span><span class="xbtn"></span><span class="inner">내용 칸 (금색 띠에서 5px)</span></div></div>
+    <div class="cap" style="line-height:1.6">· 호박 모서리 틀 그대로 · 금색 띠 안쪽 연보라 → 창 바탕(짙은 남보라)으로 바꿔 위화감 없앰<br>· 제목 = 가로 정중앙 · 위아래 = 두 톤 줄을 금색 띠 시작에 맞춘 자리에서 6px 위<br>· 위 줄 단추(오른쪽 바로가기 + X) = 금색 띠에서 위 7px · 옆 7px · 재화 알약 = 위 10px · 옆 7px · 알약 테 = 어두운 금색<br>· 내용(스크롤 칸) = 금색 띠 안쪽에서 왼쪽 · 오른쪽 · 아래 7px · 위 = 위 줄 단추에서 5px</div>
+    <div class="frame"><span class="tt"><b data-t="아이템샵">아이템샵</b></span><span class="pill"><img src="/assets/iandragon_game/ai/ui/coin.svg"><b class="c">99,999</b><i></i><img src="/assets/iandragon_game/ai/ui/gem.svg"><b class="gm">999</b></span><span class="go2"><img src="/assets/iandragon_game/ui/lobby/icon_look.png"><span>꾸미기</span></span><span class="xbtn"></span><span class="inner">내용 칸 (옆 · 아래 7px · 위 5px)</span></div></div>
 
   <div class="box wide"><span class="lbl">② 메인 큰 빨강 · 메인 큰 초록 <span class="ok">채택</span><em>로비 그대로 · 글씨 2px · 한 화면에 하나씩</em></span>
     <div class="rowx"><span class="big red"><img src="/assets/iandragon_game/ai/result/ico_fight.webp">모험시작</span><span class="big green"><img src="/assets/iandragon_game/ai/lobby2/ico_power_clean.webp">파워업</span>
