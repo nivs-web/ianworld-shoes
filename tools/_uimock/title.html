@@ -53,7 +53,7 @@
   background: linear-gradient(#433578 0%, #34296a 45%, #2c2150 55%, #261c48 100%) padding-box,
               linear-gradient(#fff0b8 0%, #f2c45a 30%, #d9a441 60%, #a8742a 100%) border-box;
   box-shadow: 0 0 0 3px var(--o), inset 0 3px 0 0 rgba(160, 140, 230, .35), inset 0 -3px 0 0 rgba(10, 4, 30, .35), 2px 3px 0 3px rgba(0, 0, 0, .45); }
-.v11 .tt i.gl { position: absolute; width: 4px; height: 4px; background: #fff; box-shadow: 0 0 0 1px #fff6c8; transform: rotate(45deg); }
+.v11 .tt i.gl, .vx { position: absolute; width: 4px; height: 4px; background: #fff; box-shadow: 0 0 0 1px #fff6c8; transform: rotate(45deg); }
 .v11 .tt i.gl.a { left: 1.1em; top: -1px; } .v11 .tt i.gl.b { right: 1.6em; bottom: -1px; width: 3px; height: 3px; }
 .v11 .tt b { position: relative; font-size: 1.45em; color: #fff7d6;
   text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o),
@@ -62,6 +62,20 @@
 .v11 .tt::before, .v11 .tt::after { content: ''; position: absolute; top: 50%; width: calc(var(--wh) * 175 / 196); height: var(--wh); margin-top: calc(var(--wh) * -.42); background: url(/assets/iandragon_game/ai/result/banner_win_open.webp) 0 0 / calc(var(--wh) * 720 / 196) var(--wh) no-repeat; }
 .v11 .tt::before { right: calc(100% - .55em); }
 .v11 .tt::after { left: calc(100% - .55em); background-position: calc(var(--wh) * -545 / 196) 0; }
+/* 12 = 11 정정 (11/14 대표님) : 반짝이 점 2개 지움 (안 시킨 것) · 글씨 = 9번 크기(1.5em) + 위아래 두 톤 · 알약 높이 = 9번(2.5em)보다 한 칸 낮게(2.3em)
+ *  · 좌우 여백 = 글자 1개 반 · 알약 어두운 줄 = 글씨 나눈 줄(52%)보다 조금 아래(64%) · 날개 = 11번 그대로 */
+.v12 .tt { --wh: 3.3em; height: 2.3em; padding: 0 2.25em; top: calc(var(--fs) * -.7 - 5px); border: 2px solid transparent; border-radius: 1.2em;
+  background: linear-gradient(#433578 0%, #35296a 63%, #271c4a 64%, #241a44 100%) padding-box,
+              linear-gradient(#fff0b8 0%, #f2c45a 30%, #d9a441 60%, #a8742a 100%) border-box;
+  box-shadow: 0 0 0 3px var(--o), 2px 3px 0 3px rgba(0, 0, 0, .45); }
+.v12 .tt b { position: relative; font-size: 1.5em; color: #fff7d6;
+  text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o),
+    4px 4px 0 #000, 3px 4px 0 #000, 4px 3px 0 #000, 4px 2px 0 #000, 2px 4px 0 #000; }
+.v12 .tt b::after { content: attr(data-t); position: absolute; inset: 0; color: transparent; text-shadow: none; background: linear-gradient(#fff7d6 0 52%, #d9c690 52% 100%); -webkit-background-clip: text; background-clip: text; }
+.v12 .tt i.gl { display: none; }
+.v12 .tt::before, .v12 .tt::after { content: ''; position: absolute; top: 50%; width: calc(var(--wh) * 175 / 196); height: var(--wh); margin-top: calc(var(--wh) * -.42); background: url(/assets/iandragon_game/ai/result/banner_win_open.webp) 0 0 / calc(var(--wh) * 720 / 196) var(--wh) no-repeat; }
+.v12 .tt::before { right: calc(100% - .55em); }
+.v12 .tt::after { left: calc(100% - .55em); background-position: calc(var(--wh) * -545 / 196) 0; }
 /* 4 꼬리 리본 (ribbon · 보라 갈색 — 빨강 아님) */
 .v4 .tt { height: 2.8em; min-width: 14em; padding: 0 3em .25em; border: solid transparent; border-width: .6em 2.6em; border-image: url(/assets/iandragon_game/ai/result/ribbon.webp) 40 150 fill / .6em 2.6em stretch; }
 /* 5 날개 현판 (승리 창 날개 + 짙은 알약) */
@@ -88,5 +102,5 @@
 const v = new URLSearchParams(location.search).get('v') || '1';
 document.body.classList.add('v' + v);
 fill('g', ITEMS.map((i) => cardHTML(i)).join(''));
-tag({ 1: '제목 1 — 폴더 탭 : 창 판이 위로 솟음 (그림 0)', 2: '제목 2 — 화려한 남색 알약 (결과 창 그림)', 3: '제목 3 — 뾰족 현판 (결과 창 그림)', 4: '제목 4 — 꼬리 리본 (보라 · 빨강 아님)', 5: '제목 5 — 날개 현판 (승리 창 날개)', 11: '날개 현판 (정정)', 10: '날개 현판 최종', 9: '날개 현판 확정안 — 금테 알약 · 넉넉한 여백 · 살짝 큰 알약 · 그림자', 7: '제목 5 다듬기 — 한 색 판 · 글씨 검은 테 2px · 리본만큼 크게', 8: '제목 5 다듬기 (판 없이) — 날개 + 글씨만', 6: '제목 3 다듬기 — 창보다 살짝 어두운 색 · 2px 위 · 두꺼운 검은 테만' }[v]);
+tag({ 1: '제목 1 — 폴더 탭 : 창 판이 위로 솟음 (그림 0)', 2: '제목 2 — 화려한 남색 알약 (결과 창 그림)', 3: '제목 3 — 뾰족 현판 (결과 창 그림)', 4: '제목 4 — 꼬리 리본 (보라 · 빨강 아님)', 5: '제목 5 — 날개 현판 (승리 창 날개)', 12: '날개 현판 (정정 2)', 11: '날개 현판 (정정)', 10: '날개 현판 최종', 9: '날개 현판 확정안 — 금테 알약 · 넉넉한 여백 · 살짝 큰 알약 · 그림자', 7: '제목 5 다듬기 — 한 색 판 · 글씨 검은 테 2px · 리본만큼 크게', 8: '제목 5 다듬기 (판 없이) — 날개 + 글씨만', 6: '제목 3 다듬기 — 창보다 살짝 어두운 색 · 2px 위 · 두꺼운 검은 테만' }[v]);
 </script>
