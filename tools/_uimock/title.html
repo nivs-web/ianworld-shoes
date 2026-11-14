@@ -19,6 +19,14 @@
 .v6 .tt::before, .v6 .tt::after { content: ''; position: absolute; z-index: -1; clip-path: polygon(var(--pt) 0, calc(100% - var(--pt)) 0, 100% 50%, calc(100% - var(--pt)) 100%, var(--pt) 100%, 0 50%); }
 .v6 .tt::before { inset: 0; background: #0b0614; }
 .v6 .tt::after { inset: 4px 5px; --pt: calc(.9em - 4px); background: #1a1230; }
+/* 7 = 5 날개 현판 다듬기 (11/14 대표님) : 판 그라데이션 없음(한 색) · 글씨 검은 테 2px 만 · 꼬리 리본만큼 크게 (높이 2.8em · 폭 14em) · 날개도 같이 크게
+ * 8 = 7 과 같은데 판 없이 날개 + 글씨만 (비교용) */
+.v7 .tt, .v8 .tt { --wh: 3.5em; height: 2.8em; min-width: 14em; padding: 0 2em; top: calc(var(--fs) * -.7 - 5px); border: 3px solid #0b0614; border-radius: 1.4em; background: #1a1230; box-shadow: none; }
+.v7 .tt b, .v8 .tt b { font-size: 1.6em; text-shadow: var(--t2); }
+.v8 .tt { border: 0; background: none; }
+.v7 .tt::before, .v7 .tt::after, .v8 .tt::before, .v8 .tt::after { content: ''; position: absolute; top: 50%; width: calc(var(--wh) * 175 / 196); height: var(--wh); margin-top: calc(var(--wh) * -.42); background: url(/assets/iandragon_game/ai/result/banner_win_open.webp) 0 0 / calc(var(--wh) * 720 / 196) var(--wh) no-repeat; }
+.v7 .tt::before, .v8 .tt::before { right: calc(100% - 1em); }
+.v7 .tt::after, .v8 .tt::after { left: calc(100% - 1em); background-position: calc(var(--wh) * -545 / 196) 0; }
 /* 4 꼬리 리본 (ribbon · 보라 갈색 — 빨강 아님) */
 .v4 .tt { height: 2.8em; min-width: 14em; padding: 0 3em .25em; border: solid transparent; border-width: .6em 2.6em; border-image: url(/assets/iandragon_game/ai/result/ribbon.webp) 40 150 fill / .6em 2.6em stretch; }
 /* 5 날개 현판 (승리 창 날개 + 짙은 알약) */
@@ -45,5 +53,5 @@
 const v = new URLSearchParams(location.search).get('v') || '1';
 document.body.classList.add('v' + v);
 fill('g', ITEMS.map((i) => cardHTML(i)).join(''));
-tag({ 1: '제목 1 — 폴더 탭 : 창 판이 위로 솟음 (그림 0)', 2: '제목 2 — 화려한 남색 알약 (결과 창 그림)', 3: '제목 3 — 뾰족 현판 (결과 창 그림)', 4: '제목 4 — 꼬리 리본 (보라 · 빨강 아님)', 5: '제목 5 — 날개 현판 (승리 창 날개)', 6: '제목 3 다듬기 — 창보다 살짝 어두운 색 · 2px 위 · 두꺼운 검은 테만' }[v]);
+tag({ 1: '제목 1 — 폴더 탭 : 창 판이 위로 솟음 (그림 0)', 2: '제목 2 — 화려한 남색 알약 (결과 창 그림)', 3: '제목 3 — 뾰족 현판 (결과 창 그림)', 4: '제목 4 — 꼬리 리본 (보라 · 빨강 아님)', 5: '제목 5 — 날개 현판 (승리 창 날개)', 7: '제목 5 다듬기 — 한 색 판 · 글씨 검은 테 2px · 리본만큼 크게', 8: '제목 5 다듬기 (판 없이) — 날개 + 글씨만', 6: '제목 3 다듬기 — 창보다 살짝 어두운 색 · 2px 위 · 두꺼운 검은 테만' }[v]);
 </script>
