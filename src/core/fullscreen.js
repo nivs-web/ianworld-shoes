@@ -17,6 +17,7 @@ export function isFullscreen() {
 /** @returns {Promise<boolean>} 실제로 들어갔는지 */
 export async function enterFullscreen() {
   if (isFullscreen()) return true;
+  if (typeof window !== 'undefined' && window.__idgEmbed) return false;   // 좀비와 드래곤 «늘 가로» 액자 안 : 전체 화면 쓰지 않음 (돌린 액자가 풀리지 않게 · 11/14)
   const req = el().requestFullscreen ?? el().webkitRequestFullscreen;
   if (!req) return false; // iOS 사파리 등
   try {

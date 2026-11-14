@@ -8,6 +8,7 @@ import { el } from '../ui.js';
 import * as Sfx from '../../audio/sfx.js';
 import { kitGauge, kitPaper, kitCoin, kitGem } from '../idgKit.js';
 import { ICON, S } from './_data.js';
+import { UP_WORD } from '../../games/iandragon_game/render/money.js';
 
 export const snd = (k) => { try { Sfx.play(k); } catch { /* 소리 없음 */ } };
 
@@ -27,7 +28,7 @@ export function buyBtn(cost, o = {}) {
     'aria-label': `${o.label || ''} ${cost.coin ? `금화 ${cost.coin} ` : ''}${cost.gem ? `젬 ${cost.gem}` : ''}${o.poor ? ` (${S.poor})` : ''}`.trim(),
     title: o.poor ? S.poor : null,
     onclick: (e) => { e.stopPropagation(); if (b.disabled) return; snd('sfx_menu_select'); o.onClick?.(e); },
-  }, [o.label ? el('span.idg-buy-label', o.label) : null, cost.coin ? kitCoin(cost.coin) : null, cost.gem ? kitGem(cost.gem) : null]);
+  }, [o.label ? el(`span.idg-buy-label${UP_WORD.test(o.label) ? '.up' : ''}`, o.label) : null, cost.coin ? kitCoin(cost.coin, { clean: (o.kind || 'green') === 'green' }) : null, cost.gem ? kitGem(cost.gem) : null]);
   return b;
 }
 

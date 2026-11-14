@@ -10,7 +10,7 @@
   --gt: 6.3px; --gl: 13.7px; --gb: 16.4px; --v2bg: #2a1f45; --gold-d: #a37d3c;
   position: relative; box-sizing: border-box; display: flex; flex-direction: column; gap: 0;
   width: min(80vw, 1400px) !important; max-width: min(80vw, 1400px) !important; min-width: 0 !important;
-  height: calc(100dvh - 30px) !important; max-height: none !important; margin: 24px auto 6px !important;
+  height: calc(100dvh - 12px) !important; max-height: none !important; margin: 8px auto 4px !important;   /* 11/14 대표님 «위아래 거의 꽉 차게» : 위는 날개 현판이 튀어나올 만큼만 */
   padding: 0 !important; overflow: visible !important; zoom: 1 !important;
   border: solid transparent !important; border-width: 30px 28px !important; border-radius: 0 !important;
   border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / 30px 28px stretch !important;
@@ -37,8 +37,8 @@
 .dialog.idg-v2 > .idg-how-title.v2::before, .dialog.idg-v2 > .idg-how-title.v2::after { display: none !important; content: none !important; }
 .idg-how-title.v2 > .v2l, .idg-how-title.v2 > .v2r { display: flex; align-items: flex-start; gap: .35em; min-width: 0; }
 .idg-how-title.v2 > .v2l { margin-top: 3px; }   /* 재화 알약 = 금색 띠에서 위 10px (단추는 7px) */
-/* 제목 날개 현판 (규칙표 ① 정정 3 · 위로 6px) — 위 줄 기준 : 위 줄 윗변 = 안쪽 끝 + 0.7px → 현판 가운데 = 위로 21.7px */
-.idg-how-title.v2 > .v2t { position: absolute; left: 50%; top: -21.7px; transform: translate(-50%, -50%); z-index: 4; display: flex; align-items: center; justify-content: center; white-space: nowrap;
+/* 제목 날개 현판 (규칙표 ① 확정 자리 그대로 : 창 안쪽 끝에서 위로 15px = 보라 띠 위 · 위 줄 윗변이 0.7px 아래라 −15.7px) */
+.idg-how-title.v2 > .v2t { position: absolute; left: 50%; top: -15.7px; transform: translate(-50%, -50%); z-index: 4; display: flex; align-items: center; justify-content: center; white-space: nowrap;
   --wh: 3.3em; height: calc(2.3em - 3px); padding: 0 2.25em; border: 2px solid transparent; border-radius: 1.2em; font-size: 1.05em;
   background: linear-gradient(#433578 0%, #35296a 63%, #271c4a 64%, #241a44 100%) padding-box, linear-gradient(#fff0b8 0%, #f2c45a 30%, #d9a441 60%, #a8742a 100%) border-box;
   box-shadow: 0 0 0 3px #2a1238, 2px 3px 0 3px rgba(0, 0, 0, .45); pointer-events: none; }
@@ -73,3 +73,25 @@
 
 /* 승리 창 «새로 열림» 꼬리표 : 띄어쓰기 간격 줄임 (규칙표 ⑳ · 11/14) */
 .idg-res-new, .idg-res-new span, .idg-res-new em { word-spacing: -.2em; }
+
+/* ═══ 규칙표 대조 고침 (11/14 · 규칙표를 두 번 읽고 게임에 빠진 것) ═══ */
+/* ③ 작은 글씨 = 검은 테 1px (창 안 단추 · 줄 · 카드 글씨) — 큰 글씨(제목 · 메인 큰 단추)는 따로 2px */
+.dialog.idg-v2.idg-k { --k-o1: 1px 0 var(--k-o), -1px 0 var(--k-o), 0 1px var(--k-o), 0 -1px var(--k-o), 1px 1px var(--k-o), -1px 1px var(--k-o), 1px -1px var(--k-o), -1px -1px var(--k-o); }
+/* ⑥ · ⑰ 알림 배지 = 기울임 없음 */
+.dialog.idg-v2 i[class*="badge"], .dialog.idg-v2 [class*="badge"], .dialog.idg-v2 .idg-k-dot, .dialog.idg-v2 [class*="-cnt"] { font-style: normal !important; }
+/* ⑦ 편의품 단추 : 안 고름 = 튀어나옴(위 밝음 · 아래 두꺼운 그림자 · 테 = 어두운 노란색) · 고름 = 눌려 들어감(위 어둡게 · 그림자 없음 · 2px 아래 · 초록 + 큰 ✓) */
+.idg-cons:not(.shop) { background: #46328a !important; border-color: #1d1233 !important; box-shadow: inset 0 3px 0 #7563c2, inset 0 -4px 0 #2c1f5c, 0 5px 0 #1d1233 !important;   /* 11/14 대표님 : 노란 테 없음 · 더 어두운 보라 */ transform: translateY(-2px); gap: 7px; display: inline-flex; align-items: center; }
+.idg-cons.on:not(.shop) { background: #2fa04a !important; border-color: #123a1e !important; box-shadow: inset 0 4px 0 #1a6a30, inset 0 -2px 0 #6ee07a, 0 0 0 2px #ffe27a, 0 1px 0 2px #123a1e !important; transform: translateY(2px); }
+.idg-cons.on:not(.shop)::before { content: '✓'; font-size: 1.55em; line-height: 1; margin: -.2em .15em 0 -.15em; }
+.idg-cons:active:not(:disabled):not(.shop) { transform: translateY(2px); }
+/* ⑧ 출전순 버튼 : 좌우 1px 줄임 · 삼각형을 글씨에 1px 더 붙임 */
+.idg-pp-plate .idg-pp-sortb.idg-pp-sortb { padding: 0 3px 0 4px; gap: 1px; }
+/* ⑮ 종이 위 글씨 : 더 선명하게 · 중요한 말 = 진한 갈색 · 글자 · 띄어쓰기 간격 줄임 */
+.dialog.idg-v2 .idg-k-paper, .dialog.idg-v2 [class*="paper"]:not(img) { color: #2e1806; font-weight: 900; letter-spacing: -.04em; word-spacing: -.2em; }
+.dialog.idg-v2 .idg-k-paper b, .dialog.idg-v2 .idg-k-paper strong, .dialog.idg-v2 [class*="paper"] b { color: #7a1e04; }
+
+.idg-cons.shop .rt { width: .4em; height: .7em; margin-left: .25em; vertical-align: middle; display: inline-block; }
+/* 규칙표 ① «금색 띠 없음» : 스크롤 칸 위아래 금 도트 줄(scroll_edge) · 파워업 위 줄 아래 금 줄도 전부 없앰 (11/14 대표님 «뒤에 조금 비치는 것까지 다 지워») */
+.dialog.idg-v2 > .idg-dlg-body, .dialog.idg-framed.scrolls > .idg-dlg-body { background: none !important; }
+.idg-pp.pp2.land > .idg-pp-top2 { background: none !important; }
+.dialog.idg-v2 .idg-lk-side, .dialog.idg-v2 [class*="-side"] { box-shadow: none; }

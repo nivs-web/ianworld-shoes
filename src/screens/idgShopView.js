@@ -192,14 +192,13 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
   }
   const setInfo = (on, text = '') => { info.style.display = on ? '' : 'none'; countEl.textContent = text; };
   const soon = (t) => [kitPaper([t, el('small', '곧 열려요')])];
-  const say = (kids) => help.replaceChildren(kitPaper(kids));   /* 왼쪽 상인 옆 종이 (규칙표 ⑮ : 지금 말투 · 짧게 · 길면 줄바꿈 · 중요한 말 진한 갈색) */
-  const br = () => el('br');
+  const say = (kids) => help.replaceChildren(kitPaper(kids));   /* 상인 아래 종이 (규칙표 ⑮ : 지금 말투 · 한 줄 · 중요한 말 진한 갈색 — 11/14 대표님 «한 줄로 써서 영역 확보») */
   /* 칸마다 종이 글 — 칸 안 패널의 긴 안내 종이는 샵에서는 숨기고(idg-v2-shop.css) 여기 짧게 */
   const PANEL_SAY = {
-    dragon: () => ['드래곤 ', el('b', '레벨'), '을 올려요', br(), '대장이 힘을 써요'],
-    power: () => ['브레스는 ', el('b', '모든 드래곤'), '이', br(), '함께 써요'],
-    stage: () => [el('b', '한 단계씩'), ' 차례로 올려요', br(), '코인과 젬이 둘 다 들어요'],
-    gear: () => ['끼울 수 있는 칸 ', el('b', `${CASTLE_LV[castleOf(cur).lv - 1]?.slots ?? 0}개`), br(), '끼우기는 꾸미기에서 해요'],
+    dragon: () => ['드래곤 ', el('b', '레벨'), '을 올려요'],
+    power: () => ['브레스는 ', el('b', '모두 함께'), ' 써요'],
+    stage: () => [el('b', '한 단계씩'), ' 올려요'],
+    gear: () => ['끼울 칸 ', el('b', `${CASTLE_LV[castleOf(cur).lv - 1]?.slots ?? 0}개`)],
   };
   function place(nodes) { content.replaceChildren(...nodes); scroll.refresh(); }
 
@@ -216,13 +215,13 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
     if (big === 'deal') {
       setInfo(false);
       const day = todayKst();
-      say(['오늘의 특가 · ', el('b', '꾸미기 3개 30%'), ' 할인', br(), '자정에 바뀌어요']);
+      say([el('b', '꾸미기 3개 30%'), ' 할인']);
       content.classList.add('is-grid');
       return place(dealsOf(day, cur).map((it) => card(it, true)));
     }
     if (big === 'cons') {
       setInfo(false);
-      say(['편의품은 한 판에', br(), el('b', '종류마다 하나씩'), ' 써요', br(), '혼자 하기에서만 써요']);
+      say([el('b', '종류마다 하나씩'), ' 써요']);
       content.classList.add('is-list');
       return place([...bpRows(), ...CONSUMABLES.map((c) => {
         const n = Number(cur.cons?.[c.id]) || 0, can = cur.coins >= c.price && n < CONS_MAX;
@@ -260,7 +259,7 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
     if (!all.length) { setInfo(false); content.classList.add('is-panel'); return place(soon(`${SHOP_SLOT[id].name} 물건은 아직 없어요`)); }
     const got = all.filter((it) => isOwned(cur, it)).length;
     setInfo(true, `모은 수 ${got} / ${all.length}`);
-    say(['산 물건은', br(), el('b', '꾸미기'), '에서 골라요']);
+    say([el('b', '꾸미기'), '에서 골라요']);
     const list = ordered(all).filter((it) => !onlyMissing || !isOwned(cur, it) || fresh.has(it.key));
     content.classList.add('is-grid');
     place(list.length ? list.map((it) => card(it, false)) : [kitPaper(['다 모았어요!', el('small', '«안 가진 것만» 을 끄면 다 보여요.')])]);

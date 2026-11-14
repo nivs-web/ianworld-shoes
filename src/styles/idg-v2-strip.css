@@ -12,3 +12,25 @@
 .idg-pp-strip .idg-pp-back .ico svg { width: 72%; height: 72%; }
 .idg-pp-strip .idg-pp-back .lb { flex: 1; text-align: left; }
 .idg-pp-strip .idg-pp-go .ico img[src$="ico_retry.svg"] { filter: none; }
+
+/* 파워업 = 창 크기 «최대» (규칙표 ① : 화면 가로 96% · 세로 꽉 · 11/14 대표님 «게임 창의 꽉 찬 가장 큰 창 · 출전덱만큼은 가장 크게») — 전투 안 · 로비 둘 다 */
+.dialog-overlay:has(> .dialog.idg-pp-dlg) { padding: 0 !important; }
+.dialog-overlay > .dialog.idg-pp-dlg.idg-pp-dlg.idg-k[class*="idg-"][class*="idg-"]:not(.x1):not(.x2):not(.x3) { width: 96vw !important; max-width: 96vw !important; height: calc(100dvh - 8px) !important; max-height: none !important; zoom: 1 !important; margin: 4px auto !important; }
+.idg-hud .idg-card.idg-pp.idg-pp[class*="idg-"][class*="idg-"]:not(.x1):not(.x2):not(.x3) { width: 96vw !important; max-width: 96vw !important; height: calc(100dvh - 8px) !important; max-height: none !important; zoom: 1 !important; }
+@media (orientation: landscape) and (min-height: 860px) { .dialog.idg-pp-dlg .idg-pp, .idg-card.idg-pp { font-size: 1.25em; } }
+
+/* ═══ 출격버튼 (규칙표 ㉕ · 11/14 대표님) ═══
+ *  그림 = btn_start.webp (뿔 · 불꽃 빨간 알약) · 글씨 «전투개시» · 흰 글씨 + 검정 2px 깔끔한 테두리(그라데이션 없음) · 글씨 2px 아래로
+ *  쓰는 곳 : 시작 카드 · 습격/판 소개 창 (예전 «시작하기» 빨간 단추 · «출격!» 대신) */
+.idg-hud .idg-row .idg-btn.main.sortie, .idg-res-btn.sortie { color: #fff !important; font-weight: 900; background: none !important; -webkit-text-fill-color: #fff;
+  text-shadow: 2px 0 #000, -2px 0 #000, 0 2px #000, 0 -2px #000, 2px 2px #000, -2px 2px #000, 2px -2px #000, -2px -2px #000 !important; }
+.idg-hud .idg-row .idg-btn.main.sortie { padding-top: 2px; }
+.idg-res-btn.sortie { flex: 1.5 1 0; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; border-radius: 0; box-shadow: none;
+  border: solid transparent; border-width: 12px 30px; border-image: url(/assets/iandragon_game/ai/lobby/btn_start.webp) 70 150 fill / 12px 30px stretch; }
+.idg-res-btn.sortie > span { position: relative; top: 2px; }
+.idg-res-btn.sortie:active { filter: brightness(.85); transform: translateY(1px); }
+/* 큰 빨강 · 초록 단추 글씨 (규칙표 ② «메인 큰 단추 = 2px») : 그라데이션 없이 2px 깔끔한 테두리만 */
+.idg-res-btn.red > span, .idg-res-btn.green > span { background: none !important; -webkit-text-fill-color: currentColor; }
+.idg-res-btn.red, .idg-res-btn.green { text-shadow: 2px 0 var(--o, #2a1238), -2px 0 var(--o, #2a1238), 0 2px var(--o, #2a1238), 0 -2px var(--o, #2a1238), 2px 2px var(--o, #2a1238), -2px 2px var(--o, #2a1238), 2px -2px var(--o, #2a1238), -2px -2px var(--o, #2a1238) !important; }
+/* 출격버튼 비율 고정 (그림 900×218 · 옆으로 늘어나 납작해지지 않게) */
+.idg-res-row .idg-res-btn.sortie { flex: 0 0 auto !important; height: 2.9em !important; min-height: 0 !important; width: auto !important; aspect-ratio: 900 / 250; padding: 0 !important; font-size: 1.05em; }

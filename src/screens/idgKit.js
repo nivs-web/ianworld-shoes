@@ -12,7 +12,7 @@ import '../styles/idg-kit.css';
 import { el } from './ui.js';
 import { moreDown } from './idgMore.js';   /* «아래로 더 있음» 화살표 공용 규칙 (11/13) */
 import * as Sfx from '../audio/sfx.js';
-import { money, moneyIcon, fmtMoney } from '../games/iandragon_game/render/money.js';
+import { money, moneyIcon, fmtMoney, UP_WORD } from '../games/iandragon_game/render/money.js';
 
 const IMG = '/assets/iandragon_game/ai/';
 const snd = (k) => { try { Sfx.play(k); } catch { /* 소리 없음 */ } };
@@ -88,7 +88,7 @@ export function kitPriceBtn(o = {}) {
     'aria-label': `${o.label ? o.label + ' ' : ''}${name} ${fmtMoney(n)}${o.poor ? ` (${name}이 모자라요)` : ''}`,
     title: o.poor ? `${name}이 모자라요` : null,
     onclick: (e) => { if (b.disabled) return; snd('sfx_menu_select'); o.onClick?.(e); },
-  }, [o.label ? el('span.idg-k-btn-label', o.label) : null, money(cur, n), o.tag ? el('i.idg-k-btn-tag', o.tag) : null]);
+  }, [o.label ? el(`span.idg-k-btn-label${UP_WORD.test(o.label) ? '.up' : ''}`, o.label) : null, money(cur, n, { clean: (o.kind || 'green') === 'green' }), o.tag ? el('i.idg-k-btn-tag', o.tag) : null]);
   return b;
 }
 

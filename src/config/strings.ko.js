@@ -245,7 +245,7 @@ export const S = {
   idgCardLine: (n, s) => (n ? `스테이지 ${n}개 깸 · 별 ${s}개` : '아기 드래곤 vs 좀비 · 100스테이지 라인 배틀'),
   idgSoonToast: '좀비와 드래곤은 지금 만드는 중이에요. 조금만 기다려 주세요!',
   /* 좀비와 드래곤 — 로비(세로) · 게임(가로) (2026-11-10 제작 시작) */
-  idgLobbyStart: '모험시작',
+  idgLobbyStart: '전투개시',
   idgSwitchCastle: '드래곤캐슬 전환',   // 로비 무대 발밑 단추 (드래곤이 보일 때)
   idgSwitchDragon: '드래곤 전환',       // (드래곤캐슬이 보일 때)
   idgCastleAria: '내 드래곤캐슬 · 누르면 꾸미기',

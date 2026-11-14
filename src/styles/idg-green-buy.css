@@ -1,0 +1,26 @@
+/* ═══ 초록 구매 버튼 (규칙표 ㉙ · 11/14 대표님) ═══
+ *  사기 · 올리기 · 레벨업 · 받기 같은 «돈 내고 하는» 초록 단추 전부 = 이 하나의 모양
+ *  바탕 = 아이템샵 «추천 강화 · 올리기» 단추 (검정 테 2px · 둥근 8px · 위 밝은 띠 · 아래 진한 띠 · 금테 그림 단추 안 씀)
+ *  1줄 = 금화 + 금액 · 2줄 = (화살표)올리기 / 금화 금액 · 3줄 = + 젬 수
+ *  줄 덩어리는 단추 가운데 · 그 안은 금화 아이콘 왼쪽 끝 기준 왼쪽 정렬 (가운데 줄 = 금액 줄이 폭을 정함)
+ *  글씨 테두리 = 검정 1px · 줄이 늘어도 단추는 거의 그대로(글씨를 줄여 안에 넣음 · 위아래 1px 이상) */
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green) {
+  --gb-ico: 1.1em; --gb-gap: .22em;
+  display: inline-grid !important; grid-auto-flow: row; justify-content: center !important; justify-items: start; align-content: center !important; gap: 0 !important;
+  box-sizing: border-box; border: 2px solid #000 !important; border-image: none !important; border-radius: 8px !important;
+  background: #3fbf4f !important; box-shadow: inset 0 3px 0 #8ff09a, inset 0 -4px 0 #1f7a38 !important; filter: none !important;
+  padding: 2px .45em 4px !important; color: #fff !important; font-weight: 900; line-height: 1.05 !important; image-rendering: auto;
+  text-shadow: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px 1px #000, 1px -1px #000, -1px -1px #000 !important; }
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green) .idg-cash { display: inline-flex !important; align-items: center; gap: var(--gb-gap) !important; font-size: 1em !important; white-space: nowrap; margin: 0 !important; }
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green) .idg-cash-ico { flex: none; width: var(--gb-ico) !important; height: var(--gb-ico) !important; max-width: none !important; min-width: var(--gb-ico); object-fit: contain; filter: none !important; }
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green) .idg-cash b { color: #fff !important; text-shadow: inherit !important; }
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green).poor .idg-cash b { color: #ff8f7f !important; }
+/* 윗줄 글씨 · 아랫줄 젬 = 폭 계산에서 빼서(가운데 줄이 늘 단추 한가운데) · 금화 아이콘 왼쪽 끝에 맞춤 */
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green) > :is(.idg-buy-label, .idg-k-btn-label) { display: inline-flex !important; align-items: center; gap: var(--gb-gap); width: 0; min-width: 0; flex: none !important; overflow: visible; white-space: nowrap; text-align: left !important; font-size: 1em !important; margin: 0 !important; }
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green) > .idg-cash ~ .idg-cash { width: 0; overflow: visible; }
+/* 올리기 화살표 (규칙표 ㉙ : 로비 파워업 화살표 모양 · 조금 작게 · 글씨 바로 왼쪽 · 금화 아이콘과 같은 세로줄) */
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green) > :is(.idg-buy-label, .idg-k-btn-label).up::before { content: ''; flex: none; width: var(--gb-ico); height: calc(var(--gb-ico) * .82); background: url(/assets/iandragon_game/ai/ui/up.svg) left center / 86% 100% no-repeat; image-rendering: pixelated; }
+/* 줄이 늘면 글씨를 줄여 안에 넣음 (단추 높이는 거의 그대로) */
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green):has(> :is(.idg-buy-label, .idg-k-btn-label)) { font-size: .92em !important; padding-top: 2px !important; padding-bottom: 3px !important; }
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green):has(> :is(.idg-buy-label, .idg-k-btn-label)):has(> .idg-cash ~ .idg-cash) { font-size: .8em !important; }
+:is(.idg-sp-buy.green, .idg-k-btn.price.green, .idg-buy.green):active:not(:disabled) { transform: translateY(1px); }

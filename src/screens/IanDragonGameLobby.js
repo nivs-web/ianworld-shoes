@@ -11,6 +11,7 @@ import S from '../config/strings.ko.js';
 import { el, button, backButton, screen, presentOverlay, toast } from './ui.js';
 import { get as getProfile } from '../services/profile.js';
 import Portal from './Portal.js';
+import { IDG_EMBED, isPortraitNow, rotateHost, embedExit } from '../core/idgEmbed.js';   /* «늘 가로» 돌린 액자 (11/14) */
 import { lazyScreen } from './lazyScreen.js';
 import * as G from '../services/iandragonGame.js';
 import { enterFullscreen, exitFullscreen, isFullscreen } from '../core/fullscreen.js';
@@ -340,6 +341,10 @@ async function runNotices({ onLook, onDone }) {
 }
 
 export default function IanDragonGameLobby(nav) {
+  /* 폰을 세로로 들었으면 : 로비 · 게임 전체를 돌린 가로 액자 안에서 (안내 문구 없음 · 11/14 대표님) */
+  if (isPortraitNow()) return rotateHost({ onExit: () => nav.reset(Portal) });
+  const goRotate = () => { if (isPortraitNow()) nav.reset(IanDragonGameLobby); };
+  addEventListener('resize', goRotate);
   let stageNow = null;   // 지금 무대 노드 (드래곤캐슬이면 kill 로 Pixi 캔버스를 치운다)
   setTimeout(checkTitles, 900);
   setTimeout(() => runNotices({ onLook: () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() }), onDone: () => nav.refresh?.() }), 700);   // 열림 연출 · 안내 · 레벨 선물 (11/13)
@@ -358,7 +363,7 @@ export default function IanDragonGameLobby(nav) {
   /* 로비 곡 : 들어오면 바로 · 자동재생이 막혔으면 첫 터치에서 (떠나면 멈춤 — 전투는 자기 월드 곡, 오락실은 조용히) */
   const kick = () => lobbyMusic();
   document.addEventListener('pointerdown', kick, { capture: true });
-  const leave = () => { document.documentElement.classList.remove('idg-lobby-on'); killLive(); stageNow?.kill?.(); document.removeEventListener('pointerdown', kick, { capture: true }); try { IdgAudio.stopBgm(); } catch { /* */ } };
+  const leave = () => { removeEventListener('resize', goRotate); document.documentElement.classList.remove('idg-lobby-on'); killLive(); stageNow?.kill?.(); document.removeEventListener('pointerdown', kick, { capture: true }); try { IdgAudio.stopBgm(); } catch { /* */ } };
 
   /**
    * 「모험 시작」 — 전체화면은 클릭 핸들러 안에서 곧바로 요청해야 받아 준다(await 먼저 금지).
@@ -377,7 +382,7 @@ export default function IanDragonGameLobby(nav) {
   function lobbyFs() {
     const de = document.documentElement, ok = !!(de.requestFullscreen || de.webkitRequestFullscreen) && document.fullscreenEnabled !== false;
     const b = el('button.idg-lfs', { type: 'button', 'aria-label': '전체 화면', title: '전체 화면', onclick: () => { Sfx.play('sfx_menu_select'); if (isFullscreen()) exitFullscreen(); else enterFullscreen(); } });
-    b.hidden = !ok; b.classList.toggle('on', isFullscreen());
+    b.hidden = !ok || IDG_EMBED; b.classList.toggle('on', isFullscreen());   /* 액자 안(늘 가로)에서는 전체 화면 안 씀 */
     const upd = () => { if (!b.isConnected) { document.removeEventListener('fullscreenchange', upd); document.removeEventListener('webkitfullscreenchange', upd); return; } b.classList.toggle('on', isFullscreen()); };
     document.addEventListener('fullscreenchange', upd); document.addEventListener('webkitfullscreenchange', upd);
     return b;
@@ -490,7 +495,7 @@ export default function IanDragonGameLobby(nav) {
       headCanvas(leaderOf(g), g.look, 64).then((c) => { c.className = 'l2-face-c'; face.prepend(c); }).catch(() => {});
       const dN = diffNow(g), dStars = dN ? g[DIFF[dN].star] : g.stars;   // 다음 판 카드 : 어려움 · 초고수를 골랐으면 그 난이도의 다음 판 · 별 색
       const done = dN ? diffRun(dStars) >= 100 : g.cleared >= 100, no = pickedNow(g) || (dN ? diffNext(g, dN) : Math.min(100, G.nextStage(g))), got = done ? 3 : Number(dStars[no - 1]) || 0;
-      const back = () => nav.reset(Portal);
+      const back = () => (IDG_EMBED ? embedExit() : nav.reset(Portal));   /* 액자 안이면 부모가 액자를 닫고 오락실로 */
       const skyEl = el('div.l2-sky', { 'aria-hidden': 'true', style: `--fwk:${(1.6 - Math.min(1, stars / 60) * 0.8).toFixed(2)}` }, sky(stars >= 40 ? 3 : stars >= 15 ? 2 : 1));
       /* 앞 겹(성 · 길 · 무대) + 부엉이 · 도깨비불 · 장착 깃발 (누를 수 없음 · idgLobbyFun.js) */
       const sceneEl = el('div.l2-scene', { 'aria-hidden': 'true' }, lobbyScene(decodeLook(g.look || '').flag));
@@ -540,9 +545,10 @@ export default function IanDragonGameLobby(nav) {
           el('button.l2-btn.green', { type: 'button', onclick: () => { Sfx.play('sfx_menu_select'); showNest(() => nav.refresh?.()); } }, [el('span.l2-pico', null, [el('img.ico', { src: `${L2}ico_power_clean.webp`, alt: '', onerror: hideBad })]), el('span', '파워업'), el('i.l2-spark.a', { 'aria-hidden': 'true' }, [el('i')]), el('i.l2-spark.b', { 'aria-hidden': 'true' }, [el('i')])]),
         ])),
         el('nav.l2-bottom', null, [
-          stone('lab', '연구소', () => showLab(() => nav.refresh?.())),
           stone('shop', '아이템샵', shop),
           stone('look', '꾸미기', () => showLook({ idg: G.idg(), save: G.saveIdg, onClose: () => nav.refresh?.() })),
+          /* 11/14 대표님 순서 : 아이템샵 · 꾸미기 · 연구소 · 더보기 */
+          stone('lab', '연구소', () => showLab(() => nav.refresh?.())),
           stone('more', '더보기', () => showMore({ stage: () => showStages((n2) => start(n2)), hatch: () => (G.idg().cleared >= OPEN_AT ? showHatch(() => nav.refresh?.()) : toast('부화장은 2-5를 깨면 열려요', 2200)) })),
         ]),
         /* 박쥐 날개 긴 단추 — 가로 · 세로 모두 «이안오락실로» (11/12 대표님 · 띄어쓰기 없이 여섯 글자) · 화면 왼쪽 아래 끝에 붙음 */

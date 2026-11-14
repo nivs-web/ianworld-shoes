@@ -3,15 +3,16 @@
  *  위 큰 탭 2개 «드래곤 꾸미기» · «드래곤캐슬 꾸미기» → 작은 단추 → 물건 격자(샵과 같은 카드 · 등급 색 테 + ★).
  *   드래곤 : 대장(가진 것 중 고르기 + 레벨업 = shopPanels/dragon.js 재사용) · 모자 · 목 장식 · 브레스 색 · 오라 · 펫
  *   드래곤캐슬 : 캐슬 모습(가진 단계 중) · 깃발 · 지붕 · 정문 · 앞마당 · 장비(칸 수 = 캐슬 단계)
- *  미리보기 : 드래곤 탭 = 살아 있는 드래곤 / 캐슬 탭 = 캐슬 + 오른쪽 땅 깃발 + 장비 칸. 코디 3칸 저장 · 불러오기 · 주사위 코디.
+ *  미리보기 : 드래곤 탭 = 살아 있는 드래곤 / 캐슬 탭 = 캐슬 + 오른쪽 땅 깃발 + 장비 칸. 코디 3칸 저장 · 불러오기 · 랜덤코디.
  *  저장 필드 : look (드래곤 쪽 + 오라 · 펫 + 깃발) · clook (지붕 · 정문 · 앞마당) · fits [{look, clook}×3] · castle.skin / castle.slots[3] · leader · lead (레벨업)
  *  테두리 · 칭호 고르기는 프로필 창으로 옮긴다 — 여기서는 이미 고른 값만 그대로 두고 저장한다(건드리지 않음).
  *  showLook({ idg, save, onClose }) — save(part) = 저장 후 새 idg 를 돌려주는 함수(G.saveIdg).
  *  물건 목록 = shopCatalog.js → data/catalog.js (184개 · 열 때 한 번 받음) · 글자 = idgLookParts/wear.js.
  */
+import '../styles/idg-v2-look.css';   /* 꾸미기 단추 = 규칙표 ③ (11/14) */
 import { el, button, presentOverlay } from './ui.js';
 import * as Sfx from '../audio/sfx.js';
-import { kitTabs, kitKeepScroll, kitClose } from './idgKit.js';
+import { kitTabs, kitKeepScroll } from './idgKit.js';
 import { LOOKS, TITLES, encodeLook, artOf } from '../games/iandragon_game/data/looks.js';
 import { LEADERS } from '../games/iandragon_game/data/leaders.js';
 import { leaderFor, stageByNo } from '../games/iandragon_game/render/battleSetup.js';
@@ -21,6 +22,7 @@ import { liveDragon } from './idgLookParts/dragonLive.js';
 import { castleStage } from './idgLookParts/castleStage.js';
 import { itemGrid } from './idgLookParts/grid.js';
 import { outfitBar } from './idgLookParts/outfitBar.js';
+import { xTitle, v2Cash } from './idgXwin.js';
 import { DRAGON_TABS, CASTLE_TABS, WORN, catalogFor, owns, encodeOutfit, decodeOutfit } from './idgLookParts/catalog.js';
 import { wearOf, keepOf, partsFor } from './idgLookParts/wear.js';
 import { loadCatalog } from './shopCatalog.js';
@@ -44,7 +46,10 @@ function openLook({ idg, save, onClose, tab }) {
   Sfx.play('sfx_menu_select');
   let cur = idg, big = tab === 'castle' ? 'castle' : 'dragon', trial = null, panelH = null;   // tab = 처음 열 큰 칸 (로비 무대를 누르면 보이던 것 쪽)
   const small = { dragon: 'dragon', castle: 'skin' };
-  const saveSync = (part) => { const n = save(part); if (n) cur = n; return n; };
+  /* 왼쪽 위 재화 알약 (아이템샵과 같은 자리 · 11/14 대표님) — 레벨업 등으로 돈이 바뀌면 숫자도 */
+  const cash = v2Cash(cur.coins, cur.gems);
+  const drawCash = () => { const c = cash.querySelector('b.c'), g = cash.querySelector('b.g'); if (c) c.textContent = Number(cur.coins || 0).toLocaleString('en-US'); if (g) g.textContent = Number(cur.gems || 0).toLocaleString('en-US'); };
+  const saveSync = (part) => { const n = save(part); if (n) { cur = n; drawCash(); } return n; };
 
   /* ── 지금 입은 모습 W (가진 것만 남긴다 — 예전 저장값이 이상해도 안전) ── */
   const W = { ...wearOf(cur), skin: castleOf(cur).skin }, kp = keepOf(cur);
@@ -86,7 +91,7 @@ function openLook({ idg, save, onClose, tab }) {
   /* ── 코디 줄 · 주사위 확인 줄 ── */
   const fitsOf = () => [0, 1, 2].map((i) => { const f = Array.isArray(cur.fits) ? cur.fits[i] : null; return { look: typeof f?.look === 'string' ? f.look : '', clook: typeof f?.clook === 'string' ? f.clook : '' }; });
   const trialBar = el('div.idg-trial', { hidden: true }, [
-    el('span', '주사위 코디를 입혀 봤어요'),
+    el('span', '랜덤코디를 입혀 봤어요'),
     button('이걸로 입기', () => { Object.assign(W, trial); trial = null; persist(); afterWear(); }),
     button('돌아가기', () => { trial = null; afterWear(); }),
   ]);
@@ -105,7 +110,7 @@ function openLook({ idg, save, onClose, tab }) {
 
   /* ── 작은 단추별 내용 ── */
   let grid = null;
-  const goShop = () => import('./idgShop.js').then((m) => m.showShop({ idg: cur, save: saveSync, onClose: () => { buildPanel(); drawStage(); } })).catch(() => {});
+  const goShop = () => import('./idgShop.js').then((m) => m.showShop({ idg: cur, save: saveSync, onClose: () => { buildPanel(); drawStage(); drawCash(); } })).catch(() => {});
   const wear = (slot, id) => { if (trial) trial = null; W[slot] = id; persist(); afterWear(); };
   const itemsOf = (slot) => catalogFor(slot, cur);
   function gridFor(slot) {
@@ -146,16 +151,23 @@ function openLook({ idg, save, onClose, tab }) {
     smallTabs.replaceChildren(kitTabs({ tabs: tabs.map(([id, label]) => ({ id, label })), value: small[big], label: '작은 칸', onPick: (id) => { small[big] = id; buildPanel(); } }));
   }
   function switchBig(id) {
-    big = id; side.replaceChildren(id === 'dragon' ? dragonStage : cs.node);
+    big = id; side.replaceChildren(id === 'dragon' ? dragonStage : cs.node); bigTabs.set(id);
     buildSmall(); buildPanel(); drawStage();
   }
-  const bigTabs = kitTabs({ old: true, label: '꾸미기 칸', tabs: [{ id: 'dragon', label: '드래곤 꾸미기' }, { id: 'castle', label: '드래곤캐슬 꾸미기' }], value: big, onPick: switchBig });
+  /* 왼쪽 큰 단추 2개 = 아이템샵 왼쪽 메뉴와 같은 모양(규칙표 ⑰ · 11/14 대표님) */
+  const RAIL = [['dragon', '드래곤 꾸미기', '/assets/iandragon_game/ai/novart/head_big.png'], ['castle', '드래곤캐슬 꾸미기', '/assets/iandragon_game/ai/lobby/ico_nest.png']];
+  const railBtns = RAIL.map(([id, label, ico]) => el('button.v2s-rb', { type: 'button', role: 'tab', 'data-id': id, onclick: () => { if (big === id) return; Sfx.play('sfx_menu_move'); switchBig(id); } },
+    [el('img', { src: ico, alt: '', draggable: false }), el('span', label)]));
+  const bigTabs = el('div.v2s-menu.idg-lk-menu', { role: 'tablist', 'aria-label': '꾸미기 칸', 'aria-orientation': 'vertical' }, railBtns);
+  bigTabs.set = (k) => railBtns.forEach((x) => { const on = x.dataset.id === k; x.classList.toggle('on', on); x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1; });
 
-  const list = el('div.idg-lk-list', null, [el('div.idg-lk-head', null, [bar, trialBar, bigTabs, smallTabs]), content]);   /* 머리 줄들을 한 묶음으로 (가로 낮은 화면에서 고정 · idg-land.css) */
+  /* 11/14 대표님 배치 : 왼쪽 = 코디 줄(폭에 딱 맞게) → 큰 단추 2개 → 미리보기 카드 · 오른쪽 = 작은 탭 → 목록 */
+  const rail = el('div.idg-lk-rail', null, [bar, trialBar, bigTabs, side]);
+  const list = el('div.idg-lk-list', null, [el('div.idg-lk-head', null, [smallTabs]), content]);   /* 머리 줄들을 한 묶음으로 (가로 낮은 화면에서 고정 · idg-land.css) */
   switchBig(big);
 
-  const wrap = el('div.idg-lk', null, [side, list]);
-  const box = el('div.dialog.idg-look.idg-look2.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['꾸미기', el('button.idg-title-sw.go-shop', { type: 'button', 'aria-label': '아이템샵으로 바로 가기', onclick: () => switchToShop() }, '아이템샵'), kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X (아래 단추가 목록을 가리지 않게) */
+  const wrap = el('div.idg-lk', null, [rail, list]);
+  const box = el('div.dialog.idg-look.idg-look2.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [xTitle('꾸미기', () => close(), { left: [cash], right: [el('button.idg-title-sw.go-shop', { type: 'button', 'aria-label': '아이템샵으로 바로 가기', onclick: () => switchToShop() }, '아이템샵')] }), wrap]);   /* 닫기 = 머리 오른쪽 X (아래 단추가 목록을 가리지 않게) */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   let done = false;
   const ended = () => { if (done) return; done = true; live.kill(); cs.kill(); onClose?.(); };   // 닫으면(뒤로가기 포함) 로비 다시 그리기 — 무대 드래곤 · 코인 · 젬

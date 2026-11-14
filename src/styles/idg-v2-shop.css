@@ -179,3 +179,9 @@
 .dialog.idg-v2.idg-shop.v2shop .idg-shop-reco .idg-sp-reco-txt b { font-size: .9em; text-shadow: var(--k-o1); white-space: normal; }
 .dialog.idg-v2.idg-shop.v2shop .idg-shop-reco .idg-sp-reco-txt span { font-size: .75em; color: #ffd9a8; text-shadow: var(--k-o1); }
 .dialog.idg-v2.idg-shop.v2shop .idg-shop-reco .idg-sp-reco .idg-sp-buy { flex: 0 0 auto; min-width: 6em; min-height: 2.3em; font-size: .78em; }
+
+/* 11/14 대표님 : 좀비 상인이 왼쪽 아래 빈 칸을 꽉 채움 · 종이는 상인 아래 한 줄 */
+.dialog.idg-v2.idg-shop.v2shop .v2s-foot { flex-direction: column !important; align-items: stretch !important; justify-content: flex-end !important; gap: .15em !important; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-keeper { order: 0 !important; flex: 1 1 0 !important; width: 100% !important; height: auto !important; max-width: none !important; min-height: 0 !important; aspect-ratio: auto !important; object-fit: contain !important; object-position: center bottom !important; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-say { order: 1 !important; flex: none !important; align-self: stretch !important; }
+.dialog.idg-v2.idg-shop.v2shop .v2s-say .idg-k-paper { width: 100%; white-space: nowrap; }

@@ -84,7 +84,7 @@
 .idg-hc .idg-hc-btn:disabled { cursor: default; }
 .idg-hc .idg-hc-btn:disabled:not(.poor) { filter: brightness(.7); }
 .idg-hc .idg-hc-btn:active:not(:disabled) { transform: translateY(1px); filter: brightness(.9); }
-.idg-hc .idg-hc-off { position: absolute; right: -.4em; top: -.75em; padding: .1em .35em .15em; border-radius: 5px; background: #ff3b30; box-shadow: 0 0 0 2px #000; font-size: .72em; font-style: normal; line-height: 1; }
+.idg-hc .idg-hc-off { position: absolute; right: 6px; top: calc(-.75em + 5px);   /* 규칙표 ㉔ : 단추 위 꼬리표 = 단추 오른쪽 안쪽 6px · 5px 아래 — 창 밖으로 잘리지 않게 (11/14 대표님) */ padding: .1em .35em .15em; border-radius: 5px; background: #ff3b30; box-shadow: 0 0 0 2px #000; font-size: .72em; font-style: normal; line-height: 1; }
 
 /* 낮은 화면 (폰 가로 · 390px 안팎) : 정보 칸이 넘치지 않게 촘촘히 */
 @media (max-height: 460px) {

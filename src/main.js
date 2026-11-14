@@ -24,6 +24,7 @@ import SplashLogin from './screens/SplashLogin.js';
  * 길이 없어졌다.** 로비 맨 아래 [오락실 화면으로 돌아가기] 를 눌러야만 보였다.
  */
 import Portal from './screens/Portal.js';
+import { IDG_EMBED } from './core/idgEmbed.js';   /* 좀비와 드래곤 «늘 가로» 액자 안이면 오락실 대신 바로 로비 (11/14) */
 import { initAuth, onUserChanged } from './services/auth.js';
 import { get as getProfile, pullAll } from './services/profile.js';
 import { selftest } from './services/diagnose.js';
@@ -227,10 +228,12 @@ async function boot() {
    * 돌린다 — 그 경우는 드물고, 그 대가로 **모든 재방문자의 첫 화면이 그만큼 빨라진다.**
    * 그 사이에 싱글게임을 시작해도 문제가 없다(기록은 로컬에 남고 다음 접속에 올라간다).
    */
+  /* 액자 안(?idgEmbed=1) : 첫 화면 = 좀비와 드래곤 로비 */
+  const 첫로비 = IDG_EMBED ? (await import('./screens/IanDragonGameLobby.js')).default : Portal;
   const 로컬 = getProfile();
   const 미리오락실 = !!(로컬.nickname && 로컬.uid && 로컬.uid !== 'guest');
   if (미리오락실) {
-    nav.reset(Portal);
+    nav.reset(첫로비);
     hideBoot();
   }
 
@@ -243,7 +246,7 @@ async function boot() {
     if (!u) { nav.reset(SplashLogin); 오락실중 = false; }
   } else {
     const 첫화면 = routeFor(u);
-    nav.reset(첫화면);
+    nav.reset(첫화면 === Portal ? 첫로비 : 첫화면);
     오락실중 = 첫화면 === Portal;
     hideBoot();
   }
@@ -255,7 +258,7 @@ async function boot() {
      * 로비의 미리받기·접속 표시가 한 번 더 돈다(2026-08-19 13차, '미리 로비' 이후).
      */
     if (next && !오락실중 && nav.depth() === 1 && routeFor(next) === Portal) {
-      nav.reset(Portal);
+      nav.reset(첫로비);
       오락실중 = true;
     }
     if (next && !next.guest) syncOnce();

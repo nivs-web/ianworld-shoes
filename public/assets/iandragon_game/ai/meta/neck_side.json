@@ -1,0 +1,147 @@
+{
+ "_note": "목 장식 옆모습 (11/14 · 제미나이 necks_worn_s1_515 에서 오림). dx,dy,w = 노바트 dressedCanvas(novart,{},fit W320 H320 pad4) 그림 좌표에서 이 그림의 왼쪽 위 · 폭 (칸 512 = 마네킹 2배 · 마네킹 = 그 그림의 (110,0)-(320,230) 자름) · frogbead · leafscarf = 11/14 necks_fix2_516 (512 한 장 · 칸 256 = 마네킹 1배 · 그림도 1배라 w = dw)",
+ "skull": {
+  "file": "neck_skull_side.png",
+  "w": 225,
+  "h": 350,
+  "dx": 165.5,
+  "dy": 34,
+  "dw": 112.5,
+  "rx": -14.32,
+  "ry": -24.16,
+  "rw": 33.75
+ },
+ "bonechain": {
+  "file": "neck_bonechain_side.png",
+  "w": 223,
+  "h": 205,
+  "dx": 166,
+  "dy": 109,
+  "dw": 111.5,
+  "rx": -14.18,
+  "ry": -1.66,
+  "rw": 33.45
+ },
+ "crystalbead": {
+  "file": "neck_crystalbead_side.png",
+  "w": 203,
+  "h": 176,
+  "dx": 171.5,
+  "dy": 112,
+  "dw": 101.5,
+  "rx": -12.53,
+  "ry": -0.76,
+  "rw": 30.45
+ },
+ "starnecklace": {
+  "file": "neck_starnecklace_side.png",
+  "w": 166,
+  "h": 197,
+  "dx": 186,
+  "dy": 116.5,
+  "dw": 83,
+  "rx": -8.18,
+  "ry": 0.59,
+  "rw": 24.9
+ },
+ "rubyamulet": {
+  "file": "neck_rubyamulet_side.png",
+  "w": 163,
+  "h": 206,
+  "dx": 188.5,
+  "dy": 108.5,
+  "dw": 81.5,
+  "rx": -7.43,
+  "ry": -1.81,
+  "rw": 24.45
+ },
+ "dragonheart": {
+  "file": "neck_dragonheart_side.png",
+  "w": 186,
+  "h": 200,
+  "dx": 187,
+  "dy": 108.5,
+  "dw": 93,
+  "rx": -7.88,
+  "ry": -1.81,
+  "rw": 27.9
+ },
+ "coalpouch": {
+  "file": "neck_coalpouch_side.png",
+  "w": 166,
+  "h": 199,
+  "dx": 187,
+  "dy": 105,
+  "dw": 83,
+  "rx": -7.88,
+  "ry": -2.86,
+  "rw": 24.9
+ },
+ "scarf": {
+  "file": "neck_scarf_side.png",
+  "w": 185,
+  "h": 226,
+  "dx": 182.5,
+  "dy": 108.5,
+  "dw": 92.5,
+  "rx": -9.22,
+  "ry": -1.81,
+  "rw": 27.75
+ },
+ "emberscarf": {
+  "file": "neck_emberscarf_side.png",
+  "w": 186,
+  "h": 230,
+  "dx": 182.5,
+  "dy": 108.5,
+  "dw": 93,
+  "rx": -9.22,
+  "ry": -1.81,
+  "rw": 27.9
+ },
+ "medal": {
+  "file": "neck_medal_side.png",
+  "w": 139,
+  "h": 188,
+  "dx": 195,
+  "dy": 114.5,
+  "dw": 69.5,
+  "rx": -5.47,
+  "ry": -0.01,
+  "rw": 20.85
+ },
+ "frostmedal": {
+  "file": "neck_frostmedal_side.png",
+  "w": 169,
+  "h": 230,
+  "dx": 187.5,
+  "dy": 108,
+  "dw": 84.5,
+  "rx": -7.72,
+  "ry": -1.96,
+  "rw": 25.35
+ },
+ "frogbead": {
+  "file": "neck_frogbead_side.png",
+  "w": 100,
+  "h": 78,
+  "dx": 177,
+  "dy": 103,
+  "dw": 100,
+  "rx": -10.87,
+  "ry": -3.46,
+  "rw": 30
+ },
+ "leafscarf": {
+  "file": "neck_leafscarf_side.png",
+  "w": 101,
+  "h": 105,
+  "dx": 182,
+  "dy": 108,
+  "dw": 101,
+  "rx": -9.37,
+  "ry": -1.96,
+  "rw": 30.3
+ },
+ "_fit_note": "rx · ry · rw = 겜보조 1 이 dx · dy · dw 를 노바트 리그 좌표로 옮긴 값 (노바트 목 기준점 = 몸통 자리 + wear_anchor neck → 0,0 · 칸 단위 · 노바트 fit 배율 3.333 · 가운데 (−8.975, −43.36)). 게임은 이 값을 «그 용 목 기준점 + 값 × (그 용 neck.w ÷ 노바트 neck.w)» 로 쓴다."
+}

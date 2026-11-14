@@ -19,11 +19,12 @@ import { BLOCKED } from '../data/blocked.js';   /* 잠시 잠근 꾸미기 (11/1
 
 const BASE = '/assets/iandragon_game/';
 let tabP = null;
-/** 표 { A: 드래곤 표, I: 물건 표, S: 옆모습 모자 표(없으면 {}) } — 한 번만 받는다 (실패하면 null · 다음에 다시) */
+/** 표 { A: 드래곤 표, I: 물건 표, S: 옆모습 모자 표, N: 옆모습 목 장식 표(없으면 {}) } — 한 번만 받는다 (실패하면 null · 다음에 다시) */
 export function wearTables() {
   if (!tabP) {
     tabP = Promise.all([fetch(`${BASE}ai/meta/wear_anchor.json`).then((r) => r.json()), fetch(`${BASE}ai/meta/wear_items.json`).then((r) => r.json()),
-      fetch(`${BASE}ai/meta/hat_side.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))]).then(([A, I, S]) => ({ A, I, S }));   /* S = 머리에 씌운 채 그린 옆모습 모자 표 (11/14) */
+      fetch(`${BASE}ai/meta/hat_side.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+      fetch(`${BASE}ai/meta/neck_side.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))]).then(([A, I, S, N]) => ({ A, I, S, N }));   /* S · N = 머리에 씌운 · 목에 두른 채 그린 옆모습 모자 · 목 장식 표 (11/14) */
     tabP.catch(() => { tabP = null; });
   }
   return tabP.catch(() => null);
@@ -51,6 +52,8 @@ export function wearWidth(it, D, sizes) {
  *         heads = 덮는 모자일 때 «모자용 머리» 그림 {부품이름: 주소} · mask = true 면 그 그림을 «모양만» 쓴다(색 바꾼 모습 : 자기 머리 색 그대로 뿔만 지움)
  *         skull = 두개골 모양 그림(모자용 머리) — 덮지 않는 모자도 이 모양으로 자리 · 폭 · 기울기를 잰다 · src = 상점 원본 그림 · hole = 굽을 때 머리 구멍을 뚫나
  *  neck = { file, ax, ay, x, y, layer } x · y = 몸통 부품 기준 · layer 'front'(몸통 앞) | 'back'(몸통 뒤)
+ *         옆모습 목 장식(neck_side.json) = { id, src, x, y, w, layer: 'top' } x · y = 몸통 부품 기준 그림 왼쪽 위 · w = 폭(칸) · 맨 앞 층(머리 · 팔 · 날개 위)
+ *           노바트에서 잰 자리(rx · ry · rw = 노바트 목 기준점 기준)를 «이 용 목 기준점(wear_anchor neck) + 값 × (이 용 neck.w ÷ 노바트 neck.w)» 로 옮긴다
  */
 export function wearPlan(art, lk, T) {
   const key = wearArt(T, art), D = key && T.A.dragons[key], out = {};
@@ -73,6 +76,11 @@ export function wearPlan(art, lk, T) {
   }
   const nid = lk.neck && !BLOCKED.has('neck:' + lk.neck) && 'neck_' + lk.neck, ni = nid && T.I.items[nid];
   if (ni) { out.neck = part(ni, nid, ni.layer === 'back' ? D.back : D.neck); out.neck.layer = ni.layer === 'back' ? 'back' : 'front'; }
+  const nd = ni && T.N?.[lk.neck], nov = T.A.dragons.novart?.neck;
+  if (nd?.file && [nd.rx, nd.ry, nd.rw].every((v) => typeof v === 'number') && nov?.w && D.neck?.w) {   /* 목에 두른 채 새로 그린 옆모습 그림 (옛 그림 파일은 그대로) */
+    const k = D.neck.w / nov.w;
+    out.neck = { id: nid, src: `ai/meta/${nd.file}`, file: out.neck.file, x: D.neck.x + nd.rx * k, y: D.neck.y + nd.ry * k, w: Math.max(4, Math.round(nd.rw * k)), ax: 0, ay: 0, layer: 'top' };
+  }
   return out;
 }
 
@@ -367,12 +375,14 @@ function punchHole(buf, w, h) {
   for (let i = 0; i < N; i++) if (grown[i] && dark[i]) buf[i * 4 + 3] = 0;
 }
 const baked = new WeakMap();   // 원본 픽셀 → { 폭: 픽셀 }
+/** 목 장식 줄이기 알파 기준 (가는 끈 · 사슬이 1칸으로 남게) */
+export const NECK_AMIN = 50;
 /** 상점 원본 모자 그림 픽셀 → 폭 w 칸으로 줄인 픽셀 (투명 가장자리 자르기 · 머리 구멍 · 반투명 없앰) — 못 하면 null */
-export function bakeHat(src, w, hole) {
+export function bakeHat(src, w, hole, amin = 120) {   /* amin = 이 알파 이상만 남김 (목 장식은 낮춰 가는 줄 · 끈이 줄여도 남게) */
   if (!src?.d || !w || typeof document === 'undefined') return null;
   let memo = baked.get(src);
   if (!memo) baked.set(src, (memo = {}));
-  const key = `${w}${hole ? 'h' : ''}`;
+  const key = `${w}${hole ? 'h' : ''}_${amin}`;
   if (key in memo) return memo[key];
   let out = null;
   try {
@@ -389,7 +399,7 @@ export function bakeHat(src, w, hole) {
       g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
       g.drawImage(pixCanvas({ w: cw, h: ch, d: buf }), 0, 0, w, h);
       const r = g.getImageData(0, 0, w, h).data;
-      for (let i = 0; i < r.length; i += 4) { if (r[i + 3] < 120) r[i] = r[i + 1] = r[i + 2] = r[i + 3] = 0; else r[i + 3] = 255; }
+      for (let i = 0; i < r.length; i += 4) { if (r[i + 3] < amin) r[i] = r[i + 1] = r[i + 2] = r[i + 3] = 0; else r[i + 3] = 255; }
       out = { w, h, d: r };
     }
   } catch { out = null; }

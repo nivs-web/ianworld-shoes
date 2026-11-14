@@ -217,7 +217,7 @@ export function powerPage(h, o) {
        *  오른쪽 띠 (전투 판 사이만) : 큰 빨간 «다시하기» · «전투 개시!» + 아래 «돌아가기» — 로비는 띠 없이 카드 칸이 넓어짐 */
       /* 3차 : 가운데 리본 제목 없음 · 전투 판 사이 = 로고는 오른쪽 띠 맨 위 · 로비 = 띠가 없으니 로고를 머리 줄 오른쪽(닫기 X 왼쪽)에 */
       const top = h('div', 'idg-pp-top2'); top.append(wallet, logo(), right.querySelector('.idg-pp-x') || h('i'));   /* 11/13 : «파워업» 제목은 늘 머리 줄 정중앙 (전투 판 사이도 띠 위가 아니라 여기) */
-      const plate = (a, b) => { const p = h('div', 'idg-pp-plate'); p.append(h('b', null, a), h('span', null, `< ${b} >`)); return p; };
+      const plate = (a, b) => { const p = h('div', 'idg-pp-plate'); p.append(h('b', null, a), h('span', null, b)); return p; };   /* 11/14 대표님 : «< 2/10 >» → «2/10» · «< 20카드 보유 >» → «20카드 보유» */
       const sScroll = h('div', 'idg-pp-sbody'); sScroll.append(slots);
       slots.append(guideCell(short)); if (short && !swapFor && sel == null) hint.hidden = true;   /* 가로 : 모자람 경고는 양탄자 칸에만 (아래 빨간 줄은 안 띄움) */   /* 10번 칸 옆 빈 2칸 */
       const sCol = h('div', 'idg-pp-col slots'); const sPlate = plate('출전덱', `${deck.length}/${un.deckCap}`); sPlate.classList.add('has-clear', 'deckp'); sPlate.append(clearBtn);   /* 대표님 11/13 : 오른쪽 «파워업 카드 < 10카드 보유 >» 와 같은 모양 — 노란 «출전덱» + 흰 «< 8/10 >» · 오른쪽 비우기 */   /* 비우기 자리를 내려고 «< 출전 8/10 >» → «< 8/10 >» */

@@ -1,0 +1,50 @@
+/* 꾸미기 창 단추 = 디자인 규칙표 (11/14 대표님 «규칙대로 만들었나 검토» → 안 맞던 것 고침)
+ *  ③ 작은 단추 : 초록(저장) · 보라(불러오기 · 랜덤코디 · 칸 1 2 3 · 분류 탭) — 골라진 것 = 노란 테 · 글씨 1px
+ *  예전 그림 단추(tab2 빨강 · 갈색 판, btn_green3 그림)는 쓰지 않음 */
+.dialog.idg-v2.idg-look { --k-o2: 1px 0 var(--k-o), -1px 0 var(--k-o), 0 1px var(--k-o), 0 -1px var(--k-o), 1px 1px var(--k-o), -1px 1px var(--k-o), 1px -1px var(--k-o), -1px -1px var(--k-o); }
+.dialog.idg-v2.idg-look .idg-k-btn.green.sm { border: 3px solid #000 !important; border-image: none !important; border-radius: 8px !important; background: #3fbf4f !important; box-shadow: inset 0 3px 0 #8ff09a, inset 0 -4px 0 #1f7a38 !important; color: #fff; }
+.dialog.idg-v2.idg-look .idg-k-btn.purple.sm, .dialog.idg-v2.idg-look .idg-k-tab {
+  border: 2px solid #8e7bcc !important; border-image: none !important; border-radius: 8px !important; background: linear-gradient(180deg, #57458c, #44356e) !important;
+  box-shadow: 0 0 0 2px #1d1233, 0 3px 0 #1d1233 !important; color: #f2ecff !important; text-shadow: var(--k-o1) !important; }
+.dialog.idg-v2.idg-look .idg-k-btn.purple.sm.on, .dialog.idg-v2.idg-look .idg-k-tab[aria-selected="true"], .dialog.idg-v2.idg-look .idg-k-tab.on { border-color: #ffd45a !important; color: #fff !important; }
+.dialog.idg-v2.idg-look .idg-k-tab { min-height: 2em; padding: 0 .6em; font-weight: 800; }
+
+/* 왼쪽 카드 (11/14 대표님) : 왼쪽 칸을 위아래 꽉 채움 · 모서리 무늬가 살게(9칸 늘림 · 모서리 그대로) · 용 = 정확히 가운데 · 카드 아래 금색 줄 없앰 */
+.dialog.idg-v2.idg-look > .idg-dlg-body { container-type: size; }
+.dialog.idg-v2.idg-look .idg-lk { align-items: stretch !important; }
+.dialog.idg-v2.idg-look .idg-lk-side { position: sticky; top: 0; height: 100cqh !important; box-sizing: border-box; display: flex; flex-direction: column; padding-bottom: 0 !important; background: none !important; box-shadow: none !important; }
+.dialog.idg-v2.idg-look .idg-lk-stage { flex: 1 1 auto; height: auto !important; min-height: 0; border-width: 18px !important; border-image: url(/assets/iandragon_game/ai/kit/cx_card.webp) 44 fill / 18px stretch !important; }
+.dialog.idg-v2.idg-look .idg-lk-stage:not(.has-flag) .idg-lk-dbox { left: 0; right: 0; justify-content: center; }
+.dialog.idg-v2.idg-look .idg-lk-stage:not(.has-flag) .idg-lk-dragon { object-position: 50% 100%; }
+
+/* ═══ 꾸미기 새 배치 (11/14 대표님) ═══
+ *  왼쪽 칸 = ① 코디 줄 1 2 3 · 저장 · 불러오기 · 랜덤코디 (칸 폭에 딱 맞게) ② 아이템샵 왼쪽 메뉴 같은 큰 단추 2개(드래곤 꾸미기 · 드래곤캐슬 꾸미기) ③ 남은 자리 = 미리보기 카드
+ *  오른쪽 칸 = 작은 탭 → 목록 */
+.dialog.idg-v2.idg-look .idg-lk { display: flex !important; flex-direction: row !important; gap: .7em !important; align-items: flex-start !important; width: 100%; }
+.dialog.idg-v2.idg-look .idg-lk-rail { flex: 0 0 36%; min-width: 0; height: 100cqh; box-sizing: border-box; position: sticky; top: 0; z-index: 3; display: flex; flex-direction: column; gap: .45em; }
+.dialog.idg-v2.idg-look .idg-lk-list { flex: 1 1 0; min-width: 0; }
+.dialog.idg-v2.idg-look .idg-lk-side { position: static !important; flex: 1 1 0; height: auto !important; min-height: 0; }
+.dialog.idg-v2.idg-look .idg-lk-side > * { flex: 1 1 auto; min-height: 0; }
+/* ① 코디 줄 : 폭에 딱 맞게 한 줄 */
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob { position: relative; display: flex !important; flex-wrap: nowrap !important; align-items: stretch; gap: .2em !important; width: 100%; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob-label { display: none !important; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob-slots { display: flex; gap: .2em; flex: 1.3 1 0; min-width: 0; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob .idg-k-btn { flex: 1 1 auto; min-width: 0; min-height: 2.1em; padding-inline: .15em !important; font-size: .74em !important; white-space: nowrap; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob .idg-ob-slot { flex: 1 1 0; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob-msg { position: absolute; left: 0; right: 0; top: calc(100% + 3px); z-index: 6; text-align: center; font-size: .72em; color: #fff7d6; text-shadow: var(--k-o1); pointer-events: none; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob-msg:empty { display: none; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-trial { font-size: .8em; }
+/* ② 큰 단추 2개 = 아이템샵 왼쪽 메뉴(규칙표 ⑰) 그대로 */
+.dialog.idg-v2.idg-look .idg-lk-menu { flex: none; display: flex; flex-direction: column; gap: .4em; padding: 0 .9em 0 0; }
+.dialog.idg-v2.idg-look .v2s-rb { position: relative; display: flex; align-items: center; gap: .5em; width: 100%; height: 2.45em; margin: 0; padding: 0 .65em; box-sizing: border-box;
+  border: 2px solid #000; border-radius: 9px; background: #352858; box-shadow: inset 0 0 0 1px #5a4a8a, 0 3px 0 #000;
+  font: 800 1em/1 var(--k-font), sans-serif; color: #bdb0e0; text-shadow: var(--k-o1); text-align: left; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.dialog.idg-v2.idg-look .v2s-rb > img { flex: none; height: 1.65em; width: 1.8em; object-fit: contain; image-rendering: pixelated; }
+.dialog.idg-v2.idg-look .v2s-rb > span { min-width: 0; overflow: hidden; text-overflow: clip; }
+.dialog.idg-v2.idg-look .v2s-rb.on { background: #6a4fc4; color: #fff; box-shadow: inset 0 0 0 2px #ffd45a, 0 3px 0 #000; cursor: default; }
+.dialog.idg-v2.idg-look .v2s-rb.on::after { content: ''; position: absolute; right: -.8em; top: 50%; margin-top: -.45em; border: .45em solid transparent; border-left-color: #ffd45a; }
+.dialog.idg-v2.idg-look .v2s-rb:active:not(.on) { transform: translateY(1px); }
+.dialog.idg-v2.idg-look .idg-lk-rail > .idg-lk-side { align-self: stretch !important; width: 100% !important; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob-slots { flex: 0 0 auto !important; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob .idg-ob-slot { flex: none !important; min-width: 1.9em !important; }
+.dialog.idg-v2.idg-look .idg-lk-rail .idg-ob > .idg-k-btn { flex: 1 1 auto !important; }

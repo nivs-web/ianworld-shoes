@@ -13,9 +13,15 @@ import '../../../styles/idg-kit.css';      /* 키트 먼저 → 서브 창 다�
 import '../../../styles/idg-subwin.css';
 import '../../../styles/idg-titlebar.css';
 import '../../../styles/idg-window-rules.css';   /* 창 규칙표 1판 (11/14) */
+import '../../../styles/idg-v2.css';
+import '../../../styles/idg-green-buy.css';   /* 초록 구매 버튼 = 규칙표 ㉙ (11/14) */   /* 규칙표 고침 (편의품 · 출전순 · 글씨) 이 전투 화면에도 (11/14) */
 
 export const COIN_ICON = '/assets/iandragon_game/ai/ui/coin.svg';
 export const GEM_ICON = '/assets/iandragon_game/ai/ui/gem.svg';
+/** 초록 구매 버튼(규칙표 ㉙) 안 금화 = 검은 테 없는 깔끔한 금화 (11/14 대표님) */
+export const COIN_CLEAN = '/assets/iandragon_game/ai/ui/coin_clean.svg';
+/** 올리기 · 레벨업 같은 글씨 = 앞에 올리기 화살표 (규칙표 ㉙) */
+export const UP_WORD = /올리기|레벨업|강화|진화|업그레이드/;
 const NAME = { coin: '금화', gem: '젬' };
 export const fmtMoney = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 
@@ -27,9 +33,9 @@ function node(tag, cls, text) {
 }
 
 /** 아이콘 하나 (글자 대신) — 화면 읽기 프로그램에는 «금화» «젬» 으로 읽힌다 */
-export function moneyIcon(kind) {
+export function moneyIcon(kind, clean) {
   const im = node('img', 'idg-cash-ico');
-  im.src = kind === 'gem' ? GEM_ICON : COIN_ICON; im.alt = NAME[kind] || ''; im.draggable = false;
+  im.src = kind === 'gem' ? GEM_ICON : clean ? COIN_CLEAN : COIN_ICON; im.alt = NAME[kind] || ''; im.draggable = false;
   return im;
 }
 
@@ -37,7 +43,7 @@ export function moneyIcon(kind) {
 export function money(kind, n, opt = {}) {
   const w = node('span', `idg-cash ${kind}${opt.pill ? ' pill' : ''}${opt.cls ? ` ${opt.cls}` : ''}`);
   w.title = `${NAME[kind] || ''} ${fmtMoney(n)}`;
-  w.append(moneyIcon(kind), node('b', null, `${opt.sign || ''}${fmtMoney(n)}`));
+  w.append(moneyIcon(kind, opt.clean), node('b', null, `${opt.sign || ''}${fmtMoney(n)}`));
   return w;
 }
 
@@ -50,8 +56,8 @@ export function buyButton(o) {
   const tone = o.tone || 'green';
   const b = node('button', `idg-buy ${tone}${o.poor ? ' poor' : ''}${o.cls ? ` ${o.cls}` : ''}`);
   b.type = 'button';
-  if (o.label) b.append(node('span', 'idg-buy-label', o.label));
-  if (o.kind && o.price != null) b.append(money(o.kind, o.price));
+  if (o.label) b.append(node('span', `idg-buy-label${UP_WORD.test(o.label) ? ' up' : ''}`, o.label));
+  if (o.kind && o.price != null) b.append(money(o.kind, o.price, { clean: tone === 'green' }));
   if (o.tag) b.append(node('i', 'idg-buy-tag', o.tag));
   if (o.poor) b.title = o.kind === 'gem' ? '젬이 모자라요' : '금화가 모자라요'; else if (o.title) b.title = o.title;
   if (o.disabled || o.poor) b.disabled = true;

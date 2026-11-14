@@ -21,5 +21,5 @@
 /* 11/14 대표님 : 캐슬이 용에 비해 작고 공중에 떠 보임 → 20% 크게 (로고 · 화면 위로 넘쳐도 됨) · 무대 바닥 동그라미 한가운데에 밑동이 닿게 살짝 내림 · 가로 가운데 */
 .screen.idg-lobby2 > .l2-dragon.l2-castle { transform-origin: 50% 100%; transform: translate(-50%, -100%) translateY(calc(var(--dk) * var(--sc) * .075)) scale(1.2); }
 
-/* 11/14 대표님 : 전환 단추 화살표 = 규칙표 SVG 모음 «다시하기»(ico_retry) · 빨간 네모 바탕 */
-.l2-sw-ico { width: 1.25em; height: 1.25em; border-radius: .2em; background: #e0402c url(/assets/iandragon_game/ai/result/ico_retry.svg) center / 78% 78% no-repeat; box-shadow: inset 0 0 0 1px #ffb09e, 0 0 0 1px #000; }
+/* 11/14 대표님 : 전환 단추 화살표 = 규칙표 SVG 모음 «다시하기»(ico_retry) */
+.l2-sw-ico { width: 1.15em; height: 1.15em; border-radius: 0; background: url(/assets/iandragon_game/ai/result/ico_retry.svg) center / contain no-repeat; box-shadow: none; }   /* 11/14 대표님 : 빨간 네모 바탕 없이 SVG 만 */

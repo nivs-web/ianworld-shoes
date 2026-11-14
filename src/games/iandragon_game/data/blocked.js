@@ -4,11 +4,8 @@
  *  그림을 다시 그려 고치면 이 목록에서 지우기만 하면 풀린다.
  */
 export const BLOCKED = new Set([
-  /* 모자 — 새 옆모습 그림이 깨짐 (초록 바탕 지울 때 같이 지워짐 · 무늬 깨짐) */
-  'hat:lilypad', 'hat:ribbon', 'hat:wingcap',   /* 늪 마녀 · 용암 고깔 · 파라오 = 11/14 다시 그려 풂 */
-  /* 목 장식 — 몸 밖 공중에 떠 보이거나 배에 붙어 보임 · 날개에 가려 안 보임 */
-  'neck:skull', 'neck:bonechain', 'neck:frogbead', 'neck:crystalbead', 'neck:starnecklace', 'neck:rubyamulet', 'neck:dragonheart', 'neck:coalpouch',
-  'neck:scarf', 'neck:emberscarf', 'neck:medal', 'neck:frostmedal', 'neck:leafscarf',
+  /* 모자 — 늪 마녀 · 용암 고깔 · 파라오 · 연잎 · 리본 · 날개모자 = 11/14 다시 그려 풂 (hats_fix3_516) */
+  /* 목 장식 — 개구리 구슬 · 나뭇잎 스카프 = 11/14 파랑 바탕으로 목에 두른 채 다시 그려 풂 (necks_fix2_516 · neck_side.json) */
 ]);
 export const BLOCK_TEXT = '새로 그리는 중이라 잠시 잠겼어요';
 export const isBlocked = (key) => BLOCKED.has(key);

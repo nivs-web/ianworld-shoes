@@ -7,7 +7,7 @@
  * 그림 = tools/idg-wear-bake.mjs 가 도트 칸에 맞는 정수 폭으로 줄여 둔 ai/meta/wear/fit/<물건>_<폭>.png (흐림 없음).
  */
 import { Sprite, Container, Texture } from 'pixi.js';
-import { wearTables, wearWidth, wearPlan, wearArt, hatFit, hatWidth, bakeHat, pixCanvas, maskedHead } from './wearPlan.js';
+import { wearTables, wearWidth, wearPlan, wearArt, hatFit, hatWidth, bakeHat, NECK_AMIN, pixCanvas, maskedHead } from './wearPlan.js';
 import { texPixels } from './texPix.js';
 
 export { wearTables, wearWidth, wearPlan, wearArt };
@@ -63,7 +63,15 @@ export async function attachWear(R, data, art, lk, T, loadTex) {
       }
     }
   }
-  if (plan.neck && torso) {
+  if (plan.neck?.layer === 'top' && torso) {   /* 옆모습 목 장식 : 맨 앞 층(머리 · 팔 위) · 매 프레임 몸통 자리 · 각 · 크기 · 보임을 따라간다 */
+    const e = plan.neck, src = await loadTex(e.src), spx = src ? texPixels(src) : null, np = spx ? bakeHat(spx, e.w, false, NECK_AMIN) : null;
+    const tex = np && once(`n${src.uid}_${e.w}_${NECK_AMIN}`, () => pixCanvas(np));
+    if (tex && !torso.destroyed && torso.parent === body) {
+      const box = new Container(), sp = new Sprite(tex); sp.position.set(e.x, e.y); box.addChild(sp); body.addChild(box);
+      const sync = () => { if (torso.destroyed) return; box.position.copyFrom(torso.position); box.rotation = torso.rotation; box.scale.copyFrom(torso.scale); box.visible = torso.visible; };
+      sync(); box.onRender = sync;
+    }
+  } else if (plan.neck && torso) {
     const sp = await mk(plan.neck);
     if (sp && !torso.destroyed && torso.parent === body) {
       if (plan.neck.layer === 'front') torso.addChild(sp);

@@ -8,7 +8,7 @@
  */
 import { decodeLook } from '../games/iandragon_game/data/looks.js';
 import { applyRigFix, rigFixTable, rigJson } from '../games/iandragon_game/render/rig.js';
-import { wearTables, wearPlan, hatFit, hatWidth, bakeHat, pixOf, pixCanvas, maskedHead } from '../games/iandragon_game/render/wearPlan.js';
+import { wearTables, wearPlan, hatFit, hatWidth, bakeHat, NECK_AMIN, pixOf, pixCanvas, maskedHead } from '../games/iandragon_game/render/wearPlan.js';
 
 const BASE = '/assets/iandragon_game/';
 /* 같은 그림은 한 번만 받는다 (로비가 세로 · 가로 프로필을 다시 그릴 때 · 11/12 속도) — 실패는 기억하지 않아 다음에 다시 시도 */
@@ -43,6 +43,11 @@ function drawHat(x, s, ox, oy) {
   const w = s.im.width, h = s.im.height;
   x.save(); x.translate(ox + s.x + w / 2, oy + s.y + h); x.rotate(s.rot || 0); x.drawImage(s.im, -w / 2, -h); x.restore();
 }
+/** 옆모습 목 장식 그림 (원본 → 폭 e.w 로 굽기) | null */
+async function neckSide(e) {
+  const src = await img(BASE + e.src), np = src ? bakeHat(px(src), e.w, false, NECK_AMIN) : null;
+  return np ? pixCanvas(np) : null;
+}
 /** 저장 글자 또는 이미 푼 꾸미기 { hat, neck, … } */
 const lookOf = (v) => (v && typeof v === 'object' ? v : decodeLook(v || ''));
 
@@ -55,7 +60,8 @@ export async function dressedCanvas(art, lookStr = '', { K = 1.7, W = 300, H = 2
   const plan = wearPlan(art, lk, T);
   const own = (n) => `${BASE}ai/${art}/${files[n] || n}.png`;
   const parts = await Promise.all(rig.parts.map((q) => headImg(plan.hat, own(q.n), q.n)));   /* 덮는 모자 → 모자용 머리 */
-  const neckImg = plan.neck ? await img(BASE + plan.neck.file) : null;
+  const neckTop = plan.neck?.layer === 'top';   /* 옆모습 목 장식 = 원본을 그 용 폭으로 줄여 맨 앞 층에 */
+  const neckImg = !plan.neck ? null : neckTop ? await neckSide(plan.neck) : await img(BASE + plan.neck.file);
   const hq = rig.parts.findIndex((q) => q.n === 'head');
   const hatS = plan.hat && hq >= 0 && parts[hq] ? await seated(plan.hat, parts[hq], rig.parts[hq], own('head')) : null, hatImg = hatS?.im;   /* 두개골에 씌운 자리 · 폭 · 기울기 */
   const spot = (e, im) => (e === plan.hat && hatS ? [hatS.x, hatS.y] : [Math.round(e.x - e.ax * im.width), Math.round(e.y - e.ay * im.height)]);   /* 그림 왼쪽 위 = 붙는 점 − 그림 안 붙는 점 */
@@ -78,6 +84,8 @@ export async function dressedCanvas(art, lookStr = '', { K = 1.7, W = 300, H = 2
     if (q.n === 'torso' && plan.neck?.layer === 'front') neckAt(q.p);   /* 몸통 위 층 */
     if (q.n === 'head' && hatS && !hatS.behind) drawHat(x, hatS, q.p[0], q.p[1]);   /* 모자 (머리 앞 층) */
   });
+  const tq = neckTop && rig.parts.find((q) => q.n === 'torso');
+  if (tq) neckAt(tq.p);   /* 옆모습 목 장식 = 맨 앞 층 */
   return c;
 }
 

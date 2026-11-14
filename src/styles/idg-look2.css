@@ -109,7 +109,7 @@
   .idg-lk, .idg-lk-list { gap: .35em; }
   .idg-ob { gap: .2em .25em; }
   .idg-ob { flex-wrap: nowrap; }
-  .idg-ob-label { display: none; }   /* «코디» 글자는 단추들(1 2 3 · 저장 · 불러오기 · 주사위 코디)이 말해 줌 — 한 줄에 넣으려고 */
+  .idg-ob-label { display: none; }   /* «코디» 글자는 단추들(1 2 3 · 저장 · 불러오기 · 랜덤코디)이 말해 줌 — 한 줄에 넣으려고 */
   .idg-ob-slots { gap: .15em; flex: none; }
   .dialog.idg-k .idg-ob .idg-k-btn { flex: 0 1 auto; padding-inline: .2em; font-size: .74em; white-space: nowrap; }
   .dialog.idg-k .idg-ob .idg-ob-slot { min-width: 22px; flex: none; }
