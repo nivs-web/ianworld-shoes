@@ -22,6 +22,7 @@
 import { LEADERS } from './leaders.js';
 import { TIERS, TIER_KO, LOOK_FX, SLOT_IDS } from './lookFx.js';
 import { MASTER_ON } from './features.js';
+import { BLOCKED, BLOCK_TEXT } from './blocked.js';   /* 잠시 잠근 꾸미기 (11/14) */
 
 export { TIERS, TIER_KO };
 /** 큰 칸 → 작은 칸 (샵 · 꾸미기 창 메뉴) */
@@ -341,10 +342,11 @@ export function condMet(row, g) {
   return false;   // 다시 깨기 전용 = 떨어질 때만
 }
 /** 샵에서 살 수 있게 열렸나 (판매 품목 + 조건) */
-export const isOpen = (row, g) => !!row.price && condMet(row, g) && (row.vis === 'all' || seesMaster(g));
+export const isOpen = (row, g) => !BLOCKED.has(row.key) && !!row.price && condMet(row, g) && (row.vis === 'all' || seesMaster(g));
 
 /** 잠긴 카드 한 줄 (vis 'master' 물건은 초고수가 열리기 전까지 «어려움 10-10 뒤의 도전» 으로만) */
 export function lockText(row, g) {
+  if (BLOCKED.has(row.key)) return BLOCK_TEXT;
   const f = row.from;
   let m = /^normalW(\d+)$/.exec(f);
   if (m) return `보통 월드 ${m[1]}${eul(m[1])} 깨면 열려요`;
@@ -368,6 +370,7 @@ export const visibleLooks = (g) => CATALOG.filter((r) => r.vis === 'all' || sees
 /** 물건 한 장의 모습 : 'owned' 가짐 · 'open' 살 수 있음 · 'locked' 자물쇠 + lockText · 'reward' 보스에게서(전설) · 'shadow' «???» 그림자(신화 · 초고수 전) · 'hidden' */
 export function itemView(row, g) {
   if (row.vis === 'master' && !seesMaster(g)) return 'hidden';
+  if (BLOCKED.has(row.key)) return 'locked';   /* 가졌어도 잠김 (11/14) */
   if (owns(g, row.key)) return 'owned';
   if (isOpen(row, g)) return 'open';
   if (row.vis === 'master' && !masterOpen(g)) return 'shadow';

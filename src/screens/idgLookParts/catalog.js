@@ -5,6 +5,7 @@
  *  입은 모습 글자(look · clook) = idgLookParts/wear.js. 코디 3칸 저장 = fits [{ look, clook } × 3] (IDG_UPGRADES_SPEC §1.2) —
  *  캐슬 모습(skin)은 코디 한 칸의 clook 끝에 's3' 으로 붙인다(모르는 머리글이라 다른 곳은 버리고 읽음).
  */
+import { isBlocked } from '../../games/iandragon_game/data/blocked.js';
 import { itemsOf, isOwned } from '../shopCatalog.js';
 import { WORN, partsFor, wearOf } from './wear.js';
 import { decodeWear } from '../../games/iandragon_game/data/lookFx.js';
@@ -23,7 +24,7 @@ export const DRAGON_TABS = [['dragon', '대장 드래곤'], ['hat', '모자'], [
 export const CASTLE_TABS = [['skin', '캐슬 모습'], ['flag', '깃발'], ['roof', '지붕'], ['gate', '정문'], ['yard', '앞마당'], ['gear', '장비']];
 
 /** 가졌나 */
-export const owns = (g, slot, id) => isOwned(g, { slot, id, key: `${slot}:${id}` });
+export const owns = (g, slot, id) => !isBlocked(`${slot}:${id}`) && isOwned(g, { slot, id, key: `${slot}:${id}` });   /* 잠긴 꾸미기 = 못 씀 (11/14) */
 
 /** 이 칸의 물건 전부 — 격자 모양 { id, name, rarity(별 수), fx, lock, art, owned } · 살 수 있는 것 → 잠긴 것 순서(가진 것은 격자가 앞으로 뺀다) */
 export function catalogFor(slot, g) {

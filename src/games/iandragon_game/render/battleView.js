@@ -71,7 +71,7 @@ export async function createBattleView(ctx, { world, L, dragons, enemies, leader
     if (!lk) return;
     tryLoad(`${AI}meta/flag_${lk.flag || 'pumpkin'}.png`);   /* 안 달았으면 호박 깃발 (dress) */
     WEARP.then((T) => {
-      const pl = wearPlan(art, lk, T), fs = [pl.hat?.file, ...Object.values(pl.hat?.heads || {}), pl.neck?.file];
+      const pl = wearPlan(art, lk, T), fs = [pl.hat?.src || pl.hat?.file, pl.hat?.skull, ...Object.values(pl.hat?.heads || {}), pl.neck?.file];   // src = 모자 원본(옆모습) · skull = 자리 재는 두개골 모양 (wearPlan hatFit)
       for (const f of fs) if (f) tryLoad('/assets/iandragon_game/' + f);
     });
   };
