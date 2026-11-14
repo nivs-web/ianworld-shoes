@@ -71,3 +71,22 @@ img { image-rendering: pixelated; }
 .paper { padding: .45em .7em; border: 3px solid #6a3e14; border-radius: 6px; background: #f3dfae; box-shadow: inset 0 0 0 2px #fff0c8, 0 3px 0 var(--o); color: #4a2c12; text-shadow: none; font-size: .78em; line-height: 1.4; text-align: center; }
 .paper b { color: #8a2a10; }
 .sec { font-size: .8em; color: var(--gold-hi); margin: .1em 0 -.1em; }
+
+/* ═══ 2판 머리 (11/14 대표님 확정) : 호박 모서리 틀(dialog9) · 제목 = 가운데 위 날개 현판 · 재화 = 왼쪽 위 · X(옛 그림) + 같은 크기 바로가기 = 오른쪽 위 ═══ */
+.win.v2 { top: calc(50% + 1.1em); height: min(calc(92vh - 2.2em), 620px); overflow: visible; padding: 4px 6px 6px; border: solid transparent; border-width: 30px 28px; border-radius: 0;
+  border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / 30px 28px stretch; background: var(--bg) padding-box; box-shadow: none; }
+.win.v2 > .head { position: relative; margin-top: -14px; }
+.win.v2 > .head .tt { position: absolute; left: 50%; top: calc(-30px - .2em); transform: translate(-50%, -50%); z-index: 3; display: flex; align-items: center; justify-content: center; white-space: nowrap;
+  --wh: 3.3em; height: calc(2.3em - 3px); padding: 0 2.25em; border: 2px solid transparent; border-radius: 1.2em;
+  background: linear-gradient(#433578 0%, #35296a 63%, #271c4a 64%, #241a44 100%) padding-box, linear-gradient(#fff0b8 0%, #f2c45a 30%, #d9a441 60%, #a8742a 100%) border-box; box-shadow: 0 0 0 3px var(--o), 2px 3px 0 3px rgba(0, 0, 0, .45); }
+.win.v2 > .head .tt b { position: relative; top: -1.5px; font-size: 1.5em; color: #fff; text-shadow: 2px 0 var(--o), -2px 0 var(--o), 0 2px var(--o), 0 -2px var(--o), 2px 2px var(--o), -2px 2px var(--o), 2px -2px var(--o), -2px -2px var(--o), 4px 4px 0 #000, 3px 4px 0 #000, 4px 3px 0 #000, 4px 2px 0 #000, 2px 4px 0 #000; }
+.win.v2 > .head .tt b::after { content: attr(data-t); position: absolute; inset: 0; color: transparent; text-shadow: none; background: linear-gradient(#fff 0 52%, #d9c690 52% 100%); -webkit-background-clip: text; background-clip: text; }
+.win.v2 > .head .tt::before, .win.v2 > .head .tt::after { content: ''; position: absolute; top: 50%; width: calc(var(--wh) * 175 / 196); height: var(--wh); margin-top: calc(var(--wh) * -.42); background: url(/assets/iandragon_game/ai/result/banner_win_open.webp) 0 0 / calc(var(--wh) * 720 / 196) var(--wh) no-repeat; }
+.win.v2 > .head .tt::before { right: calc(100% - .55em); } .win.v2 > .head .tt::after { left: calc(100% - .55em); background-position: calc(var(--wh) * -545 / 196) 0; }
+.win.v2 > .head .grow { flex: 1; }
+.xk { flex: none; width: 2.3em; height: 2.3em; background: url(/assets/iandragon_game/ai/kit/btn_close.webp) center / 100% 100% no-repeat; }
+/* 바로가기 단추 = X 와 같은 크기 · 주황(바로가기 색) · 그림 + 작은 이름 */
+.go { position: relative; flex: none; width: 2.3em; height: 2.3em; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #3a1a08; border-radius: 7px; background: #e0852c; box-shadow: inset 0 0 0 2px #f2c45a, inset 0 4px 0 1px #ffc77a, inset 0 -4px 0 1px #8e4a0f; margin-right: .25em; }
+.go img { height: 1.15em; margin-top: -.15em; } .go span { font-size: .5em; line-height: 1; margin-top: .05em; }
+.allp { display: inline-flex; align-items: center; gap: .35em; height: 1.9em; padding: 0 .7em; border: 2px solid #d9a441; border-radius: 999px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238; font-size: .85em; }
+.allp b { color: var(--gold-hi); }

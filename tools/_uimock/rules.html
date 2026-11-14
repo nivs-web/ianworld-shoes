@@ -66,6 +66,8 @@ h2 small { margin-left: 10px; font-size: 13px; color: #c9bde8; }
 .badge2 .badge { font-size: 13px; }
 .win { position: static; transform: none; width: auto; height: auto; }
 .ref { width: min(100%, 640px); margin: 0 auto; border: 3px solid #000; border-radius: 10px; display: block; }
+.go2 { position: relative; width: 48px; height: 48px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #3a1a08; border-radius: 8px; background: #e0852c; box-shadow: inset 0 0 0 2px #f2c45a, inset 0 4px 0 1px #ffc77a, inset 0 -4px 0 1px #8e4a0f; }
+.go2 img { height: 24px; margin-top: -3px; } .go2 span { font-size: 9px; line-height: 1; text-shadow: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000; }
 </style>
 
 <h2>좀비와 드래곤 — 디자인 규칙표 <small>이 한 장에 있는 양식만 쓴다 · 글씨는 그라데이션 없이 검은 테 2px</small></h2>
@@ -104,6 +106,10 @@ h2 small { margin-left: 10px; font-size: 13px; color: #c9bde8; }
   <div class="box"><span class="lbl">⑩ 재화 — 창 안 (알약)</span>
     <div class="rowx"><span class="pill"><img src="/assets/iandragon_game/ai/ui/coin.svg"><b class="c">99,999</b><i></i><img src="/assets/iandragon_game/ai/ui/gem.svg"><b class="gm">999</b></span></div></div>
 
+  <div class="box"><span class="lbl">⑫ 도감 전체 단추 <em>도감 왼쪽 위 · 모은 수 + 비율 알약 (누르는 단추는 아님 · 디자인은 대표님이 따로 정함)</em></span>
+    <div class="rowx"><span class="pill" style="font-size:16px">전체 <b class="c">65/77</b><i></i><b class="c">84%</b></span></div></div>
+  <div class="box"><span class="lbl">⑬ 바로가기 단추 <em>X 바로 옆 · X 와 같은 크기 · 아이템샵 ↔ 꾸미기</em></span>
+    <div class="rowx"><span class="go2"><img src="/assets/iandragon_game/ui/lobby/icon_look.png"><span>꾸미기</span></span><span class="go2"><img src="/assets/iandragon_game/ui/lobby/icon_shop.png"><span>아이템샵</span></span><span class="xbtn"></span></div></div>
   <div class="box wide"><span class="lbl">⑪ 승리 창 <em>지금 게임 그대로 (모든 결과 창의 본보기)</em></span>
     <img class="ref" src="ref/win_crop.png"></div>
 </div>

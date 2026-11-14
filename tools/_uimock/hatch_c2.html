@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<style>
+.info { flex: 0 0 27%; display: flex; flex-direction: column; gap: .4em; min-height: 0; overflow: hidden; } .info .paper { padding: .3em .6em; }
+.rate { display: flex; align-items: center; gap: .4em; }
+.rate i { width: .8em; height: .8em; border-radius: 50%; border: 2px solid var(--o); } .rate b { margin-left: auto; }
+.bar { height: 1em; border-radius: .5em; background: var(--bg2); border: 2px solid var(--o); box-shadow: inset 0 0 0 1px #5a4a8a; overflow: hidden; margin-top: .3em; }
+.bar u { display: block; height: 100%; width: 26%; background: linear-gradient(var(--gold-hi) 0 50%, var(--gold) 50%); }
+.nest { flex: 1 1 auto; min-width: 0; position: relative; border-radius: 10px; border: 2px solid var(--o); background: radial-gradient(ellipse at 50% 45%, #6a55a8 0, #3a2c68 40%, #1d1233 80%); box-shadow: inset 0 0 0 1px #5a4a8a; overflow: hidden; }
+.nest .egg { position: absolute; left: 50%; bottom: 26%; height: 58%; transform: translateX(-50%); z-index: 2; object-fit: contain; }
+.nest .sp { position: absolute; width: 14%; opacity: .85; z-index: 3; }
+.ped { position: absolute; left: 50%; bottom: 8%; width: 60%; height: 28%; transform: translateX(-50%); }
+.ped::before { content: ''; position: absolute; inset: 0 0 38% 0; border-radius: 50%; background: radial-gradient(#d9c9ff, #7a62c0 70%); border: 2px solid var(--o); z-index: 1; }
+.ped::after { content: ''; position: absolute; left: 10%; right: 10%; top: 30%; bottom: 0; border-radius: 0 0 50% 50%; background: linear-gradient(#5a4590, #2c2150); border: 2px solid var(--o); border-top: 0; }
+.act { flex: 0 0 31%; display: flex; flex-direction: column; gap: .5em; min-height: 0; }
+.last { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .3em; }
+.last .card { flex: 1; min-height: 0; justify-content: center; }
+.last .card .art { height: auto; flex: 1; min-height: 0; } .last .card .art img { max-height: 90%; }
+.own { display: grid; grid-template-columns: repeat(4, 1fr); gap: .25em; margin-top: .3em; } .own img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: var(--bg2); } .own img.no { opacity: .28; filter: grayscale(1); }
+.offt { padding: .1em .35em; border-radius: 5px; background: #ff3b30; box-shadow: 0 0 0 2px var(--o); font-size: .75em; font-style: normal; }
+</style>
+<div class="scene"></div>
+<div class="win v2">
+  <div class="head"><span id="cash"></span><div class="tt"><b data-t="부화장">부화장</b></div><div class="grow"></div><span class="xk"></span></div>
+  <div class="body">
+    <div class="info">
+      <div class="paper" style="text-align:left">
+        <div class="rate"><i style="background:#4aa0ff"></i>희귀<b>70%</b></div>
+        <div class="rate"><i style="background:#c06aff"></i>슈퍼<b>25%</b></div>
+        <div class="rate"><i style="background:var(--gold-hi)"></i>전설<b>5%</b></div>
+      </div>
+      <div class="paper">전설까지 <b>37번</b> 남음<div class="bar"><u></u></div></div>
+      <div class="paper">모은 용 <b>8</b> / 12<div class="own" id="own"></div></div>
+      <div style="flex:1"></div>
+      <span class="btn o wide"><img src="/assets/iandragon_game/ai/lobby/ico_codex.png">용 도감 ›</span>
+    </div>
+    <div class="nest">
+      <img class="sp" style="left:12%;top:14%" src="/assets/iandragon_game/ai/eggs/sparkle.png"><img class="sp" style="right:12%;top:30%;width:10%" src="/assets/iandragon_game/ai/eggs/sparkle.png">
+      <span class="ped"></span><img class="egg" src="/assets/iandragon_game/ai/eggs/egg_rare.png">
+    </div>
+    <div class="act">
+      <div class="last"><div class="sec">방금 나온 용</div><div class="card leg"><div class="art"><img id="lastimg"></div><div class="nm" id="lastnm"></div><div class="fx">전설 · NEW</div></div></div>
+      <span class="btn g wide" style="min-height:2.2em">알 1개 <img src="/assets/iandragon_game/ai/ui/gem.svg">100</span>
+      <span class="btn g wide" style="min-height:2.2em">알 10개 <img src="/assets/iandragon_game/ai/ui/gem.svg">900 <i class="offt">-10%</i></span>
+    </div>
+  </div>
+</div>
+<script>fill('own', DR.slice(0,12).map((d,i)=>`<img class="${i<8?'':'no'}" src="${head(d)}">`).join(''));document.getElementById('lastimg').src = head('goldrex'); document.getElementById('lastnm').textContent = DRN.goldrex; tag('부화장 C (2판 · 머리 확정)');</script>

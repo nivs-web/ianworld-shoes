@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="kit.css"><script src="data.js"></script>
+<div class="scene"></div>
+<div class="win v2">
+  <div class="head"><span id="cash"></span><div class="tt"><b data-t="아이템샵">아이템샵</b></div><div class="grow"></div><span class="go"><img src="/assets/iandragon_game/ui/lobby/icon_look.png"><span>꾸미기</span></span><span class="xk"></span></div>
+  <div class="body">
+    <div class="rail">
+      <div class="rbtn on"><img src="/assets/iandragon_game/ai/lobby/ico_star_empty.png">특가<i class="badge">3</i></div>
+      <div class="rbtn"><img src="/assets/iandragon_game/ai/novart/head_big.png">드래곤</div>
+      <div class="rbtn"><img src="/assets/iandragon_game/ai/lobby/ico_nest.png">드래곤캐슬</div>
+      <div class="rbtn"><img src="/assets/iandragon_game/ai/lobby/ico_start.png">편의품</div>
+      <div class="rbtn"><img src="/assets/iandragon_game/ai/lobby/ico_gift.png">선물함<i class="badge">2</i></div>
+      <div style="flex:1"></div>
+      <div style="display:flex;align-items:flex-end;gap:.3em"><img src="/assets/iandragon_game/ai/meta/shopkeeper.png" style="height:4.6em"><div class="paper" style="flex:1">오늘의 특가!<br><b>30%</b> 싸요</div></div>
+    </div>
+    <div class="main"><div class="grid" id="g"></div></div>
+  </div>
+</div>
+<script>fill('g', ITEMS.map((i) => cardHTML(i)).join('')); tag('아이템샵 A (2판 · 머리 확정)');</script>
