@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const OUT = 'C:/Users/ARIANC~1/AppData/Local/Temp/claude/C--Users-ariancepc-Desktop-cowork-iandragon/5339b06b-10e0-463d-b750-5be29792c438/scratchpad/shots_ca/';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = await chromium.launch({ channel: 'chrome' });
+const run = async (nm, w, h, fn) => { const p = await (await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2 })).newPage(); const errs = []; p.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
+  await p.goto('http://127.0.0.1:5391/tools/_pwmock/index.html?cl=44&seen=1&gifts=done'); await sleep(3000);
+  await p.evaluate(() => [...document.querySelectorAll('button')].filter((y) => y.textContent.replace(/\s/g, '').startsWith('모험시작')).pop()?.click());
+  await p.waitForFunction(() => window.__idgBattle?.S, null, { timeout: 60000 }); await sleep(2000);
+  await p.evaluate(() => [...document.querySelectorAll('button')].filter((y) => y.textContent.trim().startsWith('출격!')).pop()?.click()); await sleep(1000);
+  await fn(p); console.log(nm, errs); await p.context().close(); };
+await run('lose844', 844, 390, async (p) => { await p.evaluate(() => { window.__idgBattle.S.over = { winner: 1 }; }); await sleep(5500); await p.screenshot({ path: OUT + 'lose844.png' }); console.log(await p.evaluate(() => { const c = document.querySelector('.idg-res'); return c ? [c.scrollHeight, c.clientHeight] : null; })); });
+await run('frost', 844, 390, async (p) => { await sleep(9000); await p.evaluate(() => { const B = window.__idgBattle; console.log(B.S.units.length); }); const n = await p.evaluate(() => window.__idgBattle.S.units.filter((u) => u.side === 1 && u.alive).length); console.log('zombies', n); await p.evaluate(() => [...document.querySelectorAll('.idg-skill')].find((x) => /얼음/.test(x.textContent))?.click()); await sleep(500); await p.screenshot({ path: OUT + 'frost-0.5.png' }); await sleep(1000); await p.screenshot({ path: OUT + 'frost-1.5.png' }); });
+await b.close();

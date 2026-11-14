@@ -223,15 +223,15 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     const extra = own ? info.line : win ? (info.unlocks ? info.unlocks.join(' · ') : info.daily ? '오늘 첫 승리 보너스 : 젬 +10' : '') : (info.mode ? '' : info.hint || '파워업에서 용을 키우면 더 쉬워져요!');
     if (extra) { const nw = h('div', 'idg-res-new' + (win || own ? '' : ' is-tip')); if (!own) nw.append(h('em', null, win ? (info.unlocks ? '새로 열림 :' : '보너스 :') : '도움말 :')); nw.append(h('span', null, extra)); bar.appendChild(nw); bar.classList.add('has-new'); requestAnimationFrame(() => { if (!nw.offsetHeight) return; const em = parseFloat(getComputedStyle(nw).fontSize) || 10; if (nw.offsetHeight > em * 3) card.classList.add('tight'); requestAnimationFrame(() => { bar.style.marginBottom = `${Math.ceil(nw.offsetHeight - 0.12 * bar.offsetHeight + 4)}px`; }); }); }   /* 한 줄이 두 줄로 길어지면 아래 여백도 같이 */   /* 보상 판 바로 아래에 붙은 꼬리표 (따로 떨어진 칸 아님) */
     if (info.final) body.appendChild(h('p', 'idg-res-final', '좀비 드래곤 로드를 물리쳤어요! 모든 모험 끝 — 고마워요!'));
-    /* 단추 규칙 (대표님 11/11) : 승리 = 전투개시! + 파워업 / 다시하기 · 나가기 (작고 밋밋하게) · 패배 = 다시하기 + 파워업 / 나가기 */
+    /* 단추 규칙 (대표님 11/11 · 11/14 «모험시작으로 통일») : 승리 = 모험시작 + 파워업 / 다시하기 · 나가기 (작고 밋밋하게) · 패배 = 다시하기 + 파워업 / 나가기 */
     const btn = (label, ico, fn, cls) => { const b = h('button', 'idg-res-btn ' + cls); b.type = 'button'; b.append(img(ico.startsWith('/') ? ico : `${RES}${ico}`, 'ico'), h('span', null, label)); b.onclick = fn; return b; };
     const r1 = h('div', 'idg-res-row big'), r2 = h('div', 'idg-res-row');
     const next = win && info.hasNext && !isNet && !info.mode;
     if (info.mode === 'raid') {   /* 주간 습격 : 빨강 다시하기 · 초록 명예의 전당(«주간 습격» 탭 바로 열기) · 보라 나가기 */
       r1.append(btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'red'), btn('명예의 전당', '/assets/iandragon_game/ui/lobby/icon_hall.png', () => cb.hall?.(), 'green'));
     } else if (isNet) r1.appendChild(btn('다시하기', 'ico_retry.svg', () => cb.rejoin(), 'red'));   /* 같이 깨기 · 대결 : 같은 방에서 다시하기 */
-    else r1.appendChild(next ? btn('전투개시!', 'ico_fight.webp', () => cb.next(), 'red') : btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'red'));
-    if (cb.puSave && !isNet && !info.mode) r1.appendChild(btn('파워업', 'ico_power_n.webp', () => showPanel('powerup', { back: kind, backInfo: info }), 'green'));
+    else r1.appendChild(next ? btn('모험시작', 'ico_fight.webp', () => cb.next(), 'red') : btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'red'));
+    if (cb.puSave && !isNet && !info.mode) r1.appendChild(btn('파워업', '/assets/iandragon_game/ai/lobby2/ico_power_clean.webp', () => showPanel('powerup', { back: kind, backInfo: info }), 'green'));
     if (next) r2.appendChild(btn('다시하기', 'ico_retry.svg', () => cb.retry(), 'purple'));
     r2.appendChild(btn(text.exit, 'ico_exit.svg', () => cb.exit(), 'purple'));
     body.append(r1, r2);
@@ -381,7 +381,7 @@ export function createHud(host, { stage, deck, skills, text, speedMax = 2, canAu
     if (kind === 'powerup') {   /* 판 사이 파워업 (powerPage.js) — 돌아가기 = 방금 결과 창 */
       /* 한 페이지 파워업 (powerPage.js · 대표님 «한 페이지에서 슬롯 끼고 빼고 업글») */
       const back = () => showPanel(info.back, info.backInfo);
-      const btns = info.back === 'win' && info.backInfo?.hasNext ? [['전투 개시!', () => cb.next(), 'main big'], ['돌아가기', back]] : [['다시하기', () => cb.retry(), 'main big'], ['돌아가기', back]];
+      const btns = info.back === 'win' && info.backInfo?.hasNext ? [['모험시작', () => cb.next(), 'main big'], ['돌아가기', back]] : [['다시하기', () => cb.retry(), 'main big'], ['돌아가기', back]];
       panel.appendChild(powerPage(h, { save: cb.puSave, write: cb.puWrite, leader, buttons: btns, exit: () => cb.exit(), shop: cb.shop ? () => cb.shop(() => showPanel('powerup', info)) : null, cls: 'idg-card idg-pp' }));   /* exit = «나가기»(로비 · 결과 창 나가기와 같음 · 11/12 대표님 3차) */
       panel.classList.add('on'); return;
     }

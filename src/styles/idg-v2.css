@@ -1,0 +1,75 @@
+/* ═══ 좀비와 드래곤 창 틀 2판 (디자인 규칙표 ① · 11/14 대표님 확정) ═══
+ *  모든 로비 창(.dialog.idg-v2 — idgFrame.js 가 자동으로 붙임)에 같은 틀 :
+ *   · 호박 모서리 틀(dialog9) · 금색 띠 안쪽 연보라 → 창 바탕(짙은 남보라)으로 덮음
+ *   · 제목 = 날개 현판 · 가로 정중앙 · 틀 윗줄(보라 띠)에 걸침
+ *   · 위 줄 : 왼쪽 = 재화 알약(.v2-left) · 오른쪽 = 바로가기 + 닫기 X — 금색 띠에서 7px (재화 알약은 위 10px)
+ *   · 내용 칸 = 금색 띠 안쪽에서 왼쪽 · 오른쪽 · 아래 7px · 위 줄 단추에서 5px
+ *   · 창 크기 4단계 (가로만 · 세로는 위아래 여백 없이 꽉) : 최대 96% · 큰 80%(최대 1400px) · 보통 50%(최소 460px) · 작은 40%(최소 360px)
+ *  dialog9 실측 (원본 900×398 · 위/아래 조각 104 → 30px · 좌/우 100 → 28px) : 금 띠 안쪽 끝 = 위 6.3px · 옆 13.7px · 아래 16.4px 안쪽 */
+.dialog-overlay > .dialog.idg-v2[class*="idg-"] {
+  --gt: 6.3px; --gl: 13.7px; --gb: 16.4px; --v2bg: #2a1f45; --gold-d: #a37d3c;
+  position: relative; box-sizing: border-box; display: flex; flex-direction: column; gap: 0;
+  width: min(80vw, 1400px) !important; max-width: min(80vw, 1400px) !important; min-width: 0 !important;
+  height: calc(100dvh - 30px) !important; max-height: none !important; margin: 24px auto 6px !important;
+  padding: 0 !important; overflow: visible !important; zoom: 1 !important;
+  border: solid transparent !important; border-width: 30px 28px !important; border-radius: 0 !important;
+  border-image: url(/assets/iandragon_game/ai/lobby/dialog9.webp) 104 100 / 30px 28px stretch !important;
+  background: var(--v2bg) padding-box !important; box-shadow: none !important;
+}
+.dialog-overlay > .dialog.idg-v2[class*="idg-"]::before { content: ''; position: absolute; z-index: 0; top: calc(-1 * var(--gt)); left: calc(-1 * var(--gl)); right: calc(-1 * var(--gl)); bottom: calc(-1 * var(--gb)); background: var(--v2bg);
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px); pointer-events: none; }
+.dialog-overlay > .dialog.idg-v2[class*="idg-"] > * { position: relative; z-index: 1; }
+/* 창 크기 4단계 */
+.dialog-overlay > .dialog.idg-v2.v2-max[class*="idg-"] { width: 96vw !important; max-width: 96vw !important; }
+.dialog-overlay > .dialog.idg-v2.v2-mid[class*="idg-"] { width: max(50vw, min(460px, 96vw)) !important; max-width: max(50vw, min(460px, 96vw)) !important; }
+.dialog-overlay > .dialog.idg-v2.v2-small[class*="idg-"] { width: max(40vw, min(360px, 96vw)) !important; max-width: max(40vw, min(360px, 96vw)) !important; }
+/* 큰 화면 : 창을 zoom 으로 키우던 것 대신 글씨(--k-fs)를 키움 (폭은 위 % 그대로) */
+@media (orientation: landscape) and (min-height: 860px) { .dialog-overlay > .dialog.idg-v2.idg-k { --k-fs: 21px; } }
+@media (orientation: landscape) and (min-height: 1000px) { .dialog-overlay > .dialog.idg-v2.idg-k { --k-fs: 25px; } }
+
+/* ── 위 줄 (예전 제목 줄 자리) ── */
+.dialog.idg-v2[class*="idg-"][class*="idg-"] > .idg-how-title.v2 {
+  display: flex !important; align-items: flex-start !important; justify-content: space-between !important; gap: .4em;
+  width: auto !important; min-width: 0 !important; max-width: none !important; height: 2.3em !important; min-height: 0 !important;
+  margin: calc(7px - var(--gt)) calc(7px - var(--gl)) 0 !important; padding: 0 !important; align-self: stretch !important;
+  border: 0 !important; border-image: none !important; background: none !important; box-shadow: none !important; position: relative !important; top: auto !important;
+  font-size: 1em !important; line-height: 1 !important; white-space: nowrap; text-shadow: none; flex: none; }
+.dialog.idg-v2 > .idg-how-title.v2::before, .dialog.idg-v2 > .idg-how-title.v2::after { display: none !important; content: none !important; }
+.idg-how-title.v2 > .v2l, .idg-how-title.v2 > .v2r { display: flex; align-items: flex-start; gap: .35em; min-width: 0; }
+.idg-how-title.v2 > .v2l { margin-top: 3px; }   /* 재화 알약 = 금색 띠에서 위 10px (단추는 7px) */
+/* 제목 날개 현판 (규칙표 ① 정정 3 · 위로 6px) — 위 줄 기준 : 위 줄 윗변 = 안쪽 끝 + 0.7px → 현판 가운데 = 위로 21.7px */
+.idg-how-title.v2 > .v2t { position: absolute; left: 50%; top: -21.7px; transform: translate(-50%, -50%); z-index: 4; display: flex; align-items: center; justify-content: center; white-space: nowrap;
+  --wh: 3.3em; height: calc(2.3em - 3px); padding: 0 2.25em; border: 2px solid transparent; border-radius: 1.2em; font-size: 1.05em;
+  background: linear-gradient(#433578 0%, #35296a 63%, #271c4a 64%, #241a44 100%) padding-box, linear-gradient(#fff0b8 0%, #f2c45a 30%, #d9a441 60%, #a8742a 100%) border-box;
+  box-shadow: 0 0 0 3px #2a1238, 2px 3px 0 3px rgba(0, 0, 0, .45); pointer-events: none; }
+.idg-how-title.v2 > .v2t > b { position: relative; top: -1.5px; font-size: 1.5em; font-weight: 900; color: #fff; line-height: 1;
+  text-shadow: 2px 0 #2a1238, -2px 0 #2a1238, 0 2px #2a1238, 0 -2px #2a1238, 2px 2px #2a1238, -2px 2px #2a1238, 2px -2px #2a1238, -2px -2px #2a1238, 4px 4px 0 #000, 3px 4px 0 #000, 4px 3px 0 #000, 4px 2px 0 #000, 2px 4px 0 #000; }
+.idg-how-title.v2 > .v2t > b::after { content: attr(data-t); position: absolute; inset: 0; color: transparent; text-shadow: none; background: linear-gradient(#fff 0 52%, #d9c690 52% 100%); -webkit-background-clip: text; background-clip: text; }
+.idg-how-title.v2 > .v2t::before, .idg-how-title.v2 > .v2t::after { content: ''; position: absolute; top: 50%; width: calc(var(--wh) * 175 / 196); height: var(--wh); margin-top: calc(var(--wh) * -.42);
+  background: url(/assets/iandragon_game/ai/result/banner_win_open.webp) 0 0 / calc(var(--wh) * 720 / 196) var(--wh) no-repeat; }
+.idg-how-title.v2 > .v2t::before { right: calc(100% - .55em); }
+.idg-how-title.v2 > .v2t::after { left: calc(100% - .55em); background-position: calc(var(--wh) * -545 / 196) 0; }
+/* 닫기 X (채택 = 지금 그림) · 위 줄 오른쪽 끝 */
+.dialog.idg-v2[class*="idg-"] > .idg-how-title.v2 .idg-k-close { position: relative !important; left: auto !important; right: auto !important; top: auto !important; transform: none !important; margin: 0 !important;
+  width: 2.3em !important; height: 2.3em !important; font-size: 1em !important; flex: none; }
+.dialog.idg-v2[class*="idg-"] > .idg-how-title.v2 .idg-k-close:active { transform: translateY(1px) !important; }
+/* 바로가기 (규칙표 ⑤ : 높이 = X · 길게 · 왼쪽 그림 통째로 살짝 크게 · 주황) */
+.dialog.idg-v2 > .idg-how-title.v2 .idg-title-sw { position: relative !important; left: auto !important; top: auto !important; transform: none !important; display: inline-flex; align-items: center; gap: .3em;
+  height: 2.3em; padding: 0 .75em 0 .2em; border: 2px solid #3a1a08; border-radius: 8px; background: #e0852c; box-shadow: inset 0 0 0 2px #f2c45a, inset 0 4px 0 1px #ffc77a, inset 0 -4px 0 1px #8e4a0f;
+  font: 900 .95em/1 var(--k-font, 'Galmuri11'), sans-serif; color: #fff; text-shadow: 1px 0 #2a1238, -1px 0 #2a1238, 0 1px #2a1238, 0 -1px #2a1238, 1px 1px #2a1238, -1px 1px #2a1238, 1px -1px #2a1238, -1px -1px #2a1238; cursor: pointer; }
+.dialog.idg-v2 > .idg-how-title.v2 .idg-title-sw::before { content: ''; width: 1.9em; height: 1.9em; flex: none; background: var(--sw-ico) center / contain no-repeat; image-rendering: pixelated; }
+.dialog.idg-v2 > .idg-how-title.v2 .idg-title-sw.go-look { --sw-ico: url(/assets/iandragon_game/ui/lobby/icon_look.png); }
+.dialog.idg-v2 > .idg-how-title.v2 .idg-title-sw.go-shop { --sw-ico: url(/assets/iandragon_game/ui/lobby/icon_shop.png); }
+.dialog.idg-v2 > .idg-how-title.v2 .idg-title-sw:active { transform: translateY(1px) !important; filter: brightness(.9); }
+/* 재화 알약 (규칙표 ⑭ : 코인 | 젬 · 어두운 노란 테 · 밝은 숫자 · 글씨 1px) */
+.v2-cash { display: inline-flex; align-items: center; gap: .35em; height: 2em; padding: 0 .7em 0 .3em; border: 2px solid var(--gold-d, #a37d3c); border-radius: 999px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238; font-size: .9em; }
+.v2-cash img { height: 1.35em; width: auto; display: block; image-rendering: pixelated; }
+.v2-cash b { font-weight: 900; text-shadow: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px 1px #000, 1px -1px #000, -1px -1px #000; }
+.v2-cash b.c { color: #ffe680; } .v2-cash b.g { color: #ffd2ff; } .v2-cash i { width: 2px; height: 1.1em; background: #5a4a8a; }
+/* ── 내용 칸 ── */
+.dialog.idg-v2[class*="idg-"] > .idg-dlg-body { flex: 1 1 auto; min-height: 0; margin: 5px calc(7px - var(--gl)) calc(7px - var(--gb)) !important; padding: 0 !important; }
+.dialog.idg-v2[class*="idg-"] > :last-child:not(.idg-dlg-body):not(.idg-how-title):not(.idg-dlg-more) { margin: 6px calc(7px - var(--gl)) calc(7px - var(--gb)) !important; }
+.dialog.idg-v2 > .idg-dlg-more { z-index: 2; }
+
+/* 승리 창 «새로 열림» 꼬리표 : 띄어쓰기 간격 줄임 (규칙표 ⑳ · 11/14) */
+.idg-res-new, .idg-res-new span, .idg-res-new em { word-spacing: -.2em; }

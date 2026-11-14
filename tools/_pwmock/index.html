@@ -1,0 +1,50 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>diff mock</title>
+<link rel="stylesheet" href="/src/styles/reset.css">
+<link rel="stylesheet" href="/src/styles/pixel-ui.css">
+<link rel="stylesheet" href="/src/styles/screens.css">
+<script type="importmap">
+{ "imports": { "/src/services/profile.js": "/tools/_pwmock/profile.js" } }
+</script>
+<script>
+/* ?s=1 보통 진행 중 · 2 보통 못 깸 + 예전 붉은 별 · 3 보통 10-10 깸 · 4 어려움 10-10 깸 · &lv=N 레벨 맞춤(별 추가) · &seen=1 안내 다 봄 · &diff=hard|master · &gifts=done */
+const q = new URLSearchParams(location.search), s = Number(q.get('s') || 1);
+const st = (n, c = '3') => c.repeat(n);
+let idg = { 1: { cleared: 37, stars: st(30) + st(7, '2') }, 2: { cleared: 62, stars: st(62), hardStars: st(20, '2') }, 3: { cleared: 100, stars: st(100), hardStars: st(4) }, 4: { cleared: 100, stars: st(100), hardStars: st(100), hardWon: st(100, '1'), masterStars: st(3) }, 5: { cleared: 100, stars: st(100), hardStars: st(100) } }[s];
+const lv = Number(q.get('lv') || 0);
+if (lv) { /* 원하는 레벨이 되게 보라 · 붉은 별 칸을 채운다 (보통 별은 그대로) */
+  const need = (lv - 1) * 5; const sum = (x) => [...(x || '')].reduce((a, c) => a + +c, 0);
+  let left = need - sum(idg.stars) - sum(idg.hardStars) - sum(idg.masterStars);
+  if (left < 0) { idg.stars = st(Math.floor(need / 3)) + (need % 3 ? String(need % 3) : ''); idg.cleared = Math.min(100, idg.stars.length); idg.hardStars = ''; idg.masterStars = ''; }
+  else { const h = (idg.hardStars || '').split(''); for (let i = 0; i < 100 && left > 0; i++) { const add = Math.min(3 - (+h[i] || 0), left); h[i] = String((+h[i] || 0) + add); left -= add; } idg.hardStars = h.map((c) => c || '0').join('');
+    const m = (idg.masterStars || '').split(''); for (let i = 0; i < 100 && left > 0; i++) { const add = Math.min(3 - (+m[i] || 0), left); m[i] = String((+m[i] || 0) + add); left -= add; } idg.masterStars = m.map((c) => c || '0').join(''); }
+}
+if (q.get('seen') === '1') idg.seen = '0'.repeat(500) + '1111';
+if (q.get('diff')) idg.diff = q.get('diff');
+if (q.get('gifts')) { const to = q.get('gifts') === 'done' ? 180 : +q.get('gifts'); idg.lvGifts = {}; for (let l = 10; l <= to; l += 10) idg.lvGifts[l] = 'gem'; }
+if (q.get('cl')) { idg.cleared = +q.get('cl'); idg.stars = st(idg.cleared); idg.hardStars = ''; idg.masterStars = ''; delete idg.hardWon; }
+const U = { kkomul: [25, 5], doldeung: [22, 3], bulttong: [9, 1], twetwe: [14, 2], ssaeng: [3, 0], bangul: [31, 4], dungsil: [12, 1], giljjuk: [6, 0], eoreum: [18, 2], jjirit: [4, 0], banjjak: [7, 1], kungkwang: [11, 2] };
+idg = { coins: q.get('coins') ? +q.get('coins') : 12345, gems: q.get('gems') ? +q.get('gems') : 678, owned: ['hat:crown'], cons: { ember50: 2, brazier: 1, basehp: 0 }, units: q.get('cl') ? U : { kkomul: [25, 5], doldeung: [22, 3] }, ...(q.get('deck') ? { deck: q.get('deck').split(',') } : {}), ...idg };
+if (q.get('lr')) { const [k, n] = q.get('lr').split('='); idg.lossRun = { [k]: +n }; idg.lossAt = k; }
+if (q.get('bp')) idg.bpUp = q.get('bp');
+localStorage.clear();
+localStorage.setItem('sf_profile', JSON.stringify({ nickname: q.get('nick') || '드래곤왕이안', idg }));
+</script>
+</head>
+<body class="ui-mode">
+<div id="ui" class="active"></div>
+<script type="module">
+import Lobby from '/src/screens/IanDragonGameLobby.js';
+const root = document.getElementById('ui');
+const stack = [];
+const nav = {
+  refresh() { const top = stack[stack.length - 1]; if (!top) return; top.destroy?.(); root.replaceChildren(); const v = top.render(nav); if (v) root.append(v); },
+  push(f) { stack.push(f(nav)); nav.refresh(); },
+  back() { stack.pop()?.destroy?.(); nav.refresh(); },
+  reset(f) { stack.length = 0; nav.push(f); },
+};
+nav.push(Lobby);
+window.__nav = nav;
+</script>
+</body></html>

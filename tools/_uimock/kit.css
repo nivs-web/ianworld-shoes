@@ -110,3 +110,12 @@ body { --t1: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1p
 /* 창 안 재화 = 규칙표 ⑭ 알약 하나 (코인 | 젬) */
 .pill2 { display: inline-flex; align-items: center; gap: .35em; height: 2em; padding: 0 .7em 0 .32em; border: 2px solid #d9a441; border-radius: 999px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238; font-size: .9em; text-shadow: var(--t1); }
 .pill2 img { height: 1.35em; } .pill2 .c { color: #ffd45a; } .pill2 .gm { color: #f0b8ff; } .pill2 i { width: 2px; height: 1.1em; background: #5a4a8a; }
+
+/* ═══ 규칙표 4판 적용 (11/14) : 위 줄 단추 7px · 재화 알약 위 10px · 어두운 노란색 테 · 밝은 숫자 · 긴 바로가기(높이 = X) ═══ */
+.win.v2 > .head { margin: calc(7px - var(--gt)) calc(7px - var(--gl)) 0; }
+.win.v2 > .head > .pill2 { margin-top: 3px; }
+.win.v2 > .body { margin: 5px calc(7px - var(--gl)) calc(7px - var(--gb)); }
+.pill2 { border-color: #a37d3c !important; } .pill2 .c { color: #ffe680 !important; } .pill2 .gm { color: #ffd2ff !important; }
+.go { width: auto !important; flex-direction: row !important; gap: 5px; padding: 0 12px 0 4px; height: 2.3em; border-radius: 8px; }
+.go img { height: 1.9em !important; margin: 0 !important; } .go span { font-size: .85em !important; margin: 0 !important; }
+.badge { font-style: normal !important; }

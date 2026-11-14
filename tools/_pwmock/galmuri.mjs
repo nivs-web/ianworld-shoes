@@ -1,0 +1,15 @@
+import { chromium } from 'playwright';
+const OUT = 'C:/Users/ARIANC~1/AppData/Local/Temp/claude/C--Users-ariancepc-Desktop-cowork-iandragon/5339b06b-10e0-463d-b750-5be29792c438/scratchpad/shots_ca/';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = await chromium.launch({ channel: 'chrome', args: ['--mute-audio'] });
+const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })).newPage();
+const fonts = []; p.on('requestfinished', async (rq) => { if (rq.resourceType() === 'font') { const s = await rq.sizes().catch(() => ({})); fonts.push(`${Math.round((s.responseBodySize || 0) / 1024)}KB ${rq.url().split('/').pop()}`); } });
+const errs = []; p.on('pageerror', (e) => errs.push(String(e).slice(0, 150)));
+await p.goto('http://127.0.0.1:5395/'); await p.waitForFunction('window.__dbg && window.__dbg.nav', null, { timeout: 60000 });
+await p.evaluate(() => window.__dbg.nav.reset(window.__dbg.screens.Portal)); await sleep(4000); await p.screenshot({ path: OUT + 'gm-portal.png' });
+await p.evaluate(() => { const i = [...document.querySelectorAll('img')].find((x) => x.alt === '좀비와 드래곤'); (i.closest('.gc')?.querySelector('button') || i).click(); }); await sleep(5000); await p.screenshot({ path: OUT + 'gm-lobby.png' });
+await p.evaluate(() => [...document.querySelectorAll('button')].find((x) => /아이템샵/.test(x.textContent) && x.offsetParent)?.click()); await sleep(2000); await p.screenshot({ path: OUT + 'gm-shop.png' });
+console.log('fonts', fonts.join(' · '));
+console.log('family', await p.evaluate(() => [...document.querySelectorAll('.idg-k-row, .l2-label, .dialog')].slice(0, 3).map((e) => getComputedStyle(e).fontFamily.slice(0, 30))));
+console.log('loaded', await p.evaluate(async () => { await document.fonts.ready; return [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family + ':' + f.weight).slice(0, 6); }), errs);
+await b.close();

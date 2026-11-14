@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const OUT = 'C:/Users/ARIANC~1/AppData/Local/Temp/claude/C--Users-ariancepc-Desktop-cowork-iandragon/5339b06b-10e0-463d-b750-5be29792c438/scratchpad/shots_ca/';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = await chromium.launch({ channel: 'chrome' });
+const p = await (await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2 })).newPage();
+const errs = []; p.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
+const tap = (t, sel = 'button') => p.evaluate(([t, sel]) => { const x = [...document.querySelectorAll(sel)].filter((y) => y.textContent.replace(/\s/g, '').startsWith(t) && y.offsetParent).pop(); x?.click(); return !!x; }, [t, sel]);
+await p.goto('http://127.0.0.1:5391/tools/_pwmock/index.html?cl=44&seen=1&gifts=done'); await sleep(3000);
+await tap('모험시작'); await p.waitForFunction(() => window.__idgBattle?.S, null, { timeout: 60000 }); await sleep(2000);
+await tap('출격!'); await sleep(1000); await p.keyboard.press('KeyP'); await sleep(800);
+await p.screenshot({ path: OUT + 'pause-sound.png' });
+await tap('화면', '.idg-pause-tab'); await sleep(900); await p.screenshot({ path: OUT + 'pause-screen.png' });
+await tap('키보드', '.idg-pause-tab'); await sleep(900); await p.screenshot({ path: OUT + 'pause-keys.png' });
+console.log(errs); await b.close();

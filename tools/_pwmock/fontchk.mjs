@@ -1,0 +1,16 @@
+import { chromium } from 'playwright';
+const OUT = 'C:/Users/ARIANC~1/AppData/Local/Temp/claude/C--Users-ariancepc-Desktop-cowork-iandragon/5339b06b-10e0-463d-b750-5be29792c438/scratchpad/shots_ca/';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = await chromium.launch({ channel: 'chrome', args: ['--mute-audio'] });
+const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })).newPage();
+const fonts = []; p.on('requestfinished', async (rq) => { if (rq.resourceType() === 'font') { const s = await rq.sizes().catch(() => ({})); fonts.push(`${Math.round((s.responseBodySize || 0) / 1024)}KB ${rq.url().split('/').pop()}`); } });
+await p.goto('http://127.0.0.1:5395/'); await p.waitForFunction('window.__dbg && window.__dbg.nav', null, { timeout: 60000 });
+await p.evaluate(() => window.__dbg.nav.reset(window.__dbg.screens.Portal)); await sleep(4000);
+await p.screenshot({ path: OUT + 'font-portal.png' });
+console.log('portal fonts', fonts.length, fonts.join(' · '));
+console.log('check', await p.evaluate(async () => { await document.fonts.ready; const els = [...document.querySelectorAll('.gc-new-title, .gc-play, .gc-new-badge')]; return els.slice(0, 4).map((e) => [e.textContent.trim().slice(0, 10), getComputedStyle(e).fontFamily.slice(0, 40), document.fonts.check(`900 20px "Pretendard Variable"`, e.textContent)]); }));
+fonts.length = 0;
+await p.evaluate(() => { const i = [...document.querySelectorAll('img')].find((x) => x.alt === '좀비와 드래곤'); (i.closest('.gc')?.querySelector('button') || i).click(); }); await sleep(5000);
+await p.screenshot({ path: OUT + 'font-lobby.png' });
+console.log('lobby fonts', fonts.length, fonts.join(' · '));
+await b.close();

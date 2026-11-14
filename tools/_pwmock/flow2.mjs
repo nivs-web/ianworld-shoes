@@ -1,0 +1,30 @@
+import { chromium } from 'playwright';
+const OUT = 'C:/Users/ARIANC~1/AppData/Local/Temp/claude/C--Users-ariancepc-Desktop-cowork-iandragon/5339b06b-10e0-463d-b750-5be29792c438/scratchpad/shots_ca/';
+const [query, W, H, tag, quick] = process.argv.slice(2);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = await chromium.launch({ channel: 'chrome' });
+const p = await (await b.newContext({ viewport: { width: +W, height: +H }, deviceScaleFactor: 2 })).newPage();
+const errs = []; p.on('pageerror', (e) => errs.push(String(e.stack || e).slice(0, 400)));
+await p.goto(`http://127.0.0.1:5391/tools/_pwmock/index.html?${query}`); await sleep(2500);
+const click = (t) => p.evaluate((t) => { const bs = [...document.querySelectorAll('button')].filter((y) => y.textContent.trim().startsWith(t)); const x = bs[bs.length - 1]; x?.click(); return !!x; }, t);
+const idg = () => p.evaluate(() => { const i = JSON.parse(localStorage.getItem('sf_profile')).idg; return { lossRun: i.lossRun, lossAt: i.lossAt, bpUp: i.bpUp, coins: i.coins }; });
+const lead = () => p.evaluate(() => { const P = window.__idgBattle.S.players[0]; return { dmg: P.leader.dmg, range: P.leader.range, charge: P.breathCharge }; });
+await click('모험시작'); await p.waitForFunction(() => window.__idgBattle?.S, null, { timeout: 60000 }); await sleep(2500);
+console.log('base leader', await lead());
+await click('출격!'); await sleep(300);
+await p.evaluate(() => { window.__idgBattle.S.over = { winner: 1 }; }); await sleep(5500);
+console.log('lost', await idg());
+console.log('pu', await click('파워업')); await sleep(1500);
+console.log('shop', await click('아이템')); await sleep(1200);
+await p.screenshot({ path: `${OUT}${tag}-shop.png` });
+const buy = await p.evaluate(() => { const r = [...document.querySelectorAll('.idg-k-row')].find((x) => x.textContent.includes('브레스')); const bt = r?.querySelector('button.price'); bt?.click(); return !!bt; });
+console.log('buy', buy); await sleep(800);
+await p.screenshot({ path: `${OUT}${tag}-shop-bought.png` });
+console.log('bought', await idg());
+await click('닫기'); await sleep(800);
+if (quick) { await click('다시하기'); await sleep(2500); }
+else { console.log(await p.evaluate(() => [...document.querySelectorAll('button')].map((b) => b.textContent.trim()).filter(Boolean).slice(-8))); console.log(await click('로비로')); await sleep(2500); console.log('lobby btns', await click('모험시작')); await p.waitForFunction(() => window.__idgBattle?.S && window.__idgBattle.ui.intro, null, { timeout: 60000 }); await sleep(2500);
+  await p.screenshot({ path: `${OUT}${tag}-card.png` }); console.log('cons row', await p.evaluate(() => document.querySelector('.idg-cons-row')?.textContent)); await click('출격!'); await sleep(500); }
+console.log('boosted leader', await lead(), await idg());
+if (errs.length) console.log('ERRS', errs.slice(0, 5));
+await b.close();

@@ -101,7 +101,7 @@ export function showShop({ idg, save, onClose, tab }) {   /* tab = 'cons' → �
   const reco = el('div.idg-shop-reco');
   const main = el('div.idg-shop-main', null, [reco, bigTabs, subSlot, scroll]);
   const wrap = el('div.idg-shop-wrap', null, [side, main]);
-  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['아이템샵', el('button.idg-title-sw', { type: 'button', 'aria-label': '꾸미기로 바로 가기', onclick: () => switchToLook() }, '꾸미기'), kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X 하나 (IDG_UI_PATTERNS §5) */
+  const box = el('div.dialog.idg-shop.idg-lab.idg-k', { onclick: (e) => e.stopPropagation() }, [el('div.idg-how-title', null, ['아이템샵', el('button.idg-title-sw.go-look', { type: 'button', 'aria-label': '꾸미기로 바로 가기', onclick: () => switchToLook() }, '꾸미기'), kitClose(() => close())]), wrap]);   /* 닫기 = 머리 오른쪽 X 하나 (IDG_UI_PATTERNS §5) */
   const overlay = el('div.dialog-overlay', { onclick: () => close() }, [box]);
   const closeO = presentOverlay(overlay);
   const close = () => { dead = true; leavePanel(); closeO(); onClose?.(); };

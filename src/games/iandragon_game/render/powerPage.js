@@ -13,6 +13,7 @@
  *  규칙은 로비 «파워업»(옛 용 둥지)과 같다 : ECON.lvCost · 레벨 상한 ECON.capAt · 덱 2칸 이상 · 칸 수 un.deckCap.
  *  소리 : 끼우기 deploy_s · 빼기 button_back · 레벨업 levelup · 진화 evolve + voice evolve · 코인 부족 button_deny (겜팀장)
  */
+import '../../../styles/idg-v2-strip.css';   /* 파워업 옆 띠 단추 = 규칙표 ㉑ (11/14) */
 import * as Audio from '../audio/index.js';
 import { UNITS } from '../data/units.js';
 import { LEADERS } from '../data/leaders.js';
@@ -240,11 +241,11 @@ export function powerPage(h, o) {
       const grid = h('div', 'idg-pp-grid' + (mains.length ? ' has-strip' : '')); grid.append(sCol, cCol);
       if (mains.length) {
         const strip = h('div', 'idg-pp-strip');
-        mains.forEach((bt, k) => { const b = mkBtn(bt, k === 0 ? ' idg-pp-go' + (short ? ' off' : '') : ''); if (k === 0 && short) b.setAttribute('aria-disabled', 'true'); if (k === 0) { const ic = h('span', 'ico'); if (/전투/.test(bt[0])) { const im = h('img'); im.src = `${AI}result/ico_fight.webp`; im.alt = ''; im.draggable = false; ic.append(im); } else ic.innerHTML = RETRY_SVG; b.replaceChildren(ic, h('span', 'lb', bt[0])); } strip.append(b); });
+        mains.forEach((bt, k) => { const b = mkBtn(bt, k === 0 ? ' idg-pp-go' + (short ? ' off' : '') : ''); if (k === 0 && short) b.setAttribute('aria-disabled', 'true'); if (k === 0) { const ic = h('span', 'ico'); { const im = h('img'); im.src = /전투|모험/.test(bt[0]) ? `${AI}result/ico_fight.webp` : `${AI}result/ico_retry.svg`; im.alt = ''; im.draggable = false; ic.append(im); }   /* 다시하기 = 규칙표 SVG 모음 «ico_retry» (11/14) */ b.replaceChildren(ic, h('span', 'lb', bt[0])); } strip.append(b); });
         /* 11/13 대표님 : 전투 개시 아래로 · 길게 → «로비로»(나가기 그림) → 맨 아래 «X 창닫기»(결과 창으로 · 오른쪽 위 닫기 X 와 같은 동작) — 둘 다 금테 없는 보라 단추 */
         const sub = h('div', 'idg-pp-subs');
-        if (o.exit) { const lb = exitBtn(' idg-pp-back'); const ic = h('i', 'ico'); ic.innerHTML = HOME_SVG; lb.replaceChildren(ic, h('span', 'lb', '로비로')); sub.append(lb); }
-        if (o.shop) { const sb = h('button', 'idg-btn idg-pp-back idg-pp-shop'); sb.type = 'button'; const ic = h('i', 'ico'); ic.innerHTML = BAG_SVG; sb.append(ic, h('span', 'lb', '아이템샵')); sb.onclick = guard(() => o.shop()); sub.append(sb); }   /* 11/13 대표님 : 편의품을 판 사이에 바로 사러 (주황) */
+        if (o.exit) { const lb = exitBtn(' idg-pp-back'); const ic = h('i', 'ico pic'); const im = h('img'); im.src = '/assets/iandragon_game/ui/lobby/icon_more.png'; im.alt = ''; ic.append(im); lb.replaceChildren(ic, h('span', 'lb', '로비로'));   /* 로비로 = 로비 «더보기» 그림 (11/14) */ sub.append(lb); }
+        if (o.shop) { const sb = h('button', 'idg-btn idg-pp-back idg-pp-shop'); sb.type = 'button'; const ic = h('i', 'ico pic'); const im = h('img'); im.src = '/assets/iandragon_game/ui/lobby/icon_shop.png'; im.alt = ''; ic.append(im); sb.append(ic, h('span', 'lb', '아이템샵')); sb.onclick = guard(() => o.shop()); sub.append(sb); }   /* 11/13 대표님 : 편의품을 판 사이에 바로 사러 (주황) */
         if (closeIdx >= 0) { const cb = mkBtn(o.buttons[closeIdx], ' idg-pp-back idg-pp-close'); const ic = h('i', 'ico'); ic.innerHTML = X_SVG; cb.replaceChildren(ic, h('span', 'lb', '창닫기')); sub.append(cb); }
         strip.append(sub);   /* 3차 : «돌아가기» → «나가기»(로비) · 결과 창으로는 오른쪽 위 닫기 X */
         grid.append(strip);

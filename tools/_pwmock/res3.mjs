@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = await chromium.launch({ channel: 'chrome' });
+const p = await (await b.newContext({ viewport: { width: 844, height: 390 } })).newPage();
+await p.goto('http://127.0.0.1:5391/tools/_pwmock/index.html?cl=44&seen=1&gifts=done'); await sleep(3000);
+await p.evaluate(() => [...document.querySelectorAll('button')].filter((y) => y.textContent.replace(/\s/g, '').startsWith('모험시작')).pop()?.click());
+await p.waitForFunction(() => window.__idgBattle?.S, null, { timeout: 60000 }); await sleep(2000);
+await p.evaluate(() => window.__idgHud.showPanel('win', { t: 98, coins: 1850, gems: 12, stars: 3, diff: 'normal', hasNext: true, unlocks: ['리더 솔라리스', '덱 칸 +1'] })); await sleep(2000);
+console.log(JSON.stringify(await p.evaluate(() => { const c = document.querySelector('.idg-res'), r = c.getBoundingClientRect(), cs = getComputedStyle(c); const body = c.querySelector('.idg-res-body'), br = body.getBoundingClientRect(); const rows = [...c.querySelectorAll('.idg-res-row')]; const last = rows[rows.length - 1].getBoundingClientRect(); return { card: [r.top, r.bottom, r.height], border: [cs.borderTopWidth, cs.borderBottomWidth], body: [br.top, br.bottom, body.scrollHeight, body.clientHeight, getComputedStyle(body).paddingBottom, getComputedStyle(body).gap], lastRowBottom: last.bottom, kids: [...body.children].map((k) => k.className + ':' + Math.round(k.getBoundingClientRect().bottom)) }; })));
+await b.close();

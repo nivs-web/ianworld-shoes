@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const OUT = 'C:/Users/ARIANC~1/AppData/Local/Temp/claude/C--Users-ariancepc-Desktop-cowork-iandragon/5339b06b-10e0-463d-b750-5be29792c438/scratchpad/shots_ca/';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = await chromium.launch({ channel: 'chrome' });
+const p = await (await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2 })).newPage();
+await p.goto(`http://127.0.0.1:5391/tools/_pwmock/index.html?${process.argv[2] || 'cl=94&seen=1&gifts=done'}`); await sleep(2500);
+await p.evaluate(() => [...document.querySelectorAll('button')].filter((y) => y.textContent.replace(/\s/g, '').startsWith('모험시작')).pop()?.click());
+await p.waitForFunction(() => window.__idgBattle?.S, null, { timeout: 60000 }); await sleep(2000);
+await p.evaluate(() => [...document.querySelectorAll('button')].filter((y) => y.textContent.trim().startsWith('출격!')).pop()?.click()); await sleep(6000);
+await p.screenshot({ path: OUT + 'mid.png' });
+console.log(JSON.stringify(await p.evaluate(() => { const B = window.__idgBattle; return { w: innerWidth, h: innerHeight }; })));
+await b.close();

@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = await chromium.launch({ channel: 'chrome' });
+const p = await (await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2 })).newPage();
+const errs = []; p.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
+await p.goto('http://127.0.0.1:5391/tools/_pwmock/index.html?cl=44&seen=1&gifts=done'); await sleep(3000);
+const tap = (t) => p.evaluate((t) => { const x = [...document.querySelectorAll('button')].filter((y) => y.textContent.replace(/\s/g, '').startsWith(t)).pop(); x?.click(); return !!x; }, t);
+await tap('모험시작'); await p.waitForFunction(() => window.__idgBattle?.S, null, { timeout: 60000 }); await sleep(2000);
+await tap('출격!'); await sleep(800);
+await p.evaluate(() => { window.__idgBattle.S.over = { winner: 1 }; }); await sleep(5500);
+console.log('retry', await tap('다시하기')); await sleep(4500);
+console.log('start card after retry:', await p.evaluate(() => !![...document.querySelectorAll('button')].find((x) => x.textContent.trim().startsWith('출격!') && x.offsetParent)));
+await p.screenshot({ path: 'C:/Users/ARIANC~1/AppData/Local/Temp/claude/C--Users-ariancepc-Desktop-cowork-iandragon/5339b06b-10e0-463d-b750-5be29792c438/scratchpad/shots_ca/retry-card.png' });
+console.log(errs); await b.close();

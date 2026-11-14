@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = await chromium.launch({ channel: 'chrome', args: ['--mute-audio'] });
+const ctx = await b.newContext({ viewport: { width: 844, height: 390 } });
+const p = await ctx.newPage();
+const reqs = []; let phase = 'home';
+p.on('response', async (r) => { try { const h = await r.allHeaders(); const len = +(h['content-length'] || 0); reqs.push({ phase, url: r.url(), type: r.request().resourceType(), len, status: r.status(), cache: h['cf-cache-status'] || h['x-vercel-cache'] || '' }); } catch {} });
+const t0 = Date.now(); await p.goto('https://ianworld.vercel.app/'); await sleep(5000);
+console.log('home', Date.now() - t0, 'ms');
+const sum = (ph) => { const a = reqs.filter((x) => x.phase === ph); const by = {}; for (const x of a) { by[x.type] = by[x.type] || [0, 0]; by[x.type][0]++; by[x.type][1] += x.len; } return { n: a.length, kb: Math.round(a.reduce((s, x) => s + x.len, 0) / 1024), by: Object.fromEntries(Object.entries(by).map(([k, v]) => [k, `${v[0]}개 ${Math.round(v[1] / 1024)}KB`])) }; };
+console.log('home', JSON.stringify(sum('home')));
+const top = (ph) => reqs.filter((x) => x.phase === ph).sort((a, b) => b.len - a.len).slice(0, 12).map((x) => `${Math.round(x.len / 1024)}KB ${x.cache} ${x.url.replace(/^https?:\/\/[^/]+/, '')}`);
+console.log(top('home').join('\n'));
+await b.close();

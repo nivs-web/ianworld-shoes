@@ -7,4 +7,7 @@ import { el } from './ui.js';
 import { kitClose } from './idgKit.js';
 import '../styles/idg-xwin.css';
 
-export const xTitle = (text, onClose) => el('div.idg-how-title', null, [text, kitClose(onClose)]);
+/* 틀 2판 (11/14) : opt.left = 왼쪽(재화 알약 등 · 자동으로 .v2-left) · opt.right = X 왼쪽(바로가기 단추) — idgFrame.js 가 위 줄로 바꾼다 */
+export const xTitle = (text, onClose, opt = {}) => el('div.idg-how-title', null, [text, ...(opt.left || []).map((n) => (n.classList.add('v2-left'), n)), ...(opt.right || []), kitClose(onClose)]);
+/** 창 안 재화 알약 (규칙표 ⑭ : 코인 | 젬) */
+export const v2Cash = (coins, gems) => el('div.v2-cash', null, [el('img', { src: '/assets/iandragon_game/ai/ui/coin.svg', alt: '' }), el('b.c', Number(coins || 0).toLocaleString('en-US')), el('i'), el('img', { src: '/assets/iandragon_game/ai/ui/gem.svg', alt: '' }), el('b.g', Number(gems || 0).toLocaleString('en-US'))]);

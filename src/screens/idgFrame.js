@@ -11,6 +11,7 @@ import { moreDown } from './idgMore.js';   /* «아래로 더 있음» 화살표
 import '../styles/idg-subwin.css';   /* 서브 창 다듬기 (11/12) — 키트를 옛 창(.dialog.idg-*)에 입히기 · 스크롤 표시 · 픽셀 바꿔 끼우기 */
 import '../styles/idg-titlebar.css';   /* 창 머리 현판 50% · X 오른쪽 위 · 글씨 1단계 (11/14) */
 import '../styles/idg-window-rules.css';   /* 창 규칙표 1판 (11/14) */
+import '../styles/idg-v2.css';   /* 창 틀 2판 = 디자인 규칙표 ① (11/14 대표님 확정) */
 
 /* 스크롤 표시 (11/12 대표님 «목록이 닫기 단추 위에서 뚝 잘려 보인다 → 스크롤 영역임을 알 수 있게 · 그림자 대신 도트 테두리 / 화살표»)
  *  가운데 칸이 넘치면 창에 .scrolls · 아래가 더 있으면 .more-down(아래 화살표) · 위로 올릴 게 있으면 .more-up — 모양은 idg-subwin.css */
@@ -56,6 +57,27 @@ function pixelize(box) {
     if (e.classList.contains('idg-stage-stars')) e.replaceChildren(...[...t].filter((c) => c === '★' || c === '☆').map((c) => pimg(`${RES}star_${c === '★' ? 'on' : 'off'}.webp`, c, 'idg-star-ico')));
   });
 }
+/* ── 창 틀 2판 (디자인 규칙표 ① · 11/14) ──
+ *  제목 줄을 «위 줄» 로 바꾼다 : 글씨 → 가운데 날개 현판(.v2t) · .v2-left → 왼쪽(재화 알약) · 바로가기 · X → 오른쪽
+ *  창 크기 4단계 : 클래스 v2-max · (기본 = 큰) · v2-mid · v2-small — 창마다 아래 SIZE 표로 정한다 */
+const V2_SKIP = ['idg-hall', 'pp'];
+const SIZE = [['idg-set', 'v2-mid'], ['idg-more', 'v2-mid'], ['idg-profile', 'v2-mid'], ['idg-note', 'v2-small'], ['idg-gift', 'v2-mid'], ['idg-how', 'v2-mid'], ['idg-credits', 'v2-mid']];
+function v2head(box, head) {
+  if (!head || head.classList.contains('v2')) return;
+  if (V2_SKIP.some((c) => box.classList.contains(c))) return;
+  const texts = [...head.childNodes].filter((n) => n.nodeType === 3 || (n.nodeType === 1 && n.matches('.v2-text')));
+  const t = texts.map((n) => n.textContent).join('').trim();
+  texts.forEach((n) => n.remove());
+  const left = document.createElement('div'); left.className = 'v2l';
+  const right = document.createElement('div'); right.className = 'v2r';
+  [...head.children].forEach((c) => { (c.classList.contains('v2-left') ? left : right).appendChild(c); });
+  const plate = document.createElement('div'); plate.className = 'v2t';
+  const b = document.createElement('b'); b.textContent = t; b.dataset.t = t; plate.appendChild(b);
+  head.replaceChildren(left, plate, right);
+  head.classList.add('v2');
+  box.classList.add('idg-v2');
+  const s = SIZE.find(([c]) => box.classList.contains(c)); if (s) box.classList.add(s[1]);
+}
 const isFoot = (n) => n && (n.tagName === 'BUTTON' || n.classList.contains('pbtn') || (n.classList.contains('row') && n.querySelector('button')) || n.classList.contains('idg-row'));
 function frame(box) {
   box.classList.add('idg-k');   /* UI 키트 뿌리 (11/12 대표님 «어느 창이든 통일감») — 키트 부품 · Pretendard 외곽선 글씨가 모든 로비 창에 */
@@ -63,9 +85,10 @@ function frame(box) {
   let kids = [...box.children].filter((k) => !k.classList.contains('idg-dlg-more'));   /* 스크롤 화살표 표는 칸 나누기에서 뺀다 */
   const old = kids.find((k) => k.classList.contains('idg-dlg-body'));
   pixelize(box);
-  if (old && kids.length <= 3 && kids.indexOf(old) <= 1) { watchMore(box, old); return; }   /* 이미 나뉨 */
+  if (old && kids.length <= 3 && kids.indexOf(old) <= 1) { v2head(box, kids[0]?.classList.contains('idg-how-title') ? kids[0] : null); watchMore(box, old); return; }   /* 이미 나뉨 */
   if (old) { box.querySelectorAll(':scope > .idg-dlg-more').forEach((m) => m.remove()); old.replaceWith(...old.childNodes); kids = [...box.children]; }
   const head = kids[0]?.classList.contains('idg-how-title') ? kids[0] : null;
+  v2head(box, head);
   const foot = kids.length > 1 && isFoot(kids[kids.length - 1]) ? kids[kids.length - 1] : null;
   const mid = kids.filter((k) => k !== head && k !== foot);
   const body = document.createElement('div'); body.className = 'idg-dlg-body';
