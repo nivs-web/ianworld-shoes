@@ -90,3 +90,23 @@ img { image-rendering: pixelated; }
 .go img { height: 1.15em; margin-top: -.15em; } .go span { font-size: .5em; line-height: 1; margin-top: .05em; }
 .allp { display: inline-flex; align-items: center; gap: .35em; height: 1.9em; padding: 0 .7em; border: 2px solid #d9a441; border-radius: 999px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238; font-size: .85em; }
 .allp b { color: var(--gold-hi); }
+
+/* ═══ 틀 디자인 (11/14 대표님 · 규칙표 ① 에 같이 적음) ═══
+ *  · 호박 모서리 틀(dialog9) 그대로 · 금색 띠 안쪽 연보라는 창 바탕(짙은 남보라)으로 덮어 위화감 없애기 (모서리 금 비스듬한 곳은 그대로 보이게 깎음)
+ *  · 금색 띠 안쪽에서 : 위 줄 단추(재화 · 바로가기 · X) = 3px 아래부터 · 내용 = 위 · 오른쪽 · 아래 · 왼쪽 5px
+ *  · 제목 = 보라 띠 가로 한가운데 · 글씨 두 톤 나뉘는 줄 = 금색 띠 시작 줄
+ *  dialog9 실측 (원본 900×398 · 위/아래 조각 104 → 30px · 좌/우 100 → 28px) : 보라 띠 38~72 · 금 73~82 (위) · 금 42~51 (좌우) · 금 342~351 (아래) */
+.win.v2 { --gt: 6.3px; --gl: 13.7px; --gb: 16.4px; padding: 0; gap: 5px; }
+.win.v2::before { content: ''; position: absolute; z-index: 0; top: calc(-1 * var(--gt)); left: calc(-1 * var(--gl)); right: calc(-1 * var(--gl)); bottom: calc(-1 * var(--gb)); background: var(--bg);
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px); }
+.win.v2 > * { position: relative; z-index: 1; }
+.win.v2 > .head { margin: calc(3px - var(--gt)) calc(3px - var(--gl)) 0; height: 2.3em; position: static; align-items: flex-start; }
+.win.v2 > .head > * { position: relative; z-index: 1; }
+.win.v2 > .body { margin: 0 calc(5px - var(--gl)) calc(5px - var(--gb)); }
+.win.v2 > .head .tt { z-index: 4; top: var(--tty, -9px); }
+/* 작은 글씨 = 1px · 큰 글씨 = 2px (규칙표) */
+body { --t1: 1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000, 1px 1px #000, -1px 1px #000, 1px -1px #000, -1px -1px #000; }
+.win.v2, .win.v2 .btn, .win.v2 .cash, .win.v2 .rbtn, .win.v2 .card, .win.v2 .row, .win.v2 .chip { text-shadow: var(--t1); }
+/* 창 안 재화 = 규칙표 ⑭ 알약 하나 (코인 | 젬) */
+.pill2 { display: inline-flex; align-items: center; gap: .35em; height: 2em; padding: 0 .7em 0 .32em; border: 2px solid #d9a441; border-radius: 999px; background: #1d1233; box-shadow: 0 0 0 2px #2a1238; font-size: .9em; text-shadow: var(--t1); }
+.pill2 img { height: 1.35em; } .pill2 .c { color: #ffd45a; } .pill2 .gm { color: #f0b8ff; } .pill2 i { width: 2px; height: 1.1em; background: #5a4a8a; }

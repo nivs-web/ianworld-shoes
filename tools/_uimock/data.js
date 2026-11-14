@@ -24,4 +24,4 @@ const cashHTML = () => `<div class="cash coin"><img src="${COIN}"><b>99,999</b><
 const cardHTML = (it, btn = true) => `<div class="card ${it.r}">${it.off ? `<i class="off">-${it.off}%</i>` : ''}<div class="art"><img src="${it.img}"></div><div class="nm">${it.n}</div><div class="fx">${it.fx}</div>${btn ? `<span class="btn g wide"><img src="${COIN}">${fmt(it.p)}</span>` : ''}</div>`;
 const tag = (t) => document.body.append(h(`<div class="tag">${t}</div>`));
 const fill = (id, html) => { document.getElementById(id).innerHTML = html; };
-document.addEventListener('DOMContentLoaded', () => { const c = document.getElementById('cash'); if (c) c.outerHTML = cashHTML(); });
+document.addEventListener('DOMContentLoaded', () => { const c = document.getElementById('cash'); if (c) c.outerHTML = document.querySelector('.win.v2') ? `<span class="pill2"><img src="${COIN}"><b class="c">99,999</b><i></i><img src="${GEM}"><b class="gm">999</b></span>` : cashHTML(); });
